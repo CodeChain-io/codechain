@@ -433,7 +433,7 @@ export default class CodeChain {
             awaitInvoice: awaitMint
         });
         if (!awaitMint) {
-            return null;
+            return { asset: tx.getMintedAsset() };
         }
         const asset = await this.sdk.rpc.chain.getAsset(tx.hash(), 0);
         if (asset === null) {

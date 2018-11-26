@@ -17,22 +17,25 @@
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
 
+import "mocha";
+import { expect } from "chai";
+
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
 // FIXME: Connection establishment is too slow.
 // See https://github.com/CodeChain-io/codechain/issues/760
-describeSkippedInTravis("network2 nodes", () => {
+describeSkippedInTravis("network2 nodes", function() {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
     const address = "127.0.0.1";
-    beforeAll(async () => {
+    before(async function() {
         nodeA = new CodeChain();
         nodeB = new CodeChain();
         await Promise.all([nodeA.start(), nodeB.start()]);
     });
 
-    describe("Not connected", () => {
-        beforeEach(async () => {
+    describe("Not connected", function() {
+        beforeEach(async function() {
             // ensure disconnected
             if (
                 !(await nodeA.sdk.rpc.network.isConnected(address, nodeB.port))
@@ -50,26 +53,26 @@ describeSkippedInTravis("network2 nodes", () => {
             }
         });
 
-        test("connect", async () => {
+        it("connect", async function() {
             expect(
                 await nodeA.sdk.rpc.network.connect(
                     address,
                     nodeB.port
                 )
-            ).toBe(null);
+            ).to.be.a("null");
         });
 
-        test("getPeerCount", async () => {
-            expect(await nodeA.sdk.rpc.network.getPeerCount()).toBe(0);
+        it("getPeerCount", async function() {
+            expect(await nodeA.sdk.rpc.network.getPeerCount()).to.equal(0);
         });
 
-        test("getPeers", async () => {
-            expect(await nodeA.sdk.rpc.network.getPeers()).toEqual([]);
+        it("getPeers", async function() {
+            expect(await nodeA.sdk.rpc.network.getPeers()).to.be.empty;
         });
     });
 
-    describe("1 connected", () => {
-        beforeEach(async () => {
+    describe("1 connected", function() {
+        beforeEach(async function() {
             // ensure connected
             if (await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)) {
                 return;
@@ -88,34 +91,34 @@ describeSkippedInTravis("network2 nodes", () => {
             }
         });
 
-        test("isConnected", async () => {
+        it("isConnected", async function() {
             expect(
                 await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)
-            ).toBe(true);
+            ).to.be.true;
         });
 
-        test("disconnect", async () => {
+        it("disconnect", async function() {
             expect(
                 await nodeA.sdk.rpc.network.disconnect(address, nodeB.port)
-            ).toBe(null);
+            ).to.be.null;
         });
 
-        test("getPeerCount", async () => {
-            expect(await nodeA.sdk.rpc.network.getPeerCount()).toBe(1);
-            expect(await nodeB.sdk.rpc.network.getPeerCount()).toBe(1);
+        it("getPeerCount", async function() {
+            expect(await nodeA.sdk.rpc.network.getPeerCount()).to.equal(1);
+            expect(await nodeB.sdk.rpc.network.getPeerCount()).to.equal(1);
         });
 
-        test("getPeers", async () => {
-            expect(await nodeA.sdk.rpc.network.getPeers()).toEqual([
+        it("getPeers", async function() {
+            expect(await nodeA.sdk.rpc.network.getPeers()).to.deep.equal([
                 `${address}:${nodeB.port}`
             ]);
-            expect(await nodeB.sdk.rpc.network.getPeers()).toEqual([
+            expect(await nodeB.sdk.rpc.network.getPeers()).to.deep.equal([
                 `${address}:${nodeA.port}`
             ]);
         });
     });
 
-    afterAll(async () => {
+    after(async function() {
         await Promise.all([nodeA.clean(), nodeB.clean()]);
     });
 });

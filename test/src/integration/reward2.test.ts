@@ -19,15 +19,18 @@ import { aliceAddress, aliceSecret, bobAddress } from "../helper/constants";
 import { U64 } from "codechain-sdk/lib/core/classes";
 import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 
+import "mocha";
+import { expect } from "chai";
+
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
 // FIXME: It fails due to timeout when the block sync extension is stuck.
 // See https://github.com/CodeChain-io/codechain/issues/662
-describeSkippedInTravis("reward2", () => {
+describeSkippedInTravis("reward2", function() {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 
-    beforeEach(async () => {
+    beforeEach(async function() {
         nodeA = new CodeChain({
             chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
             argv: ["--author", aliceAddress.toString(), "--force-sealing"]
@@ -40,144 +43,140 @@ describeSkippedInTravis("reward2", () => {
         await Promise.all([nodeA.start(), nodeB.start()]);
     });
 
-    test("alice creates an empty block", async () => {
+    it("alice creates an empty block", async function() {
         await nodeA.sdk.rpc.devel.startSealing();
-        await expect(
-            nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(50));
+        expect(
+            await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
+        ).to.deep.equal(new U64(50));
 
         await nodeB.connect(nodeA);
         await nodeB.waitBlockNumberSync(nodeA);
 
-        await expect(
-            nodeB.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(50));
+        expect(
+            await nodeB.sdk.rpc.chain.getBalance(aliceAddress)
+        ).to.deep.equal(new U64(50));
     });
 
-    test("alice creates one block and bob creates two blocks in parallel. And then, sync", async () => {
+    it("alice creates one block and bob creates two blocks in parallel. And then, sync", async function() {
         await nodeA.sdk.rpc.devel.startSealing();
-        await expect(
-            nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(50));
+        expect(
+            await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
+        ).to.deep.equal(new U64(50));
 
         await nodeB.sdk.rpc.devel.startSealing();
         await nodeB.sdk.rpc.devel.startSealing();
-        await expect(
-            nodeB.sdk.rpc.chain.getBalance(bobAddress)
-        ).resolves.toEqual(new U64(100));
+        expect(await nodeB.sdk.rpc.chain.getBalance(bobAddress)).to.deep.equal(
+            new U64(100)
+        );
 
         await nodeA.connect(nodeB);
         await nodeA.waitBlockNumberSync(nodeB);
 
-        await expect(
-            nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(0));
-        await expect(
-            nodeA.sdk.rpc.chain.getBalance(bobAddress)
-        ).resolves.toEqual(new U64(100));
+        expect(
+            await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
+        ).to.deep.equal(new U64(0));
+        expect(await nodeA.sdk.rpc.chain.getBalance(bobAddress)).to.deep.equal(
+            new U64(100)
+        );
     });
 
-    test(
-        "A reorganization of block rewards and payments",
-        async () => {
-            // nodeA creates a block
-            {
-                await nodeA.sdk.rpc.devel.startSealing(); // +50 for alice
-                await expect(
-                    nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-                ).resolves.toEqual(new U64(50));
-            }
+    it("A reorganization of block rewards and payments", async function() {
+        // nodeA creates a block
+        {
+            await nodeA.sdk.rpc.devel.startSealing(); // +50 for alice
+            expect(
+                await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
+            ).to.deep.equal(new U64(50));
+        }
 
-            // sync and disconnect
-            {
-                await nodeB.connect(nodeA);
-                await nodeB.waitBlockNumberSync(nodeA);
+        // sync and disconnect
+        {
+            await nodeB.connect(nodeA);
+            await nodeB.waitBlockNumberSync(nodeA);
 
-                await expect(
-                    nodeB.sdk.rpc.chain.getBalance(aliceAddress)
-                ).resolves.toEqual(new U64(50));
+            expect(
+                await nodeB.sdk.rpc.chain.getBalance(aliceAddress)
+            ).to.deep.equal(new U64(50));
 
-                await nodeB.disconnect(nodeA);
-            }
+            await nodeB.disconnect(nodeA);
+        }
 
-            // nodeA creates 2 blocks
-            {
-                await nodeA.payment(aliceAddress, 100); // +160 for alice in nodeA
-                await nodeA.sdk.rpc.chain.sendSignedParcel(
-                    nodeA.sdk.core
-                        .createPaymentParcel({
-                            recipient: bobAddress,
-                            amount: 5
-                        })
-                        .sign({
-                            secret: aliceSecret,
-                            fee: 10,
-                            seq: 0
-                        })
-                ); // +45 for alice, +5 for bob in nodeA
-                await expect(
-                    nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-                ).resolves.toEqual(new U64(255));
-                await expect(
-                    nodeA.sdk.rpc.chain.getBalance(bobAddress)
-                ).resolves.toEqual(new U64(5));
-            }
+        // nodeA creates 2 blocks
+        {
+            await nodeA.payment(aliceAddress, 100); // +160 for alice in nodeA
+            await nodeA.sdk.rpc.chain.sendSignedParcel(
+                nodeA.sdk.core
+                    .createPaymentParcel({
+                        recipient: bobAddress,
+                        amount: 5
+                    })
+                    .sign({
+                        secret: aliceSecret,
+                        fee: 10,
+                        seq: 0
+                    })
+            ); // +45 for alice, +5 for bob in nodeA
+            expect(
+                await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
+            ).to.deep.equal(new U64(255));
+            expect(
+                await nodeA.sdk.rpc.chain.getBalance(bobAddress)
+            ).to.deep.equal(new U64(5));
+        }
 
-            // nodeB creates 3 blocks
-            {
-                await nodeB.payment(aliceAddress, 200); // +200 for alice, +60 for bob in nodeB
-                await nodeB.payment(bobAddress, 300); // +360 for bob in nodeB
-                await nodeB.sdk.rpc.chain.sendSignedParcel(
-                    nodeB.sdk.core
-                        .createPaymentParcel({
-                            recipient: bobAddress,
-                            amount: 15
-                        })
-                        .sign({
-                            secret: aliceSecret,
-                            fee: 10,
-                            seq: 0
-                        })
-                ); // -25 for alice. +75 for bob in nodeB
-                await expect(
-                    nodeB.sdk.rpc.chain.getBalance(aliceAddress)
-                ).resolves.toEqual(new U64(225));
-                await expect(
-                    nodeB.sdk.rpc.chain.getBalance(bobAddress)
-                ).resolves.toEqual(new U64(495));
-            }
+        // nodeB creates 3 blocks
+        {
+            await nodeB.payment(aliceAddress, 200); // +200 for alice, +60 for bob in nodeB
+            await nodeB.payment(bobAddress, 300); // +360 for bob in nodeB
+            await nodeB.sdk.rpc.chain.sendSignedParcel(
+                nodeB.sdk.core
+                    .createPaymentParcel({
+                        recipient: bobAddress,
+                        amount: 15
+                    })
+                    .sign({
+                        secret: aliceSecret,
+                        fee: 10,
+                        seq: 0
+                    })
+            ); // -25 for alice. +75 for bob in nodeB
+            expect(
+                await nodeB.sdk.rpc.chain.getBalance(aliceAddress)
+            ).to.deep.equal(new U64(225));
+            expect(
+                await nodeB.sdk.rpc.chain.getBalance(bobAddress)
+            ).to.deep.equal(new U64(495));
+        }
 
-            // sync. nodeA now sees nodeB's state
-            {
-                const nodeBBestBlockHash = await nodeB.getBestBlockHash();
-                await expect(nodeB.getBestBlockNumber()).resolves.toBe(4);
+        // sync. nodeA now sees nodeB's state
+        {
+            const nodeBBestBlockHash = await nodeB.getBestBlockHash();
+            expect(await nodeB.getBestBlockNumber()).to.equal(4);
 
-                await nodeB.connect(nodeA);
-                await nodeA.waitBlockNumberSync(nodeB);
-                await expect(nodeA.getBestBlockHash()).resolves.toEqual(
-                    nodeBBestBlockHash
-                );
+            await nodeB.connect(nodeA);
+            await nodeA.waitBlockNumberSync(nodeB);
+            expect(await nodeA.getBestBlockHash()).to.deep.equal(
+                nodeBBestBlockHash
+            );
 
-                await expect(
-                    nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-                ).resolves.toEqual(new U64(225));
-                await expect(
-                    nodeA.sdk.rpc.chain.getBalance(bobAddress)
-                ).resolves.toEqual(new U64(495));
-            }
+            expect(
+                await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
+            ).to.deep.equal(new U64(225));
+            expect(
+                await nodeA.sdk.rpc.chain.getBalance(bobAddress)
+            ).to.deep.equal(new U64(495));
+        }
 
-            // nodeA creates a block
-            {
-                await nodeA.payment(aliceAddress, 1000); // +1060 for alice
-                await expect(
-                    nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-                ).resolves.toEqual(new U64(225 + 1060));
-            }
-        },
-        7000
-    );
+        // nodeA creates a block
+        {
+            await nodeA.payment(aliceAddress, 1000); // +1060 for alice
+            expect(
+                await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
+            ).to.deep.equal(new U64(225 + 1060));
+        }
+    }).timeout(7_000);
 
-    afterEach(async () => {
+    afterEach(async function() {
         await Promise.all([nodeA.clean(), nodeB.clean()]);
     });
 });

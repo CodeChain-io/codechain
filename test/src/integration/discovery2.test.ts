@@ -16,13 +16,15 @@
 
 import CodeChain from "../helper/spawn";
 
-const testSkippedInTravis = process.env.TRAVIS ? test.skip : test;
+import "mocha";
 
-describe("discovery2 nodes", () => {
+const testSkippedInTravis = process.env.TRAVIS ? it.skip : it;
+
+describe("discovery2 nodes", function() {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 
-    beforeEach(async () => {
+    beforeEach(async function() {
         nodeA = new CodeChain();
         nodeB = new CodeChain();
         await Promise.all([nodeA.start(), nodeB.start()]);
@@ -30,11 +32,11 @@ describe("discovery2 nodes", () => {
 
     // FIXME: Connection establishment is too slow.
     // See https://github.com/CodeChain-io/codechain/issues/760
-    testSkippedInTravis("should be able to connect", async () => {
+    testSkippedInTravis("should be able to connect", async function() {
         await nodeA.connect(nodeB);
     });
 
-    afterEach(async () => {
+    afterEach(async function() {
         await nodeA.clean();
         await nodeB.clean();
     });

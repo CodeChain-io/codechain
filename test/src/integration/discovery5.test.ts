@@ -16,14 +16,17 @@
 
 import CodeChain from "../helper/spawn";
 
-const testSkippedInTravis = process.env.TRAVIS ? test.skip : test;
+import "mocha";
+import { expect } from "chai";
 
-describe("discovery5 nodes", () => {
+const testSkippedInTravis = process.env.TRAVIS ? it.skip : it;
+
+describe("discovery5 nodes", function() {
     const numOfNodes = 5;
     let nodes: CodeChain[];
     let bootstrapNode: CodeChain;
 
-    beforeEach(async () => {
+    beforeEach(async function() {
         nodes = [new CodeChain()];
         bootstrapNode = nodes[0];
 
@@ -43,37 +46,33 @@ describe("discovery5 nodes", () => {
         );
     });
 
-    testSkippedInTravis(
-        "number of peers",
-        async () => {
-            await Promise.all([
-                nodes[0].waitPeers(numOfNodes - 1),
-                nodes[1].waitPeers(numOfNodes - 1),
-                nodes[2].waitPeers(numOfNodes - 1),
-                nodes[3].waitPeers(numOfNodes - 1),
-                nodes[4].waitPeers(numOfNodes - 1)
-            ]);
+    testSkippedInTravis("number of peers", async function() {
+        await Promise.all([
+            nodes[0].waitPeers(numOfNodes - 1),
+            nodes[1].waitPeers(numOfNodes - 1),
+            nodes[2].waitPeers(numOfNodes - 1),
+            nodes[3].waitPeers(numOfNodes - 1),
+            nodes[4].waitPeers(numOfNodes - 1)
+        ]);
 
-            expect(await nodes[0].sdk.rpc.network.getPeerCount()).toEqual(
-                numOfNodes - 1
-            );
-            expect(await nodes[1].sdk.rpc.network.getPeerCount()).toEqual(
-                numOfNodes - 1
-            );
-            expect(await nodes[2].sdk.rpc.network.getPeerCount()).toEqual(
-                numOfNodes - 1
-            );
-            expect(await nodes[3].sdk.rpc.network.getPeerCount()).toEqual(
-                numOfNodes - 1
-            );
-            expect(await nodes[4].sdk.rpc.network.getPeerCount()).toEqual(
-                numOfNodes - 1
-            );
-        },
-        30 * 1000
-    );
+        expect(await nodes[0].sdk.rpc.network.getPeerCount()).to.equal(
+            numOfNodes - 1
+        );
+        expect(await nodes[1].sdk.rpc.network.getPeerCount()).to.equal(
+            numOfNodes - 1
+        );
+        expect(await nodes[2].sdk.rpc.network.getPeerCount()).to.equal(
+            numOfNodes - 1
+        );
+        expect(await nodes[3].sdk.rpc.network.getPeerCount()).to.equal(
+            numOfNodes - 1
+        );
+        expect(await nodes[4].sdk.rpc.network.getPeerCount()).to.equal(
+            numOfNodes - 1
+        );
+    }).timeout(50_000);
 
-    afterEach(async () => {
+    afterEach(async function() {
         await Promise.all(nodes.map(node => node.clean()));
     });
 });

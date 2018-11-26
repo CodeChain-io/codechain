@@ -16,31 +16,34 @@
 
 import CodeChain from "../helper/spawn";
 
-describe("engine", () => {
+import "mocha";
+import { expect } from "chai";
+
+describe("engine", function() {
     let node: CodeChain;
-    beforeAll(async () => {
+    before(async function() {
         node = new CodeChain();
         await node.start();
     });
 
-    test("getCoinbase", async () => {
+    it("getCoinbase", async function() {
         // TODO: Coinbase is not defined in solo mode, so it always returns null. Need to test in other modes.
         expect(
             await node.sdk.rpc.sendRpcRequest("engine_getCoinbase", [])
-        ).toBeNull();
+        ).to.be.a("null");
     });
 
-    test("getRecommendedConfirmation", async () => {
+    it("getRecommendedConfirmation", async function() {
         // TODO: The rcommended confirmation of solo is always 1. Need to test in other modes.
         expect(
             await node.sdk.rpc.sendRpcRequest(
                 "engine_getRecommendedConfirmation",
                 []
             )
-        ).toBe(1);
+        ).to.equal(1);
     });
 
-    afterAll(async () => {
+    after(async function() {
         await node.clean();
     });
 });

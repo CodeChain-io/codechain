@@ -16,48 +16,51 @@
 
 import CodeChain from "../helper/spawn";
 
+import "mocha";
+import { expect } from "chai";
+
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
 // FIXME: It fails due to timeout when the block sync extension is stuck. See
 // https://github.com/CodeChain-io/codechain/issues/662
-describeSkippedInTravis("syncEmptyBlock", () => {
+describeSkippedInTravis("syncEmptyBlock", function() {
     // NOTE: To create empty blocks, enable --force-sealing option, and then,
     // trigger it by calling devel_startSealing RPC API.
-    describe("empty block", () => {
+    describe("empty block", function() {
         let nodeA: CodeChain;
         let nodeB: CodeChain;
 
-        beforeEach(async () => {
+        beforeEach(async function() {
             nodeA = new CodeChain({ argv: ["--force-sealing"] });
             nodeB = new CodeChain({ argv: ["--force-sealing"] });
             await Promise.all([nodeA.start(), nodeB.start()]);
             await nodeA.connect(nodeB);
         });
 
-        test("nodeA creates an empty block", async () => {
+        it("nodeA creates an empty block", async function() {
             await nodeA.sdk.rpc.devel.startSealing();
-            expect(await nodeA.getBestBlockNumber()).toBe(1);
+            expect(await nodeA.getBestBlockNumber()).to.equal(1);
             await nodeA.waitBlockNumberSync(nodeB);
-            expect(await nodeB.getBestBlockNumber()).toBe(1);
-            expect(await nodeA.getBestBlockHash()).toEqual(
+            expect(await nodeB.getBestBlockNumber()).to.equal(1);
+            expect(await nodeA.getBestBlockHash()).to.deep.equal(
                 await nodeB.getBestBlockHash()
             );
         });
 
-        test("nodeA creates 3 empty blocks", async () => {
+        it("nodeA creates 3 empty blocks", async function() {
             await nodeA.sdk.rpc.devel.startSealing();
             await nodeA.sdk.rpc.devel.startSealing();
             await nodeA.sdk.rpc.devel.startSealing();
 
-            expect(await nodeA.getBestBlockNumber()).toBe(3);
+            expect(await nodeA.getBestBlockNumber()).to.equal(3);
             await nodeA.waitBlockNumberSync(nodeB);
-            expect(await nodeB.getBestBlockNumber()).toBe(3);
-            expect(await nodeA.getBestBlockHash()).toEqual(
+            expect(await nodeB.getBestBlockNumber()).to.equal(3);
+            expect(await nodeA.getBestBlockHash()).to.deep.equal(
                 await nodeB.getBestBlockHash()
             );
         });
 
-        afterEach(async () => {
+        afterEach(async function() {
             await Promise.all([nodeA.clean(), nodeB.clean()]);
         });
     });

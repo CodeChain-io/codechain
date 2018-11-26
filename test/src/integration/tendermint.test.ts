@@ -23,12 +23,20 @@ import {
 } from "../helper/constants";
 import { wait } from "../helper/promise";
 
+import "mocha";
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
-describeSkippedInTravis("Tendermint ", () => {
+describeSkippedInTravis("Tendermint ", function() {
     let nodes: CodeChain[];
 
-    beforeEach(async () => {
+    beforeEach(async function() {
+        this.timeout(60_000);
+
         let validatorAddresses = [
             validator0Address,
             validator1Address,
@@ -61,23 +69,19 @@ describeSkippedInTravis("Tendermint ", () => {
             nodes[2].waitPeers(4 - 1),
             nodes[3].waitPeers(4 - 1)
         ]);
-    }, 60 * 1000);
+    });
 
-    test(
-        "Wait block generation",
-        async () => {
-            await nodes[0].waitBlockNumber(2);
-            await nodes[1].waitBlockNumber(2);
-            await nodes[2].waitBlockNumber(2);
-            await nodes[3].waitBlockNumber(2);
-            await expect(
-                nodes[0].sdk.rpc.chain.getBestBlockNumber()
-            ).resolves.toBeGreaterThanOrEqual(2);
-        },
-        60 * 1000
-    );
+    it("Wait block generation", async function() {
+        await nodes[0].waitBlockNumber(2);
+        await nodes[1].waitBlockNumber(2);
+        await nodes[2].waitBlockNumber(2);
+        await nodes[3].waitBlockNumber(2);
+        await expect(
+            nodes[0].sdk.rpc.chain.getBestBlockNumber()
+        ).to.eventually.equal(2);
+    }).timeout(60_000);
 
-    afterEach(async () => {
+    afterEach(async function() {
         await Promise.all(nodes.map(node => node.clean()));
     });
 });

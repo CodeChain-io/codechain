@@ -16,28 +16,31 @@
 
 import CodeChain from "../helper/spawn";
 
-describe("solo - 1 node", () => {
+import "mocha";
+import { expect } from "chai";
+
+describe("solo - 1 node", function() {
     let node: CodeChain;
-    beforeAll(async () => {
+    before(async function() {
         node = new CodeChain();
         await node.start();
     });
 
-    test("ping", async () => {
-        expect(await node.sdk.rpc.node.ping()).toBe("pong");
+    it("ping", async function() {
+        expect(await node.sdk.rpc.node.ping()).to.equal("pong");
     });
 
-    test("getNodeVersion", async () => {
-        expect(await node.sdk.rpc.node.getNodeVersion()).toBe("0.1.0");
+    it("getNodeVersion", async function() {
+        expect(await node.sdk.rpc.node.getNodeVersion()).to.equal("0.1.0");
     });
 
-    test("getCommitHash", async () => {
-        expect(await node.sdk.rpc.node.getCommitHash()).toMatch(
+    it("getCommitHash", async function() {
+        expect(await node.sdk.rpc.node.getCommitHash()).to.match(
             /^[a-fA-F0-9]{40}$/
         );
     });
 
-    afterAll(async () => {
+    after(async function() {
         await node.clean();
     });
 });

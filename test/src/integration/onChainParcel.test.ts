@@ -18,7 +18,10 @@ import { TestHelper } from "codechain-test-helper/lib/testHelper";
 import CodeChain from "../helper/spawn";
 import { faucetSecret } from "../helper/constants";
 
-describe("Test onChain parcel communication", () => {
+import "mocha";
+import { expect } from "chai";
+
+describe("Test onChain parcel communication", function() {
     let nodeA: CodeChain;
 
     const VALID_FEE = 10;
@@ -31,80 +34,82 @@ describe("Test onChain parcel communication", () => {
         "0x6dbde483ac39847466ad85919e9c09df0c1f8d7f71628c1664f1d7ffc494385857b778a51d9c049fd4609f2aed6b7f28e1fdcc0e4ef30e41393b38b12f8cd2e101";
     const INVALID_SIG = "0x1221fzcv441";
     const testArray = [
-        [
-            "OnChain invalid fee PaymentParcel propagation test",
-            INVALID_FEE,
-            VALID_SEQ,
-            VALID_NETWORKID,
-            VALID_SIG
-        ],
-        [
-            "OnChain invalid seq PaymentParcel propagation test",
-            VALID_FEE,
-            INVALID_SEQ,
-            VALID_NETWORKID,
-            VALID_SIG
-        ],
-        [
-            "OnChain invalid networkId PaymentParcel propagation test",
-            VALID_FEE,
-            VALID_SEQ,
-            INVALID_NETWORKID,
-            VALID_SIG
-        ],
-        [
-            "OnChain invalid signature PaymentParcel propagation test",
-            VALID_FEE,
-            VALID_SEQ,
-            VALID_NETWORKID,
-            INVALID_SIG
-        ]
+        {
+            testName: "OnChain invalid fee PaymentParcel propagation test",
+            tfee: INVALID_FEE,
+            tseq: VALID_SEQ,
+            tnetworkId: VALID_NETWORKID,
+            tsig: VALID_SIG
+        },
+        {
+            testName: "OnChain invalid seq PaymentParcel propagation test",
+            tfee: VALID_FEE,
+            tseq: INVALID_SEQ,
+            tnetworkId: VALID_NETWORKID,
+            tsig: VALID_SIG
+        },
+        {
+            testName:
+                "OnChain invalid networkId PaymentParcel propagation test",
+            tfee: VALID_FEE,
+            tseq: VALID_SEQ,
+            tnetworkId: INVALID_NETWORKID,
+            tsig: VALID_SIG
+        },
+        {
+            testName:
+                "OnChain invalid signature PaymentParcel propagation test",
+            tfee: VALID_FEE,
+            tseq: VALID_SEQ,
+            tnetworkId: VALID_NETWORKID,
+            tsig: INVALID_SIG
+        }
     ];
 
-    beforeEach(async () => {
+    beforeEach(async function() {
         nodeA = new CodeChain();
         await nodeA.start();
     });
 
-    afterEach(async () => {
+    afterEach(async function() {
         await nodeA.clean();
     });
 
-    test(
-        "OnChain PaymentParcel propagation test",
-        async () => {
-            const TH = new TestHelper("0.0.0.0", nodeA.port);
-            await TH.establish();
+    it("OnChain PaymentParcel propagation test", async function() {
+        const TH = new TestHelper("0.0.0.0", nodeA.port);
+        await TH.establish();
 
-            const sdk = nodeA.sdk;
+        const sdk = nodeA.sdk;
 
-            const ACCOUNT_SECRET = process.env.ACCOUNT_SECRET || faucetSecret;
-            const parcel = sdk.core.createPaymentParcel({
-                recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
-                amount: 10000
-            });
-            const signedparcel = parcel.sign({
-                secret: ACCOUNT_SECRET,
-                fee: 10,
-                seq: 0
-            });
-            await sdk.rpc.devel.stopSealing();
-            await TH.sendEncodedParcel([signedparcel.toEncodeObject()]);
+        const ACCOUNT_SECRET = process.env.ACCOUNT_SECRET || faucetSecret;
+        const parcel = sdk.core.createPaymentParcel({
+            recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
+            amount: 10000
+        });
+        const signedparcel = parcel.sign({
+            secret: ACCOUNT_SECRET,
+            fee: 10,
+            seq: 0
+        });
+        await sdk.rpc.devel.stopSealing();
+        await TH.sendEncodedParcel([signedparcel.toEncodeObject()]);
 
-            const parcels = await sdk.rpc.chain.getPendingParcels();
-            expect(parcels.length).toEqual(1);
+        const parcels = await sdk.rpc.chain.getPendingParcels();
+        expect(parcels.length).to.equal(1);
 
-            await TH.end();
-        },
-        20000
-    );
+        await TH.end();
+    }).timeout(20_000);
 
-    describe("OnChain invalid PaymentParcel test", async () => {
-        test.each(testArray)(
-            "%s",
-            async (_testName, tfee, tseq, tnetworkId, tsig) => {
-                jest.setTimeout(20000);
-
+    describe("OnChain invalid PaymentParcel test", async function() {
+        testArray.forEach(function(params: {
+            testName: string;
+            tfee: number;
+            tseq: number;
+            tnetworkId: string;
+            tsig: string;
+        }) {
+            const { testName, tfee, tseq, tnetworkId, tsig } = params;
+            it(testName, async function() {
                 const TH = new TestHelper("0.0.0.0", nodeA.port);
                 await TH.establish();
 
@@ -129,10 +134,10 @@ describe("Test onChain parcel communication", () => {
 
                 await TH.sendEncodedParcel([data]);
                 const parcels = await sdk.rpc.chain.getPendingParcels();
-                expect(parcels.length).toEqual(0);
+                expect(parcels.length).to.equal(0);
 
                 await TH.end();
-            }
-        );
+            }).timeout(20_000);
+        });
     });
 });

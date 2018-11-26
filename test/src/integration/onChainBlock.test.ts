@@ -19,7 +19,10 @@ import { Header } from "codechain-test-helper/lib/cHeader";
 import CodeChain from "../helper/spawn";
 import { H256, U256, H160 } from "codechain-primitives/lib";
 
-describe("Test onChain block communication", async () => {
+import "mocha";
+import { expect } from "chai";
+
+describe("Test onChain block communication", async function() {
     let nodeA: CodeChain;
     let TH: TestHelper;
     let soloGenesisBlock: Header;
@@ -62,23 +65,23 @@ describe("Test onChain block communication", async () => {
     );
     const VALID_SCORE = new U256(999999999999999);
     const INVALID_SCORE = new U256(9999999999999999999999999999999999999999);
-    let VALID_SEAL = [];
+    let VALID_SEAL: Buffer[] = [];
     const INVALID_SEAL = [Buffer.from("DEADBEEF")];
 
     const testArray = [
-        [
-            "OnChain invalid parent block propagation test",
-            INVALID_PARENT,
-            VALID_TIMESTAMP,
-            VALID_NUMBER,
-            VALID_AUTHOR,
-            VALID_EXTRADATA,
-            VALID_PARCELROOT,
-            VALID_STATEROOT,
-            VALID_INVOICEROOT,
-            VALID_SCORE,
-            VALID_SEAL
-        ],
+        {
+            testName: "OnChain invalid parent block propagation test",
+            tparent: INVALID_PARENT,
+            ttimeStamp: VALID_TIMESTAMP,
+            tnumber: VALID_NUMBER,
+            tauthor: VALID_AUTHOR,
+            textraData: VALID_EXTRADATA,
+            tparcelRoot: VALID_PARCELROOT,
+            tstateRoot: VALID_STATEROOT,
+            tinvoiceRoot: VALID_INVOICEROOT,
+            tscore: VALID_SCORE,
+            tseal: VALID_SEAL
+        },
         /*
         [
             "OnChain invalid timestamp block propagation test",
@@ -93,113 +96,113 @@ describe("Test onChain block communication", async () => {
             VALID_SCORE,
             VALID_SEAL
         ],*/
-        [
-            "OnChain invalid number block propagation test",
-            VALID_PARENT,
-            VALID_TIMESTAMP,
-            INVALID_NUMBER,
-            VALID_AUTHOR,
-            VALID_EXTRADATA,
-            VALID_PARCELROOT,
-            VALID_STATEROOT,
-            VALID_INVOICEROOT,
-            VALID_SCORE,
-            VALID_SEAL
-        ],
-        [
-            "OnChain invalid author block propagation test",
-            VALID_PARENT,
-            VALID_TIMESTAMP,
-            VALID_NUMBER,
-            INVALID_AUTHOR,
-            VALID_EXTRADATA,
-            VALID_PARCELROOT,
-            VALID_STATEROOT,
-            VALID_INVOICEROOT,
-            VALID_SCORE,
-            VALID_SEAL
-        ],
-        [
-            "OnChain invalid extraData block propagation test",
-            VALID_PARENT,
-            VALID_TIMESTAMP,
-            VALID_NUMBER,
-            VALID_AUTHOR,
-            INVALID_EXTRADATA,
-            VALID_PARCELROOT,
-            VALID_STATEROOT,
-            VALID_INVOICEROOT,
-            VALID_SCORE,
-            VALID_SEAL
-        ],
-        [
-            "OnChain invalid parcelRoot block propagation test",
-            VALID_PARENT,
-            VALID_TIMESTAMP,
-            VALID_NUMBER,
-            VALID_AUTHOR,
-            VALID_EXTRADATA,
-            INVALID_PARCELROOT,
-            VALID_STATEROOT,
-            VALID_INVOICEROOT,
-            VALID_SCORE,
-            VALID_SEAL
-        ],
-        [
-            "OnChain invalid stateRoot block propagation test",
-            VALID_PARENT,
-            VALID_TIMESTAMP,
-            VALID_NUMBER,
-            VALID_AUTHOR,
-            VALID_EXTRADATA,
-            VALID_PARCELROOT,
-            INVALID_STATEROOT,
-            VALID_INVOICEROOT,
-            VALID_SCORE,
-            VALID_SEAL
-        ],
-        [
-            "OnChain invalid invoiceRoot block propagation test",
-            VALID_PARENT,
-            VALID_TIMESTAMP,
-            VALID_NUMBER,
-            VALID_AUTHOR,
-            VALID_EXTRADATA,
-            VALID_PARCELROOT,
-            VALID_STATEROOT,
-            INVALID_INVOICEROOT,
-            VALID_SCORE,
-            VALID_SEAL
-        ],
-        [
-            "OnChain invalid score block propagation test",
-            VALID_PARENT,
-            VALID_TIMESTAMP,
-            VALID_NUMBER,
-            VALID_AUTHOR,
-            VALID_EXTRADATA,
-            VALID_PARCELROOT,
-            VALID_STATEROOT,
-            VALID_INVOICEROOT,
-            INVALID_SCORE,
-            VALID_SEAL
-        ],
-        [
-            "OnChain invalid seal block propagation test",
-            VALID_PARENT,
-            VALID_TIMESTAMP,
-            VALID_NUMBER,
-            VALID_AUTHOR,
-            VALID_EXTRADATA,
-            VALID_PARCELROOT,
-            VALID_STATEROOT,
-            VALID_INVOICEROOT,
-            VALID_SCORE,
-            INVALID_SEAL
-        ]
+        {
+            testName: "OnChain invalid number block propagation test",
+            tparent: VALID_PARENT,
+            ttimeStamp: VALID_TIMESTAMP,
+            tnumber: INVALID_NUMBER,
+            tauthor: VALID_AUTHOR,
+            textraData: VALID_EXTRADATA,
+            tparcelRoot: VALID_PARCELROOT,
+            tstateRoot: VALID_STATEROOT,
+            tinvoiceRoot: VALID_INVOICEROOT,
+            tscore: VALID_SCORE,
+            tseal: VALID_SEAL
+        },
+        {
+            testName: "OnChain invalid author block propagation test",
+            tparent: VALID_PARENT,
+            ttimeStamp: VALID_TIMESTAMP,
+            tnumber: VALID_NUMBER,
+            tauthor: INVALID_AUTHOR,
+            textraData: VALID_EXTRADATA,
+            tparcelRoot: VALID_PARCELROOT,
+            tstateRoot: VALID_STATEROOT,
+            tinvoiceRoot: VALID_INVOICEROOT,
+            tscore: VALID_SCORE,
+            tseal: VALID_SEAL
+        },
+        {
+            testName: "OnChain invalid extraData block propagation test",
+            tparent: VALID_PARENT,
+            ttimeStamp: VALID_TIMESTAMP,
+            tnumber: VALID_NUMBER,
+            tauthor: VALID_AUTHOR,
+            textraData: INVALID_EXTRADATA,
+            tparcelRoot: VALID_PARCELROOT,
+            tstateRoot: VALID_STATEROOT,
+            tinvoiceRoot: VALID_INVOICEROOT,
+            tscore: VALID_SCORE,
+            tseal: VALID_SEAL
+        },
+        {
+            testName: "OnChain invalid parcelRoot block propagation test",
+            tparent: VALID_PARENT,
+            ttimeStamp: VALID_TIMESTAMP,
+            tnumber: VALID_NUMBER,
+            tauthor: VALID_AUTHOR,
+            textraData: VALID_EXTRADATA,
+            tparcelRoot: INVALID_PARCELROOT,
+            tstateRoot: VALID_STATEROOT,
+            tinvoiceRoot: VALID_INVOICEROOT,
+            tscore: VALID_SCORE,
+            tseal: VALID_SEAL
+        },
+        {
+            testName: "OnChain invalid stateRoot block propagation test",
+            tparent: VALID_PARENT,
+            ttimeStamp: VALID_TIMESTAMP,
+            tnumber: VALID_NUMBER,
+            tauthor: VALID_AUTHOR,
+            textraData: VALID_EXTRADATA,
+            tparcelRoot: VALID_PARCELROOT,
+            tstateRoot: INVALID_STATEROOT,
+            tinvoiceRoot: VALID_INVOICEROOT,
+            tscore: VALID_SCORE,
+            tseal: VALID_SEAL
+        },
+        {
+            testName: "OnChain invalid invoiceRoot block propagation test",
+            tparent: VALID_PARENT,
+            ttimeStamp: VALID_TIMESTAMP,
+            tnumber: VALID_NUMBER,
+            tauthor: VALID_AUTHOR,
+            textraData: VALID_EXTRADATA,
+            tparcelRoot: VALID_PARCELROOT,
+            tstateRoot: VALID_STATEROOT,
+            tinvoiceRoot: INVALID_INVOICEROOT,
+            tscore: VALID_SCORE,
+            tseal: VALID_SEAL
+        },
+        {
+            testName: "OnChain invalid score block propagation test",
+            tparent: VALID_PARENT,
+            ttimeStamp: VALID_TIMESTAMP,
+            tnumber: VALID_NUMBER,
+            tauthor: VALID_AUTHOR,
+            textraData: VALID_EXTRADATA,
+            tparcelRoot: VALID_PARCELROOT,
+            tstateRoot: VALID_STATEROOT,
+            tinvoiceRoot: VALID_INVOICEROOT,
+            tscore: INVALID_SCORE,
+            tseal: VALID_SEAL
+        },
+        {
+            testName: "OnChain invalid seal block propagation test",
+            tparent: VALID_PARENT,
+            ttimeStamp: VALID_TIMESTAMP,
+            tnumber: VALID_NUMBER,
+            tauthor: VALID_AUTHOR,
+            textraData: VALID_EXTRADATA,
+            tparcelRoot: VALID_PARCELROOT,
+            tstateRoot: VALID_STATEROOT,
+            tinvoiceRoot: VALID_INVOICEROOT,
+            tscore: VALID_SCORE,
+            tseal: INVALID_SEAL
+        }
     ];
 
-    beforeAll(async () => {
+    before(async function() {
         const node = new CodeChain({
             argv: ["--force-sealing"]
         });
@@ -269,79 +272,74 @@ describe("Test onChain block communication", async () => {
         VALID_SEAL = block1.seal;
     });
 
-    beforeEach(async () => {
+    beforeEach(async function() {
         nodeA = new CodeChain();
         await nodeA.start();
         TH = new TestHelper("0.0.0.0", nodeA.port);
         await TH.establish();
     });
 
-    afterEach(async () => {
+    afterEach(async function() {
         await TH.end();
         await nodeA.clean();
     });
 
-    test(
-        "OnChain valid block propagation test",
-        async () => {
-            // TH.setLog();
-            const sdk = nodeA.sdk;
+    it("OnChain valid block propagation test", async function() {
+        // TH.setLog();
+        const sdk = nodeA.sdk;
 
-            // Genesis block
-            const header = soloGenesisBlock;
+        // Genesis block
+        const header = soloGenesisBlock;
 
-            // Block 1
-            const header1 = soloBlock1;
+        // Block 1
+        const header1 = soloBlock1;
 
-            // Block 2
-            const header2 = soloBlock2;
+        // Block 2
+        const header2 = soloBlock2;
 
-            await TH.sendEncodedBlock(
-                [
-                    header.toEncodeObject(),
-                    header1.toEncodeObject(),
-                    header2.toEncodeObject()
-                ],
-                [[], []],
-                header2.hashing(),
-                header2.getScore()
-            );
+        await TH.sendEncodedBlock(
+            [
+                header.toEncodeObject(),
+                header1.toEncodeObject(),
+                header2.toEncodeObject()
+            ],
+            [[], []],
+            header2.hashing(),
+            header2.getScore()
+        );
 
-            await TH.waitStatusMessage();
+        await TH.waitStatusMessage();
 
-            const block1 = await sdk.rpc.chain.getBlock(1);
-            const block2 = await sdk.rpc.chain.getBlock(2);
+        const block1 = await sdk.rpc.chain.getBlock(1);
+        const block2 = await sdk.rpc.chain.getBlock(2);
 
-            expect(block1).toEqual(expect.anything());
-            expect(block2).toEqual(expect.anything());
-        },
-        30000
-    );
+        expect(block1).not.to.be.null;
+        expect(block2).not.to.be.null;
+    }).timeout(30_000);
 
-    describe("OnChain invalid block test", async () => {
-        test.each(testArray)(
-            "%s",
-            async (
-                _testName,
-                tparent,
-                _ttimeStamp,
-                tnumber,
-                tauthor,
-                textraData,
-                tparcelRoot,
-                tstateRoot,
-                tinvoiceRoot,
-                tscore,
-                tseal
-            ) => {
-                tparent = VALID_PARENT;
-                tauthor = VALID_AUTHOR;
-                tparcelRoot = VALID_PARCELROOT;
-                tstateRoot = VALID_STATEROOT;
-                tinvoiceRoot = VALID_INVOICEROOT;
-                tseal = VALID_SEAL;
+    describe("OnChain invalid block test", async function() {
+        testArray.forEach(function(params: {
+            testName: string;
+            tparent: H256;
+            ttimeStamp: U256;
+            tnumber: U256;
+            tauthor: H160;
+            textraData: Buffer;
+            tparcelRoot: H256;
+            tstateRoot: H256;
+            tinvoiceRoot: H256;
+            tscore: U256;
+            tseal: Buffer[];
+        }) {
+            const { testName, tnumber, textraData, tscore } = params;
 
-                jest.setTimeout(30000);
+            it(testName, async function() {
+                const tparent = VALID_PARENT;
+                const tauthor = VALID_AUTHOR;
+                const tparcelRoot = VALID_PARCELROOT;
+                const tstateRoot = VALID_STATEROOT;
+                const tinvoiceRoot = VALID_INVOICEROOT;
+                const tseal = VALID_SEAL;
 
                 // Genesis block
                 const header = soloGenesisBlock;
@@ -376,8 +374,8 @@ describe("Test onChain block communication", async () => {
 
                 const bodyRequest = TH.getBlockBodyRequest();
 
-                expect(bodyRequest).toEqual(null);
-            }
-        );
+                expect(bodyRequest).to.be.null;
+            }).timeout(30_000);
+        });
     });
 });

@@ -15,58 +15,19 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import CodeChain from "../helper/spawn";
+import { ERROR, errorMatcher } from "../helper/error";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 
-const RLP = require("rlp");
+import "mocha";
+import { expect } from "chai";
 
-const ERROR = {
-    NOT_ENOUGH_BALANCE: {
-        code: -32032,
-        data: expect.anything(),
-        message: expect.anything()
-    },
-    INVALID_RLP_TOO_BIG: {
-        code: -32009,
-        data: "RlpIsTooBig",
-        message: expect.anything()
-    },
-    INVALID_RLP_TOO_SHORT: {
-        code: -32009,
-        data: "RlpIsTooShort",
-        message: expect.anything()
-    },
-    INVALID_RLP_INVALID_LENGTH: {
-        code: -32009,
-        data: "RlpInvalidLength",
-        message: expect.anything()
-    },
-    INVALID_RLP_UNEXPECTED_ACTION_PREFIX: {
-        code: -32009,
-        data: expect.stringContaining("Unexpected action prefix"),
-        message: expect.anything()
-    },
-    INVALID_RLP_INCORRECT_LIST_LEN: {
-        code: -32009,
-        data: "RlpIncorrectListLen",
-        message: expect.anything()
-    },
-    TOO_LOW_FEE: {
-        code: -32033,
-        data: expect.anything(),
-        message: expect.anything()
-    },
-    INVALID_NETWORK_ID: {
-        code: -32036,
-        data: expect.anything(),
-        message: expect.anything()
-    }
-};
+const RLP = require("rlp");
 
 describe("solo - 1 node", () => {
     const recipient = "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw";
 
     let node: CodeChain;
-    beforeAll(async () => {
+    before(async () => {
         node = new CodeChain();
         await node.start();
     });
@@ -88,129 +49,143 @@ describe("solo - 1 node", () => {
             parcelEncoded = parcel.toEncodeObject();
         });
 
-        test.each(["0x01" + "0".repeat(64), "0x" + "f".repeat(128)])(
-            "seq: %p",
-            async (seq, done) => {
+        ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
+            seq
+        ) {
+            it(`seq: ${seq}`, async function() {
                 parcelEncoded[0] = seq;
                 try {
                     await node.sendSignedParcelWithRlpBytes(
                         RLP.encode(parcelEncoded)
                     );
-                    done.fail();
+                    expect.fail();
                 } catch (e) {
-                    expect(e).toEqual(ERROR.INVALID_RLP_TOO_BIG);
-                    done();
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                    );
                 }
-            }
-        );
+            });
+        });
 
-        test.each(["0x01" + "0".repeat(64), "0x" + "f".repeat(128)])(
-            "fee: %p",
-            async (fee, done) => {
+        ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
+            fee
+        ) {
+            it(`fee: ${fee}`, async function() {
                 parcelEncoded[1] = fee;
                 try {
                     await node.sendSignedParcelWithRlpBytes(
                         RLP.encode(parcelEncoded)
                     );
-                    done.fail();
+                    expect.fail();
                 } catch (e) {
-                    expect(e).toEqual(ERROR.INVALID_RLP_TOO_BIG);
-                    done();
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                    );
                 }
-            }
-        );
+            });
+        });
 
-        test.each(["tcc", "a", "ac"])(
-            "networkId: %p",
-            async (networkId, done) => {
+        ["tcc", "a", "ac"].forEach(function(networkId) {
+            it(`networkId: ${networkId}`, async function() {
                 parcelEncoded[2] = networkId;
                 try {
                     await node.sendSignedParcelWithRlpBytes(
                         RLP.encode(parcelEncoded)
                     );
-                    done.fail();
+                    expect.fail();
                 } catch (e) {
                     if (networkId.length !== 2)
-                        expect(e).toEqual(ERROR.INVALID_RLP_INVALID_LENGTH);
-                    else expect(e).toEqual(ERROR.INVALID_NETWORK_ID);
-                    done();
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_INVALID_LENGTH)
+                        );
+                    else
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_NETWORK_ID)
+                        );
                 }
-            }
-        );
+            });
+        });
 
-        test.each([0, 8, 100])(
-            "action (invalid type): %p",
-            async (action, done) => {
+        [0, 8, 100].forEach(function(action) {
+            it(`action (invalid type): ${action}`, async function() {
                 parcelEncoded[3] = [action];
                 try {
                     await node.sendSignedParcelWithRlpBytes(
                         RLP.encode(parcelEncoded)
                     );
-                    done.fail();
+                    expect.fail();
                 } catch (e) {
-                    expect(e).toEqual(
-                        ERROR.INVALID_RLP_UNEXPECTED_ACTION_PREFIX
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_UNEXPECTED_ACTION_PREFIX)
                     );
-                    done();
                 }
-            }
-        );
-
-        test.each([
-            [[1, 3]],
-            [[1, 5]],
-            [[2, 2]],
-            [[2, 4]],
-            [[3, 1]],
-            [[3, 3]],
-            [[4, 2]],
-            [[5, 2]],
-            [[5, 4]],
-            [[6, 2]],
-            [[6, 4]]
-        ])("action (type / invalid length): %p", async (action, done) => {
-            const { 0: action_type, 1: action_length } = action;
-            parcelEncoded[3] = Array(action_length).fill(action_type);
-            try {
-                await node.sendSignedParcelWithRlpBytes(
-                    RLP.encode(parcelEncoded)
-                );
-                done.fail();
-            } catch (e) {
-                expect(e).toEqual(ERROR.INVALID_RLP_INCORRECT_LIST_LEN);
-                done();
-            }
+            });
         });
 
-        test.each([
+        [
+            { actionType: 1, actionLength: 3 },
+            { actionType: 2, actionLength: 2 },
+            { actionType: 2, actionLength: 4 },
+            { actionType: 3, actionLength: 1 },
+            { actionType: 3, actionLength: 3 },
+            { actionType: 4, actionLength: 2 },
+            { actionType: 5, actionLength: 2 },
+            { actionType: 5, actionLength: 4 },
+            { actionType: 6, actionLength: 2 },
+            { actionType: 6, actionLength: 4 }
+        ].forEach(function(params: {
+            actionType: number;
+            actionLength: number;
+        }) {
+            const { actionType, actionLength } = params;
+            it(`action (type / invalid length): ${actionType}, ${actionLength}`, async function() {
+                parcelEncoded[3] = Array(actionLength).fill(actionType);
+                try {
+                    await node.sendSignedParcelWithRlpBytes(
+                        RLP.encode(parcelEncoded)
+                    );
+                    expect.fail();
+                } catch (e) {
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_INCORRECT_LIST_LEN)
+                    );
+                }
+            });
+        });
+
+        [
             "0x00",
             "0x1" + "0".repeat(127),
             "0x1" + "0".repeat(130),
             "0x" + "f".repeat(131)
-        ])("signature: %p", async (sig, done) => {
-            parcelEncoded[4] = sig;
-            try {
-                await node.sendSignedParcelWithRlpBytes(
-                    RLP.encode(parcelEncoded)
-                );
-                done.fail();
-            } catch (e) {
-                if (sig.length < 132)
-                    expect(e).toEqual(ERROR.INVALID_RLP_TOO_SHORT);
-                else expect(e).toEqual(ERROR.INVALID_RLP_TOO_BIG);
-                done();
-            }
+        ].forEach(function(sig) {
+            it(`signature: ${sig}`, async function() {
+                parcelEncoded[4] = sig;
+                try {
+                    await node.sendSignedParcelWithRlpBytes(
+                        RLP.encode(parcelEncoded)
+                    );
+                    expect.fail();
+                } catch (e) {
+                    if (sig.length < 132)
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_SHORT)
+                        );
+                    else
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                }
+            });
         });
     });
 
-    test.skip("Sending invalid parcels over the limits (in action 1: AssetTransaction)", done =>
-        done.fail("not implemented"));
-    test.skip("Sending invalid parcels over the limits (in action 5: SetShardOwners)", done =>
-        done.fail("not implemented"));
-    test.skip("Sending invalid parcels over the limits (in action 6: SetShardUsers)", done =>
-        done.fail("not implemented"));
-    test.skip("Sending invalid parcels over the limits (in action 7: WrapCCC)", done =>
-        done.fail("not implemented"));
+    it(
+        "Sending invalid parcels over the limits (in action 1: AssetTransaction)"
+    );
+    it("Sending invalid parcels over the limits (in action 5: SetShardOwners)");
+    it("Sending invalid parcels over the limits (in action 6: SetShardUsers)");
+    it("Sending invalid parcels over the limits (in action 7: WrapCCC)");
 
     describe("Sending invalid parcels over the limits (in action 2: Payment)", () => {
         let parcelEncoded: any[];
@@ -229,39 +204,46 @@ describe("solo - 1 node", () => {
             parcelEncoded = parcel.toEncodeObject();
         });
 
-        test.each(["0x1" + "0".repeat(40), "0x" + "f".repeat(38)])(
-            "recipient: %p",
-            async (recipient, done) => {
+        ["0x1" + "0".repeat(40), "0x" + "f".repeat(38)].forEach(function(
+            recipient
+        ) {
+            it(`recipient: ${recipient}`, async function() {
                 parcelEncoded[3][1] = recipient;
                 try {
                     await node.sendSignedParcelWithRlpBytes(
                         RLP.encode(parcelEncoded)
                     );
-                    done.fail();
+                    expect.fail();
                 } catch (e) {
                     if (recipient.length < 42)
-                        expect(e).toEqual(ERROR.INVALID_RLP_TOO_SHORT);
-                    else expect(e).toEqual(ERROR.INVALID_RLP_TOO_BIG);
-                    done();
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_SHORT)
+                        );
+                    else
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
                 }
-            }
-        );
+            });
+        });
 
-        test.each(["0x01" + "0".repeat(64), "0x" + "f".repeat(128)])(
-            "amount: %p",
-            async (amount, done) => {
+        ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
+            amount
+        ) {
+            it(`amount: ${amount}`, async function() {
                 parcelEncoded[3][2] = amount;
                 try {
                     await node.sendSignedParcelWithRlpBytes(
                         RLP.encode(parcelEncoded)
                     );
-                    done.fail();
+                    expect.fail();
                 } catch (e) {
-                    expect(e).toEqual(ERROR.INVALID_RLP_TOO_BIG);
-                    done();
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                    );
                 }
-            }
-        );
+            });
+        });
     });
 
     describe("Sending invalid parcels over the limits (in action 3: SetRegularKey)", () => {
@@ -282,28 +264,32 @@ describe("solo - 1 node", () => {
             parcelEncoded = parcel.toEncodeObject();
         });
 
-        test.each(["0x01" + "0".repeat(128), "0x" + "f".repeat(126)])(
-            "amount: %p",
-            async (key, done) => {
+        ["0x01" + "0".repeat(128), "0x" + "f".repeat(126)].forEach(function(
+            key
+        ) {
+            it(`key: ${key}`, async function() {
                 parcelEncoded[3][1] = key;
                 try {
                     await node.sendSignedParcelWithRlpBytes(
                         RLP.encode(parcelEncoded)
                     );
-                    done.fail();
+                    expect.fail();
                 } catch (e) {
                     if (key.length < 130)
-                        expect(e).toEqual(ERROR.INVALID_RLP_TOO_SHORT);
-                    else expect(e).toEqual(ERROR.INVALID_RLP_TOO_BIG);
-                    done();
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_SHORT)
+                        );
+                    else
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
                 }
-            }
-        );
+            });
+        });
     });
 
-    test.each([0, 9])(
-        "Sending invalid parcels (low fee): %p",
-        async (fee, done) => {
+    [0, 9].forEach(function(fee) {
+        it(`Sending invalid parcels (low fee): ${fee}`, async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
                 .createPaymentParcel({
@@ -317,15 +303,14 @@ describe("solo - 1 node", () => {
                 });
             try {
                 await node.sdk.rpc.chain.sendSignedParcel(parcel);
-                done.fail();
+                expect.fail();
             } catch (e) {
-                expect(e).toEqual(ERROR.TOO_LOW_FEE);
-                done();
+                expect(e).to.satisfy(errorMatcher(ERROR.TOO_LOW_FEE));
             }
-        }
-    );
+        });
+    });
 
-    afterAll(async () => {
+    after(async () => {
         await node.clean();
     });
 });

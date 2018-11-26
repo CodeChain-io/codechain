@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2015",
-    "types": ["ts-jest", "node"],
+    "types": ["node"],
     "module": "commonjs",
     "declaration": true,
     "outDir": "lib",

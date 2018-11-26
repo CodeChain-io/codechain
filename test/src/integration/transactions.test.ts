@@ -21,37 +21,47 @@ import {
     PlatformAddress,
     AssetTransferAddress,
     SignedParcel,
-    AssetMintTransaction
+    AssetMintTransaction,
+    H256
 } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
+import { ERROR, errorMatcher } from "../helper/error";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 
-describe("transactions", () => {
+import "mocha";
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
+chai.use(chaiAsPromised);
+const expect = chai.expect;
+
+describe("transactions", function() {
     let node: CodeChain;
-    beforeAll(async () => {
+    before(async function() {
         node = new CodeChain();
         await node.start();
     });
 
-    describe("AssetMint", async () => {
-        test.each([[1], [100]])("Mint successful - amount %i", async amount => {
-            const recipient = await node.createP2PKHAddress();
-            const scheme = node.sdk.core.createAssetScheme({
-                shardId: 0,
-                metadata: "",
-                amount
+    describe("AssetMint", async function() {
+        [1, 100].forEach(function(amount) {
+            it(`Mint successful - amount ${amount}`, async function() {
+                const recipient = await node.createP2PKHAddress();
+                const scheme = node.sdk.core.createAssetScheme({
+                    shardId: 0,
+                    metadata: "",
+                    amount
+                });
+                const tx = node.sdk.core.createAssetMintTransaction({
+                    scheme,
+                    recipient
+                });
+                const invoices = await node.sendTransaction(tx);
+                expect(invoices!.length).to.equal(1);
+                expect(invoices![0].success).to.be.true;
             });
-            const tx = node.sdk.core.createAssetMintTransaction({
-                scheme,
-                recipient
-            });
-            const invoices = await node.sendTransaction(tx);
-            expect(invoices!.length).toBe(1);
-            expect(invoices![0].success).toBe(true);
         });
 
-        test("Mint unsuccessful - mint amount 0", async () => {
+        it("Mint unsuccessful - mint amount 0", async function() {
             const scheme = node.sdk.core.createAssetScheme({
                 shardId: 0,
                 metadata: "",
@@ -61,28 +71,35 @@ describe("transactions", () => {
                 scheme,
                 recipient: await node.createP2PKHAddress()
             });
-            await expect(node.sendTransaction(tx)).rejects.toMatchObject({
-                data: expect.stringContaining("ZeroAmount")
-            });
+
+            try {
+                await node.sendTransaction(tx);
+                expect.fail();
+            } catch (e) {
+                expect(e).to.satisfy(
+                    errorMatcher(ERROR.INVALID_TX_ZERO_AMOUNT)
+                );
+            }
         });
 
-        test.skip("mint amount U64 max", done => done.fail("not implemented"));
-        test.skip("mint amount exceeds U64", done =>
-            done.fail("not implemented"));
+        // Not implemented
+        it("mint amount U64 max");
+        it("mint amount exceeds U64");
     });
 
-    describe("AssetTransfer - 1 input (100 amount)", async () => {
+    describe("AssetTransfer - 1 input (100 amount)", async function() {
         let input: Asset;
         const amount = 100;
 
-        beforeEach(async () => {
+        beforeEach(async function() {
             const { asset } = await node.mintAsset({ amount });
             input = asset;
         });
 
-        test.each([[[100]], [[99, 1]], [[1, 99]], [Array(100).fill(1)]])(
-            "Transfer successful - output amount list: %p",
-            async amounts => {
+        [[100], [99, 1], [1, 99], Array(100).fill(1)].forEach(function(
+            amounts
+        ) {
+            it(`Transfer successful - output amount list: ${amounts}`, async function() {
                 const recipient = await node.createP2PKHAddress();
                 const tx = node.sdk.core.createAssetTransferTransaction();
                 tx.addInputs(input);
@@ -95,14 +112,13 @@ describe("transactions", () => {
                 );
                 await node.signTransferInput(tx, 0);
                 const invoices = await node.sendTransaction(tx);
-                expect(invoices!.length).toBe(1);
-                expect(invoices![0].success).toBe(true);
-            }
-        );
+                expect(invoices!.length).to.equal(1);
+                expect(invoices![0].success).to.be.true;
+            });
+        });
 
-        test.each([[[0]], [[99]], [[101]], [[100, 100]]])(
-            "Transfer unsuccessful(InconsistentTransactionInOut) - output amount list: %p",
-            async amounts => {
+        [[0], [99], [101], [100, 100]].forEach(function(amounts) {
+            it(`Transfer unsuccessful(InconsistentTransactionInOut) - output amount list: ${amounts}`, async function() {
                 const recipient = await node.createP2PKHAddress();
                 const tx = node.sdk.core.createAssetTransferTransaction();
                 tx.addInputs(input);
@@ -114,14 +130,18 @@ describe("transactions", () => {
                     }))
                 );
                 await node.signTransferInput(tx, 0);
-                await expect(node.sendTransaction(tx)).rejects.toMatchObject({
-                    data: expect.stringContaining(
-                        "InconsistentTransactionInOut"
-                    )
-                });
-            }
-        );
-        test("Transfer unsuccessful(ZeroAmount) - output amount list: [100, 0]", async () => {
+                try {
+                    await node.sendTransaction(tx);
+                    expect.fail();
+                } catch (e) {
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_TX_INCONSISTENT_IN_OUT)
+                    );
+                }
+            });
+        });
+
+        it("Transfer unsuccessful(ZeroAmount) - output amount list: [100, 0]", async function() {
             const amounts = [100, 0];
             const recipient = await node.createP2PKHAddress();
             const tx = node.sdk.core.createAssetTransferTransaction();
@@ -134,12 +154,17 @@ describe("transactions", () => {
                 }))
             );
             await node.signTransferInput(tx, 0);
-            await expect(node.sendTransaction(tx)).rejects.toMatchObject({
-                data: expect.stringContaining("ZeroAmount")
-            });
+            try {
+                await node.sendTransaction(tx);
+                expect.fail();
+            } catch (e) {
+                expect(e).to.satisfy(
+                    errorMatcher(ERROR.INVALID_TX_ZERO_AMOUNT)
+                );
+            }
         });
 
-        test("wrong asset type", async () => {
+        it("wrong asset type", async function() {
             const recipient = await node.createP2PKHAddress();
             const tx = node.sdk.core.createAssetTransferTransaction();
             tx.addInputs(input);
@@ -150,32 +175,44 @@ describe("transactions", () => {
                 amount
             });
             await node.signTransferInput(tx, 0);
-            await expect(node.sendTransaction(tx)).rejects.toMatchObject({
-                data: expect.stringContaining("InconsistentTransactionInOut")
-            });
+            try {
+                await node.sendTransaction(tx);
+                expect.fail();
+            } catch (e) {
+                expect(e).to.satisfy(
+                    errorMatcher(ERROR.INVALID_TX_INCONSISTENT_IN_OUT)
+                );
+            }
         });
     });
 
-    describe("AssetTransfer - 2 different types of input (10 amount, 20 amount)", async () => {
+    describe("AssetTransfer - 2 different types of input (10 amount, 20 amount)", async function() {
         let input1: Asset;
         let input2: Asset;
         const amount1 = 10;
         const amount2 = 20;
 
-        beforeEach(async () => {
+        beforeEach(async function() {
             let { asset } = await node.mintAsset({ amount: amount1 });
             input1 = asset;
             ({ asset } = await node.mintAsset({ amount: amount2 }));
             input2 = asset;
         });
 
-        test.each([
-            [[10], [20]],
-            [[5, 5], [10, 10]],
-            [[1, 1, 1, 1, 1, 5], [1, 1, 1, 1, 1, 5, 10]]
-        ])(
-            "Transfer successful - asset1 %p, asset2 %p",
-            async (input1Amounts, input2Amounts) => {
+        [
+            { input1Amounts: [10], input2Amounts: [20] },
+            { input1Amounts: [5, 5], input2Amounts: [10, 10] },
+            {
+                input1Amounts: [1, 1, 1, 1, 1, 5],
+                input2Amounts: [1, 1, 1, 1, 1, 5, 10]
+            }
+        ].forEach(function(params: {
+            input1Amounts: number[];
+            input2Amounts: number[];
+        }) {
+            const { input1Amounts, input2Amounts } = params;
+
+            it(`Transfer successful - asset1 ${input1Amounts}, asset2 ${input2Amounts}`, async function() {
                 const recipient = await node.createP2PKHAddress();
                 const tx = node.sdk.core.createAssetTransferTransaction();
                 tx.addInputs(_.shuffle([input1, input2]));
@@ -196,13 +233,13 @@ describe("transactions", () => {
                 await node.signTransferInput(tx, 0);
                 await node.signTransferInput(tx, 1);
                 const invoices = await node.sendTransaction(tx);
-                expect(invoices!.length).toBe(1);
-                expect(invoices![0].success).toBe(true);
-            }
-        );
+                expect(invoices!.length).to.equal(1);
+                expect(invoices![0].success).to.be.true;
+            });
+        });
     });
 
-    test("Burn successful", async () => {
+    it("Burn successful", async function() {
         const { asset } = await node.mintAsset({ amount: 1 });
         const tx1 = node.sdk.core.createAssetTransferTransaction();
         tx1.addInputs(asset);
@@ -213,21 +250,21 @@ describe("transactions", () => {
         });
         await node.signTransferInput(tx1, 0);
         const invoices1 = await node.sendTransaction(tx1);
-        expect(invoices1!.length).toBe(1);
-        expect(invoices1![0].success).toBe(true);
+        expect(invoices1!.length).to.equal(1);
+        expect(invoices1![0].success).to.be.true;
 
         const transferredAsset = tx1.getTransferredAsset(0);
         const tx2 = node.sdk.core.createAssetTransferTransaction();
         tx2.addBurns(transferredAsset);
         await node.signTransferBurn(tx2, 0);
         const invoices2 = await node.sendTransaction(tx2);
-        expect(invoices2!.length).toBe(1);
-        expect(invoices2![0].success).toBe(true);
+        expect(invoices2!.length).to.equal(1);
+        expect(invoices2![0].success).to.be.true;
 
-        expect(await node.sdk.rpc.chain.getAsset(tx2.hash(), 0)).toBe(null);
+        expect(await node.sdk.rpc.chain.getAsset(tx2.hash(), 0)).to.be.null;
     });
 
-    test("Burn unsuccessful(ZeroAmount)", async () => {
+    it("Burn unsuccessful(ZeroAmount)", async function() {
         const { asset } = await node.mintAsset({ amount: 1 });
         const tx1 = node.sdk.core.createAssetTransferTransaction();
         tx1.addInputs(asset);
@@ -238,8 +275,8 @@ describe("transactions", () => {
         });
         await node.signTransferInput(tx1, 0);
         const invoices = await node.sendTransaction(tx1);
-        expect(invoices!.length).toBe(1);
-        expect(invoices![0].success).toBe(true);
+        expect(invoices!.length).to.equal(1);
+        expect(invoices![0].success).to.be.true;
 
         const tx2 = node.sdk.core.createAssetTransferTransaction();
         const {
@@ -260,12 +297,15 @@ describe("transactions", () => {
             })
         );
         await node.signTransferBurn(tx2, 0);
-        await expect(node.sendTransaction(tx2)).rejects.toMatchObject({
-            data: expect.stringContaining("ZeroAmount")
-        });
+        try {
+            await node.sendTransaction(tx2);
+            expect.fail();
+        } catch (e) {
+            expect(e).to.satisfy(errorMatcher(ERROR.INVALID_TX_ZERO_AMOUNT));
+        }
     });
 
-    test("Cannot transfer P2PKHBurn asset", async () => {
+    it("Cannot transfer P2PKHBurn asset", async function() {
         const { asset } = await node.mintAsset({ amount: 1 });
         const tx1 = node.sdk.core.createAssetTransferTransaction();
         tx1.addInputs(asset);
@@ -276,8 +316,8 @@ describe("transactions", () => {
         });
         await node.signTransferInput(tx1, 0);
         const invoices1 = await node.sendTransaction(tx1);
-        expect(invoices1!.length).toBe(1);
-        expect(invoices1![0].success).toBe(true);
+        expect(invoices1!.length).to.equal(1);
+        expect(invoices1![0].success).to.be.true;
 
         const transferredAsset = tx1.getTransferredAsset(0);
         const tx2 = node.sdk.core.createAssetTransferTransaction();
@@ -292,35 +332,35 @@ describe("transactions", () => {
             tx2.hashWithoutScript()
         );
         const invoices2 = await node.sendTransaction(tx2);
-        expect(invoices2!.length).toBe(1);
-        expect(invoices2![0].success).toBe(false);
+        expect(invoices2!.length).to.equal(1);
+        expect(invoices2![0].success).to.be.false;
 
-        expect(await node.sdk.rpc.chain.getAsset(tx1.hash(), 0)).not.toBe(null);
+        expect(await node.sdk.rpc.chain.getAsset(tx1.hash(), 0)).not.to.be.null;
     });
 
-    test("Cannot burn P2PKH asset", async () => {
+    it("Cannot burn P2PKH asset", async function() {
         const { asset } = await node.mintAsset({ amount: 1 });
         const tx = node.sdk.core.createAssetTransferTransaction();
         tx.addBurns(asset);
         await node.signTransactionP2PKH(tx.burns[0], tx.hashWithoutScript());
 
         const invoices = await node.sendTransaction(tx);
-        expect(invoices!.length).toBe(1);
-        expect(invoices![0].success).toBe(false);
+        expect(invoices!.length).to.equal(1);
+        expect(invoices![0].success).to.be.false;
     });
 
-    describe("registrar", () => {
+    describe("registrar", function() {
         let registrar: PlatformAddress;
         let nonRegistrar: PlatformAddress;
         let transferTx: AssetTransferTransaction;
-        beforeAll(async () => {
+        before(async function() {
             registrar = await node.createPlatformAddress();
             nonRegistrar = await node.createPlatformAddress();
             await node.payment(registrar, 10000);
             await node.payment(nonRegistrar, 10000);
         });
 
-        beforeEach(async () => {
+        beforeEach(async function() {
             const recipient = await node.createP2PKHAddress();
             const tx = node.sdk.core.createAssetMintTransaction({
                 scheme: {
@@ -346,7 +386,7 @@ describe("transactions", () => {
             await node.signTransferInput(transferTx, 0);
         });
 
-        test("registrar sends a parcel", async () => {
+        it("registrar sends a parcel", async function() {
             const invoice = await node
                 .sendParcel(
                     node.sdk.core.createAssetTransactionParcel({
@@ -364,10 +404,10 @@ describe("transactions", () => {
             if (invoice == null) {
                 throw Error("Cannot get the invoice");
             }
-            expect(invoice.success).toBe(true);
+            expect(invoice.success).to.be.true;
         });
 
-        test("nonRegistrar sends a parcel", async () => {
+        it("nonRegistrar sends a parcel", async function() {
             const invoice = await node
                 .sendParcel(
                     node.sdk.core.createAssetTransactionParcel({
@@ -385,16 +425,20 @@ describe("transactions", () => {
             if (invoice == null) {
                 throw Error("Cannot get the invoice");
             }
-            expect(invoice.success).toBe(false);
-            expect(invoice.error!.type).toBe("InvalidTransaction");
-            expect(invoice.error.content.type).toBe("NotRegistrar");
+            expect(invoice.success).to.be.false;
+            expect(invoice.error!.type).to.equal("InvalidTransaction");
+            expect(invoice.error!.content.type).to.equal("NotRegistrar");
         });
     });
 
-    describe("Partial signature", () => {
-        let assets, assetType;
-        let address1, address2, burnAddress1, burnAddress2;
-        beforeEach(async () => {
+    describe("Partial signature", function() {
+        let assets: Asset[];
+        let assetType: H256;
+        let address1: AssetTransferAddress;
+        let address2: AssetTransferAddress;
+        let burnAddress1: AssetTransferAddress;
+        let burnAddress2: AssetTransferAddress;
+        beforeEach(async function() {
             address1 = await node.sdk.key.createAssetTransferAddress({
                 type: "P2PKH"
             });
@@ -448,7 +492,7 @@ describe("transactions", () => {
             await node.sendTransaction(transferTx);
         });
 
-        test("Can't add burns after signing with the signature tag of all inputs", async () => {
+        it("Can't add burns after signing with the signature tag of all inputs", async function() {
             const tx = node.sdk.core
                 .createAssetTransferTransaction()
                 .addInputs(assets[0])
@@ -461,13 +505,13 @@ describe("transactions", () => {
             tx.addBurns(assets[2]);
             await node.sdk.key.signTransactionBurn(tx, 0);
             const invoices = await node.sendTransaction(tx);
-            expect(invoices!.length).toBe(1);
-            expect(invoices![0].success).toBe(false);
-            expect(invoices![0].error!.type).toBe("InvalidTransaction");
-            expect(invoices![0].error!.content.type).toBe("FailedToUnlock");
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.false;
+            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
+            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
         });
 
-        test("Can add burns after signing with the signature tag of single input", async () => {
+        it("Can add burns after signing with the signature tag of single input", async function() {
             const tx = node.sdk.core
                 .createAssetTransferTransaction()
                 .addInputs(assets[0])
@@ -482,12 +526,12 @@ describe("transactions", () => {
             tx.addBurns(assets[2]);
             await node.sdk.key.signTransactionBurn(tx, 0);
             const invoices = await node.sendTransaction(tx);
-            expect(invoices!.length).toBe(1);
-            expect(invoices![0].success).toBe(true);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.true;
         });
 
         // FIXME: (WIP) It fails
-        test("Can't add inputs after signing with the signature tag of all inputs", async () => {
+        it("Can't add inputs after signing with the signature tag of all inputs", async function() {
             const tx = node.sdk.core
                 .createAssetTransferTransaction()
                 .addInputs(assets[0])
@@ -500,13 +544,13 @@ describe("transactions", () => {
             tx.addInputs(assets[1]);
             await node.sdk.key.signTransactionInput(tx, 1);
             const invoices = await node.sendTransaction(tx);
-            expect(invoices!.length).toBe(1);
-            expect(invoices![0].success).toBe(false);
-            expect(invoices![0].error!.type).toBe("InvalidTransaction");
-            expect(invoices![0].error!.content.type).toBe("FailedToUnlock");
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.false;
+            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
+            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
         });
 
-        test("Can add inputs after signing with the signature tag of single input", async () => {
+        it("Can add inputs after signing with the signature tag of single input", async function() {
             const tx = node.sdk.core
                 .createAssetTransferTransaction()
                 .addInputs(assets[0])
@@ -521,11 +565,11 @@ describe("transactions", () => {
             tx.addInputs(assets[1]);
             await node.sdk.key.signTransactionInput(tx, 1);
             const invoices = await node.sendTransaction(tx);
-            expect(invoices!.length).toBe(1);
-            expect(invoices![0].success).toBe(true);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.true;
         });
 
-        test("Can't add outputs after signing the signature tag of all outputs", async () => {
+        it("Can't add outputs after signing the signature tag of all outputs", async function() {
             const tx = node.sdk.core
                 .createAssetTransferTransaction()
                 .addInputs(assets[0])
@@ -537,13 +581,13 @@ describe("transactions", () => {
             await node.sdk.key.signTransactionInput(tx, 0);
             tx.addOutputs({ assetType, amount: 500, recipient: address2 });
             const invoices = await node.sendTransaction(tx);
-            expect(invoices!.length).toBe(1);
-            expect(invoices![0].success).toBe(false);
-            expect(invoices![0].error!.type).toBe("InvalidTransaction");
-            expect(invoices![0].error!.content.type).toBe("FailedToUnlock");
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.false;
+            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
+            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
         });
 
-        test("Can add outputs after signing the signature tag of some outputs", async () => {
+        it("Can add outputs after signing the signature tag of some outputs", async function() {
             const tx = node.sdk.core
                 .createAssetTransferTransaction()
                 .addInputs(assets[0])
@@ -560,11 +604,11 @@ describe("transactions", () => {
             });
             tx.addOutputs({ assetType, amount: 500, recipient: address2 });
             const invoices = await node.sendTransaction(tx);
-            expect(invoices!.length).toBe(1);
-            expect(invoices![0].success).toBe(true);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.true;
         });
 
-        test("Can only change the output protected by signature", async () => {
+        it("Can only change the output protected by signature", async function() {
             const tx = node.sdk.core
                 .createAssetTransferTransaction()
                 .addInputs(assets[0])
@@ -590,8 +634,8 @@ describe("transactions", () => {
             const address2Param = tx.outputs[1].parameters;
             (tx.outputs[0].parameters as any) = address2Param;
             const invoices = await node.sendTransaction(tx);
-            expect(invoices!.length).toBe(1);
-            expect(invoices![0].success).toBe(false);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.false;
 
             (tx.outputs[0].parameters as any) = address1Param;
             await node.sdk.key.signTransactionInput(tx, 0, {
@@ -603,15 +647,13 @@ describe("transactions", () => {
 
             (tx.outputs[1].parameters as any) = address1Param;
             const invoices2 = await node.sendTransaction(tx);
-            expect(invoices2!.length).toBe(1);
-            expect(invoices2![0].success).toBe(true);
+            expect(invoices2!.length).to.equal(1);
+            expect(invoices2![0].success).to.be.true;
         });
 
-        describe("many outputs", () => {
-            test.each([[5], [10], [100], [504]])(
-                "%p + 1 outputs",
-                async length => {
-                    jest.setTimeout(length * 10 + 5000);
+        describe("many outputs", function() {
+            [5, 10, 100, 504].forEach(function(length) {
+                it(`${length} + 1 outputs`, async function() {
                     const tx = node.sdk.core
                         .createAssetTransferTransaction()
                         .addInputs(assets[0])
@@ -635,15 +677,15 @@ describe("transactions", () => {
                         recipient: address1
                     });
                     const invoices = await node.sendTransaction(tx);
-                    expect(invoices!.length).toBe(1);
-                    expect(invoices![0].success).toBe(true);
-                }
-            );
+                    expect(invoices!.length).to.equal(1);
+                    expect(invoices![0].success).to.be.true;
+                }).timeout(length * 10 + 5_000);
+            });
         });
     });
 
-    describe("Asset compose and decompose test", () => {
-        test("AssetCompose", async () => {
+    describe("Asset compose and decompose test", function() {
+        it("AssetCompose", async function() {
             const aliceAddress = await node.sdk.key.createAssetTransferAddress({
                 type: "P2PKH"
             });
@@ -652,8 +694,7 @@ describe("transactions", () => {
                 metadata: JSON.stringify({
                     name: "An example asset"
                 }),
-                amount: 10,
-                registrar: null
+                amount: 10
             });
             const mintTx = node.sdk.core.createAssetMintTransaction({
                 scheme: assetScheme,
@@ -703,7 +744,7 @@ describe("transactions", () => {
             if (invoice0 == null) {
                 throw Error("Cannot get the invoice of mint transaction");
             }
-            expect(invoice0.success).toBe(true);
+            expect(invoice0.success).to.be.true;
 
             const invoice1 = await node.sdk.rpc.chain.getParcelInvoice(
                 parcel1.hash(),
@@ -714,10 +755,10 @@ describe("transactions", () => {
             if (invoice1 == null) {
                 throw Error("Cannot get the invoice of compose transaction");
             }
-            expect(invoice1.success).toBe(true);
+            expect(invoice1.success).to.be.true;
         });
 
-        test("AssetDecompose", async () => {
+        it("AssetDecompose", async function() {
             const aliceAddress = await node.sdk.key.createAssetTransferAddress({
                 type: "P2PKH"
             });
@@ -726,8 +767,7 @@ describe("transactions", () => {
                 metadata: JSON.stringify({
                     name: "An example asset"
                 }),
-                amount: 10,
-                registrar: null
+                amount: 10
             });
             const mintTx = node.sdk.core.createAssetMintTransaction({
                 scheme: assetScheme,
@@ -798,7 +838,7 @@ describe("transactions", () => {
             if (invoice0 == null) {
                 throw Error("Cannot get the invoice of mint");
             }
-            expect(invoice0.success).toBe(true);
+            expect(invoice0.success).to.be.true;
             const invoice1 = await node.sdk.rpc.chain.getParcelInvoice(
                 parcel1.hash(),
                 {
@@ -808,7 +848,7 @@ describe("transactions", () => {
             if (invoice1 == null) {
                 throw Error("Cannot get the invoice of compose");
             }
-            expect(invoice1.success).toBe(true);
+            expect(invoice1.success).to.be.true;
             const invoice2 = await node.sdk.rpc.chain.getParcelInvoice(
                 parcel2.hash(),
                 {
@@ -818,33 +858,38 @@ describe("transactions", () => {
             if (invoice2 == null) {
                 throw Error("Cannot get the invoice of decompose");
             }
-            expect(invoice2.success).toBe(true);
+            expect(invoice2.success).to.be.true;
         });
     });
 
-    describe("Wrap CCC", () => {
-        test.each([[1], [100]])("Wrap successful - amount %i", async amount => {
-            const recipient = await node.createP2PKHAddress();
-            const parcel = node.sdk.core
-                .createWrapCCCParcel({
-                    shardId: 0,
-                    recipient,
-                    amount
-                })
-                .sign({
-                    secret: faucetSecret,
-                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
-                    fee: 10
-                });
+    describe("Wrap CCC", function() {
+        [1, 100].forEach(function(amount) {
+            it(`Wrap successful - amount {amount}`, async function() {
+                const recipient = await node.createP2PKHAddress();
+                const parcel = node.sdk.core
+                    .createWrapCCCParcel({
+                        shardId: 0,
+                        recipient,
+                        amount
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                        fee: 10
+                    });
 
-            const hash = await node.sdk.rpc.chain.sendSignedParcel(parcel);
-            const invoice = await node.sdk.rpc.chain.getParcelInvoice(hash, {
-                timeout: 120 * 1000
+                const hash = await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                const invoice = await node.sdk.rpc.chain.getParcelInvoice(
+                    hash,
+                    {
+                        timeout: 120 * 1000
+                    }
+                );
+                expect(invoice!.success).to.be.true;
             });
-            expect(invoice.success).toBe(true);
         });
 
-        test("Wrap unsuccessful - amount 0", async () => {
+        it("Wrap unsuccessful - amount 0", async function() {
             const recipient = await node.createP2PKHAddress();
             const parcel = node.sdk.core
                 .createWrapCCCParcel({
@@ -858,21 +903,23 @@ describe("transactions", () => {
                     fee: 10
                 });
 
-            await expect(
-                node.sdk.rpc.chain.sendSignedParcel(parcel)
-            ).rejects.toMatchObject({
-                code: -32099,
-                data: expect.stringContaining("ZeroAmount")
-            });
+            try {
+                await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                expect.fail();
+            } catch (e) {
+                expect(e).to.satisfy(
+                    errorMatcher(ERROR.INVALID_PARCEL_ZERO_AMOUNT)
+                );
+            }
         });
     });
 
-    describe("Unwrap CCC", () => {
-        describe("Wrap CCC with P2PKHBurnAddress", () => {
+    describe("Unwrap CCC", function() {
+        describe("Wrap CCC with P2PKHBurnAddress", function() {
             let recipient: AssetTransferAddress;
             let wrapParcel: SignedParcel;
             let amount: number = 100;
-            beforeEach(async () => {
+            beforeEach(async function() {
                 recipient = await node.createP2PKHBurnAddress();
                 wrapParcel = node.sdk.core
                     .createWrapCCCParcel({
@@ -895,25 +942,25 @@ describe("transactions", () => {
                         timeout: 120 * 1000
                     }
                 );
-                expect(invoice.success).toBe(true);
+                expect(invoice!.success).to.be.true;
             });
 
-            test("Unwrap successful", async () => {
+            it("Unwrap successful", async function() {
                 const tx = node.sdk.core.createAssetUnwrapCCCTransaction({
                     burn: wrapParcel.getAsset()
                 });
                 await node.signTransferBurn(tx, 0);
                 const invoices = await node.sendTransaction(tx);
-                expect(invoices!.length).toBe(1);
-                expect(invoices![0].success).toBe(true);
+                expect(invoices!.length).to.equal(1);
+                expect(invoices![0].success).to.be.true;
             });
         });
 
-        describe("Wrap CCC with P2PKHAddress", () => {
+        describe("Wrap CCC with P2PKHAddress", function() {
             let recipient: AssetTransferAddress;
             let wrapParcel: SignedParcel;
             let amount: number = 100;
-            beforeEach(async () => {
+            beforeEach(async function() {
                 recipient = await node.createP2PKHAddress();
                 wrapParcel = node.sdk.core
                     .createWrapCCCParcel({
@@ -936,10 +983,10 @@ describe("transactions", () => {
                         timeout: 120 * 1000
                     }
                 );
-                expect(invoice.success).toBe(true);
+                expect(invoice!.success).to.be.true;
             });
 
-            test("Transfer then Unwrap successful", async () => {
+            it("Transfer then Unwrap successful", async function() {
                 const recipientBurn = await node.createP2PKHBurnAddress();
                 const asset1 = wrapParcel.getAsset();
 
@@ -952,8 +999,8 @@ describe("transactions", () => {
                 });
                 await node.signTransferInput(transferTx, 0);
                 const invoices1 = await node.sendTransaction(transferTx);
-                expect(invoices1!.length).toBe(1);
-                expect(invoices1![0].success).toBe(true);
+                expect(invoices1!.length).to.equal(1);
+                expect(invoices1![0].success).to.be.true;
 
                 const asset2 = await node.sdk.rpc.chain.getAsset(
                     transferTx.hash(),
@@ -961,20 +1008,20 @@ describe("transactions", () => {
                 );
 
                 const unwrapTx = node.sdk.core.createAssetUnwrapCCCTransaction({
-                    burn: asset2
+                    burn: asset2!
                 });
                 await node.signTransferBurn(unwrapTx, 0);
                 const invoices2 = await node.sendTransaction(unwrapTx);
-                expect(invoices2!.length).toBe(1);
-                expect(invoices2![0].success).toBe(true);
+                expect(invoices2!.length).to.equal(1);
+                expect(invoices2![0].success).to.be.true;
             });
         });
 
-        describe("With minted asset (not wrapped CCC)", () => {
+        describe("With minted asset (not wrapped CCC)", function() {
             let recipient: AssetTransferAddress;
             let mintTx: AssetMintTransaction;
             let amount: number = 100;
-            beforeEach(async () => {
+            beforeEach(async function() {
                 recipient = await node.createP2PKHBurnAddress();
                 const scheme = node.sdk.core.createAssetScheme({
                     shardId: 0,
@@ -986,24 +1033,28 @@ describe("transactions", () => {
                     recipient
                 });
                 const invoices = await node.sendTransaction(mintTx);
-                expect(invoices!.length).toBe(1);
-                expect(invoices![0].success).toBe(true);
+                expect(invoices!.length).to.equal(1);
+                expect(invoices![0].success).to.be.true;
             });
 
-            test("Unwrap unsuccessful - Invalid asset type", async () => {
+            it("Unwrap unsuccessful - Invalid asset type", async function() {
                 const tx = node.sdk.core.createAssetUnwrapCCCTransaction({
                     burn: mintTx.getMintedAsset()
                 });
                 await node.signTransferBurn(tx, 0);
-                await expect(node.sendTransaction(tx)).rejects.toMatchObject({
-                    code: -32099,
-                    data: expect.stringContaining("InvalidAssetType")
-                });
+                try {
+                    await node.sendTransaction(tx);
+                    expect.fail();
+                } catch (e) {
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_TX_ASSET_TYPE)
+                    );
+                }
             });
         });
     });
 
-    afterAll(async () => {
+    after(async function() {
         await node.clean();
     });
 });

@@ -17,10 +17,13 @@
 import CodeChain from "../helper/spawn";
 import { faucetAddress } from "../helper/constants";
 
-describe("reward1", () => {
+import "mocha";
+import { expect } from "chai";
+
+describe("reward1", function() {
     let node: CodeChain;
 
-    beforeEach(async () => {
+    beforeEach(async function() {
         node = new CodeChain({
             chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
             argv: ["--force-sealing"]
@@ -29,16 +32,16 @@ describe("reward1", () => {
         await node.start();
     });
 
-    test("getBlockReward", async () => {
+    it("getBlockReward", async function() {
         // FIXME: Add an API to SDK
         const reward = await node.sdk.rpc.sendRpcRequest(
             "engine_getBlockReward",
             [10]
         );
-        expect(reward).toEqual(50);
+        expect(reward).to.equal(50);
     });
 
-    test("null if the block is not mined", async () => {
+    it("null if the block is not mined", async function() {
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         const nonMinedBlockNumber = bestBlockNumber + 10;
         // FIXME: Add an API to SDK
@@ -46,10 +49,10 @@ describe("reward1", () => {
             "chain_getMiningReward",
             [nonMinedBlockNumber]
         );
-        expect(reward).toEqual(null);
+        expect(reward).to.equal(null);
     });
 
-    test("mining reward of the empty block is the same with the block reward", async () => {
+    it("mining reward of the empty block is the same with the block reward", async function() {
         await node.sdk.rpc.devel.startSealing();
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         // FIXME: Add an API to SDK
@@ -61,10 +64,10 @@ describe("reward1", () => {
             "engine_getBlockReward",
             [bestBlockNumber]
         );
-        expect(miningReward).toEqual(blockReward);
+        expect(miningReward).to.equal(blockReward);
     });
 
-    test("mining reward includes the block fee", async () => {
+    it("mining reward includes the block fee", async function() {
         await node.sdk.rpc.devel.stopSealing();
         const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
         await node.sendSignedParcel({
@@ -96,10 +99,10 @@ describe("reward1", () => {
             "engine_getBlockReward",
             [bestBlockNumber]
         );
-        expect(miningReward).toEqual(blockReward + 123 + 456 + 321);
+        expect(miningReward).to.equal(blockReward + 123 + 456 + 321);
     });
 
-    afterEach(async () => {
+    afterEach(async function() {
         await node.clean();
     });
 });
