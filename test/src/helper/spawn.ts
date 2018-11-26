@@ -247,6 +247,12 @@ export default class CodeChain {
         }
     }
 
+    public async waitBlockNumber(n: number) {
+        while ((await this.getBestBlockNumber()) < n) {
+            await wait(500);
+        }
+    }
+
     public async getBestBlockNumber() {
         return this.sdk.rpc.chain.getBestBlockNumber();
     }

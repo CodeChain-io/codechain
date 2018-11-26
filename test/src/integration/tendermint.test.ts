@@ -66,13 +66,13 @@ describeSkippedInTravis("Tendermint ", () => {
     test(
         "Wait block generation",
         async () => {
+            await nodes[0].waitBlockNumber(2);
+            await nodes[1].waitBlockNumber(2);
+            await nodes[2].waitBlockNumber(2);
+            await nodes[3].waitBlockNumber(2);
             await expect(
                 nodes[0].sdk.rpc.chain.getBestBlockNumber()
-            ).resolves.toBeLessThan(1);
-            await wait(30 * 1000);
-            await expect(
-                nodes[0].sdk.rpc.chain.getBestBlockNumber()
-            ).resolves.toBeGreaterThanOrEqual(1);
+            ).resolves.toBeGreaterThanOrEqual(2);
         },
         60 * 1000
     );
