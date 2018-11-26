@@ -64,6 +64,7 @@ export default class CodeChain {
     private _chain: ChainType;
     private argv: string[];
     private process?: ChildProcess;
+    private keyFileMovePromise?: Promise;
 
     public get id(): number {
         return this._id;
@@ -123,10 +124,15 @@ export default class CodeChain {
         this._ipcPath = `/tmp/jsonrpc.${this.id}.ipc`;
         this._keysPath = mkdtempSync(`${projectRoot}/keys/`);
         if (options.additionalKeysPath) {
-            ncp(options.additionalKeysPath, this._keysPath, err => {
-                if (err) {
-                    console.error(err);
-                }
+            this.keyFileMovePromise = new Promise((resolve, reject) => {
+                ncp(options.additionalKeysPath, this._keysPath, err => {
+                    if (err) {
+                        console.error(err);
+                        reject(err);
+                        return;
+                    }
+                    resolve();
+                });
             });
         }
         this._localKeyStorePath = `${this.keysPath}/keystore.db`;
@@ -144,6 +150,9 @@ export default class CodeChain {
         argv: string[] = [],
         log_level = "trace,mio=warn,tokio=warn,hyper=warn"
     ) {
+        if (this.keyFileMovePromise) {
+            await this.keyFileMovePromise;
+        }
         const useDebugBuild = process.env.NODE_ENV !== "production";
         process.env.RUST_LOG = log_level;
         // NOTE: https://github.com/CodeChain-io/codechain/issues/348
