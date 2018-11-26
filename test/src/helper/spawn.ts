@@ -64,7 +64,7 @@ export default class CodeChain {
     private _chain: ChainType;
     private argv: string[];
     private process?: ChildProcess;
-    private keyFileMovePromise?: Promise;
+    private keyFileMovePromise?: Promise<{}>;
 
     public get id(): number {
         return this._id;
@@ -114,7 +114,7 @@ export default class CodeChain {
             additionalKeysPath?: string;
         } = {}
     ) {
-        const { chain, argv, logFlag } = options;
+        const { chain, argv, logFlag, additionalKeysPath } = options;
         this._id = CodeChain.idCounter++;
 
         mkdirp.sync(`${projectRoot}/db/`);
@@ -123,9 +123,9 @@ export default class CodeChain {
         this._dbPath = mkdtempSync(`${projectRoot}/db/`);
         this._ipcPath = `/tmp/jsonrpc.${this.id}.ipc`;
         this._keysPath = mkdtempSync(`${projectRoot}/keys/`);
-        if (options.additionalKeysPath) {
+        if (additionalKeysPath) {
             this.keyFileMovePromise = new Promise((resolve, reject) => {
-                ncp(options.additionalKeysPath, this._keysPath, err => {
+                ncp(additionalKeysPath, this._keysPath, err => {
                     if (err) {
                         console.error(err);
                         reject(err);
