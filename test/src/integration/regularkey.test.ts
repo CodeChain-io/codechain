@@ -15,18 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import CodeChain from "../helper/spawn";
+import { ERROR, errorMatcher } from "../helper/error";
 
-const ERROR = {
-    NOT_ENOUGH_BALANCE: {
-        code: -32032,
-        data: expect.anything(),
-        message: expect.anything()
-    }
-};
+import "mocha";
+import { expect } from "chai";
 
 const INVOICE = {
     SUCCESS: {
-        success: true
+        success: true,
+        error: undefined
     },
     REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT: {
         success: false,
@@ -42,12 +39,12 @@ const INVOICE = {
     }
 };
 
-describe("solo - 1 node", () => {
+describe("solo - 1 node", function() {
     let node: CodeChain;
     let privKey: string;
     let pubKey: string;
 
-    beforeEach(async () => {
+    beforeEach(async function() {
         node = new CodeChain();
         await node.start();
 
@@ -55,20 +52,19 @@ describe("solo - 1 node", () => {
         pubKey = node.sdk.util.getPublicFromPrivate(privKey);
     });
 
-    test("Make regular key", async done => {
+    it("Make regular key", async function() {
         try {
             await node.sendSignedParcel({ secret: privKey });
-            done.fail();
+            expect.fail("It must fail");
         } catch (e) {
-            expect(e).toEqual(ERROR.NOT_ENOUGH_BALANCE);
+            expect(e).to.satisfy(errorMatcher(ERROR.NOT_ENOUGH_BALANCE));
         }
 
         await node.setRegularKey(pubKey);
         await node.sendSignedParcel({ secret: privKey });
-        done();
     });
 
-    test("Make then change regular key", async done => {
+    it("Make then change regular key", async function() {
         await node.setRegularKey(pubKey);
         await node.sendSignedParcel({ secret: privKey });
 
@@ -79,32 +75,27 @@ describe("solo - 1 node", () => {
         await node.sendSignedParcel({ secret: newPrivKey });
         try {
             await node.sendSignedParcel({ secret: privKey });
-            done.fail();
+            expect.fail("It must fail");
         } catch (e) {
-            expect(e).toEqual(ERROR.NOT_ENOUGH_BALANCE);
-            done();
+            expect(e).to.satisfy(errorMatcher(ERROR.NOT_ENOUGH_BALANCE));
         }
     });
 
-    test(
-        "Try to use the key of another account as its regular key",
-        async () => {
-            const account = node.sdk.util.getAccountIdFromPrivate(privKey);
-            const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
-                account,
-                { networkId: "tc" }
-            ).toString();
+    it("Try to use the key of another account as its regular key", async function() {
+        const account = node.sdk.util.getAccountIdFromPrivate(privKey);
+        const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
+            account,
+            { networkId: "tc" }
+        ).toString();
 
-            await node.sendSignedParcel({ amount: 5, recipient: address });
-            const invoice = await node.setRegularKey(pubKey);
-            expect(invoice).toEqual(
-                INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT
-            );
-        },
-        10000
-    );
+        await node.sendSignedParcel({ amount: 5, recipient: address });
+        const invoice = await node.setRegularKey(pubKey);
+        expect(invoice).to.deep.equal(
+            INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT
+        );
+    }).timeout(10_000);
 
-    test("Try to use the regulary key already used in another account", async () => {
+    it("Try to use the regulary key already used in another account", async function() {
         const newPrivKey = node.sdk.util.generatePrivateKey();
         const account = node.sdk.util.getAccountIdFromPrivate(newPrivKey);
         const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
@@ -118,12 +109,12 @@ describe("solo - 1 node", () => {
             seq,
             secret: newPrivKey
         });
-        expect(invoice).toEqual(INVOICE.SUCCESS);
+        expect(invoice).to.deep.equal(INVOICE.SUCCESS);
         invoice = await node.setRegularKey(pubKey);
-        expect(invoice).toEqual(INVOICE.REGULARKEY_ALREADY_IN_USE);
+        expect(invoice).to.deep.equal(INVOICE.REGULARKEY_ALREADY_IN_USE);
     });
 
-    afterEach(async () => {
+    afterEach(async function() {
         await node.clean();
     });
 });

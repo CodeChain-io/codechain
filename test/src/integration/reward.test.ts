@@ -18,10 +18,13 @@ import CodeChain from "../helper/spawn";
 import { aliceAddress, aliceSecret, faucetAddress } from "../helper/constants";
 import { U64 } from "codechain-sdk/lib/core/classes";
 
-describe("Reward = 50, 1 miner", () => {
+import "mocha";
+import { expect } from "chai";
+
+describe("Reward = 50, 1 miner", function() {
     let node: CodeChain;
 
-    beforeEach(async () => {
+    beforeEach(async function() {
         node = new CodeChain({
             chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
             argv: ["--author", aliceAddress.toString(), "--force-sealing"]
@@ -29,21 +32,21 @@ describe("Reward = 50, 1 miner", () => {
         await node.start();
     });
 
-    test("Mining an empty block", async () => {
+    it("Mining an empty block", async function() {
         await node.sdk.rpc.devel.startSealing();
-        await expect(
-            node.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(50));
+        expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
+            new U64(50)
+        );
     });
 
-    test("Mining a block with 1 parcel", async () => {
+    it("Mining a block with 1 parcel", async function() {
         await node.sendSignedParcel({ fee: 10 });
-        await expect(
-            node.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(50 + 10));
+        expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
+            new U64(50 + 10)
+        );
     });
 
-    test("Mining a block with 3 parcels", async () => {
+    it("Mining a block with 3 parcels", async function() {
         await node.sdk.rpc.devel.stopSealing();
         await node.sendSignedParcel({
             fee: 10,
@@ -61,23 +64,23 @@ describe("Reward = 50, 1 miner", () => {
             awaitInvoice: false
         });
         await node.sdk.rpc.devel.startSealing();
-        await expect(
-            node.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(50 + 35));
+        expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
+            new U64(50 + 35)
+        );
     });
 
-    test("Mining a block with a parcel that pays the author", async () => {
+    it("Mining a block with a parcel that pays the author", async function() {
         await node.payment(aliceAddress, 100);
-        await expect(
-            node.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(50 + 10 + 100));
+        expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
+            new U64(50 + 10 + 100)
+        );
     });
 
-    test("Mining a block with a parcel which author pays someone in", async () => {
+    it("Mining a block with a parcel which author pays someone in", async function() {
         await node.sendSignedParcel({ fee: 10 }); // +60
-        await expect(
-            node.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(60));
+        expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
+            new U64(60)
+        );
 
         const parcel = await node.sdk.core
             .createPaymentParcel({
@@ -86,12 +89,12 @@ describe("Reward = 50, 1 miner", () => {
             })
             .sign({ secret: aliceSecret, seq: 0, fee: 10 }); // -60
         await node.sdk.rpc.chain.sendSignedParcel(parcel); // +60
-        await expect(
-            node.sdk.rpc.chain.getBalance(aliceAddress)
-        ).resolves.toEqual(new U64(60));
+        expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
+            new U64(60)
+        );
     });
 
-    afterEach(async () => {
+    afterEach(async function() {
         await node.clean();
     });
 });
