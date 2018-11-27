@@ -42,19 +42,19 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - blockHash: `H256`
  - blockNumber: `number`
- - fee: `U256`
+ - fee: `U64`
  - hash: `H256`
  - networkId: `number`
- - seq: `U256`
+ - seq: `number`
  - parcelIndex: `number`
  - sig: `Signature`
  - action: `Action`
 
 ## UnsignedParcel
 
- - fee: `U256`
+ - fee: `U64`
  - networkId: `number`
- - seq: `U256` | `null`
+ - seq: `number` | `null`
  - action: `Action`
 
 ## Actions
@@ -67,7 +67,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
  - action: "payment"
  - receiver: `PlatformAddress`
- - amount: `U256`
+ - amount: `U64`
 
 ### SetRegularKey Action
 
@@ -77,13 +77,13 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ### SetShardOwners Action
 
  - action: "setShardOwners"
- - shard_id: `number`
+ - shardId: `number`
  - owners: `PlatformAddress[]`
 
 ### SetShardUsers Action
 
  - action: "setShardUsers"
- - shard_id: `number`
+ - shardId: `number`
  - users: `PlatformAddress[]`
 
 ## Transaction
@@ -100,8 +100,8 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ## Asset
 
  - amount: `number`
- - asset_type: `H256`
- - lock_script_hash: `H160`
+ - assetType: `H256`
+ - lockScriptHash: `H160`
  - parameters: `hexadecimal string[]`
 
 ## Signature
@@ -157,12 +157,17 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  * [chain_getBalance](#chain_getbalance)
  * [chain_getRegularKey](#chain_getregularkey)
  * [chain_getRegularKeyOwner](#chain_getregularkeyowner)
+ * [chain_getGenesisAccounts](#chain_getgenesisaccounts)
  * [chain_getNumberOfShards](#chain_getnumberofshards)
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingParcels](#chain_getpendingparcels)
- * [chain_getCoinbase](#chain_getcoinbase)
+ * [chain_getMiningReward](#chain_getminingreward)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_getNetworkId](#chain_getnetworkid)
+***
+ * [engine_getCoinbase](#engine_getcoinbase)
+ * [engine_getBlockReward](#engine_getblockreward)
+ * [engine_getRecommendedConfimation](#engine_getrecommendedconfimation)
 ***
   * [miner_getWork](#miner_getwork)
   * [miner_submitWork](#miner_submitwork)
@@ -389,7 +394,7 @@ Response Example:
         "fee":"0x5f5e100",
         "hash":"0x3ff9b02427ac04c06260928168775bca5a3da96ae6995041e197d42e71ab68b6",
         "networkId":"sc",
-        "seq":"0x4",
+        "seq": 4,
         "parcelIndex":0,
         "sig":"0x4621da0344d8888c5076cc0a3cc7fd7a7e3a761ba812c95f807c050a4e5ec6b7120fa99fdf502ed088ed61eb6d5fe44f44c280e97c7702d5127640d7a8a6d7e401"
       }
@@ -449,7 +454,7 @@ Response Example
         "fee":"0xa",
         "hash":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId":17,
-        "seq":"0x4",
+        "seq": 4,
         "parcelIndex":0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
       }
@@ -527,7 +532,7 @@ Response Example
         "fee": "0xa",
         "hash": "0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId": 17,
-        "seq": "0x4",
+        "seq": 4,
         "parcelIndex": 0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
     }
@@ -634,6 +639,7 @@ Gets an asset scheme with the given asset type.
 Params:
  1. transaction hash of AssetMintTransaction - `H256`
  2. shard id - `number`
+ 3. block number: `number` | `null`
 
 Return Type: `null` | `AssetScheme`
 
@@ -643,7 +649,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0, null], "id": null}' \
     localhost:8080
 ```
 
@@ -665,6 +671,7 @@ Gets an asset scheme with the given asset type.
 
 Params:
  1. asset type - `H256`
+ 2. block number: `number` | `null`
 
 Return Type: `null` | `AssetScheme`
 
@@ -674,7 +681,7 @@ Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByType", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByType", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", null], "id": null}' \
     localhost:8080
 ```
 
@@ -717,8 +724,8 @@ Response Example
   "jsonrpc":"2.0",
   "result":{
     "amount":100,
-    "asset_type":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
-    "lock_script_hash":"0x0000000000000000000000000000000000000000",
+    "assetType":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
+    "lockScriptHash":"0x0000000000000000000000000000000000000000",
     "parameters":[
 
     ]
@@ -762,7 +769,7 @@ Params:
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `null` | `U256` - It returns null when the given block number is invalid.
+Return Type: `null` | `number` - It returns null when the given block number is invalid.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
@@ -778,7 +785,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"0x54",
+  "result": 84,
   "id":null
 }
 ```
@@ -790,7 +797,7 @@ Params:
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `null` | `U256` - It returns null when the given block number is invalid.
+Return Type: `null` | `U64` - It returns null when the given block number is invalid.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
@@ -866,6 +873,33 @@ Response Example
   "id":null
 }
 ```
+
+## chain_getGenesisAccounts
+Gets the platform account in the genesis block.
+
+Params: No parameters
+
+Return Type: `PlatformAddress[]` - It returns the array of the platform address
+
+Errors: `KVDB Error`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getGenesisAccounts", "params": [], "id": 37}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": ["cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"],
+  "id":37
+}
+```
+
 
 ## chain_getNumberOfShards
 Gets the number of shards, at the state of the given blockNumber.
@@ -956,7 +990,7 @@ Response Example
       "transactions":[
         {
           "payment":{
-            "seq":"0x1",
+            "seq": 1,
             "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
             "value":"0x0"
           }
@@ -969,18 +1003,21 @@ Response Example
 }
 ```
 
-## chain_getCoinbase
-Gets coinbase's account id.
+## chain_getMiningReward
+Gets the mining reward of the given block number.
+Unlike `engine_getBlockReward`, it returns the actual amount received, including the transaction fee.
+It returns `null` if the given block number is not mined yet.
 
-Params: No parameters
+Param:
+1. block number: `number`
 
-Return Type: `PlatformAddress` | `null`
+Return Type: `U64` | `null`
 
 Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getCoinbase", "params": [], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getMiningReward", "params": [10], "id": 41}' \
     localhost:8080
 ```
 
@@ -988,8 +1025,8 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
-  "id":null
+  "result": null,
+  "id":41
 }
 ```
 
@@ -1044,6 +1081,79 @@ Response Example
   "jsonrpc":"2.0",
   "result": 17,
   "id":6
+}
+```
+
+## engine_getCoinbase
+Gets coinbase's account id.
+
+Params: No parameters
+
+Return Type: `PlatformAddress` | `null`
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getCoinbase", "params": [], "id": null}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
+  "id":null
+}
+```
+
+## engine_getBlockReward
+Gets the reward of the given block number
+
+Param:
+1. block number: `number`
+
+Return Type: U64
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getBlockReward", "params": [10], "id": 41}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0x50",
+  "id":41
+}
+```
+
+## engine_getRecommendedConfirmation
+Gets the recommended minimum confirmations.
+
+Params: No parameters
+
+Return Type: number
+
+Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getRecommendedConfirmation", "params": [], "id": 411}' \
+    localhost:8080
+```
+
+Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": 6,
+  "id":411
 }
 ```
 
@@ -1681,7 +1791,7 @@ Params:
  2. account: `PlatformAddress`
  3. passphrase: `string` | `null`
 
-Return type: { hash: `H256`, seq: `U256` } - the hash and seq of the parcel
+Return type: { hash: `H256`, seq: `number` } - the hash and seq of the parcel
 
 Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
 
@@ -1698,7 +1808,7 @@ Response Example
 ```
 {
   "jsonrpc":"2.0",
-  "result": {"seq":"0xe8d4a50dd0", "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a"},
+  "result": {"seq": 999999999440, "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a"},
   "id":6
 }
 ```

@@ -29,9 +29,9 @@ pub struct NetClient {
 }
 
 impl NetClient {
-    pub fn new(network_control: &Arc<NetworkControl>) -> Self {
+    pub fn new(network_control: Arc<NetworkControl>) -> Self {
         Self {
-            network_control: network_control.clone(),
+            network_control,
         }
     }
 }

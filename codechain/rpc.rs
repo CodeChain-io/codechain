@@ -18,9 +18,9 @@ use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use crate::rpc_apis;
 use crpc::{start_http, start_ipc, start_ws, HttpServer, IpcServer, WsError, WsErrorKind, WsServer};
 use crpc::{Compatibility, MetaIoHandler};
-use rpc_apis;
 
 #[derive(Debug, PartialEq)]
 pub struct RpcHttpConfig {

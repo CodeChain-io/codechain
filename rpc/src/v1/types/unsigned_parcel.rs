@@ -14,27 +14,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId};
 use ctypes::parcel::IncompleteParcel;
-use primitives::U256;
 
 use super::Action;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UnsignedParcel {
-    pub seq: Option<U256>,
-    pub fee: U256,
+    pub seq: Option<u64>,
+    pub fee: Uint,
     pub network_id: NetworkId,
     pub action: Action,
 }
 
 // FIXME: Use TryFrom.
-impl From<UnsignedParcel> for Result<(IncompleteParcel, Option<U256>), KeyError> {
+impl From<UnsignedParcel> for Result<(IncompleteParcel, Option<u64>), KeyError> {
     fn from(parcel: UnsignedParcel) -> Self {
         Ok((
             IncompleteParcel {
-                fee: parcel.fee,
+                fee: parcel.fee.into(),
                 network_id: parcel.network_id,
                 action: Result::from(parcel.action)?,
             },

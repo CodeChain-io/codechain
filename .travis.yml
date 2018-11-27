@@ -60,7 +60,10 @@ cache:
   cargo: true
   directories:
     - "$HOME/.rustup"
+    - "$HOME/.cache/yarn"
+    - "$TRAVIS_BUILD_DIR/test/node_modules"
 before_cache:
   - rm -rf $HOME/.cargo/registry
+  - rm -rf $TRAVIS_BUILD_DIR/target
 git:
   depth: 1

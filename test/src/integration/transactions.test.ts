@@ -19,7 +19,9 @@ import {
     Asset,
     AssetTransferTransaction,
     PlatformAddress,
-    U256
+    AssetTransferAddress,
+    SignedParcel,
+    AssetMintTransaction
 } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
@@ -85,7 +87,7 @@ describe("transactions", () => {
                 const tx = node.sdk.core.createAssetTransferTransaction();
                 tx.addInputs(input);
                 tx.addOutputs(
-                    ...amounts.map(amount => ({
+                    amounts.map(amount => ({
                         assetType: input.assetType,
                         recipient,
                         amount
@@ -105,7 +107,7 @@ describe("transactions", () => {
                 const tx = node.sdk.core.createAssetTransferTransaction();
                 tx.addInputs(input);
                 tx.addOutputs(
-                    ...amounts.map(amount => ({
+                    amounts.map(amount => ({
                         assetType: input.assetType,
                         recipient,
                         amount
@@ -125,7 +127,7 @@ describe("transactions", () => {
             const tx = node.sdk.core.createAssetTransferTransaction();
             tx.addInputs(input);
             tx.addOutputs(
-                ...amounts.map(amount => ({
+                amounts.map(amount => ({
                     assetType: input.assetType,
                     recipient,
                     amount
@@ -176,9 +178,9 @@ describe("transactions", () => {
             async (input1Amounts, input2Amounts) => {
                 const recipient = await node.createP2PKHAddress();
                 const tx = node.sdk.core.createAssetTransferTransaction();
-                tx.addInputs(..._.shuffle([input1, input2]));
+                tx.addInputs(_.shuffle([input1, input2]));
                 tx.addOutputs(
-                    ..._.shuffle([
+                    _.shuffle([
                         ...input1Amounts.map(amount => ({
                             assetType: input1.assetType,
                             recipient,
@@ -592,7 +594,6 @@ describe("transactions", () => {
             expect(invoices![0].success).toBe(false);
 
             (tx.outputs[0].parameters as any) = address1Param;
-            (tx.seq as any) = 1;
             await node.sdk.key.signTransactionInput(tx, 0, {
                 signatureTag: {
                     input: "all",
@@ -615,7 +616,7 @@ describe("transactions", () => {
                         .createAssetTransferTransaction()
                         .addInputs(assets[0])
                         .addOutputs(
-                            ..._.times(length, () => ({
+                            _.times(length, () => ({
                                 assetType,
                                 amount: 1,
                                 recipient: address1
@@ -689,7 +690,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: U256.plus(seq, 1)
+                    seq: seq + 1
                 });
             await node.sdk.rpc.chain.sendSignedParcel(parcel1);
 
@@ -754,9 +755,7 @@ describe("transactions", () => {
             });
             await node.sdk.key.signTransactionInput(decomposeTx, 0);
 
-            const seq0 = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const seq1 = U256.plus(seq0, 1);
-            const seq2 = U256.plus(seq0, 2);
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
 
             const parcel0 = node.sdk.core
                 .createAssetTransactionParcel({
@@ -765,7 +764,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: seq0
+                    seq
                 });
             const parcel1 = node.sdk.core
                 .createAssetTransactionParcel({
@@ -774,7 +773,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: seq1
+                    seq: seq + 1
                 });
             const parcel2 = node.sdk.core
                 .createAssetTransactionParcel({
@@ -783,7 +782,7 @@ describe("transactions", () => {
                 .sign({
                     secret: faucetSecret,
                     fee: 10,
-                    seq: seq2
+                    seq: seq + 2
                 });
 
             await node.sdk.rpc.chain.sendSignedParcel(parcel0);
@@ -820,6 +819,187 @@ describe("transactions", () => {
                 throw Error("Cannot get the invoice of decompose");
             }
             expect(invoice2.success).toBe(true);
+        });
+    });
+
+    describe("Wrap CCC", () => {
+        test.each([[1], [100]])("Wrap successful - amount %i", async amount => {
+            const recipient = await node.createP2PKHAddress();
+            const parcel = node.sdk.core
+                .createWrapCCCParcel({
+                    shardId: 0,
+                    recipient,
+                    amount
+                })
+                .sign({
+                    secret: faucetSecret,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                    fee: 10
+                });
+
+            const hash = await node.sdk.rpc.chain.sendSignedParcel(parcel);
+            const invoice = await node.sdk.rpc.chain.getParcelInvoice(hash, {
+                timeout: 120 * 1000
+            });
+            expect(invoice.success).toBe(true);
+        });
+
+        test("Wrap unsuccessful - amount 0", async () => {
+            const recipient = await node.createP2PKHAddress();
+            const parcel = node.sdk.core
+                .createWrapCCCParcel({
+                    shardId: 0,
+                    recipient,
+                    amount: 0
+                })
+                .sign({
+                    secret: faucetSecret,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                    fee: 10
+                });
+
+            await expect(
+                node.sdk.rpc.chain.sendSignedParcel(parcel)
+            ).rejects.toMatchObject({
+                code: -32099,
+                data: expect.stringContaining("ZeroAmount")
+            });
+        });
+    });
+
+    describe("Unwrap CCC", () => {
+        describe("Wrap CCC with P2PKHBurnAddress", () => {
+            let recipient: AssetTransferAddress;
+            let wrapParcel: SignedParcel;
+            let amount: number = 100;
+            beforeEach(async () => {
+                recipient = await node.createP2PKHBurnAddress();
+                wrapParcel = node.sdk.core
+                    .createWrapCCCParcel({
+                        shardId: 0,
+                        recipient,
+                        amount
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                        fee: 10
+                    });
+
+                const hash = await node.sdk.rpc.chain.sendSignedParcel(
+                    wrapParcel
+                );
+                const invoice = await node.sdk.rpc.chain.getParcelInvoice(
+                    hash,
+                    {
+                        timeout: 120 * 1000
+                    }
+                );
+                expect(invoice.success).toBe(true);
+            });
+
+            test("Unwrap successful", async () => {
+                const tx = node.sdk.core.createAssetUnwrapCCCTransaction({
+                    burn: wrapParcel.getAsset()
+                });
+                await node.signTransferBurn(tx, 0);
+                const invoices = await node.sendTransaction(tx);
+                expect(invoices!.length).toBe(1);
+                expect(invoices![0].success).toBe(true);
+            });
+        });
+
+        describe("Wrap CCC with P2PKHAddress", () => {
+            let recipient: AssetTransferAddress;
+            let wrapParcel: SignedParcel;
+            let amount: number = 100;
+            beforeEach(async () => {
+                recipient = await node.createP2PKHAddress();
+                wrapParcel = node.sdk.core
+                    .createWrapCCCParcel({
+                        shardId: 0,
+                        recipient,
+                        amount
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                        fee: 10
+                    });
+
+                const hash = await node.sdk.rpc.chain.sendSignedParcel(
+                    wrapParcel
+                );
+                const invoice = await node.sdk.rpc.chain.getParcelInvoice(
+                    hash,
+                    {
+                        timeout: 120 * 1000
+                    }
+                );
+                expect(invoice.success).toBe(true);
+            });
+
+            test("Transfer then Unwrap successful", async () => {
+                const recipientBurn = await node.createP2PKHBurnAddress();
+                const asset1 = wrapParcel.getAsset();
+
+                const transferTx = node.sdk.core.createAssetTransferTransaction();
+                transferTx.addInputs(asset1);
+                transferTx.addOutputs({
+                    assetType: asset1.assetType,
+                    recipient: recipientBurn,
+                    amount
+                });
+                await node.signTransferInput(transferTx, 0);
+                const invoices1 = await node.sendTransaction(transferTx);
+                expect(invoices1!.length).toBe(1);
+                expect(invoices1![0].success).toBe(true);
+
+                const asset2 = await node.sdk.rpc.chain.getAsset(
+                    transferTx.hash(),
+                    0
+                );
+
+                const unwrapTx = node.sdk.core.createAssetUnwrapCCCTransaction({
+                    burn: asset2
+                });
+                await node.signTransferBurn(unwrapTx, 0);
+                const invoices2 = await node.sendTransaction(unwrapTx);
+                expect(invoices2!.length).toBe(1);
+                expect(invoices2![0].success).toBe(true);
+            });
+        });
+
+        describe("With minted asset (not wrapped CCC)", () => {
+            let recipient: AssetTransferAddress;
+            let mintTx: AssetMintTransaction;
+            let amount: number = 100;
+            beforeEach(async () => {
+                recipient = await node.createP2PKHBurnAddress();
+                const scheme = node.sdk.core.createAssetScheme({
+                    shardId: 0,
+                    metadata: "",
+                    amount
+                });
+                mintTx = node.sdk.core.createAssetMintTransaction({
+                    scheme,
+                    recipient
+                });
+                const invoices = await node.sendTransaction(mintTx);
+                expect(invoices!.length).toBe(1);
+                expect(invoices![0].success).toBe(true);
+            });
+
+            test("Unwrap unsuccessful - Invalid asset type", async () => {
+                const tx = node.sdk.core.createAssetUnwrapCCCTransaction({
+                    burn: mintTx.getMintedAsset()
+                });
+                await node.signTransferBurn(tx, 0);
+                await expect(node.sendTransaction(tx)).rejects.toMatchObject({
+                    code: -32099,
+                    data: expect.stringContaining("InvalidAssetType")
+                });
+            });
         });
     });
 

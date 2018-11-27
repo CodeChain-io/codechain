@@ -21,27 +21,27 @@ use std::sync::{Arc, Weak};
 use ckey::{public_to_address, recover, Address, Password, Signature};
 use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
-use primitives::{H256, U256};
+use primitives::H256;
 
 use self::params::SimplePoAParams;
-use super::super::account_provider::AccountProvider;
-use super::super::block::{ExecutedBlock, IsBlock};
-use super::super::client::EngineClient;
-use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::EngineType;
-use super::super::error::{BlockError, Error};
-use super::super::header::Header;
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
+use crate::account_provider::AccountProvider;
+use crate::block::{ExecutedBlock, IsBlock};
+use crate::client::EngineClient;
+use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::EngineType;
+use crate::error::{BlockError, Error};
+use crate::header::Header;
 
 pub struct SimplePoA {
     machine: CodeChainMachine,
     signer: RwLock<EngineSigner>,
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
-    block_reward: U256,
+    block_reward: u64,
 }
 
 impl SimplePoA {
@@ -178,8 +178,9 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        let total_reward = block.parcels().iter().fold(self.block_reward, |sum, parcel| sum + parcel.fee);
-        self.machine.add_balance(block, &author, &total_reward)
+        let total_reward = self.block_reward(block.header().number())
+            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
+        self.machine.add_balance(block, &author, total_reward)
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {
@@ -194,17 +195,23 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
     fn sign(&self, hash: H256) -> Result<Signature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
     }
+
+    fn block_reward(&self, _block_number: u64) -> u64 {
+        self.block_reward
+    }
+
+    fn recommended_confirmation(&self) -> u32 {
+        1
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use ckey::Signature;
+    use crate::block::OpenBlock;
+    use crate::scheme::Scheme;
+    use crate::tests::helpers::get_temp_state_db;
 
-    use super::super::super::block::{IsBlock, OpenBlock};
-    use super::super::super::header::Header;
-    use super::super::super::scheme::Scheme;
-    use super::super::super::tests::helpers::get_temp_state_db;
-    use super::super::Seal;
+    use super::*;
 
     #[test]
     fn has_valid_metadata() {

@@ -17,7 +17,7 @@
 use std::fmt;
 use std::net::IpAddr;
 
-use super::SocketAddr;
+use crate::SocketAddr;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq, RlpEncodableWrapper, RlpDecodableWrapper)]
 pub struct NodeId {

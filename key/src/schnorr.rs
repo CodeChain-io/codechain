@@ -26,7 +26,7 @@ use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, schnorr, Error as SecpError, Message as SecpMessage};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
+use crate::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
 
 pub const SCHNORR_SIGNATURE_LENGTH: usize = 64;
 
@@ -233,8 +233,8 @@ pub fn recover_schnorr(signature: &SchnorrSignature, message: &Message) -> Resul
 mod tests {
     use std::str::FromStr;
 
-    use super::super::{Generator, Message, Random};
     use super::{recover_schnorr, sign_schnorr, verify_schnorr, verify_schnorr_address, SchnorrSignature};
+    use crate::{Generator, Message, Random};
 
     #[test]
     fn signature_to_and_from_str() {

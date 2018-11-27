@@ -18,8 +18,8 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
-use super::super::parcel::Error;
 use super::invoice_result::InvoiceResult;
+use crate::parcel::Error;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Invoice {

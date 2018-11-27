@@ -16,18 +16,17 @@
 // A state machine.
 
 use ckey::Address;
-use cstate::{StateError, TopState, TopStateInfo};
+use cstate::{StateError, TopState, TopStateView};
 use ctypes::machine::{Machine, WithBalances};
 use ctypes::parcel::{Action, Error as ParcelError};
 use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
-use primitives::U256;
 
-use super::block::{ExecutedBlock, IsBlock};
-use super::client::{BlockInfo, TransactionInfo};
-use super::error::Error;
-use super::header::Header;
-use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::scheme::CommonParams;
+use crate::block::{ExecutedBlock, IsBlock};
+use crate::client::{BlockInfo, TransactionInfo};
+use crate::error::Error;
+use crate::header::Header;
+use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::scheme::CommonParams;
 
 pub struct CodeChainMachine {
     params: CommonParams,
@@ -169,17 +168,17 @@ impl CodeChainMachine {
 impl Machine for CodeChainMachine {
     type Header = Header;
     type LiveBlock = ExecutedBlock;
-    type EngineClient = super::client::EngineClient;
+    type EngineClient = crate::client::EngineClient;
 
     type Error = Error;
 }
 
 impl WithBalances for CodeChainMachine {
-    fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<U256, Self::Error> {
+    fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<u64, Self::Error> {
         Ok(live.state().balance(address).map_err(StateError::from)?)
     }
 
-    fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: &U256) -> Result<(), Self::Error> {
+    fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: u64) -> Result<(), Self::Error> {
         Ok(live.state_mut().add_balance(address, amount).map_err(StateError::from)?)
     }
 }

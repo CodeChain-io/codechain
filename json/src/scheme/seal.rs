@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::bytes::Bytes;
-use super::super::hash::H520;
-use super::super::uint::Uint;
+use crate::bytes::Bytes;
+use crate::hash::H520;
+use crate::uint::Uint;
 
 /// Tendermint seal.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -44,10 +44,10 @@ mod tests {
     use primitives::{H520 as Core520, U256};
     use serde_json;
 
-    use super::super::super::bytes::Bytes;
-    use super::super::super::hash::H520;
-    use super::super::super::uint::Uint;
     use super::{Seal, TendermintSeal};
+    use crate::bytes::Bytes;
+    use crate::hash::H520;
+    use crate::uint::Uint;
 
     #[test]
     fn seal_deserialization() {

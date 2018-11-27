@@ -22,7 +22,7 @@ use hex::ToHex;
 use primitives::H256;
 use secp256k1::key;
 
-use super::Error;
+use crate::Error;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Private(H256);

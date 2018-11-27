@@ -1,0 +1,9 @@
+[package]
+name = "codechain-timer"
+version = "0.1.0"
+authors = ["CodeChain Team <codechain@kodebox.io>"]
+
+[lib]
+
+[dependencies]
+parking_lot = "0.5"

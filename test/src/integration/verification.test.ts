@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { PlatformAddress } from "codechain-sdk/lib/core/classes";
-
 import CodeChain from "../helper/spawn";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 
@@ -140,7 +138,7 @@ describe("solo - 1 node", () => {
             }
         );
 
-        test.each([0, 7, 100])(
+        test.each([0, 8, 100])(
             "action (invalid type): %p",
             async (action, done) => {
                 parcelEncoded[3] = [action];
@@ -210,6 +208,8 @@ describe("solo - 1 node", () => {
     test.skip("Sending invalid parcels over the limits (in action 5: SetShardOwners)", done =>
         done.fail("not implemented"));
     test.skip("Sending invalid parcels over the limits (in action 6: SetShardUsers)", done =>
+        done.fail("not implemented"));
+    test.skip("Sending invalid parcels over the limits (in action 7: WrapCCC)", done =>
         done.fail("not implemented"));
 
     describe("Sending invalid parcels over the limits (in action 2: Payment)", () => {

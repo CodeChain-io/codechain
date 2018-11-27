@@ -17,7 +17,7 @@
 import {
     H256,
     H512,
-    U256,
+    U64,
     AssetMintTransaction,
     AssetScheme
 } from "codechain-sdk/lib/core/classes";
@@ -29,8 +29,9 @@ import {
 } from "../helper/constants";
 
 import CodeChain from "../helper/spawn";
+import { doesNotReject } from "assert";
 
-describe("solo - 1 node", () => {
+describe("chain", () => {
     const invalidHash = new H256("0".repeat(64));
 
     let node: CodeChain;
@@ -82,19 +83,19 @@ describe("solo - 1 node", () => {
 
     test("getSeq", async () => {
         await node.sdk.rpc.chain.getSeq(faucetAddress);
-        expect(await node.sdk.rpc.chain.getSeq(invalidAddress)).toEqual(
-            new U256(0)
-        );
+        expect(await node.sdk.rpc.chain.getSeq(invalidAddress)).toEqual(0);
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         await node.sdk.rpc.chain.getSeq(faucetAddress, 0);
         await node.sdk.rpc.chain.getSeq(faucetAddress, bestBlockNumber);
-        await node.sdk.rpc.chain.getSeq(faucetAddress, bestBlockNumber + 1);
+        await expect(
+            node.sdk.rpc.chain.getSeq(faucetAddress, bestBlockNumber + 1)
+        ).rejects.toThrow("chain_getSeq returns undefined");
     });
 
     test("getBalance", async () => {
         await node.sdk.rpc.chain.getBalance(faucetAddress);
         expect(await node.sdk.rpc.chain.getBalance(invalidAddress)).toEqual(
-            new U256(0)
+            new U64(0)
         );
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         await node.sdk.rpc.chain.getBalance(faucetAddress, 0);
@@ -102,11 +103,35 @@ describe("solo - 1 node", () => {
         await node.sdk.rpc.chain.getBalance(faucetAddress, bestBlockNumber + 1);
     });
 
-    test("getCoinbase", async () => {
-        // TODO: Coinbase is not defined in solo mode, so it always returns null. Need to test in other modes.
-        expect(
-            await node.sdk.rpc.sendRpcRequest("chain_getCoinbase", [])
-        ).toBeNull();
+    test("getGenesisAccounts", async () => {
+        // FIXME: Add an API to SDK
+        const accounts = await node.sdk.rpc.sendRpcRequest(
+            "chain_getGenesisAccounts",
+            []
+        );
+        const expected = [
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqyca3rwt",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgfrhflv",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvxf40sk",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqszkma5z",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5duemmc",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqcuzl32l",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqungah99",
+            "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqc2ul2h",
+            "tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u",
+            "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd"
+        ];
+        expect(accounts.length).toBe(expected.length);
+        expect(accounts).toEqual(expect.arrayContaining(expected));
+    });
+
+    test("getBlockReward", async () => {
+        // FIXME: Add an API to SDK
+        const reward = await node.sdk.rpc.sendRpcRequest(
+            "engine_getBlockReward",
+            [10]
+        );
+        expect(reward).toEqual(0);
     });
 
     test("getPendingParcels", async () => {

@@ -19,9 +19,9 @@ mod params;
 use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
 
 use self::params::NullEngineParams;
-use super::super::consensus::EngineType;
-use super::super::SignedParcel;
 use super::ConsensusEngine;
+use crate::consensus::EngineType;
+use crate::SignedParcel;
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
 pub struct NullEngine<M> {
@@ -67,7 +67,16 @@ where
 
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
-        let total_reward = block.parcels().iter().fold(self.params.block_reward, |sum, parcel| sum + parcel.fee);
-        self.machine.add_balance(block, &author, &total_reward)
+        let total_reward = self.block_reward(block.header().number())
+            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
+        self.machine.add_balance(block, &author, total_reward)
+    }
+
+    fn block_reward(&self, _block_number: u64) -> u64 {
+        self.params.block_reward
+    }
+
+    fn recommended_confirmation(&self) -> u32 {
+        1
     }
 }

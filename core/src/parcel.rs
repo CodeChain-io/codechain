@@ -25,7 +25,7 @@ use heapsize::HeapSizeOf;
 use primitives::H256;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::scheme::CommonParams;
+use crate::scheme::CommonParams;
 
 /// Signed parcel information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -166,6 +166,17 @@ impl UnverifiedParcel {
                     Transaction::AssetDecompose {
                         ..
                     } => {}
+                    Transaction::AssetUnwrapCCC {
+                        ..
+                    } => {}
+                }
+            }
+            Action::WrapCCC {
+                amount,
+                ..
+            } => {
+                if amount == &0 {
+                    return Err(ParcelError::ZeroAmount)
                 }
             }
             _ => {}
@@ -290,8 +301,8 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    seq: 0.into(),
-                    fee: 10.into(),
+                    seq: 0,
+                    fee: 10,
                     action: Action::CreateShard,
                     network_id: "tc".into(),
                 },
@@ -311,7 +322,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
-                amount: Some(10000.into()),
+                amount: Some(10000),
             },
             registrar: None,
         });
@@ -326,7 +337,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
-                amount: Some(10000.into()),
+                amount: Some(10000),
             },
             registrar: None,
         });
@@ -350,7 +361,7 @@ mod tests {
     fn encode_and_decode_payment_action() {
         rlp_encode_and_decode_test!(Action::Payment {
             receiver: Address::random(),
-            amount: 300.into(),
+            amount: 300,
         });
     }
 
@@ -359,12 +370,12 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    seq: 30.into(),
-                    fee: 40.into(),
+                    seq: 30,
+                    fee: 40,
                     network_id: "tc".into(),
                     action: Action::Payment {
                         receiver: Address::random(),
-                        amount: 300.into(),
+                        amount: 300,
                     },
                 },
                 sig: Signature::default(),
@@ -379,8 +390,8 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    seq: 30.into(),
-                    fee: 40.into(),
+                    seq: 30,
+                    fee: 40,
                     network_id: "tc".into(),
                     action: Action::SetRegularKey {
                         key: Public::random(),
@@ -398,8 +409,8 @@ mod tests {
         rlp_encode_and_decode_test!(
             UnverifiedParcel {
                 unsigned: Parcel {
-                    seq: 30.into(),
-                    fee: 40.into(),
+                    seq: 30,
+                    fee: 40,
                     network_id: "tc".into(),
                     action: Action::CreateShard,
                 },

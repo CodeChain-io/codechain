@@ -20,8 +20,8 @@ use ctypes::invoice::Invoice;
 use primitives::{Bytes, H256};
 use rlp::{self, Decodable, DecoderError, Encodable, UntrustedRlp};
 
-use super::super::{StateResult, TopLevelState, TopState, TopStateInfo};
 use super::ActionHandler;
+use crate::{StateResult, TopLevelState, TopState, TopStateView};
 
 const ACTION_ID: u8 = 0;
 
@@ -73,7 +73,8 @@ impl ActionHandler for HitHandler {
     /// `bytes` must be valid encoding of HitAction
     fn execute(&self, bytes: &Bytes, state: &mut TopLevelState) -> Option<StateResult<Invoice>> {
         HitAction::decode(&UntrustedRlp::new(bytes)).ok().map(|action| {
-            let prev_counter: u32 = rlp::decode(&state.action_data(&self.address())?);
+            let action_data = state.action_data(&self.address())?.unwrap_or_default();
+            let prev_counter: u32 = rlp::decode(&*action_data);
             let increase = action.increase as u32;
             state.update_action_data(&self.address(), (prev_counter + increase).rlp_bytes().to_vec())?;
             Ok(Invoice::Success)

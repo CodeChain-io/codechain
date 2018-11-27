@@ -24,7 +24,7 @@ use ccore::{MinerOptions, StratumConfig};
 use ckey::PlatformAddress;
 use clap;
 use cnetwork::{FilterEntry, NetworkConfig, SocketAddr};
-use rpc::{RpcHttpConfig, RpcIpcConfig, RpcWsConfig};
+use crate::rpc::{RpcHttpConfig, RpcIpcConfig, RpcWsConfig};
 use toml;
 
 pub use self::chain_type::ChainType;

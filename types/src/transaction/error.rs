@@ -17,20 +17,20 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::Address;
-use primitives::{H160, H256, U256};
+use primitives::{H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::util::unexpected::Mismatch;
-use super::super::ShardId;
 use super::Timelock;
+use crate::util::unexpected::Mismatch;
+use crate::ShardId;
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]
 pub enum Error {
     InvalidAssetAmount {
         address: H256,
-        expected: U256,
-        got: U256,
+        expected: u64,
+        got: u64,
     },
     /// Desired input asset not found
     AssetNotFound(H256),
@@ -56,15 +56,15 @@ pub enum Error {
     EmptyInput,
     InvalidDecomposedInput {
         address: H256,
-        got: U256,
+        got: u64,
     },
     InvalidComposedOutput {
-        got: U256,
+        got: u64,
     },
     InvalidDecomposedOutput {
         address: H256,
-        expected: U256,
-        got: U256,
+        expected: u64,
+        got: u64,
     },
     EmptyOutput,
     Timelocked {

@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::client::{BlockInfo, TransactionInfo};
-use super::super::consensus::CodeChainEngine;
-use super::super::error::Error;
-use super::super::header::Header;
 use super::verification;
+use crate::client::{BlockInfo, TransactionInfo};
+use crate::consensus::CodeChainEngine;
+use crate::error::Error;
+use crate::header::Header;
 
 /// Should be used to verify blocks.
 pub trait Verifier<C>: Send + Sync

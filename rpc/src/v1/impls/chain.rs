@@ -20,12 +20,13 @@ use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
     Shard, SignedParcel, UnverifiedParcel,
 };
+use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::Action;
 use ctypes::{BlockNumber, ShardId};
-use primitives::{H256, U256};
+use primitives::H256;
 use rlp::{DecoderError, UntrustedRlp};
 
 use jsonrpc_core::Result;
@@ -47,10 +48,10 @@ where
     C: AssetClient + MiningBlockChainClient + Shard + RegularKey + RegularKeyOwner + ExecuteClient + EngineInfo,
     M: MinerService,
 {
-    pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
+    pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
         ChainClient {
-            client: client.clone(),
-            miner: miner.clone(),
+            client,
+            miner,
         }
     }
 }
@@ -109,14 +110,20 @@ where
         Ok(self.client.transaction_invoices(&transaction_hash))
     }
 
-    fn get_asset_scheme_by_hash(&self, transaction_hash: H256, shard_id: ShardId) -> Result<Option<AssetScheme>> {
+    fn get_asset_scheme_by_hash(
+        &self,
+        transaction_hash: H256,
+        shard_id: ShardId,
+        block_number: Option<u64>,
+    ) -> Result<Option<AssetScheme>> {
         let address = AssetSchemeAddress::new(transaction_hash, shard_id);
-        self.get_asset_scheme_by_type(address.into())
+        self.get_asset_scheme_by_type(address.into(), block_number)
     }
 
-    fn get_asset_scheme_by_type(&self, asset_type: H256) -> Result<Option<AssetScheme>> {
+    fn get_asset_scheme_by_type(&self, asset_type: H256, block_number: Option<u64>) -> Result<Option<AssetScheme>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         match AssetSchemeAddress::from_hash(asset_type) {
-            Some(address) => self.client.get_asset_scheme(address).map_err(errors::parcel_state),
+            Some(address) => self.client.get_asset_scheme(address, block_id).map_err(errors::parcel_state),
             None => Ok(None),
         }
     }
@@ -137,16 +144,16 @@ where
         self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::parcel_state)
     }
 
-    fn get_seq(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
+    fn get_seq(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<u64>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let address = address.try_address().map_err(errors::core)?;
         Ok(self.client.seq(address, block_id))
     }
 
-    fn get_balance(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<U256>> {
+    fn get_balance(&self, aaddress: PlatformAddress, block_number: Option<u64>) -> Result<Option<Uint>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        let address = address.try_address().map_err(errors::core)?;
-        Ok(self.client.balance(address, block_id.into()))
+        let address = aaddress.try_address().map_err(errors::core)?;
+        Ok(self.client.balance(address, block_id.into()).map(Into::into))
     }
 
     fn get_regular_key(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<Public>> {
@@ -162,6 +169,10 @@ where
             .client
             .regular_key_owner(&public_to_address(&public), block_id.into())
             .and_then(|address| Some(PlatformAddress::new_v1(network_id, address))))
+    }
+
+    fn get_genesis_accounts(&self) -> Result<Vec<PlatformAddress>> {
+        Ok(self.client.genesis_accounts())
     }
 
     fn get_number_of_shards(&self, block_number: Option<u64>) -> Result<Option<ShardId>> {
@@ -208,13 +219,8 @@ where
         Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
     }
 
-    fn get_coinbase(&self) -> Result<Option<PlatformAddress>> {
-        if self.miner.authoring_params().author.is_zero() {
-            Ok(None)
-        } else {
-            let network_id = self.client.common_params().network_id;
-            Ok(Some(PlatformAddress::new_v1(network_id, self.miner.authoring_params().author)))
-        }
+    fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {
+        Ok(self.client.mining_reward(block_number))
     }
 
     fn get_network_id(&self) -> Result<NetworkId> {

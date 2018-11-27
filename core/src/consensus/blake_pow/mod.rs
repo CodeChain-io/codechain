@@ -26,12 +26,12 @@ use primitives::U256;
 use rlp::UntrustedRlp;
 
 use self::params::BlakePoWParams;
-use super::super::block::{ExecutedBlock, IsBlock};
-use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::EngineType;
-use super::super::error::{BlockError, Error};
-use super::super::header::Header;
 use super::ConsensusEngine;
+use crate::block::{ExecutedBlock, IsBlock};
+use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::EngineType;
+use crate::error::{BlockError, Error};
+use crate::header::Header;
 
 /// BlakePoW specific seal
 #[derive(Debug, PartialEq)]
@@ -163,11 +163,20 @@ impl ConsensusEngine<CodeChainMachine> for BlakePoW {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        let total_reward = block.parcels().iter().fold(self.params.block_reward, |sum, parcel| sum + parcel.fee);
-        self.machine.add_balance(block, &author, &total_reward)
+        let total_reward = self.block_reward(block.header().number())
+            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
+        self.machine.add_balance(block, &author, total_reward)
     }
 
     fn score_to_target(&self, score: &U256) -> U256 {
         (U256::max_value() - *score) / *score
+    }
+
+    fn block_reward(&self, _block_number: u64) -> u64 {
+        self.params.block_reward
+    }
+
+    fn recommended_confirmation(&self) -> u32 {
+        self.params.recommmended_confirmation
     }
 }

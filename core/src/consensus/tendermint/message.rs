@@ -21,10 +21,10 @@ use ckey::{public_to_address, recover, Address, Signature};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::super::error::Error;
-use super::super::super::header::Header;
 use super::super::vote_collector::Message;
 use super::{BlockHash, Height, Step, View};
+use crate::error::Error;
+use crate::header::Header;
 
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]

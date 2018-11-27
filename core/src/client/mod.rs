@@ -18,6 +18,7 @@ mod chain_notify;
 mod client;
 mod config;
 mod error;
+mod importer;
 mod test_client;
 
 pub use self::chain_notify::ChainNotify;
@@ -29,10 +30,10 @@ pub use self::test_client::TestBlockChainClient;
 
 use std::sync::Arc;
 
-use ckey::{Address, Public};
+use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateInfo};
+use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateView};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
@@ -40,18 +41,20 @@ use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H256, U256};
 
-use super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::blockchain_info::BlockChainInfo;
-use super::encoded;
-use super::error::{BlockImportError, Error as CoreError};
-use super::parcel::{LocalizedParcel, SignedParcel};
-use super::scheme::CommonParams;
-use super::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
+use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
+use crate::blockchain_info::BlockChainInfo;
+use crate::encoded;
+use crate::error::{BlockImportError, Error as CoreError};
+use crate::parcel::{LocalizedParcel, SignedParcel};
+use crate::scheme::CommonParams;
+use crate::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
     /// Get blockchain information.
     fn chain_info(&self) -> BlockChainInfo;
+    /// Get genesis accounts
+    fn genesis_accounts(&self) -> Vec<PlatformAddress>;
 }
 
 /// Provides various information on a block by it's ID
@@ -89,10 +92,13 @@ pub trait TransactionInfo {
 
 pub trait EngineInfo: Send + Sync {
     fn common_params(&self) -> &CommonParams;
+    fn block_reward(&self, block_number: u64) -> u64;
+    fn mining_reward(&self, block_number: u64) -> Option<u64>;
+    fn recommended_confirmation(&self) -> u32;
 }
 
 /// Client facilities used by internally sealing Engines.
-pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock {
+pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock + BlockInfo {
     /// Make a new block and seal it.
     fn update_sealing(&self);
 
@@ -107,10 +113,10 @@ pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock {
 pub trait Seq {
     /// Attempt to get address seq at given block.
     /// May not fail on BlockId::Latest.
-    fn seq(&self, address: &Address, id: BlockId) -> Option<U256>;
+    fn seq(&self, address: &Address, id: BlockId) -> Option<u64>;
 
     /// Get address seq at the latest block's state.
-    fn latest_seq(&self, address: &Address) -> U256 {
+    fn latest_seq(&self, address: &Address) -> u64 {
         self.seq(address, BlockId::Latest).expect(
             "seq will return Some when given BlockId::Latest. seq was given BlockId::Latest. \
              Therefore seq has returned Some; qed",
@@ -121,14 +127,14 @@ pub trait Seq {
 /// State information to be used during client query
 pub enum StateOrBlock {
     /// State to be used, may be pending
-    State(Box<TopStateInfo>),
+    State(Box<TopStateView>),
 
     /// Id of an existing block from a chain to get state from
     Block(BlockId),
 }
 
-impl From<Box<TopStateInfo>> for StateOrBlock {
-    fn from(info: Box<TopStateInfo>) -> StateOrBlock {
+impl From<Box<TopStateView>> for StateOrBlock {
+    fn from(info: Box<TopStateView>) -> StateOrBlock {
         StateOrBlock::State(info)
     }
 }
@@ -145,10 +151,10 @@ pub trait Balance {
     ///
     /// May not return None if given BlockId::Latest.
     /// Returns None if and only if the block's root hash has been pruned from the DB.
-    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256>;
+    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<u64>;
 
     /// Get address balance at the latest block's state.
-    fn latest_balance(&self, address: &Address) -> U256 {
+    fn latest_balance(&self, address: &Address) -> u64 {
         self.balance(address, BlockId::Latest.into()).expect(
             "balance will return Some if given BlockId::Latest. balance was given BlockId::Latest \
              Therefore balance has returned Some; qed",
@@ -267,7 +273,7 @@ pub trait DatabaseClient {
 
 /// Provides methods to access asset
 pub trait AssetClient {
-    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
+    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress, id: BlockId) -> TrieResult<Option<AssetScheme>>;
 
     fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<OwnedAsset>>;
 

@@ -19,11 +19,10 @@ use std::ops::Deref;
 use std::sync::{Arc, Weak};
 
 use parking_lot::Mutex;
-use rlp::Encodable;
 use time::Duration;
 
-use super::super::extension::{Api, Extension, Result, TimerToken};
-use super::super::NodeId;
+use crate::extension::{Api, Extension, Result, TimerToken};
+use crate::NodeId;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Call {
@@ -105,11 +104,6 @@ impl Api for TestApi {
         }
         self.calls.lock().push_back(Call::ClearTimer(token));
         Ok(())
-    }
-
-    fn send_local_message(&self, message: &Encodable) {
-        let message = message.rlp_bytes().into_vec();
-        self.calls.lock().push_back(Call::SendLocalMessage(message));
     }
 }
 

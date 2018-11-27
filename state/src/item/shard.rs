@@ -20,7 +20,7 @@ use ctypes::ShardId;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::local_cache::CacheableItem;
+use crate::CacheableItem;
 
 #[derive(Clone, Debug)]
 pub struct Shard {
@@ -105,7 +105,7 @@ impl Decodable for Shard {
     }
 }
 
-#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ShardAddress(H256);
 
 impl_address!(TOP, ShardAddress, PREFIX);

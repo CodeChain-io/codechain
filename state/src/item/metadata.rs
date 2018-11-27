@@ -19,7 +19,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use ctypes::ShardId;
 
-use super::local_cache::CacheableItem;
+use crate::CacheableItem;
 
 #[derive(Clone, Debug)]
 pub struct Metadata {
@@ -82,7 +82,7 @@ impl Decodable for Metadata {
     }
 }
 
-#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MetadataAddress(H256);
 
 impl_address!(TOP, MetadataAddress, PREFIX);

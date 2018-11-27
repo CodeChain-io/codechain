@@ -22,8 +22,8 @@ use rlp::Encodable;
 
 use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
 
-use executor::{execute, Config, RuntimeError, ScriptResult};
-use instruction::Instruction;
+use crate::executor::{execute, Config, RuntimeError, ScriptResult};
+use crate::instruction::Instruction;
 
 use super::executor::get_test_client;
 
@@ -41,7 +41,7 @@ fn valid_multi_sig_0_of_2() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -81,7 +81,7 @@ fn valid_multi_sig_1_of_2() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -132,7 +132,7 @@ fn valid_multi_sig_2_of_2() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -185,7 +185,7 @@ fn invalid_multi_sig_1_of_2() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -237,7 +237,7 @@ fn invalid_multi_sig_2_of_2() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -290,7 +290,7 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -353,7 +353,7 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -406,7 +406,7 @@ fn invalid_multi_sig_with_less_sig_than_m() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -457,7 +457,7 @@ fn invalid_multi_sig_with_more_sig_than_m() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),
@@ -510,7 +510,7 @@ fn invalid_multi_sig_with_too_many_arg() {
             transaction_hash: H256::default(),
             index: 0,
             asset_type: H256::default(),
-            amount: 0.into(),
+            amount: 0,
         },
         timelock: None,
         lock_script: Vec::new(),

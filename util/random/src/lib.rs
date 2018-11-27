@@ -16,7 +16,7 @@
 
 extern crate rand;
 
-pub use self::random::new;
+pub use crate::random::new;
 pub use rand::Rng;
 
 #[cfg(not(test))]

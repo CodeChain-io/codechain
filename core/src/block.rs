@@ -28,10 +28,10 @@ use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::consensus::CodeChainEngine;
-use super::error::{BlockError, Error};
-use super::header::{Header, Seal};
-use super::parcel::{SignedParcel, UnverifiedParcel};
+use crate::consensus::CodeChainEngine;
+use crate::error::{BlockError, Error};
+use crate::header::{Header, Seal};
+use crate::parcel::{SignedParcel, UnverifiedParcel};
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]
@@ -192,16 +192,15 @@ impl<'x> OpenBlock<'x> {
             warn!("Encountered error on closing the block: {}", e);
             return Err(e)
         }
-
-        if let Err(e) = self.block.state.commit() {
+        let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
-            return Err(StateError::from(e).into())
-        }
+            StateError::from(e)
+        })?;
         self.block.header.set_parcels_root(skewed_merkle_root(
             parent_parcels_root,
             self.block.parcels.iter().map(|e| e.rlp_bytes()),
         ));
-        self.block.header.set_state_root(self.block.state.root().clone());
+        self.block.header.set_state_root(state_root);
         self.block.header.set_invoices_root(skewed_merkle_root(
             parent_invoices_root,
             self.block.invoices.iter().map(|invoice| invoice.rlp_bytes()),
@@ -224,10 +223,10 @@ impl<'x> OpenBlock<'x> {
             return Err(e)
         }
 
-        if let Err(e) = self.block.state.commit() {
+        let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
-            return Err(StateError::from(e).into())
-        }
+            StateError::from(e)
+        })?;
         if self.block.header.parcels_root().is_zero() || self.block.header.parcels_root() == &BLAKE_NULL_RLP {
             self.block.header.set_parcels_root(skewed_merkle_root(
                 parent_parcels_root,
@@ -248,7 +247,7 @@ impl<'x> OpenBlock<'x> {
             self.block.header.invoices_root(),
             &skewed_merkle_root(parent_invoices_root, self.block.invoices.iter().map(Encodable::rlp_bytes),)
         );
-        self.block.header.set_state_root(self.block.state.root().clone());
+        self.block.header.set_state_root(state_root);
 
         Ok(LockedBlock {
             block: self.block,
@@ -415,24 +414,6 @@ impl IsBlock for SealedBlock {
     }
 }
 
-/// Trait for a object that has a state database.
-pub trait Drain {
-    /// Drop this object and return the underlying database.
-    fn drain(self) -> StateDB;
-}
-
-impl Drain for LockedBlock {
-    fn drain(self) -> StateDB {
-        self.block.state.drop().1
-    }
-}
-
-impl Drain for SealedBlock {
-    fn drain(self) -> StateDB {
-        self.block.state.drop().1
-    }
-}
-
 /// Enact the block given by block header, parcels and uncles
 pub fn enact<C: ChainTimeInfo>(
     header: &Header,
@@ -453,11 +434,10 @@ pub fn enact<C: ChainTimeInfo>(
 
 #[cfg(test)]
 mod tests {
-    use ckey::Address;
+    use crate::scheme::Scheme;
+    use crate::tests::helpers::get_temp_state_db;
 
-    use super::super::scheme::Scheme;
-    use super::super::tests::helpers::get_temp_state_db;
-    use super::OpenBlock;
+    use super::*;
 
     #[test]
     fn open_block() {

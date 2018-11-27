@@ -47,9 +47,9 @@ mod block;
 mod parcel;
 mod snapshot;
 
-pub use self::block::BlockSyncExtension;
-pub use self::parcel::ParcelSyncExtension;
-pub use self::snapshot::SnapshotService;
+pub use crate::block::BlockSyncExtension;
+pub use crate::parcel::ParcelSyncExtension;
+pub use crate::snapshot::SnapshotService;
 
 #[cfg(test)]
 extern crate codechain_key as ckey;

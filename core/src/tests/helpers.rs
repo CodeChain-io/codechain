@@ -18,9 +18,9 @@ use cstate::StateDB;
 use primitives::{Bytes, H256, U256};
 use rlp::{self, RlpStream};
 
-use super::super::header::Header;
-use super::super::parcel::SignedParcel;
-use super::super::scheme::Scheme;
+use crate::header::Header;
+use crate::parcel::SignedParcel;
+use crate::scheme::Scheme;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);

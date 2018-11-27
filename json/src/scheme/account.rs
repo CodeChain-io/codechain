@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::uint::Uint;
+use crate::uint::Uint;
 
 /// Scheme account.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -37,8 +37,8 @@ mod tests {
     use primitives::U256;
     use serde_json;
 
-    use super::super::super::uint::Uint;
     use super::Account;
+    use crate::uint::Uint;
 
     #[test]
     fn account_deserialization() {

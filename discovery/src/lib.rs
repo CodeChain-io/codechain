@@ -33,5 +33,5 @@ extern crate codechain_network as cnetwork;
 mod kademlia;
 mod unstructured;
 
-pub use kademlia::{Config as KademliaConfig, Extension as KademliaExtension};
-pub use unstructured::{Config as UnstructuredConfig, Extension as UnstructuredExtension};
+pub use crate::kademlia::{Config as KademliaConfig, Extension as KademliaExtension};
+pub use crate::unstructured::{Config as UnstructuredConfig, Extension as UnstructuredExtension};

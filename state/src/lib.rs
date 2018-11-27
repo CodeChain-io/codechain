@@ -26,6 +26,7 @@ extern crate hashdb;
 extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_memorydb;
+extern crate lru_cache;
 #[macro_use]
 extern crate log;
 extern crate parking_lot;
@@ -40,6 +41,7 @@ extern crate util_error;
 extern crate rlp_derive;
 
 mod action_handler;
+mod cache;
 mod checkpoint;
 mod db;
 mod error;
@@ -50,19 +52,20 @@ mod traits;
 #[cfg(test)]
 pub mod tests;
 
-pub use action_handler::{ActionHandler, HitHandler};
-pub use checkpoint::{CheckpointId, StateWithCheckpoint};
-pub use db::StateDB;
-pub use error::Error as StateError;
-pub use impls::{ShardLevelState, TopLevelState};
-pub use item::account::Account;
-pub use item::action_data::ActionData;
-pub use item::asset::{Asset, OwnedAsset, OwnedAssetAddress};
-pub use item::asset_scheme::{AssetScheme, AssetSchemeAddress};
-pub use item::local_cache::{CacheableItem, LocalCache};
-pub use item::metadata::{Metadata, MetadataAddress};
-pub use item::regular_account::{RegularAccount, RegularAccountAddress};
-pub use item::shard::{Shard, ShardAddress};
-pub use traits::{ShardState, ShardStateInfo, StateWithCache, TopState, TopStateInfo};
+pub use crate::action_handler::{ActionHandler, HitHandler};
+pub use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
+pub use crate::db::StateDB;
+pub use crate::error::Error as StateError;
+pub use crate::impls::{ShardLevelState, TopLevelState};
+pub use crate::item::account::Account;
+pub use crate::item::action_data::ActionData;
+pub use crate::item::asset::{Asset, OwnedAsset, OwnedAssetAddress};
+pub use crate::item::asset_scheme::{AssetScheme, AssetSchemeAddress};
+pub use crate::item::metadata::{Metadata, MetadataAddress};
+pub use crate::item::regular_account::{RegularAccount, RegularAccountAddress};
+pub use crate::item::shard::{Shard, ShardAddress};
+pub use crate::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
+
+use crate::cache::CacheableItem;
 
 pub type StateResult<T> = Result<T, StateError>;

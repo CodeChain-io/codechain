@@ -35,7 +35,7 @@ use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{public_to_address, Address, Generator, NetworkId, Random};
+use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
@@ -50,22 +50,22 @@ use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
 
-use super::super::block::{ClosedBlock, OpenBlock, SealedBlock};
-use super::super::blockchain_info::BlockChainInfo;
-use super::super::client::ImportResult;
-use super::super::client::{
+use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
+use crate::blockchain_info::BlockChainInfo;
+use crate::client::ImportResult;
+use crate::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
     ImportSealedBlock, MiningBlockChainClient, ParcelInfo, PrepareOpenBlock, RegularKeyOwner, ReopenBlock, Seq,
     StateOrBlock, TransactionInfo,
 };
-use super::super::db::{COL_STATE, NUM_COLUMNS};
-use super::super::encoded;
-use super::super::error::BlockImportError;
-use super::super::header::Header as BlockHeader;
-use super::super::miner::{Miner, MinerService, ParcelImportResult};
-use super::super::parcel::{LocalizedParcel, SignedParcel};
-use super::super::scheme::Scheme;
-use super::super::types::{BlockId, ParcelId, VerificationQueueInfo as QueueInfo};
+use crate::db::{COL_STATE, NUM_COLUMNS};
+use crate::encoded;
+use crate::error::BlockImportError;
+use crate::header::Header as BlockHeader;
+use crate::miner::{Miner, MinerService, ParcelImportResult};
+use crate::parcel::{LocalizedParcel, SignedParcel};
+use crate::scheme::Scheme;
+use crate::types::{BlockId, ParcelId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
 pub struct TestBlockChainClient {
@@ -84,9 +84,9 @@ pub struct TestBlockChainClient {
     /// Score.
     pub score: RwLock<U256>,
     /// Balances.
-    pub balances: RwLock<HashMap<Address, U256>>,
+    pub balances: RwLock<HashMap<Address, u64>>,
     /// Seqs.
-    pub seqs: RwLock<HashMap<Address, U256>>,
+    pub seqs: RwLock<HashMap<Address, u64>>,
     /// Storage.
     pub storage: RwLock<HashMap<(Address, H256), H256>>,
     /// Block queue size.
@@ -157,12 +157,12 @@ impl TestBlockChainClient {
     }
 
     /// Set the balance of account `address` to `balance`.
-    pub fn set_balance(&self, address: Address, balance: U256) {
+    pub fn set_balance(&self, address: Address, balance: u64) {
         self.balances.write().insert(address, balance);
     }
 
     /// Set seq of account `address` to `seq`.
-    pub fn set_seq(&self, address: Address, seq: U256) {
+    pub fn set_seq(&self, address: Address, seq: u64) {
         self.seqs.write().insert(address, seq);
     }
 
@@ -194,14 +194,14 @@ impl TestBlockChainClient {
             for _ in 0..parcel_length {
                 let keypair = Random.generate().unwrap();
                 // Update seqs value
-                self.seqs.write().insert(keypair.address(), 0.into());
+                self.seqs.write().insert(keypair.address(), 0);
                 let parcel = Parcel {
-                    seq: 0.into(),
-                    fee: U256::from(10),
+                    seq: 0,
+                    fee: 10,
                     network_id: NetworkId::default(),
                     action: Action::Payment {
                         receiver: Address::random(),
-                        amount: 0.into(),
+                        amount: 0,
                     },
                 };
                 let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
@@ -262,17 +262,17 @@ impl TestBlockChainClient {
     pub fn insert_parcel_to_pool(&self) -> H256 {
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
-            seq: 0.into(),
-            fee: U256::from(10),
+            seq: 0,
+            fee: 10,
             network_id: NetworkId::default(),
             action: Action::Payment {
                 receiver: Address::random(),
-                amount: 0.into(),
+                amount: 0,
             },
         };
         let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
         let sender_address = public_to_address(&signed_parcel.signer_public());
-        self.set_balance(sender_address, 10_000_000_000_000_000_000u64.into());
+        self.set_balance(sender_address, 10_000_000_000_000_000_000);
         let hash = signed_parcel.hash();
         let res = self.miner.import_external_parcels(self, vec![signed_parcel.into()]);
         let res = res.into_iter().next().unwrap().expect("Successful import");
@@ -323,25 +323,25 @@ impl BlockProducer for TestBlockChainClient {}
 impl MiningBlockChainClient for TestBlockChainClient {}
 
 impl Seq for TestBlockChainClient {
-    fn seq(&self, address: &Address, id: BlockId) -> Option<U256> {
+    fn seq(&self, address: &Address, id: BlockId) -> Option<u64> {
         match id {
-            BlockId::Latest => Some(self.seqs.read().get(address).cloned().unwrap_or_else(U256::zero)),
+            BlockId::Latest => Some(self.seqs.read().get(address).cloned().unwrap_or(0)),
             _ => None,
         }
     }
 }
 
 impl Balance for TestBlockChainClient {
-    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<U256> {
+    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<u64> {
         match state {
             StateOrBlock::Block(BlockId::Latest) | StateOrBlock::State(_) => {
-                Some(self.balances.read().get(address).cloned().unwrap_or_else(U256::zero))
+                Some(self.balances.read().get(address).cloned().unwrap_or(0))
             }
             _ => None,
         }
     }
 
-    fn latest_balance(&self, address: &Address) -> U256 {
+    fn latest_balance(&self, address: &Address) -> u64 {
         self.balance(address, BlockId::Latest.into()).unwrap()
     }
 }
@@ -365,6 +365,10 @@ impl ChainInfo for TestBlockChainClient {
             best_block_number: number,
             best_block_timestamp: number,
         }
+    }
+
+    fn genesis_accounts(&self) -> Vec<PlatformAddress> {
+        unimplemented!()
     }
 }
 

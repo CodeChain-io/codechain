@@ -19,7 +19,7 @@ use std::str::FromStr;
 
 use primitives::U256;
 use serde::de::{Error, Unexpected, Visitor};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Lenient uint json deserialization for test json files.
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
@@ -34,6 +34,18 @@ impl From<Uint> for U256 {
 impl From<Uint> for u64 {
     fn from(f: Uint) -> Self {
         Self::from(f.0)
+    }
+}
+
+impl From<Uint> for u32 {
+    fn from(f: Uint) -> Self {
+        Self::from(f.0)
+    }
+}
+
+impl From<u64> for Uint {
+    fn from(f: u64) -> Self {
+        Uint(f.into())
     }
 }
 
@@ -55,6 +67,14 @@ impl<'a> Deserialize<'a> for Uint {
     where
         D: Deserializer<'a>, {
         deserializer.deserialize_any(UintVisitor)
+    }
+}
+
+impl Serialize for Uint {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        self.0.serialize(serializer)
     }
 }
 
@@ -123,13 +143,13 @@ where
 
 #[cfg(test)]
 mod test {
+    use super::Uint;
     use primitives::U256;
     use serde_json;
-    use uint::Uint;
 
     #[test]
     fn uint_deserialization() {
-        let s = r#"["0xa", "10", "", "0x", 0]"#;
+        let s = r#"["0xa", "10", "", "0x", 0, "0xffffffffffffffff"]"#;
         let deserialized: Vec<Uint> = serde_json::from_str(s).unwrap();
         assert_eq!(
             deserialized,
@@ -139,6 +159,7 @@ mod test {
                 Uint(U256::from(0)),
                 Uint(U256::from(0)),
                 Uint(U256::from(0)),
+                ::std::u64::MAX.into(),
             ]
         );
     }
@@ -146,5 +167,12 @@ mod test {
     #[test]
     fn uint_into() {
         assert_eq!(U256::from(10), Uint(U256::from(10)).into());
+    }
+
+    #[test]
+    fn uint_serialization() {
+        let v: Vec<Uint> = vec![0.into(), 1.into(), 100.into(), ::std::u64::MAX.into()];
+        let serialized = serde_json::to_string(&v).unwrap();
+        assert_eq!(r#"["0x0","0x1","0x64","0xffffffffffffffff"]"#, serialized);
     }
 }

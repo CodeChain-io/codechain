@@ -21,12 +21,12 @@ use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::{blake128, blake256, blake256_with_key};
 use ckey::{Address, NetworkId};
 use heapsize::HeapSizeOf;
-use primitives::{Bytes, H160, H256, U128, U256};
+use primitives::{Bytes, H160, H256, U128};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::util::tag::Tag;
-use super::super::ShardId;
 use super::error::Error;
+use crate::util::tag::Tag;
+use crate::ShardId;
 
 
 pub trait PartialHashing {
@@ -44,7 +44,7 @@ pub struct AssetOutPoint {
     pub transaction_hash: H256,
     pub index: usize,
     pub asset_type: H256,
-    pub amount: U256,
+    pub amount: u64,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
@@ -103,7 +103,7 @@ pub struct AssetTransferOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub asset_type: H256,
-    pub amount: U256,
+    pub amount: u64,
 }
 
 /// Parcel transaction type.
@@ -136,6 +136,10 @@ pub enum Transaction {
         input: AssetTransferInput,
         outputs: Vec<AssetTransferOutput>,
     },
+    AssetUnwrapCCC {
+        network_id: NetworkId,
+        burn: AssetTransferInput,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -143,7 +147,26 @@ pub enum Transaction {
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
-    pub amount: Option<U256>,
+    pub amount: Option<u64>,
+}
+
+/// Parcel transaction type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InnerTransaction {
+    General(Transaction),
+    AssetWrapCCC {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        parcel_hash: H256,
+        output: AssetWrapCCCOutput,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssetWrapCCCOutput {
+    pub lock_script_hash: H160,
+    pub parameters: Vec<Bytes>,
+    pub amount: u64,
 }
 
 impl Transaction {
@@ -166,6 +189,10 @@ impl Transaction {
                 ..
             } => *network_id,
             Transaction::AssetDecompose {
+                network_id,
+                ..
+            } => *network_id,
+            Transaction::AssetUnwrapCCC {
                 network_id,
                 ..
             } => *network_id,
@@ -212,6 +239,10 @@ impl Transaction {
                 shards.dedup();
                 shards
             }
+            Transaction::AssetUnwrapCCC {
+                burn,
+                ..
+            } => vec![burn.related_shard()],
         }
     }
 
@@ -231,17 +262,17 @@ impl Transaction {
                     return Err(Error::InconsistentTransactionInOut)
                 }
                 for burn in burns {
-                    if burn.prev_out.amount.is_zero() {
+                    if burn.prev_out.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
                 for input in inputs {
-                    if input.prev_out.amount.is_zero() {
+                    if input.prev_out.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
                 for output in outputs {
-                    if output.amount.is_zero() {
+                    if output.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
@@ -251,7 +282,7 @@ impl Transaction {
                 output,
                 ..
             } => match output.amount {
-                Some(amount) if amount.is_zero() => Err(Error::ZeroAmount),
+                Some(amount) if amount == 0 => Err(Error::ZeroAmount),
                 _ => Ok(()),
             },
             Transaction::AssetCompose {
@@ -263,12 +294,12 @@ impl Transaction {
                     return Err(Error::EmptyInput)
                 }
                 for input in inputs {
-                    if input.prev_out.amount.is_zero() {
+                    if input.prev_out.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
                 match output.amount {
-                    Some(amount) if amount == 1.into() => Ok(()),
+                    Some(amount) if amount == 1 => Ok(()),
                     _ => Err(Error::InvalidComposedOutput {
                         got: output.amount.unwrap_or_default(),
                     }),
@@ -279,7 +310,7 @@ impl Transaction {
                 outputs,
                 ..
             } => {
-                if input.prev_out.amount != 1.into() {
+                if input.prev_out.amount != 1 {
                     return Err(Error::InvalidDecomposedInput {
                         address: input.prev_out.asset_type,
                         got: input.prev_out.amount,
@@ -289,13 +320,117 @@ impl Transaction {
                     return Err(Error::EmptyOutput)
                 }
                 for output in outputs {
-                    if output.amount.is_zero() {
+                    if output.amount == 0 {
                         return Err(Error::ZeroAmount)
                     }
                 }
                 Ok(())
             }
+            Transaction::AssetUnwrapCCC {
+                burn,
+                ..
+            } => {
+                if burn.prev_out.amount == 0 {
+                    return Err(Error::ZeroAmount)
+                }
+                if !burn.prev_out.asset_type.ends_with(&[0; 28]) {
+                    return Err(Error::InvalidAssetType(burn.prev_out.asset_type))
+                }
+                Ok(())
+            }
         }
+    }
+
+    pub fn unwrapped_amount(&self) -> u64 {
+        match self {
+            Transaction::AssetUnwrapCCC {
+                burn,
+                ..
+            } => burn.prev_out.amount,
+            _ => 0,
+        }
+    }
+
+    fn is_valid_output_index(&self, index: usize) -> bool {
+        match self {
+            Transaction::AssetMint {
+                ..
+            } => index == 0,
+            Transaction::AssetTransfer {
+                outputs,
+                ..
+            } => index < outputs.len(),
+            Transaction::AssetCompose {
+                ..
+            } => index == 0,
+            Transaction::AssetDecompose {
+                outputs,
+                ..
+            } => index < outputs.len(),
+            Transaction::AssetUnwrapCCC {
+                ..
+            } => false,
+        }
+    }
+
+    pub fn is_valid_shard_id_index(&self, index: usize, id: ShardId) -> bool {
+        if !self.is_valid_output_index(index) {
+            return false
+        }
+        match self {
+            Transaction::AssetMint {
+                shard_id,
+                ..
+            } => &id == shard_id,
+            Transaction::AssetTransfer {
+                outputs,
+                ..
+            } => id == outputs[index].related_shard(),
+            Transaction::AssetCompose {
+                shard_id,
+                ..
+            } => &id == shard_id,
+            Transaction::AssetDecompose {
+                outputs,
+                ..
+            } => id == outputs[index].related_shard(),
+            Transaction::AssetUnwrapCCC {
+                ..
+            } => unreachable!("UnwrapCCC doesn't have a valid index"),
+        }
+    }
+}
+
+impl InnerTransaction {
+    pub fn hash(&self) -> H256 {
+        match self {
+            InnerTransaction::General(transaction) => transaction.hash(),
+            InnerTransaction::AssetWrapCCC {
+                parcel_hash,
+                ..
+            } => *parcel_hash,
+        }
+    }
+
+    pub fn verify(&self) -> Result<(), Error> {
+        match self {
+            InnerTransaction::General(transaction) => transaction.verify(),
+            InnerTransaction::AssetWrapCCC {
+                output,
+                ..
+            } => {
+                if output.amount == 0 {
+                    return Err(Error::ZeroAmount)
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+impl From<Transaction> for InnerTransaction {
+    fn from(transaction: Transaction) -> Self {
+        InnerTransaction::General(transaction)
     }
 }
 
@@ -351,6 +486,10 @@ impl HeapSizeOf for Transaction {
                 outputs,
                 ..
             } => input.heap_size_of_children() + outputs.heap_size_of_children(),
+            Transaction::AssetUnwrapCCC {
+                burn,
+                ..
+            } => burn.heap_size_of_children(),
         }
     }
 }
@@ -530,12 +669,35 @@ impl PartialHashing for Transaction {
                     &blake128(tag.get_tag()),
                 ))
             }
+            Transaction::AssetUnwrapCCC {
+                network_id,
+                burn,
+            } => {
+                if !tag.sign_all_inputs || !tag.sign_all_outputs {
+                    return Err(HashingError::InvalidFilter)
+                }
+
+                Ok(blake256_with_key(
+                    &Transaction::AssetUnwrapCCC {
+                        network_id: *network_id,
+                        burn: AssetTransferInput {
+                            prev_out: burn.prev_out.clone(),
+                            timelock: burn.timelock,
+                            lock_script: Vec::new(),
+                            unlock_script: Vec::new(),
+                        },
+                    }
+                    .rlp_bytes(),
+                    &blake128(tag.get_tag()),
+                ))
+            }
             _ => unreachable!(),
         }
     }
 }
 
 type TransactionId = u8;
+const ASSET_UNWRAP_CCC_ID: TransactionId = 0x01;
 const ASSET_MINT_ID: TransactionId = 0x03;
 const ASSET_TRANSFER_ID: TransactionId = 0x04;
 const ASSET_COMPOSE_ID: TransactionId = 0x06;
@@ -596,6 +758,15 @@ impl Decodable for Transaction {
                     network_id: d.val_at(1)?,
                     input: d.val_at(2)?,
                     outputs: d.list_at(3)?,
+                })
+            }
+            ASSET_UNWRAP_CCC_ID => {
+                if d.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Transaction::AssetUnwrapCCC {
+                    network_id: d.val_at(1)?,
+                    burn: d.val_at(2)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -667,6 +838,10 @@ impl Encodable for Transaction {
                 input,
                 outputs,
             } => s.begin_list(4).append(&ASSET_DECOMPOSE_ID).append(network_id).append(input).append_list(outputs),
+            Transaction::AssetUnwrapCCC {
+                network_id,
+                burn,
+            } => s.begin_list(3).append(&ASSET_UNWRAP_CCC_ID).append(network_id).append(burn),
         };
     }
 }
@@ -706,7 +881,7 @@ mod tests {
             transaction_hash: H256::random(),
             index: 3,
             asset_type,
-            amount: 34.into(),
+            amount: 34,
         };
 
         assert_eq!(0xBEEF, p.related_shard());
@@ -721,7 +896,7 @@ mod tests {
             transaction_hash: H256::random(),
             index: 3,
             asset_type,
-            amount: 34.into(),
+            amount: 34,
         };
 
         let input = AssetTransferInput {
@@ -737,7 +912,7 @@ mod tests {
     #[test]
     fn _is_input_and_output_consistent() {
         let asset_type = H256::random();
-        let amount = 100.into();
+        let amount = 100;
 
         assert!(is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -770,8 +945,8 @@ mod tests {
             }
             asset_type
         };
-        let amount1 = 100.into();
-        let amount2 = 200.into();
+        let amount1 = 100;
+        let amount2 = 200;
 
         assert!(is_input_and_output_consistent(
             &[
@@ -825,8 +1000,8 @@ mod tests {
             }
             asset_type
         };
-        let amount1 = 100.into();
-        let amount2 = 200.into();
+        let amount1 = 100;
+        let amount2 = 200;
 
         assert!(is_input_and_output_consistent(
             &[
@@ -878,7 +1053,7 @@ mod tests {
     #[test]
     fn fail_if_output_has_more_asset() {
         let asset_type = H256::random();
-        let output_amount = 100.into();
+        let output_amount = 100;
         assert!(!is_input_and_output_consistent(
             &[],
             &[AssetTransferOutput {
@@ -893,7 +1068,7 @@ mod tests {
     #[test]
     fn fail_if_input_has_more_asset() {
         let asset_type = H256::random();
-        let input_amount = 100.into();
+        let input_amount = 100;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -914,8 +1089,8 @@ mod tests {
     #[test]
     fn fail_if_input_is_larger_than_output() {
         let asset_type = H256::random();
-        let input_amount = 100.into();
-        let output_amount = 80.into();
+        let input_amount = 100;
+        let output_amount = 80;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -941,8 +1116,8 @@ mod tests {
     #[test]
     fn fail_if_input_is_smaller_than_output() {
         let asset_type = H256::random();
-        let input_amount = 80.into();
-        let output_amount = 100.into();
+        let input_amount = 80;
+        let output_amount = 100;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -975,7 +1150,7 @@ mod tests {
                     transaction_hash: H256::default(),
                     index: 0,
                     asset_type: H256::default(),
-                    amount: 30.into(),
+                    amount: 30,
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -987,13 +1162,83 @@ mod tests {
     }
 
     #[test]
+    fn encode_and_decode_unwrapccc_transaction() {
+        let tx = Transaction::AssetUnwrapCCC {
+            network_id: NetworkId::default(),
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::default(),
+                    index: 0,
+                    asset_type: H256::zero(),
+                    amount: 30,
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+        };
+        rlp_encode_and_decode_test!(tx);
+    }
+
+    #[test]
+    fn verify_wrap_ccc_transaction_should_fail() {
+        let tx_zero_amount = InnerTransaction::AssetWrapCCC {
+            network_id: NetworkId::default(),
+            shard_id: 0,
+            parcel_hash: H256::random(),
+            output: AssetWrapCCCOutput {
+                lock_script_hash: H160::random(),
+                parameters: vec![],
+                amount: 0,
+            },
+        };
+        assert_eq!(tx_zero_amount.verify(), Err(Error::ZeroAmount));
+    }
+
+    #[test]
+    fn verify_unwrap_ccc_transaction_should_fail() {
+        let tx_zero_amount = Transaction::AssetUnwrapCCC {
+            network_id: NetworkId::default(),
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::default(),
+                    index: 0,
+                    asset_type: H256::zero(),
+                    amount: 0,
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+        };
+        assert_eq!(tx_zero_amount.verify(), Err(Error::ZeroAmount));
+
+        let invalid_asset_type = H256::random();
+        let tx_invalid_asset_type = Transaction::AssetUnwrapCCC {
+            network_id: NetworkId::default(),
+            burn: AssetTransferInput {
+                prev_out: AssetOutPoint {
+                    transaction_hash: H256::default(),
+                    index: 0,
+                    asset_type: invalid_asset_type,
+                    amount: 1,
+                },
+                timelock: None,
+                lock_script: vec![0x30, 0x01],
+                unlock_script: vec![],
+            },
+        };
+        assert_eq!(tx_invalid_asset_type.verify(), Err(Error::InvalidAssetType(invalid_asset_type)));
+    }
+
+    #[test]
     fn apply_long_filter() {
         let input = AssetTransferInput {
             prev_out: AssetOutPoint {
                 transaction_hash: H256::default(),
                 index: 0,
                 asset_type: H256::default(),
-                amount: 0.into(),
+                amount: 0,
             },
             timelock: None,
             lock_script: Vec::new(),
@@ -1005,7 +1250,7 @@ mod tests {
                     transaction_hash: H256::default(),
                     index: 0,
                     asset_type: H256::default(),
-                    amount: 0.into(),
+                    amount: 0,
                 },
                 timelock: None,
                 lock_script: Vec::new(),
@@ -1017,7 +1262,7 @@ mod tests {
                 lock_script_hash: H160::default(),
                 parameters: Vec::new(),
                 asset_type: H256::default(),
-                amount: 0.into(),
+                amount: 0,
             })
             .collect();
 

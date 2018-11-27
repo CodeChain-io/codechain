@@ -27,8 +27,8 @@ use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use primitives::clean_0x;
 
-use super::super::config::ChainType;
-use super::super::constants::DEFAULT_KEYS_PATH;
+use crate::config::ChainType;
+use crate::constants::DEFAULT_KEYS_PATH;
 
 pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
     if matches.subcommand.is_none() {
@@ -94,10 +94,13 @@ fn import_raw(ap: &AccountProvider, network_id: NetworkId, raw_key: &str) -> Res
 
 fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
     let address = PlatformAddress::from_str(address).map_err(|err| err.to_string())?;
-    let password = prompt_password("Password: ");
-    let _ = ap.remove_account(address.into_address(), &password).map_err(|err| err.to_string())?;
-    println!("{} is deleted", address);
-    Ok(())
+    if confirmation_dialog("REMOVE")? {
+        let _ = ap.remove_account(address.into_address()).map_err(|err| err.to_string())?;
+        println!("{} is deleted", address);
+        Ok(())
+    } else {
+        Err(format!("Confirmation failed, {} is not deleted", address))
+    }
 }
 
 fn list(ap: &AccountProvider, network_id: NetworkId) -> Result<(), String> {
@@ -119,6 +122,13 @@ fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
 
 fn prompt_password(prompt: &str) -> Password {
     rpassword::prompt_password_stdout(prompt).map(Password::from).unwrap()
+}
+
+fn confirmation_dialog(confirm_message: &str) -> Result<bool, String> {
+    println!("Type \"{}\" to confirm: ", confirm_message);
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).map_err(|e| format!("Failed to read line: {}", e))?;
+    Ok(&input[..input.len() - 1] == confirm_message)
 }
 
 fn read_password_and_confirm() -> Option<Password> {

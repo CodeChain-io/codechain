@@ -22,26 +22,26 @@ mod stratum;
 mod work_notify;
 
 use ckey::{Address, Password, PlatformAddress};
-use cstate::TopStateInfo;
+use cstate::TopStateView;
 use ctypes::parcel::IncompleteParcel;
 use cvm::ChainTimeInfo;
-use primitives::{Bytes, H256, U256};
+use primitives::{Bytes, H256};
 
 pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
-use super::account_provider::{AccountProvider, SignError};
-use super::block::ClosedBlock;
-use super::client::{
+use crate::account_provider::{AccountProvider, SignError};
+use crate::block::ClosedBlock;
+use crate::client::{
     AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
 };
-use super::consensus::EngineType;
-use super::error::Error;
-use super::parcel::{SignedParcel, UnverifiedParcel};
+use crate::consensus::EngineType;
+use crate::error::Error;
+use crate::parcel::{SignedParcel, UnverifiedParcel};
 
 /// Miner client API
 pub trait MinerService: Send + Sync {
     /// Type representing chain state
-    type State: TopStateInfo + 'static;
+    type State: TopStateView + 'static;
 
     /// Returns miner's status.
     fn status(&self) -> MinerStatus;
@@ -56,10 +56,10 @@ pub trait MinerService: Send + Sync {
     fn set_extra_data(&self, extra_data: Bytes);
 
     /// Get current minimal fee for parcels accepted to queue.
-    fn minimal_fee(&self) -> U256;
+    fn minimal_fee(&self) -> u64;
 
     /// Set minimal fee of parcel to be accepted for mining.
-    fn set_minimal_fee(&self, min_fee: U256);
+    fn set_minimal_fee(&self, min_fee: u64);
 
     /// Get current parcels limit in queue.
     fn parcels_limit(&self) -> usize;
@@ -116,8 +116,8 @@ pub trait MinerService: Send + Sync {
         parcel: IncompleteParcel,
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
-        seq: Option<U256>,
-    ) -> Result<(H256, U256), Error>;
+        seq: Option<u64>,
+    ) -> Result<(H256, u64), Error>;
 
     /// Get a list of all pending parcels in the mem pool.
     fn ready_parcels(&self) -> Vec<SignedParcel>;

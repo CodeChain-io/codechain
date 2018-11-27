@@ -16,7 +16,7 @@
 
 pub use ckey::*;
 
-use super::json;
+use crate::json;
 
 impl From<Address> for json::H160 {
     fn from(addr: Address) -> Self {

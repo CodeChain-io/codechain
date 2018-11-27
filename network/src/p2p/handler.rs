@@ -27,14 +27,14 @@ use mio::{PollOpt, Ready, Token};
 use parking_lot::Mutex;
 use rlp::UntrustedRlp;
 
-use super::super::addr::convert_to_node_id;
-use super::super::client::Client;
-use super::super::{FiltersControl, IntoSocketAddr, NodeId, RoutingTable, SocketAddr};
 use super::connections::{ConnectionType, Connections, ReceivedMessage};
 use super::listener::Listener;
 use super::message::{HandshakeMessage, Message as NetworkMessage, Version};
 use super::stream::Stream;
 use super::NegotiationBody;
+use crate::addr::convert_to_node_id;
+use crate::client::Client;
+use crate::{FiltersControl, IntoSocketAddr, NodeId, RoutingTable, SocketAddr};
 
 pub const MAX_CONNECTIONS: usize = 200;
 

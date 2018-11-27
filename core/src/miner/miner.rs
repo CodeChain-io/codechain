@@ -27,23 +27,23 @@ use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
-use primitives::{Bytes, H256, U256};
+use primitives::{Bytes, H256};
 
-use super::super::account_provider::{AccountProvider, SignError};
-use super::super::block::{Block, ClosedBlock, IsBlock};
-use super::super::client::{
-    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
-};
-use super::super::consensus::{CodeChainEngine, EngineType, Seal};
-use super::super::error::Error;
-use super::super::header::Header;
-use super::super::parcel::{SignedParcel, UnverifiedParcel};
-use super::super::scheme::Scheme;
-use super::super::types::{BlockId, ParcelId};
 use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, ParcelTimelock, RemovalReason};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, ParcelImportResult};
+use crate::account_provider::{AccountProvider, SignError};
+use crate::block::{Block, ClosedBlock, IsBlock};
+use crate::client::{
+    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
+};
+use crate::consensus::{CodeChainEngine, EngineType, Seal};
+use crate::error::Error;
+use crate::header::Header;
+use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::scheme::Scheme;
+use crate::types::{BlockId, ParcelId};
 
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]
@@ -645,11 +645,11 @@ impl MinerService for Miner {
         self.params.write().extra_data = extra_data;
     }
 
-    fn minimal_fee(&self) -> U256 {
-        *self.mem_pool.read().minimal_fee()
+    fn minimal_fee(&self) -> u64 {
+        self.mem_pool.read().minimal_fee()
     }
 
-    fn set_minimal_fee(&self, min_fee: U256) {
+    fn set_minimal_fee(&self, min_fee: u64) {
         self.mem_pool.write().set_minimal_fee(min_fee);
     }
 
@@ -853,8 +853,8 @@ impl MinerService for Miner {
         parcel: IncompleteParcel,
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
-        seq: Option<U256>,
-    ) -> Result<(H256, U256), Error> {
+        seq: Option<u64>,
+    ) -> Result<(H256, u64), Error> {
         let address = platform_address.try_into_address()?;
         let seq = match seq {
             Some(seq) => seq,
@@ -919,11 +919,11 @@ impl MinerService for Miner {
     }
 }
 
-fn get_next_seq(parcels: impl Iterator<Item = SignedParcel>, addresses: &[Address]) -> Option<U256> {
+fn get_next_seq(parcels: impl Iterator<Item = SignedParcel>, addresses: &[Address]) -> Option<u64> {
     let mut seqs: Vec<_> = parcels
         .filter(|parcel| addresses.contains(&public_to_address(&parcel.signer_public())))
         .map(|parcel| parcel.seq)
         .collect();
     seqs.sort();
-    seqs.last().map(|seq| *seq + 1.into())
+    seqs.last().map(|seq| seq + 1)
 }

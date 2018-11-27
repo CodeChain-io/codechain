@@ -22,10 +22,10 @@ use cnetwork::NodeId;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use primitives::Bytes;
 
-use super::client::{Client, ClientConfig};
-use super::error::Error;
-use super::miner::Miner;
-use super::scheme::Scheme;
+use crate::client::{Client, ClientConfig};
+use crate::error::Error;
+use crate::miner::Miner;
+use crate::scheme::Scheme;
 
 /// Client service setup.
 pub struct ClientService {
@@ -42,7 +42,7 @@ impl ClientService {
     ) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start("Client")?;
 
-        let mut db_config = DatabaseConfig::with_columns(super::db::NUM_COLUMNS);
+        let mut db_config = DatabaseConfig::with_columns(crate::db::NUM_COLUMNS);
 
         db_config.memory_budget = config.db_cache_size;
         db_config.compaction = config.db_compaction.compaction_profile(client_path);

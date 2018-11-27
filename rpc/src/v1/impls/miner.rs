@@ -38,10 +38,10 @@ where
     C: MiningBlockChainClient + EngineClient,
     M: MinerService,
 {
-    pub fn new(client: &Arc<C>, miner: &Arc<M>) -> Self {
+    pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
         Self {
-            client: client.clone(),
-            miner: miner.clone(),
+            client,
+            miner,
         }
     }
 }

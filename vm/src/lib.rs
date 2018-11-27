@@ -32,5 +32,5 @@ mod opcode;
 #[cfg(test)]
 mod tests;
 
-pub use decoder::{decode, DecoderError};
-pub use executor::{execute, ChainTimeInfo, Config as VMConfig, RuntimeError, ScriptResult};
+pub use crate::decoder::{decode, DecoderError};
+pub use crate::executor::{execute, ChainTimeInfo, Config as VMConfig, RuntimeError, ScriptResult};

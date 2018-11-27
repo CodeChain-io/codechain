@@ -6,7 +6,8 @@
   "author": "CodeChain Team <codechain@kodebox.io>",
   "license": "AGPL-3.0",
   "engines": {
-    "node": ">=8"
+    "node": ">=8",
+    "yarn": "^1.10.0"
   },
   "scripts": {
     "start": "cargo build && jest --env node -i",
@@ -17,20 +18,22 @@
   "devDependencies": {
     "@types/jest": "^23.3.1",
     "@types/mkdirp": "^0.5.2",
+    "@types/ncp": "^2.0.1",
     "@types/node": "^10.9.4",
     "@types/seedrandom": "^2.4.2",
-    "prettier": "^1.14.2",
+    "prettier": "1.14.2",
     "tslint": "^5.10.0"
   },
   "dependencies": {
-    "codechain-sdk": "https://github.com/sgkim126/codechain-sdk-js.git#amount-lib",
+    "codechain-sdk": "https://github.com/jhs7jhs/codechain-sdk-js.git#build",
+    "codechain-test-helper": "https://github.com/CodeChain-io/codechain-test-helper-js.git#ca7035acba6213ea65ef2795df8821499d7d29ca",
     "jest": "^23.1.0",
     "mkdirp": "^0.5.1",
+    "ncp": "^2.0.0",
     "rlp": "^2.0.0",
     "seedrandom": "^2.4.4",
     "ts-jest": "^22.4.6",
     "ts-node": "^7.0.0",
-    "typescript": "^2.9.2",
-    "codechain-test-helper": "https://github.com/CodeChain-io/codechain-test-helper-js.git#a4a9c26635a52395dfd17733eef66b18a144fd00"
+    "typescript": "^2.9.2"
   }
 }

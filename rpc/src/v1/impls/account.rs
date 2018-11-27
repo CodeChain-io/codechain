@@ -24,7 +24,7 @@ use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use ctypes::parcel::IncompleteParcel;
 use jsonrpc_core::Result;
 use parking_lot::Mutex;
-use primitives::{H256, U256};
+use primitives::H256;
 
 use super::super::errors::{self, account_provider};
 use super::super::traits::Account;
@@ -45,9 +45,9 @@ where
     C: MiningBlockChainClient + Seq + RegularKey + RegularKeyOwner,
     M: MinerService,
 {
-    pub fn new(ap: &Arc<AccountProvider>, client: Arc<C>, miner: Arc<M>, network_id: NetworkId) -> Self {
+    pub fn new(account_provider: Arc<AccountProvider>, client: Arc<C>, miner: Arc<M>, network_id: NetworkId) -> Self {
         AccountClient {
-            account_provider: ap.clone(),
+            account_provider,
             network_id,
             client,
             miner,
@@ -97,7 +97,7 @@ where
             static ref LOCK: Mutex<()> = Mutex::new(());
         }
         let _guard = LOCK.lock();
-        let (parcel, seq): (IncompleteParcel, Option<U256>) =
+        let (parcel, seq): (IncompleteParcel, Option<u64>) =
             ::std::result::Result::from(parcel).map_err(AccountProviderError::KeyError).map_err(account_provider)?;
 
         let (hash, seq) = self
@@ -114,7 +114,7 @@ where
 
         Ok(SendParcelResult {
             hash,
-            seq,
+            seq: seq.into(),
         })
     }
 

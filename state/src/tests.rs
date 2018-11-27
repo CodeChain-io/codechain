@@ -15,11 +15,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod helpers {
+    use std::sync::Arc;
+
     use cvm::ChainTimeInfo;
+
+    use kvdb::KeyValueDB;
+    use kvdb_memorydb;
     use primitives::H256;
 
-    use super::super::impls::TopLevelState;
-    use super::super::StateDB;
+    use crate::impls::TopLevelState;
+    use crate::StateDB;
 
     pub struct TestChainTimeInfoClient {}
 
@@ -41,13 +46,17 @@ pub mod helpers {
         }
     }
 
+    pub fn get_memory_db() -> Arc<KeyValueDB> {
+        Arc::new(kvdb_memorydb::create(1))
+    }
+
     pub fn get_temp_state_db() -> StateDB {
         StateDB::new_with_memorydb(Vec::new())
     }
 
     pub fn get_temp_state() -> TopLevelState {
-        let journal_db = get_temp_state_db();
-        TopLevelState::new(journal_db)
+        let state_db = get_temp_state_db();
+        TopLevelState::new(state_db)
     }
 
     pub fn get_test_client() -> TestChainTimeInfoClient {

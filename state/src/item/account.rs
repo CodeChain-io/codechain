@@ -19,25 +19,24 @@
 use std::fmt;
 
 use ckey::{self, Public};
-use primitives::U256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::local_cache::CacheableItem;
+use crate::CacheableItem;
 
 /// Single account in the system.
 // Don't forget to sync the field list with PodAccount.
 #[derive(Clone)]
 pub struct Account {
     // Balance of the account.
-    balance: U256,
+    balance: u64,
     // Seq of the account.
-    seq: U256,
+    seq: u64,
     // Regular key of the account.
     regular_key: Option<Public>,
 }
 
 impl Account {
-    pub fn new(balance: U256, seq: U256) -> Account {
+    pub fn new(balance: u64, seq: u64) -> Account {
         Account {
             balance,
             seq,
@@ -45,7 +44,7 @@ impl Account {
         }
     }
 
-    pub fn new_with_key(balance: U256, seq: U256, regular_key: Option<Public>) -> Self {
+    pub fn new_with_key(balance: u64, seq: u64, regular_key: Option<Public>) -> Self {
         Self {
             balance,
             seq,
@@ -54,13 +53,13 @@ impl Account {
     }
 
     /// return the balance associated with this account.
-    pub fn balance(&self) -> &U256 {
-        &self.balance
+    pub fn balance(&self) -> u64 {
+        self.balance
     }
 
     /// return the seq associated with this account.
-    pub fn seq(&self) -> &U256 {
-        &self.seq
+    pub fn seq(&self) -> u64 {
+        self.seq
     }
 
     /// return the regular key associated with this account.
@@ -70,19 +69,19 @@ impl Account {
 
     /// Increment the seq of the account by one.
     pub fn inc_seq(&mut self) {
-        self.seq = self.seq + U256::from(1u8);
+        self.seq += 1;
     }
 
     /// Increase account balance.
-    pub fn add_balance(&mut self, x: &U256) {
-        self.balance = self.balance + *x;
+    pub fn add_balance(&mut self, x: u64) {
+        self.balance += x;
     }
 
     /// Decrease account balance.
     /// Panics if balance is less than `x`
-    pub fn sub_balance(&mut self, x: &U256) {
-        assert!(self.balance >= *x);
-        self.balance = self.balance - *x;
+    pub fn sub_balance(&mut self, x: u64) {
+        assert!(self.balance >= x);
+        self.balance -= x;
     }
 
     /// Set the regular key of the account.
@@ -99,7 +98,7 @@ impl Account {
 
 impl Default for Account {
     fn default() -> Self {
-        Self::new(U256::zero(), U256::zero())
+        Self::new(0, 0)
     }
 }
 
@@ -108,7 +107,7 @@ impl CacheableItem for Account {
 
     /// Check if account has zero seq, balance.
     fn is_null(&self) -> bool {
-        self.balance.is_zero() && self.seq.is_zero()
+        self.balance == 0 && self.seq == 0
     }
 }
 
@@ -156,12 +155,12 @@ mod tests {
 
     #[test]
     fn rlpio() {
-        let a = Account::new(69u8.into(), 0u8.into());
+        let a = Account::new(69, 0);
         let b = ::rlp::decode::<Account>(&a.rlp_bytes());
         assert_eq!(a.balance(), b.balance());
         assert_eq!(a.seq(), b.seq());
 
-        let mut a = Account::new(69u8.into(), 0u8.into());
+        let mut a = Account::new(69, 0);
         a.set_regular_key(&Public::default());
         let b = ::rlp::decode::<Account>(&a.rlp_bytes());
         assert_eq!(a.balance(), b.balance());
@@ -171,55 +170,55 @@ mod tests {
 
     #[test]
     fn new_account() {
-        let a = Account::new(69u8.into(), 0u8.into());
+        let a = Account::new(69, 0);
         assert_eq!(a.rlp_bytes().to_hex(), "c4434580c0");
-        assert_eq!(*a.balance(), 69u8.into());
-        assert_eq!(*a.seq(), 0u8.into());
+        assert_eq!(69, a.balance());
+        assert_eq!(0, a.seq());
         assert_eq!(a.regular_key(), None);
     }
 
     #[test]
     fn balance() {
-        let mut a = Account::new(69u8.into(), 0u8.into());
-        a.add_balance(&1u8.into());
-        assert_eq!(*a.balance(), 70u8.into());
-        a.sub_balance(&2u8.into());
-        assert_eq!(*a.balance(), 68u8.into());
+        let mut a = Account::new(69, 0);
+        a.add_balance(1);
+        assert_eq!(70, a.balance());
+        a.sub_balance(2);
+        assert_eq!(68, a.balance());
     }
 
     #[test]
     #[should_panic]
     fn negative_balance() {
-        let mut a = Account::new(69u8.into(), 0u8.into());
-        a.sub_balance(&70u8.into());
+        let mut a = Account::new(69, 0);
+        a.sub_balance(70);
     }
 
     #[test]
     fn seq() {
-        let mut a = Account::new(69u8.into(), 0u8.into());
+        let mut a = Account::new(69, 0);
         a.inc_seq();
-        assert_eq!(*a.seq(), 1u8.into());
+        assert_eq!(1, a.seq());
         a.inc_seq();
-        assert_eq!(*a.seq(), 2u8.into());
+        assert_eq!(2, a.seq())
     }
 
     #[test]
     fn overwrite() {
-        let mut a0 = Account::new(69u8.into(), 0u8.into());
+        let mut a0 = Account::new(69, 0);
         let a = &mut a0;
-        let mut b = Account::new(79u8.into(), 1u8.into());
+        let mut b = Account::new(79, 1);
         b.set_regular_key(&Public::default());
         *a = b;
-        assert_eq!(*a.balance(), 79u8.into());
-        assert_eq!(*a.seq(), 1u8.into());
+        assert_eq!(79, a.balance());
+        assert_eq!(1, a.seq());
         assert_eq!(a.regular_key(), Some(Public::default()));
     }
 
     #[test]
     fn is_null() {
-        let mut a = Account::new(69u8.into(), 0u8.into());
+        let mut a = Account::new(69, 0);
         assert!(!a.is_null());
-        a.sub_balance(&69u8.into());
+        a.sub_balance(69);
         assert!(a.is_null());
         a.inc_seq();
         assert!(!a.is_null());

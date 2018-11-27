@@ -19,13 +19,13 @@
 use std::net::{AddrParseError, SocketAddr};
 use std::sync::Arc;
 
-use super::super::error::Error as MinerError;
+use crate::error::Error as MinerError;
 use cstratum::{Error as StratumServiceError, JobDispatcher, PushWorkHandler, Stratum as StratumService};
 use primitives::{Bytes, H256, U256};
 
-use super::super::client::Client;
-use super::super::miner::work_notify::NotifyWork;
-use super::super::miner::{Miner, MinerService};
+use crate::client::Client;
+use crate::miner::work_notify::NotifyWork;
+use crate::miner::{Miner, MinerService};
 
 /// Configures stratum server options.
 #[derive(Debug, PartialEq, Clone)]

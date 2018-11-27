@@ -19,9 +19,9 @@ mod params;
 use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
 
 use self::params::SoloParams;
-use super::super::consensus::EngineType;
-use super::super::SignedParcel;
 use super::{ConsensusEngine, Seal};
+use crate::consensus::EngineType;
+use crate::SignedParcel;
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo<M> {
@@ -69,8 +69,17 @@ where
 
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
-        let total_reward = block.parcels().iter().fold(self.params.block_reward, |sum, parcel| sum + parcel.fee);
-        self.machine.add_balance(block, &author, &total_reward)
+        let total_reward = self.block_reward(block.header().number())
+            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
+        self.machine.add_balance(block, &author, total_reward)
+    }
+
+    fn block_reward(&self, _block_number: u64) -> u64 {
+        self.params.block_reward
+    }
+
+    fn recommended_confirmation(&self) -> u32 {
+        1
     }
 }
 
@@ -78,11 +87,12 @@ where
 mod tests {
     use primitives::H520;
 
-    use super::super::super::block::{IsBlock, OpenBlock};
-    use super::super::super::header::Header;
-    use super::super::super::scheme::Scheme;
-    use super::super::super::tests::helpers::get_temp_state_db;
-    use super::super::Seal;
+    use crate::block::{IsBlock, OpenBlock};
+    use crate::header::Header;
+    use crate::scheme::Scheme;
+    use crate::tests::helpers::get_temp_state_db;
+
+    use super::*;
 
     #[test]
     fn seal() {

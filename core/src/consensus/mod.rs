@@ -38,19 +38,20 @@ use std::fmt;
 use std::sync::{Arc, Weak};
 
 use ckey::{Address, Password, Signature};
-use cnetwork::NetworkExtension;
+use cnetwork::NetworkService;
 use ctypes::machine::Machine;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};
-use super::account_provider::AccountProvider;
-use super::block::SealedBlock;
-use super::codechain_machine::CodeChainMachine;
-use super::error::Error;
-use super::header::Header;
-use super::parcel::{SignedParcel, UnverifiedParcel};
-use super::scheme::CommonParams;
+use crate::account_provider::AccountProvider;
+use crate::block::SealedBlock;
+use crate::codechain_machine::CodeChainMachine;
+use crate::error::Error;
+use crate::header::Header;
+use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::scheme::CommonParams;
+use Client;
 
 /// Seal type.
 #[derive(Debug, PartialEq, Eq)]
@@ -222,13 +223,21 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         unimplemented!()
     }
 
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        None
-    }
+    fn register_network_extension_to_service(&self, _: &NetworkService) {}
 
     fn score_to_target(&self, _score: &U256) -> U256 {
         U256::zero()
     }
+
+    fn block_reward(&self, block_number: u64) -> u64;
+
+    fn block_fee(&self, parcels: Box<Iterator<Item = UnverifiedParcel>>) -> u64 {
+        parcels.map(|parcel| parcel.fee).sum()
+    }
+
+    fn recommended_confirmation(&self) -> u32;
+
+    fn register_chain_notify(&self, _: &Client) {}
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.

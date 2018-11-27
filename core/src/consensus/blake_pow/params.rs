@@ -18,17 +18,19 @@ use cjson;
 use primitives::U256;
 
 pub struct BlakePoWParams {
-    pub block_reward: U256,
+    pub block_reward: u64,
     pub min_score: U256,
     pub block_interval: u64,
+    pub recommmended_confirmation: u32,
 }
 
 impl From<cjson::scheme::BlakePoWParams> for BlakePoWParams {
     fn from(p: cjson::scheme::BlakePoWParams) -> Self {
         BlakePoWParams {
-            block_reward: p.block_reward.map_or(U256::from(0), Into::into),
+            block_reward: p.block_reward.map_or(0, Into::into),
             block_interval: p.block_interval.map_or(120, Into::into),
             min_score: p.min_score.map_or(U256::from(0x020000), Into::into),
+            recommmended_confirmation: p.recommended_confirmation.map_or(15, Into::into),
         }
     }
 }

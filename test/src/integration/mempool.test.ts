@@ -16,7 +16,7 @@
 
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
-import { Timelock, U256, Asset } from "codechain-sdk/lib/core/classes";
+import { Timelock, Asset } from "codechain-sdk/lib/core/classes";
 import { faucetAddress } from "../helper/constants";
 import { H256 } from "codechain-primitives/lib";
 
@@ -128,6 +128,7 @@ describe("Memory pool memory limit test", () => {
 
     beforeEach(async () => {
         nodeA = new CodeChain({
+            chain: `${__dirname}/../scheme/mempool.json`,
             argv: ["--mem-pool-mem-limit", memoryLimit.toString()]
         });
         await nodeA.start();
@@ -146,15 +147,13 @@ describe("Memory pool memory limit test", () => {
         50000
     );
 
-    // FIXME: It fails due to timeout when the block sync extension is stuck.
-    // See https://github.com/CodeChain-io/codechain/issues/662
-    describeSkippedInTravis("To others", async () => {
+    describe("To others", async () => {
         let nodeB: CodeChain;
 
         beforeEach(async () => {
             nodeB = new CodeChain({
-                argv: ["--mem-pool-mem-limit", memoryLimit.toString()],
-                logFlag: true
+                chain: `${__dirname}/../scheme/mempool.json`,
+                argv: ["--mem-pool-mem-limit", memoryLimit.toString()]
             });
             await nodeB.start();
             await nodeB.sdk.rpc.devel.stopSealing();
@@ -165,21 +164,31 @@ describe("Memory pool memory limit test", () => {
         test(
             "More than limit",
             async () => {
+                const aBlockNumber = await nodeA.sdk.rpc.chain.getBestBlockNumber();
+                const bBlockNumber = await nodeB.sdk.rpc.chain.getBestBlockNumber();
+                expect(aBlockNumber).toEqual(bBlockNumber);
+                const metadata =
+                    "Very large parcel" + " ".repeat(1 * 1024 * 1024);
                 for (let i = 0; i < sizeLimit; i++) {
                     await nodeA.mintAsset({
                         amount: mintSize,
                         seq: i,
+                        metadata,
                         awaitMint: false
                     });
                 }
+                await wait(3_000);
 
-                for (let i = 0; i < 10; i++) {
-                    const pendingParcels = await nodeB.sdk.rpc.chain.getPendingParcels();
-                    expect(pendingParcels.length).toEqual(0);
-                    await wait(250);
-                }
+                const pendingParcels = await nodeB.sdk.rpc.chain.getPendingParcels();
+                expect(pendingParcels.length).toEqual(0);
+                expect(await nodeA.sdk.rpc.chain.getBestBlockNumber()).toEqual(
+                    aBlockNumber
+                );
+                expect(await nodeB.sdk.rpc.chain.getBestBlockNumber()).toEqual(
+                    bBlockNumber
+                );
             },
-            50000
+            50_000
         );
 
         afterEach(async () => {
@@ -201,21 +210,16 @@ describe("Future queue", () => {
     });
 
     test("all pending parcel must be mined", async () => {
-        const seq =
-            (await node.sdk.rpc.chain.getSeq(faucetAddress)) || U256.ensure(0);
-        const seq1 = U256.plus(seq, 1);
-        const seq2 = U256.plus(seq, 2);
-        const seq3 = U256.plus(seq, 3);
-        const seq4 = U256.plus(seq, 4);
+        const seq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
 
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq3 });
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq + 3 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq2 });
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq + 2 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq1 });
+        await node.sendSignedParcel({ awaitInvoice: false, seq: seq + 1 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq);
         await node.sendSignedParcel({ awaitInvoice: false, seq: seq });
-        expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq4);
+        expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).toEqual(seq + 4);
     });
 
     afterEach(async () => {

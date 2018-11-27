@@ -14,8 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod handler;
-mod timer_info;
+use std::fmt;
+use std::hash::Hash;
 
+use rlp::{Decodable, Encodable};
 
-pub use self::handler::{Handler, Message};
+mod global_cache;
+mod lru_cache;
+mod shard_cache;
+mod top_cache;
+mod write_back;
+
+pub use self::global_cache::GlobalCache;
+pub use self::shard_cache::ShardCache;
+pub use self::top_cache::TopCache;
+pub use self::write_back::WriteBack;
+
+pub trait CacheableItem: Clone + Default + fmt::Debug + Decodable + Encodable {
+    type Address: AsRef<[u8]> + Clone + Copy + fmt::Debug + Eq + Hash;
+    fn is_null(&self) -> bool;
+}

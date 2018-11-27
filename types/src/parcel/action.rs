@@ -17,11 +17,11 @@
 use ccrypto::Blake;
 use ckey::{Address, Public};
 use heapsize::HeapSizeOf;
-use primitives::{Bytes, H256, U256};
+use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::transaction::Transaction;
-use super::super::ShardId;
+use crate::transaction::Transaction;
+use crate::ShardId;
 
 const ASSET_TRANSACTION: u8 = 1;
 const PAYMENT: u8 = 2;
@@ -29,6 +29,7 @@ const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
 const SET_SHARD_OWNERS: u8 = 5;
 const SET_SHARD_USERS: u8 = 6;
+const WRAP_CCC: u8 = 7;
 const CUSTOM: u8 = 0xFF;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,7 +38,7 @@ pub enum Action {
     Payment {
         receiver: Address,
         /// Transferred amount.
-        amount: U256,
+        amount: u64,
     },
     SetRegularKey {
         key: Public,
@@ -50,6 +51,12 @@ pub enum Action {
     SetShardUsers {
         shard_id: ShardId,
         users: Vec<Address>,
+    },
+    WrapCCC {
+        shard_id: ShardId,
+        lock_script_hash: H160,
+        parameters: Vec<Bytes>,
+        amount: u64,
     },
     Custom(Bytes),
 }
@@ -73,6 +80,10 @@ impl HeapSizeOf for Action {
                 shard_id: _,
                 users,
             } => users.heap_size_of_children(),
+            Action::WrapCCC {
+                parameters,
+                ..
+            } => parameters.heap_size_of_children(),
             _ => 0,
         }
     }
@@ -123,6 +134,19 @@ impl Encodable for Action {
                 s.append(&SET_SHARD_USERS);
                 s.append(shard_id);
                 s.append_list(users);
+            }
+            Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount,
+            } => {
+                s.begin_list(5);
+                s.append(&WRAP_CCC);
+                s.append(shard_id);
+                s.append(lock_script_hash);
+                s.append(parameters);
+                s.append(amount);
             }
             Action::Custom(bytes) => {
                 s.begin_list(2);
@@ -181,6 +205,17 @@ impl Decodable for Action {
                 Ok(Action::SetShardUsers {
                     shard_id: rlp.val_at(1)?,
                     users: rlp.list_at(2)?,
+                })
+            }
+            WRAP_CCC => {
+                if rlp.item_count()? != 5 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::WrapCCC {
+                    shard_id: rlp.val_at(1)?,
+                    lock_script_hash: rlp.val_at(2)?,
+                    parameters: rlp.val_at(3)?,
+                    amount: rlp.val_at(4)?,
                 })
             }
             CUSTOM => {

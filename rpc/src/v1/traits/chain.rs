@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::{BlockNumber, ShardId};
-use primitives::{H256, U256};
+use primitives::H256;
 
 use jsonrpc_core::Result;
 
@@ -48,11 +49,11 @@ build_rpc_trait! {
 
         /// Gets asset scheme with given transaction hash.
         # [rpc(name = "chain_getAssetSchemeByHash")]
-        fn get_asset_scheme_by_hash(&self, H256, ShardId) -> Result<Option<AssetScheme>>;
+        fn get_asset_scheme_by_hash(&self, H256, ShardId, Option<u64>) -> Result<Option<AssetScheme>>;
 
         /// Gets asset scheme with given asset type.
         # [rpc(name = "chain_getAssetSchemeByType")]
-        fn get_asset_scheme_by_type(&self, H256) -> Result<Option<AssetScheme>>;
+        fn get_asset_scheme_by_type(&self, H256, Option<u64>) -> Result<Option<AssetScheme>>;
 
         /// Gets asset with given asset type.
         # [rpc(name = "chain_getAsset")]
@@ -64,11 +65,11 @@ build_rpc_trait! {
 
         /// Gets seq with given account.
         # [rpc(name = "chain_getSeq")]
-        fn get_seq(&self, PlatformAddress, Option<u64>) -> Result<Option<U256>>;
+        fn get_seq(&self, PlatformAddress, Option<u64>) -> Result<Option<u64>>;
 
         /// Gets balance with given account.
         # [rpc(name = "chain_getBalance")]
-        fn get_balance(&self, PlatformAddress, Option<u64>) -> Result<Option<U256>>;
+        fn get_balance(&self, PlatformAddress, Option<u64>) -> Result<Option<Uint>>;
 
         /// Gets regular key with given account
         # [rpc(name = "chain_getRegularKey")]
@@ -77,6 +78,10 @@ build_rpc_trait! {
         /// Gets the owner of given regular key.
         # [rpc(name = "chain_getRegularKeyOwner")]
         fn get_regular_key_owner(&self, Public, Option<u64>) -> Result<Option<PlatformAddress>>;
+
+        /// Gets the genesis accounts
+        # [rpc(name = "chain_getGenesisAccounts")]
+        fn get_genesis_accounts(&self) -> Result<Vec<PlatformAddress>>;
 
         /// Gets the number of shards
         # [rpc(name = "chain_getNumberOfShards")]
@@ -110,9 +115,9 @@ build_rpc_trait! {
         # [rpc(name = "chain_getPendingParcels")]
         fn get_pending_parcels(&self) -> Result<Vec<Parcel>>;
 
-        /// Gets coinbase's account id
-        # [rpc(name = "chain_getCoinbase")]
-        fn get_coinbase(&self) -> Result<Option<PlatformAddress>>;
+        /// Gets the mining given block number
+        # [rpc(name = "chain_getMiningReward")]
+        fn get_mining_reward(&self, u64) -> Result<Option<u64>>;
 
         /// Return the network id that is used in this chain.
         # [rpc(name = "chain_getNetworkId")]

@@ -19,23 +19,21 @@ use std::net::IpAddr;
 use std::sync::Arc;
 
 use cio::{IoError, IoService};
+use ctimer::TimerLoop;
 use primitives::H256;
 
-use super::client::Client;
-use super::control::{Control, Error as ControlError};
-use super::filters::{FilterEntry, FiltersControl};
-use super::p2p;
-use super::routing_table::RoutingTable;
-use super::session_initiator;
-use super::timer;
-use super::DiscoveryApi;
-use super::{NetworkExtension, SocketAddr};
+use crate::client::Client;
+use crate::control::{Control, Error as ControlError};
+use crate::filters::{FilterEntry, FiltersControl};
+use crate::p2p;
+use crate::routing_table::RoutingTable;
+use crate::session_initiator;
+use crate::DiscoveryApi;
+use crate::{NetworkExtension, SocketAddr};
 
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
     p2p: IoService<p2p::Message>,
-    #[allow(dead_code)]
-    timer: IoService<timer::Message>,
     client: Arc<Client>,
     routing_table: Arc<RoutingTable>,
     p2p_handler: Arc<p2p::Handler>,
@@ -44,18 +42,18 @@ pub struct Service {
 
 impl Service {
     pub fn start(
+        timer_loop: TimerLoop,
         address: SocketAddr,
         min_peers: usize,
         max_peers: usize,
         filters_control: Arc<FiltersControl>,
     ) -> Result<Arc<Self>, Error> {
         let p2p = IoService::start("P2P")?;
-        let timer = IoService::start("Timer")?;
         let session_initiator = IoService::start("SessionInitiator")?;
 
         let routing_table = RoutingTable::new();
 
-        let client = Client::new(p2p.channel(), timer.channel());
+        let client = Client::new(p2p.channel(), timer_loop);
 
         let p2p_handler = Arc::new(p2p::Handler::try_new(
             address,
@@ -66,8 +64,6 @@ impl Service {
             max_peers,
         )?);
         p2p.register_handler(p2p_handler.clone())?;
-
-        timer.register_handler(Arc::new(timer::Handler::new(Arc::clone(&client))))?;
 
         let session_initiator_handler = Arc::new(session_initiator::Handler::new(
             address,
@@ -80,7 +76,6 @@ impl Service {
         Ok(Arc::new(Self {
             session_initiator,
             p2p,
-            timer,
             client,
             routing_table,
             p2p_handler,
@@ -88,10 +83,10 @@ impl Service {
         }))
     }
 
-    pub fn register_extension(&self, extension: Arc<NetworkExtension>) {
-        let extension_name = extension.name();
+    pub fn register_extension<T>(&self, extension: Arc<T>)
+    where
+        T: 'static + Sized + NetworkExtension, {
         self.client.register_extension(extension);
-        self.client.initialize_extension(extension_name);
     }
 
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {

@@ -19,7 +19,7 @@ extern crate ethereum_types;
 
 mod hash;
 
-pub use self::hash::{H1024, H128, H160, H256, H264, H32, H512, H520, H64};
+pub use crate::hash::{H1024, H128, H160, H256, H264, H32, H512, H520, H64};
 pub use ebytes::Bytes;
 pub use ethereum_types::{clean_0x, U128, U256, U512};
 

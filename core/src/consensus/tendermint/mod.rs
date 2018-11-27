@@ -24,30 +24,31 @@ use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
 use ckey::{public_to_address, recover, Address, Message, Password, Signature};
-use cnetwork::{Api, NetworkExtension, NodeId, TimerToken};
+use cnetwork::{Api, NetworkExtension, NetworkService, NodeId, TimeoutHandler, TimerToken};
 use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256, U128, U256};
 use rand::{thread_rng, Rng};
-use rlp::{self, Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use time::Duration;
 
 use self::message::*;
 pub use self::params::{TendermintParams, TendermintTimeouts};
-use super::super::account_provider::AccountProvider;
-use super::super::block::*;
-use super::super::client::EngineClient;
-use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::EngineType;
-use super::super::error::{BlockError, Error};
-use super::super::header::Header;
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
 use super::vote_collector::VoteCollector;
 use super::{ConsensusEngine, ConstructedVerifier, EngineError, EpochChange, Seal};
+use crate::account_provider::AccountProvider;
+use crate::block::*;
+use crate::client::{Client, EngineClient};
+use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::EngineType;
+use crate::error::{BlockError, Error};
+use crate::header::Header;
+use ChainNotify;
 
 /// Timer token representing the consensus step timeouts.
 pub const ENGINE_TIMEOUT_TOKEN: TimerToken = 23;
@@ -171,17 +172,20 @@ pub struct Tendermint {
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
-    block_reward: U256,
+    block_reward: u64,
     /// Network extension,
     extension: Arc<TendermintExtension>,
     /// codechain machine descriptor
     machine: CodeChainMachine,
+    /// Chain notify
+    chain_notify: Arc<TendermintChainNotify>,
 }
 
 impl Tendermint {
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let extension = TendermintExtension::new(our_params.timeouts);
+        let chain_notify = TendermintChainNotify::new();
         let engine = Arc::new(Tendermint {
             client: RwLock::new(None),
             height: AtomicUsize::new(1),
@@ -197,9 +201,11 @@ impl Tendermint {
             validators: our_params.validators,
             block_reward: our_params.block_reward,
             extension: Arc::new(extension),
+            chain_notify: Arc::new(chain_notify),
             machine,
         });
         engine.extension.register_tendermint(Arc::downgrade(&engine));
+        engine.chain_notify.register_tendermint(Arc::downgrade(&engine));
 
         engine
     }
@@ -320,6 +326,12 @@ impl Tendermint {
     }
 
     fn to_next_height(&self, height: Height) {
+        assert!(
+            height >= self.height.load(AtomicOrdering::SeqCst),
+            "{} < {}",
+            height,
+            self.height.load(AtomicOrdering::SeqCst)
+        );
         let new_height = height + 1;
         cdebug!(ENGINE, "Received a Commit, transitioning to height {}.", new_height);
         self.last_lock.store(0, AtomicOrdering::SeqCst);
@@ -330,7 +342,7 @@ impl Tendermint {
     }
 
     fn to_step(&self, step: Step) {
-        self.extension.send_local_message(step);
+        self.extension.set_timer_step(step);
         *self.step.write() = step;
         match step {
             Step::Propose => self.update_sealing(),
@@ -686,8 +698,9 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        let total_reward = block.parcels().iter().fold(self.block_reward, |sum, parcel| sum + parcel.fee);
-        self.machine.add_balance(block, &author, &total_reward)
+        let total_reward = self.block_reward(block.header().number())
+            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
+        self.machine.add_balance(block, &author, total_reward)
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {
@@ -696,7 +709,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         }
         *self.client.write() = Some(client.clone());
         self.extension.register_client(client.clone());
-        self.validators.register_client(client);
+        self.validators.register_client(client.clone());
+        self.chain_notify.register_client(client);
     }
 
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
@@ -729,10 +743,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let signatures_len = header.seal()[2].len();
         // Signatures have to be an empty list rlp.
         if signatures_len != 1 {
-            // New Commit received, skip to next height.
-            ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
-            self.to_next_height(header.number() as usize);
-            self.to_step(Step::Commit);
             return false
         }
         let proposal = ConsensusMessage::new_proposal(header)
@@ -762,8 +772,76 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         self.signer.read().sign(hash).map_err(Into::into)
     }
 
-    fn network_extension(&self) -> Option<Arc<NetworkExtension>> {
-        Some(Arc::clone(&self.extension) as Arc<NetworkExtension>)
+    fn register_network_extension_to_service(&self, service: &NetworkService) {
+        service.register_extension(Arc::clone(&self.extension));
+    }
+
+    fn block_reward(&self, _block_number: u64) -> u64 {
+        self.block_reward
+    }
+
+    fn recommended_confirmation(&self) -> u32 {
+        1
+    }
+
+    fn register_chain_notify(&self, client: &Client) {
+        client.add_notify(self.chain_notify.clone());
+    }
+}
+
+struct TendermintChainNotify {
+    tendermint: RwLock<Option<Weak<Tendermint>>>,
+    client: RwLock<Option<Weak<EngineClient>>>,
+}
+
+impl TendermintChainNotify {
+    fn new() -> Self {
+        Self {
+            tendermint: RwLock::new(None),
+            client: RwLock::new(None),
+        }
+    }
+
+    fn register_client(&self, client: Weak<EngineClient>) {
+        *self.client.write() = Some(client);
+    }
+
+    fn register_tendermint(&self, tendermint: Weak<Tendermint>) {
+        *self.tendermint.write() = Some(tendermint);
+    }
+}
+
+impl ChainNotify for TendermintChainNotify {
+    /// fires when chain has new blocks.
+    fn new_blocks(
+        &self,
+        imported: Vec<H256>,
+        _invalid: Vec<H256>,
+        _enacted: Vec<H256>,
+        _retracted: Vec<H256>,
+        _sealed: Vec<H256>,
+        _duration: u64,
+    ) {
+        let c = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
+            Some(c) => c,
+            None => return,
+        };
+
+        let t = match self.tendermint.read().as_ref().and_then(|weak| weak.upgrade()) {
+            Some(t) => t,
+            None => return,
+        };
+
+        let imported_is_empty = imported.is_empty();
+        for hash in imported {
+            // New Commit received, skip to next height.
+            let header = c.block_header(hash.into()).expect("ChainNotify is called after the block is imported");
+            ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
+            t.to_next_height(header.number() as usize);
+        }
+        if !imported_is_empty {
+            t.to_step(Step::Commit)
+        }
     }
 }
 
@@ -888,9 +966,10 @@ impl TendermintExtension {
         });
     }
 
-    fn send_local_message(&self, message: Step) {
+    fn set_timer_step(&self, step: Step) {
         self.api.lock().as_ref().map(|api| {
-            api.send_local_message(&message);
+            api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
+            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&step)).expect("Timer set succeeds");
         });
     }
 
@@ -952,15 +1031,9 @@ impl NetworkExtension for TendermintExtension {
             _ => cinfo!(ENGINE, "Invalid message from peer {}", token),
         }
     }
+}
 
-    fn on_local_message(&self, data: &[u8]) {
-        let next: Step = rlp::decode(data);
-        self.api.lock().as_ref().map(|api| {
-            api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
-            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&next)).expect("Timer set succeeds");
-        });
-    }
-
+impl TimeoutHandler for TendermintExtension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             ENGINE_TIMEOUT_TOKEN => {
@@ -977,20 +1050,12 @@ impl NetworkExtension for TendermintExtension {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use crate::block::{ClosedBlock, IsBlock, OpenBlock};
+    use crate::consensus::CodeChainEngine;
+    use crate::scheme::Scheme;
+    use crate::tests::helpers::get_temp_state_db;
 
-    use ccrypto::blake256;
-    use ckey::Address;
-    use primitives::Bytes;
-
-    use super::super::super::account_provider::AccountProvider;
-    use super::super::super::block::{ClosedBlock, IsBlock, OpenBlock};
-    use super::super::super::consensus::CodeChainEngine;
-    use super::super::super::error::{BlockError, Error};
-    use super::super::super::header::Header;
-    use super::super::super::scheme::Scheme;
-    use super::super::super::tests::helpers::get_temp_state_db;
-    use super::{message_info_rlp, EngineError, Height, ProposalSeal, RegularSeal, Seal, Step, View, VoteStep};
+    use super::*;
 
     /// Accounts inserted with "0" and "1" are validators. First proposer is "0".
     fn setup() -> (Scheme, Arc<AccountProvider>) {
@@ -1003,7 +1068,7 @@ mod tests {
         let db = get_temp_state_db();
         let db = scheme.ensure_genesis_state(db).unwrap();
         let genesis_header = scheme.genesis_header();
-        let b = OpenBlock::new(scheme.engine.as_ref(), db.clone(), &genesis_header, proposer, vec![], false).unwrap();
+        let b = OpenBlock::new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![], false).unwrap();
         let b = b.close(*genesis_header.parcels_root(), *genesis_header.invoices_root()).unwrap();
         if let Seal::Proposal(seal) = scheme.engine.generate_seal(b.block(), &genesis_header) {
             (b, seal)

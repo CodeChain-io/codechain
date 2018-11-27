@@ -17,9 +17,9 @@
 use ccrypto::aes::{self, SymmetricCipherError};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::super::session::Session;
 use super::ProtocolId;
 use super::Version;
+use crate::session::Session;
 
 use super::ENCRYPTED_ID;
 use super::UNENCRYPTED_ID;

@@ -17,12 +17,12 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::{Address, Error as KeyError, NetworkId};
-use primitives::{H256, U256};
+use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::super::transaction::Error as TransactionError;
-use super::super::util::unexpected::Mismatch;
-use super::super::ShardId;
+use crate::transaction::Error as TransactionError;
+use crate::util::unexpected::Mismatch;
+use crate::ShardId;
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 #[serde(tag = "type", content = "content")]
@@ -44,27 +44,23 @@ pub enum Error {
     /// Parcel's fee is below currently set minimal fee requirement.
     InsufficientFee {
         /// Minimal expected fee
-        minimal: U256,
+        minimal: u64,
         /// Parcel fee
-        got: U256,
+        got: u64,
     },
     /// Sender doesn't have enough funds to pay for this Parcel
     InsufficientBalance {
         address: Address,
         /// Senders balance
-        balance: U256,
+        balance: u64,
         /// Parcel cost
-        cost: U256,
+        cost: u64,
     },
     /// Returned when parcel seq does not match state seq
-    InvalidSeq {
-        /// Seq expected.
-        expected: U256,
-        /// Seq found.
-        got: U256,
-    },
+    InvalidSeq(Mismatch<u64>),
     InvalidShardId(ShardId),
     InvalidShardRoot(Mismatch<H256>),
+    ZeroAmount,
     /// Signature error
     InvalidSignature(String),
     InconsistentShardOutcomes,
@@ -98,6 +94,7 @@ const ERROR_ID_INVALID_TRANSFER_DESTINATION: u8 = 19u8;
 const ERROR_ID_INVALID_TRANSACTION: u8 = 20u8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 21u8;
 const ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER: u8 = 22u8;
+const ERROR_ID_ZERO_AMOUNT: u8 = 23u8;
 
 impl Error {
     fn item_count(&self) -> usize {
@@ -114,11 +111,10 @@ impl Error {
             Error::InsufficientBalance {
                 ..
             } => 4,
-            Error::InvalidSeq {
-                ..
-            } => 3,
+            Error::InvalidSeq(_) => 2,
             Error::InvalidShardId(_) => 2,
             Error::InvalidShardRoot(_) => 2,
+            Error::ZeroAmount => 1,
             Error::InvalidSignature(_) => 2,
             Error::InconsistentShardOutcomes => 1,
             Error::ParcelsTooBig => 1,
@@ -150,12 +146,10 @@ impl Encodable for Error {
                 balance,
                 cost,
             } => s.append(&ERROR_ID_INSUFFICIENT_BALANCE).append(address).append(balance).append(cost),
-            Error::InvalidSeq {
-                expected,
-                got,
-            } => s.append(&ERROR_ID_INVALID_SEQ).append(expected).append(got),
+            Error::InvalidSeq(mismatch) => s.append(&ERROR_ID_INVALID_SEQ).append(mismatch),
             Error::InvalidShardId(shard_id) => s.append(&ERROR_ID_INVALID_SHARD_ID).append(shard_id),
             Error::InvalidShardRoot(mismatch) => s.append(&ERROR_ID_INVALID_SHARD_ROOT).append(mismatch),
+            Error::ZeroAmount => s.append(&ERROR_ID_ZERO_AMOUNT),
             Error::InvalidSignature(err) => s.append(&ERROR_ID_INVALID_SIGNATURE).append(err),
             Error::InconsistentShardOutcomes => s.append(&ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
             Error::ParcelsTooBig => s.append(&ERROR_ID_PARCELS_TOO_BIG),
@@ -190,12 +184,10 @@ impl Decodable for Error {
                 balance: rlp.val_at(2)?,
                 cost: rlp.val_at(2)?,
             },
-            ERROR_ID_INVALID_SEQ => Error::InvalidSeq {
-                expected: rlp.val_at(1)?,
-                got: rlp.val_at(2)?,
-            },
+            ERROR_ID_INVALID_SEQ => Error::InvalidSeq(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ROOT => Error::InvalidShardRoot(rlp.val_at(1)?),
+            ERROR_ID_ZERO_AMOUNT => Error::ZeroAmount,
             ERROR_ID_INVALID_SIGNATURE => Error::InvalidSignature(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => Error::InconsistentShardOutcomes,
             ERROR_ID_PARCELS_TOO_BIG => Error::ParcelsTooBig,
@@ -232,12 +224,10 @@ impl Display for Error {
                 balance,
                 cost,
             } => format!("{} has only {:?} but it must be larger than {:?}", address, balance, cost),
-            Error::InvalidSeq {
-                expected,
-                got,
-            } => format!("Invalid parcel seq: expected {}, found {}", expected, got),
+            Error::InvalidSeq(mismatch) => format!("Invalid parcel seq {}", mismatch),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
             Error::InvalidShardRoot(mismatch) => format!("Invalid shard root {}", mismatch),
+            Error::ZeroAmount => format!("An amount cannot be 0"),
             Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
             Error::ParcelsTooBig => "Parcel size exceeded the body size limit".to_string(),

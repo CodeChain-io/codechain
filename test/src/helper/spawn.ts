@@ -23,10 +23,11 @@ import {
     H256,
     Invoice,
     Parcel,
-    U256,
+    U64,
     AssetTransferInput,
     PlatformAddress,
-    AssetTransferAddress
+    AssetTransferAddress,
+    AssetUnwrapCCCTransaction
 } from "codechain-sdk/lib/core/classes";
 import { mkdtempSync, appendFileSync } from "fs";
 import { createInterface as createReadline } from "readline";
@@ -35,6 +36,7 @@ import { wait } from "./promise";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { faucetAddress, faucetSecret } from "./constants";
+import { ncp } from "ncp";
 
 const projectRoot = `${__dirname}/../../..`;
 
@@ -62,6 +64,7 @@ export default class CodeChain {
     private _chain: ChainType;
     private argv: string[];
     private process?: ChildProcess;
+    private keyFileMovePromise?: Promise;
 
     public get id(): number {
         return this._id;
@@ -104,7 +107,12 @@ export default class CodeChain {
     }
 
     constructor(
-        options: { chain?: ChainType; argv?: string[]; logFlag?: boolean } = {}
+        options: {
+            chain?: ChainType;
+            argv?: string[];
+            logFlag?: boolean;
+            additionalKeysPath?: string;
+        } = {}
     ) {
         const { chain, argv, logFlag } = options;
         this._id = CodeChain.idCounter++;
@@ -115,6 +123,18 @@ export default class CodeChain {
         this._dbPath = mkdtempSync(`${projectRoot}/db/`);
         this._ipcPath = `/tmp/jsonrpc.${this.id}.ipc`;
         this._keysPath = mkdtempSync(`${projectRoot}/keys/`);
+        if (options.additionalKeysPath) {
+            this.keyFileMovePromise = new Promise((resolve, reject) => {
+                ncp(options.additionalKeysPath, this._keysPath, err => {
+                    if (err) {
+                        console.error(err);
+                        reject(err);
+                        return;
+                    }
+                    resolve();
+                });
+            });
+        }
         this._localKeyStorePath = `${this.keysPath}/keystore.db`;
         this._logFlag = logFlag || false;
         this._logFile = `${new Date().toISOString().replace(/[-:.]/g, "_")}.${
@@ -130,6 +150,9 @@ export default class CodeChain {
         argv: string[] = [],
         log_level = "trace,mio=warn,tokio=warn,hyper=warn"
     ) {
+        if (this.keyFileMovePromise) {
+            await this.keyFileMovePromise;
+        }
         const useDebugBuild = process.env.NODE_ENV !== "production";
         process.env.RUST_LOG = log_level;
         // NOTE: https://github.com/CodeChain-io/codechain/issues/348
@@ -224,6 +247,12 @@ export default class CodeChain {
         }
     }
 
+    public async waitBlockNumber(n: number) {
+        while ((await this.getBestBlockNumber()) < n) {
+            await wait(500);
+        }
+    }
+
     public async getBestBlockNumber() {
         return this.sdk.rpc.chain.getBestBlockNumber();
     }
@@ -297,7 +326,7 @@ export default class CodeChain {
 
     public async payment(
         recipient: string | PlatformAddress,
-        amount: U256 | string | number
+        amount: U64 | string | number
     ) {
         const parcel = this.sdk.core
             .createPaymentParcel({
@@ -324,8 +353,8 @@ export default class CodeChain {
         parcel: Parcel,
         params: {
             account: string | PlatformAddress;
-            fee?: number | string | U256;
-            seq?: number | string | U256;
+            fee?: number | string | U64;
+            seq?: number;
         }
     ) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
@@ -345,7 +374,7 @@ export default class CodeChain {
     public async sendTransaction(
         tx: Transaction,
         options?: {
-            seq?: U256 | number;
+            seq?: number;
             fee?: number;
             awaitInvoice?: boolean;
             secret?: string;
@@ -378,7 +407,8 @@ export default class CodeChain {
         amount: number;
         recipient?: string | AssetTransferAddress;
         secret?: string;
-        seq?: U256 | number;
+        seq?: number;
+        metadata?: string;
         awaitMint?: boolean;
     }) {
         const {
@@ -386,12 +416,13 @@ export default class CodeChain {
             seq,
             recipient = await this.createP2PKHAddress(),
             secret,
+            metadata = "",
             awaitMint = true
         } = params;
         const tx = this.sdk.core.createAssetMintTransaction({
             scheme: {
                 shardId: 0,
-                metadata: "",
+                metadata,
                 amount
             },
             recipient
@@ -421,7 +452,10 @@ export default class CodeChain {
         await this.sdk.key.signTransactionInput(tx, index, { keyStore });
     }
 
-    public async signTransferBurn(tx: AssetTransferTransaction, index: number) {
+    public async signTransferBurn(
+        tx: AssetTransferTransaction | AssetUnwrapCCCTransaction,
+        index: number
+    ) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
             this.localKeyStorePath
         );
@@ -431,7 +465,7 @@ export default class CodeChain {
     public async setRegularKey(
         key: any,
         options?: {
-            seq?: U256 | number;
+            seq?: number;
             awaitInvoice?: boolean;
             secret?: any;
         }
@@ -460,7 +494,7 @@ export default class CodeChain {
     }
 
     public async sendSignedParcel(options?: {
-        seq?: U256 | number;
+        seq?: number;
         awaitInvoice?: boolean;
         recipient?: PlatformAddress | string;
         amount?: number;

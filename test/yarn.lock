@@ -35,6 +35,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/ncp@^2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@types/ncp/-/ncp-2.0.1.tgz#749432511f6ad747d04e98837b18cca9045567fb"
+  integrity sha512-TeiJ7uvv/92ugSqZ0v9l0eNXzutlki0aK+R1K5bfA5SYUil46ITlxLW4iNTCf55P4L5weCmaOdtxGeGWvudwPg==
+  dependencies:
+    "@types/node" "*"
+
 "@types/node@*", "@types/node@^10.3.5", "@types/node@^10.9.4":
   version "10.12.0"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-10.12.0.tgz#ea6dcbddbc5b584c83f06c60e82736d8fbb0c235"
@@ -768,43 +775,6 @@ codechain-keystore@^0.5.4:
     lowdb-session-storage-adapter "^1.0.0"
     uuid "^3.3.2"
 
-codechain-keystore@~0.2.1:
-  version "0.2.3"
-  resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.2.3.tgz#7534f583771d16503aa8c02acd7a4d53d9ae20ea"
-  integrity sha512-+j9Xg+EbWmnGo8u5Itb+fGTMXOMQaxHpe8ux7MUTTNYu3lLYMlNwAopNjfrtBGp5xbb23ewqMkU56FBMRr9mvw==
-  dependencies:
-    codechain-primitives "^0.2.0"
-    config "^2.0.1"
-    lodash "^4.17.10"
-    lowdb "^1.0.0"
-    uuid "^3.3.2"
-
-codechain-primitives@^0.1.0-rc2:
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.1.0.tgz#1324596a0d91c15736cc6ea96379d84bcb80f476"
-  integrity sha512-UpZ9aCfSdAuPcLJyqyMP6xRUl6kp1J18+pIN/TDmCOm4TdF14b8EKHuReKUYn9uWdgwENoa3T1IPxscQcx3wqQ==
-  dependencies:
-    bignumber.js "^7.2.1"
-    blakejs "^1.1.0"
-    buffer "^5.2.1"
-    elliptic "^6.4.1"
-    lodash "^4.17.11"
-    ripemd160 "^2.0.2"
-    rlp "^2.1.0"
-
-codechain-primitives@^0.2.0:
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.2.0.tgz#1e86b8adb1466606d478f95f25aa4eb5d6dc0e75"
-  integrity sha512-NFrBkJozIl0NNvVhCdhBem7DslUDOgO/KbeSCApkQuIlvUb6SQQsjEqvPad7SYFRIzxcKWRuDmTlTHMGoiLhzQ==
-  dependencies:
-    bignumber.js "^7.2.1"
-    blakejs "^1.1.0"
-    buffer "^5.2.1"
-    elliptic "^6.4.1"
-    lodash "^4.17.11"
-    ripemd160 "^2.0.2"
-    rlp "^2.1.0"
-
 codechain-primitives@^0.3.0:
   version "0.3.4"
   resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.3.4.tgz#9ba6dfa53bcf6a083430eadaaba5e2130daea66e"
@@ -821,10 +791,10 @@ codechain-primitives@^0.3.0:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-codechain-primitives@^0.4.1:
-  version "0.4.1"
-  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.1.tgz#06550ad15b91fc46cf2c6d80f93d16c37f244077"
-  integrity sha512-3ZAV9mkUKQmXFjW7j6wcE5mS9oubBj0C31PwitsVc7Lvgl0o8F7FQW9NSrYN8JLLYHwSIVM66L2paYYmE9/L8A==
+codechain-primitives@^0.4.2, codechain-primitives@^0.4.3:
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.3.tgz#e8dd9e1b52e0af7069e78f2c79e9affd417e2f44"
+  integrity sha512-z70qQt4YK5jwnrsMj0oG6C07KA2AqBDkrjf1YpT1FtjUDvE2SMHWvM3XlpA6fvOdF1fEtLPQpvpaDkPsYduvCA==
   dependencies:
     bignumber.js "^7.2.1"
     blakejs "^1.1.0"
@@ -837,46 +807,34 @@ codechain-primitives@^0.4.1:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-codechain-sdk@^0.2.0-alpha.2:
-  version "0.2.0-alpha.2"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-0.2.0-alpha.2.tgz#494f8db85693f662a5df453ff9d0d08f94af1210"
-  integrity sha512-cryYUuMCnOmz/WyR/q5REqnEhCKKZF4whYpzwIxXiY+ZYiVfJQ5sJsgH+kXYGhXXxR2s8db2ohp9XFy2+Wo0jA==
-  dependencies:
-    buffer "5.1.0"
-    codechain-keystore "~0.2.1"
-    codechain-primitives "^0.1.0-rc2"
-    jayson "^2.0.6"
-    lodash "^4.17.10"
-    node-fetch "^2.1.2"
-    request-promise "^4.2.2"
-    rlp "^2.0.0"
-
-"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#amount-lib":
+"codechain-sdk@https://github.com/jhs7jhs/codechain-sdk-js.git#build":
   version "0.5.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#61f640e914212f34d41530705ce2c798f5a010d2"
+  resolved "https://github.com/jhs7jhs/codechain-sdk-js.git#55dae963a87b28c647e2d8e786ffdd959a661434"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.5.4"
-    codechain-primitives "^0.4.1"
+    codechain-primitives "^0.4.2"
     jayson "^2.0.6"
     lodash "^4.17.10"
     node-fetch "^2.1.2"
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-test-helper@https://github.com/CodeChain-io/codechain-test-helper-js.git#a4a9c26635a52395dfd17733eef66b18a144fd00":
+"codechain-test-helper@https://github.com/CodeChain-io/codechain-test-helper-js.git#ca7035acba6213ea65ef2795df8821499d7d29ca":
   version "1.0.0"
-  resolved "https://github.com/CodeChain-io/codechain-test-helper-js.git#a4a9c26635a52395dfd17733eef66b18a144fd00"
+  resolved "https://github.com/CodeChain-io/codechain-test-helper-js.git#ca7035acba6213ea65ef2795df8821499d7d29ca"
   dependencies:
     "@types/crypto-js" "^3.1.43"
     blakejs "^1.1.0"
-    codechain-sdk "^0.2.0-alpha.2"
+    codechain-primitives "^0.4.3"
+    codechain-sdk "https://github.com/jhs7jhs/codechain-sdk-js.git#build"
     crypto "^1.0.1"
     dgram "^1.0.1"
     elliptic "^6.4.1"
+    jest "^23.1.0"
     net "^1.0.2"
     rlp "^2.1.0"
-    tslint "^5.11.0"
+    ts-jest "^22.4.6"
 
 collection-visit@^1.0.0:
   version "1.0.0"
@@ -3039,6 +2997,11 @@ natural-compare@^1.4.0:
   resolved "https://registry.yarnpkg.com/natural-compare/-/natural-compare-1.4.0.tgz#4abebfeed7541f2c27acfb29bdbbd15c8d5ba4f7"
   integrity sha1-Sr6/7tdUHywnrPspvbvRXI1bpPc=
 
+ncp@^2.0.0:
+  version "2.0.0"
+  resolved "http://registry.npmjs.org/ncp/-/ncp-2.0.0.tgz#195a21d6c46e361d2fb1281ba38b91e9df7bdbb3"
+  integrity sha1-GVoh1sRuNh0vsSgbo4uR6d9727M=
+
 needle@^2.2.1:
   version "2.2.4"
   resolved "https://registry.yarnpkg.com/needle/-/needle-2.2.4.tgz#51931bff82533b1928b7d1d69e01f1b00ffd2a4e"
@@ -3408,10 +3371,10 @@ preserve@^0.2.0:
   resolved "https://registry.yarnpkg.com/preserve/-/preserve-0.2.0.tgz#815ed1f6ebc65926f865b310c0713bcb3315ce4b"
   integrity sha1-gV7R9uvGWSb4ZbMQwHE7yzMVzks=
 
-prettier@^1.14.2:
-  version "1.14.3"
-  resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.14.3.tgz#90238dd4c0684b7edce5f83b0fb7328e48bd0895"
-  integrity sha512-qZDVnCrnpsRJJq5nSsiHCE3BYMED2OtsI+cmzIzF1QIfqm5ALf8tEJcO27zV1gKNKRPdhjO0dNWnrzssDQ1tFg==
+prettier@1.14.2:
+  version "1.14.2"
+  resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.14.2.tgz#0ac1c6e1a90baa22a62925f41963c841983282f9"
+  integrity sha512-McHPg0n1pIke+A/4VcaS2en+pTNjy4xF+Uuq86u/5dyDO59/TtFZtQ708QIRkEZ3qwKz3GVkVa6mpxK/CpB8Rg==
 
 pretty-format@^22.4.0, pretty-format@^22.4.3:
   version "22.4.3"
@@ -4190,7 +4153,7 @@ tslib@^1.8.0, tslib@^1.8.1:
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-1.9.3.tgz#d7e4dd79245d85428c4d7e4822a79917954ca286"
   integrity sha512-4krF8scpejhaOgqzBEcGM7yDIEfi0/8+8zDRZhNZZ2kjmHJ4hv3zCbQWxoJGz1iw5U0Jl0nma13xzHXcncMavQ==
 
-tslint@^5.10.0, tslint@^5.11.0:
+tslint@^5.10.0:
   version "5.11.0"
   resolved "https://registry.yarnpkg.com/tslint/-/tslint-5.11.0.tgz#98f30c02eae3cde7006201e4c33cb08b48581eed"
   integrity sha1-mPMMAurjzecAYgHkwzywi0hYHu0=

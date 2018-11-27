@@ -40,6 +40,7 @@ extern crate codechain_reactor as creactor;
 extern crate codechain_rpc as crpc;
 extern crate codechain_state as cstate;
 extern crate codechain_sync as csync;
+extern crate codechain_timer as ctimer;
 extern crate codechain_types as ctypes;
 extern crate ctrlc;
 extern crate env_logger;
@@ -62,8 +63,8 @@ mod subcommand;
 
 use app_dirs::AppInfo;
 
-use self::run_node::run_node;
-use self::subcommand::run_subcommand;
+use crate::run_node::run_node;
+use crate::subcommand::run_subcommand;
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",

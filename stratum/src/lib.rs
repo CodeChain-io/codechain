@@ -36,7 +36,7 @@ extern crate tokio_io;
 
 mod traits;
 
-pub use traits::{Error, JobDispatcher, PushWorkHandler, ServiceConfiguration};
+pub use crate::traits::{Error, JobDispatcher, PushWorkHandler, ServiceConfiguration};
 
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;

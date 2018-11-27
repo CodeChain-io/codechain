@@ -19,7 +19,6 @@ use std::fmt;
 use cjson;
 use ckey::Public;
 use cstate::Account;
-use primitives::U256;
 use rlp::{Encodable, RlpStream};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,9 +26,9 @@ use rlp::{Encodable, RlpStream};
 /// Does not have a DB overlay cache, code hash or anything like that.
 pub struct PodAccount {
     /// The balance of the account.
-    pub balance: U256,
+    pub balance: u64,
     /// The seq of the account.
-    pub seq: U256,
+    pub seq: u64,
     /// Regular key of the account.
     pub regular_key: Option<Public>,
 }
@@ -50,8 +49,8 @@ impl Encodable for PodAccount {
 impl From<cjson::scheme::Account> for PodAccount {
     fn from(a: cjson::scheme::Account) -> Self {
         PodAccount {
-            balance: a.balance.map_or_else(U256::zero, Into::into),
-            seq: a.seq.map_or_else(U256::zero, Into::into),
+            balance: a.balance.map_or(0, Into::into),
+            seq: a.seq.map_or(0, Into::into),
             regular_key: None,
         }
     }

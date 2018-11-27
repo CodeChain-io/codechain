@@ -28,9 +28,9 @@ use mio::Token;
 use parking_lot::RwLock;
 use rlp::DecoderError;
 
-use super::super::{p2p, FiltersControl, IntoSocketAddr, RoutingTable, SocketAddr};
 use super::message;
 use super::server::{Error as ServerError, Server};
+use crate::{p2p, FiltersControl, IntoSocketAddr, RoutingTable, SocketAddr};
 
 const REFRESH_TIMER_TOKEN: TimerToken = 0;
 const BEGIN_OF_REQUEST_TOKEN: TimerToken = 1;

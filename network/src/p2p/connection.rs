@@ -26,11 +26,11 @@ use mio::{PollOpt, Ready, Token};
 use parking_lot::RwLock;
 use rlp::{DecoderError, UntrustedRlp};
 
-use super::super::session::Session;
-use super::super::{NodeId, SocketAddr};
 use super::message::{HandshakeMessage, Message, Seq, SignedMessage, Version};
 use super::stream::{Error as StreamError, SignedStream, Stream};
 use super::{ExtensionMessage, NegotiationMessage};
+use crate::session::Session;
+use crate::{NodeId, SocketAddr};
 
 struct EstablishedConnection {
     stream: SignedStream,

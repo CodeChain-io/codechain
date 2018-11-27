@@ -15,19 +15,20 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ctypes::ShardId;
-use primitives::{Bytes, H160, H256, U256};
+use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::local_cache::CacheableItem;
+use crate::CacheableItem;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, RlpEncodable, RlpDecodable)]
+#[serde(rename_all = "camelCase")]
 pub struct Asset {
     asset_type: H256,
-    amount: U256,
+    amount: u64,
 }
 
 impl Asset {
-    pub fn new(asset_type: H256, amount: U256) -> Self {
+    pub fn new(asset_type: H256, amount: u64) -> Self {
         Self {
             asset_type,
             amount,
@@ -38,12 +39,13 @@ impl Asset {
         &self.asset_type
     }
 
-    pub fn amount(&self) -> &U256 {
-        &self.amount
+    pub fn amount(&self) -> u64 {
+        self.amount
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct OwnedAsset {
     #[serde(flatten)]
     asset: Asset,
@@ -52,7 +54,7 @@ pub struct OwnedAsset {
 }
 
 impl OwnedAsset {
-    pub fn new(asset_type: H256, lock_script_hash: H160, parameters: Vec<Bytes>, amount: U256) -> Self {
+    pub fn new(asset_type: H256, lock_script_hash: H160, parameters: Vec<Bytes>, amount: u64) -> Self {
         Self {
             asset: Asset {
                 asset_type,
@@ -75,15 +77,15 @@ impl OwnedAsset {
         &self.parameters
     }
 
-    pub fn amount(&self) -> &U256 {
-        &self.asset.amount()
+    pub fn amount(&self) -> u64 {
+        self.asset.amount()
     }
 
-    pub fn init(&mut self, asset_type: H256, lock_script_hash: H160, parameters: Vec<Bytes>, amount: U256) {
+    pub fn init(&mut self, asset_type: H256, lock_script_hash: H160, parameters: Vec<Bytes>, amount: u64) {
         assert_eq!(
             Asset {
                 asset_type: H256::zero(),
-                amount: 0.into()
+                amount: 0
             },
             self.asset
         );
@@ -103,7 +105,7 @@ impl Default for OwnedAsset {
         Self {
             asset: Asset {
                 asset_type: H256::zero(),
-                amount: 0.into(),
+                amount: 0,
             },
             lock_script_hash: H160::zero(),
             parameters: vec![],
@@ -115,7 +117,7 @@ impl CacheableItem for OwnedAsset {
     type Address = OwnedAssetAddress;
 
     fn is_null(&self) -> bool {
-        self.asset.amount().is_zero()
+        self.asset.amount() == 0
     }
 }
 
@@ -126,7 +128,7 @@ impl Encodable for OwnedAsset {
         s.begin_list(5)
             .append(&PREFIX)
             .append(self.asset.asset_type())
-            .append(self.asset.amount())
+            .append(&self.asset.amount())
             .append(&self.lock_script_hash)
             .append(&self.parameters);
     }
@@ -154,7 +156,7 @@ impl Decodable for OwnedAsset {
     }
 }
 
-#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct OwnedAssetAddress(H256);
 
 impl_address!(SHARD, OwnedAssetAddress, PREFIX);
@@ -231,7 +233,7 @@ mod tests {
             hash[0..6].clone_from_slice(&[PREFIX, 0, 0, 0, 0, 0]);
             hash
         };
-        let address = OwnedAssetAddress::from_hash(hash.clone());
+        let address = OwnedAssetAddress::from_hash(hash);
         assert_eq!(Some(OwnedAssetAddress(hash)), address);
     }
 
@@ -261,7 +263,7 @@ mod tests {
     fn encode_and_decode_asset() {
         rlp_encode_and_decode_test!(Asset {
             asset_type: H256::random(),
-            amount: 0.into(),
+            amount: 0,
         });
     }
 

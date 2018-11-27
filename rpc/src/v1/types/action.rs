@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public};
 use ctypes::parcel::Action as ActionType;
 use ctypes::ShardId;
-use primitives::{Bytes, U256};
+use primitives::{Bytes, H160};
 
 use super::Transaction;
 
@@ -31,7 +32,7 @@ pub enum Action {
     Payment {
         receiver: PlatformAddress,
         /// Transferred amount.
-        amount: U256,
+        amount: Uint,
     },
     SetRegularKey {
         key: Public,
@@ -44,6 +45,12 @@ pub enum Action {
     SetShardUsers {
         shard_id: ShardId,
         users: Vec<PlatformAddress>,
+    },
+    WrapCCC {
+        shard_id: ShardId,
+        lock_script_hash: H160,
+        parameters: Vec<Bytes>,
+        amount: Uint,
     },
     Custom(Bytes),
 }
@@ -59,7 +66,7 @@ impl Action {
                 amount,
             } => Action::Payment {
                 receiver: PlatformAddress::new_v1(network_id, receiver),
-                amount,
+                amount: amount.into(),
             },
             ActionType::SetRegularKey {
                 key,
@@ -81,6 +88,17 @@ impl Action {
                 shard_id,
                 users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
             },
+            ActionType::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount,
+            } => Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount: amount.into(),
+            },
             ActionType::Custom(bytes) => Action::Custom(bytes),
         }
     }
@@ -98,7 +116,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                 amount,
             } => ActionType::Payment {
                 receiver: receiver.try_into_address()?,
-                amount,
+                amount: amount.into(),
             },
             Action::SetRegularKey {
                 key,
@@ -126,6 +144,17 @@ impl From<Action> for Result<ActionType, KeyError> {
                     users: users?,
                 }
             }
+            Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount,
+            } => ActionType::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                amount: amount.into(),
+            },
             Action::Custom(bytes) => ActionType::Custom(bytes),
         })
     }

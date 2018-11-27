@@ -42,7 +42,7 @@ use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, Error as SecpError, Message as SecpMessage, RecoverableSignature, RecoveryId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
+use crate::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
 
 pub const ECDSA_SIGNATURE_LENGTH: usize = 65;
 
@@ -280,8 +280,8 @@ pub fn recover_ecdsa(signature: &ECDSASignature, message: &Message) -> Result<Pu
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Generator, Message, Random};
     use super::{recover_ecdsa, sign_ecdsa, verify_ecdsa, verify_ecdsa_address, ECDSASignature};
+    use crate::{Generator, Message, Random};
     use std::str::FromStr;
 
     #[test]

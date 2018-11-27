@@ -19,7 +19,7 @@ use std::fmt;
 use bech32::Error as Bech32Error;
 use secp256k1::Error as SecpError;
 
-use super::NetworkId;
+use crate::NetworkId;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {

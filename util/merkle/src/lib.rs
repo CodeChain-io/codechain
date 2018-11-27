@@ -38,10 +38,10 @@ pub mod triedb;
 pub mod triedbmut;
 pub mod triehash;
 
-pub use self::node::Node;
-pub use skewed::skewed_merkle_root;
-pub use triedb::TrieDB;
-pub use triedbmut::TrieDBMut;
+pub use crate::node::Node;
+pub use crate::skewed::skewed_merkle_root;
+pub use crate::triedb::TrieDB;
+pub use crate::triedbmut::TrieDBMut;
 
 /// Trie Errors.
 ///

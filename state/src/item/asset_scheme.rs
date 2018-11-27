@@ -14,24 +14,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::mem::size_of;
+
+use byteorder::{BigEndian, WriteBytesExt};
 use ckey::Address;
 use ctypes::ShardId;
-use primitives::{H256, U256};
+use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::asset::Asset;
-use super::local_cache::CacheableItem;
+use crate::CacheableItem;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct AssetScheme {
     metadata: String,
-    amount: U256,
+    amount: u64,
     registrar: Option<Address>,
     pool: Vec<Asset>,
 }
 
 impl AssetScheme {
-    pub fn new(metadata: String, amount: U256, registrar: Option<Address>) -> Self {
+    pub fn new(metadata: String, amount: u64, registrar: Option<Address>) -> Self {
         Self {
             metadata,
             amount,
@@ -40,7 +44,7 @@ impl AssetScheme {
         }
     }
 
-    pub fn new_with_pool(metadata: String, amount: U256, registrar: Option<Address>, pool: Vec<Asset>) -> Self {
+    pub fn new_with_pool(metadata: String, amount: u64, registrar: Option<Address>, pool: Vec<Asset>) -> Self {
         Self {
             metadata,
             amount,
@@ -53,8 +57,8 @@ impl AssetScheme {
         &self.metadata
     }
 
-    pub fn amount(&self) -> &U256 {
-        &self.amount
+    pub fn amount(&self) -> u64 {
+        self.amount
     }
 
     pub fn registrar(&self) -> &Option<Address> {
@@ -65,9 +69,9 @@ impl AssetScheme {
         self.registrar.is_some()
     }
 
-    pub fn init(&mut self, metadata: String, amount: U256, registrar: Option<Address>, pool: Vec<Asset>) {
+    pub fn init(&mut self, metadata: String, amount: u64, registrar: Option<Address>, pool: Vec<Asset>) {
         assert_eq!("", &self.metadata);
-        assert_eq!(U256::zero(), self.amount);
+        assert_eq!(0, self.amount);
         assert_eq!(None, self.registrar);
         self.metadata = metadata;
         self.amount = amount;
@@ -84,7 +88,7 @@ const PREFIX: u8 = super::ASSET_SCHEME_PREFIX;
 
 impl Default for AssetScheme {
     fn default() -> Self {
-        Self::new("".to_string(), 0.into(), None)
+        Self::new("".to_string(), 0, None)
     }
 }
 
@@ -119,7 +123,7 @@ impl Decodable for AssetScheme {
     }
 }
 
-#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetSchemeAddress(H256);
 
 impl_address!(SHARD, AssetSchemeAddress, PREFIX);
@@ -130,13 +134,25 @@ impl AssetSchemeAddress {
 
         Self::from_transaction_hash_with_shard_id(transaction_hash, index, shard_id)
     }
+    pub fn new_with_zero_suffix(shard_id: ShardId) -> Self {
+        let mut hash = H256::zero();
+        hash[0..2].clone_from_slice(&[PREFIX, 0]);
+
+        let mut shard_id_bytes = Vec::<u8>::new();
+        debug_assert_eq!(size_of::<u16>(), size_of::<ShardId>());
+        WriteBytesExt::write_u16::<BigEndian>(&mut shard_id_bytes, shard_id).unwrap();
+        assert_eq!(2, shard_id_bytes.len());
+        hash[2..4].clone_from_slice(&shard_id_bytes);
+
+        AssetSchemeAddress(hash)
+    }
 }
 
 impl CacheableItem for AssetScheme {
     type Address = AssetSchemeAddress;
 
     fn is_null(&self) -> bool {
-        self.amount.is_zero()
+        self.amount == 0
     }
 }
 

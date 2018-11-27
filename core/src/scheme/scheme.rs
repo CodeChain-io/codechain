@@ -29,15 +29,15 @@ use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};
 
-use super::super::blockchain::HeaderProvider;
+use crate::blockchain::HeaderProvider;
 
-use super::super::codechain_machine::CodeChainMachine;
-use super::super::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
-use super::super::error::{Error, SchemeError};
-use super::super::header::Header;
 use super::pod_state::{PodAccounts, PodShards};
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
+use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
+use crate::error::{Error, SchemeError};
+use crate::header::Header;
 
 #[derive(Debug, PartialEq, Default, RlpEncodable)]
 pub struct CommonParams {
@@ -48,7 +48,7 @@ pub struct CommonParams {
     /// Network id.
     pub network_id: NetworkId,
     /// Minimum parcel cost.
-    pub min_parcel_cost: U256,
+    pub min_parcel_cost: u64,
     /// Maximum size of block body.
     pub max_body_size: usize,
     /// Snapshot creation period in unit of block numbers.
@@ -350,6 +350,10 @@ impl Scheme {
         ret.append(&header);
         ret.append_raw(&empty_list, 1);
         ret.out()
+    }
+
+    pub fn genesis_accounts(&self) -> Vec<Address> {
+        self.genesis_accounts.keys().cloned().collect()
     }
 }
 
