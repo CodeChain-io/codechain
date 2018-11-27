@@ -19,7 +19,7 @@ function anything(_input: string) {
 }
 
 function stringContaining(contains: string) {
-    return function(input: string) {
+    return (input: string) => {
         return input.includes(contains);
     };
 }
@@ -118,23 +118,43 @@ export const ERROR = {
     }
 };
 
-export function errorMatcher(base_err: {
+interface CodeChainError {
     code: number;
-    data: Function | string;
-    message: Function | string;
-}): Function {
-    return function(err: { code: number; data: string; message: string }) {
-        if (err.code !== base_err.code) return false;
+    data: string;
+    message: string;
+}
 
-        if (typeof base_err.data === "string") {
-            if (err.data !== base_err.data) return false;
-        } else {
-            if (!base_err.data(err.data)) return false;
+interface ExpectedError {
+    code: number;
+    data: string | ((_: string) => boolean);
+    message: string | ((_: string) => boolean);
+}
+
+export function errorMatcher(
+    baseErr: ExpectedError
+): ((_: CodeChainError) => boolean) {
+    return (err: CodeChainError) => {
+        if (err.code !== baseErr.code) {
+            return false;
         }
-        if (typeof base_err.message === "string") {
-            if (err.message !== base_err.message) return false;
+
+        if (typeof baseErr.data === "string") {
+            if (err.data !== baseErr.data) {
+                return false;
+            }
         } else {
-            if (!base_err.message(err.message)) return false;
+            if (!baseErr.data(err.data)) {
+                return false;
+            }
+        }
+        if (typeof baseErr.message === "string") {
+            if (err.message !== baseErr.message) {
+                return false;
+            }
+        } else {
+            if (!baseErr.message(err.message)) {
+                return false;
+            }
         }
         return true;
     };

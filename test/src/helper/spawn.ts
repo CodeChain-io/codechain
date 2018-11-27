@@ -17,26 +17,26 @@
 import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
 import {
-    SignedParcel,
-    Transaction,
+    AssetTransferAddress,
+    AssetTransferInput,
     AssetTransferTransaction,
+    AssetUnwrapCCCTransaction,
     H256,
     Invoice,
     Parcel,
-    U64,
-    AssetTransferInput,
     PlatformAddress,
-    AssetTransferAddress,
-    AssetUnwrapCCCTransaction
+    SignedParcel,
+    Transaction,
+    U64
 } from "codechain-sdk/lib/core/classes";
-import { mkdtempSync, appendFileSync } from "fs";
-import { createInterface as createReadline } from "readline";
-import * as mkdirp from "mkdirp";
-import { wait } from "./promise";
-import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
-import { faucetAddress, faucetSecret } from "./constants";
+import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
+import { appendFileSync, mkdtempSync } from "fs";
+import * as mkdirp from "mkdirp";
 import { ncp } from "ncp";
+import { createInterface as createReadline } from "readline";
+import { faucetAddress, faucetSecret } from "./constants";
+import { wait } from "./promise";
 
 const projectRoot = `${__dirname}/../../..`;
 
@@ -148,13 +148,13 @@ export default class CodeChain {
 
     public async start(
         argv: string[] = [],
-        log_level = "trace,mio=warn,tokio=warn,hyper=warn"
+        logLevel = "trace,mio=warn,tokio=warn,hyper=warn"
     ) {
         if (this.keyFileMovePromise) {
             await this.keyFileMovePromise;
         }
         const useDebugBuild = process.env.NODE_ENV !== "production";
-        process.env.RUST_LOG = log_level;
+        process.env.RUST_LOG = logLevel;
         // NOTE: https://github.com/CodeChain-io/codechain/issues/348
         process.env.WAIT_BEFORE_SHUTDOWN = "0";
 
