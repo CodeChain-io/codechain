@@ -415,6 +415,7 @@ impl Tendermint {
             None => true,
         };
         let lock_change = is_newer_than_lock
+            && vote_step.height == self.height.load(AtomicOrdering::SeqCst)
             && vote_step.step == Step::Prevote
             && message.block_hash.is_some()
             && self.has_enough_aligned_votes(message);
