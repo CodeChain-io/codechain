@@ -18,15 +18,17 @@ export function makeRandomPassphrase() {
     let text = "";
     const possible =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ";
-    for (let i = 0; i < 40; i++)
+    for (let i = 0; i < 40; i++) {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
     return text;
 }
 
 export function makeRandomH256() {
     let text = "";
     const possible = "0123456789abcdef";
-    for (let i = 0; i < 64; i++)
+    for (let i = 0; i < 64; i++) {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
     return text;
 }
