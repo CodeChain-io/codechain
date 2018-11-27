@@ -12,8 +12,8 @@
   "scripts": {
     "start": "cargo build && mocha -r ts-node/register --timeout 5000 src/**/*.test.ts",
     "start-release": "cargo build --release && NODE_ENV=production mocha -r ts-node/register --timeout 5000 src/**/*.test.ts",
-    "lint": "prettier src/*/*.ts -l",
-    "fmt": "prettier src/*/*.ts --write"
+    "lint": "tslint -p . && prettier 'src/*/**.{ts, json}' -l",
+    "fmt": "tslint -p . --fix && prettier 'src/*/**.{ts, json}' --write"
   },
   "devDependencies": {
     "@types/chai": "^4.1.7",
@@ -25,7 +25,8 @@
     "@types/node": "^10.9.4",
     "@types/seedrandom": "^2.4.2",
     "prettier": "1.14.2",
-    "tslint": "^5.10.0"
+    "tslint": "^5.11.0",
+    "tslint-config-prettier": "^1.15.0"
   },
   "dependencies": {
     "chai": "^4.2.0",
