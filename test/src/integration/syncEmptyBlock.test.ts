@@ -19,11 +19,7 @@ import CodeChain from "../helper/spawn";
 import "mocha";
 import { expect } from "chai";
 
-const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
-
-// FIXME: It fails due to timeout when the block sync extension is stuck. See
-// https://github.com/CodeChain-io/codechain/issues/662
-describeSkippedInTravis("syncEmptyBlock", function() {
+describe("syncEmptyBlock", function() {
     // NOTE: To create empty blocks, enable --force-sealing option, and then,
     // trigger it by calling devel_startSealing RPC API.
     describe("empty block", function() {

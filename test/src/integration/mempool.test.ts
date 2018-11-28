@@ -27,8 +27,6 @@ import { H256 } from "codechain-primitives/lib";
 import "mocha";
 import { expect } from "chai";
 
-const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
-
 describe("Sealing test", function() {
     let node: CodeChain;
 
@@ -70,9 +68,7 @@ describe("Memory pool size test", function() {
         expect(pendingParcels.length).to.equal(sizeLimit * 2);
     }).timeout(10_000);
 
-    // FIXME: It fails due to timeout when the block sync extension is stuck.
-    // See https://github.com/CodeChain-io/codechain/issues/662
-    describeSkippedInTravis("To others", async function() {
+    describe("To others", async function() {
         let nodeB: CodeChain;
 
         beforeEach(async function() {

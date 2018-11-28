@@ -46,7 +46,6 @@ describe("network1 node test", function() {
             "tag string for the target"
         );
         let { list } = await node.sdk.rpc.network.getWhitelist();
-        console.log(list);
         expect(list).to.deep.include([target, "tag string for the target"]);
 
         await node.sdk.rpc.network.removeFromWhitelist(target);
