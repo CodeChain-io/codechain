@@ -100,11 +100,7 @@ where
     /// It will remove the row if it's the last value in it
     pub fn remove(&mut self, row: &Row, col: &Col) -> Option<Val> {
         let (val, is_empty) = {
-            let row_map = self.map.get_mut(row);
-            if let None = row_map {
-                return None
-            }
-            let row_map = row_map.unwrap();
+            let row_map = self.map.get_mut(row)?;
             let val = row_map.remove(col);
             (val, row_map.is_empty())
         };

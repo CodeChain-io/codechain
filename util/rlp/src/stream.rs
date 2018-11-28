@@ -274,11 +274,9 @@ impl RlpStream {
     ///
     /// panic! if stream is not finished.
     pub fn out(self) -> Vec<u8> {
-        match self.is_finished() {
-            //true => self.encoder.out().into_vec(),
-            true => self.buffer.into_vec(),
-            false => panic!(),
-        }
+        assert!(self.is_finished());
+        // self.encoder.out().into_vec()
+        self.buffer.into_vec()
     }
 
     /// Try to finish lists
@@ -315,10 +313,8 @@ impl RlpStream {
 
     /// Drain the object and return the underlying ElasticArray.
     pub fn drain(self) -> ElasticArray1024<u8> {
-        match self.is_finished() {
-            true => self.buffer,
-            false => panic!(),
-        }
+        assert!(self.is_finished());
+        self.buffer
     }
 
     /// Finalize current ubnbound list. Panics if no unbounded list has been opened.

@@ -82,9 +82,10 @@ impl ValidatorSet for ValidatorList {
     }
 
     fn is_epoch_end(&self, first: bool, _chain_head: &Header) -> Option<Vec<u8>> {
-        match first {
-            true => Some(Vec::new()), // allow transition to fixed list, and instantly
-            false => None,
+        if first {
+            Some(Vec::new()) // allow transition to fixed list, and instantly
+        } else {
+            None
         }
     }
 

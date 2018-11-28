@@ -77,9 +77,10 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
         return Err(EngineError::NotAuthorized(*header.author()).into())
     }
 
-    match validators.contains(header.parent_hash(), &signer) {
-        false => Err(BlockError::InvalidSeal.into()),
-        true => Ok(()),
+    if validators.contains(header.parent_hash(), &signer) {
+        Ok(())
+    } else {
+        Err(BlockError::InvalidSeal.into())
     }
 }
 

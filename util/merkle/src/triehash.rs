@@ -148,9 +148,10 @@ fn hash256rlp<A: AsRef<[u8]>, B: AsRef<[u8]>>(input: &[(A, B)], pre_len: usize, 
     // iterate over all possible nibbles
     for i in 0..16 {
         // count how many successive elements have same next nibble
-        let len = match begin < input.len() {
-            true => input[begin..].iter().take_while(|pair| pair.0.as_ref()[shared_prefix] == i).count(),
-            false => 0,
+        let len = if begin < input.len() {
+            input[begin..].iter().take_while(|pair| pair.0.as_ref()[shared_prefix] == i).count()
+        } else {
+            0
         };
 
         // if at least 1 successive element has the same nibble

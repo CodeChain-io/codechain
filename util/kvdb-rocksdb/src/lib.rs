@@ -105,11 +105,8 @@ impl CompactionProfile {
         let hdd_check_file = db_path
             .to_str()
             .and_then(|path_str| Command::new("df").arg(path_str).output().ok())
-            .and_then(|df_res| match df_res.status.success() {
-                true => Some(df_res.stdout),
-                false => None,
-            })
-            .and_then(|df| rotational_from_df_output(&df));
+            .filter(|df| df.status.success())
+            .and_then(|df| rotational_from_df_output(&df.stdout));
         // Read out the file and match compaction profile.
         if let Some(hdd_check) = hdd_check_file {
             if let Ok(mut file) = File::open(hdd_check.as_path()) {
@@ -369,16 +366,15 @@ impl Database {
                 warn!("DB corrupted: {}, attempting repair", s);
                 DB::repair(&opts, path)?;
 
-                match cfnames.is_empty() {
-                    true => DB::open(&opts, path)?,
-                    false => {
-                        let db = DB::open_cf(&opts, path, &cfnames, &cf_options)?;
-                        cfs = cfnames
-                            .iter()
-                            .map(|n| db.cf_handle(n).expect("rocksdb opens a cf_handle for each cfname; qed"))
-                            .collect();
-                        db
-                    }
+                if cfnames.is_empty() {
+                    DB::open(&opts, path)?
+                } else {
+                    let db = DB::open_cf(&opts, path, &cfnames, &cf_options)?;
+                    cfs = cfnames
+                        .iter()
+                        .map(|n| db.cf_handle(n).expect("rocksdb opens a cf_handle for each cfname; qed"))
+                        .collect();
+                    db
                 }
             }
             Err(s) => return Err(s.into()),

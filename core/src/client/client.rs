@@ -235,9 +235,8 @@ impl Client {
     /// is unknown.
     fn state_at(&self, id: BlockId) -> Option<TopLevelState> {
         // fast path for latest state.
-        match id {
-            BlockId::Latest => return Some(self.latest_state()),
-            _ => {}
+        if BlockId::Latest == id {
+            return Some(self.latest_state())
         }
 
         self.block_header(&id).and_then(|header| {

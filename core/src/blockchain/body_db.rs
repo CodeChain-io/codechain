@@ -58,15 +58,12 @@ impl BodyDB {
         };
 
         let genesis_hash = genesis.hash();
-        match bdb.block_body(&genesis_hash) {
-            None => {
-                let mut batch = DBTransaction::new();
-                batch.put(db::COL_BODIES, &genesis_hash, &Self::block_to_body(genesis));
+        if bdb.block_body(&genesis_hash).is_none() {
+            let mut batch = DBTransaction::new();
+            batch.put(db::COL_BODIES, &genesis_hash, &Self::block_to_body(genesis));
 
-                bdb.db.write(batch).expect("Low level database error. Some issue with disk?");
-            }
-            _ => {}
-        };
+            bdb.db.write(batch).expect("Low level database error. Some issue with disk?");
+        }
 
         bdb
     }

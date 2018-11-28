@@ -460,11 +460,8 @@ impl Extension {
     fn on_peer_response(&self, from: &NodeId, id: u64, mut response: ResponseMessage) {
         let last_request = self.requests.read()[from].iter().find(|(i, _)| *i == id).cloned();
         if let Some((_, request)) = last_request {
-            match &mut response {
-                ResponseMessage::Headers(headers) => {
-                    headers.sort_unstable_by_key(|h| h.number());
-                }
-                _ => {}
+            if let ResponseMessage::Headers(headers) = &mut response {
+                headers.sort_unstable_by_key(|h| h.number());
             }
 
             if !self.is_valid_response(&request, &response) {

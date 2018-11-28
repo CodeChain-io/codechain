@@ -129,9 +129,10 @@ impl Miner {
     fn new_raw(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
         let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(options.mem_pool_size, mem_limit)));
-        let notifiers: Vec<Box<NotifyWork>> = match options.new_work_notify.is_empty() {
-            true => Vec::new(),
-            false => vec![Box::new(WorkPoster::new(&options.new_work_notify))],
+        let notifiers: Vec<Box<NotifyWork>> = if options.new_work_notify.is_empty() {
+            Vec::new()
+        } else {
+            vec![Box::new(WorkPoster::new(&options.new_work_notify))]
         };
 
         Self {
@@ -285,56 +286,51 @@ impl Miner {
     fn calculate_timelock<C: BlockChain>(&self, parcel: &SignedParcel, client: &C) -> Result<ParcelTimelock, Error> {
         let mut max_block = None;
         let mut max_timestamp = None;
-        match &parcel.action {
-            Action::AssetTransaction(transaction) => {
-                match transaction {
-                    Transaction::AssetTransfer {
-                        inputs,
-                        ..
-                    } => {
-                        for input in inputs {
-                            if let Some(timelock) = input.timelock {
-                                let (is_block_number, value) = match timelock {
-                                    Timelock::Block(value) => (true, value),
-                                    Timelock::BlockAge(value) => (
-                                        true,
-                                        client.transaction_block_number(&input.prev_out.transaction_hash).ok_or(
-                                            Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                                timelock,
-                                                remaining_time: u64::max_value(),
-                                            })),
-                                        )? + value,
-                                    ),
-                                    Timelock::Time(value) => (false, value),
-                                    Timelock::TimeAge(value) => (
-                                        false,
-                                        client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or(
-                                            Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                                timelock,
-                                                remaining_time: u64::max_value(),
-                                            })),
-                                        )? + value,
-                                    ),
-                                };
-                                if is_block_number {
-                                    if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
-                                        max_block = Some(value);
-                                    }
-                                } else {
-                                    if max_timestamp.is_none()
-                                        || max_timestamp.expect("The previous guard ensures") < value
-                                    {
-                                        max_timestamp = Some(value);
-                                    }
-                                }
+        if let Action::AssetTransaction(transaction) = &parcel.action {
+            if let Transaction::AssetTransfer {
+                inputs,
+                ..
+            } = transaction
+            {
+                for input in inputs {
+                    if let Some(timelock) = input.timelock {
+                        let (is_block_number, value) = match timelock {
+                            Timelock::Block(value) => (true, value),
+                            Timelock::BlockAge(value) => (
+                                true,
+                                client.transaction_block_number(&input.prev_out.transaction_hash).ok_or_else(|| {
+                                    Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                        timelock,
+                                        remaining_time: u64::max_value(),
+                                    }))
+                                })? + value,
+                            ),
+                            Timelock::Time(value) => (false, value),
+                            Timelock::TimeAge(value) => (
+                                false,
+                                client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or_else(
+                                    || {
+                                        Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                            timelock,
+                                            remaining_time: u64::max_value(),
+                                        }))
+                                    },
+                                )? + value,
+                            ),
+                        };
+                        if is_block_number {
+                            if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
+                                max_block = Some(value);
+                            }
+                        } else {
+                            if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value {
+                                max_timestamp = Some(value);
                             }
                         }
                     }
-                    _ => {}
-                };
+                }
             }
-            _ => (),
-        }
+        };
         Ok(ParcelTimelock {
             block: max_block,
             timestamp: max_timestamp,
@@ -427,12 +423,12 @@ impl Miner {
             (work, is_new)
         };
         if is_new {
-            work.map(|(pow_hash, score, _number)| {
+            if let Some((pow_hash, score, _number)) = work {
                 let target = self.engine.score_to_target(&score);
                 for notifier in self.notifiers.read().iter() {
                     notifier.notify(pow_hash, target)
                 }
-            });
+            }
         }
     }
 

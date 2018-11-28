@@ -81,11 +81,8 @@ impl CodeChainMachine {
         verify_timelock: bool,
     ) -> Result<(), Error> {
         if verify_timelock {
-            match &parcel.action {
-                Action::AssetTransaction(transaction) => {
-                    Self::verify_transaction_timelock(transaction, header, client)?;
-                }
-                _ => (),
+            if let Action::AssetTransaction(transaction) = &parcel.action {
+                Self::verify_transaction_timelock(transaction, header, client)?;
             }
         }
         // FIXME: Filter parcels.

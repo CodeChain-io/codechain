@@ -961,27 +961,27 @@ impl TendermintExtension {
     fn broadcast_message(&self, message: Bytes) {
         let tokens = self.select_random_peers();
         let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
-        self.api.lock().as_ref().map(|api| {
+        if let Some(api) = self.api.lock().as_ref() {
             for token in tokens {
                 api.send(&token, &message);
             }
-        });
+        }
     }
 
     fn broadcast_proposal_block(&self, message: Bytes) {
         let message = TendermintMessage::ProposalBlock(message).rlp_bytes().into_vec();
-        self.api.lock().as_ref().map(|api| {
+        if let Some(api) = self.api.lock().as_ref() {
             for token in self.peers.read().iter() {
                 api.send(&token, &message);
             }
-        });
+        };
     }
 
     fn set_timer_step(&self, step: Step) {
-        self.api.lock().as_ref().map(|api| {
+        if let Some(api) = self.api.lock().as_ref() {
             api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
             api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&step)).expect("Timer set succeeds");
-        });
+        };
     }
 
     fn register_tendermint(&self, tendermint: Weak<Tendermint>) {

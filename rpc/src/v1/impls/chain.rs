@@ -73,13 +73,10 @@ where
             .as_val()
             .map_err(|e| errors::rlp(&e))
             .and_then(|parcel: UnverifiedParcel| {
-                match &parcel.action {
-                    Action::Custom(bytes) => {
-                        if !self.client.custom_handlers().iter().any(|c| c.is_target(bytes)) {
-                            return Err(errors::rlp(&DecoderError::Custom("Invalid custom action!")))
-                        }
+                if let Action::Custom(bytes) = &parcel.action {
+                    if !self.client.custom_handlers().iter().any(|c| c.is_target(bytes)) {
+                        return Err(errors::rlp(&DecoderError::Custom("Invalid custom action!")))
                     }
-                    _ => {}
                 }
                 Ok(parcel)
             })
