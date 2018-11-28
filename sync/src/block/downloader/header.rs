@@ -55,7 +55,7 @@ impl HeaderDownloader {
 
     pub fn new(client: Arc<BlockChainClient>, total_score: U256, best_hash: H256) -> Self {
         let best_header_hash = client.best_block_header().hash();
-        let best_score = client.block_total_score(BlockId::Latest).expect("Best block always exist");
+        let best_score = client.block_total_score(&BlockId::Latest).expect("Best block always exist");
 
         Self {
             client,
@@ -91,7 +91,7 @@ impl HeaderDownloader {
     fn pivot_header(&self) -> Header {
         match self.downloaded.get(&self.pivot.hash) {
             Some(header) => header.clone(),
-            None => self.client.block_header(BlockId::Hash(self.pivot.hash)).unwrap(),
+            None => self.client.block_header(&BlockId::Hash(self.pivot.hash)).unwrap(),
         }
     }
 
@@ -118,7 +118,7 @@ impl HeaderDownloader {
 
     /// Imports headers and mark success
     /// Expects importing headers matches requested header
-    pub fn import_headers(&mut self, headers: Vec<Header>) {
+    pub fn import_headers(&mut self, headers: &[Header]) {
         let first_header_hash = headers.first().expect("First header must exist").hash();
         if first_header_hash == self.pivot.hash {
             for header in headers.iter() {

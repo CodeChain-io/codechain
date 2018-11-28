@@ -71,7 +71,7 @@ impl Service {
             p2p.channel(),
             Arc::clone(&filters_control),
         ));
-        session_initiator.register_handler(session_initiator_handler)?;
+        session_initiator.register_handler(session_initiator_handler.clone())?;
 
         Ok(Arc::new(Self {
             session_initiator,

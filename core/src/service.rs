@@ -35,7 +35,7 @@ pub struct ClientService {
 
 impl ClientService {
     pub fn start(
-        config: ClientConfig,
+        config: &ClientConfig,
         scheme: &Scheme,
         client_path: &Path,
         miner: Arc<Miner>,

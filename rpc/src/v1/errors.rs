@@ -149,7 +149,7 @@ pub fn parcel_core<T: Into<CoreError>>(error: T) -> Error {
     }
 }
 
-pub fn kvdb(error: KVDBError) -> Error {
+pub fn kvdb(error: &KVDBError) -> Error {
     Error {
         code: ErrorCode::ServerError(codes::KVDB_ERROR),
         message: "KVDB error.".into(),
@@ -157,7 +157,7 @@ pub fn kvdb(error: KVDBError) -> Error {
     }
 }
 
-pub fn rlp(error: DecoderError) -> Error {
+pub fn rlp(error: &DecoderError) -> Error {
     Error {
         code: ErrorCode::ServerError(codes::RLP_ERROR),
         message: "Invalid RLP.".into(),
@@ -223,7 +223,7 @@ pub fn no_work_required() -> Error {
     }
 }
 
-pub fn network_control(error: NetworkControlError) -> Error {
+pub fn network_control(error: &NetworkControlError) -> Error {
     match error {
         NetworkControlError::NotConnected => Error {
             code: ErrorCode::ServerError(codes::NETWORK_CANNOT_DISCONNECT_NOT_CONNECTED_ERROR),

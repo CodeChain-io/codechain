@@ -44,7 +44,7 @@ pub struct Block {
 
 impl Block {
     /// Get the RLP-encoding of the block with or without the seal.
-    pub fn rlp_bytes(&self, seal: Seal) -> Bytes {
+    pub fn rlp_bytes(&self, seal: &Seal) -> Bytes {
         let mut block_rlp = RlpStream::new_list(2);
         self.header.stream_rlp(&mut block_rlp, seal);
         block_rlp.append_list(&self.parcels);
@@ -272,7 +272,7 @@ pub struct ClosedBlock {
 impl ClosedBlock {
     /// Get the hash of the header without seal arguments.
     pub fn hash(&self) -> H256 {
-        self.header().rlp_blake(Seal::Without)
+        self.header().rlp_blake(&Seal::Without)
     }
 
     /// Turn this into a `LockedBlock`, unable to be reopened again.
@@ -344,7 +344,7 @@ impl SealedBlock {
     /// Get the RLP-encoding of the block.
     pub fn rlp_bytes(&self) -> Bytes {
         let mut block_rlp = RlpStream::new_list(2);
-        self.block.header.stream_rlp(&mut block_rlp, Seal::With);
+        self.block.header.stream_rlp(&mut block_rlp, &Seal::With);
         block_rlp.append_list(&self.block.parcels);
         block_rlp.out()
     }

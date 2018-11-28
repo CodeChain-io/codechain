@@ -112,7 +112,7 @@ impl Stratum {
 
 impl PushWorkHandler for Stratum {
     fn push_work_all(&self, payload: String) -> Result<(), Error> {
-        self.implementation.push_work_all(payload, &self.tcp_dispatcher)
+        self.implementation.push_work_all(payload.as_str(), &self.tcp_dispatcher)
     }
 
     fn push_work(&self, payloads: Vec<String>) -> Result<(), Error> {
@@ -142,7 +142,13 @@ struct StratumImpl {
     notify_counter: RwLock<u32>,
 }
 
-impl StratumImpl {
+trait StratumRpc {
+    fn subscribe(&self, _params: Params, meta: SocketMetadata) -> RpcResult;
+    fn authorize(&self, params: Params, meta: SocketMetadata) -> RpcResult;
+    fn submit(&self, params: Params, meta: SocketMetadata) -> RpcResult;
+}
+
+impl StratumRpc for StratumImpl {
     /// rpc method `mining.subscribe`
     fn subscribe(&self, _params: Params, meta: SocketMetadata) -> RpcResult {
         use std::str::FromStr;
@@ -203,17 +209,19 @@ impl StratumImpl {
             }
         })
     }
+}
 
+impl StratumImpl {
     /// Helper method
     fn update_peers(&self, tcp_dispatcher: &Dispatcher) {
         if let Some(job) = self.dispatcher.job() {
-            if let Err(e) = self.push_work_all(job, tcp_dispatcher) {
+            if let Err(e) = self.push_work_all(job.as_str(), tcp_dispatcher) {
                 warn!("Failed to update some of the peers: {:?}", e);
             }
         }
     }
 
-    fn push_work_all(&self, payload: String, tcp_dispatcher: &Dispatcher) -> Result<(), Error> {
+    fn push_work_all(&self, payload: &str, tcp_dispatcher: &Dispatcher) -> Result<(), Error> {
         let hup_peers = {
             let workers = self.workers.read();
             let next_request_id = {

@@ -83,11 +83,11 @@ impl TopCache {
         Ok(())
     }
 
-    pub fn account(&self, a: &Address, db: TrieDB) -> TrieResult<Option<Account>> {
+    pub fn account(&self, a: &Address, db: &TrieDB) -> TrieResult<Option<Account>> {
         self.account.get(a, db)
     }
 
-    pub fn account_mut(&self, a: &Address, db: TrieDB) -> TrieResult<RefMut<Account>> {
+    pub fn account_mut(&self, a: &Address, db: &TrieDB) -> TrieResult<RefMut<Account>> {
         self.account.get_mut(a, db)
     }
 
@@ -95,11 +95,11 @@ impl TopCache {
         self.account.remove(address)
     }
 
-    pub fn regular_account(&self, a: &RegularAccountAddress, db: TrieDB) -> TrieResult<Option<RegularAccount>> {
+    pub fn regular_account(&self, a: &RegularAccountAddress, db: &TrieDB) -> TrieResult<Option<RegularAccount>> {
         self.regular_account.get(a, db)
     }
 
-    pub fn regular_account_mut(&self, a: &RegularAccountAddress, db: TrieDB) -> TrieResult<RefMut<RegularAccount>> {
+    pub fn regular_account_mut(&self, a: &RegularAccountAddress, db: &TrieDB) -> TrieResult<RefMut<RegularAccount>> {
         self.regular_account.get_mut(a, db)
     }
 
@@ -107,19 +107,19 @@ impl TopCache {
         self.regular_account.remove(address)
     }
 
-    pub fn metadata(&self, a: &MetadataAddress, db: TrieDB) -> TrieResult<Option<Metadata>> {
+    pub fn metadata(&self, a: &MetadataAddress, db: &TrieDB) -> TrieResult<Option<Metadata>> {
         self.metadata.get(a, db)
     }
 
-    pub fn metadata_mut(&self, a: &MetadataAddress, db: TrieDB) -> TrieResult<RefMut<Metadata>> {
+    pub fn metadata_mut(&self, a: &MetadataAddress, db: &TrieDB) -> TrieResult<RefMut<Metadata>> {
         self.metadata.get_mut(a, db)
     }
 
-    pub fn shard(&self, a: &ShardAddress, db: TrieDB) -> TrieResult<Option<Shard>> {
+    pub fn shard(&self, a: &ShardAddress, db: &TrieDB) -> TrieResult<Option<Shard>> {
         self.shard.get(a, db)
     }
 
-    pub fn shard_mut(&self, a: &ShardAddress, db: TrieDB) -> TrieResult<RefMut<Shard>> {
+    pub fn shard_mut(&self, a: &ShardAddress, db: &TrieDB) -> TrieResult<RefMut<Shard>> {
         self.shard.get_mut(a, db)
     }
 
@@ -128,11 +128,11 @@ impl TopCache {
         self.shard.remove(address)
     }
 
-    pub fn action_data(&self, a: &H256, db: TrieDB) -> TrieResult<Option<ActionData>> {
+    pub fn action_data(&self, a: &H256, db: &TrieDB) -> TrieResult<Option<ActionData>> {
         self.action_data.get(a, db)
     }
 
-    pub fn action_data_mut(&self, a: &H256, db: TrieDB) -> TrieResult<RefMut<ActionData>> {
+    pub fn action_data_mut(&self, a: &H256, db: &TrieDB) -> TrieResult<RefMut<ActionData>> {
         self.action_data.get_mut(a, db)
     }
 

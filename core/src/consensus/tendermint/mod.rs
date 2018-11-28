@@ -126,11 +126,11 @@ impl<'a> ProposalSeal<'a> {
 
 struct RegularSeal<'a> {
     view: &'a View,
-    signatures: &'a Vec<Signature>,
+    signatures: &'a [Signature],
 }
 
 impl<'a> RegularSeal<'a> {
-    fn new(view: &'a View, signatures: &'a Vec<Signature>) -> Self {
+    fn new(view: &'a View, signatures: &'a [Signature]) -> Self {
         Self {
             view,
             signatures,
@@ -141,7 +141,7 @@ impl<'a> RegularSeal<'a> {
         vec![
             ::rlp::encode(&*self.view).into_vec(),
             ::rlp::NULL_RLP.to_vec(),
-            ::rlp::encode_list(&*self.signatures).into_vec(),
+            ::rlp::encode_list(self.signatures).into_vec(),
         ]
     }
 }
@@ -408,7 +408,7 @@ impl Tendermint {
 
     fn handle_valid_message(&self, message: &ConsensusMessage) {
         let _guard = self.step_change_lock.lock();
-        let ref vote_step = message.vote_step;
+        let vote_step = &message.vote_step;
         let is_newer_than_lock = match &*self.lock_change.read() {
             Some(lock) => vote_step > &lock.vote_step,
             None => true,
@@ -554,7 +554,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         } else {
             let vote_step = VoteStep::new(header.number() as usize, consensus_view(header)?, Step::Precommit);
             let precommit_hash = message_hash(vote_step, header.bare_hash());
-            let ref signatures_field = header
+            let signatures_field = &header
                 .seal()
                 .get(2)
                 .expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
@@ -794,7 +794,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn register_chain_notify(&self, client: &Client) {
-        client.add_notify(self.chain_notify.clone());
+        client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<ChainNotify>);
     }
 }
 
@@ -848,7 +848,7 @@ impl ChainNotify for TendermintChainNotify {
         let _guard = t.step_change_lock.lock();
         for hash in imported {
             // New Commit received, skip to next height.
-            let header = c.block_header(hash.into()).expect("ChainNotify is called after the block is imported");
+            let header = c.block_header(&hash.into()).expect("ChainNotify is called after the block is imported");
             ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
             t.to_next_height(header.number() as usize);
         }
@@ -871,7 +871,7 @@ where
         let message = header.bare_hash();
 
         let mut addresses = HashSet::new();
-        let ref header_signatures_field = header.seal().get(2).ok_or(BlockError::InvalidSeal)?;
+        let header_signatures_field = &header.seal().get(2).ok_or(BlockError::InvalidSeal)?;
         for rlp in UntrustedRlp::new(header_signatures_field).iter() {
             let signature: Signature = rlp.as_val()?;
             let address = (self.recover)(&signature, &message)?;
@@ -945,7 +945,7 @@ impl TendermintExtension {
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {
-        *self.client.write() = Some(client.clone());
+        *self.client.write() = Some(client);
     }
 
     fn select_random_peers(&self) -> Vec<NodeId> {
@@ -985,7 +985,7 @@ impl TendermintExtension {
     }
 
     fn register_tendermint(&self, tendermint: Weak<Tendermint>) {
-        *self.tendermint.write() = Some(tendermint.clone());
+        *self.tendermint.write() = Some(tendermint);
     }
 }
 

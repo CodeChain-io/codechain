@@ -194,7 +194,7 @@ where
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    pub fn get(&self, a: &Item::Address, db: TrieDB) -> cmerkle::Result<Option<Item>> {
+    pub fn get(&self, a: &Item::Address, db: &TrieDB) -> cmerkle::Result<Option<Item>> {
         // check local cache first
         if let Some(cached_item) = self.cache.borrow_mut().get_mut(a) {
             cached_item.touched = touched_count();
@@ -209,7 +209,7 @@ where
 
     /// Pull item `a` in our cache from the trie DB.
     /// If it doesn't exist, make item equal the evaluation of `default`.
-    pub fn get_mut(&self, a: &Item::Address, db: TrieDB) -> cmerkle::Result<RefMut<Item>> {
+    pub fn get_mut(&self, a: &Item::Address, db: &TrieDB) -> cmerkle::Result<RefMut<Item>> {
         let contains_key = self.cache.borrow().contains_key(a);
         if !contains_key {
             let maybe_item = db.get_with(a.as_ref(), ::rlp::decode::<Item>)?;

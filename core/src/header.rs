@@ -211,7 +211,7 @@ impl Header {
         match &mut *hash {
             Some(h) => *h,
             hash @ &mut None => {
-                let h = self.rlp_blake(Seal::With);
+                let h = self.rlp_blake(&Seal::With);
                 *hash = Some(h);
                 h
             }
@@ -224,7 +224,7 @@ impl Header {
         match &mut *hash {
             Some(h) => *h,
             hash @ None => {
-                let h = self.rlp_blake(Seal::Without);
+                let h = self.rlp_blake(&Seal::Without);
                 *hash = Some(h);
                 h
             }
@@ -232,7 +232,7 @@ impl Header {
     }
 
     /// Place this header into an RLP stream `s`, optionally `with_seal`.
-    pub fn stream_rlp(&self, s: &mut RlpStream, with_seal: Seal) {
+    pub fn stream_rlp(&self, s: &mut RlpStream, with_seal: &Seal) {
         s.begin_list(
             9 + match with_seal {
                 Seal::With => self.seal.len(),
@@ -256,7 +256,7 @@ impl Header {
     }
 
     /// Get the RLP of this header, optionally `with_seal`.
-    pub fn rlp(&self, with_seal: Seal) -> Bytes {
+    pub fn rlp(&self, with_seal: &Seal) -> Bytes {
         let mut s = RlpStream::new();
         self.stream_rlp(&mut s, with_seal);
         s.out()
@@ -269,7 +269,7 @@ impl Header {
     }
 
     /// Get the Blake hash of this header, optionally `with_seal`.
-    pub fn rlp_blake(&self, with_seal: Seal) -> H256 {
+    pub fn rlp_blake(&self, with_seal: &Seal) -> H256 {
         blake256(&self.rlp(with_seal))
     }
 }
@@ -307,7 +307,7 @@ impl Decodable for Header {
 
 impl Encodable for Header {
     fn rlp_append(&self, s: &mut RlpStream) {
-        self.stream_rlp(s, Seal::With);
+        self.stream_rlp(s, &Seal::With);
     }
 }
 

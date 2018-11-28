@@ -63,13 +63,12 @@ where
     }
 
     fn get_state_trie_value(&self, key: H256) -> Result<Vec<Bytes>> {
-        match self.db.get(COL_STATE, &key) {
-            Ok(Some(value)) => {
+        match self.db.get(COL_STATE, &key).map_err(|e| errors::kvdb(&e))? {
+            Some(value) => {
                 let rlp = UntrustedRlp::new(&value);
-                Ok(rlp.as_list::<Vec<u8>>().map_err(errors::rlp)?.into_iter().map(Bytes::from).collect())
+                Ok(rlp.as_list::<Vec<u8>>().map_err(|e| errors::rlp(&e))?.into_iter().map(Bytes::from).collect())
             }
-            Ok(None) => Ok(Vec::new()),
-            Err(err) => Err(errors::kvdb(err)),
+            None => Ok(Vec::new()),
         }
     }
 

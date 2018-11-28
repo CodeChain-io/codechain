@@ -79,9 +79,9 @@ impl Default for CompactionProfile {
 
 /// Given output of df command return Linux rotational flag file path.
 #[cfg(target_os = "linux")]
-pub fn rotational_from_df_output(df_out: Vec<u8>) -> Option<PathBuf> {
+pub fn rotational_from_df_output(df_out: &[u8]) -> Option<PathBuf> {
     use std::str;
-    str::from_utf8(df_out.as_slice())
+    str::from_utf8(df_out)
 		.ok()
 		// Get the drive name.
 		.and_then(|df_str| Regex::new(r"/dev/(sd[:alpha:]{1,2})")
@@ -109,7 +109,7 @@ impl CompactionProfile {
                 true => Some(df_res.stdout),
                 false => None,
             })
-            .and_then(rotational_from_df_output);
+            .and_then(|df| rotational_from_df_output(&df));
         // Read out the file and match compaction profile.
         if let Some(hdd_check) = hdd_check_file {
             if let Ok(mut file) = File::open(hdd_check.as_path()) {
@@ -899,7 +899,7 @@ mod tests {
             52, 52, 52, 54, 49, 54, 32, 32, 54, 55, 37, 32, 47, 10,
         ];
         let expected_output = Some(PathBuf::from("/sys/block/sda/queue/rotational"));
-        assert_eq!(rotational_from_df_output(example_df), expected_output);
+        assert_eq!(rotational_from_df_output(&example_df), expected_output);
     }
 
     #[test]

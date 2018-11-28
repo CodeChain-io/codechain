@@ -74,7 +74,7 @@ impl<'db> TrieDB<'db> {
     /// Get auxiliary
     fn get_aux<Q: Query>(
         &self,
-        path: NibbleSlice,
+        path: &NibbleSlice,
         cur_node_hash: Option<H256>,
         query: Q,
     ) -> crate::Result<Option<Q::Item>> {
@@ -84,7 +84,7 @@ impl<'db> TrieDB<'db> {
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
-                        if partial == path {
+                        if &partial == path {
                             Ok(Some(query.decode(value)))
                         } else {
                             Ok(None)
@@ -93,7 +93,7 @@ impl<'db> TrieDB<'db> {
                     Some(RlpNode::Branch(partial, children)) => {
                         if path.starts_with(&partial) {
                             self.get_aux(
-                                path.mid(partial.len() + 1),
+                                &path.mid(partial.len() + 1),
                                 children[path.mid(partial.len()).at(0) as usize],
                                 query,
                             )
@@ -118,7 +118,7 @@ impl<'db> Trie for TrieDB<'db> {
         let path = blake256(key);
         let root = *self.root;
 
-        self.get_aux(NibbleSlice::new(&path), Some(root), query)
+        self.get_aux(&NibbleSlice::new(&path), Some(root), query)
     }
 }
 

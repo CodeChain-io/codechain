@@ -264,7 +264,7 @@ impl Connections {
     pub fn enqueue_extension_message(
         &self,
         token: &StreamToken,
-        extension_name: &String,
+        extension_name: &str,
         need_encryption: bool,
         data: &[u8],
     ) -> bool {

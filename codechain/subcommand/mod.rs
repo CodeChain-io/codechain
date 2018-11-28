@@ -20,10 +20,10 @@ use clap::ArgMatches;
 
 use self::account_command::run_account_command;
 
-pub fn run_subcommand(matches: ArgMatches) -> Result<(), String> {
-    let subcommand = matches.subcommand.unwrap();
+pub fn run_subcommand(matches: &ArgMatches) -> Result<(), String> {
+    let subcommand = matches.subcommand.as_ref().unwrap();
     if subcommand.name == "account" {
-        run_account_command(subcommand.matches)
+        run_account_command(&subcommand.matches)
     } else {
         Err("Invalid subcommand".to_string())
     }

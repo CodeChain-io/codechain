@@ -142,7 +142,7 @@ impl TimeoutHandler for Extension {
 }
 
 impl Extension {
-    fn send_message(&self, token: &NodeId, message: Message) {
+    fn send_message(&self, token: &NodeId, message: &Message) {
         let api = self.api.read();
         api.as_ref().expect("Api must exist").send(token, &message.rlp_bytes());
     }
@@ -169,7 +169,7 @@ impl Extension {
             }
             cdebug!(SYNC_PARCEL, "Send {} parcels to {}", unsent.len(), token);
             ctrace!(SYNC_PARCEL, "Send {:?}", unsent_hashes);
-            self.send_message(token, Message::Parcels(unsent));
+            self.send_message(token, &Message::Parcels(unsent));
         }
     }
 }

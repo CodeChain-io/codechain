@@ -108,15 +108,15 @@ impl AccountProvider {
 
     pub fn new_account_and_public(&self, password: &Password) -> Result<(Address, Public), SignError> {
         let acc = Random.generate().expect("secp context has generation capabilities; qed");
-        self.insert_account_internal(acc, password)
+        self.insert_account_internal(&acc, password)
     }
 
     pub fn insert_account(&self, private: Private, password: &Password) -> Result<Address, SignError> {
         let acc = KeyPair::from_private(private)?;
-        self.insert_account_internal(acc, password).map(|(addr, _)| addr)
+        self.insert_account_internal(&acc, password).map(|(addr, _)| addr)
     }
 
-    fn insert_account_internal(&self, acc: KeyPair, password: &Password) -> Result<(Address, Public), SignError> {
+    fn insert_account_internal(&self, acc: &KeyPair, password: &Password) -> Result<(Address, Public), SignError> {
         let private = *acc.private();
         let public = *acc.public();
         let address = public_to_address(&public);

@@ -83,7 +83,7 @@ pub struct Client {
 
 impl Client {
     pub fn new(
-        config: ClientConfig,
+        config: &ClientConfig,
         scheme: &Scheme,
         db: Arc<KeyValueDB>,
         miner: Arc<Miner>,
@@ -108,7 +108,7 @@ impl Client {
 
         let engine = scheme.engine.clone();
 
-        let importer = Importer::new(&config, engine.clone(), message_channel.clone(), miner)?;
+        let importer = Importer::new(config, engine.clone(), message_channel.clone(), miner)?;
         let genesis_accounts = scheme.genesis_accounts();
 
         let client = Arc::new(Client {
@@ -134,8 +134,8 @@ impl Client {
     }
 
     /// Adds an actor to be notified on certain events
-    pub fn add_notify(&self, target: Arc<ChainNotify>) {
-        self.notify.write().push(Arc::downgrade(&target));
+    pub fn add_notify(&self, target: Weak<ChainNotify>) {
+        self.notify.write().push(target);
     }
 
     pub fn notify<F>(&self, f: F)
@@ -158,21 +158,21 @@ impl Client {
         self.importer.import_verified_blocks(self)
     }
 
-    fn block_hash(chain: &BlockChain, id: BlockId) -> Option<H256> {
+    fn block_hash(chain: &BlockChain, id: &BlockId) -> Option<H256> {
         match id {
-            BlockId::Hash(hash) => Some(hash),
-            BlockId::Number(number) => chain.block_hash(number),
+            BlockId::Hash(hash) => Some(*hash),
+            BlockId::Number(number) => chain.block_hash(*number),
             BlockId::Earliest => chain.block_hash(0),
             BlockId::Latest => Some(chain.best_block_hash()),
         }
     }
 
-    fn parcel_address(&self, id: ParcelId) -> Option<ParcelAddress> {
+    fn parcel_address(&self, id: &ParcelId) -> Option<ParcelAddress> {
         match id {
-            ParcelId::Hash(ref hash) => self.block_chain().parcel_address(hash),
+            ParcelId::Hash(hash) => self.block_chain().parcel_address(hash),
             ParcelId::Location(id, index) => Self::block_hash(&self.block_chain(), id).map(|hash| ParcelAddress {
                 block_hash: hash,
-                index,
+                index: *index,
             }),
         }
     }
@@ -186,7 +186,8 @@ impl Client {
             transaction_address
                 .into_iter()
                 .filter_map(|parcel_address| {
-                    if self.parcel_invoice(parcel_address.into()).map_or(false, |invoice| invoice == Invoice::Success) {
+                    if self.parcel_invoice(&parcel_address.into()).map_or(false, |invoice| invoice == Invoice::Success)
+                    {
                         Some(parcel_address)
                     } else {
                         None
@@ -239,7 +240,7 @@ impl Client {
             _ => {}
         }
 
-        self.block_header(id).and_then(|header| {
+        self.block_header(&id).and_then(|header| {
             let root = header.state_root();
             TopLevelState::from_existing(self.state_db.read().clone(&root), root).ok()
         })
@@ -306,11 +307,11 @@ impl AssetClient for Client {
             None => return Ok(None),
         };
 
-        match self.block_number(block_id) {
+        match self.block_number(&block_id) {
             None => return Ok(None),
             Some(block_number)
                 if block_number < self
-                    .block_number(parcel_address.block_hash.into())
+                    .block_number(&parcel_address.block_hash.into())
                     .expect("There is a successful transaction") =>
             {
                 return Ok(None)
@@ -359,7 +360,7 @@ impl EngineInfo for Client {
     }
 
     fn mining_reward(&self, block_number: u64) -> Option<u64> {
-        let block = self.block(block_number.into())?;
+        let block = self.block(&block_number.into())?;
         let block_fee = self.engine().block_fee(Box::new(block.parcels().into_iter()));
         Some(self.engine().block_reward(block_number) + block_fee)
     }
@@ -389,7 +390,7 @@ impl EngineClient for Client {
 }
 
 impl BlockInfo for Client {
-    fn block_header(&self, id: BlockId) -> Option<::encoded::Header> {
+    fn block_header(&self, id: &BlockId) -> Option<::encoded::Header> {
         let chain = self.block_chain();
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block_header_data(&hash))
@@ -403,7 +404,7 @@ impl BlockInfo for Client {
         self.block_chain().best_header()
     }
 
-    fn block(&self, id: BlockId) -> Option<encoded::Block> {
+    fn block(&self, id: &BlockId) -> Option<encoded::Block> {
         let chain = self.block_chain();
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block(&hash))
@@ -411,7 +412,7 @@ impl BlockInfo for Client {
 }
 
 impl ParcelInfo for Client {
-    fn parcel_block(&self, id: ParcelId) -> Option<H256> {
+    fn parcel_block(&self, id: &ParcelId) -> Option<H256> {
         self.parcel_address(id).map(|addr| addr.block_hash)
     }
 }
@@ -422,12 +423,12 @@ impl TransactionInfo for Client {
             .and_then(|addr| {
                 addr.into_iter()
                     .find(|addr| {
-                        let invoice = self.parcel_invoice(ParcelId::from(*addr)).expect("Parcel must exist");
+                        let invoice = self.parcel_invoice(&ParcelId::from(*addr)).expect("Parcel must exist");
                         invoice == Invoice::Success
                     })
                     .map(|hash| hash.block_hash)
             })
-            .and_then(|hash| self.block_header(hash.into()))
+            .and_then(|hash| self.block_header(&hash.into()))
     }
 }
 
@@ -485,17 +486,17 @@ impl BlockChainClient for Client {
         self.importer.miner.ready_parcels()
     }
 
-    fn block_number(&self, id: BlockId) -> Option<BlockNumber> {
+    fn block_number(&self, id: &BlockId) -> Option<BlockNumber> {
         self.block_number_ref(&id)
     }
 
-    fn block_body(&self, id: BlockId) -> Option<encoded::Body> {
+    fn block_body(&self, id: &BlockId) -> Option<encoded::Body> {
         let chain = self.block_chain();
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block_body(&hash))
     }
 
-    fn block_status(&self, id: BlockId) -> BlockStatus {
+    fn block_status(&self, id: &BlockId) -> BlockStatus {
         let chain = self.block_chain();
         match Self::block_hash(&chain, id) {
             Some(ref hash) if chain.is_known(hash) => BlockStatus::InChain,
@@ -504,23 +505,23 @@ impl BlockChainClient for Client {
         }
     }
 
-    fn block_total_score(&self, id: BlockId) -> Option<U256> {
+    fn block_total_score(&self, id: &BlockId) -> Option<U256> {
         let chain = self.block_chain();
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block_details(&hash)).map(|d| d.total_score)
     }
 
-    fn block_hash(&self, id: BlockId) -> Option<H256> {
+    fn block_hash(&self, id: &BlockId) -> Option<H256> {
         let chain = self.block_chain();
         Self::block_hash(&chain, id)
     }
 
-    fn parcel(&self, id: ParcelId) -> Option<LocalizedParcel> {
+    fn parcel(&self, id: &ParcelId) -> Option<LocalizedParcel> {
         let chain = self.block_chain();
         self.parcel_address(id).and_then(|address| chain.parcel(&address))
     }
 
-    fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice> {
+    fn parcel_invoice(&self, id: &ParcelId) -> Option<Invoice> {
         let chain = self.block_chain();
         self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
@@ -536,7 +537,7 @@ impl BlockChainClient for Client {
                 address
                     .into_iter()
                     .map(Into::into)
-                    .map(|address| self.parcel_invoice(address).expect("The invoice must exist"))
+                    .map(|address| self.parcel_invoice(&address).expect("The invoice must exist"))
                     .collect()
             })
             .unwrap_or_default()
@@ -617,7 +618,7 @@ impl PrepareOpenBlock for Client {
 impl BlockProducer for Client {}
 
 impl ImportSealedBlock for Client {
-    fn import_sealed_block(&self, block: SealedBlock) -> ImportResult {
+    fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult {
         let h = block.header().hash();
         let start = Instant::now();
         let route = {

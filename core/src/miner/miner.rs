@@ -225,7 +225,7 @@ impl Miner {
             .into_iter()
             .map(|parcel| {
                 let hash = parcel.hash();
-                if client.parcel_block(ParcelId::Hash(hash)).is_some() {
+                if client.parcel_block(&ParcelId::Hash(hash)).is_some() {
                     cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
                     return Err(StateError::from(ParcelError::ParcelAlreadyImported).into())
                 }
@@ -493,7 +493,7 @@ impl Miner {
 
         let (parcels_root, invoices_root) = {
             let parent_hash = open_block.header().parent_hash();
-            let parent_header = chain.block_header(BlockId::Hash(*parent_hash)).expect("Parent header MUST exist");
+            let parent_header = chain.block_header(&BlockId::Hash(*parent_hash)).expect("Parent header MUST exist");
             let parent_view = parent_header.view();
             (parent_view.parcels_root(), parent_view.invoices_root())
         };
@@ -533,7 +533,7 @@ impl Miner {
         }
         ctrace!(MINER, "seal_block_internally: attempting internal seal.");
 
-        let parent_header = match chain.block_header((*block.header().parent_hash()).into()) {
+        let parent_header = match chain.block_header(&(*block.header().parent_hash()).into()) {
             Some(hdr) => hdr.decode(),
             None => return false,
         };
@@ -566,7 +566,7 @@ impl Miner {
                 block
                     .lock()
                     .seal(&*self.engine, seal)
-                    .map(|sealed| chain.import_sealed_block(sealed).is_ok())
+                    .map(|sealed| chain.import_sealed_block(&sealed).is_ok())
                     .unwrap_or_else(|e| {
                         cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
                         false
@@ -676,7 +676,7 @@ impl MinerService for Miner {
         {
             let mut mem_pool = self.mem_pool.write();
             for hash in retracted {
-                let block = chain.block((*hash).into()).expect(
+                let block = chain.block(&(*hash).into()).expect(
                     "Client is sending message after commit to db and inserting to chain; the block is available; qed",
                 );
                 let parcels = block.parcels();
@@ -761,7 +761,7 @@ impl MinerService for Miner {
         result.and_then(|sealed| {
             let n = sealed.header().number();
             let h = sealed.header().hash();
-            chain.import_sealed_block(sealed)?;
+            chain.import_sealed_block(&sealed)?;
             cinfo!(MINER, "Submitted block imported OK. #{}: {}", n, h);
             Ok(())
         })

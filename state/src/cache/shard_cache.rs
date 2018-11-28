@@ -58,11 +58,11 @@ impl ShardCache {
         Ok(())
     }
 
-    pub fn asset_scheme(&self, a: &AssetSchemeAddress, db: TrieDB) -> TrieResult<Option<AssetScheme>> {
+    pub fn asset_scheme(&self, a: &AssetSchemeAddress, db: &TrieDB) -> TrieResult<Option<AssetScheme>> {
         self.asset_scheme.get(a, db)
     }
 
-    pub fn asset_scheme_mut(&self, a: &AssetSchemeAddress, db: TrieDB) -> TrieResult<RefMut<AssetScheme>> {
+    pub fn asset_scheme_mut(&self, a: &AssetSchemeAddress, db: &TrieDB) -> TrieResult<RefMut<AssetScheme>> {
         self.asset_scheme.get_mut(a, db)
     }
 
@@ -70,11 +70,11 @@ impl ShardCache {
         self.asset_scheme.remove(address)
     }
 
-    pub fn asset(&self, a: &OwnedAssetAddress, db: TrieDB) -> TrieResult<Option<OwnedAsset>> {
+    pub fn asset(&self, a: &OwnedAssetAddress, db: &TrieDB) -> TrieResult<Option<OwnedAsset>> {
         self.asset.get(a, db)
     }
 
-    pub fn asset_mut(&self, a: &OwnedAssetAddress, db: TrieDB) -> TrieResult<RefMut<OwnedAsset>> {
+    pub fn asset_mut(&self, a: &OwnedAssetAddress, db: &TrieDB) -> TrieResult<RefMut<OwnedAsset>> {
         self.asset.get_mut(a, db)
     }
 

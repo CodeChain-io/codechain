@@ -67,18 +67,14 @@ impl Importer {
         miner: Arc<Miner>,
     ) -> Result<Importer, Error> {
         let block_queue = BlockQueue::new(
-            config.queue.clone(),
+            &config.queue,
             engine.clone(),
             message_channel.clone(),
             config.verifier_type.verifying_seal(),
         );
 
-        let header_queue = HeaderQueue::new(
-            config.queue.clone(),
-            engine.clone(),
-            message_channel.clone(),
-            config.verifier_type.verifying_seal(),
-        );
+        let header_queue =
+            HeaderQueue::new(&config.queue, engine.clone(), message_channel, config.verifier_type.verifying_seal());
 
         Ok(Importer {
             import_lock: Mutex::new(()),
@@ -120,7 +116,7 @@ impl Importer {
                     } else {
                         imported_blocks.push(header.hash());
 
-                        let route = self.commit_block(closed_block, &header, &block.bytes, client);
+                        let route = self.commit_block(&closed_block, &header, &block.bytes, client);
                         import_results.push(route);
                     }
                 } else {
@@ -197,7 +193,7 @@ impl Importer {
     // it is for reconstructing the state transition.
     //
     // The header passed is from the original block data and is sealed.
-    pub fn commit_block<B>(&self, block: B, header: &Header, block_data: &[u8], client: &Client) -> ImportRoute
+    pub fn commit_block<B>(&self, block: &B, header: &Header, block_data: &[u8], client: &Client) -> ImportRoute
     where
         B: IsBlock, {
         let hash = header.hash();
@@ -279,7 +275,7 @@ impl Importer {
                 let pending = PendingTransition {
                     proof,
                 };
-                chain.insert_pending_transition(batch, hash, pending);
+                chain.insert_pending_transition(batch, hash, &pending);
             }
             EpochChange::No => {}
             EpochChange::Unsure => {
@@ -394,7 +390,7 @@ impl Importer {
             }
 
             let parent_header = client
-                .block_header(BlockId::Hash(*header.parent_hash()))
+                .block_header(&BlockId::Hash(*header.parent_hash()))
                 .expect("Parent of importing header must exist")
                 .decode();
             if self.check_header(&header, &parent_header) {

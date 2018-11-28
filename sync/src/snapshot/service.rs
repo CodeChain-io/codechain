@@ -58,11 +58,11 @@ impl ChainNotify for Service {
         let best_number = self.client.chain_info().best_block_number;
         let is_checkpoint = enacted
             .iter()
-            .map(|hash| self.client.block_number(BlockId::Hash(*hash)).expect("Enacted block must exist"))
+            .map(|hash| self.client.block_number(&BlockId::Hash(*hash)).expect("Enacted block must exist"))
             .any(|number| number % self.period == 0);
         if is_checkpoint && best_number > self.period {
             let number = (best_number / self.period - 1) * self.period;
-            let header = self.client.block_header(BlockId::Number(number)).expect("Snapshot target must exist");
+            let header = self.client.block_header(&BlockId::Number(number)).expect("Snapshot target must exist");
 
             let db = self.client.database();
             let path: PathBuf = [self.root_dir.clone(), format!("{:x}", header.hash())].iter().collect();

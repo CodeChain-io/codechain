@@ -18,14 +18,13 @@ mod hit;
 
 use cmerkle::TrieMut;
 use ctypes::invoice::Invoice;
-use primitives::Bytes;
 
 use crate::{StateResult, TopLevelState};
 
 pub trait ActionHandler: Send + Sync {
     fn init(&self, state: &mut TrieMut) -> StateResult<()>;
-    fn is_target(&self, bytes: &Bytes) -> bool;
-    fn execute(&self, bytes: &Bytes, state: &mut TopLevelState) -> Option<StateResult<Invoice>>;
+    fn is_target(&self, bytes: &[u8]) -> bool;
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState) -> Option<StateResult<Invoice>>;
 }
 
 pub use self::hit::HitHandler;

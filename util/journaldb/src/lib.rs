@@ -65,7 +65,7 @@ impl str::FromStr for Algorithm {
 impl Algorithm {
     /// Returns true if pruning strategy is stable
     pub fn is_stable(&self) -> bool {
-        match *self {
+        match self {
             Algorithm::Archive => true,
         }
     }

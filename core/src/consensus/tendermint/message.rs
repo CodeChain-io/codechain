@@ -218,7 +218,7 @@ pub fn message_info_rlp(vote_step: &VoteStep, block_hash: Option<BlockHash>) -> 
     s.out()
 }
 
-pub fn message_full_rlp(signature: &Signature, vote_info: &Bytes) -> Bytes {
+pub fn message_full_rlp(signature: &Signature, vote_info: &[u8]) -> Bytes {
     let mut s = RlpStream::new_list(2);
     s.append(signature).append_raw(vote_info, 1);
     s.out()

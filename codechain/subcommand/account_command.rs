@@ -30,7 +30,7 @@ use primitives::clean_0x;
 use crate::config::ChainType;
 use crate::constants::DEFAULT_KEYS_PATH;
 
-pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
+pub fn run_account_command(matches: &ArgMatches) -> Result<(), String> {
     if matches.subcommand.is_none() {
         println!("{}", matches.usage());
         return Ok(())
@@ -38,11 +38,11 @@ pub fn run_account_command(matches: ArgMatches) -> Result<(), String> {
 
     clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
 
-    let keys_path = get_global_argument(&matches, "keys-path").unwrap_or(DEFAULT_KEYS_PATH.into());
+    let keys_path = get_global_argument(matches, "keys-path").unwrap_or_else(|| DEFAULT_KEYS_PATH.into());
     let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
-    let chain = get_global_argument(&matches, "chain").unwrap_or("solo".into());
+    let chain = get_global_argument(matches, "chain").unwrap_or_else(|| "solo".into());
     let chain_type: ChainType = chain.parse().unwrap();
     let network_id: NetworkId = chain_type.scheme().map(|scheme| scheme.params().network_id)?;
 
@@ -95,7 +95,7 @@ fn import_raw(ap: &AccountProvider, network_id: NetworkId, raw_key: &str) -> Res
 fn remove(ap: &AccountProvider, address: &str) -> Result<(), String> {
     let address = PlatformAddress::from_str(address).map_err(|err| err.to_string())?;
     if confirmation_dialog("REMOVE")? {
-        let _ = ap.remove_account(address.into_address()).map_err(|err| err.to_string())?;
+        ap.remove_account(address.into_address()).map_err(|err| err.to_string())?;
         println!("{} is deleted", address);
         Ok(())
     } else {
@@ -115,7 +115,7 @@ fn change_password(ap: &AccountProvider, address: &str) -> Result<(), String> {
     let address = PlatformAddress::from_str(address).map_err(|err| err.to_string())?;
     let old_password = prompt_password("Old Password: ");
     let new_password = read_password_and_confirm().ok_or("The password does not match")?;
-    let _ = ap.change_password(address.into_address(), &old_password, &new_password).map_err(|err| err.to_string())?;
+    ap.change_password(address.into_address(), &old_password, &new_password).map_err(|err| err.to_string())?;
     println!("Password has changed");
     Ok(())
 }

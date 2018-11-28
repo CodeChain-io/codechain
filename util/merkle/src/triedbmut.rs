@@ -174,7 +174,7 @@ impl<'a> TrieDBMut<'a> {
     /// Remove auxiliary
     fn remove_aux(
         &mut self,
-        path: NibbleSlice,
+        path: &NibbleSlice,
         cur_node_hash: Option<H256>,
         old_val: &mut Option<DBValue>,
     ) -> crate::Result<Option<H256>> {
@@ -184,7 +184,7 @@ impl<'a> TrieDBMut<'a> {
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
-                        if path == partial {
+                        if path == &partial {
                             *old_val = Some(DBValue::from_slice(&value));
 
                             Ok(None)
@@ -196,7 +196,7 @@ impl<'a> TrieDBMut<'a> {
                         if path.starts_with(&partial) {
                             let new_path = path.mid(partial.len());
                             children[new_path.at(0) as usize] =
-                                self.remove_aux(new_path.mid(1), children[new_path.at(0) as usize], old_val)?;
+                                self.remove_aux(&new_path.mid(1), children[new_path.at(0) as usize], old_val)?;
 
                             if children[new_path.at(0) as usize] == None {
                                 // Fix the node
@@ -227,7 +227,7 @@ impl<'a> TrieDBMut<'a> {
                                                 vec.push(index as u8);
                                                 vec.append(&mut child_partial.to_vec());
 
-                                                let (new_partial, offset) = NibbleSlice::from_vec(vec);
+                                                let (new_partial, offset) = NibbleSlice::from_vec(&vec);
                                                 let new_leaf = RlpNode::Leaf(
                                                     NibbleSlice::new_offset(&new_partial, offset),
                                                     child_value,
@@ -242,7 +242,7 @@ impl<'a> TrieDBMut<'a> {
                                                 vec.push(index as u8);
                                                 vec.append(&mut child_partial.to_vec());
 
-                                                let (new_partial, offset) = NibbleSlice::from_vec(vec);
+                                                let (new_partial, offset) = NibbleSlice::from_vec(&vec);
                                                 let new_branch = RlpNode::Branch(
                                                     NibbleSlice::new_offset(&new_partial, offset),
                                                     children,
@@ -326,7 +326,7 @@ impl<'a> TrieMut for TrieDBMut<'a> {
         let mut old_val = None;
         let cur_hash = *self.root;
 
-        *self.root = match self.remove_aux(NibbleSlice::new(&path), Some(cur_hash), &mut old_val)? {
+        *self.root = match self.remove_aux(&NibbleSlice::new(&path), Some(cur_hash), &mut old_val)? {
             Some(hash) => hash,
             None => BLAKE_NULL_RLP,
         };

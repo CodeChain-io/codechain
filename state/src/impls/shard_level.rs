@@ -118,7 +118,7 @@ impl<'db> ShardLevelState<'db> {
                     transaction.hash(),
                     metadata,
                     lock_script_hash,
-                    parameters,
+                    &parameters,
                     amount,
                     registrar,
                     sender,
@@ -161,16 +161,16 @@ impl<'db> ShardLevelState<'db> {
                         parameters,
                     },
                 ..
-            } => self.wrap_ccc(parcel_hash, lock_script_hash, parameters, *amount),
+            } => self.wrap_ccc(parcel_hash, lock_script_hash, &parameters, *amount),
         }
     }
 
     fn mint_asset(
         &mut self,
         transaction_hash: H256,
-        metadata: &String,
+        metadata: &str,
         lock_script_hash: &H160,
-        parameters: &Vec<Bytes>,
+        parameters: &[Bytes],
         amount: &Option<u64>,
         registrar: &Option<Address>,
         sender: &Address,
@@ -187,13 +187,13 @@ impl<'db> ShardLevelState<'db> {
         if !asset_scheme.is_null() {
             return Err(TransactionError::AssetSchemeDuplicated(transaction_hash).into())
         }
-        asset_scheme.init(metadata.clone(), amount, *registrar, pool);
+        asset_scheme.init(metadata.to_string(), amount, *registrar, pool);
 
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, self.shard_id);
         let mut asset = self.get_asset_mut(&asset_address)?;
-        asset.init(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount);
+        asset.init(asset_scheme_address.into(), *lock_script_hash, parameters.to_vec(), amount);
         ctrace!(TX, "{:?} is generated on {:?}", asset, asset_address);
         Ok(())
     }
@@ -326,7 +326,7 @@ impl<'db> ShardLevelState<'db> {
     fn compose_asset<C: ChainTimeInfo>(
         &mut self,
         transaction: &Transaction,
-        metadata: &String,
+        metadata: &str,
         registrar: &Option<Address>,
         inputs: &[AssetTransferInput],
         output: &AssetMintOutput,
@@ -462,7 +462,7 @@ impl<'db> ShardLevelState<'db> {
         &mut self,
         parcel_hash: &H256,
         lock_script_hash: &H160,
-        parameters: &Vec<Bytes>,
+        parameters: &[Bytes],
         amount: u64,
     ) -> StateResult<()> {
         let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(self.shard_id);
@@ -486,7 +486,7 @@ impl<'db> ShardLevelState<'db> {
 
         let asset_address = OwnedAssetAddress::new(*parcel_hash, 0, self.shard_id);
         let mut asset = self.get_asset_mut(&asset_address)?;
-        asset.init(asset_scheme_address.into(), *lock_script_hash, parameters.clone(), amount);
+        asset.init(asset_scheme_address.into(), *lock_script_hash, parameters.to_vec(), amount);
         ctrace!(TX, "Created Wrapped CCC {:?} on {:?}", asset, asset_address);
         Ok(())
     }
@@ -521,13 +521,13 @@ impl<'db> ShardLevelState<'db> {
     fn get_asset_scheme_mut(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme_mut(a, trie)
+        self.cache.asset_scheme_mut(a, &trie)
     }
 
     fn get_asset_mut(&self, a: &OwnedAssetAddress) -> cmerkle::Result<RefMut<OwnedAsset>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_mut(a, trie)
+        self.cache.asset_mut(a, &trie)
     }
 }
 
@@ -535,13 +535,13 @@ impl<'db> ShardStateView for ShardLevelState<'db> {
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme(a, trie)
+        self.cache.asset_scheme(a, &trie)
     }
 
     fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset(a, trie)
+        self.cache.asset(a, &trie)
     }
 }
 
@@ -612,13 +612,13 @@ impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
     fn asset_scheme(&self, a: &AssetSchemeAddress) -> cmerkle::Result<Option<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme(a, trie)
+        self.cache.asset_scheme(a, &trie)
     }
 
     fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset(a, trie)
+        self.cache.asset(a, &trie)
     }
 }
 

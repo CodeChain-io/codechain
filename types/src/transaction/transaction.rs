@@ -496,23 +496,23 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
     let mut sum: HashMap<H256, U128> = HashMap::new();
 
     for input in inputs {
-        let ref asset_type = input.prev_out.asset_type;
-        let ref amount = input.prev_out.amount;
+        let asset_type = input.prev_out.asset_type;
+        let amount = input.prev_out.amount;
         let current_amount = sum.get(&asset_type).cloned().unwrap_or_default();
-        sum.insert(*asset_type, current_amount + U128::from(*amount));
+        sum.insert(asset_type, current_amount + U128::from(amount));
     }
     for output in outputs {
-        let ref asset_type = output.asset_type;
-        let ref amount = output.amount;
+        let asset_type = output.asset_type;
+        let amount = output.amount;
         let current_amount = if let Some(current_amount) = sum.get(&asset_type) {
-            if current_amount < &U128::from(*amount) {
+            if *current_amount < amount.into() {
                 return false
             }
             *current_amount
         } else {
             return false
         };
-        let t = sum.insert(*asset_type, current_amount - From::from(*amount));
+        let t = sum.insert(asset_type, current_amount - From::from(amount));
         debug_assert!(t.is_some());
     }
 
@@ -521,7 +521,7 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
 
 fn apply_bitmask_to_output(
     mut bitmask: Vec<u8>,
-    outputs: Vec<AssetTransferOutput>,
+    outputs: &[AssetTransferOutput],
     mut result: Vec<AssetTransferOutput>,
 ) -> Result<Vec<AssetTransferOutput>, HashingError> {
     let mut index = 0;
@@ -546,7 +546,7 @@ fn apply_bitmask_to_output(
 }
 
 fn apply_input_scheme(
-    inputs: &Vec<AssetTransferInput>,
+    inputs: &[AssetTransferInput],
     is_sign_all: bool,
     is_sign_single: bool,
     cur: &AssetTransferInput,
@@ -590,7 +590,7 @@ impl PartialHashing for Transaction {
                 let new_outputs = if tag.sign_all_outputs {
                     outputs.clone()
                 } else {
-                    apply_bitmask_to_output(tag.filter.clone(), outputs.to_vec(), Vec::new())?
+                    apply_bitmask_to_output(tag.filter.clone(), &outputs, Vec::new())?
                 };
 
                 Ok(blake256_with_key(
@@ -649,7 +649,7 @@ impl PartialHashing for Transaction {
                 let new_outputs = if tag.sign_all_outputs {
                     outputs.clone()
                 } else {
-                    apply_bitmask_to_output(tag.filter.clone(), outputs.to_vec(), Vec::new())?
+                    apply_bitmask_to_output(tag.filter.clone(), &outputs, Vec::new())?
                 };
 
                 Ok(blake256_with_key(

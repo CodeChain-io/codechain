@@ -667,13 +667,13 @@ impl Connection {
         }
     }
 
-    pub fn enqueue_extension_message(&self, extension_name: &String, need_encryption: bool, data: &[u8]) -> bool {
+    pub fn enqueue_extension_message(&self, extension_name: &str, need_encryption: bool, data: &[u8]) -> bool {
         let mut state = self.state.write();
         match &mut *state {
             State::WaitAck(_) => false,
             State::WaitSync(_) => false,
             State::Established(connection) => {
-                connection.enqueue_extension_message(extension_name.clone(), need_encryption, &data);
+                connection.enqueue_extension_message(extension_name.to_string(), need_encryption, &data);
                 true
             }
             State::Disconnecting(_) => false,

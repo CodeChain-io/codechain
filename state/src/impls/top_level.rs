@@ -98,28 +98,28 @@ impl TopStateView for TopLevelState {
     fn account(&self, a: &Address) -> TrieResult<Option<Account>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.account(&a, trie)
+        self.top_cache.account(&a, &trie)
     }
 
     fn regular_account_by_address(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
         let a = RegularAccountAddress::from_address(a);
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        Ok(self.top_cache.regular_account(&a, trie)?)
+        Ok(self.top_cache.regular_account(&a, &trie)?)
     }
 
     fn metadata(&self) -> TrieResult<Option<Metadata>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        self.top_cache.metadata(&address, trie)
+        self.top_cache.metadata(&address, &trie)
     }
 
     fn shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        self.top_cache.shard(&shard_address, trie)
+        self.top_cache.shard(&shard_address, &trie)
     }
 
     fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>> {
@@ -136,7 +136,7 @@ impl TopStateView for TopLevelState {
     fn action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        Ok(self.top_cache.action_data(key, trie)?.map(Into::into))
+        Ok(self.top_cache.action_data(key, &trie)?.map(Into::into))
     }
 }
 
@@ -505,34 +505,34 @@ impl TopLevelState {
 
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.account_mut(&a, trie)
+        self.top_cache.account_mut(&a, &trie)
     }
 
     fn get_regular_account_mut(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.regular_account_mut(&regular_account_address, trie)
+        self.top_cache.regular_account_mut(&regular_account_address, &trie)
     }
 
     fn get_metadata_mut(&self) -> TrieResult<RefMut<Metadata>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        self.top_cache.metadata_mut(&address, trie)
+        self.top_cache.metadata_mut(&address, &trie)
     }
 
     fn get_shard_mut(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        self.top_cache.shard_mut(&shard_address, trie)
+        self.top_cache.shard_mut(&shard_address, &trie)
     }
 
     fn get_action_data_mut(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.action_data_mut(key, trie)
+        self.top_cache.action_data_mut(key, &trie)
     }
 
     pub fn journal_under(&self, batch: &mut DBTransaction, now: u64) -> Result<u32, UtilError> {

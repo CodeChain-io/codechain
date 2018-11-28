@@ -24,8 +24,8 @@ pub enum Message {
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
-        match self {
-            &Message::Parcels(ref parcels) => s.append_list(parcels),
+        match &self {
+            Message::Parcels(parcels) => s.append_list(parcels),
         };
     }
 }

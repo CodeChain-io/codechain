@@ -60,7 +60,7 @@ pub trait ChainInfo {
 /// Provides various information on a block by it's ID
 pub trait BlockInfo {
     /// Get raw block header data by block id.
-    fn block_header(&self, id: BlockId) -> Option<encoded::Header>;
+    fn block_header(&self, id: &BlockId) -> Option<encoded::Header>;
 
     /// Get the best block header.
     fn best_block_header(&self) -> encoded::Header;
@@ -69,13 +69,13 @@ pub trait BlockInfo {
     fn best_header(&self) -> encoded::Header;
 
     /// Get raw block data by block header hash.
-    fn block(&self, id: BlockId) -> Option<encoded::Block>;
+    fn block(&self, id: &BlockId) -> Option<encoded::Block>;
 }
 
 /// Provides various information on a parcel by it's ID
 pub trait ParcelInfo {
     /// Get the hash of block that contains the parcel, if any.
-    fn parcel_block(&self, id: ParcelId) -> Option<H256>;
+    fn parcel_block(&self, id: &ParcelId) -> Option<H256>;
 }
 
 pub trait TransactionInfo {
@@ -210,26 +210,26 @@ pub trait BlockChainClient:
     fn ready_parcels(&self) -> Vec<SignedParcel>;
 
     /// Look up the block number for the given block ID.
-    fn block_number(&self, id: BlockId) -> Option<BlockNumber>;
+    fn block_number(&self, id: &BlockId) -> Option<BlockNumber>;
 
     /// Get raw block body data by block id.
     /// Block body is an RLP list of one item: parcels.
-    fn block_body(&self, id: BlockId) -> Option<encoded::Body>;
+    fn block_body(&self, id: &BlockId) -> Option<encoded::Body>;
 
     /// Get block status by block header hash.
-    fn block_status(&self, id: BlockId) -> BlockStatus;
+    fn block_status(&self, id: &BlockId) -> BlockStatus;
 
     /// Get block total score.
-    fn block_total_score(&self, id: BlockId) -> Option<U256>;
+    fn block_total_score(&self, id: &BlockId) -> Option<U256>;
 
     /// Get block hash.
-    fn block_hash(&self, id: BlockId) -> Option<H256>;
+    fn block_hash(&self, id: &BlockId) -> Option<H256>;
 
     /// Get parcel with given hash.
-    fn parcel(&self, id: ParcelId) -> Option<LocalizedParcel>;
+    fn parcel(&self, id: &ParcelId) -> Option<LocalizedParcel>;
 
     /// Get parcel invoice with given hash.
-    fn parcel_invoice(&self, id: ParcelId) -> Option<Invoice>;
+    fn parcel_invoice(&self, id: &ParcelId) -> Option<Invoice>;
 
     /// Get the transaction with given hash.
     fn transaction(&self, hash: &H256) -> Option<Transaction>;
@@ -245,7 +245,7 @@ pub type ImportResult = Result<H256, Error>;
 /// Provides `import_sealed_block` method
 pub trait ImportSealedBlock {
     /// Import sealed block. Skips all verifications.
-    fn import_sealed_block(&self, block: SealedBlock) -> ImportResult;
+    fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult;
 }
 
 /// Provides `reopen_block` method

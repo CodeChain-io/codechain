@@ -124,7 +124,7 @@ impl QueueSignal {
 
 impl<K: Kind> VerificationQueue<K> {
     pub fn new(
-        config: Config,
+        config: &Config,
         engine: Arc<CodeChainEngine>,
         message_channel: IoChannel<ClientIoMessage>,
         check_seal: bool,
@@ -165,7 +165,9 @@ impl<K: Kind> VerificationQueue<K> {
 
             let handle = thread::Builder::new()
                 .name(format!("Verifier #{}", i))
-                .spawn(move || VerificationQueue::verify(verification, engine, ready_signal, empty, more_to_verify, i))
+                .spawn(move || {
+                    VerificationQueue::verify(&verification, &*engine, &*ready_signal, &*empty, &*more_to_verify, i)
+                })
                 .expect("Failed to create verifier thread.");
             verifier_handles.push(handle);
         }
@@ -186,11 +188,11 @@ impl<K: Kind> VerificationQueue<K> {
     }
 
     fn verify(
-        verification: Arc<Verification<K>>,
-        engine: Arc<CodeChainEngine>,
-        ready_signal: Arc<QueueSignal>,
-        empty: Arc<SCondvar>,
-        more_to_verify: Arc<SCondvar>,
+        verification: &Verification<K>,
+        engine: &CodeChainEngine,
+        ready_signal: &QueueSignal,
+        empty: &SCondvar,
+        more_to_verify: &SCondvar,
         _id: usize,
     ) {
         loop {
@@ -227,7 +229,7 @@ impl<K: Kind> VerificationQueue<K> {
             };
 
             let hash = item.hash();
-            let is_ready = match K::verify(item, &*engine, verification.check_seal) {
+            let is_ready = match K::verify(item, engine, verification.check_seal) {
                 Ok(verified) => {
                     let mut verifying = verification.verifying.lock();
                     let mut idx = None;
@@ -518,7 +520,7 @@ mod tests {
         let engine = scheme.engine;
 
         let config = Config::default();
-        BlockQueue::new(config, engine, IoChannel::disconnected(), true)
+        BlockQueue::new(&config, engine, IoChannel::disconnected(), true)
     }
 
     #[test]
@@ -528,7 +530,7 @@ mod tests {
         let engine = scheme.engine;
 
         let config = Config::default();
-        let _ = BlockQueue::new(config, engine, IoChannel::disconnected(), true);
+        let _ = BlockQueue::new(&config, engine, IoChannel::disconnected(), true);
     }
 
     #[test]

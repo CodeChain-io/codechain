@@ -141,7 +141,7 @@ where
         vec
     }
 
-    pub fn from_vec(v: Vec<u8>) -> (ElasticArray36<u8>, usize) {
+    pub fn from_vec(v: &[u8]) -> (ElasticArray36<u8>, usize) {
         let mut r = ElasticArray36::new();
         let l = v.len();
         let mut i = l % 2;
