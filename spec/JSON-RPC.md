@@ -15,13 +15,17 @@ In the current version, it's only supported through HTTP.
 
 A XXX-bit hexadecimal string. (e.g. H160: 160-bit hexadecimal string)
 
-## U128, U256, U512, ...
+## U64, U128, U256, ...
 
 A hexadecimal string for XXX-bit unsigned integer
 
+## NetworkID
+
+A two-letter string to denote a network. For example, "cc" is for the main network, and "tc" is for the Husky test network. See [the specification](List-of-Network-Id.md).
+
 ## PlatformAddress
 
-A base32 string that starts with "ccc" or "tcc". See [the specification](https://github.com/CodeChain-io/codechain/blob/master/spec/CodeChain-Address.md#1-platform-account-address-format).
+A string that starts with "(NetworkID)c", and Bech32 string follows. For example, "cccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the main network, and "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the Husky test network. See [the specification](CodeChain-Address.md#1-platform-account-address-format).
 
 ## Block
 
@@ -44,7 +48,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
  - blockNumber: `number`
  - fee: `U64`
  - hash: `H256`
- - networkId: `number`
+ - networkId: `NetworkID`
  - seq: `number`
  - parcelIndex: `number`
  - sig: `Signature`
@@ -53,7 +57,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ## UnsignedParcel
 
  - fee: `U64`
- - networkId: `number`
+ - networkId: `NetworkID`
  - seq: `number` | `null`
  - action: `Action`
 
@@ -61,6 +65,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ### AssetTransaction Action
 
+ - action: "assetTransaction"
  - transaction: `Transaction`
 
 ### Payment Action
@@ -93,16 +98,16 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 ## AssetScheme
 
- - amount: `number`
+ - amount: `U64`
  - metadata: `string`
  - registrar: `PlatformAddress` | `null`
 
 ## Asset
 
- - amount: `number`
+ - amount: `U64`
  - assetType: `H256`
  - lockScriptHash: `H160`
- - parameters: `hexadecimal string[]`
+ - parameters: `number[][]`
 
 ## Signature
 `H520` for ECDSA signature | `H512` for Schnorr signature
@@ -207,7 +212,7 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 # Specification
 
 ## ping
-Sends ping to check whether CodeChain's RPC server is responding or not
+Sends ping to check whether CodeChain's RPC server is responding or not.
 
 ### Params
 No parameters
@@ -235,7 +240,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## version
-Gets the version of CodeChain
+Gets the version of CodeChain.
 
 ### Params
 No parameters
@@ -263,7 +268,13 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## commitHash
-Gets the commit hash of the repository upon which the CodeChain executable was built
+Gets the commit hash of the repository upon which the CodeChain executable was built.
+
+### Params
+No parameters
+
+### Returns
+`string` - the commit hash
 
 ### Request Example
 ```
@@ -277,7 +288,7 @@ Gets the commit hash of the repository upon which the CodeChain executable was b
 ```
 {
   "jsonrpc":"2.0",
-  "result": "0x20d560025f3a1c6675cb32384355ae05b224a3473ae17d3d15b6aa164af7d717",
+  "result": "361a36fe20900f15e71148a615b25978652bfe90",
   "id":null
 }
 ```
@@ -478,7 +489,7 @@ Errors: `Invalid Params`
         "blockNumber":5,
         "fee":"0xa",
         "hash":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
-        "networkId":17,
+        "networkId":"cc",
         "seq": 4,
         "parcelIndex":0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
@@ -503,7 +514,6 @@ Errors: `Invalid Params`
 Sends a signed parcel, returning its hash.
 
 ### Params
-
  1. bytes: `hexadecimal string` - RLP encoded hex string of SignedParcel
 
 ### Returns
@@ -563,7 +573,7 @@ Errors: `Invalid Params`
         "blockNumber": 5,
         "fee": "0xa",
         "hash": "0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
-        "networkId": 17,
+        "networkId": "cc",
         "seq": 4,
         "parcelIndex": 0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
@@ -581,7 +591,7 @@ Gets a parcel invoice with the given hash.
  1. parcel hash - `H256`
 
 ### Returns
-`null` | string[]. The string either "Success" or "Failed"
+`null` | `string[]` - Each string is either "Success" or "Failed"
 
 Errors: `Invalid Params`
 
@@ -653,7 +663,7 @@ Gets transaction invoices with the given hash.
  1. transaction hash - `H256`
 
 ### Returns
-`("Success" | "Failed")[]`
+`string[]` - Each string is either "Success" or "Failed".
 
 Errors: `Invalid Params`
 
@@ -975,7 +985,7 @@ Errors: `KVDB Error`
 Gets the number of shards, at the state of the given blockNumber.
 
 ### Params
-1. block number: `number` | `null`
+ 1. block number: `number` | `null`
 
 ### Returns
 `number` - the number of shards
@@ -1005,8 +1015,8 @@ Errors: `KVDB Error`, `Invalid Params`
 Gets the root of shard, at the state of the given blockNumber.
 
 ### Params
-1. shard id: `number`
-1. block number: `number` | `null`
+ 1. shard id: `number`
+ 2. block number: `number` | `null`
 
 ### Returns
 `null` | `H256` - the root of shard
@@ -1059,7 +1069,7 @@ No parameters
       "blockNumber":null,
       "fee":"0xa",
       "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
-      "networkId":17,
+      "networkId":"cc",
       "seq":"0x0",
       "parcelIndex":null,
       "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
@@ -1088,7 +1098,7 @@ Unlike `engine_getBlockReward`, it returns the actual amount received, including
 It returns `null` if the given block number is not mined yet.
 
 ### Params
-1. block number: `number`
+ 1. block number: `number`
 
 ### Returns
 `U64` | `null`
@@ -1128,7 +1138,7 @@ Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeTransaction", "params": [{"type":"assetMint","data":{"networkId":"17","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransaction", "params": [{"type":"assetMint","data":{"networkId":"cc","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
     localhost:8080
 ```
 
@@ -1205,10 +1215,10 @@ No parameters
 Gets the reward of the given block number
 
 ### Params
-1. block number: `number`
+ 1. block number: `number`
 
 ### Returns
-U64
+`U64`
 
 ### Request Example
 ```
@@ -1236,7 +1246,7 @@ Gets the recommended minimum confirmations.
 No parameters
 
 ### Returns
-number
+`number`
 
 ### Request Example
 ```
@@ -1295,7 +1305,7 @@ Used for submitting a proof-of-work solution.
 
 ### Params
  1. powHash: `string`
- 1. seal: `string[]`
+ 2. seal: `string[]`
 
 ### Returns
 `bool`
@@ -1326,11 +1336,11 @@ Share secret to the given address.
 
 ### Params
  1. secret: `string`
- 3. address: `string`
- 4. port: `number`
+ 2. address: `string`
+ 3. port: `number`
 
 ### Returns
-null
+`null`
 
 Errors: `Invalid Params`
 
@@ -1358,10 +1368,10 @@ Connect to the given address.
 
 ### Params
  1. address: `string`
- 1. port: `number`
+ 2. port: `number`
 
 ### Returns
-null
+`null`
 
 Errors: `Invalid Params`
 
@@ -1389,10 +1399,10 @@ Check whether the connection is established.
 
 ### Params
  1. address: `string`
- 1. port: `number`
+ 2. port: `number`
 
 ### Returns
-bool
+`bool`
 
 Errors: `Invalid Params`
 
@@ -1420,10 +1430,10 @@ Disconnect the connection from the given address.
 
 ### Params
  1. address: `string`
- 1. port: `number`
+ 2. port: `number`
 
 ### Returns
-null
+`null`
 
 Errors: `Not Conntected`, `Invalid Params`
 
@@ -1478,7 +1488,7 @@ No parameters
 Return the socket addresses of established peers.
 
 ### Params
-No Parameters
+No parameters
 
 ### Returns
 `string[]`
@@ -1649,6 +1659,7 @@ Enables whitelist.
 
 ### Params
 No parameters
+
 ### Returns
 `null`
 
@@ -1676,6 +1687,7 @@ Disables whitelist.
 
 ### Params
 No parameters
+
 ### Returns
 `null`
 
@@ -1703,6 +1715,7 @@ Enables blacklist.
 
 ### Params
 No parameters
+
 ### Returns
 `null`
 
@@ -1730,6 +1743,7 @@ Disables blacklist.
 
 ### Params
 No parameters
+
 ### Returns
 `null`
 
@@ -1967,7 +1981,7 @@ curl \
 
 ## account_sendParcel
 Sends a parcel by signing it with the account’s private key.
-It automatically fills the seq if the seq is not given
+It automatically fills the seq if the seq is not given.
 
 ### Params
  1. parcel: `UnsignedParcel`
@@ -2000,7 +2014,7 @@ curl \
 [Back to **List of methods**](#list-of-methods)
 
 ## account_changePassword
-Changes the account's password
+Changes the account's password.
 
 ### Params
  1. account: `PlatformAddress`
@@ -2039,7 +2053,7 @@ Gets keys of the state trie with the given offset and limit.
  2. limit: `number`
 
 ### Returns
-`string[]` with maximum length _limit_
+`H256[]` with maximum length _limit_
 
 ### Request Example
 ```
@@ -2066,7 +2080,6 @@ Gets keys of the state trie with the given offset and limit.
 Gets the value of the state trie with the given key.
 
 ### Params
-
  1. key: `string`
 
 ### Returns
