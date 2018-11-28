@@ -146,7 +146,7 @@ where
         let l = v.len();
         let mut i = l % 2;
         r.push(if i == 1 {
-            0x10 + v[0] & 15u8
+            (0x10 + v[0]) & 15u8
         } else {
             0
         });
