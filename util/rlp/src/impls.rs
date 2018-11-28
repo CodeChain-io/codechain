@@ -20,9 +20,9 @@ pub fn decode_usize(bytes: &[u8]) -> Result<usize, DecoderError> {
                 return Err(DecoderError::RlpInvalidIndirection)
             }
             let mut res = 0usize;
-            for i in 0..l {
+            for (i, byte) in bytes.iter().enumerate() {
                 let shift = (l - 1 - i) * 8;
-                res = res + ((bytes[i] as usize) << shift);
+                res += (*byte as usize) << shift;
             }
             Ok(res)
         }
@@ -159,9 +159,9 @@ macro_rules! impl_decodable_for_u {
                             return Err(DecoderError::RlpInvalidIndirection)
                         }
                         let mut res = 0 as $name;
-                        for i in 0..l {
+                        for (i, byte) in bytes.iter().enumerate() {
                             let shift = (l - 1 - i) * 8;
-                            res = res + ($name::from(bytes[i]) << shift);
+                            res += $name::from(*byte) << shift;
                         }
                         Ok(res)
                     }

@@ -44,12 +44,13 @@ impl<'a> Node<'a> {
             // branch node - first is nibbles (or empty), the rest 16 are nodes.
             Prototype::List(17) => {
                 let mut nodes = [None; 16];
-                for i in 0..16 {
-                    nodes[i] = if r.at(i + 1).is_empty() {
+                debug_assert_eq!(16, nodes.len());
+                for (i, mut node) in nodes.iter_mut().enumerate().map(|(i, node)| (i + 1, node)) {
+                    *node = if r.at(i).is_empty() {
                         None
                     } else {
-                        Some(r.val_at::<H256>(i + 1))
-                    }
+                        Some(r.val_at::<H256>(i))
+                    };
                 }
 
                 Some(Node::Branch(NibbleSlice::from_encoded(r.at(0).data()), nodes))

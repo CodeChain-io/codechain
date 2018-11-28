@@ -98,10 +98,9 @@ fn hex_prefix_encode(nibbles: &[u8]) -> Vec<u8> {
 /// Converts slice of bytes to nibbles.
 fn as_nibbles(bytes: &[u8]) -> Vec<u8> {
     let mut res = Vec::with_capacity(bytes.len() * 2);
-    for i in 0..bytes.len() {
-        let byte = bytes[i];
-        res.push(byte >> 4);
-        res.push(byte & 0b1111);
+    for byte in bytes {
+        res.push(*byte >> 4);
+        res.push(*byte & 0b1111);
     }
     res
 }

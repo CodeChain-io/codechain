@@ -288,8 +288,9 @@ impl<'a> fmt::Display for RlpNode<'a> {
             RlpNode::Branch(partial, children) => {
                 writeln!(f, "Branch - path({:?})", partial)?;
 
-                for i in 0..16 {
-                    writeln!(f, "child {} - hash({:?})", i, children[i])?;
+                debug_assert_eq!(16, children.len());
+                for (i, child) in children.iter().enumerate() {
+                    writeln!(f, "child {} - hash({:?})", i, child)?;
                 }
                 Ok(())
             }
