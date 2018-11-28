@@ -209,11 +209,13 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 ## ping
 Sends ping to check whether CodeChain's RPC server is responding or not
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `string` - "pong"
+### Returns
+`string` - "pong"
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -221,7 +223,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -230,14 +232,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## version
 Gets the version of CodeChain
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `string` - e.g. 0.1.0
+### Returns
+`string` - e.g. 0.1.0
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -245,7 +251,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -254,10 +260,12 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## commitHash
 Gets the commit hash of the repository upon which the CodeChain executable was built
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -265,7 +273,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -274,14 +282,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getBestBlockNumber
 Gets the number of the best block.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `number`
+### Returns
+`number`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -289,7 +301,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -298,14 +310,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getBestBlockId
 Gets the number and the hash of the best block.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: { hash: `H256`, number: `number` }
+### Returns
+{ hash: `H256`, number: `number` }
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -313,7 +329,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -325,17 +341,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getBlockHash
 Gets the hash of the block with given number.
 
-Params:
+### Params
  1. n - `number`
 
-Return Type: `null` | `H256`
+### Returns
+`null` | `H256`
 
 Errors: `Invalid Params`
 
-Request Example:
+### Request Example:
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -343,7 +362,7 @@ Request Example:
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -352,17 +371,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getBlockByNumber
 Gets the block with the given number.
 
-Params:
+### Params
  1. number: `number`
 
-Return Type: `null` | `Block`
+### Returns
+`null` | `Block`
 
 Errors: `Invalid Params`
 
-Request Example:
+### Request Example:
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -370,7 +392,7 @@ Request Example:
     http://localhost:8080
 ```
 
-Response Example:
+### Response Example:
 ```
 {
   "jsonrpc":"2.0",
@@ -412,17 +434,20 @@ Response Example:
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getBlockByHash
 Gets the block with the given hash.
 
-Params:
+### Params
  1. hash: `H256`
 
-Return Type: `null` | `Block`
+### Returns
+`null` | `Block`
 
 Errors: `Invalid Params`
 
-Request Example:
+### Request Example:
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -430,7 +455,7 @@ Request Example:
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -472,17 +497,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_sendSignedParcel
 Sends a signed parcel, returning its hash.
 
-Params: 
+### Params
+
  1. bytes: `hexadecimal string` - RLP encoded hex string of SignedParcel
 
-Return Type: `H256` - parcel hash
+### Returns
+`H256` - parcel hash
 
 Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Seq`, `Invalid Params`, `Invalid NetworkId`
 
-Request Example:
+### Request Example:
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -490,7 +519,7 @@ Request Example:
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -499,17 +528,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getParcel
 Gets a parcel with the given hash.
 
-Params:
+### Params
  1. parcel hash - `H256`
 
-Return Type: `null` or `Parcel`
+### Returns
+`null` or `Parcel`
 
 Errors: `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -517,7 +549,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
     "jsonrpc": "2.0",
@@ -540,17 +572,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getParcelInvoice
 Gets a parcel invoice with the given hash.
 
-Params:
+### Params
  1. parcel hash - `H256`
 
-Return Type: `null` | string[]. The string either "Success" or "Failed"
+### Returns
+`null` | string[]. The string either "Success" or "Failed"
 
 Errors: `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -558,7 +593,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -569,17 +604,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getTransaction
 Gets a transaction with the given hash.
 
-Params:
+### Params
  1. transaction hash - `H256`
 
-Return Type: `null` | `Transaction`
+### Returns
+`null` | `Transaction`
 
 Errors: `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -587,7 +625,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -606,17 +644,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getTransactionInvoices
 Gets transaction invoices with the given hash.
 
-Params:
+### Params
  1. transaction hash - `H256`
 
-Return Type: `("Success" | "Failed")[]`
+### Returns
+`("Success" | "Failed")[]`
 
 Errors: `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -624,7 +665,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -633,19 +674,22 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getAssetSchemeByHash
 Gets an asset scheme with the given asset type.
 
-Params:
+### Params
  1. transaction hash of AssetMintTransaction - `H256`
  2. shard id - `number`
  3. block number: `number` | `null`
 
-Return Type: `null` | `AssetScheme`
+### Returns
+`null` | `AssetScheme`
 
 Errors: `KVDB Error`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -653,7 +697,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -666,18 +710,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getAssetSchemeByType
 Gets an asset scheme with the given asset type.
 
-Params:
+### Params
  1. asset type - `H256`
  2. block number: `number` | `null`
 
-Return Type: `null` | `AssetScheme`
+### Returns
+`null` | `AssetScheme`
 
 Errors: `KVDB Error`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -685,7 +732,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -698,19 +745,22 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getAsset
 Gets an asset with the given asset type.
 
-Params:
+### Params
  1. transaction hash - `H256`
  2. index - `number`
  3. block number: `number` | `null`
 
-Return Type: `null` | `Asset`
+### Returns
+`null` | `Asset`
 
 Errors: `KVDB Error`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -718,7 +768,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -734,18 +784,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_isAssetSpent
 Checks whether an asset is spent or not.
 
-Params:
+### Params
  1. transaction hash: `H256`
  2. index: `number`
  3. shard id: `number`
  4. block number: `number` | `null`
 
-Return Type: `null` | `false` | `true` - It returns null when no such asset exists.
+### Returns
+`null` | `false` | `true` - It returns null when no such asset exists.
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -753,7 +806,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -762,18 +815,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getSeq
 Gets a seq of an account of the given address, at state of the given blockNumber.
 
-Params:
+### Params
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `null` | `number` - It returns null when the given block number is invalid.
+### Returns
+`null` | `number` - It returns null when the given block number is invalid.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -781,7 +837,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -790,18 +846,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getBalance
 Gets a balance of an account of the given address, at the state of the given blockNumber.
 
-Params:
+### Params
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `null` | `U64` - It returns null when the given block number is invalid.
+### Returns
+`null` | `U64` - It returns null when the given block number is invalid.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -809,7 +868,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -818,18 +877,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getRegularKey
 Gets the regular key of an account of the given address, at the state of the given blockNumber.
 
-Params:
+### Params
  1. address: `PlatformAddress`
  2. block number: `number` | `null`
 
-Return Type: `null` | `H512` - 512-bit public key. It returns null when the given address does not have a regular key.
+### Returns
+`null` | `H512` - 512-bit public key. It returns null when the given address does not have a regular key.
 
 Errors: `KVDB Error`, `Invalid Params`, `Invalid NetworkId`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -837,7 +899,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -846,18 +908,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getRegularKeyOwner
 Gets the owner of a regular key, at the state of the given blockNumber.
 
-Params:
+### Params
  1. public key: `H512`
  2. block number: `number` | `null`
 
-Return Type: `null` | `PlatformAddress` - It returns null when the given key has no owner.
+### Returns
+`null` | `PlatformAddress` - It returns null when the given key has no owner.
 
 Errors: `KVDB Error`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -865,7 +930,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -874,16 +939,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getGenesisAccounts
 Gets the platform account in the genesis block.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `PlatformAddress[]` - It returns the array of the platform address
+### Returns
+`PlatformAddress[]` - It returns the array of the platform address
 
 Errors: `KVDB Error`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -891,7 +960,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -900,18 +969,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
 
 ## chain_getNumberOfShards
 Gets the number of shards, at the state of the given blockNumber.
 
-Param:
+### Params
 1. block number: `number` | `null`
 
-Return Type: `number` - the number of shards
+### Returns
+`number` - the number of shards
 
 Errors: `KVDB Error`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -919,7 +990,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -928,18 +999,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getShardRoot
 Gets the root of shard, at the state of the given blockNumber.
 
-Param:
+### Params
 1. shard id: `number`
 1. block number: `number` | `null`
 
-Return Type: `null` | `H256` - the root of shard
+### Returns
+`null` | `H256` - the root of shard
 
 Errors: `KVDB Error`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -947,7 +1021,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -956,15 +1030,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
 
 ## chain_getPendingParcels
 Gets parcels in the current parcel queue.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `Parcel[]`
+### Returns
+`Parcel[]`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -972,7 +1049,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1003,17 +1080,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getMiningReward
 Gets the mining reward of the given block number.
 Unlike `engine_getBlockReward`, it returns the actual amount received, including the transaction fee.
 It returns `null` if the given block number is not mined yet.
 
-Param:
+### Params
 1. block number: `number`
 
-Return Type: `U64` | `null`
+### Returns
+`U64` | `null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1021,7 +1101,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1030,18 +1110,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_executeTransaction
 Executes the transactions and returns the current shard root and the changed shard root.
 
-Params:
+### Params
  1. transaction: `Transaction`
  2. sender: `PlatformAddress`
 
-Return Type: `Invoice`
+### Returns
+`Invoice`
 
 Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1049,7 +1132,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1060,14 +1143,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_getNetworkId
 Return the nework id that is used in this chain.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `number`
+### Returns
+`number`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1075,7 +1162,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1084,14 +1171,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## engine_getCoinbase
 Gets coinbase's account id.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `PlatformAddress` | `null`
+### Returns
+`PlatformAddress` | `null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1099,7 +1190,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1108,15 +1199,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## engine_getBlockReward
 Gets the reward of the given block number
 
-Param:
+### Params
 1. block number: `number`
 
-Return Type: U64
+### Returns
+U64
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1124,7 +1218,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1133,14 +1227,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## engine_getRecommendedConfirmation
 Gets the recommended minimum confirmations.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: number
+### Returns
+number
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1148,7 +1246,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1157,16 +1255,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## miner_getWork
 Returns the hash of the current block and score.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `Work`
+### Returns
+`Work`
 
 Errors: `No Author`, `No Work Required`, `No Work Found`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1174,7 +1276,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1186,18 +1288,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## miner_submitWork
 Used for submitting a proof-of-work solution.
 
-Params:
+### Params
  1. powHash: `string`
  1. seal: `string[]`
 
-Return Type: `bool`
+### Returns
+`bool`
 
 Errors: `No Work Required`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1205,7 +1310,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1214,19 +1319,22 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_shareSecret
 Share secret to the given address.
 
-Params:
+### Params
  1. secret: `string`
  3. address: `string`
  4. port: `number`
 
-Return Type: null
+### Returns
+null
 
 Errors: `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1234,7 +1342,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1243,18 +1351,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_connect
 Connect to the given address.
 
-Params:
+### Params
  1. address: `string`
  1. port: `number`
 
-Return Type: null
+### Returns
+null
 
 Errors: `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1262,7 +1373,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1271,18 +1382,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_isConnected
 Check whether the connection is established.
 
-Params:
+### Params
  1. address: `string`
  1. port: `number`
 
-Return Type: bool
+### Returns
+bool
 
 Errors: `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1290,7 +1404,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1299,18 +1413,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_disconnect
 Disconnect the connection from the given address.
 
-Params:
+### Params
  1. address: `string`
  1. port: `number`
 
-Return Type: null
+### Returns
+null
 
 Errors: `Not Conntected`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1318,7 +1435,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1327,14 +1444,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_getPeerCount
 Return the count of peers which the client is connected to.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `number`
+### Returns
+`number`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1342,7 +1463,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1351,14 +1472,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_getEstablishedPeers
 Return the socket addresses of established peers.
 
-Params: No Parameters
+### Params
+No Parameters
 
-Return Type: `string[]`
+### Returns
+`string[]`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1366,7 +1491,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1375,14 +1500,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_getPort
 Return the port number on which the client is listening for peers.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `number`
+### Returns
+`number`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1390,7 +1519,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1399,16 +1528,19 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_addToWhitelist
 Adds the address to the whitelist.
 
-Params:
+### Params
  1. address: `string`
  2. tag: `null` | `string`
 
-Return Type: `null`
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1416,7 +1548,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1425,15 +1557,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_removeFromWhitelist
 Removes the address from the whitelist.
 
-Params:
+### Params
  1. address: `string`
 
-Return Type: `null`
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1441,7 +1576,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1450,16 +1585,19 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_addToBlacklist
 Adds the address to the blacklist.
 
-Params:
+### Params
  1. address: `string`
  2. tag: `null` | `string`
 
-Return Type: `null`
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1467,7 +1605,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1476,15 +1614,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_removeFromBlacklist
 Removes the address from the blacklist.
 
-Params:
+### Params
  1. address: `string`
 
-Return Type: `null`
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1492,7 +1633,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1501,13 +1642,17 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_enableWhitelist
 Enables whitelist.
 
-Params: No parameters
-Return Type: `null`
+### Params
+No parameters
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1515,7 +1660,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1524,13 +1669,17 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_disableWhitelist
 Disables whitelist.
 
-Params: No parameters
-Return Type: `null`
+### Params
+No parameters
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1538,7 +1687,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1547,13 +1696,17 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_enableBlacklist
 Enables blacklist.
 
-Params: No parameters
-Return Type: `null`
+### Params
+No parameters
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1561,7 +1714,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1570,13 +1723,17 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_disableBlacklist
 Disables blacklist.
 
-Params: No parameters
-Return Type: `null`
+### Params
+No parameters
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1584,7 +1741,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1593,14 +1750,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_getWhitelist
 Gets the address in the whitelist.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: { list: `string[][]`, enabled: `bool` }
+### Returns
+{ list: `string[][]`, enabled: `bool` }
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1608,7 +1769,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1617,14 +1778,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## net_getBlacklist
 Gets the address in the blacklist.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: { list: `string[][]`, enabled: `bool` }
+### Returns
+{ list: `string[][]`, enabled: `bool` }
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1632,7 +1797,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1641,16 +1806,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## account_getList
 Gets a list of accounts.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `PlatformAddress[]`
+### Returns
+`PlatformAddress[]`
 
 Errors: `Keystore Error`
 
-Request Example
+### Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
@@ -1658,7 +1827,7 @@ curl \
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1667,17 +1836,20 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## account_create
 Creates a new account.
 
-Params:
+### Params
  1. password: `string` | `null`
 
-Return Type: `PlatformAddress`
+### Returns
+`PlatformAddress`
 
 Errors: `Keystore Error`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
@@ -1685,7 +1857,7 @@ curl \
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1694,18 +1866,21 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## account_importRaw
 Imports a secret key and add the corresponding account.
 
-Params:
+### Params
  1. secret: `H256`
  2. password: `string` | `null`
 
-Return Type: `PlatformAddress`
+### Returns
+`PlatformAddress`
 
 Errors: `Keystore Error`, `Key Error`, `Already Exists`, `Invalid Params`
 
-Request Example
+### Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
@@ -1713,7 +1888,7 @@ curl \
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1722,21 +1897,24 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## account_unlock
 Unlocks the specified account for use.
 
 It will default to 300 seconds. Passing 0 unlocks the account indefinitely.
 
-Params:
+### Params
  1. account: `PlatformAddress`
  2. password: `string`
  3. duration: `number`  | `null`
 
-Return type: `null`
+### Returns
+`null`
 
 Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`, `Invalid NetworkId`
 
-Request Example
+### Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
@@ -1744,7 +1922,7 @@ curl \
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1753,19 +1931,22 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## account_sign
 Calculates the account's signature for a given message.
 
-Params:
+### Params
  1. message: `H256`
  2. account: `PlatformAddress`
  3. password: `string` | `null`
 
-Return type: `Signature`
+### Returns
+`Signature`
 
 Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
 
-Request Example
+### Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
@@ -1773,7 +1954,7 @@ curl \
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1782,20 +1963,23 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## account_sendParcel
 Sends a parcel by signing it with the account’s private key.
 It automatically fills the seq if the seq is not given
 
-Params:
+### Params
  1. parcel: `UnsignedParcel`
  2. account: `PlatformAddress`
  3. passphrase: `string` | `null`
 
-Return type: { hash: `H256`, seq: `number` } - the hash and seq of the parcel
+### Returns
+{ hash: `H256`, seq: `number` } - the hash and seq of the parcel
 
 Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
 
-Request Example
+### Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
@@ -1804,7 +1988,7 @@ curl \
 ```
 
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1813,19 +1997,22 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## account_changePassword
 Changes the account's password
 
-Params:
+### Params
  1. account: `PlatformAddress`
  2. old_password: `String`
  3. new_password: `String`
 
-Return Type: `null`
+### Returns
+`null`
 
 Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Invalid Params`, `Invalid NetworkId`
 
-Request Example
+### Request Example
 ```
 curl \
     -H 'Content-Type: application/json' \
@@ -1833,7 +2020,7 @@ curl \
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1842,16 +2029,19 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## devel_getStateTrieKeys
 Gets keys of the state trie with the given offset and limit.
 
-Params:
+### Params
  1. offset: `number`
  2. limit: `number`
 
-Return Type: `string[]` with maximum length _limit_
+### Returns
+`string[]` with maximum length _limit_
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1859,7 +2049,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1870,15 +2060,19 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## devel_getStateTrieValue
 Gets the value of the state trie with the given key.
 
-Params: 
+### Params
+
  1. key: `string`
 
-Return Type: `string[]` - each string is RLP encoded
+### Returns
+`string[]` - each string is RLP encoded
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1886,7 +2080,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1898,14 +2092,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## devel_startSealing
 Starts and enables sealing blocks by the miner.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `null`
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1913,7 +2111,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1922,14 +2120,18 @@ Response Example
 }
 ```
 
+[Back to **List of methods**](#list-of-methods)
+
 ## devel_stopSealing
 Stops and disables sealing blocks by the miner.
 
-Params: No parameters
+### Params
+No parameters
 
-Return Type: `null`
+### Returns
+`null`
 
-Request Example
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -1937,7 +2139,7 @@ Request Example
     localhost:8080
 ```
 
-Response Example
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -1945,3 +2147,5 @@ Response Example
   "id":null
 }
 ```
+
+[Back to **List of methods**](#list-of-methods)
