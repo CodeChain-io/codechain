@@ -99,7 +99,7 @@ impl SafeAccount {
             address,
             crypto,
             filename,
-            meta: json.meta.unwrap_or("{}".to_string()),
+            meta: json.meta.unwrap_or_else(|| "{}".to_string()),
         })
     }
 

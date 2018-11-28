@@ -500,7 +500,7 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
     for input in inputs {
         let ref asset_type = input.prev_out.asset_type;
         let ref amount = input.prev_out.amount;
-        let current_amount = sum.get(&asset_type).cloned().unwrap_or(U128::zero());
+        let current_amount = sum.get(&asset_type).cloned().unwrap_or_default();
         sum.insert(*asset_type, current_amount + U128::from(*amount));
     }
     for output in outputs {

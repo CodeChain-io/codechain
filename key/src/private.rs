@@ -64,7 +64,7 @@ impl FromStr for Private {
 
 impl From<&'static str> for Private {
     fn from(s: &'static str) -> Self {
-        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
+        s.parse().unwrap_or_else(|_| panic!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 

@@ -131,8 +131,8 @@ where
     }
 
     fn last_modification_date(&self) -> Result<u64, Error> {
-        use std::time::{Duration, UNIX_EPOCH};
-        let duration = fs::metadata(&self.path)?.modified()?.duration_since(UNIX_EPOCH).unwrap_or(Duration::default());
+        use std::time::UNIX_EPOCH;
+        let duration = fs::metadata(&self.path)?.modified()?.duration_since(UNIX_EPOCH).unwrap_or_default();
         let timestamp = duration.as_secs() ^ u64::from(duration.subsec_nanos());
         Ok(timestamp)
     }
