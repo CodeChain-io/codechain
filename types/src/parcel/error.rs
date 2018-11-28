@@ -227,7 +227,7 @@ impl Display for Error {
             Error::InvalidSeq(mismatch) => format!("Invalid parcel seq {}", mismatch),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
             Error::InvalidShardRoot(mismatch) => format!("Invalid shard root {}", mismatch),
-            Error::ZeroAmount => format!("An amount cannot be 0"),
+            Error::ZeroAmount => "An amount cannot be 0".to_string(),
             Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
             Error::ParcelsTooBig => "Parcel size exceeded the body size limit".to_string(),

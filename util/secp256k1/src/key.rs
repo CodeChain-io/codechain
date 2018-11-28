@@ -122,7 +122,7 @@ impl SecretKey {
     #[inline]
     /// Inverts (1 / self) this secret key.
     pub fn inv_assign(&mut self, secp: &Secp256k1) -> Result<(), Error> {
-        let original = self.clone();
+        let original = *self;
         unsafe {
             if ffi::secp256k1_ec_privkey_inverse(secp.ctx, self.as_mut_ptr(), original.as_ptr()) != 1 {
                 Err(InvalidSecretKey)

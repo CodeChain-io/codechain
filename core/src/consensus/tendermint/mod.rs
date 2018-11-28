@@ -567,7 +567,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 };
                 let address = match self.votes.get(&precommit) {
                     Some(a) => a,
-                    None => public_to_address(&recover(&precommit.signature.into(), &precommit_hash)?),
+                    None => public_to_address(&recover(&precommit.signature, &precommit_hash)?),
                 };
                 if !self.validators.contains(header.parent_hash(), &address) {
                     return Err(EngineError::NotAuthorized(address.to_owned()).into())
@@ -727,7 +727,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let message: ConsensusMessage = rlp.as_val().map_err(fmt_err)?;
         if !self.votes.is_old_or_known(&message) {
             let msg_hash = blake256(rlp.at(1).map_err(fmt_err)?.as_raw());
-            let sender = public_to_address(&recover(&message.signature.into(), &msg_hash).map_err(fmt_err)?);
+            let sender = public_to_address(&recover(&message.signature, &msg_hash).map_err(fmt_err)?);
 
             if !self.is_authority(&sender) {
                 return Err(EngineError::NotAuthorized(sender))
@@ -874,7 +874,7 @@ where
         let ref header_signatures_field = header.seal().get(2).ok_or(BlockError::InvalidSeal)?;
         for rlp in UntrustedRlp::new(header_signatures_field).iter() {
             let signature: Signature = rlp.as_val()?;
-            let address = (self.recover)(&signature.into(), &message)?;
+            let address = (self.recover)(&signature, &message)?;
 
             if !self.subchain_validators.contains(header.parent_hash(), &address) {
                 return Err(EngineError::NotAuthorized(address.to_owned()).into())

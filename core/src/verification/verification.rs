@@ -73,9 +73,9 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
         })))
     }
 
-    if header.number() >= From::from(BlockNumber::max_value()) {
+    if header.number() >= BlockNumber::max_value() {
         return Err(From::from(BlockError::RidiculousNumber(OutOfBounds {
-            max: Some(From::from(BlockNumber::max_value())),
+            max: Some(BlockNumber::max_value()),
             min: None,
             found: header.number(),
         })))

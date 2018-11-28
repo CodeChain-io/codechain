@@ -84,7 +84,6 @@ impl Config {
             reseal_min_period: Duration::from_millis(self.mining.reseal_min_period.unwrap()),
             reseal_max_period: Duration::from_millis(self.mining.reseal_max_period.unwrap()),
             work_queue_size: self.mining.work_queue_size.unwrap(),
-            ..MinerOptions::default()
         })
     }
 
@@ -399,7 +398,7 @@ impl Mining {
             self.mem_pool_size = Some(mem_pool_size.parse().map_err(|_| "Invalid size")?);
         }
         if let Some(notify_work) = matches.values_of("notify-work") {
-            self.notify_work = Some(notify_work.into_iter().map(|a| a.into()).collect());
+            self.notify_work = Some(notify_work.map(|a| a.into()).collect());
         }
         if matches.is_present("force-sealing") {
             self.force_sealing = Some(true);
@@ -472,7 +471,7 @@ impl Network {
         }
 
         if let Some(addresses) = matches.values_of("bootstrap-addresses") {
-            self.bootstrap_addresses = Some(addresses.into_iter().map(|a| a.into()).collect());
+            self.bootstrap_addresses = Some(addresses.map(|a| a.into()).collect());
         }
 
         if let Some(interface) = matches.value_of("interface") {

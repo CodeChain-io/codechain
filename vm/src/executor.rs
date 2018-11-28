@@ -247,7 +247,7 @@ where
                 let pubkey = Public::from_slice(stack.pop()?.assert_len(64)?.as_ref());
                 let tag = Tag::try_new(stack.pop()?.as_ref().to_vec())?;
                 let tx_hash = tx.hash_partially(tag, cur, burn)?;
-                let signature = Signature::from(Signature::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref()));
+                let signature = Signature::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref());
                 let result = match verify(&pubkey, &signature, &tx_hash) {
                     Ok(true) => 1,
                     _ => 0,

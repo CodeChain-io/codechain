@@ -146,7 +146,7 @@ impl ConsensusMessage {
     pub fn verify(&self) -> Result<Address, Error> {
         let full_rlp = ::rlp::encode(self);
         let block_info = ::rlp::Rlp::new(&full_rlp).at(1);
-        let public_key = recover(&self.signature.into(), &blake256(block_info.as_raw()))?;
+        let public_key = recover(&self.signature, &blake256(block_info.as_raw()))?;
         Ok(public_to_address(&public_key))
     }
 }

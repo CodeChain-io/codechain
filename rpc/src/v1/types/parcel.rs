@@ -42,12 +42,12 @@ impl From<LocalizedParcel> for Parcel {
             block_number: Some(p.block_number),
             block_hash: Some(p.block_hash),
             parcel_index: Some(p.parcel_index),
-            seq: p.seq.into(),
+            seq: p.seq,
             fee: p.fee.into(),
             network_id: p.network_id,
             action: Action::from_core(p.action.clone(), p.network_id),
             hash: p.hash(),
-            sig: sig.into(),
+            sig,
         }
     }
 }
@@ -59,12 +59,12 @@ impl From<SignedParcel> for Parcel {
             block_number: None,
             block_hash: None,
             parcel_index: None,
-            seq: p.seq.into(),
+            seq: p.seq,
             fee: p.fee.into(),
             network_id: p.network_id,
             action: Action::from_core(p.action.clone(), p.network_id),
             hash: p.hash(),
-            sig: sig.into(),
+            sig,
         }
     }
 }

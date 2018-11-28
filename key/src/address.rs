@@ -79,8 +79,7 @@ impl Default for Address {
 
 impl Encodable for Address {
     fn rlp_append(&self, s: &mut RlpStream) {
-        let data: H160 = self.0.into();
-        data.rlp_append(s);
+        self.0.rlp_append(s);
     }
 }
 

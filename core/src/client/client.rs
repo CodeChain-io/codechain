@@ -499,7 +499,7 @@ impl BlockChainClient for Client {
         let chain = self.block_chain();
         match Self::block_hash(&chain, id) {
             Some(ref hash) if chain.is_known(hash) => BlockStatus::InChain,
-            Some(hash) => self.importer.block_queue.status(&hash).into(),
+            Some(hash) => self.importer.block_queue.status(&hash),
             None => BlockStatus::Unknown,
         }
     }

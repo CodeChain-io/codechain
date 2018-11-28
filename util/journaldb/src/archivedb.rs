@@ -110,7 +110,7 @@ impl JournalDB for ArchiveDB {
             overlay: self.overlay.clone(),
             backing: self.backing.clone(),
             latest_era: self.latest_era,
-            column: self.column.clone(),
+            column: self.column,
         })
     }
 

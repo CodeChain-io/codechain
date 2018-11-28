@@ -84,7 +84,7 @@ where
 
     fn sign(&self, message_digest: H256, address: PlatformAddress, passphrase: Option<Password>) -> Result<Signature> {
         let address = address.try_into_address().map_err(errors::core)?;
-        self.account_provider.sign(address, passphrase, message_digest).map(|sig| sig.into()).map_err(account_provider)
+        self.account_provider.sign(address, passphrase, message_digest).map_err(account_provider)
     }
 
     fn send_parcel(
@@ -114,7 +114,7 @@ where
 
         Ok(SendParcelResult {
             hash,
-            seq: seq.into(),
+            seq,
         })
     }
 

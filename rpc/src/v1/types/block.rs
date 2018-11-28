@@ -73,12 +73,12 @@ impl Block {
                         block_number: Some(block_number),
                         block_hash: Some(block_hash),
                         parcel_index: Some(i),
-                        seq: unverified.seq.into(),
+                        seq: unverified.seq,
                         fee: unverified.fee.into(),
                         network_id,
                         action: Action::from_core(unverified.action.clone(), network_id),
                         hash: unverified.hash(),
-                        sig: sig.into(),
+                        sig,
                     }
                 })
                 .collect(),

@@ -45,7 +45,7 @@ impl From<SafeAccount> for json::KeyFile {
             version: account.version.into(),
             address: Some(account.address.into()),
             crypto: account.crypto.into(),
-            meta: Some(account.meta.into()),
+            meta: Some(account.meta),
         }
     }
 }

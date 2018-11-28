@@ -247,13 +247,12 @@ impl Scheme {
     pub fn check_genesis_common_params<HP: HeaderProvider>(&self, chain: &HP) -> Result<(), Error> {
         let genesis_header = self.genesis_header();
         let genesis_header_hash = genesis_header.hash();
-        let header = chain
-            .block_header(&genesis_header_hash)
-            .ok_or_else(|| Error::Scheme(SchemeError::InvalidCommonParams.into()))?;
+        let header =
+            chain.block_header(&genesis_header_hash).ok_or_else(|| Error::Scheme(SchemeError::InvalidCommonParams))?;
         let extra_data = header.extra_data();
         let common_params_hash = blake256(&self.params().rlp_bytes()).to_vec();
         if extra_data != &common_params_hash {
-            return Err(Error::Scheme(SchemeError::InvalidCommonParams.into()))
+            return Err(Error::Scheme(SchemeError::InvalidCommonParams))
         }
         Ok(())
     }
@@ -368,9 +367,9 @@ fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
     };
 
     let mut s = Scheme {
-        name: s.name.clone().into(),
+        name: s.name.clone(),
         engine,
-        data_dir: s.data_dir.unwrap_or(s.name).into(),
+        data_dir: s.data_dir.unwrap_or(s.name),
         nodes: s.nodes.unwrap_or_else(Vec::new),
         parent_hash: g.parent_hash,
         parcels_root: g.parcels_root,

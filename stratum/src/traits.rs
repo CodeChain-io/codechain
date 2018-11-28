@@ -48,10 +48,10 @@ impl From<PushMessageError> for Error {
 impl From<Error> for JsonError {
     fn from(err: Error) -> Self {
         let (code, message) = match err {
-            Error::PowHashInvalid => (21, format!("Invalid Pow hash")),
-            Error::PowInvalid => (22, format!("Invalid the nonce")),
-            Error::UnauthorizedWorker => (23, format!("Unauthorized worker")),
-            _ => (20, format!("Internal error")),
+            Error::PowHashInvalid => (21, "Invalid Pow hash".to_string()),
+            Error::PowInvalid => (22, "Invalid the nonce".to_string()),
+            Error::UnauthorizedWorker => (23, "Unauthorized worker".to_string()),
+            _ => (20, "Internal error".to_string()),
         };
 
         JsonError {

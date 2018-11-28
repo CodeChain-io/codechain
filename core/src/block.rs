@@ -162,7 +162,7 @@ impl<'x> OpenBlock<'x> {
         let invoice = self.block.state.apply(&parcel, &parcel.signer_public(), client)?;
 
         self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
-        self.block.parcels.push(parcel.into());
+        self.block.parcels.push(parcel);
         self.block.invoices.push(invoice);
         Ok(())
     }
@@ -194,7 +194,7 @@ impl<'x> OpenBlock<'x> {
         }
         let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
-            StateError::from(e)
+            e
         })?;
         self.block.header.set_parcels_root(skewed_merkle_root(
             parent_parcels_root,
@@ -225,7 +225,7 @@ impl<'x> OpenBlock<'x> {
 
         let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
-            StateError::from(e)
+            e
         })?;
         if self.block.header.parcels_root().is_zero() || self.block.header.parcels_root() == &BLAKE_NULL_RLP {
             self.block.header.set_parcels_root(skewed_merkle_root(

@@ -81,7 +81,7 @@ impl UnverifiedParcel {
     pub fn new(parcel: Parcel, sig: Signature) -> Self {
         UnverifiedParcel {
             unsigned: parcel,
-            sig: sig.into(),
+            sig,
             hash: 0.into(),
         }
         .compute_hash()
@@ -111,7 +111,7 @@ impl UnverifiedParcel {
 
     /// Construct a signature object from the sig.
     pub fn signature(&self) -> Signature {
-        Signature::from(self.sig)
+        self.sig
     }
 
     /// Recovers the public key of the signature.
@@ -122,7 +122,7 @@ impl UnverifiedParcel {
     /// Checks whether the signature has a low 's' value.
     pub fn check_low_s(&self) -> Result<(), ckey::Error> {
         if !self.signature().is_low_s() {
-            Err(ckey::Error::InvalidSignature.into())
+            Err(ckey::Error::InvalidSignature)
         } else {
             Ok(())
         }

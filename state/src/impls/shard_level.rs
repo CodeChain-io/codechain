@@ -243,10 +243,10 @@ impl<'db> ShardLevelState<'db> {
         let asset_address =
             OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
         let asset_scheme_address = AssetSchemeAddress::from_hash(input.prev_out.asset_type)
-            .ok_or(TransactionError::AssetSchemeNotFound(input.prev_out.asset_type.into()))?;
+            .ok_or_else(|| TransactionError::AssetSchemeNotFound(input.prev_out.asset_type))?;
 
         let asset_scheme = self
-            .asset_scheme((&asset_scheme_address).into())?
+            .asset_scheme(&asset_scheme_address)?
             .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
 
         if let Some(ref registrar) = asset_scheme.registrar() {
@@ -382,7 +382,7 @@ impl<'db> ShardLevelState<'db> {
         let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
             .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
         let asset_scheme = self
-            .asset_scheme((&asset_scheme_address).into())?
+            .asset_scheme(&asset_scheme_address)?
             .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
         // The input asset should be composed asset
         if asset_scheme.pool().is_empty() {

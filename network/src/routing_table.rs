@@ -252,7 +252,7 @@ impl RoutingTable {
         let result = entries.get(&remote_node_id).and_then(|entry| {
             let mut state = entry.write();
             if let State::KeyPairShared(local_key_pair) = state.clone() {
-                if let Some(secret) = exchange(remote_public, local_key_pair.private()).ok() {
+                if let Ok(secret) = exchange(remote_public, local_key_pair.private()) {
                     *state = State::SecretShared(secret, SecretOrigin::Shared);
                     ctrace!(ROUTING_TABLE, "Secret shared with {}", remote_address);
                     return Some(secret)

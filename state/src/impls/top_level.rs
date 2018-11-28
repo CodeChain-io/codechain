@@ -349,16 +349,16 @@ impl TopLevelState {
             Action::Payment {
                 receiver,
                 amount,
-            } => match self.transfer_balance(fee_payer, receiver, *amount) {
-                Ok(()) => Ok(Invoice::Success),
-                Err(err) => Err(err.into()),
-            },
+            } => {
+                self.transfer_balance(fee_payer, receiver, *amount)?;
+                Ok(Invoice::Success)
+            }
             Action::SetRegularKey {
                 key,
-            } => match self.set_regular_key(signer_public, key) {
-                Ok(()) => Ok(Invoice::Success),
-                Err(error) => Err(error.into()),
-            },
+            } => {
+                self.set_regular_key(signer_public, key)?;
+                Ok(Invoice::Success)
+            }
             Action::CreateShard => {
                 // FIXME: Make shard creation cost configurable
                 #[cfg(test)]

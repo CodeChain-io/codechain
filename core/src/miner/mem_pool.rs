@@ -583,8 +583,8 @@ impl MemPool {
         // Mark in locals
         if self.local_parcels.contains(parcel_hash) {
             match reason {
-                RemovalReason::Invalid => self.local_parcels.mark_invalid(parcel.parcel.into()),
-                RemovalReason::Canceled => self.local_parcels.mark_canceled(parcel.parcel.into()),
+                RemovalReason::Invalid => self.local_parcels.mark_invalid(parcel.parcel),
+                RemovalReason::Canceled => self.local_parcels.mark_canceled(parcel.parcel),
             }
         }
 
