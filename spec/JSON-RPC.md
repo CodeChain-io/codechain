@@ -109,29 +109,29 @@ A base32 string that starts with "ccc" or "tcc". See [the specification](https:/
 
 # Error codes
 
-| Code | Message | Description |
-|---|---|---|
-| -32002 | `No Author` | No author is configured |
-| -32004 | `No Work Required` | No work is required |
-| -32005 | `No Work Found` | No work is found |
-| -32009 | `Invalid RLP` | Failed to decode the RLP string |
-| -32011 | `KVDB Error` | Failed to access the state (Internal error of CodeChain) |
-| -32010 | `Execution Failed` | Failed to execute the transactions |
-| -32030 | `Verification Failed` | The signature is invalid |
-| -32031 | `Already Imported` | The same parcel is already imported |
-| -32032 | `Not Enough Balance` | The signer's balance is insufficient |
-| -32033 | `Too Low Fee` | The fee is lower than the minimum required |
-| -32034 | `Too Cheap to Replace` | The fee is lower than the existing one in the queue |
-| -32035 | `Invalid Seq` | The signer's seq is invalid to import |
-| -32036 | `Invalid NetworkId` | The network id does not match |
-| -32040 | `Keystore Error` | Failed to access the key store (Internal error of CodeChain) |
-| -32041 | `Key Error` | The key is invalid |
-| -32042 | `Already Exists` | The account already exists |
-| -32043 | `Wrong Password` | The password does not match |
-| -32044 | `No Such Account` | There is no such account in the key store |
-| -32045 | `Not Unlocked` | The account is not unlocked |
-| -32099 | `Unknown Error` | An unknown error occurred |
-| -32602 | `Invalid Params` | At least one of the parameters is invalid |
+|  Code  |         Message        |                          Description                         |
+|--------|------------------------|--------------------------------------------------------------|
+| -32002 | `No Author`            | No author is configured                                      |
+| -32004 | `No Work Required`     | No work is required                                          |
+| -32005 | `No Work Found`        | No work is found                                             |
+| -32009 | `Invalid RLP`          | Failed to decode the RLP string                              |
+| -32011 | `KVDB Error`           | Failed to access the state (Internal error of CodeChain)     |
+| -32010 | `Execution Failed`     | Failed to execute the transactions                           |
+| -32030 | `Verification Failed`  | The signature is invalid                                     |
+| -32031 | `Already Imported`     | The same parcel is already imported                          |
+| -32032 | `Not Enough Balance`   | The signer's balance is insufficient                         |
+| -32033 | `Too Low Fee`          | The fee is lower than the minimum required                   |
+| -32034 | `Too Cheap to Replace` | The fee is lower than the existing one in the queue          |
+| -32035 | `Invalid Seq`          | The signer's seq is invalid to import                        |
+| -32036 | `Invalid NetworkId`    | The network id does not match                                |
+| -32040 | `Keystore Error`       | Failed to access the key store (Internal error of CodeChain) |
+| -32041 | `Key Error`            | The key is invalid                                           |
+| -32042 | `Already Exists`       | The account already exists                                   |
+| -32043 | `Wrong Password`       | The password does not match                                  |
+| -32044 | `No Such Account`      | There is no such account in the key store                    |
+| -32045 | `Not Unlocked`         | The account is not unlocked                                  |
+| -32099 | `Unknown Error`        | An unknown error occurred                                    |
+| -32602 | `Invalid Params`       | At least one of the parameters is invalid                    |
 
 # List of methods
 
