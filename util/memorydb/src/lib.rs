@@ -223,7 +223,7 @@ impl HashDB for MemoryDB {
         match self.data.entry(key) {
             Entry::Occupied(mut entry) => {
                 let &mut (ref mut old_value, ref mut rc) = entry.get_mut();
-                if *rc >= -0x80000000i32 && *rc <= 0 {
+                if *rc <= 0 {
                     *old_value = DBValue::from_slice(value);
                 }
                 *rc += 1;
@@ -243,7 +243,7 @@ impl HashDB for MemoryDB {
         match self.data.entry(key) {
             Entry::Occupied(mut entry) => {
                 let &mut (ref mut old_value, ref mut rc) = entry.get_mut();
-                if *rc >= -0x80000000i32 && *rc <= 0 {
+                if *rc <= 0 {
                     *old_value = value;
                 }
                 *rc += 1;
