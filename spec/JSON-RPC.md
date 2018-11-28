@@ -91,10 +91,13 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - shardId: `number`
  - users: `PlatformAddress[]`
 
-## Transaction
+### WrapCCC Action
 
- - type: "assetMint" | "assetTransfer"
- - data: `AssetMint` | `AssetTransfer`
+ - action: "wrapCCC"
+ - shardId: `number`
+ - lockScriptHash: `H160`
+ - parameters: `number[][]`
+ - amount: `U64`
 
 ## AssetScheme
 
@@ -108,6 +111,78 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - assetType: `H256`
  - lockScriptHash: `H160`
  - parameters: `number[][]`
+
+## Transactions
+
+ - type: "assetMint" | "assetTransfer" | "assetCompose" | "assetDecompose" | "assetUnwrapCCC"
+ - data: `AssetMintData` | `AssetTransferData` | `AssetComposeData` | `AssetDecomposeData` | `AssetUnwrapCCCData`
+
+### AssetMintData
+
+ - networkId: `NetworkID`
+ - shardId: `number`
+ - metadata: `string`
+ - output: `AssetMintOutput`
+ - registrar: `PlatformAddress` | `null`
+
+### AssetTranferData
+
+ - networkId: `NetworkID`
+ - burns: `AssetTransferInput[]`
+ - inputs: `AssetTransferInput[]`
+ - outputs: `AssetTransferOutput[]`
+
+### AssetComposeData
+
+ - networkId: `NetworkID`
+ - shardId: `number`
+ - metadata: `string`
+ - inputs: `AssetTransferInput[]`
+ - output: `AssetMintOutput`
+ - registrar: `PlatformAddress` | `null`
+
+### AssetDecomposeData
+
+ - networkId: `NetworkID`
+ - input: `AssetTransferInput`
+ - outputs: `AssetTransferOutput[]`
+
+### AssetUnwrapCCCData
+
+ - networkId: `NetworkID`
+ - burn: `AssetTransferInput`
+
+### AssetMintOutput
+
+ - lockScriptHash: `H160`
+ - parameters: `number[][]`
+ - amount: `U64` | `null`
+
+### AssetTransferInput
+
+ - prevOut: `AssetOutPoint`
+ - timelock: `Timelock`
+ - lockScript: `number[]`
+ - unlockScript: `number[]`
+
+#### Timelock
+
+ - type: "block" | "blockAge" | "time" | "timeAge"
+ - value: `number`
+
+#### AssetOutPoint
+
+ - transactionHash: `H256`
+ - index: `number`
+ - assetType: `H256`
+ - amount: `U64`
+
+### AssetTransferOutput
+
+ - lockScriptHash: `H160`
+ - parameters: `number[][]`
+ - assetType: `H256`
+ - amount: `U64`
 
 ## Signature
 `H520` for ECDSA signature | `H512` for Schnorr signature
