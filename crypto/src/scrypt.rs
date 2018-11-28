@@ -21,11 +21,11 @@ use rcrypto::scrypt::{scrypt, ScryptParams};
 pub fn derive_key(pass: &str, salt: &[u8; 32], n: u32, p: u32, r: u32) -> Result<(Vec<u8>, Vec<u8>), ScryptError> {
     // sanity checks
     let log_n = (32 - n.leading_zeros() - 1) as u8;
-    if log_n as u32 >= r * 16 {
+    if u32::from(log_n) >= r * 16 {
         return Err(ScryptError::InvalidN)
     }
 
-    if p as u64 > ((u32::max_value() as u64 - 1) * 32) / (128 * (r as u64)) {
+    if u64::from(p) > ((u64::from(u32::max_value()) - 1) * 32) / (128 * u64::from(r)) {
         return Err(ScryptError::InvalidP)
     }
 

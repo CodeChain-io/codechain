@@ -637,7 +637,7 @@ impl ImportSealedBlock for Client {
         self.notify(|notify| {
             notify.new_blocks(vec![h], vec![], enacted.clone(), retracted.clone(), vec![h], {
                 let elapsed = start.elapsed();
-                elapsed.as_secs() * 1_000_000_000 + elapsed.subsec_nanos() as u64
+                elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
             });
         });
         self.db().flush().expect("DB flush failed.");

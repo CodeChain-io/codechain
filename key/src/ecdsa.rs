@@ -241,8 +241,11 @@ pub fn sign_ecdsa(private: &Private, message: &Message) -> Result<ECDSASignature
 
 pub fn verify_ecdsa(public: &Public, signature: &ECDSASignature, message: &Message) -> Result<bool, Error> {
     let context = &SECP256K1;
-    let rsig =
-        RecoverableSignature::from_compact(context, &signature[0..64], RecoveryId::from_i32(signature[64] as i32)?)?;
+    let rsig = RecoverableSignature::from_compact(
+        context,
+        &signature[0..64],
+        RecoveryId::from_i32(i32::from(signature[64]))?,
+    )?;
     let sig = rsig.to_standard(context);
 
     let pdata: [u8; 65] = {
@@ -267,8 +270,11 @@ pub fn verify_ecdsa_address(address: &Address, signature: &ECDSASignature, messa
 
 pub fn recover_ecdsa(signature: &ECDSASignature, message: &Message) -> Result<Public, Error> {
     let context = &SECP256K1;
-    let rsig =
-        RecoverableSignature::from_compact(context, &signature[0..64], RecoveryId::from_i32(signature[64] as i32)?)?;
+    let rsig = RecoverableSignature::from_compact(
+        context,
+        &signature[0..64],
+        RecoveryId::from_i32(i32::from(signature[64]))?,
+    )?;
     let pubkey = context.recover(&SecpMessage::from_slice(&message[..])?, &rsig)?;
     let serialized = pubkey.serialize_vec(context, false);
 

@@ -63,7 +63,7 @@ impl NetworkExtension for Extension {
     fn on_initialize(&self, api: Arc<Api>) {
         let mut api_lock = self.api.write();
 
-        api.set_timer(REFRESH_TOKEN, Duration::milliseconds(self.config.t_refresh as i64))
+        api.set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(self.config.t_refresh)))
             .expect("Refresh msut be registered");
 
         *api_lock = Some(api);
