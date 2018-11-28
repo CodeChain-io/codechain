@@ -386,7 +386,7 @@ mod tests {
 
             if *memtrie.root() != real {
                 println!("TRIE MISMATCH");
-                println!("");
+                println!();
                 println!("{:?} vs {:?}", memtrie.root(), real);
                 for i in &x {
                     println!("{:?} -> {:?}", i.0.pretty(), i.1.pretty());
@@ -397,7 +397,7 @@ mod tests {
 
             if *memtrie.root() != BLAKE_NULL_RLP {
                 println!("- TRIE MISMATCH");
-                println!("");
+                println!();
                 println!("{:?} vs {:?}", memtrie.root(), real);
                 for i in &x {
                     println!("{:?} -> {:?}", i.0.pretty(), i.1.pretty());
@@ -617,7 +617,7 @@ mod tests {
             let mut memtrie_sorted = populate_trie(&mut memdb2, &mut root2, &y);
             if *memtrie.root() != real || *memtrie_sorted.root() != real {
                 println!("TRIE MISMATCH");
-                println!("");
+                println!();
                 println!("ORIGINAL... {:?}", memtrie.root());
                 for i in &x {
                     println!("{:?} -> {:?}", i.0.pretty(), i.1.pretty());

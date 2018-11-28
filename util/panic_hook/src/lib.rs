@@ -54,11 +54,11 @@ fn panic_hook(info: &PanicInfo) {
 
     let mut stderr = io::stderr();
 
-    let _ = writeln!(stderr, "");
+    let _ = writeln!(stderr);
     let _ = writeln!(stderr, "====================");
-    let _ = writeln!(stderr, "");
+    let _ = writeln!(stderr);
     let _ = writeln!(stderr, "{:?}", backtrace);
-    let _ = writeln!(stderr, "");
+    let _ = writeln!(stderr);
     let _ = writeln!(stderr, "Thread '{}' panicked at '{}', {}:{}", name, msg, file, line);
 
     let _ = writeln!(stderr, "{}", ABOUT_PANIC);
