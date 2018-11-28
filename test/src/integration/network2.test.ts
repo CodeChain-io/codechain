@@ -20,11 +20,7 @@ import { wait } from "../helper/promise";
 import "mocha";
 import { expect } from "chai";
 
-const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
-
-// FIXME: Connection establishment is too slow.
-// See https://github.com/CodeChain-io/codechain/issues/760
-describeSkippedInTravis("network2 nodes", function() {
+describe("network2 nodes", function() {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
     const address = "127.0.0.1";
@@ -92,15 +88,13 @@ describeSkippedInTravis("network2 nodes", function() {
         });
 
         it("isConnected", async function() {
-            expect(
-                await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)
-            ).to.be.true;
+            expect(await nodeA.sdk.rpc.network.isConnected(address, nodeB.port))
+                .to.be.true;
         });
 
         it("disconnect", async function() {
-            expect(
-                await nodeA.sdk.rpc.network.disconnect(address, nodeB.port)
-            ).to.be.null;
+            expect(await nodeA.sdk.rpc.network.disconnect(address, nodeB.port))
+                .to.be.null;
         });
 
         it("getPeerCount", async function() {

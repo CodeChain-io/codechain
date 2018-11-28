@@ -22,11 +22,7 @@ import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 import "mocha";
 import { expect } from "chai";
 
-const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
-
-// FIXME: It fails due to timeout when the block sync extension is stuck.
-// See https://github.com/CodeChain-io/codechain/issues/662
-describeSkippedInTravis("reward2", function() {
+describe("reward2", function() {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 
