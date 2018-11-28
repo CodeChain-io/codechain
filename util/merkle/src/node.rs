@@ -34,12 +34,12 @@ impl<'a> Node<'a> {
         let r = Rlp::new(node_rlp);
         match r.prototype() {
             // Empty node
-            Prototype::Data(0) => return None,
+            Prototype::Data(0) => None,
             // leaf node - first is nibbles and second is value
             Prototype::List(2) => {
                 let slice = NibbleSlice::from_encoded(r.at(0).data());
 
-                return Some(Node::Leaf(slice, r.at(1).data()))
+                Some(Node::Leaf(slice, r.at(1).data()))
             }
             // branch node - first is nibbles (or empty), the rest 16 are nodes.
             Prototype::List(17) => {
@@ -52,7 +52,7 @@ impl<'a> Node<'a> {
                     }
                 }
 
-                return Some(Node::Branch(NibbleSlice::from_encoded(r.at(0).data()), nodes))
+                Some(Node::Branch(NibbleSlice::from_encoded(r.at(0).data()), nodes))
             }
 
             // something went wrong.

@@ -544,7 +544,7 @@ fn apply_bitmask_to_output(
         }
         index += 1;
     }
-    return Ok(result)
+    Ok(result)
 }
 
 fn apply_input_scheme(

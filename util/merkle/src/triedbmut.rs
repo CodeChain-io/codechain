@@ -205,7 +205,7 @@ impl<'a> TrieDBMut<'a> {
                                 match child_count {
                                     16 => {
                                         // Branch can be removed
-                                        return Ok(None)
+                                        Ok(None)
                                     }
                                     15 => {
                                         // Transform the branch into Leaf

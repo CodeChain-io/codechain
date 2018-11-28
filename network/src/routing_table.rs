@@ -321,7 +321,7 @@ impl RoutingTable {
             if encrypted_nonce.is_some() {
                 ctrace!(ROUTING_TABLE, "Create session to {}", remote_address);
             }
-            return encrypted_nonce
+            encrypted_nonce
         });
         if result.is_none() {
             ctrace!(ROUTING_TABLE, "Cannot create session to {}", remote_address);

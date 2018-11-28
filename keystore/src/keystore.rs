@@ -318,7 +318,7 @@ impl KeyMultiStore {
             cache.remove(account_ref);
         }
 
-        return Ok(())
+        Ok(())
     }
 }
 
@@ -350,7 +350,7 @@ impl SimpleSecretStore for KeyMultiStore {
             self.remove_safe_account(account_ref, &account)?;
         }
 
-        return Ok(())
+        Ok(())
     }
 
     fn change_password(

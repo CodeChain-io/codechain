@@ -136,7 +136,7 @@ impl Chunk {
             self.journal.remove(key);
         }
         self.never_referenced_keys.clear();
-        return true
+        true
     }
 
     fn is_deeper_than(&self, root: &H256, max_depth: usize) -> bool {

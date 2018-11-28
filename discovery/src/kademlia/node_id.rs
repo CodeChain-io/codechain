@@ -87,5 +87,5 @@ fn log2_distance(addr: &SocketAddr, datum: &H256) -> usize {
         }
     }
 
-    return B - same_prefix_length
+    B - same_prefix_length
 }

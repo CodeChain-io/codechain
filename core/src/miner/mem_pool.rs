@@ -667,7 +667,7 @@ impl MemPool {
                 let encoded_byte_array: Vec<u8> = rlp::encode(&t.parcel).into_vec();
                 let size_in_byte = encoded_byte_array.len();
                 current_size += size_in_byte;
-                return current_size < size_limit
+                current_size < size_limit
             })
             .map(|t| t.parcel.clone())
             .collect()
@@ -911,7 +911,7 @@ impl MemPool {
                 return true
             }
         }
-        return false
+        false
     }
 
     /// Always updates future and moves parcel from current to future.
