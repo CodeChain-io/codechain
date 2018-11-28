@@ -405,11 +405,6 @@ impl Database {
         DBTransaction::new()
     }
 
-
-    fn to_overlay_column(col: Option<u32>) -> usize {
-        col.map_or(0, |c| (c + 1) as usize)
-    }
-
     /// Commit parcel to database.
     pub fn write_buffered(&self, tr: DBTransaction) {
         let mut overlay = self.overlay.write();
@@ -421,7 +416,7 @@ impl Database {
                     key,
                     value,
                 } => {
-                    let c = Self::to_overlay_column(col);
+                    let c = col_to_overlay_column(col);
                     overlay[c].insert(key, KeyState::Insert(value));
                 }
                 DBOp::InsertCompressed {
@@ -429,14 +424,14 @@ impl Database {
                     key,
                     value,
                 } => {
-                    let c = Self::to_overlay_column(col);
+                    let c = col_to_overlay_column(col);
                     overlay[c].insert(key, KeyState::InsertCompressed(value));
                 }
                 DBOp::Delete {
                     col,
                     key,
                 } => {
-                    let c = Self::to_overlay_column(col);
+                    let c = col_to_overlay_column(col);
                     overlay[c].insert(key, KeyState::Delete);
                 }
             }
@@ -558,14 +553,14 @@ impl Database {
                 ref db,
                 ref cfs,
             }) => {
-                let overlay = &self.overlay.read()[Self::to_overlay_column(col)];
+                let overlay = &self.overlay.read()[col_to_overlay_column(col)];
                 match overlay.get(key) {
                     Some(&KeyState::Insert(ref value)) | Some(&KeyState::InsertCompressed(ref value)) => {
                         Ok(Some(value.clone()))
                     }
                     Some(&KeyState::Delete) => Ok(None),
                     None => {
-                        let flushing = &self.flushing.read()[Self::to_overlay_column(col)];
+                        let flushing = &self.flushing.read()[col_to_overlay_column(col)];
                         match flushing.get(key) {
                             Some(&KeyState::Insert(ref value)) | Some(&KeyState::InsertCompressed(ref value)) => {
                                 Ok(Some(value.clone()))
@@ -613,7 +608,7 @@ impl Database {
                 ref db,
                 ref cfs,
             }) => {
-                let overlay = &self.overlay.read()[Self::to_overlay_column(col)];
+                let overlay = &self.overlay.read()[col_to_overlay_column(col)];
                 let mut overlay_data = overlay
                     .iter()
                     .filter_map(|(k, v)| match *v {
@@ -767,6 +762,10 @@ impl Database {
             None => Ok(()),
         }
     }
+}
+
+fn col_to_overlay_column(col: Option<u32>) -> usize {
+    col.map_or(0, |c| (c + 1) as usize)
 }
 
 // duplicate declaration of methods here to avoid trait import in certain existing cases
