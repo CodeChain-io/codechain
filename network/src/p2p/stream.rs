@@ -86,10 +86,10 @@ impl TryStream {
         debug_assert!(len_of_len <= 8);
         bytes.resize(1 + len_of_len, 0);
 
-        if let Some(read_size) = self.stream.try_read(&mut bytes[1..(1 + len_of_len)])? {
+        if let Some(read_size) = self.stream.try_read(&mut bytes[1..=len_of_len])? {
             debug_assert_eq!(len_of_len, read_size);
             let mut total_length: usize = 0;
-            for i in &bytes[1..(1 + len_of_len)] {
+            for i in &bytes[1..=len_of_len] {
                 total_length <<= 8;
                 total_length |= *i as usize;
             }
