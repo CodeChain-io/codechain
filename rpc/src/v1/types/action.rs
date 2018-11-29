@@ -20,18 +20,16 @@ use ctypes::parcel::Action as ActionType;
 use ctypes::ShardId;
 use primitives::{Bytes, H160};
 
-use super::Transaction;
+use super::{Transaction, TransactionWithHash};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum Action {
-    /// Transaction, can be either asset mint or asset transfer
     AssetTransaction {
         transaction: Transaction,
     },
     Payment {
         receiver: PlatformAddress,
-        /// Transferred amount.
         amount: Uint,
     },
     SetRegularKey {
@@ -55,36 +53,67 @@ pub enum Action {
     Custom(Bytes),
 }
 
-impl Action {
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase", tag = "action")]
+pub enum ActionWithTxHash {
+    AssetTransaction {
+        transaction: Box<TransactionWithHash>,
+    },
+    Payment {
+        receiver: PlatformAddress,
+        amount: Uint,
+    },
+    SetRegularKey {
+        key: Public,
+    },
+    CreateShard,
+    SetShardOwners {
+        shard_id: ShardId,
+        owners: Vec<PlatformAddress>,
+    },
+    SetShardUsers {
+        shard_id: ShardId,
+        users: Vec<PlatformAddress>,
+    },
+    WrapCCC {
+        shard_id: ShardId,
+        lock_script_hash: H160,
+        parameters: Vec<Bytes>,
+        amount: Uint,
+    },
+    Custom(Bytes),
+}
+
+impl ActionWithTxHash {
     pub fn from_core(from: ActionType, network_id: NetworkId) -> Self {
         match from {
-            ActionType::AssetTransaction(transaction) => Action::AssetTransaction {
-                transaction: transaction.into(),
+            ActionType::AssetTransaction(transaction) => ActionWithTxHash::AssetTransaction {
+                transaction: Box::new(transaction.into()),
             },
             ActionType::Payment {
                 receiver,
                 amount,
-            } => Action::Payment {
+            } => ActionWithTxHash::Payment {
                 receiver: PlatformAddress::new_v1(network_id, receiver),
                 amount: amount.into(),
             },
             ActionType::SetRegularKey {
                 key,
-            } => Action::SetRegularKey {
+            } => ActionWithTxHash::SetRegularKey {
                 key,
             },
-            ActionType::CreateShard => Action::CreateShard,
+            ActionType::CreateShard => ActionWithTxHash::CreateShard,
             ActionType::SetShardOwners {
                 shard_id,
                 owners,
-            } => Action::SetShardOwners {
+            } => ActionWithTxHash::SetShardOwners {
                 shard_id,
                 owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
             },
             ActionType::SetShardUsers {
                 shard_id,
                 users,
-            } => Action::SetShardUsers {
+            } => ActionWithTxHash::SetShardUsers {
                 shard_id,
                 users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
             },
@@ -93,13 +122,13 @@ impl Action {
                 lock_script_hash,
                 parameters,
                 amount,
-            } => Action::WrapCCC {
+            } => ActionWithTxHash::WrapCCC {
                 shard_id,
                 lock_script_hash,
                 parameters,
                 amount: amount.into(),
             },
-            ActionType::Custom(bytes) => Action::Custom(bytes),
+            ActionType::Custom(bytes) => ActionWithTxHash::Custom(bytes),
         }
     }
 }
