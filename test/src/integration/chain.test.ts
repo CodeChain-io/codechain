@@ -388,8 +388,33 @@ describe("chain", function() {
         ).to.be.null;
     });
 
+    it("executeTransaction", async function() {
+        const scheme = node.sdk.core.createAssetScheme({
+            shardId: 0,
+            metadata: "",
+            amount: 10000
+        });
+        const tx = node.sdk.core.createAssetMintTransaction({
+            scheme,
+            recipient: await node.createP2PKHAddress()
+        });
+
+        const data = tx.toJSON();
+        data.data.output.lockScriptHash = `0x${
+            data.data.output.lockScriptHash
+        }`;
+
+        await node.sdk.rpc
+            .sendRpcRequest("chain_executeTransaction", [
+                data,
+                faucetAddress.value
+            ])
+            .then(result => {
+                expect(result).to.deep.equal({ success: true });
+            });
+    });
+
     // Not implemented
-    it("executeTransactions");
     it("getNumberOfShards");
     it("getShardRoot");
 
