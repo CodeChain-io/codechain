@@ -31,7 +31,7 @@ import {
 } from "codechain-sdk/lib/core/classes";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
-import { appendFileSync, mkdtempSync } from "fs";
+import { createWriteStream, mkdtempSync } from "fs";
 import * as mkdirp from "mkdirp";
 import { ncp } from "ncp";
 import { createInterface as createReadline } from "readline";
@@ -186,6 +186,12 @@ export default class CodeChain {
                 }
             );
 
+            if (this.logFlag) {
+                const logStream = createWriteStream(this.logPath);
+                this.process!.stdout.pipe(logStream);
+                this.process!.stderr.pipe(logStream);
+            }
+
             this.process
                 .on("error", e => {
                     reject(e);
@@ -195,14 +201,9 @@ export default class CodeChain {
                 });
 
             const readline = createReadline({ input: this.process!.stderr });
-            let flag = false;
             readline.on("line", (line: string) => {
                 if (line.includes("Initialization complete")) {
-                    flag = true;
                     resolve();
-                }
-                if (this.logFlag && flag) {
-                    appendFileSync(this.logPath, line + "\n");
                 }
             });
         });
