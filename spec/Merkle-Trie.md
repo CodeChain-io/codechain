@@ -4,12 +4,11 @@ It's a [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree), so the nodes ha
 ## Interface
 ### insert(key, value)
 ### get(key)
-### get_with(key, function)
 ### contains(key)
 ### remove(key)
 
 ## Path
-Codechain's Merkle Trie uses a fixed-size path. To guarantee the size of a path, Codechain's Merkle Trie doesn't use the key as the path, but uses the blake2b hash of the key as the path.
+Codechain's Merkle Trie uses a fixed-size path. To guarantee the size of a path, Codechain's Merkle Trie doesn't use the key as the path, but uses the blake2b hash of the key as the path. By doing this, we can also expect the tree to be automatically balanced.
 ```
 path = blake2b(key, outlen = K)
 ```
