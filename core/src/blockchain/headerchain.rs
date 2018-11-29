@@ -277,12 +277,20 @@ impl HeaderChain {
         *self.best_header_hash.read()
     }
 
+    pub fn highest_header_hash(&self) -> H256 {
+        *self.highest_header_hash.read()
+    }
+
     pub fn best_header(&self) -> encoded::Header {
         self.block_header_data(&self.best_header_hash()).expect("Best header always exists")
     }
 
     pub fn best_header_detail(&self) -> BlockDetails {
         self.block_details(&self.best_header_hash()).expect("Best header always exists")
+    }
+
+    pub fn highest_header(&self) -> encoded::Header {
+        self.block_header_data(&self.highest_header_hash()).expect("Highest header always exists")
     }
 }
 
