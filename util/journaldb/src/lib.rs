@@ -63,20 +63,6 @@ impl str::FromStr for Algorithm {
 }
 
 impl Algorithm {
-    /// Returns static str describing journal database algorithm.
-    pub fn as_str(&self) -> &'static str {
-        match *self {
-            Algorithm::Archive => "archive",
-        }
-    }
-
-    /// Returns static str describing journal database algorithm.
-    pub fn as_internal_name_str(&self) -> &'static str {
-        match *self {
-            Algorithm::Archive => "archive",
-        }
-    }
-
     /// Returns true if pruning strategy is stable
     pub fn is_stable(&self) -> bool {
         match *self {
@@ -92,7 +78,9 @@ impl Algorithm {
 
 impl fmt::Display for Algorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        match self {
+            Algorithm::Archive => write!(f, "archive"),
+        }
     }
 }
 
