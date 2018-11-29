@@ -150,6 +150,7 @@ impl TestApi {
     }
 }
 
+#[derive(Default)]
 pub struct TestClient {
     nodes: HashSet<NodeId>,
     extensions: HashMap<&'static str, (Arc<Extension>, Arc<TestApi>)>,
@@ -157,10 +158,7 @@ pub struct TestClient {
 
 impl TestClient {
     pub fn new() -> Self {
-        Self {
-            nodes: HashSet::new(),
-            extensions: HashMap::new(),
-        }
+        Self::default()
     }
 
     pub fn register_extension(&mut self, extension: Arc<Extension>) {

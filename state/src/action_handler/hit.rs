@@ -43,12 +43,12 @@ impl Decodable for HitAction {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct HitHandler {}
 
 impl HitHandler {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 
     fn address(&self) -> H256 {
