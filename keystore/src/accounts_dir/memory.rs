@@ -70,7 +70,7 @@ impl KeyDirectory for MemoryDirectory {
         let mut val = 0u64;
         let accounts = self.accounts.read();
         for acc in accounts.keys() {
-            val = val ^ acc.low_u64()
+            val ^= acc.low_u64()
         }
         Ok(val)
     }

@@ -538,7 +538,7 @@ fn apply_bitmask_to_output(
                 result.push(outputs[8 * index + i].clone());
             }
 
-            filter = filter >> 1;
+            filter >>= 1;
         }
         index += 1;
     }
