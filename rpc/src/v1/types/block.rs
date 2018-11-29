@@ -19,7 +19,7 @@ use ckey::{NetworkId, PlatformAddress};
 use ctypes::BlockNumber;
 use primitives::{H256, U256};
 
-use super::{Action, Parcel};
+use super::{ActionWithTxHash, Parcel};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,7 +76,7 @@ impl Block {
                         seq: unverified.seq,
                         fee: unverified.fee.into(),
                         network_id,
-                        action: Action::from_core(unverified.action.clone(), network_id),
+                        action: ActionWithTxHash::from_core(unverified.action.clone(), network_id),
                         hash: unverified.hash(),
                         sig,
                     }

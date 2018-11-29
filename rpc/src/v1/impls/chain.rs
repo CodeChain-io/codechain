@@ -34,7 +34,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, Parcel, Transaction};
+use super::super::types::{Block, BlockNumberAndHash, Parcel, Transaction, TransactionWithHash};
 
 pub struct ChainClient<C, M>
 where
@@ -100,7 +100,7 @@ where
         Ok(self.client.parcel_invoice(&parcel_hash.into()))
     }
 
-    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
+    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<TransactionWithHash>> {
         Ok(self.client.transaction(&transaction_hash).map(Into::into))
     }
 
