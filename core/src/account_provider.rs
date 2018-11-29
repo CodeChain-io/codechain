@@ -125,7 +125,8 @@ impl AccountProvider {
     }
 
     pub fn remove_account(&self, address: Address) -> Result<(), SignError> {
-        Ok(self.keystore.write().remove_account(&address)?)
+        self.keystore.write().remove_account(&address)?;
+        Ok(())
     }
 
     pub fn sign(&self, address: Address, password: Option<Password>, message: Message) -> Result<Signature, SignError> {
@@ -159,7 +160,8 @@ impl AccountProvider {
         old_password: &Password,
         new_password: &Password,
     ) -> Result<(), SignError> {
-        Ok(self.keystore.read().change_password(&address, &old_password, &new_password)?)
+        self.keystore.read().change_password(&address, &old_password, &new_password)?;
+        Ok(())
     }
 
     /// Unlocks account permanently.

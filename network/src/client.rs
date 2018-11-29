@@ -63,12 +63,14 @@ impl Api for ClientApi {
 
     fn set_timer(&self, token: TimerToken, duration: Duration) -> NetworkExtensionResult<()> {
         let duration = duration.to_std().expect("Cannot convert to standard duratino type");
-        Ok(self.timer.schedule_repeat(duration, token)?)
+        self.timer.schedule_repeat(duration, token)?;
+        Ok(())
     }
 
     fn set_timer_once(&self, token: TimerToken, duration: Duration) -> NetworkExtensionResult<()> {
         let duration = duration.to_std().expect("Cannot convert to standard duratino type");
-        Ok(self.timer.schedule_once(duration, token)?)
+        self.timer.schedule_once(duration, token)?;
+        Ok(())
     }
 
     fn clear_timer(&self, token: TimerToken) -> NetworkExtensionResult<()> {

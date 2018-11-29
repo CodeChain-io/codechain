@@ -114,17 +114,20 @@ impl<'db> ShardLevelState<'db> {
                             parameters,
                         },
                     ..
-                } => Ok(self.mint_asset(
-                    transaction.hash(),
-                    metadata,
-                    lock_script_hash,
-                    &parameters,
-                    amount,
-                    registrar,
-                    sender,
-                    shard_users,
-                    Vec::new(),
-                )?),
+                } => {
+                    self.mint_asset(
+                        transaction.hash(),
+                        metadata,
+                        lock_script_hash,
+                        &parameters,
+                        amount,
+                        registrar,
+                        sender,
+                        shard_users,
+                        Vec::new(),
+                    )?;
+                    Ok(())
+                }
                 Transaction::AssetTransfer {
                     burns,
                     inputs,

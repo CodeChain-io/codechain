@@ -181,6 +181,7 @@ impl WithBalances for CodeChainMachine {
     }
 
     fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: u64) -> Result<(), Self::Error> {
-        Ok(live.state_mut().add_balance(address, amount).map_err(StateError::from)?)
+        live.state_mut().add_balance(address, amount).map_err(StateError::from)?;
+        Ok(())
     }
 }

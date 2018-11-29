@@ -337,11 +337,13 @@ impl SessionInitiator {
     }
 
     fn register(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()> {
-        Ok(self.server.register(reg, event_loop)?)
+        self.server.register(reg, event_loop)?;
+        Ok(())
     }
 
     fn reregister(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()> {
-        Ok(self.server.reregister(reg, event_loop)?)
+        self.server.reregister(reg, event_loop)?;
+        Ok(())
     }
 }
 
@@ -490,7 +492,8 @@ impl IoHandler<Message> for Handler {
             unreachable!()
         }
         let session_initiator = self.session_initiator.read();
-        Ok(session_initiator.register(reg, event_loop)?)
+        session_initiator.register(reg, event_loop)?;
+        Ok(())
     }
 
     fn update_stream(
@@ -503,7 +506,8 @@ impl IoHandler<Message> for Handler {
             unreachable!()
         }
         let session_initiator = self.session_initiator.read();
-        Ok(session_initiator.reregister(reg, event_loop)?)
+        session_initiator.reregister(reg, event_loop)?;
+        Ok(())
     }
 
     fn deregister_stream(
