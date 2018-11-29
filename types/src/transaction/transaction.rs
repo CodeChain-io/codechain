@@ -456,25 +456,23 @@ impl HeapSizeOf for Transaction {
     fn heap_size_of_children(&self) -> usize {
         match self {
             Transaction::AssetMint {
-                network_id: _,
-                shard_id: _,
                 metadata,
                 registrar,
                 output,
+                ..
             } => metadata.heap_size_of_children() + registrar.heap_size_of_children() + output.heap_size_of_children(),
             Transaction::AssetTransfer {
-                network_id: _,
                 burns,
                 inputs,
                 outputs,
+                ..
             } => burns.heap_size_of_children() + inputs.heap_size_of_children() + outputs.heap_size_of_children(),
             Transaction::AssetCompose {
-                network_id: _,
-                shard_id: _,
                 metadata,
                 registrar,
                 inputs,
                 output,
+                ..
             } => {
                 metadata.heap_size_of_children()
                     + registrar.heap_size_of_children()
