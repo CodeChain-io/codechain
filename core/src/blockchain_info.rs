@@ -22,6 +22,8 @@ use primitives::{H256, U256};
 pub struct BlockChainInfo {
     /// Blockchain score.
     pub best_score: U256,
+    /// Highest score of chain.
+    pub highest_score: U256,
     /// Block queue score.
     pub pending_total_score: U256,
     /// Genesis block hash.
