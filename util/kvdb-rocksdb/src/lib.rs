@@ -742,9 +742,8 @@ impl Database {
                 ref mut db,
                 ref mut cfs,
             }) => {
-                if let Some(col) = cfs.pop() {
+                if cfs.pop().is_some() {
                     let name = format!("col{}", cfs.len());
-                    drop(col);
                     db.drop_cf(&name)?;
                 }
                 Ok(())
