@@ -78,7 +78,7 @@ impl Importer {
 
         Ok(Importer {
             import_lock: Mutex::new(()),
-            verifier: verification::new(config.verifier_type.clone()),
+            verifier: verification::new(config.verifier_type),
             block_queue,
             header_queue,
             miner,

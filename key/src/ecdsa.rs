@@ -91,7 +91,7 @@ impl ECDSASignature {
 // remove when integer generics exist
 impl PartialEq for ECDSASignature {
     fn eq(&self, other: &Self) -> bool {
-        &self.0[..] == &other.0[..]
+        self.0[..] == other.0[..]
     }
 }
 

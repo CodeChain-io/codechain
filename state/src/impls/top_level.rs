@@ -297,7 +297,7 @@ impl TopLevelState {
         // The failed parcel also must pay the fee and increase seq.
         self.create_checkpoint(PARCEL_ACTION_CHECKPOINT);
 
-        match self.apply_action(&parcel.action, &parcel.network_id, &parcel.hash(), fee_payer, signer_public, client) {
+        match self.apply_action(&parcel.action, parcel.network_id, &parcel.hash(), fee_payer, signer_public, client) {
             Ok(invoice) => {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(invoice)
@@ -335,7 +335,7 @@ impl TopLevelState {
     fn apply_action<C: ChainTimeInfo>(
         &mut self,
         action: &Action,
-        network_id: &NetworkId,
+        network_id: NetworkId,
         parcel_hash: &H256,
         fee_payer: &Address,
         signer_public: &Public,
@@ -343,7 +343,7 @@ impl TopLevelState {
     ) -> StateResult<Invoice> {
         match action {
             Action::AssetTransaction(transaction) => {
-                debug_assert_eq!(network_id, &transaction.network_id());
+                debug_assert_eq!(network_id, transaction.network_id());
                 Ok(self.apply_transaction(transaction, fee_payer, client)?)
             }
             Action::Payment {
@@ -389,7 +389,7 @@ impl TopLevelState {
                 parameters,
                 amount,
             } => Ok(self.apply_wrap_ccc(
-                *network_id,
+                network_id,
                 *shard_id,
                 *parcel_hash,
                 *lock_script_hash,
@@ -617,9 +617,9 @@ impl TopState for TopLevelState {
     fn set_regular_key(&mut self, signer_public: &Public, regular_key: &Public) -> StateResult<()> {
         let (owner_public, owner_address) = if self.regular_account_exists_and_not_null(signer_public)? {
             let regular_account = self.get_regular_account_mut(&signer_public)?;
-            let owner_public = regular_account.owner_public().clone();
-            let owner_address = public_to_address(&owner_public);
-            (owner_public, owner_address)
+            let owner_public = regular_account.owner_public();
+            let owner_address = public_to_address(owner_public);
+            (*owner_public, owner_address)
         } else {
             (*signer_public, public_to_address(&signer_public))
         };

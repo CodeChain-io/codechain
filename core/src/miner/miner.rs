@@ -512,7 +512,7 @@ impl Miner {
                     &hash,
                     &fetch_seq,
                     RemovalReason::Invalid,
-                    &chain.chain_info().best_block_number,
+                    chain.chain_info().best_block_number,
                     chain.chain_info().best_block_timestamp,
                 );
             }
@@ -741,7 +741,7 @@ impl MinerService for Miner {
     }
 
     fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
-        let result = if let Some(b) = self.sealing_work.lock().queue.take_used_if(|b| &b.hash() == &block_hash) {
+        let result = if let Some(b) = self.sealing_work.lock().queue.take_used_if(|b| b.hash() == block_hash) {
             ctrace!(
                 MINER,
                 "Submitted block {}={}={} with seal {:?}",

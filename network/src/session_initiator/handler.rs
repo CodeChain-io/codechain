@@ -423,7 +423,7 @@ impl IoHandler<Message> for Handler {
             }
             Message::RequestSession(n) => {
                 let mut session_initiator = self.session_initiator.write();
-                let addresses = session_initiator.routing_table.candidates(n);
+                let addresses = session_initiator.routing_table.candidates(*n);
                 if !addresses.is_empty() {
                     let _f = finally(|| {
                         io.update_registration(RECEIVE_TOKEN);

@@ -69,7 +69,7 @@ impl Step {
         }
     }
 
-    fn number(&self) -> u8 {
+    fn number(self) -> u8 {
         match self {
             Step::Propose => 0,
             Step::Prevote => 1,
@@ -410,7 +410,7 @@ impl Tendermint {
         let _guard = self.step_change_lock.lock();
         let vote_step = &message.vote_step;
         let is_newer_than_lock = match &*self.lock_change.read() {
-            Some(lock) => vote_step > &lock.vote_step,
+            Some(lock) => *vote_step > lock.vote_step,
             None => true,
         };
         let lock_change = is_newer_than_lock

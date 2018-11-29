@@ -103,7 +103,7 @@ fn deep_decompress(rlp: &UntrustedRlp, swapper: &InvalidRlpSwapper) -> Option<El
     }
     match rlp.item_count().unwrap_or(0) {
         // Look for special compressed list, which contains nested data.
-        2 if rlp.at(0).map(|r| r.as_raw() == &[0x81, 0x7f]).unwrap_or(false) => {
+        2 if rlp.at(0).map(|r| r.as_raw() == [0x81, 0x7f]).unwrap_or(false) => {
             rlp.at(1).ok().map_or(simple_swap(), |r| {
                 deep_decompress(&r, swapper).map(|d| {
                     let v = d.into_vec();

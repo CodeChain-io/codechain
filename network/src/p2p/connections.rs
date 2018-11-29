@@ -99,31 +99,31 @@ impl Connections {
         connection.shutdown()
     }
 
-    pub fn set_disconnecting(&self, token: &StreamToken) {
+    pub fn set_disconnecting(&self, token: StreamToken) {
         let connections = self.connections.read();
-        let connection = connections.get(token).unwrap();
+        let connection = connections.get(&token).unwrap();
         connection.set_disconnecting();
     }
 
-    pub fn is_connected(&self, token: &StreamToken) -> bool {
+    pub fn is_connected(&self, token: StreamToken) -> bool {
         let connections = self.connections.read();
-        if let Some(connection) = connections.get(token) {
+        if let Some(connection) = connections.get(&token) {
             !connection.is_disconnecting()
         } else {
             false
         }
     }
 
-    pub fn is_established(&self, token: &StreamToken) -> bool {
+    pub fn is_established(&self, token: StreamToken) -> bool {
         let connections = self.connections.read();
-        connections.get(token).map(Connection::is_established).unwrap_or(false)
+        connections.get(&token).map(Connection::is_established).unwrap_or(false)
     }
 
-    pub fn establish_wait_ack_connection(&self, token: &StreamToken) -> bool {
+    pub fn establish_wait_ack_connection(&self, token: StreamToken) -> bool {
         let connections = self.connections.read();
 
         connections
-            .get(token)
+            .get(&token)
             .map(|connection| {
                 let established = connection.establish();
                 debug_assert!(established);
@@ -131,13 +131,13 @@ impl Connections {
             .is_some()
     }
 
-    pub fn establish_wait_sync_connection(&self, token: &StreamToken) -> bool {
+    pub fn establish_wait_sync_connection(&self, token: StreamToken) -> bool {
         let connections = self.connections.read();
         let mut connected_nodes = self.connected_nodes.write();
         let mut reversed_connected_nodes = self.reversed_connected_nodes.write();
 
         connections
-            .get(token)
+            .get(&token)
             .and_then(|connection| {
                 let remote_node_id =
                     connection.remote_node_id().expect("EstablishedConnection MUST have remote node id");
@@ -146,9 +146,9 @@ impl Connections {
                 }
                 let t = connection.establish();
                 debug_assert!(t);
-                let t = connected_nodes.insert(remote_node_id, *token);
+                let t = connected_nodes.insert(remote_node_id, token);
                 debug_assert!(t.is_none());
-                let t = reversed_connected_nodes.insert(*token, remote_node_id);
+                let t = reversed_connected_nodes.insert(token, remote_node_id);
                 debug_assert!(t.is_none());
                 Some(())
             })
@@ -157,14 +157,14 @@ impl Connections {
 
     pub fn register<Message>(
         &self,
-        token: &StreamToken,
+        token: StreamToken,
         reg: Token,
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> io::Result<ConnectionType>
     where
         Message: Send + Sync + Clone + 'static, {
         let connections = self.connections.read();
-        if let Some(connection) = connections.get(token) {
+        if let Some(connection) = connections.get(&token) {
             let result = connection.register(reg, event_loop)?;
             debug_assert_ne!(result, ConnectionType::None);
             Ok(result)
@@ -175,14 +175,14 @@ impl Connections {
 
     pub fn reregister<Message>(
         &self,
-        token: &StreamToken,
+        token: StreamToken,
         reg: Token,
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> io::Result<ConnectionType>
     where
         Message: Send + Sync + Clone + 'static, {
         let connections = self.connections.read();
-        if let Some(connection) = connections.get(token) {
+        if let Some(connection) = connections.get(&token) {
             let result = connection.reregister(reg, event_loop)?;
             debug_assert_ne!(result, ConnectionType::None);
             Ok(result)
@@ -193,13 +193,13 @@ impl Connections {
 
     pub fn deregister<Message>(
         &self,
-        token: &StreamToken,
+        token: StreamToken,
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> io::Result<ConnectionType>
     where
         Message: Send + Sync + Clone + 'static, {
         let connections = self.connections.read();
-        if let Some(connection) = connections.get(token) {
+        if let Some(connection) = connections.get(&token) {
             let result = connection.deregister(event_loop)?;
             debug_assert_ne!(result, ConnectionType::None);
             Ok(result)
@@ -208,23 +208,23 @@ impl Connections {
         }
     }
 
-    pub fn remove(&self, token: &StreamToken) {
+    pub fn remove(&self, token: StreamToken) {
         let mut connections = self.connections.write();
         let mut connected_nodes = self.connected_nodes.write();
         let mut reversed_connected_nodes = self.reversed_connected_nodes.write();
 
-        let t = connections.remove(token);
+        let t = connections.remove(&token);
         assert!(t.is_some());
 
-        let node_id = reversed_connected_nodes.remove(token).unwrap();
+        let node_id = reversed_connected_nodes.remove(&token).unwrap();
         let t = connected_nodes.remove(&node_id);
-        assert_eq!(t, Some(*token));
+        assert_eq!(t, Some(token));
     }
 
     // Return true if the queue is not empty
-    pub fn send(&self, token: &StreamToken) -> Result<(ConnectionType, bool)> {
+    pub fn send(&self, token: StreamToken) -> Result<(ConnectionType, bool)> {
         let connections = self.connections.read();
-        if let Some(connection) = connections.get(token) {
+        if let Some(connection) = connections.get(&token) {
             let (result, remain) = connection.send()?;
             debug_assert_ne!(result, ConnectionType::None);
             Ok((result, remain))
@@ -233,28 +233,28 @@ impl Connections {
         }
     }
 
-    pub fn receive(&self, token: &StreamToken) -> Result<Option<ReceivedMessage>> {
+    pub fn receive(&self, token: StreamToken) -> Result<Option<ReceivedMessage>> {
         let connections = self.connections.read();
 
-        if let Some(connection) = connections.get(token) {
+        if let Some(connection) = connections.get(&token) {
             Ok(connection.receive()?)
         } else {
             Ok(None)
         }
     }
 
-    pub fn enqueue_negotiation_request(&self, token: &StreamToken, name: String, versions: Vec<u64>) -> bool {
+    pub fn enqueue_negotiation_request(&self, token: StreamToken, name: String, versions: Vec<u64>) -> bool {
         let connections = self.connections.read();
-        if let Some(connection) = connections.get(token) {
+        if let Some(connection) = connections.get(&token) {
             connection.enqueue_negotiation_request(name, versions)
         } else {
             false
         }
     }
 
-    pub fn enqueue_negotiation_allowed(&self, token: &StreamToken, seq: u64, version: u64) -> bool {
+    pub fn enqueue_negotiation_allowed(&self, token: StreamToken, seq: u64, version: u64) -> bool {
         let connections = self.connections.read();
-        if let Some(connection) = connections.get(token) {
+        if let Some(connection) = connections.get(&token) {
             connection.enqueue_negotiation_allowed(seq, version)
         } else {
             false
@@ -263,32 +263,32 @@ impl Connections {
 
     pub fn enqueue_extension_message(
         &self,
-        token: &StreamToken,
+        token: StreamToken,
         extension_name: &str,
         need_encryption: bool,
         data: &[u8],
     ) -> bool {
         let connections = self.connections.read();
-        if let Some(connection) = connections.get(token) {
+        if let Some(connection) = connections.get(&token) {
             connection.enqueue_extension_message(extension_name, need_encryption, &data)
         } else {
             false
         }
     }
 
-    pub fn remove_requested_negotiation(&self, token: &StreamToken, seq: &u64) -> Option<String> {
+    pub fn remove_requested_negotiation(&self, token: StreamToken, seq: u64) -> Option<String> {
         let connections = self.connections.read();
-        connections.get(token).and_then(|connection| connection.remove_requested_negotiation(seq))
+        connections.get(&token).and_then(|connection| connection.remove_requested_negotiation(seq))
     }
 
-    pub fn remote_addr_of_waiting_sync(&self, token: &StreamToken) -> Option<SocketAddr> {
+    pub fn remote_addr_of_waiting_sync(&self, token: StreamToken) -> Option<SocketAddr> {
         let connections = self.connections.read();
-        connections.get(token).and_then(|connection| connection.remote_addr_of_waiting_sync())
+        connections.get(&token).and_then(|connection| connection.remote_addr_of_waiting_sync())
     }
 
-    pub fn ready_session(&self, token: &StreamToken, remote_node_id: NodeId, session: Session) -> bool {
+    pub fn ready_session(&self, token: StreamToken, remote_node_id: NodeId, session: Session) -> bool {
         let connections = self.connections.read();
-        connections.get(token).map(|connection| connection.ready_session(remote_node_id, session)).is_some()
+        connections.get(&token).map(|connection| connection.ready_session(remote_node_id, session)).is_some()
     }
 
     pub fn stream_token(&self, node: &NodeId) -> Option<StreamToken> {
@@ -296,14 +296,14 @@ impl Connections {
         connected_nodes.get(node).cloned()
     }
 
-    pub fn node_id(&self, token: &StreamToken) -> Option<NodeId> {
+    pub fn node_id(&self, token: StreamToken) -> Option<NodeId> {
         let reversed_connected_nodes = self.reversed_connected_nodes.read();
-        reversed_connected_nodes.get(token).cloned()
+        reversed_connected_nodes.get(&token).cloned()
     }
 
-    pub fn established_session(&self, token: &StreamToken) -> Option<Session> {
+    pub fn established_session(&self, token: StreamToken) -> Option<Session> {
         let connections = self.connections.read();
-        connections.get(token).and_then(|con| con.established_session())
+        connections.get(&token).and_then(|con| con.established_session())
     }
 
     pub fn len(&self) -> usize {

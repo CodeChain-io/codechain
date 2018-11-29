@@ -29,7 +29,7 @@ pub use self::verifier::Verifier;
 use crate::client::{BlockInfo, TransactionInfo};
 
 /// Verifier type.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum VerifierType {
     /// Verifies block normally.
     Canon,
@@ -42,7 +42,7 @@ pub enum VerifierType {
 
 impl VerifierType {
     /// Check if seal verification is enabled for this verifier type.
-    pub fn verifying_seal(&self) -> bool {
+    pub fn verifying_seal(self) -> bool {
         match self {
             VerifierType::Canon => true,
             VerifierType::Noop | VerifierType::CanonNoSeal => false,

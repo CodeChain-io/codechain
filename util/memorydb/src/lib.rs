@@ -216,7 +216,7 @@ impl HashDB for MemoryDB {
     }
 
     fn insert(&mut self, value: &[u8]) -> H256 {
-        if value == &NULL_RLP {
+        if *value == NULL_RLP {
             return BLAKE_NULL_RLP
         }
         let key = blake256(value);
@@ -236,7 +236,7 @@ impl HashDB for MemoryDB {
     }
 
     fn emplace(&mut self, key: H256, value: DBValue) {
-        if &*value == &NULL_RLP {
+        if *value == NULL_RLP {
             return
         }
 

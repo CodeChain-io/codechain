@@ -99,8 +99,8 @@ impl EstablishedConnection {
         self.enqueue(Message::Negotiation(NegotiationMessage::request(seq, name, extension_versions)));
     }
 
-    fn remove_requested_negotiation(&mut self, seq: &u64) -> Option<String> {
-        self.requested_negotiation.remove(seq)
+    fn remove_requested_negotiation(&mut self, seq: u64) -> Option<String> {
+        self.requested_negotiation.remove(&seq)
     }
 
     fn enqueue_negotiation_allowed(&mut self, seq: Seq, version: u64) {
@@ -681,7 +681,7 @@ impl Connection {
         }
     }
 
-    pub fn remove_requested_negotiation(&self, seq: &u64) -> Option<String> {
+    pub fn remove_requested_negotiation(&self, seq: u64) -> Option<String> {
         let mut state = self.state.write();
         match &mut *state {
             State::WaitAck(_) => None,

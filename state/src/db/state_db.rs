@@ -118,7 +118,7 @@ impl StateDB {
 
     pub fn clone(&self, hash: &H256) -> Self {
         let (cache, current_hash) = if self.current_hash.as_ref() == Some(hash) {
-            (self.cache.clone(), self.current_hash.clone())
+            (self.cache.clone(), self.current_hash)
         } else {
             (Default::default(), None)
         };
