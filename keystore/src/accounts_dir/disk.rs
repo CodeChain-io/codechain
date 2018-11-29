@@ -109,7 +109,7 @@ where
                 // filter directories
                 metadata.map_or(false, |m| !m.is_dir()) &&
 					// hidden files
-					!name.starts_with(".") &&
+					!name.starts_with('.') &&
 					// other ignored files
 					!IGNORED_FILES.contains(&&*name)
             })

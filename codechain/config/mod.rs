@@ -128,7 +128,7 @@ impl Config {
                     .map(|rstr| {
                         rstr.lines()
                             .map(|s| {
-                                const COMMENT_CHAR: &str = "#";
+                                const COMMENT_CHAR: char = '#';
                                 if let Some(index) = s.find(COMMENT_CHAR) {
                                     let (ip_str, tag_str_with_sign) = s.split_at(index);
                                     (ip_str.trim(), (&tag_str_with_sign[1..]).trim().to_string())

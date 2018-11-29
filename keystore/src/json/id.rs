@@ -64,7 +64,7 @@ impl str::FromStr for Uuid {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split("-").collect();
+        let parts: Vec<&str> = s.split('-').collect();
 
         if parts.len() != 5 {
             return Err(Error::InvalidUuid)
