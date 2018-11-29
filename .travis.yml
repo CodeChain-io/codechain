@@ -23,8 +23,10 @@ jobs:
         - cargo +nightly-2018-10-18 fmt -- --check || TEST_FAILED=true
         - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
         - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
-        - test $TEST_FAILED || yarn start || TEST_FAILED=true
+        - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start || TEST_FAILED=true
         - "! test $TEST_FAILED"
+      after_failure:
+        - test $INT_TEST_FLAG && ./upload_logs.sh
     - name: test-linux
       os: linux
       sudo: required
@@ -40,8 +42,10 @@ jobs:
         - cargo +nightly-2018-10-18 fmt -- --check || TEST_FAILED=true
         - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
         - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
-        - test $TEST_FAILED || yarn start || TEST_FAILED=true
+        - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start || TEST_FAILED=true
         - "! test $TEST_FAILED"
+      after_failure:
+        - test $INT_TEST_FLAG && ./upload_logs.sh
     - stage: deploy
       name: deploy
       sudo: required
