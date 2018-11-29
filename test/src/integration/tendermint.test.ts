@@ -21,7 +21,6 @@ import {
     validator2Address,
     validator3Address
 } from "../helper/constants";
-import { wait } from "../helper/promise";
 
 import "mocha";
 import * as chai from "chai";
