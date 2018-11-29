@@ -360,7 +360,7 @@ impl ChainInfo for TestBlockChainClient {
     fn chain_info(&self) -> BlockChainInfo {
         let number = self.blocks.read().len() as BlockNumber - 1;
         BlockChainInfo {
-            total_score: *self.score.read(),
+            best_score: *self.score.read(),
             pending_total_score: *self.score.read(),
             genesis_hash: self.genesis_hash,
             best_block_hash: *self.last_hash.read(),
