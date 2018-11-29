@@ -28,7 +28,7 @@ use cnetwork::{Api, NetworkExtension, NetworkService, NodeId, TimeoutHandler, Ti
 use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Mutex, ReentrantMutex, RwLock};
 use primitives::{Bytes, H256, U128, U256};
 use rand::{thread_rng, Rng};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -179,6 +179,8 @@ pub struct Tendermint {
     machine: CodeChainMachine,
     /// Chain notify
     chain_notify: Arc<TendermintChainNotify>,
+    /// Lock for changing step. We use ReentrantMutex because handle_valid_message called recursively.
+    pub step_change_lock: ReentrantMutex<()>,
 }
 
 impl Tendermint {
@@ -203,6 +205,7 @@ impl Tendermint {
             extension: Arc::new(extension),
             chain_notify: Arc::new(chain_notify),
             machine,
+            step_change_lock: ReentrantMutex::new(()),
         });
         engine.extension.register_tendermint(Arc::downgrade(&engine));
         engine.chain_notify.register_tendermint(Arc::downgrade(&engine));
@@ -404,6 +407,7 @@ impl Tendermint {
     }
 
     fn handle_valid_message(&self, message: &ConsensusMessage) {
+        let _guard = self.step_change_lock.lock();
         let ref vote_step = message.vote_step;
         let is_newer_than_lock = match &*self.lock_change.read() {
             Some(lock) => vote_step > &lock.vote_step,
@@ -640,6 +644,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     /// Equivalent to a timeout: to be used for tests.
     fn step(&self) {
+        let _guard = self.step_change_lock.lock();
         let next_step = match *self.step.read() {
             Step::Propose => {
                 ctrace!(ENGINE, "Propose timeout.");
@@ -765,6 +770,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
+        let _guard = self.step_change_lock.lock();
         {
             self.signer.write().set(ap, address, password);
         }
@@ -836,15 +842,17 @@ impl ChainNotify for TendermintChainNotify {
         };
 
         let imported_is_empty = imported.is_empty();
+        if imported_is_empty {
+            return
+        }
+        let _guard = t.step_change_lock.lock();
         for hash in imported {
             // New Commit received, skip to next height.
             let header = c.block_header(hash.into()).expect("ChainNotify is called after the block is imported");
             ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
             t.to_next_height(header.number() as usize);
         }
-        if !imported_is_empty {
-            t.to_step(Step::Commit)
-        }
+        t.to_step(Step::Commit)
     }
 }
 
