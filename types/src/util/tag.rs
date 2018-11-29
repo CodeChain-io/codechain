@@ -39,10 +39,8 @@ impl Tag {
         }
 
         // Check if the filter has trailing zero
-        if length != 0 {
-            if bitvec[0] == 0 {
-                return Err(HashingError::InvalidFilter)
-            }
+        if length != 0 && bitvec[0] == 0 {
+            return Err(HashingError::InvalidFilter)
         }
 
         Ok(Tag {

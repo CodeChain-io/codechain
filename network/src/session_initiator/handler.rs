@@ -253,10 +253,8 @@ impl SessionInitiator {
                         let message = message::Message::secret_allowed(message.seq(), responder_pub_key);
                         self.server.enqueue(message, *from)?;
                         return Ok(())
-                    } else {
-                        if !self.routing_table.remove_node(*from) {
-                            cwarn!(NETWORK, "Cannot reset key pair to {}", from);
-                        }
+                    } else if !self.routing_table.remove_node(*from) {
+                        cwarn!(NETWORK, "Cannot reset key pair to {}", from);
                     }
                 }
 

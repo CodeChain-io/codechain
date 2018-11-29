@@ -111,16 +111,12 @@ impl Control for Filters {
         let whitelist = self.whitelist.read();
         let blacklist = self.blacklist.read();
 
-        if whitelist.is_enabled() {
-            if !whitelist.contains(addr) {
-                return false
-            }
+        if whitelist.is_enabled() && !whitelist.contains(addr) {
+            return false
         }
 
-        if blacklist.is_enabled() {
-            if blacklist.contains(addr) {
-                return false
-            }
+        if blacklist.is_enabled() && blacklist.contains(addr) {
+            return false
         }
         true
     }

@@ -322,10 +322,9 @@ impl Miner {
                             if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
                                 max_block = Some(value);
                             }
-                        } else {
-                            if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value {
-                                max_timestamp = Some(value);
-                            }
+                        } else if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value
+                        {
+                            max_timestamp = Some(value);
                         }
                     }
                 }
@@ -829,15 +828,15 @@ impl MinerService for Miner {
         // | NOTE Code below requires mem_pool and sealing_queue locks.     |
         // | Make sure to release the locks before calling that method.     |
         // ------------------------------------------------------------------
-        if imported.is_ok() && self.options.reseal_on_own_parcel && self.parcel_reseal_allowed() {
+        if imported.is_ok() && self.options.reseal_on_own_parcel && self.parcel_reseal_allowed()
             // Make sure to do it after parcel is imported and lock is dropped.
             // We need to create pending block and enable sealing.
-            if self.engine.seals_internally().unwrap_or(false) || !self.prepare_work_sealing(chain) {
-                // If new block has not been prepared (means we already had one)
-                // or Engine might be able to seal internally,
-                // we need to update sealing.
-                self.update_sealing(chain);
-            }
+            && (self.engine.seals_internally().unwrap_or(false) || !self.prepare_work_sealing(chain))
+        {
+            // If new block has not been prepared (means we already had one)
+            // or Engine might be able to seal internally,
+            // we need to update sealing.
+            self.update_sealing(chain);
         }
         imported
     }
