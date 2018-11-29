@@ -55,7 +55,7 @@ pub const MINUS_ONE_KEY: SecretKey = SecretKey([
 ]);
 
 /// A Secp256k1 public key, used for verification of signatures
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Debug, Hash)]
 pub struct PublicKey(ffi::PublicKey);
 
 fn random_32_bytes<R: Rng>(rng: &mut R) -> [u8; 32] {
@@ -136,8 +136,8 @@ impl SecretKey {
 impl PublicKey {
     /// Creates a new zeroed out public key
     #[inline]
-    pub fn new() -> PublicKey {
-        PublicKey(ffi::PublicKey::new())
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Determines whether a pubkey is valid

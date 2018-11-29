@@ -187,7 +187,7 @@ impl TestBlockChainClient {
         for n in len..(len + count) {
             let mut header = BlockHeader::new();
             header.set_score(From::from(n));
-            header.set_parent_hash(self.last_hash.read().clone());
+            header.set_parent_hash(*self.last_hash.read());
             header.set_number(n as BlockNumber);
             header.set_extra_data(self.extra_data.clone());
             let mut parcels = Vec::new();
@@ -208,7 +208,7 @@ impl TestBlockChainClient {
                 parcels.push(signed_parcel);
             }
             header.set_parcels_root(skewed_merkle_root(
-                self.last_parcels_root.read().clone(),
+                *self.last_parcels_root.read(),
                 parcels.iter().map(Encodable::rlp_bytes),
             ));
             let mut rlp = RlpStream::new_list(2);
@@ -246,7 +246,7 @@ impl TestBlockChainClient {
     pub fn block_hash_delta_minus(&mut self, delta: usize) -> H256 {
         let blocks_read = self.numbers.read();
         let index = blocks_read.len() - delta;
-        blocks_read[&index].clone()
+        blocks_read[&index]
     }
 
     fn block_hash(&self, id: BlockId) -> Option<H256> {
@@ -360,8 +360,8 @@ impl ChainInfo for TestBlockChainClient {
         BlockChainInfo {
             total_score: *self.score.read(),
             pending_total_score: *self.score.read(),
-            genesis_hash: self.genesis_hash.clone(),
-            best_block_hash: self.last_hash.read().clone(),
+            genesis_hash: self.genesis_hash,
+            best_block_hash: *self.last_hash.read(),
             best_block_number: number,
             best_block_timestamp: number,
         }
@@ -428,24 +428,23 @@ impl ImportBlock for TestBlockChainClient {
         if number == len {
             {
                 let mut score = self.score.write();
-                *score = *score + header.score().clone();
+                *score = *score + *header.score();
             }
-            mem::replace(&mut *self.last_hash.write(), h.clone());
-            mem::replace(&mut *self.last_parcels_root.write(), h.clone());
-            self.blocks.write().insert(h.clone(), b);
-            self.numbers.write().insert(number, h.clone());
-            let mut parent_hash = header.parent_hash().clone();
+            mem::replace(&mut *self.last_hash.write(), h);
+            mem::replace(&mut *self.last_parcels_root.write(), h);
+            self.blocks.write().insert(h, b);
+            self.numbers.write().insert(number, h);
+            let mut parent_hash = *header.parent_hash();
             if number > 0 {
                 let mut n = number - 1;
                 while n > 0 && self.numbers.read()[&n] != parent_hash {
-                    *self.numbers.write().get_mut(&n).unwrap() = parent_hash.clone();
+                    *self.numbers.write().get_mut(&n).unwrap() = parent_hash;
                     n -= 1;
-                    parent_hash =
-                        Rlp::new(&self.blocks.read()[&parent_hash]).val_at::<BlockHeader>(0).parent_hash().clone();
+                    parent_hash = *Rlp::new(&self.blocks.read()[&parent_hash]).val_at::<BlockHeader>(0).parent_hash();
                 }
             }
         } else {
-            self.blocks.write().insert(h.clone(), b.to_vec());
+            self.blocks.write().insert(h, b.to_vec());
         }
         Ok(h)
     }

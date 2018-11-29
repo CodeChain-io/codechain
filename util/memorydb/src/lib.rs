@@ -144,7 +144,7 @@ impl MemoryDB {
         if key == &BLAKE_NULL_RLP {
             return None
         }
-        match self.data.entry(key.clone()) {
+        match self.data.entry(*key) {
             Entry::Occupied(mut entry) => {
                 if entry.get().1 == 1 {
                     Some(entry.remove().0)
@@ -217,7 +217,7 @@ impl HashDB for MemoryDB {
 
     fn insert(&mut self, value: &[u8]) -> H256 {
         if value == &NULL_RLP {
-            return BLAKE_NULL_RLP.clone()
+            return BLAKE_NULL_RLP
         }
         let key = blake256(value);
         match self.data.entry(key) {

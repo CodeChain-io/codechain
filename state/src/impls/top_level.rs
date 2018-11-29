@@ -557,7 +557,7 @@ impl Clone for TopLevelState {
     fn clone(&self) -> TopLevelState {
         TopLevelState {
             db: RefCell::new(self.db.borrow().clone(&self.root)),
-            root: self.root.clone(),
+            root: self.root,
             id_of_checkpoints: self.id_of_checkpoints.clone(),
             top_cache: self.top_cache.clone(),
             shard_caches: self.shard_caches.clone(),
@@ -1057,7 +1057,7 @@ mod tests_parcel {
 
     fn address() -> (Address, Public) {
         let keypair = Random.generate().unwrap();
-        (keypair.address(), keypair.public().clone())
+        (keypair.address(), *keypair.public())
     }
 
     #[test]
@@ -1171,7 +1171,7 @@ mod tests_parcel {
         let parcel = Parcel {
             fee: 5,
             action: Action::SetRegularKey {
-                key: key.clone(),
+                key: *key,
             },
             seq: 0,
             network_id: "tc".into(),
@@ -1204,7 +1204,7 @@ mod tests_parcel {
         let parcel = Parcel {
             fee: 5,
             action: Action::SetRegularKey {
-                key: key.clone(),
+                key: *key,
             },
             seq: 0,
             network_id: "tc".into(),
@@ -1219,7 +1219,7 @@ mod tests_parcel {
         let parcel = Parcel {
             fee: 5,
             action: Action::SetRegularKey {
-                key: key.clone(),
+                key: *key,
             },
             seq: 0,
             network_id: "tc".into(),
@@ -1247,7 +1247,7 @@ mod tests_parcel {
         let parcel = Parcel {
             fee: 5,
             action: Action::SetRegularKey {
-                key: sender_public2.clone(),
+                key: sender_public2,
             },
             seq: 0,
             network_id: "tc".into(),
@@ -1317,7 +1317,7 @@ mod tests_parcel {
         };
         let mint_hash = mint.hash();
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
-        let asset_type = asset_scheme_address.clone().into();
+        let asset_type = asset_scheme_address.into();
 
         let transfer = Transaction::AssetTransfer {
             network_id,
@@ -1591,7 +1591,7 @@ mod tests_parcel {
         assert_eq!(Ok(1), state.seq(&sender));
 
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
-        let asset_type = asset_scheme_address.clone().into();
+        let asset_type = asset_scheme_address.into();
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
 
         let asset = state.asset(shard_id, &asset_address);

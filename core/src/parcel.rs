@@ -235,7 +235,7 @@ impl SignedParcel {
 
     /// Returns a public key of the signer.
     pub fn signer_public(&self) -> Public {
-        self.signer_public.clone()
+        self.signer_public
     }
 
     /// Deconstructs this parcel back into `UnverifiedParcel`

@@ -140,7 +140,7 @@ impl Stratum {
         let stratum_svc = StratumService::start(
             &SocketAddr::new(config.listen_addr.parse::<IpAddr>()?, config.port),
             dispatcher.clone(),
-            config.secret.clone(),
+            config.secret,
         )?;
 
         Ok(Stratum {

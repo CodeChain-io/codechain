@@ -72,7 +72,7 @@ impl NetworkExtension for Extension {
     fn on_node_added(&self, node: &NodeId, _version: u64) {
         let api = self.api.read();
         let mut nodes = self.nodes.write();
-        nodes.insert(node.clone());
+        nodes.insert(*node);
         api.as_ref().map(|api| api.send(&node, &Message::Request(self.config.bucket_size).rlp_bytes()));
     }
 

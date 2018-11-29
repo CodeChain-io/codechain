@@ -260,7 +260,7 @@ impl Scheme {
 
     /// Return the state root for the genesis state, memoising accordingly.
     pub fn state_root(&self) -> H256 {
-        self.state_root_memo.read().clone()
+        *self.state_root_memo.read()
     }
 
     /// Loads scheme from json file. Provide factories for executing contracts and ensuring
@@ -324,15 +324,15 @@ impl Scheme {
     /// Get the header of the genesis block.
     pub fn genesis_header(&self) -> Header {
         let mut header: Header = Default::default();
-        header.set_parent_hash(self.parent_hash.clone());
+        header.set_parent_hash(self.parent_hash);
         header.set_timestamp(self.timestamp);
         header.set_number(0);
-        header.set_author(self.author.clone());
-        header.set_parcels_root(self.parcels_root.clone());
+        header.set_author(self.author);
+        header.set_parcels_root(self.parcels_root);
         header.set_extra_data(blake256(&self.params().rlp_bytes()).to_vec());
         header.set_state_root(self.state_root());
-        header.set_invoices_root(self.invoices_root.clone());
-        header.set_score(self.score.clone());
+        header.set_invoices_root(self.invoices_root);
+        header.set_score(self.score);
         header.set_seal({
             let r = Rlp::new(&self.seal_rlp);
             r.iter().map(|f| f.as_raw().to_vec()).collect()

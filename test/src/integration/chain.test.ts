@@ -35,24 +35,24 @@ import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
-describe("chain", () => {
+describe("chain", function() {
     const invalidHash = new H256("0".repeat(64));
 
     let node: CodeChain;
-    before(async () => {
+    before(async function() {
         node = new CodeChain();
         await node.start();
     });
 
-    it("getNetworkId", async () => {
+    it("getNetworkId", async function() {
         expect(await node.sdk.rpc.chain.getNetworkId()).to.equal("tc");
     });
 
-    it("getBestBlockNumber", async () => {
+    it("getBestBlockNumber", async function() {
         expect(await node.sdk.rpc.chain.getBestBlockNumber()).to.be.a("number");
     });
 
-    it("getBestBlockId", async () => {
+    it("getBestBlockId", async function() {
         const value = await node.sdk.rpc.sendRpcRequest(
             "chain_getBestBlockId",
             []
@@ -62,7 +62,7 @@ describe("chain", () => {
         expect(value.number).to.be.a("number");
     });
 
-    it("getBlockHash", async () => {
+    it("getBlockHash", async function() {
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         expect(await node.sdk.rpc.chain.getBlockHash(bestBlockNumber)).not.to.be
             .null;
@@ -70,7 +70,7 @@ describe("chain", () => {
             .null;
     });
 
-    it("getBlockByHash", async () => {
+    it("getBlockByHash", async function() {
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         const blockHash = await node.sdk.rpc.chain.getBlockHash(
             bestBlockNumber
@@ -81,7 +81,7 @@ describe("chain", () => {
         expect(await node.sdk.rpc.chain.getBlock(invalidHash)).to.be.null;
     });
 
-    it("getSeq", async () => {
+    it("getSeq", async function() {
         await node.sdk.rpc.chain.getSeq(faucetAddress);
         expect(await node.sdk.rpc.chain.getSeq(invalidAddress)).to.equal(0);
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
@@ -92,7 +92,7 @@ describe("chain", () => {
         ).to.be.rejectedWith("chain_getSeq returns undefined");
     });
 
-    it("getBalance", async () => {
+    it("getBalance", async function() {
         await node.sdk.rpc.chain.getBalance(faucetAddress);
         expect(
             await node.sdk.rpc.chain.getBalance(invalidAddress)
@@ -103,7 +103,7 @@ describe("chain", () => {
         await node.sdk.rpc.chain.getBalance(faucetAddress, bestBlockNumber + 1);
     });
 
-    it("getGenesisAccounts", async () => {
+    it("getGenesisAccounts", async function() {
         // FIXME: Add an API to SDK
         const accounts = await node.sdk.rpc.sendRpcRequest(
             "chain_getGenesisAccounts",
@@ -125,7 +125,7 @@ describe("chain", () => {
         expect(accounts).to.include.members(expected);
     });
 
-    it("getBlockReward", async () => {
+    it("getBlockReward", async function() {
         // FIXME: Add an API to SDK
         const reward = await node.sdk.rpc.sendRpcRequest(
             "engine_getBlockReward",
@@ -134,12 +134,12 @@ describe("chain", () => {
         expect(reward).to.equal(0);
     });
 
-    it("getPendingParcels", async () => {
+    it("getPendingParcels", async function() {
         const pendingParcels = await node.sdk.rpc.chain.getPendingParcels();
         expect(pendingParcels.length).to.equal(0);
     });
 
-    it("sendSignedParcel, getParcelInvoice, getParcel", async () => {
+    it("sendSignedParcel, getParcelInvoice, getParcel", async function() {
         const parcel = node.sdk.core.createPaymentParcel({
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount: 0
@@ -161,7 +161,7 @@ describe("chain", () => {
         expect(signedParcel.unsigned).to.deep.equal(parcel);
     });
 
-    it("getRegularKey, getRegularKeyOwner", async () => {
+    it("getRegularKey, getRegularKeyOwner", async function() {
         const key = node.sdk.util.getPublicFromPrivate(
             node.sdk.util.generatePrivateKey()
         );
@@ -215,11 +215,11 @@ describe("chain", () => {
         ).to.be.null;
     });
 
-    describe("Mint an asset", () => {
+    describe("Mint an asset", function() {
         let tx: AssetMintTransaction;
         let txAssetScheme: AssetScheme;
 
-        before(async () => {
+        before(async function() {
             const recipient = await node.createP2PKHAddress();
             tx = node.sdk.core.createAssetMintTransaction({
                 scheme: {
@@ -244,7 +244,7 @@ describe("chain", () => {
             await node.sdk.rpc.chain.sendSignedParcel(parcel);
         });
 
-        it("getTransaction", async () => {
+        it("getTransaction", async function() {
             expect(
                 await node.sdk.rpc.chain.getTransaction(tx.hash())
             ).to.deep.equal(tx);
@@ -252,7 +252,7 @@ describe("chain", () => {
                 .null;
         });
 
-        it("getTransactionInvoices", async () => {
+        it("getTransactionInvoices", async function() {
             const invoices = await node.sdk.rpc.chain.getTransactionInvoices(
                 tx.hash()
             );
@@ -260,7 +260,7 @@ describe("chain", () => {
             expect(invoices[0].success).to.be.true;
         });
 
-        it("getAsset", async () => {
+        it("getAsset", async function() {
             expect(await node.sdk.rpc.chain.getAsset(invalidHash, 0)).to.be
                 .null;
             expect(await node.sdk.rpc.chain.getAsset(tx.hash(), 1)).to.be.null;
@@ -283,7 +283,7 @@ describe("chain", () => {
             ).to.be.null;
         });
 
-        it("getAssetSchemeByHash", async () => {
+        it("getAssetSchemeByHash", async function() {
             const invalidShardId = 1;
             const validShardId = 0;
             expect(
@@ -313,7 +313,7 @@ describe("chain", () => {
             );
         });
 
-        it("getAssetSchemeByType", async () => {
+        it("getAssetSchemeByType", async function() {
             expect(await node.sdk.rpc.chain.getAssetSchemeByType(invalidHash))
                 .to.be.null;
 
@@ -331,7 +331,7 @@ describe("chain", () => {
         });
     });
 
-    it("isAssetSpent", async () => {
+    it("isAssetSpent", async function() {
         const { asset } = await node.mintAsset({ amount: 10 });
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
@@ -393,7 +393,7 @@ describe("chain", () => {
     it("getNumberOfShards");
     it("getShardRoot");
 
-    after(async () => {
+    after(async function() {
         await node.clean();
     });
 });

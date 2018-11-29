@@ -88,11 +88,11 @@ pub mod headers {
         }
 
         fn parent_hash(&self) -> H256 {
-            self.parent_hash().clone()
+            *self.parent_hash()
         }
 
         fn score(&self) -> U256 {
-            self.score().clone()
+            *self.score()
         }
     }
 
@@ -199,11 +199,11 @@ pub mod blocks {
         }
 
         fn parent_hash(&self) -> H256 {
-            self.header.parent_hash().clone()
+            *self.header.parent_hash()
         }
 
         fn score(&self) -> U256 {
-            self.header.score().clone()
+            *self.header.score()
         }
     }
 
@@ -213,11 +213,11 @@ pub mod blocks {
         }
 
         fn parent_hash(&self) -> H256 {
-            self.header.parent_hash().clone()
+            *self.header.parent_hash()
         }
 
         fn score(&self) -> U256 {
-            self.header.score().clone()
+            *self.header.score()
         }
     }
 }

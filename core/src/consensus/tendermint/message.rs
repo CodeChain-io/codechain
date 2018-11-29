@@ -27,7 +27,7 @@ use crate::error::Error;
 use crate::header::Header;
 
 /// Complete step of the consensus process.
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct VoteStep {
     pub height: Height,
     pub view: View,

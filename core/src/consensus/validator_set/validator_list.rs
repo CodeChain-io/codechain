@@ -116,7 +116,7 @@ mod tests {
     fn validator_set() {
         let a1 = Address::from_str("cd1722f3947def4cf144679da39c4c32bdc35681").unwrap();
         let a2 = Address::from_str("0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6").unwrap();
-        let set = ValidatorList::new(vec![a1.clone(), a2.clone()]);
+        let set = ValidatorList::new(vec![a1, a2]);
         assert!(set.contains(&Default::default(), &a1));
         assert_eq!(set.get(&Default::default(), 0), a1);
         assert_eq!(set.get(&Default::default(), 1), a2);

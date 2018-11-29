@@ -24,7 +24,7 @@ use primitives::{Bytes, H256};
 use rlp::{Encodable, RlpStream};
 
 pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
-    type Round: Clone + PartialEq + Eq + Hash + Default + Debug + Ord;
+    type Round: Clone + Copy + PartialEq + Eq + Hash + Default + Debug + Ord;
 
     fn signature(&self) -> Signature;
 
@@ -108,7 +108,7 @@ impl<M: Message + Default> Default for VoteCollector<M> {
 impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     /// Insert vote if it is newer than the oldest one.
     pub fn vote(&self, message: M, voter: Address) -> Option<DoubleVote<M>> {
-        self.votes.write().entry(message.round().clone()).or_insert_with(Default::default).insert(message, voter)
+        self.votes.write().entry(*message.round()).or_insert_with(Default::default).insert(message, voter)
     }
 
     /// Checks if the message should be ignored.
