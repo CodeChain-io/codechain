@@ -44,7 +44,7 @@ pub fn encrypt(data: &[u8], key: &H256, iv: &H128) -> Result<Vec<u8>, SymmetricC
     let mut finish = false;
     while !finish {
         finish = is_underflow(encryptor.encrypt(&mut read_buffer, &mut write_buffer, true)?);
-        final_result.extend(write_buffer.take_read_buffer().take_remaining().iter().map(|&i| i));
+        final_result.extend(write_buffer.take_read_buffer().take_remaining().iter().cloned());
     }
 
     Ok(final_result)
@@ -62,7 +62,7 @@ pub fn decrypt(encrypted_data: &[u8], key: &H256, iv: &H128) -> Result<Vec<u8>, 
     let mut finish = false;
     while !finish {
         finish = is_underflow(decryptor.decrypt(&mut read_buffer, &mut write_buffer, true)?);
-        final_result.extend(write_buffer.take_read_buffer().take_remaining().iter().map(|&i| i));
+        final_result.extend(write_buffer.take_read_buffer().take_remaining().iter().cloned());
     }
 
     Ok(final_result)
