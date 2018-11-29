@@ -185,7 +185,7 @@ impl NetworkExtension for Extension {
         self.send_message(
             id,
             &Message::Status {
-                total_score: chain_info.best_score,
+                total_score: chain_info.highest_score,
                 best_hash: chain_info.best_block_hash,
                 genesis_hash: chain_info.genesis_hash,
             },
@@ -244,7 +244,7 @@ impl TimeoutHandler for Extension {
     fn on_timeout(&self, token: TimerToken) {
         match token {
             SYNC_TIMER_TOKEN => {
-                let total_score = self.client.chain_info().best_score;
+                let highest_score = self.client.chain_info().highest_score;
                 let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
                 thread_rng().shuffle(&mut peer_ids);
 
@@ -261,7 +261,7 @@ impl TimeoutHandler for Extension {
                         U256::zero()
                     };
 
-                    if peer_score > total_score {
+                    if peer_score > highest_score {
                         self.send_body_request(&id);
                     }
                 }
@@ -356,7 +356,7 @@ impl ChainNotify for Extension {
             self.send_message(
                 id,
                 &Message::Status {
-                    total_score: chain_info.best_score,
+                    total_score: chain_info.highest_score,
                     best_hash: chain_info.best_block_hash,
                     genesis_hash: chain_info.genesis_hash,
                 },
@@ -609,7 +609,7 @@ impl Extension {
             }
         }
 
-        let total_score = self.client.chain_info().best_score;
+        let total_score = self.client.chain_info().highest_score;
         let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         thread_rng().shuffle(&mut peer_ids);
 

@@ -41,12 +41,14 @@ use crate::parcel::LocalizedParcel;
 use crate::views::{BlockView, HeaderView};
 
 const BEST_BLOCK_KEY: &[u8] = b"best-block";
+const HIGHEST_BLOCK_KEY: &[u8] = b"highest-block";
 
 /// Structure providing fast access to blockchain data.
 ///
 /// **Does not do input data verification.**
 pub struct BlockChain {
     best_block_hash: RwLock<H256>,
+    highest_block_hash: RwLock<H256>,
 
     headerchain: HeaderChain,
     body_db: BodyDB,
@@ -55,6 +57,7 @@ pub struct BlockChain {
     db: Arc<KeyValueDB>,
 
     pending_best_block_hash: RwLock<Option<H256>>,
+    pending_highest_block_hash: RwLock<Option<H256>>,
 }
 
 impl BlockChain {
@@ -75,8 +78,20 @@ impl BlockChain {
             }
         };
 
+        let highest_block_hash = match db.get(db::COL_EXTRA, HIGHEST_BLOCK_KEY).unwrap() {
+            Some(hash) => H256::from_slice(&hash),
+            None => {
+                let hash = genesis_block.hash();
+                let mut batch = DBTransaction::new();
+                batch.put(db::COL_EXTRA, HIGHEST_BLOCK_KEY, &hash);
+                db.write(batch).expect("Low level database error. Some issue with disk?");
+                hash
+            }
+        };
+
         Self {
             best_block_hash: RwLock::new(best_block_hash),
+            highest_block_hash: RwLock::new(highest_block_hash),
 
             headerchain: HeaderChain::new(&genesis_block.header_view(), db.clone()),
             body_db: BodyDB::new(&genesis_block, db.clone()),
@@ -85,6 +100,7 @@ impl BlockChain {
             db,
 
             pending_best_block_hash: RwLock::new(None),
+            pending_highest_block_hash: RwLock::new(None),
         }
     }
 
@@ -120,6 +136,7 @@ impl BlockChain {
         }
 
         assert!(self.pending_best_block_hash.read().is_none());
+        assert!(self.pending_highest_block_hash.read().is_none());
 
         let best_block_changed = self.best_block_changed(&new_block, engine);
 
@@ -132,6 +149,10 @@ impl BlockChain {
             let mut pending_best_block_hash = self.pending_best_block_hash.write();
             batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &best_block_hash);
             *pending_best_block_hash = Some(best_block_hash);
+
+            let mut pending_highest_block_hash = self.pending_highest_block_hash.write();
+            batch.put(db::COL_EXTRA, HIGHEST_BLOCK_KEY, &*new_block_hash);
+            *pending_highest_block_hash = Some(new_block_hash);
         }
 
         ImportRoute::new(new_block_hash, &best_block_changed)
@@ -145,9 +166,16 @@ impl BlockChain {
 
         let mut best_block_hash = self.best_block_hash.write();
         let mut pending_best_block_hash = self.pending_best_block_hash.write();
+        let mut highest_block_hash = self.highest_block_hash.write();
+        let mut pending_highest_block_hash = self.pending_highest_block_hash.write();
+
         // update best block
         if let Some(hash) = pending_best_block_hash.take() {
             *best_block_hash = hash;
+        }
+
+        if let Some(hash) = pending_highest_block_hash.take() {
+            *highest_block_hash = hash;
         }
     }
 
@@ -189,12 +217,16 @@ impl BlockChain {
     /// Returns general blockchain information
     pub fn chain_info(&self) -> BlockChainInfo {
         let best_block_hash = self.best_block_hash();
+        let highest_block_hash = self.highest_block_hash();
 
         let best_block_detail = self.block_details(&best_block_hash).expect("Best block always exists");
         let best_block_header = self.block_header_data(&best_block_hash).expect("Best block always exists");
 
+        let highest_block_detail = self.block_details(&highest_block_hash).expect("Highest block always exists");
+
         BlockChainInfo {
             best_score: best_block_detail.total_score,
+            highest_score: highest_block_detail.total_score,
             pending_total_score: best_block_detail.total_score,
             genesis_hash: self.genesis_hash(),
             best_block_hash: best_block_header.hash(),
@@ -206,6 +238,11 @@ impl BlockChain {
     /// Get best block hash.
     pub fn best_block_hash(&self) -> H256 {
         *self.best_block_hash.read()
+    }
+
+    /// Get highest block hash.
+    pub fn highest_block_hash(&self) -> H256 {
+        *self.highest_block_hash.read()
     }
 
     /// Get best block detail
