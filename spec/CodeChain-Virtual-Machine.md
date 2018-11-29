@@ -88,7 +88,7 @@ Leading zeros must be truncated. Note that it is allowed to decode value with le
  1. Pop tag value. 
  1. Verify the signatures over transaction message filtered by the tag. The signatures must be ordered the same way as public keys.
  1. Push true on success, false otherwise.
-The specification about the tag is [here](Tag encoding.md)
+The specification about the tag is [here](Tag-encoding.md)
 
 ## Hashing
 
