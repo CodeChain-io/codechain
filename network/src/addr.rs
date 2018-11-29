@@ -39,10 +39,6 @@ impl SocketAddr {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(a, b, c, d)), port)
     }
 
-    pub fn v6(_a: u16, _b: u16, _c: u16, _d: u16, _e: u16, _f: u16, _g: u16, _h: u16, _port: u16) -> Self {
-        unimplemented!();
-    }
-
     pub fn ip(&self) -> IpAddr {
         self.addr.ip()
     }
