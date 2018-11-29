@@ -260,6 +260,10 @@ impl BlockChain {
         self.headerchain.best_header()
     }
 
+    pub fn highest_header(&self) -> encoded::Header {
+        self.headerchain.highest_header()
+    }
+
     /// Insert an epoch transition. Provide an epoch number being transitioned to
     /// and epoch transition object.
     ///

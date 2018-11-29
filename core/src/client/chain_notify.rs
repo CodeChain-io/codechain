@@ -28,6 +28,7 @@ pub trait ChainNotify: Send + Sync {
         _retracted: Vec<H256>,
         _sealed: Vec<H256>,
         _duration: u64,
+        _new_highest: Option<H256>,
     ) {
         // does nothing by default
     }
