@@ -29,7 +29,7 @@ impl From<cjson::scheme::BlakePoWParams> for BlakePoWParams {
         BlakePoWParams {
             block_reward: p.block_reward.map_or(0, Into::into),
             block_interval: p.block_interval.map_or(120, Into::into),
-            min_score: p.min_score.map_or(U256::from(0x020000), Into::into),
+            min_score: p.min_score.map_or(U256::from(0x0002_0000), Into::into),
             recommmended_confirmation: p.recommended_confirmation.map_or(15, Into::into),
         }
     }
