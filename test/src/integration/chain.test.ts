@@ -413,9 +413,45 @@ describe("chain", function() {
             });
     });
 
-    // Not implemented
-    it("getNumberOfShards");
-    it("getShardRoot");
+    it("getNumberOfShards", async function() {
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getNumberOfShards", [null])
+        ).to.equal(1);
+
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getNumberOfShards", [0])
+        ).to.equal(1);
+    });
+
+    it("getShardRoot", async function() {
+        await node.sdk.rpc
+            .sendRpcRequest("chain_getShardRoot", [0, null])
+            .then(result => {
+                expect(result).not.to.be.null;
+                H256.ensure(result);
+            });
+
+        await node.sdk.rpc
+            .sendRpcRequest("chain_getShardRoot", [0, 0])
+            .then(result => {
+                expect(result).not.to.be.null;
+                H256.ensure(result);
+            });
+
+        await node.sdk.rpc
+            .sendRpcRequest("chain_getShardRoot", [10000, null])
+            .then(result => {
+                expect(result).to.be.null;
+            });
+    });
+
+    it("getMiningReward", async function() {
+        await node.sdk.rpc
+            .sendRpcRequest("chain_getMiningReward", [0])
+            .then(result => {
+                expect(result).to.equal(0);
+            });
+    });
 
     afterEach(function() {
         if (this.currentTest!.state === "failed") {
