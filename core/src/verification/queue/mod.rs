@@ -264,7 +264,7 @@ impl<K: Kind> VerificationQueue<K> {
                     let mut verified = verification.verified.lock();
                     let mut bad = verification.bad.lock();
 
-                    bad.insert(hash.clone());
+                    bad.insert(hash);
                     verifying.retain(|e| e.hash != hash);
 
                     if verifying.front().map_or(false, |x| x.output.is_some()) {
@@ -338,7 +338,7 @@ impl<K: Kind> VerificationQueue<K> {
             }
 
             if bad.contains(&input.parent_hash()) {
-                bad.insert(h.clone());
+                bad.insert(h);
                 return Err(ImportError::KnownBad.into())
             }
         }
@@ -346,7 +346,7 @@ impl<K: Kind> VerificationQueue<K> {
             Ok(item) => {
                 self.verification.sizes.unverified.fetch_add(item.heap_size_of_children(), AtomicOrdering::SeqCst);
 
-                self.processing.write().insert(h.clone(), item.score());
+                self.processing.write().insert(h, item.score());
                 {
                     let mut ts = self.total_score.write();
                     *ts = *ts + item.score();
@@ -361,7 +361,7 @@ impl<K: Kind> VerificationQueue<K> {
                     // Don't mark future blocks as bad.
                     Error::Block(BlockError::TemporarilyInvalid(_)) => {}
                     _ => {
-                        self.verification.bad.lock().insert(h.clone());
+                        self.verification.bad.lock().insert(h);
                     }
                 }
                 Err(err)
@@ -413,7 +413,7 @@ impl<K: Kind> VerificationQueue<K> {
         let mut processing = self.processing.write();
         bad.reserve(hashes.len());
         for hash in hashes {
-            bad.insert(hash.clone());
+            bad.insert(*hash);
             if let Some(score) = processing.remove(hash) {
                 let mut td = self.total_score.write();
                 *td = *td - score;
@@ -472,7 +472,7 @@ impl<K: Kind> VerificationQueue<K> {
 
     /// Get the total score of all the blocks in the queue.
     pub fn total_score(&self) -> U256 {
-        self.total_score.read().clone()
+        *self.total_score.read()
     }
 }
 

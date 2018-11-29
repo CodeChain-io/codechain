@@ -213,7 +213,7 @@ impl Client {
 
     fn block_number_ref(&self, id: &BlockId) -> Option<BlockNumber> {
         match id {
-            BlockId::Number(number) => Some(number.clone()),
+            BlockId::Number(number) => Some(*number),
             BlockId::Hash(hash) => self.block_chain().block_number(hash),
             BlockId::Earliest => Some(0),
             BlockId::Latest => Some(self.block_chain().best_block_detail().number),
@@ -633,9 +633,9 @@ impl ImportSealedBlock for Client {
             route
         };
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
-        self.importer.miner.chain_new_blocks(self, &[h.clone()], &[], &enacted, &retracted);
+        self.importer.miner.chain_new_blocks(self, &[h], &[], &enacted, &retracted);
         self.notify(|notify| {
-            notify.new_blocks(vec![h.clone()], vec![], enacted.clone(), retracted.clone(), vec![h.clone()], {
+            notify.new_blocks(vec![h], vec![], enacted.clone(), retracted.clone(), vec![h], {
                 let elapsed = start.elapsed();
                 elapsed.as_secs() * 1_000_000_000 + elapsed.subsec_nanos() as u64
             });

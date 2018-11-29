@@ -85,7 +85,7 @@ pub struct ParcelTimelock {
     pub timestamp: Option<u64>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 /// Light structure used to identify parcel and its order
 struct ParcelOrder {
     /// Primary ordering factory. Difference between parcel seq and expected seq in state
@@ -247,11 +247,11 @@ impl ParcelSet {
     /// the same parcel may be validly inserted twice. Any previous parcel that
     /// it replaces (i.e. with the same `signer_public` and `seq`) should be returned.
     fn insert(&mut self, signer_public: Public, seq: u64, order: ParcelOrder) -> Option<ParcelOrder> {
-        if !self.by_priority.insert(order.clone()) {
-            return Some(order.clone())
+        if !self.by_priority.insert(order) {
+            return Some(order)
         }
-        let order_hash = order.hash.clone();
-        let order_fee = order.fee.clone();
+        let order_hash = order.hash;
+        let order_fee = order.fee;
         let by_signer_public_replaced = self.by_signer_public.insert(signer_public, seq, order);
         if let Some(ref old_order) = by_signer_public_replaced {
             assert!(
@@ -807,7 +807,7 @@ impl MemPool {
         // State seq could be updated. Maybe there are some more items waiting in future?
         self.move_matching_future_to_current(signer_public, state_seq, state_seq, &parcel.insertion_time, timestamp);
         // Check the next expected seq (might be updated by move above)
-        let next_seq = self.last_seqs.get(&signer_public).cloned().map_or(state_seq, |n| n + 1);
+        let next_seq = self.last_seqs.get(&signer_public).map_or(state_seq, |n| *n + 1);
 
         if parcel.origin.is_local() {
             self.mark_parcels_local(&signer_public);
@@ -992,7 +992,7 @@ impl MemPool {
                 if order.origin.is_local() {
                     self.local_parcels.mark_pending(order.hash);
                 }
-                if let Some(old) = self.current.insert(public, current_seq, order.clone()) {
+                if let Some(old) = self.current.insert(public, current_seq, order) {
                     Self::replace_orders(
                         public,
                         current_seq,
@@ -1033,7 +1033,7 @@ impl MemPool {
                 if order.origin.is_local() {
                     self.local_parcels.mark_future(order.hash);
                 }
-                if let Some(old) = self.future.insert(*signer_public, k, order.clone()) {
+                if let Some(old) = self.future.insert(*signer_public, k, order) {
                     Self::replace_orders(
                         *signer_public,
                         k,
@@ -1114,7 +1114,7 @@ impl MemPool {
 
         ctrace!(MEM_POOL, "Inserting: {:?}", order);
 
-        if let Some(old) = set.insert(signer_public, seq, order.clone()) {
+        if let Some(old) = set.insert(signer_public, seq, order) {
             Self::replace_orders(signer_public, seq, old, order, set, by_hash, local)
         } else {
             true

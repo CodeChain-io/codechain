@@ -47,19 +47,19 @@ impl Block {
         let block_number = block.header.number();
         let block_hash = block.header.hash();
         Block {
-            parent_hash: block.header.parent_hash().clone(),
+            parent_hash: *block.header.parent_hash(),
             timestamp: block.header.timestamp(),
             number: block.header.number(),
-            author: PlatformAddress::new_v1(network_id, block.header.author().clone()),
+            author: PlatformAddress::new_v1(network_id, *block.header.author()),
 
             extra_data: block.header.extra_data().clone(),
 
-            parcels_root: block.header.parcels_root().clone(),
-            state_root: block.header.state_root().clone(),
-            invoices_root: block.header.invoices_root().clone(),
+            parcels_root: *block.header.parcels_root(),
+            state_root: *block.header.state_root(),
+            invoices_root: *block.header.invoices_root(),
 
-            score: block.header.score().clone(),
-            seal: block.header.seal().clone().to_vec(),
+            score: *block.header.score(),
+            seal: block.header.seal().to_vec(),
 
             hash: block.header.hash(),
             parcels: block

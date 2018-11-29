@@ -166,8 +166,8 @@ impl BlockChain {
         let best_block_header = self.block_header_data(&best_block_hash).expect("Best block always exists");
 
         BlockChainInfo {
-            total_score: best_block_detail.total_score.clone(),
-            pending_total_score: best_block_detail.total_score.clone(),
+            total_score: best_block_detail.total_score,
+            pending_total_score: best_block_detail.total_score,
             genesis_hash: self.genesis_hash(),
             best_block_hash: best_block_header.hash(),
             best_block_number: best_block_detail.number,
@@ -177,7 +177,7 @@ impl BlockChain {
 
     /// Get best block hash.
     pub fn best_block_hash(&self) -> H256 {
-        self.best_block_hash.read().clone()
+        *self.best_block_hash.read()
     }
 
     /// Get best block detail

@@ -276,9 +276,9 @@ impl KeyMultiStore {
         let account = self.dir.insert(account)?;
 
         // update cache
-        let account_ref = account.address.clone();
+        let account_ref = account.address;
         let mut cache = self.cache.write();
-        cache.entry(account_ref.clone()).or_insert_with(Vec::new).push(account);
+        cache.entry(account_ref).or_insert_with(Vec::new).push(account);
 
         Ok(account_ref)
     }
@@ -289,7 +289,7 @@ impl KeyMultiStore {
 
         // update cache
         let mut cache = self.cache.write();
-        let accounts = cache.entry(account_ref.clone()).or_insert_with(Vec::new);
+        let accounts = cache.entry(*account_ref).or_insert_with(Vec::new);
         // Remove old account
         accounts.retain(|acc| acc != &old);
         // And push updated to the end
@@ -392,7 +392,6 @@ mod tests {
     extern crate tempdir;
 
     use ckey::{Generator, Random};
-    use primitives::H256;
 
     use super::*;
     use crate::accounts_dir::MemoryDirectory;
@@ -416,8 +415,8 @@ mod tests {
         let keypair = keypair();
 
         // when
-        let private_key: &H256 = keypair.private();
-        let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
+        let private_key = keypair.private();
+        let address = store.insert_account(**private_key, &"test".into()).unwrap();
 
         // then
         assert_eq!(address, keypair.address());
@@ -430,8 +429,8 @@ mod tests {
         // given
         let store = store();
         let keypair = keypair();
-        let private_key: &H256 = keypair.private();
-        let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
+        let private_key = keypair.private();
+        let address = store.insert_account(**private_key, &"test".into()).unwrap();
         assert_eq!(&store.meta(&address).unwrap(), "{}");
 
         // when
@@ -447,8 +446,8 @@ mod tests {
         // given
         let store = store();
         let keypair = keypair();
-        let private_key: &H256 = keypair.private();
-        let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
+        let private_key = keypair.private();
+        let address = store.insert_account(**private_key, &"test".into()).unwrap();
 
         // when
         store.remove_account(&address).unwrap();
@@ -462,8 +461,8 @@ mod tests {
         // given
         let store = store();
         let keypair = keypair();
-        let private_key: &H256 = keypair.private();
-        let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
+        let private_key = keypair.private();
+        let address = store.insert_account(**private_key, &"test".into()).unwrap();
 
         // when
         let res1 = store.test_password(&address, &"x".into()).unwrap();
@@ -478,9 +477,9 @@ mod tests {
         // given
         let store = multi_store();
         let keypair = keypair();
-        let private_key: &H256 = keypair.private();
-        let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
-        let address2 = store.insert_account(private_key.clone(), &"xyz".into()).unwrap();
+        let private_key = keypair.private();
+        let address = store.insert_account(**private_key, &"test".into()).unwrap();
+        let address2 = store.insert_account(**private_key, &"xyz".into()).unwrap();
         assert_eq!(address, address2);
 
         // when
@@ -495,8 +494,8 @@ mod tests {
         let store = store();
         let multi_store = multi_store();
         let keypair = keypair();
-        let private_key: &H256 = keypair.private();
-        let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
+        let private_key = keypair.private();
+        let address = store.insert_account(**private_key, &"test".into()).unwrap();
         assert_eq!(multi_store.accounts().unwrap().len(), 0);
 
         // when
@@ -516,8 +515,8 @@ mod tests {
         // given
         let store = store();
         let keypair = keypair();
-        let private_key: &H256 = keypair.private();
-        let address = store.insert_account(private_key.clone(), &"test".into()).unwrap();
+        let private_key = keypair.private();
+        let address = store.insert_account(**private_key, &"test".into()).unwrap();
 
         // when
         let exported = store.export_account(&address, &"test".into());

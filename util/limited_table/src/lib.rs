@@ -43,6 +43,10 @@ impl<Item> LimitedTable<Item> {
         self.slab.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn capacity(&self) -> usize {
         let capacity = self.slab.capacity();
         debug_assert_eq!(self.limit(), capacity);

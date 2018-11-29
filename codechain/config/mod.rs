@@ -350,10 +350,10 @@ impl Mining {
             self.disable = other.disable;
         }
         if other.author.is_some() {
-            self.author = other.author.clone();
+            self.author = other.author;
         }
         if other.engine_signer.is_some() {
-            self.engine_signer = other.engine_signer.clone();
+            self.engine_signer = other.engine_signer;
         }
         if other.mem_pool_size.is_some() {
             self.mem_pool_size = other.mem_pool_size;

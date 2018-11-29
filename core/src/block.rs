@@ -429,7 +429,7 @@ pub fn enact<C: ChainTimeInfo>(
     b.populate_from(header);
     b.push_parcels(parcels, client)?;
 
-    b.close_and_lock(parent.parcels_root().clone(), parent.invoices_root().clone())
+    b.close_and_lock(*parent.parcels_root(), *parent.invoices_root())
 }
 
 #[cfg(test)]
@@ -445,8 +445,8 @@ mod tests {
         let genesis_header = scheme.genesis_header();
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let b = OpenBlock::new(&*scheme.engine, db, &genesis_header, Address::default(), vec![], false).unwrap();
-        let parent_parcels_root = genesis_header.parcels_root().clone();
-        let parent_invoices_root = genesis_header.invoices_root().clone();
+        let parent_parcels_root = *genesis_header.parcels_root();
+        let parent_invoices_root = *genesis_header.invoices_root();
         let b = b.close_and_lock(parent_parcels_root, parent_invoices_root).unwrap();
         let _ = b.seal(&*scheme.engine, vec![]);
     }

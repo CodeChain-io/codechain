@@ -226,7 +226,7 @@ impl HeaderChain {
 
     /// Get best block hash.
     pub fn best_header_hash(&self) -> H256 {
-        self.best_header_hash.read().clone()
+        *self.best_header_hash.read()
     }
 
     pub fn best_header(&self) -> encoded::Header {

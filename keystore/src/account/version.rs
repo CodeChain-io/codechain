@@ -16,7 +16,7 @@
 
 use crate::json;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Version {
     V3,
 }
