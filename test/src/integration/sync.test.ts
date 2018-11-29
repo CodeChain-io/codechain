@@ -298,6 +298,10 @@ describe("sync", function() {
         });
 
         afterEach(async function() {
+            if (this.currentTest!.state === "failed") {
+                nodeA.testFailed(this.currentTest!.fullTitle());
+                nodeB.testFailed(this.currentTest!.fullTitle());
+            }
             await nodeA.clean();
             await nodeB.clean();
         });
@@ -337,6 +341,10 @@ describe("sync", function() {
         }).timeout(500 * testSize + 4000);
 
         afterEach(async function() {
+            if (this.currentTest!.state === "failed") {
+                nodeA.testFailed(this.currentTest!.fullTitle());
+                nodeB.testFailed(this.currentTest!.fullTitle());
+            }
             await nodeA.clean();
             await nodeB.clean();
         });
@@ -542,7 +550,13 @@ describe("sync", function() {
             afterEach(async function() {
                 this.timeout(5000 + 1500 * numNodes);
 
-                await Promise.all(nodes.map(n => n.clean()));
+                if (this.currentTest!.state === "failed") {
+                    nodes.map(node =>
+                        node.testFailed(this.currentTest!.fullTitle())
+                    );
+                }
+
+                await Promise.all(nodes.map(node => node.clean()));
                 nodes = [];
             });
         });

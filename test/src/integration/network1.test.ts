@@ -88,6 +88,12 @@ describe("network1 node test", function() {
         expect(enabled).to.be.false;
     });
 
+    afterEach(function() {
+        if (this.currentTest!.state === "failed") {
+            node.testFailed(this.currentTest!.fullTitle());
+        }
+    });
+
     after(async function() {
         await node.clean();
     });

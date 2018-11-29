@@ -43,6 +43,12 @@ describe("engine", function() {
         ).to.equal(1);
     });
 
+    afterEach(function() {
+        if (this.currentTest!.state === "failed") {
+            node.testFailed(this.currentTest!.fullTitle());
+        }
+    });
+
     after(async function() {
         await node.clean();
     });

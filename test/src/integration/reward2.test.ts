@@ -172,6 +172,10 @@ describe("reward2", function() {
     }).timeout(7_000);
 
     afterEach(async function() {
+        if (this.currentTest!.state === "failed") {
+            nodeA.testFailed(this.currentTest!.fullTitle());
+            nodeB.testFailed(this.currentTest!.fullTitle());
+        }
         await Promise.all([nodeA.clean(), nodeB.clean()]);
     });
 });
