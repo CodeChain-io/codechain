@@ -25,12 +25,24 @@ use std::hash::Hash;
 /// You can obviously use `HashMap<(Row,Col), Val>`, but this structure gives
 /// you better access to all `Columns` in Specific `Row`. Namely you can get sub-hashmap
 /// `HashMap<Col, Val>` for specific `Row`
-#[derive(Default, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Table<Row, Col, Val>
 where
     Row: Eq + Hash + Clone,
     Col: Eq + Hash, {
     map: HashMap<Row, HashMap<Col, Val>>,
+}
+
+impl<Row, Col, Val> Default for Table<Row, Col, Val>
+where
+    Row: Eq + Hash + Clone,
+    Col: Eq + Hash,
+{
+    fn default() -> Self {
+        Self {
+            map: Default::default(),
+        }
+    }
 }
 
 impl<Row, Col, Val> Table<Row, Col, Val>
@@ -40,9 +52,7 @@ where
 {
     /// Creates new Table
     pub fn new() -> Self {
-        Table {
-            map: HashMap::new(),
-        }
+        Self::default()
     }
 
     /// Returns keys iterator for this Table.
