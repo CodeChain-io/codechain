@@ -17,7 +17,6 @@
 import CodeChain from "../helper/spawn";
 import { aliceAddress, aliceSecret, bobAddress } from "../helper/constants";
 import { U64 } from "codechain-sdk/lib/core/classes";
-import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 
 import "mocha";
 import { expect } from "chai";

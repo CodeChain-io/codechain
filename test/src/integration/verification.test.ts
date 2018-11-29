@@ -23,18 +23,18 @@ import { expect } from "chai";
 
 const RLP = require("rlp");
 
-describe("solo - 1 node", () => {
+describe("solo - 1 node", function() {
     const recipient = "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw";
 
     let node: CodeChain;
-    before(async () => {
+    before(async function() {
         node = new CodeChain();
         await node.start();
     });
 
-    describe("Sending invalid parcels over the limits (general)", () => {
+    describe("Sending invalid parcels over the limits (general)", function() {
         let parcelEncoded: any[];
-        beforeEach(async () => {
+        beforeEach(async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
                 .createPaymentParcel({
@@ -187,9 +187,9 @@ describe("solo - 1 node", () => {
     it("Sending invalid parcels over the limits (in action 6: SetShardUsers)");
     it("Sending invalid parcels over the limits (in action 7: WrapCCC)");
 
-    describe("Sending invalid parcels over the limits (in action 2: Payment)", () => {
+    describe("Sending invalid parcels over the limits (in action 2: Payment)", function() {
         let parcelEncoded: any[];
-        beforeEach(async () => {
+        beforeEach(async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
                 .createPaymentParcel({
@@ -246,9 +246,9 @@ describe("solo - 1 node", () => {
         });
     });
 
-    describe("Sending invalid parcels over the limits (in action 3: SetRegularKey)", () => {
+    describe("Sending invalid parcels over the limits (in action 3: SetRegularKey)", function() {
         let parcelEncoded: any[];
-        beforeEach(async () => {
+        beforeEach(async function() {
             const privKey = node.sdk.util.generatePrivateKey();
             const key = node.sdk.util.getPublicFromPrivate(privKey);
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
@@ -310,7 +310,7 @@ describe("solo - 1 node", () => {
         });
     });
 
-    after(async () => {
+    after(async function() {
         await node.clean();
     });
 });
