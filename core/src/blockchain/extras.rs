@@ -115,7 +115,7 @@ const EPOCH_KEY_LEN: usize = DB_PREFIX_LEN + 16;
 
 /// epoch key prefix.
 /// used to iterate over all epoch transitions in order from genesis.
-pub const EPOCH_KEY_PREFIX: &'static [u8; DB_PREFIX_LEN] =
+pub const EPOCH_KEY_PREFIX: &[u8; DB_PREFIX_LEN] =
     &[ExtrasIndex::EpochTransitions as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 pub struct EpochTransitionsKey([u8; EPOCH_KEY_LEN]);

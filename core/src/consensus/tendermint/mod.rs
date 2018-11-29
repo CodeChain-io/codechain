@@ -999,7 +999,7 @@ impl NetworkExtension for TendermintExtension {
     }
 
     fn versions(&self) -> &[u64] {
-        const VERSIONS: &'static [u64] = &[0];
+        const VERSIONS: &[u64] = &[0];
         &VERSIONS
     }
 

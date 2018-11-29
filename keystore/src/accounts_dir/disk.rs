@@ -25,7 +25,7 @@ use super::KeyDirectory;
 use crate::json::Uuid;
 use crate::{json, Error, SafeAccount};
 
-const IGNORED_FILES: &'static [&'static str] = &["thumbs.db"];
+const IGNORED_FILES: &[&str] = &["thumbs.db"];
 
 #[cfg(not(windows))]
 fn restrict_permissions_to_owner(file_path: &Path) -> Result<(), i32> {

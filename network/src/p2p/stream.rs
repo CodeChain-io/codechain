@@ -242,7 +242,7 @@ pub struct Stream {
 }
 
 impl Stream {
-    pub fn connect<'a>(socket_address: &net::SocketAddr) -> Result<Option<Self>> {
+    pub fn connect(socket_address: &net::SocketAddr) -> Result<Option<Self>> {
         Ok(match TcpStream::connect(socket_address) {
             Ok(stream) => Some(Self::from(stream)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
