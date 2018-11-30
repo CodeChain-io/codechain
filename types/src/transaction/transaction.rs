@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt};
@@ -257,7 +257,6 @@ impl Transaction {
                 if outputs.len() > 512 {
                     return Err(Error::TooManyOutputs(outputs.len()))
                 }
-                // FIXME: check burns
                 if !is_input_and_output_consistent(inputs, outputs) {
                     return Err(Error::InconsistentTransactionInOut)
                 }
@@ -271,6 +270,7 @@ impl Transaction {
                         return Err(Error::ZeroAmount)
                     }
                 }
+                check_duplication_in_prev_out(burns, inputs)?;
                 for output in outputs {
                     if output.amount == 0 {
                         return Err(Error::ZeroAmount)
@@ -298,6 +298,7 @@ impl Transaction {
                         return Err(Error::ZeroAmount)
                     }
                 }
+                check_duplication_in_prev_out(&[], inputs)?;
                 match output.amount {
                     Some(amount) if amount == 1 => Ok(()),
                     _ => Err(Error::InvalidComposedOutput {
@@ -490,6 +491,20 @@ impl HeapSizeOf for Transaction {
             } => burn.heap_size_of_children(),
         }
     }
+}
+
+fn check_duplication_in_prev_out(burns: &[AssetTransferInput], inputs: &[AssetTransferInput]) -> Result<(), Error> {
+    let mut prev_out_set = HashSet::new();
+    for input in inputs.iter().chain(burns) {
+        let prev_out = (input.prev_out.transaction_hash, input.prev_out.index);
+        if !prev_out_set.insert(prev_out) {
+            return Err(Error::DuplicatedPreviousOutput {
+                transaction_hash: input.prev_out.transaction_hash,
+                index: input.prev_out.index,
+            })
+        }
+    }
+    Ok(())
 }
 
 fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
