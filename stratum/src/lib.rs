@@ -340,7 +340,7 @@ impl MetaExtractor<SocketMetadata> for PeerMetaExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::SocketAddr;
+    use std::net::{SocketAddr, TcpListener};
     use std::str::FromStr;
     use std::sync::Arc;
 
@@ -374,15 +374,24 @@ mod tests {
         result
     }
 
+    fn get_available_test_addr(start: u32, end: u32) -> SocketAddr {
+        let addr = (start..end)
+            .map(|port| SocketAddr::from_str(&format!("127.0.0.1:{}", port)).unwrap())
+            .find(|addr| TcpListener::bind(addr).is_ok())
+            .unwrap();
+        addr
+    }
+
     #[test]
     fn start() {
-        let stratum = Stratum::start(&SocketAddr::from_str("127.0.0.1:19980").unwrap(), Arc::new(VoidManager), None);
+        let addr = get_available_test_addr(19000, 19100);
+        let stratum = Stratum::start(&addr, Arc::new(VoidManager), None);
         assert!(stratum.is_ok());
     }
 
     #[test]
     fn records_subscriber() {
-        let addr = SocketAddr::from_str("127.0.0.1:19985").unwrap();
+        let addr = get_available_test_addr(19100, 19200);
         let stratum = Stratum::start(&addr, Arc::new(VoidManager), None).unwrap();
         let request = r#"{"jsonrpc": "2.0", "method": "mining.subscribe", "params": [], "id": 1}"#;
         dummy_request(&addr, request);
@@ -429,7 +438,7 @@ mod tests {
 
     #[test]
     fn receives_initial_paylaod() {
-        let addr = SocketAddr::from_str("127.0.0.1:19975").unwrap();
+        let addr = get_available_test_addr(19200, 19300);
         let _stratum =
             Stratum::start(&addr, DummyManager::new(), None).expect("There should be no error starting stratum");
         let request = r#"{"jsonrpc": "2.0", "method": "mining.subscribe", "params": [], "id": 2}"#;
@@ -441,7 +450,7 @@ mod tests {
 
     #[test]
     fn authorize() {
-        let addr = SocketAddr::from_str("127.0.0.1:19970").unwrap();
+        let addr = get_available_test_addr(19300, 19400);
         let stratum =
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
@@ -455,7 +464,7 @@ mod tests {
 
     #[test]
     fn push_work() {
-        let addr = SocketAddr::from_str("127.0.0.1:19995").unwrap();
+        let addr = get_available_test_addr(19400, 19500);
         let stratum =
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
@@ -505,7 +514,7 @@ mod tests {
 
     #[test]
     fn respond_to_submition() {
-        let addr = SocketAddr::from_str("127.0.0.1:19990").unwrap();
+        let addr = get_available_test_addr(19500, 19600);
         let _stratum =
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
@@ -546,7 +555,7 @@ mod tests {
 
     #[test]
     fn return_error_when_unauthorized_worker_submits() {
-        let addr = SocketAddr::from_str("127.0.0.1:19991").unwrap();
+        let addr = get_available_test_addr(19600, 19700);
         let _stratum =
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
