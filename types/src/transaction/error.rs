@@ -43,7 +43,10 @@ pub enum Error {
     /// Failed to decode script
     InvalidScript,
     /// Script execution result is `Fail`
-    FailedToUnlock(H256),
+    FailedToUnlock {
+        address: H256,
+        reason: UnlockFailureReason,
+    },
     /// Returned when the sum of the transaction's inputs is different from the sum of outputs.
     InconsistentTransactionInOut,
     /// There are burn/inputs that shares same previous output
@@ -59,6 +62,7 @@ pub enum Error {
     TooManyOutputs(usize),
     /// AssetCompose requires at least 1 input.
     EmptyInput,
+    CannotBurnCentralizedAsset,
     CannotComposeCentralizedAsset,
     InvalidDecomposedInput {
         address: H256,
@@ -106,6 +110,7 @@ pub enum Error {
     },
 }
 
+const ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET: u8 = 2u8;
 const ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET: u8 = 3u8;
 const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 5u8;
@@ -155,7 +160,10 @@ impl Encodable for Error {
                 s.begin_list(2).append(&ERROR_ID_SCRIPT_HASH_MISMATCH).append(mismatch)
             }
             Error::InvalidScript => s.begin_list(1).append(&ERROR_ID_INVALID_SCRIPT),
-            Error::FailedToUnlock(hash) => s.begin_list(2).append(&ERROR_ID_FAILED_TO_UNLOCK).append(hash),
+            Error::FailedToUnlock {
+                address,
+                reason,
+            } => s.begin_list(3).append(&ERROR_ID_FAILED_TO_UNLOCK).append(address).append(reason),
             Error::InconsistentTransactionInOut => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT),
             Error::DuplicatedPreviousOutput {
                 transaction_hash,
@@ -167,6 +175,7 @@ impl Encodable for Error {
             Error::ZeroAmount => s.begin_list(1).append(&ERROR_ID_ZERO_AMOUNT),
             Error::TooManyOutputs(num) => s.begin_list(2).append(&ERROR_ID_TOO_MANY_OUTPUTS).append(num),
             Error::EmptyInput => s.begin_list(1).append(&ERROR_ID_EMPTY_INPUT),
+            Error::CannotBurnCentralizedAsset => s.begin_list(1).append(&ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET),
             Error::CannotComposeCentralizedAsset => s.begin_list(1).append(&ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET),
             Error::InvalidDecomposedInput {
                 address,
@@ -222,19 +231,67 @@ impl Decodable for Error {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at::<u8>(0)?;
         Ok(match tag {
-            ERROR_ID_INVALID_ASSET_AMOUNT => Error::InvalidAssetAmount {
-                address: rlp.val_at(1)?,
-                expected: rlp.val_at(2)?,
-                got: rlp.val_at(3)?,
-            },
-            ERROR_ID_ASSET_NOT_FOUND => Error::AssetNotFound(rlp.val_at(1)?),
-            ERROR_ID_ASSET_SCHEME_NOT_FOUND => Error::AssetSchemeNotFound(rlp.val_at(1)?),
-            ERROR_ID_ASSET_SCHEME_DUPLICATED => Error::AssetSchemeDuplicated(rlp.val_at(1)?),
-            ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
-            ERROR_ID_SCRIPT_HASH_MISMATCH => Error::ScriptHashMismatch(rlp.val_at(1)?),
-            ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
-            ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock(rlp.val_at(1)?),
-            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => Error::InconsistentTransactionInOut,
+            ERROR_ID_INVALID_ASSET_AMOUNT => {
+                if rlp.item_count()? != 4 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidAssetAmount {
+                    address: rlp.val_at(1)?,
+                    expected: rlp.val_at(2)?,
+                    got: rlp.val_at(3)?,
+                }
+            }
+            ERROR_ID_ASSET_NOT_FOUND => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::AssetNotFound(rlp.val_at(1)?)
+            }
+            ERROR_ID_ASSET_SCHEME_NOT_FOUND => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::AssetSchemeNotFound(rlp.val_at(1)?)
+            }
+            ERROR_ID_ASSET_SCHEME_DUPLICATED => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::AssetSchemeDuplicated(rlp.val_at(1)?)
+            }
+            ERROR_ID_INVALID_ASSET_TYPE => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidAssetType(rlp.val_at(1)?)
+            }
+            ERROR_ID_SCRIPT_HASH_MISMATCH => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::ScriptHashMismatch(rlp.val_at(1)?)
+            }
+            ERROR_ID_INVALID_SCRIPT => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidScript
+            }
+            ERROR_ID_FAILED_TO_UNLOCK => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::FailedToUnlock {
+                    address: rlp.val_at(1)?,
+                    reason: rlp.val_at(2)?,
+                }
+            }
+            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InconsistentTransactionInOut
+            }
             ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => {
                 if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpInvalidLength)
@@ -279,6 +336,12 @@ impl Decodable for Error {
                     return Err(DecoderError::RlpInvalidLength)
                 }
                 Error::EmptyInput
+            }
+            ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::CannotBurnCentralizedAsset
             }
             ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => {
                 if rlp.item_count()? != 1 {
@@ -407,7 +470,10 @@ impl Display for Error {
                 write!(f, "Expected script with hash {}, but got {}", mismatch.expected, mismatch.found)
             }
             Error::InvalidScript => write!(f, "Failed to decode script"),
-            Error::FailedToUnlock(hash) => write!(f, "Failed to unlock asset {}", hash),
+            Error::FailedToUnlock {
+                address,
+                reason,
+            } => write!(f, "Failed to unlock asset {}, reason: {}", address, reason),
             Error::InconsistentTransactionInOut => {
                 write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs")
             }
@@ -421,6 +487,7 @@ impl Display for Error {
             Error::ZeroAmount => write!(f, "An amount cannot be 0"),
             Error::TooManyOutputs(num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
             Error::EmptyInput => write!(f, "The input is empty"),
+            Error::CannotBurnCentralizedAsset => write!(f, "Cannot burn the centralized asset"),
             Error::CannotComposeCentralizedAsset => write!(f, "Cannot compose the centralized asset"),
             Error::InvalidDecomposedInput {
                 address,
@@ -476,6 +543,48 @@ impl Display for Error {
                 expiration,
                 timestamp,
             } => write!(f, "The order is expired. Expiration: {}, Block timestamp: {}", expiration, timestamp),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Serialize)]
+pub enum UnlockFailureReason {
+    ScriptShouldBeBurnt,
+    ScriptShouldNotBeBurnt,
+    ScriptError,
+}
+
+const FAILURE_REASON_ID_SCRIPT_SHOULD_BE_BURNT: u8 = 1u8;
+const FAILURE_REASON_ID_SCRIPT_SHOULD_NOT_BE_BURNT: u8 = 2u8;
+const FAILURE_REASON_ID_SCRIPT_ERROR: u8 = 3u8;
+
+impl Encodable for UnlockFailureReason {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self {
+            UnlockFailureReason::ScriptShouldBeBurnt => FAILURE_REASON_ID_SCRIPT_SHOULD_BE_BURNT.rlp_append(s),
+            UnlockFailureReason::ScriptShouldNotBeBurnt => FAILURE_REASON_ID_SCRIPT_SHOULD_NOT_BE_BURNT.rlp_append(s),
+            UnlockFailureReason::ScriptError => FAILURE_REASON_ID_SCRIPT_ERROR.rlp_append(s),
+        };
+    }
+}
+
+impl Decodable for UnlockFailureReason {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        Ok(match Decodable::decode(rlp)? {
+            FAILURE_REASON_ID_SCRIPT_SHOULD_BE_BURNT => UnlockFailureReason::ScriptShouldBeBurnt,
+            FAILURE_REASON_ID_SCRIPT_SHOULD_NOT_BE_BURNT => UnlockFailureReason::ScriptShouldNotBeBurnt,
+            FAILURE_REASON_ID_SCRIPT_ERROR => UnlockFailureReason::ScriptError,
+            _ => return Err(DecoderError::Custom("Invalid failure reason tag")),
+        })
+    }
+}
+
+impl Display for UnlockFailureReason {
+    fn fmt(&self, f: &mut Formatter) -> FormatResult {
+        match self {
+            UnlockFailureReason::ScriptShouldBeBurnt => write!(f, "Script should be burnt"),
+            UnlockFailureReason::ScriptShouldNotBeBurnt => write!(f, "Script should not be burnt"),
+            UnlockFailureReason::ScriptError => write!(f, "Script error"),
         }
     }
 }

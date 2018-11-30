@@ -18,7 +18,7 @@ mod error;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod transaction;
 
-pub use self::error::Error;
+pub use self::error::{Error, UnlockFailureReason};
 pub use self::transaction::{
     AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, HashingError,
     InnerTransaction, Order, OrderOnTransfer, PartialHashing, Timelock, Transaction,

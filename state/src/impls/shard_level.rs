@@ -23,7 +23,7 @@ use cmerkle::{self, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, Error as TransactionError,
-    InnerTransaction, Order, OrderOnTransfer, PartialHashing, Transaction,
+    InnerTransaction, Order, OrderOnTransfer, PartialHashing, Transaction, UnlockFailureReason,
 };
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
@@ -251,14 +251,7 @@ impl<'db> ShardLevelState<'db> {
             .map(|(index, input)| (input, transaction, values_to_hash[index], false))
             .chain(burns.iter().map(|input| (input, transaction, None, true)))
         {
-            let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
-            let script_result =
-                self.check_and_run_input_script(input, transaction, order, burn, sender, approvers, client)?;
-            match (script_result, burn) {
-                (ScriptResult::Unlocked, false) => {}
-                (ScriptResult::Burnt, true) => {}
-                _ => return Err(TransactionError::FailedToUnlock(address.into()).into()),
-            }
+            self.check_and_run_input_script(input, transaction, order, burn, sender, approvers, client)?;
         }
 
         self.check_orders(orders, inputs)?;
@@ -402,10 +395,10 @@ impl<'db> ShardLevelState<'db> {
         sender: &Address,
         approvers: &[Address],
         client: &C,
-    ) -> StateResult<ScriptResult> {
+    ) -> StateResult<()> {
         debug_assert!(!burn || order.is_none());
 
-        let (address_hash, asset) = {
+        let (address, asset) = {
             let index = input.prev_out.index;
             let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
             match self.asset(&address)? {
@@ -421,14 +414,10 @@ impl<'db> ShardLevelState<'db> {
         if asset_scheme.is_centralized() {
             let administrator = asset_scheme.administrator().as_ref().expect("Centralized asset has administrator");
             if administrator == sender || approvers.contains(administrator) {
-                if burn {
-                    return Ok(ScriptResult::Burnt)
-                } else {
-                    return Ok(ScriptResult::Unlocked)
-                }
+                return Ok(())
             } else if burn {
                 // Only the administrator can burn the centralized asset
-                return Ok(ScriptResult::Fail)
+                return Err(TransactionError::CannotBurnCentralizedAsset.into())
             }
         }
 
@@ -437,7 +426,7 @@ impl<'db> ShardLevelState<'db> {
                 if *order_hash == order.hash() {
                     // If an order on an input and an order on the corresponding prev_out(asset) is same,
                     // then skip checking lock script and running VM.
-                    return Ok(ScriptResult::Unlocked)
+                    return Ok(())
                 }
             }
             order
@@ -466,13 +455,23 @@ impl<'db> ShardLevelState<'db> {
             ),
             // FIXME : Deliver full decode error
             _ => return Err(TransactionError::InvalidScript.into()),
-        }
-        .map_err(|err| {
-            ctrace!(TX, "Cannot run unlock/lock script {:?}", err);
-            TransactionError::FailedToUnlock(address_hash)
-        })?;
+        };
 
-        Ok(script_result)
+        match (script_result, burn) {
+            (Ok(ScriptResult::Burnt), true) => Ok(()),
+            (Ok(ScriptResult::Burnt), false) => Err(UnlockFailureReason::ScriptShouldBeBurnt),
+            (Ok(ScriptResult::Unlocked), false) => Ok(()),
+            (Ok(ScriptResult::Unlocked), true) => Err(UnlockFailureReason::ScriptShouldNotBeBurnt),
+            (Ok(ScriptResult::Fail), _) | (Err(_), _) => Err(UnlockFailureReason::ScriptError),
+        }
+        .map_err(|reason| {
+            ctrace!(TX, "Cannot run unlock/lock script {:?}", reason);
+            TransactionError::FailedToUnlock {
+                address,
+                reason,
+            }
+            .into()
+        })
     }
 
     // FIXME: Remove this clippy config
@@ -495,13 +494,7 @@ impl<'db> ShardLevelState<'db> {
         let mut deleted_assets: Vec<(H256, _)> = Vec::with_capacity(inputs.len());
         for input in inputs.iter() {
             let (_, asset_address) = self.check_input_asset(input, sender, approvers)?;
-            let script_result =
-                self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
-
-            match script_result {
-                ScriptResult::Unlocked => {}
-                _ => return Err(TransactionError::FailedToUnlock(asset_address.into()).into()),
-            }
+            self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
             let asset_type = input.prev_out.asset_type;
             let asset_scheme_address =
@@ -601,15 +594,8 @@ impl<'db> ShardLevelState<'db> {
             .into())
         }
 
-
         let (_, asset_address) = self.check_input_asset(input, sender, approvers)?;
-        let script_result =
-            self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
-
-        match script_result {
-            ScriptResult::Unlocked => {}
-            _ => return Err(TransactionError::FailedToUnlock(asset_address.into()).into()),
-        }
+        self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
         self.kill_asset(&asset_address);
         self.kill_asset_scheme(&asset_scheme_address);
@@ -669,12 +655,7 @@ impl<'db> ShardLevelState<'db> {
     ) -> StateResult<()> {
         // WCCC has no approvers
         let approvers = [];
-        let address = OwnedAssetAddress::new(burn.prev_out.transaction_hash, burn.prev_out.index, self.shard_id);
-        let script_result =
-            self.check_and_run_input_script(burn, transaction, None, true, sender, &approvers, client)?;
-        if script_result != ScriptResult::Burnt {
-            return Err(TransactionError::FailedToUnlock(address.into()).into())
-        }
+        self.check_and_run_input_script(burn, transaction, None, true, sender, &approvers, client)?;
 
         let (_, asset_address) = self.check_input_asset(burn, sender, &approvers)?;
         self.kill_asset(&asset_address);
