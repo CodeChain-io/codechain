@@ -103,7 +103,7 @@ impl<'a> TrieDBMut<'a> {
                                 old_val,
                             )?);
 
-                            let node_rlp = RlpNode::encoded_until(RlpNode::Branch(partial, new_child), common);
+                            let node_rlp = RlpNode::encoded_until(RlpNode::Branch(partial, new_child.into()), common);
                             let hash = self.db.insert(&node_rlp);
 
                             Ok(hash)
@@ -130,7 +130,7 @@ impl<'a> TrieDBMut<'a> {
                                 old_val,
                             )?);
 
-                            node_rlp = RlpNode::encoded_until(RlpNode::Branch(partial, new_child), common);
+                            node_rlp = RlpNode::encoded_until(RlpNode::Branch(partial, new_child.into()), common);
                             let hash = self.db.insert(&node_rlp);
 
                             Ok(hash)

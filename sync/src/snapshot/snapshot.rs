@@ -98,7 +98,7 @@ impl Snapshot {
             }
 
             if let Node::Branch(_, childs) = node {
-                for child in &childs {
+                for child in childs.iter() {
                     if let Some(child) = child {
                         referenced_keys.insert(*child);
                     }
@@ -148,7 +148,7 @@ impl Chunk {
                 Some(_) if depth >= max_depth => return false,
                 Some(value) => {
                     if let Some(Node::Branch(_, childs)) = Node::decoded(&value) {
-                        for child in &childs {
+                        for child in childs.iter() {
                             if let Some(child) = child {
                                 stack.push((*child, depth + 1));
                             }
@@ -171,7 +171,7 @@ impl Chunk {
                 }
                 Some(value) => {
                     if let Some(Node::Branch(_, childs)) = Node::decoded(&value) {
-                        for child in &childs {
+                        for child in childs.iter() {
                             if let Some(child) = child {
                                 stack.push(*child);
                             }

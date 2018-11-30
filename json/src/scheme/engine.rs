@@ -24,8 +24,8 @@ pub enum Engine {
     Null(NullEngine),
     Solo(Solo),
     SimplePoA(SimplePoA),
-    Tendermint(Tendermint),
-    Cuckoo(Cuckoo),
+    Tendermint(Box<Tendermint>),
+    Cuckoo(Box<Cuckoo>),
     BlakePoW(BlakePoW),
 }
 

@@ -424,8 +424,8 @@ pub enum ConnectionType {
 
 enum State {
     WaitSync(WaitSyncConnection),
-    WaitAck(WaitAckConnection),
-    Established(EstablishedConnection),
+    WaitAck(Box<WaitAckConnection>),
+    Established(Box<EstablishedConnection>),
     Disconnecting(DisconnectingConnection),
     Intermediate, // An intermediate state before established
 }
@@ -444,7 +444,7 @@ impl Connection {
     ) -> Self {
         let connection = WaitAckConnection::new(stream, session, local_port, local_node_id, remote_node_id);
         Self {
-            state: RwLock::new(State::WaitAck(connection)),
+            state: RwLock::new(State::WaitAck(connection.into())),
         }
     }
 
@@ -500,7 +500,7 @@ impl Connection {
             State::Disconnecting(_) => unreachable!("Cannot establish a disconnecting connection"),
             State::Intermediate => unreachable!(),
         };
-        *state = State::Established(connection);
+        *state = State::Established(connection.into());
         true
     }
 

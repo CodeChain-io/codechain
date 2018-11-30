@@ -25,7 +25,7 @@ use nibbleslice::NibbleSlice;
 pub enum Node<'a> {
     Leaf(NibbleSlice<'a>, &'a [u8]),
 
-    Branch(NibbleSlice<'a>, [Option<H256>; 16]),
+    Branch(NibbleSlice<'a>, Box<[Option<H256>; 16]>),
 }
 
 impl<'a> Node<'a> {
@@ -53,7 +53,7 @@ impl<'a> Node<'a> {
                     };
                 }
 
-                Some(Node::Branch(NibbleSlice::from_encoded(r.at(0).data()), nodes))
+                Some(Node::Branch(NibbleSlice::from_encoded(r.at(0).data()), nodes.into()))
             }
 
             // something went wrong.
