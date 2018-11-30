@@ -115,6 +115,7 @@ impl Importer {
                 }
                 if let Ok(closed_block) = self.check_and_close_block(&block, client) {
                     if self.engine.is_proposal(&block.header) {
+                        self.engine.on_verified_proposal(&header);
                         self.block_queue.mark_as_good(&[header.hash()]);
                     } else {
                         imported_blocks.push(header.hash());

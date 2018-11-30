@@ -750,6 +750,10 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         if signatures_len != 1 {
             return false
         }
+        true
+    }
+
+    fn on_verified_proposal(&self, header: &Header) {
         let proposal = ConsensusMessage::new_proposal(header)
             .expect("block went through full verification; this Engine verifies new_proposal creation; qed");
         let proposer = proposal.verify().expect("block went through full verification; this Engine tries verify; qed");
@@ -759,7 +763,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             *self.proposal_parent.write() = *header.parent_hash();
         }
         self.votes.vote(proposal, proposer);
-        true
     }
 
     fn broadcast_proposal_block(&self, block: SealedBlock) {
