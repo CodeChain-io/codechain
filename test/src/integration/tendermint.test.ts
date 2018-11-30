@@ -81,6 +81,33 @@ describeSkippedInTravis("Tendermint ", function() {
         ).to.eventually.equal(2);
     }).timeout(90_000);
 
+    it("Wait block generation and block sync", async function() {
+        nodes[0].connect(nodes[1]);
+        nodes[0].connect(nodes[2]);
+        nodes[1].connect(nodes[2]);
+        await Promise.all([
+            nodes[0].waitPeers(3 - 1),
+            nodes[1].waitPeers(3 - 1),
+            nodes[2].waitPeers(3 - 1)
+        ]);
+
+        await nodes[0].waitBlockNumber(2);
+        await nodes[1].waitBlockNumber(2);
+        await nodes[2].waitBlockNumber(2);
+
+        nodes[3].connect(nodes[0]);
+        nodes[3].connect(nodes[1]);
+        nodes[3].connect(nodes[2]);
+
+        await nodes[0].waitBlockNumber(3);
+        await nodes[1].waitBlockNumber(3);
+        await nodes[2].waitBlockNumber(3);
+        await nodes[3].waitBlockNumber(3);
+        await expect(
+            nodes[0].sdk.rpc.chain.getBestBlockNumber()
+        ).to.eventually.equal(3);
+    }).timeout(120_000);
+
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
             nodes.map(node => node.testFailed(this.currentTest!.fullTitle()));
