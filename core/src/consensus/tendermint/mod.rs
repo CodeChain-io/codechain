@@ -381,14 +381,14 @@ impl Tendermint {
     }
 
     fn generate_message(&self, block_hash: Option<BlockHash>) -> Option<Bytes> {
-        let h = self.height.load(AtomicOrdering::SeqCst);
+        let height = self.height.load(AtomicOrdering::SeqCst);
         let r = self.view.load(AtomicOrdering::SeqCst);
-        let s = *self.step.read();
-        let vote_info = message_info_rlp(&VoteStep::new(h, r, s), block_hash);
+        let step = *self.step.read();
+        let vote_info = message_info_rlp(&VoteStep::new(height, r, step), block_hash);
         match (self.signer.read().address(), self.sign(blake256(&vote_info))) {
             (Some(validator), Ok(signature)) => {
                 let message_rlp = message_full_rlp(&signature, &vote_info);
-                let message = ConsensusMessage::new(signature, h, r, s, block_hash);
+                let message = ConsensusMessage::new(signature, height, r, step, block_hash);
                 self.votes.vote(message.clone(), validator);
                 cdebug!(ENGINE, "Generated {:?} as {}.", message, validator);
                 self.handle_valid_message(&message);
@@ -399,8 +399,8 @@ impl Tendermint {
                 ctrace!(ENGINE, "No message, since there is no engine signer.");
                 None
             }
-            (Some(v), Err(e)) => {
-                ctrace!(ENGINE, "{} could not sign the message {}", v, e);
+            (Some(validator), Err(error)) => {
+                ctrace!(ENGINE, "{} could not sign the message {}", validator, error);
                 None
             }
         }
