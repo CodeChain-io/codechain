@@ -22,7 +22,10 @@ import {
     AssetTransferAddress,
     SignedParcel,
     AssetMintTransaction,
-    H256
+    U64,
+    H256,
+    Parcel,
+    AssetTransaction
 } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
@@ -44,7 +47,7 @@ describe("transactions", function() {
     });
 
     describe("AssetMint", async function() {
-        [1, 100].forEach(function(amount) {
+        [1, 100, U64.MAX_VALUE].forEach(function(amount) {
             it(`Mint successful - amount ${amount}`, async function() {
                 const recipient = await node.createP2PKHAddress();
                 const scheme = node.sdk.core.createAssetScheme({
@@ -83,9 +86,35 @@ describe("transactions", function() {
             }
         });
 
-        // Not implemented
-        it("mint amount U64 max");
-        it("mint amount exceeds U64");
+        it("Mint unsuccessful - mint amount U64.MAX_VALUE + 1", async function() {
+            const scheme = node.sdk.core.createAssetScheme({
+                shardId: 0,
+                metadata: "",
+                amount: 0
+            });
+            (scheme.amount.value as any) = U64.MAX_VALUE.value.plus(1);
+
+            const tx = node.sdk.core.createAssetMintTransaction({
+                scheme,
+                recipient: await node.createP2PKHAddress()
+            });
+            const parcel = node.sdk.core
+                .createAssetTransactionParcel({
+                    transaction: tx
+                })
+                .sign({
+                    secret: faucetSecret,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                    fee: 11
+                });
+
+            try {
+                await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                expect.fail();
+            } catch (e) {
+                expect(e).to.satisfy(errorMatcher(ERROR.INVALID_RLP_TOO_BIG));
+            }
+        });
     });
 
     describe("AssetTransfer - 1 input (100 amount)", async function() {
