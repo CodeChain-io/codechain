@@ -67,7 +67,7 @@ impl Snapshot {
         }
         stream.complete_unbounded_list();
 
-        snappy.write(&stream.drain())?;
+        snappy.write_all(&stream.drain())?;
         Ok(())
     }
 
