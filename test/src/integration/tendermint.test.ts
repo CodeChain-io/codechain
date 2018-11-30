@@ -56,6 +56,9 @@ describeSkippedInTravis("Tendermint ", function() {
             });
         });
         await Promise.all(nodes.map(node => node.start()));
+    });
+
+    it("Wait block generation", async function() {
         nodes[0].connect(nodes[1]);
         nodes[0].connect(nodes[2]);
         nodes[0].connect(nodes[3]);
@@ -68,9 +71,7 @@ describeSkippedInTravis("Tendermint ", function() {
             nodes[2].waitPeers(4 - 1),
             nodes[3].waitPeers(4 - 1)
         ]);
-    });
 
-    it("Wait block generation", async function() {
         await nodes[0].waitBlockNumber(2);
         await nodes[1].waitBlockNumber(2);
         await nodes[2].waitBlockNumber(2);
@@ -78,7 +79,7 @@ describeSkippedInTravis("Tendermint ", function() {
         await expect(
             nodes[0].sdk.rpc.chain.getBestBlockNumber()
         ).to.eventually.equal(2);
-    }).timeout(60_000);
+    }).timeout(90_000);
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
