@@ -377,7 +377,7 @@ impl<K: Kind> VerificationQueue<K> {
         let count = cmp::min(max, verified.len());
         let result = verified.drain(..count).collect::<Vec<_>>();
 
-        let drained_size = result.iter().map(HeapSizeOf::heap_size_of_children).fold(0, |a, c| a + c);
+        let drained_size = result.iter().map(HeapSizeOf::heap_size_of_children).sum::<usize>();
         self.verification.sizes.verified.fetch_sub(drained_size, AtomicOrdering::SeqCst);
 
         self.ready_signal.reset();

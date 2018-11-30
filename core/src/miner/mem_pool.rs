@@ -265,7 +265,7 @@ impl ParcelSet {
         }
         self.by_fee.insert(order_fee, order_hash);
         assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-        assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_signer_public.len());
+        assert_eq!(self.by_fee.values().map(|v| v.len()).sum::<usize>(), self.by_signer_public.len());
         by_signer_public_replaced
     }
 
@@ -333,11 +333,11 @@ impl ParcelSet {
                 "hash is in `by_signer_public`; all parcels in `by_signer_public` must be in `by_priority`; qed"
             );
             assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-            assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_signer_public.len());
+            assert_eq!(self.by_fee.values().map(|v| v.len()).sum::<usize>(), self.by_signer_public.len());
             return Some(parcel_order)
         }
         assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-        assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_signer_public.len());
+        assert_eq!(self.by_fee.values().map(|v| v.len()).sum::<usize>(), self.by_signer_public.len());
         None
     }
 

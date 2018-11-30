@@ -67,7 +67,7 @@ where
 
     /// Returns length of the Table (number of (row, col, val) tuples)
     pub fn len(&self) -> usize {
-        self.map.values().fold(0, |acc, v| acc + v.len())
+        self.map.values().map(HashMap::len).sum()
     }
 
     /// Check if there is any element in this Table
