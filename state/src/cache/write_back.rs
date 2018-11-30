@@ -175,7 +175,7 @@ where
         }
     }
 
-    pub fn commit<'db>(&mut self, trie: &mut Box<TrieMut + 'db>) -> TrieResult<()> {
+    pub fn commit<'db>(&mut self, trie: &mut (TrieMut + 'db)) -> TrieResult<()> {
         let mut cache = self.cache.borrow_mut();
         for (address, ref mut a) in cache.iter_mut().filter(|&(_, ref a)| a.is_dirty) {
             a.is_dirty = false;

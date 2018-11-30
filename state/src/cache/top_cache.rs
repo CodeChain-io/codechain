@@ -74,7 +74,7 @@ impl TopCache {
         self.action_data.revert_to_checkpoint();
     }
 
-    pub fn commit<'db>(&mut self, trie: &mut Box<TrieMut + 'db>) -> TrieResult<()> {
+    pub fn commit<'db>(&mut self, trie: &mut (TrieMut + 'db)) -> TrieResult<()> {
         self.account.commit(trie)?;
         self.regular_account.commit(trie)?;
         self.metadata.commit(trie)?;

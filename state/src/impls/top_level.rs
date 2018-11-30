@@ -157,14 +157,14 @@ impl StateWithCache for TopLevelState {
 
                 let mut shard_cache = self.shard_caches.get_mut(&shard_id).expect("Shard must exist");
 
-                shard_cache.commit(&mut trie)?;
+                shard_cache.commit(&mut *trie)?;
             }
             self.set_shard_root(shard_id, shard_root)?;
         }
         {
             let mut db = self.db.borrow_mut();
             let mut trie = TrieFactory::from_existing(db.as_hashdb_mut(), &mut self.root)?;
-            self.top_cache.commit(&mut trie)?;
+            self.top_cache.commit(&mut *trie)?;
         }
         Ok(self.root)
     }
