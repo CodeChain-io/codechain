@@ -82,7 +82,7 @@ impl Decodable for Metadata {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MetadataAddress(H256);
 
 impl_address!(TOP, MetadataAddress, PREFIX);

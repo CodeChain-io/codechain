@@ -43,12 +43,12 @@ impl Decodable for HitAction {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct HitHandler {}
 
 impl HitHandler {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 
     fn address(&self) -> H256 {
@@ -75,7 +75,7 @@ impl ActionHandler for HitHandler {
         HitAction::decode(&UntrustedRlp::new(bytes)).ok().map(|action| {
             let action_data = state.action_data(&self.address())?.unwrap_or_default();
             let prev_counter: u32 = rlp::decode(&*action_data);
-            let increase = action.increase as u32;
+            let increase = u32::from(action.increase);
             state.update_action_data(&self.address(), (prev_counter + increase).rlp_bytes().to_vec())?;
             Ok(Invoice::Success)
         })

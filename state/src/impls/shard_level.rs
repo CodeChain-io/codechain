@@ -247,7 +247,7 @@ impl<'db> ShardLevelState<'db> {
 
         let asset_scheme = self
             .asset_scheme(&asset_scheme_address)?
-            .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+            .ok_or_else(|| TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
 
         if let Some(ref registrar) = asset_scheme.registrar() {
             if registrar != sender {
@@ -380,10 +380,10 @@ impl<'db> ShardLevelState<'db> {
     ) -> StateResult<()> {
         let asset_type = input.prev_out.asset_type;
         let asset_scheme_address = AssetSchemeAddress::from_hash(asset_type)
-            .ok_or(TransactionError::AssetSchemeNotFound(asset_type.into()))?;
+            .ok_or_else(|| TransactionError::AssetSchemeNotFound(asset_type))?;
         let asset_scheme = self
             .asset_scheme(&asset_scheme_address)?
-            .ok_or(TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+            .ok_or_else(|| TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
         // The input asset should be composed asset
         if asset_scheme.pool().is_empty() {
             return Err(TransactionError::InvalidDecomposedInput {

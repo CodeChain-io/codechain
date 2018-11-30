@@ -53,7 +53,7 @@ impl Encodable for ActionData {
 
 impl Decodable for ActionData {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        Bytes::decode(rlp).map(|bytes| ActionData(bytes))
+        Bytes::decode(rlp).map(ActionData)
     }
 }
 

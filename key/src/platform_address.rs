@@ -165,7 +165,7 @@ impl FromStr for PlatformAddress {
 
 impl From<&'static str> for PlatformAddress {
     fn from(s: &'static str) -> Self {
-        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
+        s.parse().unwrap_or_else(|_| panic!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 

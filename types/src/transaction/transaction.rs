@@ -456,25 +456,23 @@ impl HeapSizeOf for Transaction {
     fn heap_size_of_children(&self) -> usize {
         match self {
             Transaction::AssetMint {
-                network_id: _,
-                shard_id: _,
                 metadata,
                 registrar,
                 output,
+                ..
             } => metadata.heap_size_of_children() + registrar.heap_size_of_children() + output.heap_size_of_children(),
             Transaction::AssetTransfer {
-                network_id: _,
                 burns,
                 inputs,
                 outputs,
+                ..
             } => burns.heap_size_of_children() + inputs.heap_size_of_children() + outputs.heap_size_of_children(),
             Transaction::AssetCompose {
-                network_id: _,
-                shard_id: _,
                 metadata,
                 registrar,
                 inputs,
                 output,
+                ..
             } => {
                 metadata.heap_size_of_children()
                     + registrar.heap_size_of_children()
@@ -500,7 +498,7 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
     for input in inputs {
         let ref asset_type = input.prev_out.asset_type;
         let ref amount = input.prev_out.amount;
-        let current_amount = sum.get(&asset_type).cloned().unwrap_or(U128::zero());
+        let current_amount = sum.get(&asset_type).cloned().unwrap_or_default();
         sum.insert(*asset_type, current_amount + U128::from(*amount));
     }
     for output in outputs {
@@ -540,7 +538,7 @@ fn apply_bitmask_to_output(
                 result.push(outputs[8 * index + i].clone());
             }
 
-            filter = filter >> 1;
+            filter >>= 1;
         }
         index += 1;
     }

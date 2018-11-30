@@ -137,7 +137,7 @@ impl Importer {
             let is_empty = self.block_queue.mark_as_good(&imported_blocks);
             let duration_ns = {
                 let elapsed = start.elapsed();
-                elapsed.as_secs() * 1_000_000_000 + elapsed.subsec_nanos() as u64
+                elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
             };
             (imported_blocks, import_results, invalid_blocks, imported, duration_ns, is_empty)
         };

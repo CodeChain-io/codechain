@@ -221,7 +221,7 @@ impl StratumImpl {
                 if *counter == ::std::u32::MAX {
                     *counter = NOTIFY_COUNTER_INITIAL;
                 } else {
-                    *counter = *counter + 1
+                    *counter += 1
                 }
                 *counter
             };
@@ -274,7 +274,7 @@ impl StratumImpl {
                 next_worker,
                 next_payload.nth(0).expect("drained successfully of 0..1, so 0-th element should exist"),
             )?;
-            addr_index = addr_index + 1;
+            addr_index += 1;
         }
         Ok(())
     }

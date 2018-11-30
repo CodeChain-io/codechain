@@ -73,12 +73,12 @@ impl HeapSizeOf for Action {
         match self {
             Action::AssetTransaction(transaction) => transaction.heap_size_of_children(),
             Action::SetShardOwners {
-                shard_id: _,
                 owners,
+                ..
             } => owners.heap_size_of_children(),
             Action::SetShardUsers {
-                shard_id: _,
                 users,
+                ..
             } => users.heap_size_of_children(),
             Action::WrapCCC {
                 parameters,

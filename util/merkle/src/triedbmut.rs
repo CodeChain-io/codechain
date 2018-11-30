@@ -211,7 +211,7 @@ impl<'a> TrieDBMut<'a> {
                                         // Transform the branch into Leaf
                                         let index = children
                                             .iter()
-                                            .position(|&x| !x.is_none())
+                                            .position(Option::is_some)
                                             .expect("Can not find leaf in the branch");
                                         let new_leaf_hash = children[index].expect("Index is wrong");
                                         let new_leaf_data = self
