@@ -4,7 +4,7 @@ extern crate primitives;
 
 use primitives::H256;
 use std::collections::{HashMap, HashSet};
-use std::{hash, mem};
+use std::hash;
 
 /// Specialized version of `HashMap` with H256 keys and fast hashing function.
 pub type H256FastMap<T> = HashMap<H256, T, hash::BuildHasherDefault<PlainHasher>>;
@@ -31,7 +31,7 @@ impl hash::Hasher for PlainHasher {
 
         unsafe {
             let mut bytes_ptr = bytes.as_ptr();
-            let prefix_u8: &mut [u8; 8] = mem::transmute(&mut self.prefix);
+            let prefix_u8: &mut [u8; 8] = &mut *(&mut self.prefix as *mut u64 as *mut [u8; 8]);
             let mut prefix_ptr = prefix_u8.as_mut_ptr();
 
             unroll! {
