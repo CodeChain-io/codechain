@@ -203,6 +203,12 @@ describe("account", function() {
             });
         });
 
+        afterEach(function() {
+            if (this.currentTest!.state === "failed") {
+                node.testFailed(this.currentTest!.fullTitle());
+            }
+        });
+
         after(async function() {
             await node.clean();
         });
@@ -440,6 +446,9 @@ describe("account", function() {
         }).timeout(500 * randomTestSize + 5000);
 
         afterEach(async function() {
+            if (this.currentTest!.state === "failed") {
+                node.testFailed(this.currentTest!.fullTitle());
+            }
             await node.clean();
         });
     });

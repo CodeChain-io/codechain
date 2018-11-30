@@ -298,6 +298,10 @@ describe("sync", function() {
         });
 
         afterEach(async function() {
+            if (this.currentTest!.state === "failed") {
+                nodeA.testFailed(this.currentTest!.fullTitle());
+                nodeB.testFailed(this.currentTest!.fullTitle());
+            }
             await nodeA.clean();
             await nodeB.clean();
         });
@@ -337,6 +341,10 @@ describe("sync", function() {
         }).timeout(500 * testSize + 4000);
 
         afterEach(async function() {
+            if (this.currentTest!.state === "failed") {
+                nodeA.testFailed(this.currentTest!.fullTitle());
+                nodeB.testFailed(this.currentTest!.fullTitle());
+            }
             await nodeA.clean();
             await nodeB.clean();
         });
@@ -347,7 +355,7 @@ describe("sync", function() {
             let nodes: CodeChain[] = [];
 
             beforeEach(async function() {
-                this.timeout(5000 + 3000 * numNodes);
+                this.timeout(5000 + 5000 * numNodes);
 
                 for (let i = 0; i < numNodes; i++) {
                     const node = new CodeChain({ argv: ["--no-discovery"] });
@@ -359,7 +367,7 @@ describe("sync", function() {
             describe("Connected in a line", function() {
                 describe("All connected", function() {
                     beforeEach(async function() {
-                        this.timeout(5000 + 3000 * numNodes);
+                        this.timeout(5000 + 5000 * numNodes);
 
                         const connects = [];
                         for (let i = 0; i < numNodes - 1; i++) {
@@ -378,7 +386,7 @@ describe("sync", function() {
                                 await nodes[i].getBestBlockHash()
                             ).to.deep.equal(parcel.blockHash);
                         }
-                    }).timeout(5000 + 3000 * numNodes);
+                    }).timeout(5000 + 10000 * numNodes);
 
                     describe("All diverged by both end nodes", function() {
                         beforeEach(async function() {
@@ -398,7 +406,7 @@ describe("sync", function() {
                             for (let i = 1; i < numNodes; i++) {
                                 await nodes[i].waitBlockNumberSync(nodes[0]);
                             }
-                        }).timeout(5000 + 3000 * numNodes);
+                        }).timeout(5000 + 5000 * numNodes);
 
                         it("It should be synced when the first node becomes ahead", async function() {
                             await nodes[0].sendSignedParcel();
@@ -412,7 +420,7 @@ describe("sync", function() {
                                     await nodes[0].getBestBlockHash()
                                 );
                             }
-                        }).timeout(5000 + 3000 * numNodes);
+                        }).timeout(5000 + 10000 * numNodes);
                     });
                 });
 
@@ -431,7 +439,7 @@ describe("sync", function() {
                                 await nodes[i + 1].getBestBlockHash()
                             );
                         }
-                    }).timeout(5000 + 5000 * numNodes);
+                    }).timeout(5000 + 15000 * numNodes);
                 });
             });
 
@@ -439,7 +447,7 @@ describe("sync", function() {
                 const numHalf: number = Math.floor(numNodes / 2);
 
                 beforeEach(async function() {
-                    this.timeout(5000 + 3000 * numNodes);
+                    this.timeout(5000 + 5000 * numNodes);
 
                     const connects = [];
                     for (let i = 0; i < numNodes; i++) {
@@ -465,7 +473,7 @@ describe("sync", function() {
                             await nodes[numNodes - i - 1].getBestBlockHash()
                         ).to.deep.equal(parcel.blockHash);
                     }
-                }).timeout(5000 + 3000 * numNodes);
+                }).timeout(5000 + 5000 * numNodes);
 
                 describe("All diverged by two nodes in the opposite", function() {
                     beforeEach(async function() {
@@ -485,7 +493,7 @@ describe("sync", function() {
                         for (let i = 1; i < numNodes; i++) {
                             await nodes[i].waitBlockNumberSync(nodes[0]);
                         }
-                    }).timeout(5000 + 3000 * numNodes);
+                    }).timeout(5000 + 5000 * numNodes);
 
                     it("It should be synced when the first node becomes ahead", async function() {
                         await nodes[0].sendSignedParcel();
@@ -495,7 +503,7 @@ describe("sync", function() {
                                 await nodes[i].getBestBlockHash()
                             ).to.deep.equal(await nodes[0].getBestBlockHash());
                         }
-                    }).timeout(5000 + 3000 * numNodes);
+                    }).timeout(5000 + 10000 * numNodes);
                 });
             });
 
@@ -503,7 +511,7 @@ describe("sync", function() {
                 describe("Connected in a star", function() {
                     describe("All connected", function() {
                         beforeEach(async function() {
-                            this.timeout(5000 + 3000 * numNodes);
+                            this.timeout(5000 + 5000 * numNodes);
 
                             let connects = [];
                             for (let i = 1; i < numNodes; i++) {
@@ -520,7 +528,7 @@ describe("sync", function() {
                                     await nodes[i].getBestBlockHash()
                                 ).to.deep.equal(parcel.blockHash);
                             }
-                        }).timeout(5000 + 3000 * numNodes);
+                        }).timeout(5000 + 5000 * numNodes);
 
                         it("It should be synced when one of the outside node created a block", async function() {
                             const parcel = await nodes[
@@ -534,15 +542,21 @@ describe("sync", function() {
                                     await nodes[i].getBestBlockHash()
                                 ).to.deep.equal(parcel.blockHash);
                             }
-                        }).timeout(5000 + 3000 * numNodes);
+                        }).timeout(5000 + 10000 * numNodes);
                     });
                 });
             }
 
             afterEach(async function() {
-                this.timeout(5000 + 1500 * numNodes);
+                this.timeout(5000 + 3000 * numNodes);
 
-                await Promise.all(nodes.map(n => n.clean()));
+                if (this.currentTest!.state === "failed") {
+                    nodes.map(node =>
+                        node.testFailed(this.currentTest!.fullTitle())
+                    );
+                }
+
+                await Promise.all(nodes.map(node => node.clean()));
                 nodes = [];
             });
         });

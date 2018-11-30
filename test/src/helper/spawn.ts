@@ -31,7 +31,7 @@ import {
 } from "codechain-sdk/lib/core/classes";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
-import { appendFileSync, mkdtempSync } from "fs";
+import { createWriteStream, mkdtempSync, unlinkSync } from "fs";
 import * as mkdirp from "mkdirp";
 import { ncp } from "ncp";
 import { createInterface as createReadline } from "readline";
@@ -60,9 +60,9 @@ export default class CodeChain {
     private _keysPath: string;
     private _logFile: string;
     private _logPath: string;
-    private _logFlag: boolean;
     private _chain: ChainType;
     private argv: string[];
+    private isTestFailed: boolean;
     private process?: ChildProcess;
     private keyFileMovePromise?: Promise<{}>;
 
@@ -90,9 +90,6 @@ export default class CodeChain {
     public get logPath(): string {
         return this._logPath;
     }
-    public get logFlag(): boolean {
-        return this._logFlag;
-    }
     public get rpcPort(): number {
         return 8081 + this.id;
     }
@@ -110,11 +107,10 @@ export default class CodeChain {
         options: {
             chain?: ChainType;
             argv?: string[];
-            logFlag?: boolean;
             additionalKeysPath?: string;
         } = {}
     ) {
-        const { chain, argv, logFlag, additionalKeysPath } = options;
+        const { chain, argv, additionalKeysPath } = options;
         this._id = CodeChain.idCounter++;
 
         mkdirp.sync(`${projectRoot}/db/`);
@@ -136,7 +132,6 @@ export default class CodeChain {
             });
         }
         this._localKeyStorePath = `${this.keysPath}/keystore.db`;
-        this._logFlag = logFlag || false;
         this._logFile = `${new Date().toISOString().replace(/[-:.]/g, "_")}.${
             this.id
         }.log`;
@@ -144,6 +139,7 @@ export default class CodeChain {
         this._sdk = new SDK({ server: `http://localhost:${this.rpcPort}` });
         this._chain = chain || "solo";
         this.argv = argv || [];
+        this.isTestFailed = false;
     }
 
     public async start(
@@ -186,6 +182,11 @@ export default class CodeChain {
                 }
             );
 
+            this.isTestFailed = true;
+            const logStream = createWriteStream(this.logPath);
+            this.process!.stdout.pipe(logStream);
+            this.process!.stderr.pipe(logStream);
+
             this.process
                 .on("error", e => {
                     reject(e);
@@ -195,16 +196,41 @@ export default class CodeChain {
                 });
 
             const readline = createReadline({ input: this.process!.stderr });
-            let flag = false;
             readline.on("line", (line: string) => {
                 if (line.includes("Initialization complete")) {
-                    flag = true;
+                    this.isTestFailed = false;
                     resolve();
                 }
-                if (this.logFlag && flag) {
-                    appendFileSync(this.logPath, line + "\n");
-                }
             });
+        });
+    }
+
+    public testFailed(testName: string) {
+        console.log(
+            `Test [${testName}] Failed.\nIts log file is: ${this.logFile}.`
+        );
+        this.isTestFailed = true;
+    }
+
+    public async clean() {
+        return new Promise(resolve => {
+            if (!this.process) {
+                return resolve();
+            }
+            this.process.on("exit", (code, signal) => {
+                if (code !== 0) {
+                    console.error(
+                        `CodeChain(${
+                            this.id
+                        }) exited with code ${code}, ${signal}`
+                    );
+                } else if (!this.isTestFailed) {
+                    unlinkSync(this.logPath);
+                }
+                resolve();
+            });
+            this.process.kill();
+            this.process = undefined;
         });
     }
 
@@ -553,26 +579,6 @@ export default class CodeChain {
                     }
                 })
                 .catch(reject);
-        });
-    }
-
-    public async clean() {
-        return new Promise(resolve => {
-            if (!this.process) {
-                return resolve();
-            }
-            this.process.on("exit", (code, signal) => {
-                if (code !== 0) {
-                    console.error(
-                        `CodeChain(${
-                            this.id
-                        }) exited with code ${code}, ${signal}`
-                    );
-                }
-                resolve();
-            });
-            this.process.kill();
-            this.process = undefined;
         });
     }
 }

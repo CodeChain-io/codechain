@@ -81,6 +81,9 @@ describeSkippedInTravis("Tendermint ", function() {
     }).timeout(60_000);
 
     afterEach(async function() {
+        if (this.currentTest!.state === "failed") {
+            nodes.map(node => node.testFailed(this.currentTest!.fullTitle()));
+        }
         await Promise.all(nodes.map(node => node.clean()));
     });
 });

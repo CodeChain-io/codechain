@@ -72,6 +72,9 @@ describe("Test onChain parcel communication", function() {
     });
 
     afterEach(async function() {
+        if (this.currentTest!.state === "failed") {
+            nodeA.testFailed(this.currentTest!.fullTitle());
+        }
         await nodeA.clean();
     });
 
