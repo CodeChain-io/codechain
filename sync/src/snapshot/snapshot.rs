@@ -240,7 +240,7 @@ impl ReadSnapshot for Snapshot {
                 cinfo!(SNAPSHOT, "Chunk contains garbages");
             }
 
-            if chunk.missing_keys(&chunk_root).len() > 0 {
+            if !chunk.missing_keys(&chunk_root).is_empty() {
                 return Err(Error::SyncError("Chunk is an incomplete trie".to_string()))
             }
 

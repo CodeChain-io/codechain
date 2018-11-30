@@ -275,7 +275,7 @@ impl StratumImpl {
         }
         let mut que = payloads;
         let mut addr_index = 0;
-        while que.len() > 0 {
+        while !que.is_empty() {
             let next_worker = addrs[addr_index];
             let mut next_payload = que.drain(0..1);
             tcp_dispatcher.push_message(
