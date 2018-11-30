@@ -164,7 +164,7 @@ describe("transactions", function() {
             }
         });
 
-        it("wrong asset type", async function() {
+        it("Transfer unsuccessful - wrong asset type", async function() {
             const recipient = await node.createP2PKHAddress();
             const tx = node.sdk.core.createAssetTransferTransaction();
             tx.addInputs(input);
@@ -181,6 +181,26 @@ describe("transactions", function() {
             } catch (e) {
                 expect(e).to.satisfy(
                     errorMatcher(ERROR.INVALID_TX_INCONSISTENT_IN_OUT)
+                );
+            }
+        });
+
+        it("Transfer unsuccessful - previous output is duplicated", async function() {
+            const recipient = await node.createP2PKHAddress();
+            const tx = node.sdk.core.createAssetTransferTransaction();
+            tx.addInputs(input, input);
+            tx.addOutputs({
+                assetType: input.assetType,
+                recipient,
+                amount: amount * 2
+            });
+            await node.signTransferInput(tx, 0);
+            try {
+                await node.sendTransaction(tx);
+                expect.fail();
+            } catch (e) {
+                expect(e).to.satisfy(
+                    errorMatcher(ERROR.INVALID_TX_DUPLICATED_PREV_OUT)
                 );
             }
         });
