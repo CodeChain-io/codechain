@@ -72,11 +72,13 @@ impl RecoveryId {
             _ => Err(Error::InvalidRecoveryId),
         }
     }
+}
 
-    #[inline]
+impl From<RecoveryId> for i32 {
     /// Allows library users to convert recovery IDs to i32.
-    pub fn to_i32(&self) -> i32 {
-        self.0
+    #[inline]
+    fn from(id: RecoveryId) -> Self {
+        id.0
     }
 }
 
@@ -868,9 +870,9 @@ mod tests {
         assert!(RecoveryId::from_i32(3).is_ok());
         assert!(RecoveryId::from_i32(4).is_err());
         let id0 = RecoveryId::from_i32(0).unwrap();
-        assert_eq!(id0.to_i32(), 0);
+        assert_eq!(i32::from(id0), 0);
         let id1 = RecoveryId(1);
-        assert_eq!(id1.to_i32(), 1);
+        assert_eq!(i32::from(id1), 1);
     }
 
     #[test]

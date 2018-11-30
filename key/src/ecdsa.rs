@@ -235,7 +235,7 @@ pub fn sign_ecdsa(private: &Private, message: &Message) -> Result<ECDSASignature
 
     // no need to check if s is low, it always is
     data_arr[0..64].copy_from_slice(&data[0..64]);
-    data_arr[64] = rec_id.to_i32() as u8;
+    data_arr[64] = i32::from(rec_id) as u8;
     Ok(ECDSASignature(data_arr))
 }
 
