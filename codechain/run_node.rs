@@ -231,6 +231,8 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     let miner = new_miner(&config, &scheme, ap.clone())?;
     let client = client_start(&config.operating, &scheme, miner.clone())?;
 
+    scheme.engine.register_chain_notify(client.client().as_ref());
+
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
