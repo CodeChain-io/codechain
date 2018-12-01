@@ -563,9 +563,10 @@ where
 
     /// Regiter an IO handler with the event loop.
     pub fn register_handler(&self, handler: Arc<IoHandler<Message> + Send>) -> Result<(), IoError> {
+        let h = Arc::clone(&handler);
         let handler_id =
-            self.handlers.write().insert(handler.clone()).unwrap_or_else(|_| panic!("Too many handlers registered"));
-        handler.initialize(&IoContext::new(
+            self.handlers.write().insert(handler).unwrap_or_else(|_| panic!("Too many handlers registered"));
+        h.initialize(&IoContext::new(
             IoChannel::new(self.event_loop_channel.clone(), Arc::downgrade(&self.handlers)),
             handler_id,
         ))?;
