@@ -273,15 +273,6 @@ impl From<BlockImportError> for Error {
     }
 }
 
-impl<E> From<Box<E>> for Error
-where
-    Error: From<E>,
-{
-    fn from(err: Box<E>) -> Self {
-        Error::from(*err)
-    }
-}
-
 impl From<AccountsError> for Error {
     fn from(err: AccountsError) -> Error {
         Error::AccountProvider(err)
