@@ -75,7 +75,7 @@ enum Error {
     InvalidNode(NodeId),
     InvalidSign,
     UnexpectedNodeId(Mismatch<NodeId>),
-    SymmetricCipherError(SymmetricCipherError),
+    SymmetricCipher(SymmetricCipherError),
 }
 
 impl ::std::fmt::Display for Error {
@@ -85,7 +85,7 @@ impl ::std::fmt::Display for Error {
             Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
             Error::InvalidSign => ::std::fmt::Debug::fmt(&self, f),
             Error::UnexpectedNodeId(_) => ::std::fmt::Debug::fmt(&self, f),
-            Error::SymmetricCipherError(err) => ::std::fmt::Debug::fmt(&err, f),
+            Error::SymmetricCipher(err) => ::std::fmt::Debug::fmt(&err, f),
         }
     }
 }
@@ -560,6 +560,6 @@ impl IoHandler<Message> for Handler {
 
 impl From<SymmetricCipherError> for Error {
     fn from(err: SymmetricCipherError) -> Self {
-        Error::SymmetricCipherError(err)
+        Error::SymmetricCipher(err)
     }
 }
