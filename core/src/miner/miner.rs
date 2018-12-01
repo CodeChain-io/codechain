@@ -95,9 +95,11 @@ struct SealingWork {
     enabled: bool,
 }
 
+type ParcelListener = Box<Fn(&[H256]) + Send + Sync>;
+
 pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
-    parcel_listener: RwLock<Vec<Box<Fn(&[H256]) + Send + Sync>>>,
+    parcel_listener: RwLock<Vec<ParcelListener>>,
     next_allowed_reseal: Mutex<Instant>,
     next_mandatory_reseal: RwLock<Instant>,
     sealing_block_last_request: Mutex<u64>,

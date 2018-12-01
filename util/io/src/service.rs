@@ -187,12 +187,14 @@ struct UserTimer {
     once: bool,
 }
 
+type HandlersType<M> = RwLock<Slab<Arc<IoHandler<M>>, HandlerId>>;
+
 /// Root IO handler. Manages user handlers, messages and IO timers.
 pub struct IoManager<Message>
 where
     Message: Clone + Send + Sync, {
     timers: Arc<RwLock<HashMap<HandlerId, UserTimer>>>,
-    handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
+    handlers: Arc<HandlersType<Message>>,
     workers: Vec<Worker>,
     worker_channel: chase_lev::Worker<Work<Message>>,
     work_ready: Arc<SCondvar>,
@@ -205,7 +207,7 @@ where
     /// Creates a new instance and registers it with the event loop.
     pub fn start(
         event_loop: &mut EventLoop<IoManager<Message>>,
-        handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
+        handlers: Arc<HandlersType<Message>>,
         name: &str,
     ) -> Result<(), IoError> {
         let (worker, stealer) = chase_lev::deque();
@@ -413,7 +415,7 @@ where
 enum Handlers<Message>
 where
     Message: Send + Clone, {
-    SharedCollection(Weak<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>),
+    SharedCollection(Weak<HandlersType<Message>>),
     Single(Weak<IoHandler<Message>>),
 }
 
@@ -499,10 +501,7 @@ where
             handlers: Handlers::Single(handler),
         }
     }
-    fn new(
-        channel: Sender<IoMessage<Message>>,
-        handlers: Weak<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
-    ) -> IoChannel<Message> {
+    fn new(channel: Sender<IoMessage<Message>>, handlers: Weak<HandlersType<Message>>) -> IoChannel<Message> {
         IoChannel {
             channel: Some(channel),
             handlers: Handlers::SharedCollection(handlers),
@@ -517,7 +516,7 @@ where
     Message: Send + Sync + Clone + 'static, {
     thread: Mutex<Option<JoinHandle<()>>>,
     host_channel: Mutex<Sender<IoMessage<Message>>>,
-    handlers: Arc<RwLock<Slab<Arc<IoHandler<Message>>, HandlerId>>>,
+    handlers: Arc<HandlersType<Message>>,
     event_loop_channel: Sender<IoMessage<Message>>,
 }
 

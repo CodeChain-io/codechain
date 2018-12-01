@@ -43,6 +43,8 @@ pub struct BodyDB {
     db: Arc<KeyValueDB>,
 }
 
+type TransactionHashAndAddress = (H256, TransactionAddress);
+
 impl BodyDB {
     /// Create new instance of blockchain from given Genesis.
     pub fn new(genesis: &BlockView, db: Arc<KeyValueDB>) -> Self {
@@ -169,8 +171,8 @@ impl BodyDB {
         location: &BlockLocation,
     ) -> HashMap<H256, Option<TransactionAddress>> {
         let (removed, added): (
-            Box<Iterator<Item = (H256, TransactionAddress)>>,
-            Box<Iterator<Item = (H256, TransactionAddress)>>,
+            Box<Iterator<Item = TransactionHashAndAddress>>,
+            Box<Iterator<Item = TransactionHashAndAddress>>,
         ) = match location {
             BlockLocation::CanonChain => {
                 (Box::new(::std::iter::empty()), Box::new(transaction_address_entries(block.hash(), block.parcels())))
@@ -313,7 +315,7 @@ fn parcel_address_entries(
 fn transaction_address_entries(
     block_hash: H256,
     parcel_hashes: impl IntoIterator<Item = UnverifiedParcel>,
-) -> impl Iterator<Item = (H256, TransactionAddress)> {
+) -> impl Iterator<Item = TransactionHashAndAddress> {
     parcel_hashes.into_iter().enumerate().filter_map(move |(parcel_index, parcel)| match &parcel.action {
         Action::AssetTransaction(transaction) => Some((
             transaction.hash(),
