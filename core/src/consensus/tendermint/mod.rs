@@ -184,6 +184,7 @@ pub struct Tendermint {
 }
 
 impl Tendermint {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let extension = TendermintExtension::new(our_params.timeouts);

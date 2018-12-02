@@ -50,6 +50,7 @@ struct TestApi {
 }
 
 impl TestApi {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     fn new(extension: Weak<Extension>) -> Arc<Self> {
         Arc::new(Self {
             extension,

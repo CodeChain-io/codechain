@@ -120,6 +120,7 @@ impl Miner {
         self.notifiers.write().push(notifier);
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Arc<Self> {
         Arc::new(Self::new_raw(options, scheme, accounts))
     }

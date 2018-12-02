@@ -35,6 +35,7 @@ pub struct Service {
 }
 
 impl Service {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(client: Arc<Client>, root_dir: String, period: u64) -> Arc<Self> {
         Arc::new(Self {
             client,
