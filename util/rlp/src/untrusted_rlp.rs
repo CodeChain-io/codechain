@@ -232,6 +232,7 @@ where
     }
 
     pub fn is_null(&self) -> bool {
+        #![cfg_attr(feature = "cargo-clippy", allow(clippy::len_zero))]
         self.bytes.len() == 0
     }
 
