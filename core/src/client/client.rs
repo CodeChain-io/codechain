@@ -82,7 +82,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(
+    pub fn try_new(
         config: &ClientConfig,
         scheme: &Scheme,
         db: Arc<KeyValueDB>,
@@ -108,7 +108,7 @@ impl Client {
 
         let engine = scheme.engine.clone();
 
-        let importer = Importer::new(config, engine.clone(), message_channel.clone(), miner)?;
+        let importer = Importer::try_new(config, engine.clone(), message_channel.clone(), miner)?;
         let genesis_accounts = scheme.genesis_accounts();
 
         let client = Arc::new(Client {
@@ -603,7 +603,7 @@ impl PrepareOpenBlock for Client {
         let best_header = &chain.block_header(&h).expect("h is best block hash: so its header must exist: qed");
 
         let is_epoch_begin = chain.epoch_transition(best_header.number(), h).is_some();
-        OpenBlock::new(
+        OpenBlock::try_new(
             engine,
             self.state_db.read().clone(&best_header.state_root()),
             best_header,

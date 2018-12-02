@@ -60,7 +60,7 @@ pub struct Importer {
 }
 
 impl Importer {
-    pub fn new(
+    pub fn try_new(
         config: &ClientConfig,
         engine: Arc<CodeChainEngine>,
         message_channel: IoChannel<ClientIoMessage>,

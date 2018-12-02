@@ -42,7 +42,7 @@ use crate::{Query, Trie, TrieError};
 ///   let mut memdb = MemoryDB::new();
 ///   let mut root = H256::new();
 ///   TrieDBMut::new(&mut memdb, &mut root).insert(b"foo", b"bar").unwrap();
-///   let t = TrieDB::new(&memdb, &root).unwrap();
+///   let t = TrieDB::try_new(&memdb, &root).unwrap();
 ///   assert!(t.contains(b"foo").unwrap());
 ///   assert_eq!(t.get(b"foo").unwrap().unwrap(), DBValue::from_slice(b"bar"));
 /// }
@@ -55,7 +55,7 @@ pub struct TrieDB<'db> {
 impl<'db> TrieDB<'db> {
     /// Create a new trie with the backing database `db` and `root`
     /// Returns an error if `root` does not exist
-    pub fn new(db: &'db HashDB, root: &'db H256) -> crate::Result<Self> {
+    pub fn try_new(db: &'db HashDB, root: &'db H256) -> crate::Result<Self> {
         if !db.contains(root) {
             Err(Box::new(TrieError::InvalidStateRoot(*root)))
         } else {
@@ -138,7 +138,7 @@ mod tests {
             t.insert(b"B", b"ABCBA").unwrap();
         }
 
-        let t = TrieDB::new(&memdb, &root).unwrap();
+        let t = TrieDB::try_new(&memdb, &root).unwrap();
         assert_eq!(t.get(b"A"), Ok(Some(DBValue::from_slice(b"ABC"))));
         assert_eq!(t.get(b"B"), Ok(Some(DBValue::from_slice(b"ABCBA"))));
         assert_eq!(t.get(b"C"), Ok(None));

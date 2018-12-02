@@ -308,7 +308,7 @@ impl<'a> TrieMut for TrieDBMut<'a> {
     }
 
     fn get(&self, key: &[u8]) -> crate::Result<Option<DBValue>> {
-        let t = TrieDB::new(self.db, self.root)?;
+        let t = TrieDB::try_new(self.db, self.root)?;
 
         t.get(key)
     }
