@@ -120,7 +120,7 @@ fn decodable_field(index: usize, field: &syn::Field, quotes: ParseQuotes) -> quo
     match field.ty {
         syn::Ty::Path(_, ref path) => {
             let ident = &path.segments.first().expect("there must be at least 1 segment").ident;
-            if &ident.to_string() == "Vec" {
+            if ident == "Vec" {
                 if quotes.takes_index {
                     quote! { #id: #list(#index)?, }
                 } else {
