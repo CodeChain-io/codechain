@@ -494,17 +494,23 @@ where
         }
     }
 
-    /// Create a new synchronous channel to a given handler.
-    pub fn to_handler(handler: Weak<IoHandler<Message>>) -> IoChannel<Message> {
-        IoChannel {
-            channel: None,
-            handlers: Handlers::Single(handler),
-        }
-    }
     fn new(channel: Sender<IoMessage<Message>>, handlers: Weak<HandlersType<Message>>) -> IoChannel<Message> {
         IoChannel {
             channel: Some(channel),
             handlers: Handlers::SharedCollection(handlers),
+        }
+    }
+}
+
+/// Create a new synchronous channel to a given handler.
+impl<Message> From<Weak<IoHandler<Message>>> for IoChannel<Message>
+where
+    Message: Send + Clone + Sync + 'static,
+{
+    fn from(handler: Weak<IoHandler<Message>>) -> Self {
+        IoChannel {
+            channel: None,
+            handlers: Handlers::Single(handler),
         }
     }
 }
