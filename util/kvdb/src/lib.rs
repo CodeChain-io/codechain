@@ -168,15 +168,13 @@ pub trait KeyValueDB: Sync + Send {
     fn flush(&self) -> Result<()>;
 
     /// Iterate over flushed data for a given column.
-    fn iter<'a>(&'a self, col: Option<u32>) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>;
+    fn iter(&self, col: Option<u32>) -> KeyValueDBIterator;
 
     /// Iterate over flushed data for a given column, starting from a given prefix.
-    fn iter_from_prefix<'a>(
-        &'a self,
-        col: Option<u32>,
-        prefix: &'a [u8],
-    ) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>;
+    fn iter_from_prefix<'a>(&'a self, col: Option<u32>, prefix: &'a [u8]) -> KeyValueDBIterator;
 
     /// Attempt to replace this database with a new one located at the given path.
     fn restore(&self, new_db: &str) -> Result<()>;
 }
+
+pub type KeyValueDBIterator<'a> = Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>;
