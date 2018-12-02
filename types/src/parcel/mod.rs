@@ -17,6 +17,7 @@
 mod action;
 mod error;
 mod incomplete_parcel;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod parcel;
 
 pub use self::action::Action;

@@ -21,6 +21,7 @@ mod engine;
 mod genesis;
 mod null_engine;
 mod params;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod scheme;
 mod seal;
 mod shard;

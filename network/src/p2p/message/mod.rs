@@ -16,6 +16,7 @@
 
 mod extension;
 mod handshake;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod message;
 mod negotiation;
 mod signed_message;
