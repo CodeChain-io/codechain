@@ -126,12 +126,10 @@ fn decodable_field(index: usize, field: &syn::Field, quotes: ParseQuotes) -> quo
                 } else {
                     quote! { #id: #list()?, }
                 }
+            } else if quotes.takes_index {
+                quote! { #id: #single(#index)?, }
             } else {
-                if quotes.takes_index {
-                    quote! { #id: #single(#index)?, }
-                } else {
-                    quote! { #id: #single()?, }
-                }
+                quote! { #id: #single()?, }
             }
         }
         _ => panic!("rlp_derive not supported"),
