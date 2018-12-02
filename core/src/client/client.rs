@@ -185,13 +185,8 @@ impl Client {
         self.transaction_address(hash).and_then(|transaction_address| {
             transaction_address
                 .into_iter()
-                .filter_map(|parcel_address| {
-                    if self.parcel_invoice(&parcel_address.into()).map_or(false, |invoice| invoice == Invoice::Success)
-                    {
-                        Some(parcel_address)
-                    } else {
-                        None
-                    }
+                .filter(|parcel_address| {
+                    self.parcel_invoice(&(*parcel_address).into()).map_or(false, |invoice| invoice == Invoice::Success)
                 })
                 .take(1)
                 .next()
