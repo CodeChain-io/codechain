@@ -17,6 +17,7 @@
 mod canon_verifier;
 mod noop_verifier;
 pub mod queue;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod verification;
 mod verifier;
 
