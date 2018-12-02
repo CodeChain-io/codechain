@@ -280,7 +280,7 @@ impl RlpStream {
     }
 
     /// Try to finish lists
-    fn note_appended(&mut self, inserted_items: usize) -> () {
+    fn note_appended(&mut self, inserted_items: usize) {
         if self.unfinished_lists.len() == 0 {
             return
         }
