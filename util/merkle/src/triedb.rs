@@ -57,7 +57,7 @@ impl<'db> TrieDB<'db> {
     /// Returns an error if `root` does not exist
     pub fn try_new(db: &'db HashDB, root: &'db H256) -> crate::Result<Self> {
         if !db.contains(root) {
-            Err(Box::new(TrieError::InvalidStateRoot(*root)))
+            Err(TrieError::InvalidStateRoot(*root))
         } else {
             Ok(TrieDB {
                 db,
@@ -80,7 +80,7 @@ impl<'db> TrieDB<'db> {
     ) -> crate::Result<Option<Q::Item>> {
         match cur_node_hash {
             Some(hash) => {
-                let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
+                let node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
