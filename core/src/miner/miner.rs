@@ -880,7 +880,7 @@ impl MinerService for Miner {
         let parcel_hash = parcel.hash();
         let sig = account_provider.sign(address, passphrase, parcel_hash)?;
         let unverified = UnverifiedParcel::new(parcel, sig);
-        let signed = SignedParcel::new(unverified)?;
+        let signed = SignedParcel::try_new(unverified)?;
         let hash = signed.hash();
         self.import_own_parcel(client, signed)?;
 

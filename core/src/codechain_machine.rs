@@ -69,7 +69,7 @@ impl CodeChainMachine {
 
     /// Verify a particular parcel is valid, regardless of order.
     pub fn verify_parcel_unordered(&self, p: UnverifiedParcel, _header: &Header) -> Result<SignedParcel, Error> {
-        Ok(SignedParcel::new(p)?)
+        Ok(SignedParcel::try_new(p)?)
     }
 
     /// Does verification of the parcel against the parent state.

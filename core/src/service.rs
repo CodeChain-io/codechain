@@ -53,7 +53,7 @@ impl ClientService {
                 .map_err(::client::Error::Database)?,
         );
 
-        let client = Client::new(config, &scheme, db, miner, io_service.channel())?;
+        let client = Client::try_new(config, &scheme, db, miner, io_service.channel())?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),

@@ -219,7 +219,7 @@ impl From<SignedParcel> for UnverifiedParcel {
 
 impl SignedParcel {
     /// Try to verify parcel and recover public.
-    pub fn new(parcel: UnverifiedParcel) -> Result<Self, ckey::Error> {
+    pub fn try_new(parcel: UnverifiedParcel) -> Result<Self, ckey::Error> {
         let public = parcel.recover_public()?;
         Ok(SignedParcel {
             parcel,
@@ -230,7 +230,7 @@ impl SignedParcel {
     /// Signs the parcel as coming from `signer`.
     pub fn new_with_sign(parcel: Parcel, private: &Private) -> SignedParcel {
         let sig = sign(&private, &parcel.hash()).expect("data is valid and context has signing capabilities; qed");
-        SignedParcel::new(UnverifiedParcel::new(parcel, sig)).expect("secret is valid so it's recoverable")
+        SignedParcel::try_new(UnverifiedParcel::new(parcel, sig)).expect("secret is valid so it's recoverable")
     }
 
     /// Returns a public key of the signer.

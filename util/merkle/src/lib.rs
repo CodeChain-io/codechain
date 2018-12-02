@@ -142,7 +142,7 @@ pub enum TrieFactory {}
 impl TrieFactory {
     /// Create new immutable instance of Trie.
     pub fn readonly<'db>(db: &'db HashDB, root: &'db H256) -> Result<TrieDB<'db>> {
-        Ok(TrieDB::new(db, root)?)
+        Ok(TrieDB::try_new(db, root)?)
     }
 
     /// Create new mutable instance of Trie.

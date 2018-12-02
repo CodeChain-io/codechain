@@ -366,7 +366,7 @@ mod tests {
             snapshot.read_snapshot(kvdb.clone(), &root).unwrap();
 
             let mut jdb = journaldb::new(kvdb.clone(), Algorithm::Archive, COL_STATE);
-            let t = TrieDB::new(jdb.as_hashdb_mut(), &mut root).unwrap();
+            let t = TrieDB::try_new(jdb.as_hashdb_mut(), &mut root).unwrap();
             let mut inserted_keys = HashSet::new();
             for &(ref key, ref value) in &x {
                 if inserted_keys.insert(key) == false {
