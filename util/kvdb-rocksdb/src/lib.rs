@@ -41,7 +41,7 @@ use rocksdb::{
 };
 
 use elastic_array::ElasticArray32;
-use kvdb::{DBOp, DBTransaction, DBValue, KeyValueDB, Result};
+use kvdb::{DBOp, DBTransaction, DBValue, KeyValueDB, KeyValueDBIterator, Result};
 use rlp::{Compressible, RlpType, UntrustedRlp};
 
 #[cfg(target_os = "linux")]
@@ -197,12 +197,13 @@ impl Default for DatabaseConfig {
     }
 }
 
+type KeyValueIntoIter = ::std::vec::IntoIter<(Box<[u8]>, Box<[u8]>)>;
 /// Database iterator (for flushed data only)
 // The compromise of holding only a virtual borrow vs. holding a lock on the
 // inner DB (to prevent closing via restoration) may be re-evaluated in the future.
 //
 pub struct DatabaseIterator<'a> {
-    iter: InterleaveOrdered<::std::vec::IntoIter<(Box<[u8]>, Box<[u8]>)>, DBIterator>,
+    iter: InterleaveOrdered<KeyValueIntoIter, DBIterator>,
     _marker: PhantomData<&'a Database>,
 }
 
@@ -787,16 +788,12 @@ impl KeyValueDB for Database {
         Database::flush(self)
     }
 
-    fn iter<'a>(&'a self, col: Option<u32>) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a> {
+    fn iter(&self, col: Option<u32>) -> KeyValueDBIterator {
         let unboxed = Database::iter(self, col);
         Box::new(unboxed.into_iter().flat_map(|inner| inner))
     }
 
-    fn iter_from_prefix<'a>(
-        &'a self,
-        col: Option<u32>,
-        prefix: &'a [u8],
-    ) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a> {
+    fn iter_from_prefix<'a>(&'a self, col: Option<u32>, prefix: &'a [u8]) -> KeyValueDBIterator {
         let unboxed = Database::iter_from_prefix(self, col, prefix);
         Box::new(unboxed.into_iter().flat_map(|inner| inner))
     }
