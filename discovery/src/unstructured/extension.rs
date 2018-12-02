@@ -34,6 +34,7 @@ pub struct Extension {
 }
 
 impl Extension {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(config: Config) -> Arc<Self> {
         Arc::new(Self {
             config,

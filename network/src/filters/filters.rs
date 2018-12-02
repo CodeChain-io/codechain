@@ -28,6 +28,7 @@ pub struct Filters {
 }
 
 impl Filters {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(whitelist_vector: Vec<FilterEntry>, blacklist_vector: Vec<FilterEntry>) -> Arc<Self> {
         let whitelist = Filter::new(whitelist_vector);
         let blacklist = Filter::new(blacklist_vector);

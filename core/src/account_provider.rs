@@ -91,6 +91,7 @@ pub struct AccountProvider {
 }
 
 impl AccountProvider {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(keystore: KeyStore) -> Arc<Self> {
         Arc::new(Self {
             unlocked: RwLock::new(HashMap::new()),
