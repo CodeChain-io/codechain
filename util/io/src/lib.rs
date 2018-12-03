@@ -60,6 +60,7 @@
 //TODO: use Poll from mio
 #![allow(deprecated)]
 
+extern crate codechain_limited_table as climited_table;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate mio;
@@ -67,7 +68,6 @@ extern crate mio;
 extern crate log;
 extern crate crossbeam;
 extern crate parking_lot;
-extern crate slab;
 
 mod service;
 mod worker;
