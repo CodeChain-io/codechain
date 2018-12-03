@@ -7,10 +7,9 @@ version = "1.9.0"
 authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
+codechain-limited-table = { path = "../limited_table" }
 codechain-logger = { path = "../logger" }
 mio = "0.6.8"
 crossbeam = "0.3"
 parking_lot = "0.5"
 log = "0.4.1"
-slab = "0.2"
-

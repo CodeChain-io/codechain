@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+use climited_table::LimitedTable;
 use crossbeam::sync::chase_lev;
 use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
 use mio::timer::Timeout;
 use mio::*;
 use parking_lot::{Mutex, RwLock};
-use slab::Slab;
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 use std::sync::{Condvar as SCondvar, Mutex as SMutex};
@@ -187,7 +187,7 @@ struct UserTimer {
     once: bool,
 }
 
-type HandlersType<M> = RwLock<Slab<Arc<IoHandler<M>>, HandlerId>>;
+type HandlersType<M> = RwLock<LimitedTable<Arc<IoHandler<M>>>>;
 
 /// Root IO handler. Manages user handlers, messages and IO timers.
 pub struct IoManager<Message>
@@ -536,7 +536,7 @@ where
         config.messages_per_tick(1024);
         let mut event_loop = config.build().expect("Error creating event loop");
         let channel = event_loop.channel();
-        let handlers = Arc::new(RwLock::new(Slab::new(MAX_HANDLERS)));
+        let handlers = Arc::new(RwLock::new(LimitedTable::new(0, MAX_HANDLERS)));
         let h = handlers.clone();
         let thread = thread::spawn(move || {
             IoManager::<Message>::start(&mut event_loop, h, name).expect("Error starting IO service");
@@ -570,7 +570,7 @@ where
     pub fn register_handler(&self, handler: Arc<IoHandler<Message> + Send>) -> Result<(), IoError> {
         let h = Arc::clone(&handler);
         let handler_id =
-            self.handlers.write().insert(handler).unwrap_or_else(|_| panic!("Too many handlers registered"));
+            self.handlers.write().insert(handler).unwrap_or_else(|| panic!("Too many handlers registered"));
         h.initialize(&IoContext::new(
             IoChannel::new(self.event_loop_channel.clone(), Arc::downgrade(&self.handlers)),
             handler_id,
