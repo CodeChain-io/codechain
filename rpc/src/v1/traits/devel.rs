@@ -20,6 +20,8 @@ use cjson::bytes::Bytes;
 use jsonrpc_core::Result;
 use primitives::H256;
 
+use super::super::types::TPSTestSetting;
+
 build_rpc_trait! {
     pub trait Devel {
         # [rpc(name = "devel_getStateTrieKeys")]
@@ -36,5 +38,8 @@ build_rpc_trait! {
 
         # [rpc(name = "devel_getBlockSyncPeers")]
         fn get_block_sync_peers(&self) -> Result<Vec<SocketAddr>>;
+
+        # [rpc(name = "devel_testTPS")]
+        fn test_tps(&self, TPSTestSetting) -> Result<f64>;
     }
 }
