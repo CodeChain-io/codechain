@@ -45,6 +45,24 @@ To run `rustfmt`,
 cargo +nightly-2018-10-18 fmt
 ```
 
+## Linting
+
+You should run `clippy` also. This is a lint tool for rust. It suggests more efficient/readable code.
+You can see [the clippy document](https://rust-lang.github.io/rust-clippy/master/index.html) for more information.
+You need to install the nightly-2018-10-18 version of `clippy`.
+
+### Install
+```
+rustup toolchain install nightly-2018-10-18
+rustup component add clippy-preview --toolchain nightly-2018-10-18
+```
+
+### Run
+
+```
+cargo +nightly-2018-10-18 clippy --all
+```
+
 ## Testing
 
 Developers are strongly encouraged to write unit tests for new code, and to submit new unit tests for old code. Unit tests can be compiled and run with: `cargo test --all`. For more details, please reference [Unit Tests](https://github.com/CodeChain-io/codechain/wiki/Unit-Tests).
