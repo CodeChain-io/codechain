@@ -20,7 +20,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use ckey::Address as CoreAddress;
-use primitives::{H256 as Hash256, H520 as Hash520, H64 as Hash64};
+use primitives::{H256 as Hash256, H520 as Hash520};
 use rustc_hex::ToHex;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -94,7 +94,6 @@ macro_rules! impl_hash {
     };
 }
 
-impl_hash!(H64, Hash64);
 impl_hash!(Address, CoreAddress);
 impl_hash!(H256, Hash256);
 impl_hash!(H520, Hash520);
