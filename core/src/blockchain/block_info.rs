@@ -15,16 +15,83 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::route::TreeRoute;
+use crate::views::{BlockView, HeaderView};
+use primitives::{Bytes, H256};
 
-/// Describes location of newly inserted block.
+/// Describes how best block is changed
 #[derive(Debug, Clone, PartialEq)]
-pub enum BlockLocation {
-    /// It's part of the canon chain.
-    CanonChain,
-    /// It's not a part of the canon chain.
-    Branch,
+pub enum BestBlockChanged {
+    /// Cannonical chain is appended.
+    CanonChainAppended {
+        best_block: Bytes,
+    },
+    /// Nothing changed.
+    None,
     /// It's part of the fork which should become canon chain,
     /// because its total score is higher than current
     /// canon chain score.
-    BranchBecomingCanonChain(TreeRoute),
+    BranchBecomingCanonChain {
+        best_block: Bytes,
+        tree_route: TreeRoute,
+    },
+}
+
+impl BestBlockChanged {
+    pub fn new_best_hash(&self) -> Option<H256> {
+        Some(self.best_block()?.hash())
+    }
+
+    pub fn best_block(&self) -> Option<BlockView> {
+        let block = match self {
+            BestBlockChanged::CanonChainAppended {
+                best_block,
+            } => best_block,
+            BestBlockChanged::BranchBecomingCanonChain {
+                best_block,
+                ..
+            } => best_block,
+            BestBlockChanged::None => return None,
+        };
+
+        Some(BlockView::new(block))
+    }
+}
+
+/// Describes how best block is changed
+#[derive(Debug, Clone, PartialEq)]
+pub enum BestHeaderChanged {
+    /// Cannonical chain is appended.
+    CanonChainAppended {
+        best_header: Vec<u8>,
+    },
+    /// Nothing changed.
+    None,
+    /// It's part of the fork which should become canon chain,
+    /// because its total score is higher than current
+    /// canon chain score.
+    BranchBecomingCanonChain {
+        best_header: Vec<u8>,
+        tree_route: TreeRoute,
+    },
+}
+
+impl BestHeaderChanged {
+    pub fn new_best_hash(&self) -> Option<H256> {
+        Some(self.header()?.hash())
+    }
+
+    pub fn header(&self) -> Option<HeaderView> {
+        let header = match self {
+            BestHeaderChanged::CanonChainAppended {
+                best_header,
+            } => best_header,
+            BestHeaderChanged::BranchBecomingCanonChain {
+                best_header,
+                ..
+            } => best_header,
+            BestHeaderChanged::None => return None,
+        };
+
+        Some(HeaderView::new(header))
+    }
 }

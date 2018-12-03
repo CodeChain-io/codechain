@@ -21,7 +21,9 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json;
 
-use super::{Bytes, Cipher, CipherSer, CipherSerParams, Kdf, KdfSer, KdfSerParams, H256};
+use cjson::bytes::Bytes;
+
+use super::{Cipher, CipherSer, CipherSerParams, Kdf, KdfSer, KdfSerParams, H256};
 
 pub type CipherText = Bytes;
 
@@ -180,7 +182,7 @@ impl Serialize for Crypto {
                 crypto.serialize_field("cipherparams", params)?;
             }
         }
-        crypto.serialize_field("ciphertext", &self.ciphertext)?;
+        crypto.serialize_field("ciphertext", &self.ciphertext.without_prefix())?;
         match self.kdf {
             Kdf::Pbkdf2(ref params) => {
                 crypto.serialize_field("kdf", &KdfSer::Pbkdf2)?;

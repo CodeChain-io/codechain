@@ -44,6 +44,7 @@ extern crate tempdir;
 extern crate time;
 
 extern crate codechain_crypto as ccrypto;
+extern crate codechain_json as cjson;
 extern crate codechain_key as ckey;
 extern crate codechain_types as ctypes;
 

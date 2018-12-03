@@ -230,6 +230,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
     let miner = new_miner(&config, &scheme, ap.clone())?;
     let client = client_start(&config.operating, &scheme, miner.clone())?;
+    let sync = BlockSyncExtension::new(client.client());
 
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable.unwrap() {
@@ -243,7 +244,6 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             }
 
             if config.network.sync.unwrap() {
-                let sync = BlockSyncExtension::new(client.client());
                 service.register_extension(sync.clone());
                 client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
             }
@@ -267,6 +267,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         miner: Arc::clone(&miner),
         network_control: Arc::clone(&network_service),
         account_provider: ap,
+        block_sync: Arc::clone(&sync),
     });
 
     let _rpc_server = {

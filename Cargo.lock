@@ -323,7 +323,6 @@ name = "codechain-json"
 version = "0.1.0"
 dependencies = [
  "codechain-key 0.1.0",
- "never 0.1.0",
  "primitives 0.1.0",
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.53 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -357,6 +356,7 @@ name = "codechain-keystore"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0",
+ "codechain-json 0.1.0",
  "codechain-key 0.1.0",
  "codechain-types 0.1.0",
  "itertools 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -455,6 +455,7 @@ dependencies = [
  "codechain-logger 0.1.0",
  "codechain-network 0.1.0",
  "codechain-state 0.1.0",
+ "codechain-sync 0.1.0",
  "codechain-types 0.1.0",
  "jsonrpc-core 8.0.1 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
  "jsonrpc-http-server 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",

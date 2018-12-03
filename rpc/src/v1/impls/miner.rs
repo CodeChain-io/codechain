@@ -18,12 +18,13 @@ use std::sync::Arc;
 
 use ccore::block::IsBlock;
 use ccore::{EngineClient, MinerService, MiningBlockChainClient};
+use cjson::bytes::Bytes;
 use jsonrpc_core::Result;
 use primitives::H256;
 
 use super::super::errors;
 use super::super::traits::Miner;
-use super::super::types::{Bytes, Work};
+use super::super::types::Work;
 
 pub struct MinerClient<C, M>
 where
