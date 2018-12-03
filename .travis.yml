@@ -25,7 +25,7 @@ jobs:
         - test $TEST_FAILED || cargo +nightly-2018-10-18 clippy --all || TEST_FAILED=true
         - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
         - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
-        - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start || TEST_FAILED=true
+        - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start-release || TEST_FAILED=true
         - "! test $TEST_FAILED"
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
@@ -46,7 +46,7 @@ jobs:
         - test $TEST_FAILED || cargo +nightly-2018-10-18 clippy --all || TEST_FAILED=true
         - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
         - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
-        - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start || TEST_FAILED=true
+        - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start-release || TEST_FAILED=true
         - "! test $TEST_FAILED"
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
