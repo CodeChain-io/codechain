@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-byteorder = "1.2.3"
+byteorder = "1.2.7"
 codechain-crypto = { path = "../crypto" }
 codechain-io = { path = "../util/io" }
 codechain-json = { path = "../json" }
@@ -23,14 +23,14 @@ heapsize = "0.4"
 hyper = { git = "https://github.com/paritytech/hyper", default-features = false }
 journaldb = { path = "../util/journaldb" }
 linked-hash-map = "0.5"
-log = "0.4.1"
-num_cpus = "1.2"
+log = "0.4.6"
+num_cpus = "1.8"
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 memorydb = { path = "../util/memorydb" }
 multimap = { path = "../util/multimap" }
-parking_lot = "0.5"
+parking_lot = "0.6.0"
 primitives = { path = "../util/primitives" }
 rand = "0.5.3"
 rlp = { path = "../util/rlp" }

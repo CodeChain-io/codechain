@@ -16,8 +16,8 @@ codechain-token-generator = { path = "../util/token_generator" }
 codechain-types = { path = "../types" }
 journaldb = { path = "../util/journaldb" }
 kvdb = { path = "../util/kvdb" }
-log = "0.4.1"
-parking_lot = "0.5"
+log = "0.4.6"
+parking_lot = "0.6.0"
 primitives = { path = "../util/primitives" }
 rand = "0.5.3"
 rlp = { path = "../util/rlp" }

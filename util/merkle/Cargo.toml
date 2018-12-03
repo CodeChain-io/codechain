@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-elastic-array = "0.9"
+elastic-array = "0.10"
 rand = "0.5.3"
 hashdb = {path = "../hashdb" }
 codechain-crypto = { path = "../../crypto" }

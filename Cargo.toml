@@ -35,17 +35,17 @@ codechain-stratum = { path = "stratum" }
 ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
 futures = "0.1"
-log = "0.4.1"
+log = "0.4.6"
 env_logger = "0.5.3"
 never = { path = "util/never" }
 panic_hook = { path = "util/panic_hook" }
-parking_lot = "0.5"
+parking_lot = "0.6.0"
 primitives = { path = "util/primitives" }
 rpassword = "2.0.0"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-tokio-core = "0.1.6"
+tokio-core = "0.1.17"
 toml = "0.4"
 
 [build-dependencies]
