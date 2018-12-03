@@ -26,8 +26,10 @@ rlp = { path = "../util/rlp" }
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
+rand = "0.6.1"
 rustc-hex = "1.0"
 rustc-serialize = "0.3"
+time = "0.1"
 tokio-core = "0.1.17"
 jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
 jsonrpc-macros = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }

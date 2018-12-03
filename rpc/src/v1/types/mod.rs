@@ -38,6 +38,8 @@ pub use self::transaction::Transaction;
 pub use self::unsigned_transaction::UnsignedTransaction;
 pub use self::work::Work;
 
+use serde::de::{self, Deserialize, Deserializer};
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FilterStatus {
     pub list: Vec<(::std::net::IpAddr, String)>,
@@ -48,4 +50,39 @@ pub struct FilterStatus {
 pub struct SendTransactionResult {
     pub hash: H256,
     pub seq: u64,
+}
+
+#[derive(Debug)]
+pub enum TPSTestOption {
+    PayOnly,
+    TransferSingle,
+    TransferMultiple,
+    PayOrTransfer,
+}
+
+impl<'de> Deserialize<'de> for TPSTestOption {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>, {
+        let s = String::deserialize(deserializer)?;
+        Ok(match s.as_str() {
+            "payOnly" => TPSTestOption::PayOnly,
+            "transferSingle" => TPSTestOption::TransferSingle,
+            "transferMultiple" => TPSTestOption::TransferMultiple,
+            "payOrTransfer" => TPSTestOption::PayOrTransfer,
+            v => Err(de::Error::custom(format!(
+                "Invalid params: unknown variant `{}`, expected one of \
+                 `payOnly`, `transferSingle`, `transferMultiple`, `payOrTransfer`.",
+                v
+            )))?,
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TPSTestSetting {
+    pub count: u64,
+    pub seed: u64,
+    pub option: TPSTestOption,
 }
