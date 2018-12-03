@@ -26,13 +26,13 @@
     "@types/mkdirp": "^0.5.2",
     "@types/mocha": "^5.2.5",
     "@types/ncp": "^2.0.1",
-    "@types/node": "^10.9.4",
-    "@types/seedrandom": "^2.4.2",
+    "@types/node": "^10.12.12",
+    "@types/seedrandom": "^2.4.27",
     "mocha": "^5.2.0",
     "mocha-parallel-tests": "^2.0.6-alpha.3",
-    "prettier": "1.14.2",
+    "prettier": "^1.15.3",
     "tslint": "^5.11.0",
-    "tslint-config-prettier": "^1.15.0"
+    "tslint-config-prettier": "^1.17.0"
   },
   "dependencies": {
     "chai": "^4.2.0",
@@ -42,9 +42,9 @@
     "lodash": "^4.17.11",
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
-    "rlp": "^2.0.0",
+    "rlp": "^2.1.0",
     "seedrandom": "^2.4.4",
-    "ts-node": "^7.0.0",
-    "typescript": "^2.9.2"
+    "ts-node": "^7.0.1",
+    "typescript": "^3.2.2"
   }
 }

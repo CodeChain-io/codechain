@@ -6,4 +6,4 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 [lib]
 
 [dependencies]
-parking_lot = "0.5"
+parking_lot = "0.6.0"

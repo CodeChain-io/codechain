@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-byteorder = "1.2.3"
+byteorder = "1.2.7"
 codechain-crypto = { path = "../crypto" }
 codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
@@ -15,9 +15,9 @@ hashdb = { path = "../util/hashdb" }
 journaldb = { path = "../util/journaldb" }
 kvdb = { path = "../util/kvdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
-log = "0.4.1"
+log = "0.4.6"
 lru-cache = "0.1.1"
-parking_lot = "0.5"
+parking_lot = "0.6.0"
 primitives = { path = "../util/primitives" }
 rlp = { path = "../util/rlp" }
 rlp_derive = { path = "../util/rlp_derive" }

@@ -6,7 +6,7 @@ description = "in-memory implementation of hashdb"
 license = "GPL-3.0"
 
 [dependencies]
-elastic-array = "0.9"
+elastic-array = "0.10"
 heapsize = "0.4"
 codechain-crypto = { version = "0.1.0", path = "../../crypto" }
 hashdb = { version = "0.1.1", path = "../hashdb" }

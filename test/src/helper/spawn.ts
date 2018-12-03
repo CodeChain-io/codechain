@@ -564,11 +564,8 @@ export default class CodeChain {
     public sendSignedParcelWithRlpBytes(rlpBytes: Buffer): Promise<H256> {
         return new Promise((resolve, reject) => {
             const bytes = Array.from(rlpBytes)
-                .map(
-                    byte =>
-                        byte < 0x10
-                            ? `0${byte.toString(16)}`
-                            : byte.toString(16)
+                .map(byte =>
+                    byte < 0x10 ? `0${byte.toString(16)}` : byte.toString(16)
                 )
                 .join("");
             this.sdk.rpc

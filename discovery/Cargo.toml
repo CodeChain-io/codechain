@@ -8,12 +8,12 @@ codechain-crypto = { path = "../crypto" }
 codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }
 codechain-network = { path = "../network" }
-log = "0.4.1"
-parking_lot = "0.5"
+log = "0.4.6"
+parking_lot = "0.6.0"
 primitives = { path = "../util/primitives" }
 rand = "0.5.3"
 rlp = { path = "../util/rlp" }
 time = "0.1"
 
 [dev-dependencies]
-lazy_static = "1.1.0"
+lazy_static = "1.2"
