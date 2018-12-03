@@ -38,14 +38,14 @@ impl Bytes {
         self.0
     }
 
-    pub fn without_prefix<'a>(&'a self) -> BytesWithoutPrefix<'a> {
+    pub fn without_prefix(&self) -> BytesWithoutPrefix {
         BytesWithoutPrefix(self)
     }
 }
 
 impl<'a> From<&'a str> for Bytes {
     fn from(s: &'a str) -> Self {
-        FromStr::from_str(s).expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
+        FromStr::from_str(s).unwrap_or_else(|_| panic!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 
