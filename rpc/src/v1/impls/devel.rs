@@ -19,6 +19,7 @@ use std::sync::Arc;
 use std::vec::Vec;
 
 use ccore::{DatabaseClient, MinerService, MiningBlockChainClient, COL_STATE};
+use cjson::bytes::Bytes;
 use jsonrpc_core::Result;
 use kvdb::KeyValueDB;
 use primitives::H256;
@@ -26,7 +27,6 @@ use rlp::UntrustedRlp;
 
 use super::super::errors;
 use super::super::traits::Devel;
-use super::super::types::Bytes;
 
 pub struct DevelClient<C, M>
 where

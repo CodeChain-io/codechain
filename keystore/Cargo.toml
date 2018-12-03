@@ -7,6 +7,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>", "Parity Technologies <admin@
 log = "0.4.1"
 libc = "0.2"
 rand = "0.5.3"
+codechain-json = { path = "../json" }
 codechain-key = { path = "../key" }
 codechain-types = { path = "../types" }
 serde = "1.0"

@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::H256;
-
+use cjson::bytes::Bytes;
 use jsonrpc_core::Result;
-
-use super::super::types::Bytes;
+use primitives::H256;
 
 build_rpc_trait! {
     pub trait Devel {

@@ -16,10 +16,9 @@
 
 //! Lenient bytes json deserialization for test json files.
 
-use never::Never;
-use rustc_hex::FromHex;
+use rustc_hex::{FromHex, FromHexError, ToHex};
 use serde::de::{Error, Visitor};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -32,6 +31,27 @@ impl Bytes {
     /// Creates bytes struct.
     pub fn new(v: Vec<u8>) -> Self {
         Bytes(v)
+    }
+
+    /// Convert back to vector
+    pub fn into_vec(self) -> Vec<u8> {
+        self.0
+    }
+
+    pub fn without_prefix<'a>(&'a self) -> BytesWithoutPrefix<'a> {
+        BytesWithoutPrefix(self)
+    }
+}
+
+impl<'a> From<&'a str> for Bytes {
+    fn from(s: &'a str) -> Self {
+        FromStr::from_str(s).expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
+    }
+}
+
+impl From<Vec<u8>> for Bytes {
+    fn from(bytes: Vec<u8>) -> Self {
+        Bytes(bytes)
     }
 }
 
@@ -49,22 +69,24 @@ impl Deref for Bytes {
     }
 }
 
+
 impl FromStr for Bytes {
-    type Err = Never;
+    type Err = FromHexError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let v = match value.len() {
-            0 => vec![],
-            2 if value.starts_with("0x") => vec![],
-            _ if value.starts_with("0x") && value.len() % 2 == 1 => {
-                let v = "0".to_string() + &value[2..];
-                FromHex::from_hex(v.as_str()).unwrap_or_default()
-            }
-            _ if value.starts_with("0x") => FromHex::from_hex(&value[2..]).unwrap_or_default(),
-            _ => FromHex::from_hex(value).unwrap_or_default(),
+        let value = if value.starts_with("0x") {
+            &value[2..]
+        } else {
+            value
         };
-
-        Ok(Bytes(v))
+        match FromHex::from_hex(value) {
+            Ok(bytes) => Ok(Bytes(bytes)),
+            Err(FromHexError::InvalidHexLength) => {
+                let zero_padded = format!("0{}", value);
+                FromHex::from_hex(zero_padded.as_str()).map(Bytes)
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -88,7 +110,7 @@ impl<'a> Visitor<'a> for BytesVisitor {
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
     where
         E: Error, {
-        Ok(Bytes::from_str(value).unwrap())
+        Bytes::from_str(value).map_err(E::custom)
     }
 
     fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
@@ -98,19 +120,87 @@ impl<'a> Visitor<'a> for BytesVisitor {
     }
 }
 
+impl Serialize for Bytes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        let mut serialized = "0x".to_string();
+        serialized.push_str(self.0.to_hex().as_ref());
+        serializer.serialize_str(serialized.as_ref())
+    }
+}
+
+pub struct BytesWithoutPrefix<'a>(&'a Bytes);
+
+impl<'a> Serialize for BytesWithoutPrefix<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        let BytesWithoutPrefix(Bytes(vec)) = self;
+        serializer.serialize_str(vec.to_hex().as_ref())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::bytes::Bytes;
     use serde_json;
+    use std::result::Result;
+
+    macro_rules! assert_ok {
+        ($test_str: expr, $expected: expr) => {{
+            let res: Result<Bytes, _> = serde_json::from_str($test_str);
+            assert!(res.is_ok());
+            assert_eq!(res.unwrap(), $expected);
+        }};
+    }
+
+    macro_rules! assert_err {
+        ($test_str: expr) => {{
+            let res: Result<Bytes, _> = serde_json::from_str($test_str);
+            assert!(res.is_err());
+        }};
+    }
 
     #[test]
     fn bytes_deserialization() {
-        let s = r#"["", "0x", "0x12", "1234", "0x001"]"#;
-        let deserialized: Vec<Bytes> = serde_json::from_str(s).unwrap();
-        assert_eq!(
-            deserialized,
-            vec![Bytes(vec![]), Bytes(vec![]), Bytes(vec![0x12]), Bytes(vec![0x12, 0x34]), Bytes(vec![0, 1])]
-        );
+        // Hexadecimal
+        assert_ok!(r#""0x12""#, Bytes(vec![0x12]));
+        assert_ok!(r#""0x0123""#, Bytes(vec![0x01, 0x23]));
+        assert_ok!(r#""1234""#, Bytes(vec![0x12, 0x34]));
+
+        // can handle odd digits
+        assert_ok!(r#""0x123""#, Bytes(vec![0x01, 0x23]));
+        assert_ok!(r#""123""#, Bytes(vec![0x01, 0x23]));
+        assert_ok!(r#""0""#, Bytes(vec![0x00]));
+
+        // it is zero-padded hexadecimal
+        assert_ok!(r#""0123""#, Bytes(vec![0x01, 0x23]));
+
+        // Zero length
+        assert_ok!(r#""""#, Bytes(vec![]));
+        // Zero length with prefix
+        assert_ok!(r#""0x""#, Bytes(vec![]));
+
+        // contains whitespace
+        assert_ok!(r#""12 34""#, Bytes(vec![0x12, 0x34]));
+
+        // Not a hex
+        assert_err!(r#""0xgg""#);
+    }
+
+    #[test]
+    fn bytes_serialize() {
+        let bytes = Bytes(vec![0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
+        let serialized = serde_json::to_string(&bytes).unwrap();
+        assert_eq!(serialized, r#""0x0123456789abcdef""#);
+    }
+
+    #[test]
+    fn bytes_serialize_without_prefix() {
+        let bytes = Bytes(vec![0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
+        let serialized = serde_json::to_string(&bytes.without_prefix()).unwrap();
+        assert_eq!(serialized, r#""0123456789abcdef""#);
     }
 
     #[test]
