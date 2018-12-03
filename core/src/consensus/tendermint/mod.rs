@@ -29,7 +29,7 @@ use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, ReentrantMutex, RwLock};
-use primitives::{Bytes, H256, U128, U256};
+use primitives::{u256_from_u128, Bytes, H256};
 use rand::{thread_rng, Rng};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use time::Duration;
@@ -637,7 +637,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn populate_from_parent(&self, header: &mut Header, parent: &Header) {
         // Chain scoring: total weight is sqrt(U256::max_value())*height - view
-        let new_score = U256::from(U128::max_value())
+        let new_score = u256_from_u128(std::u128::MAX)
             + consensus_view(parent).expect("Header has been verified; qed").into()
             - self.view.load(AtomicOrdering::SeqCst).into();
 

@@ -21,7 +21,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::{blake128, blake256, blake256_with_key};
 use ckey::{Address, NetworkId};
 use heapsize::HeapSizeOf;
-use primitives::{Bytes, H160, H256, U128};
+use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::error::Error;
@@ -508,30 +508,30 @@ fn check_duplication_in_prev_out(burns: &[AssetTransferInput], inputs: &[AssetTr
 }
 
 fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
-    let mut sum: HashMap<H256, U128> = HashMap::new();
+    let mut sum: HashMap<H256, u128> = HashMap::new();
 
     for input in inputs {
         let asset_type = input.prev_out.asset_type;
-        let amount = input.prev_out.amount;
+        let amount = u128::from(input.prev_out.amount);
         let current_amount = sum.get(&asset_type).cloned().unwrap_or_default();
-        sum.insert(asset_type, current_amount + U128::from(amount));
+        sum.insert(asset_type, current_amount + amount);
     }
     for output in outputs {
         let asset_type = output.asset_type;
-        let amount = output.amount;
+        let amount = u128::from(output.amount);
         let current_amount = if let Some(current_amount) = sum.get(&asset_type) {
-            if *current_amount < amount.into() {
+            if *current_amount < amount {
                 return false
             }
             *current_amount
         } else {
             return false
         };
-        let t = sum.insert(asset_type, current_amount - From::from(amount));
+        let t = sum.insert(asset_type, current_amount - amount);
         debug_assert!(t.is_some());
     }
 
-    sum.iter().all(|(_, sum)| sum.is_zero())
+    sum.iter().all(|(_, sum)| *sum == 0)
 }
 
 fn apply_bitmask_to_output(
