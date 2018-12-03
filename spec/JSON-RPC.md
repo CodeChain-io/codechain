@@ -282,6 +282,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
  * [devel_startSealing](#devel_startsealing)
  * [devel_stopSealing](#devel_stopsealing)
+ * [devel_getBlockSyncPeers](#devel_getblocksyncpeers)
 
 
 # Specification
@@ -2235,5 +2236,38 @@ No parameters
   "id":null
 }
 ```
+
+[Back to **List of methods**](#list-of-methods)
+
+## devel_getBlockSyncPeers
+
+Get peers in Block Sync module.
+
+### Params
+
+No parameters
+
+### Returns
+
+`string[]`
+
+### Request Example
+
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "devel_getBlockSyncPeers", "params": [], "id": 3}' \
+    localhost:8080
+```
+
+### Response Example
+
+```
+{
+  "jsonrpc":"2.0",
+  "result": ["1.2.3.4:3485", "1.2.3.5:3485"],
+  "id":3
+}
+`````
 
 [Back to **List of methods**](#list-of-methods)

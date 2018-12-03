@@ -13,6 +13,7 @@ codechain-keystore = { path = "../keystore" }
 codechain-logger = { path = "../util/logger" }
 codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
+codechain-sync = { path = "../sync" }
 codechain-types = { path = "../types" }
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }

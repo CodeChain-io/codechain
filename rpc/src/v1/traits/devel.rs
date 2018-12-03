@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::net::SocketAddr;
+
 use cjson::bytes::Bytes;
 use jsonrpc_core::Result;
 use primitives::H256;
@@ -31,5 +33,8 @@ build_rpc_trait! {
 
         # [rpc(name = "devel_stopSealing")]
         fn stop_sealing(&self) -> Result<()>;
+
+        # [rpc(name = "devel_getBlockSyncPeers")]
+        fn get_block_sync_peers(&self) -> Result<Vec<SocketAddr>>;
     }
 }
