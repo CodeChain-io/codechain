@@ -82,6 +82,10 @@ impl<Item> LimitedTable<Item> {
     pub fn get(&self, key: Key) -> Option<&Item> {
         self.slab.get(key - self.begin)
     }
+
+    pub fn clear(&mut self) {
+        self.slab.clear()
+    }
 }
 
 #[cfg(test)]
