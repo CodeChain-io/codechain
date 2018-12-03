@@ -47,7 +47,7 @@ mod block;
 mod parcel;
 mod snapshot;
 
-pub use crate::block::BlockSyncExtension;
+pub use crate::block::{BlockSyncExtension, BlockSyncInfo};
 pub use crate::parcel::ParcelSyncExtension;
 pub use crate::snapshot::SnapshotService;
 

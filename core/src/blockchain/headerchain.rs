@@ -24,15 +24,17 @@ use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp_compress::{blocks_swapper, compress, decompress};
 
-use super::block_info::BlockLocation;
+use super::block_info::BestHeaderChanged;
 use super::extras::BlockDetails;
 use super::route::tree_route;
+use consensus::CodeChainEngine;
 use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 use crate::encoded;
-use crate::header::Header;
+use crate::header::{Header, Seal};
 use crate::views::HeaderView;
 
 const BEST_HEADER_KEY: &[u8] = b"best-header";
+const HIGHEST_HEADER_KEY: &[u8] = b"highest-header";
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -40,6 +42,7 @@ const BEST_HEADER_KEY: &[u8] = b"best-header";
 pub struct HeaderChain {
     // All locks must be captured in the order declared here.
     best_header_hash: RwLock<H256>,
+    highest_header_hash: RwLock<H256>,
 
     // cache
     header_cache: RwLock<HashMap<H256, Bytes>>,
@@ -49,6 +52,7 @@ pub struct HeaderChain {
     db: Arc<KeyValueDB>,
 
     pending_best_header_hash: RwLock<Option<H256>>,
+    pending_highest_block_hash: RwLock<Option<H256>>,
     pending_hashes: RwLock<HashMap<BlockNumber, H256>>,
     pending_details: RwLock<HashMap<H256, BlockDetails>>,
 }
@@ -78,13 +82,19 @@ impl HeaderChain {
                 batch.write(db::COL_EXTRA, &genesis.number(), &hash);
 
                 batch.put(db::COL_EXTRA, BEST_HEADER_KEY, &hash);
+                batch.put(db::COL_EXTRA, HIGHEST_HEADER_KEY, &hash);
                 db.write(batch).expect("Low level database error. Some issue with disk?");
                 hash
             }
         };
 
+        let highest_header_hash = H256::from_slice(
+            &db.get(db::COL_EXTRA, HIGHEST_HEADER_KEY).unwrap().expect("highest header is set by best header"),
+        );
+
         Self {
             best_header_hash: RwLock::new(best_header_hash),
+            highest_header_hash: RwLock::new(highest_header_hash),
 
             header_cache: RwLock::new(HashMap::new()),
             detail_cache: RwLock::new(HashMap::new()),
@@ -93,6 +103,7 @@ impl HeaderChain {
             db,
 
             pending_best_header_hash: RwLock::new(None),
+            pending_highest_block_hash: RwLock::new(None),
             pending_hashes: RwLock::new(HashMap::new()),
             pending_details: RwLock::new(HashMap::new()),
         }
@@ -102,7 +113,12 @@ impl HeaderChain {
     /// Expects the header to be valid and already verified.
     /// If the header is already known, does nothing.
     // FIXME: Find better return type. Returning `None` at duplication is not natural
-    pub fn insert_header(&self, batch: &mut DBTransaction, header: &HeaderView) -> Option<BlockLocation> {
+    pub fn insert_header(
+        &self,
+        batch: &mut DBTransaction,
+        header: &HeaderView,
+        engine: &CodeChainEngine,
+    ) -> Option<BestHeaderChanged> {
         let hash = header.hash();
 
         if self.is_known_header(&hash) {
@@ -110,20 +126,25 @@ impl HeaderChain {
         }
 
         assert!(self.pending_best_header_hash.read().is_none());
+        assert!(self.pending_highest_block_hash.read().is_none());
 
         // store block in db
         let compressed_header = compress(header.rlp().as_raw(), blocks_swapper());
         batch.put(db::COL_HEADERS, &hash, &compressed_header);
 
-        let location = self.block_location(header);
+        let best_header_changed = self.best_header_changed(header, engine);
 
-        let new_hashes = self.new_hash_entries(header, &location);
+        let new_hashes = self.new_hash_entries(header, &best_header_changed);
         let new_details = self.new_detail_entries(header);
 
         let mut pending_best_header_hash = self.pending_best_header_hash.write();
-        if location != BlockLocation::Branch {
-            batch.put(db::COL_EXTRA, BEST_HEADER_KEY, &header.hash());
-            *pending_best_header_hash = Some(header.hash());
+        let mut pending_highest_header_hash = self.pending_highest_block_hash.write();
+        if let Some(best_block_hash) = best_header_changed.new_best_hash() {
+            batch.put(db::COL_EXTRA, BEST_HEADER_KEY, &best_block_hash);
+            *pending_best_header_hash = Some(best_block_hash);
+
+            batch.put(db::COL_EXTRA, HIGHEST_HEADER_KEY, &hash);
+            *pending_highest_header_hash = Some(hash);
         }
 
         let mut pending_hashes = self.pending_hashes.write();
@@ -132,21 +153,26 @@ impl HeaderChain {
         batch.extend_with_cache(db::COL_EXTRA, &mut *pending_details, new_details, CacheUpdatePolicy::Overwrite);
         batch.extend_with_cache(db::COL_EXTRA, &mut *pending_hashes, new_hashes, CacheUpdatePolicy::Overwrite);
 
-        Some(location)
+        Some(best_header_changed)
     }
 
     /// Apply pending insertion updates
     pub fn commit(&self) {
         let mut pending_best_header_hash = self.pending_best_header_hash.write();
+        let mut pending_highest_header_hash = self.pending_highest_block_hash.write();
         let mut pending_write_hashes = self.pending_hashes.write();
         let mut pending_block_details = self.pending_details.write();
 
         let mut best_header_hash = self.best_header_hash.write();
+        let mut highest_header_hash = self.highest_header_hash.write();
         let mut write_block_details = self.detail_cache.write();
         let mut write_hashes = self.hash_cache.write();
         // update best block
         if let Some(hash) = pending_best_header_hash.take() {
             *best_header_hash = hash;
+        }
+        if let Some(hash) = pending_highest_header_hash.take() {
+            *highest_header_hash = hash;
         }
 
         write_hashes.extend(mem::replace(&mut *pending_write_hashes, HashMap::new()));
@@ -154,24 +180,32 @@ impl HeaderChain {
     }
 
     /// This function returns modified block hashes.
-    fn new_hash_entries(&self, header: &HeaderView, location: &BlockLocation) -> HashMap<BlockNumber, H256> {
+    fn new_hash_entries(
+        &self,
+        new_header: &HeaderView,
+        best_header_changed: &BestHeaderChanged,
+    ) -> HashMap<BlockNumber, H256> {
         let mut hashes = HashMap::new();
-        let number = header.number();
 
-        match location {
-            BlockLocation::Branch => (),
-            BlockLocation::CanonChain => {
-                hashes.insert(number, header.hash());
+        match best_header_changed {
+            BestHeaderChanged::None => (),
+            BestHeaderChanged::CanonChainAppended {
+                ..
+            } => {
+                hashes.insert(new_header.number(), new_header.hash());
             }
-            BlockLocation::BranchBecomingCanonChain(data) => {
-                let ancestor_number = self.block_number(&data.ancestor).expect("Ancestor always exist in DB");
+            BestHeaderChanged::BranchBecomingCanonChain {
+                tree_route,
+                ..
+            } => {
+                let ancestor_number = self.block_number(&tree_route.ancestor).expect("Ancestor always exist in DB");
                 let start_number = ancestor_number + 1;
 
-                for (index, hash) in data.enacted.iter().enumerate() {
+                for (index, hash) in tree_route.enacted.iter().enumerate() {
                     hashes.insert(start_number + index as BlockNumber, *hash);
                 }
 
-                hashes.insert(number, header.hash());
+                hashes.insert(new_header.number(), new_header.hash());
             }
         }
 
@@ -201,26 +235,40 @@ impl HeaderChain {
         block_details
     }
 
-    /// Calculate insert location for new block
-    fn block_location(&self, header: &HeaderView) -> BlockLocation {
-        let parent_hash = header.parent_hash();
-        let parent_details = self.block_details(&parent_hash).expect("Invalid parent hash");
-        let is_new_best = parent_details.total_score + header.score() > self.best_header_detail().total_score;
+    /// Calculate how best block is changed
+    fn best_header_changed(&self, new_header: &HeaderView, engine: &CodeChainEngine) -> BestHeaderChanged {
+        let parent_hash_of_new_header = new_header.parent_hash();
+        let parent_details_of_new_header = self.block_details(&parent_hash_of_new_header).expect("Invalid parent hash");
+        let is_new_best =
+            parent_details_of_new_header.total_score + new_header.score() > self.best_header_detail().total_score;
 
         if is_new_best {
             // on new best block we need to make sure that all ancestors
             // are moved to "canon chain"
             // find the route between old best block and the new one
-            let best_hash = self.best_header_hash();
-            let route = tree_route(self, best_hash, parent_hash)
+            let prev_best_hash = self.best_header_hash();
+            let route = tree_route(self, prev_best_hash, parent_hash_of_new_header)
                 .expect("blocks being imported always within recent history; qed");
 
+            let new_best_block_hash = engine.get_best_block_from_highest_score_header(&new_header);
+            let new_best_header = if new_best_block_hash != new_header.hash() {
+                self.block_header(&new_best_block_hash)
+                    .expect("Best block is already imported as a branch")
+                    .rlp(&Seal::With)
+            } else {
+                new_header.rlp().as_raw().to_vec()
+            };
             match route.retracted.len() {
-                0 => BlockLocation::CanonChain,
-                _ => BlockLocation::BranchBecomingCanonChain(route),
+                0 => BestHeaderChanged::CanonChainAppended {
+                    best_header: new_best_header.clone(),
+                },
+                _ => BestHeaderChanged::BranchBecomingCanonChain {
+                    tree_route: route,
+                    best_header: new_best_header.clone(),
+                },
             }
         } else {
-            BlockLocation::Branch
+            BestHeaderChanged::None
         }
     }
 
@@ -229,12 +277,20 @@ impl HeaderChain {
         *self.best_header_hash.read()
     }
 
+    pub fn highest_header_hash(&self) -> H256 {
+        *self.highest_header_hash.read()
+    }
+
     pub fn best_header(&self) -> encoded::Header {
         self.block_header_data(&self.best_header_hash()).expect("Best header always exists")
     }
 
     pub fn best_header_detail(&self) -> BlockDetails {
         self.block_details(&self.best_header_hash()).expect("Best header always exists")
+    }
+
+    pub fn highest_header(&self) -> encoded::Header {
+        self.block_header_data(&self.highest_header_hash()).expect("Highest header always exists")
     }
 }
 

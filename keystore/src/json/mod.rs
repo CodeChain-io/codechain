@@ -16,7 +16,6 @@
 
 //! Contract interface specification.
 
-mod bytes;
 mod cipher;
 mod crypto;
 mod error;
@@ -26,7 +25,6 @@ mod kdf;
 mod key_file;
 mod version;
 
-pub use self::bytes::Bytes;
 pub use self::cipher::{Aes128Ctr, Cipher, CipherSer, CipherSerParams};
 pub use self::crypto::{CipherText, Crypto};
 pub use self::error::Error;

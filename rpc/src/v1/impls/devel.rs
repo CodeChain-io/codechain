@@ -14,11 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::vec::Vec;
 
 use ccore::{DatabaseClient, MinerService, MiningBlockChainClient, COL_STATE};
+use cjson::bytes::Bytes;
+use cnetwork::IntoSocketAddr;
+use csync::BlockSyncInfo;
 use jsonrpc_core::Result;
 use kvdb::KeyValueDB;
 use primitives::H256;
@@ -26,36 +30,40 @@ use rlp::UntrustedRlp;
 
 use super::super::errors;
 use super::super::traits::Devel;
-use super::super::types::Bytes;
 
-pub struct DevelClient<C, M>
-where
-    C: DatabaseClient + MiningBlockChainClient,
-    M: MinerService, {
-    client: Arc<C>,
-    db: Arc<KeyValueDB>,
-    miner: Arc<M>,
-}
-
-impl<C, M> DevelClient<C, M>
+pub struct DevelClient<C, M, B>
 where
     C: DatabaseClient + MiningBlockChainClient,
     M: MinerService,
+    B: BlockSyncInfo, {
+    client: Arc<C>,
+    db: Arc<KeyValueDB>,
+    miner: Arc<M>,
+    block_sync: Arc<B>,
+}
+
+impl<C, M, B> DevelClient<C, M, B>
+where
+    C: DatabaseClient + MiningBlockChainClient,
+    M: MinerService,
+    B: BlockSyncInfo,
 {
-    pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
+    pub fn new(client: Arc<C>, miner: Arc<M>, block_sync: Arc<B>) -> Self {
         let db = client.database();
         Self {
             client,
             db,
             miner,
+            block_sync,
         }
     }
 }
 
-impl<C, M> Devel for DevelClient<C, M>
+impl<C, M, B> Devel for DevelClient<C, M, B>
 where
     C: DatabaseClient + MiningBlockChainClient + 'static,
     M: MinerService + 'static,
+    B: BlockSyncInfo + 'static,
 {
     fn get_state_trie_keys(&self, offset: usize, limit: usize) -> Result<Vec<H256>> {
         let iter = self.db.iter(COL_STATE);
@@ -80,5 +88,9 @@ where
     fn stop_sealing(&self) -> Result<()> {
         self.miner.stop_sealing();
         Ok(())
+    }
+
+    fn get_block_sync_peers(&self) -> Result<Vec<SocketAddr>> {
+        Ok(self.block_sync.get_peers().into_iter().map(|node_id| node_id.into_addr().into()).collect())
     }
 }
