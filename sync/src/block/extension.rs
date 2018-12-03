@@ -33,6 +33,7 @@ use rand::{thread_rng, Rng};
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
+use super::super::block::BlockSyncInfo;
 use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
 
@@ -184,7 +185,7 @@ impl NetworkExtension for Extension {
         self.send_message(
             id,
             &Message::Status {
-                total_score: chain_info.total_score,
+                total_score: chain_info.highest_score,
                 best_hash: chain_info.best_block_hash,
                 genesis_hash: chain_info.genesis_hash,
             },
@@ -243,7 +244,7 @@ impl TimeoutHandler for Extension {
     fn on_timeout(&self, token: TimerToken) {
         match token {
             SYNC_TIMER_TOKEN => {
-                let total_score = self.client.chain_info().total_score;
+                let highest_score = self.client.chain_info().highest_score;
                 let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
                 thread_rng().shuffle(&mut peer_ids);
 
@@ -260,7 +261,7 @@ impl TimeoutHandler for Extension {
                         U256::zero()
                     };
 
-                    if peer_score > total_score {
+                    if peer_score > highest_score {
                         self.send_body_request(&id);
                     }
                 }
@@ -310,6 +311,7 @@ impl ChainNotify for Extension {
         retracted: Vec<H256>,
         _sealed: Vec<H256>,
         _duration: u64,
+        new_highest_header: Option<H256>,
     ) {
         let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         for id in peer_ids {
@@ -317,13 +319,15 @@ impl ChainNotify for Extension {
                 peer.mark_as_imported(imported.clone());
             }
         }
-        let mut enacted_headers: Vec<_> = enacted
+        let mut headers_to_download: Vec<_> = enacted
             .into_iter()
+            .chain(new_highest_header.into_iter())
             .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
             .collect();
-        enacted_headers.sort_unstable_by_key(|header| header.number());
+        headers_to_download.sort_unstable_by_key(|header| header.number());
+        headers_to_download.dedup_by_key(|header| header.hash());
 
-        enacted_headers
+        headers_to_download
             .into_iter()
             .filter(|header| self.client.block_body(&BlockId::Hash(header.hash())).is_none())
             .for_each(|header| {
@@ -355,7 +359,7 @@ impl ChainNotify for Extension {
             self.send_message(
                 id,
                 &Message::Status {
-                    total_score: chain_info.total_score,
+                    total_score: chain_info.highest_score,
                     best_hash: chain_info.best_block_hash,
                     genesis_hash: chain_info.genesis_hash,
                 },
@@ -608,7 +612,7 @@ impl Extension {
             }
         }
 
-        let total_score = self.client.chain_info().total_score;
+        let total_score = self.client.chain_info().highest_score;
         let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         thread_rng().shuffle(&mut peer_ids);
 
@@ -623,5 +627,11 @@ impl Extension {
                 self.send_body_request(&id);
             }
         }
+    }
+}
+
+impl BlockSyncInfo for Extension {
+    fn get_peers(&self) -> Vec<NodeId> {
+        self.header_downloaders.read().keys().cloned().collect()
     }
 }
