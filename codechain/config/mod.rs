@@ -136,7 +136,7 @@ impl Config {
                                     (s.trim(), String::new())
                                 }
                             })
-                            .filter(|(s, _)| s.len() != 0)
+                            .filter(|(s, _)| !s.is_empty())
                             .map(|(addr, tag)| {
                                 Ok(FilterEntry {
                                     addr: addr

@@ -220,8 +220,9 @@ impl TestBlockChainClient {
 
     /// Make a bad block by setting invalid extra data.
     pub fn corrupt_block(&self, n: BlockNumber) {
-        let hash = self.block_hash(n.into()).unwrap();
-        let mut header: BlockHeader = self.block_header(n.into()).unwrap().decode();
+        let block_id = n.into();
+        let hash = self.block_hash(&block_id).unwrap();
+        let mut header: BlockHeader = self.block_header(&block_id).unwrap().decode();
         header.set_extra_data(b"This extra data is way too long to be considered valid".to_vec());
         let mut rlp = RlpStream::new_list(3);
         rlp.append(&header);
@@ -232,8 +233,9 @@ impl TestBlockChainClient {
 
     /// Make a bad block by setting invalid parent hash.
     pub fn corrupt_block_parent(&self, n: BlockNumber) {
-        let hash = self.block_hash(n.into()).unwrap();
-        let mut header: BlockHeader = self.block_header(n.into()).unwrap().decode();
+        let block_id = n.into();
+        let hash = self.block_hash(&block_id).unwrap();
+        let mut header: BlockHeader = self.block_header(&block_id).unwrap().decode();
         header.set_parent_hash(H256::from(42));
         let mut rlp = RlpStream::new_list(3);
         rlp.append(&header);
@@ -249,10 +251,10 @@ impl TestBlockChainClient {
         blocks_read[&index]
     }
 
-    fn block_hash(&self, id: BlockId) -> Option<H256> {
+    fn block_hash(&self, id: &BlockId) -> Option<H256> {
         match id {
-            BlockId::Hash(hash) => Some(hash),
-            BlockId::Number(n) => self.numbers.read().get(&(n as usize)).cloned(),
+            BlockId::Hash(hash) => Some(*hash),
+            BlockId::Number(n) => self.numbers.read().get(&(*n as usize)).cloned(),
             BlockId::Earliest => self.numbers.read().get(&0).cloned(),
             BlockId::Latest => self.numbers.read().get(&(self.numbers.read().len() - 1)).cloned(),
         }
@@ -304,7 +306,7 @@ impl PrepareOpenBlock for TestBlockChainClient {
         let genesis_header = self.scheme.genesis_header();
         let db = get_temp_state_db();
 
-        let mut open_block = OpenBlock::new(engine, db, &genesis_header, author, extra_data, false)
+        let mut open_block = OpenBlock::try_new(engine, db, &genesis_header, author, extra_data, false)
             .expect("Opening block for tests will not fail.");
         // TODO [todr] Override timestamp for predictability (set_timestamp_now kind of sucks)
         open_block.set_timestamp(*self.latest_block_timestamp.read());
@@ -313,7 +315,7 @@ impl PrepareOpenBlock for TestBlockChainClient {
 }
 
 impl ImportSealedBlock for TestBlockChainClient {
-    fn import_sealed_block(&self, _block: SealedBlock) -> ImportResult {
+    fn import_sealed_block(&self, _block: &SealedBlock) -> ImportResult {
         Ok(H256::default())
     }
 }
@@ -373,27 +375,27 @@ impl ChainInfo for TestBlockChainClient {
 }
 
 impl BlockInfo for TestBlockChainClient {
-    fn block_header(&self, id: BlockId) -> Option<encoded::Header> {
+    fn block_header(&self, id: &BlockId) -> Option<encoded::Header> {
         self.block_hash(id)
             .and_then(|hash| self.blocks.read().get(&hash).map(|r| Rlp::new(r).at(0).as_raw().to_vec()))
             .map(encoded::Header::new)
     }
 
     fn best_block_header(&self) -> encoded::Header {
-        self.block_header(self.chain_info().best_block_hash.into()).expect("Best block always has header.")
+        self.block_header(&self.chain_info().best_block_hash.into()).expect("Best block always has header.")
     }
 
     fn best_header(&self) -> encoded::Header {
         unimplemented!()
     }
 
-    fn block(&self, id: BlockId) -> Option<encoded::Block> {
+    fn block(&self, id: &BlockId) -> Option<encoded::Block> {
         self.block_hash(id).and_then(|hash| self.blocks.read().get(&hash).cloned()).map(encoded::Block::new)
     }
 }
 
 impl ParcelInfo for TestBlockChainClient {
-    fn parcel_block(&self, _id: ParcelId) -> Option<H256> {
+    fn parcel_block(&self, _id: &ParcelId) -> Option<H256> {
         None // Simple default.
     }
 }
@@ -416,11 +418,9 @@ impl ImportBlock for TestBlockChainClient {
         }
         if number > 0 {
             let blocks = self.blocks.read();
-            let parent = blocks.get(header.parent_hash()).expect(&format!(
-                "Unknown block parent {:?} for block {}",
-                header.parent_hash(),
-                number
-            ));
+            let parent = blocks
+                .get(header.parent_hash())
+                .unwrap_or_else(|| panic!("Unknown block parent {:?} for block {}", header.parent_hash(), number));
             let parent = Rlp::new(parent).val_at::<BlockHeader>(0);
             assert_eq!(parent.number(), header.number() - 1, "Unexpected block parent");
         }
@@ -476,11 +476,11 @@ impl BlockChainClient for TestBlockChainClient {
         self.miner.ready_parcels()
     }
 
-    fn block_number(&self, _id: BlockId) -> Option<BlockNumber> {
+    fn block_number(&self, _id: &BlockId) -> Option<BlockNumber> {
         unimplemented!()
     }
 
-    fn block_body(&self, id: BlockId) -> Option<encoded::Body> {
+    fn block_body(&self, id: &BlockId) -> Option<encoded::Body> {
         self.block_hash(id).and_then(|hash| {
             self.blocks.read().get(&hash).map(|r| {
                 let mut stream = RlpStream::new_list(1);
@@ -490,28 +490,28 @@ impl BlockChainClient for TestBlockChainClient {
         })
     }
 
-    fn block_status(&self, id: BlockId) -> BlockStatus {
+    fn block_status(&self, id: &BlockId) -> BlockStatus {
         match id {
-            BlockId::Number(number) if (number as usize) < self.blocks.read().len() => BlockStatus::InChain,
+            BlockId::Number(number) if (*number as usize) < self.blocks.read().len() => BlockStatus::InChain,
             BlockId::Hash(ref hash) if self.blocks.read().get(hash).is_some() => BlockStatus::InChain,
             BlockId::Latest | BlockId::Earliest => BlockStatus::InChain,
             _ => BlockStatus::Unknown,
         }
     }
 
-    fn block_total_score(&self, _id: BlockId) -> Option<U256> {
+    fn block_total_score(&self, _id: &BlockId) -> Option<U256> {
         Some(U256::zero())
     }
 
-    fn block_hash(&self, id: BlockId) -> Option<H256> {
+    fn block_hash(&self, id: &BlockId) -> Option<H256> {
         Self::block_hash(self, id)
     }
 
-    fn parcel(&self, _id: ParcelId) -> Option<LocalizedParcel> {
+    fn parcel(&self, _id: &ParcelId) -> Option<LocalizedParcel> {
         unimplemented!();
     }
 
-    fn parcel_invoice(&self, _id: ParcelId) -> Option<Invoice> {
+    fn parcel_invoice(&self, _id: &ParcelId) -> Option<Invoice> {
         unimplemented!();
     }
 

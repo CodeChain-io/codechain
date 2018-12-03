@@ -75,7 +75,7 @@ enum Error {
     InvalidNode(NodeId),
     InvalidSign,
     UnexpectedNodeId(Mismatch<NodeId>),
-    SymmetricCipherError(SymmetricCipherError),
+    SymmetricCipher(SymmetricCipherError),
 }
 
 impl ::std::fmt::Display for Error {
@@ -85,7 +85,7 @@ impl ::std::fmt::Display for Error {
             Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
             Error::InvalidSign => ::std::fmt::Debug::fmt(&self, f),
             Error::UnexpectedNodeId(_) => ::std::fmt::Debug::fmt(&self, f),
-            Error::SymmetricCipherError(err) => ::std::fmt::Debug::fmt(&err, f),
+            Error::SymmetricCipher(err) => ::std::fmt::Debug::fmt(&err, f),
         }
     }
 }
@@ -196,7 +196,7 @@ impl Handler {
     }
 
     // Return false if there is no message
-    fn receive(&self, stream: &StreamToken, client: &Client, io: &IoContext<Message>) -> IoHandlerResult<bool> {
+    fn receive(&self, stream: StreamToken, client: &Client, io: &IoContext<Message>) -> IoHandlerResult<bool> {
         Ok(match self.connections.receive(stream)? {
             None => false,
             Some(ReceivedMessage::Ack {
@@ -204,12 +204,12 @@ impl Handler {
             }) => {
                 let _establish_lock = self.establish_lock.lock();
                 if !self.connections.establish_wait_ack_connection(stream) {
-                    return Err(Error::InvalidStream(*stream).into())
+                    return Err(Error::InvalidStream(stream).into())
                 }
 
-                let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
+                let node_id = self.connections.node_id(stream).ok_or_else(|| Error::InvalidStream(stream))?;
                 self.routing_table.establish(&node_id.into_addr());
-                io.clear_timer(*stream as TimerToken);
+                io.clear_timer(stream as TimerToken);
                 io.message(Message::RequestNegotiation {
                     node_id,
                 });
@@ -257,7 +257,7 @@ impl Handler {
                 let session = self.connections.established_session(stream).ok_or("Invalid stream")?;
                 // FIXME: check version of extension
                 let message = msg.unencrypted_data(&session).map_err(Error::from)?;
-                let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
+                let node_id = self.connections.node_id(stream).ok_or_else(|| Error::InvalidStream(stream))?;
                 client.on_message(msg.extension_name(), &node_id, &message);
                 true
             }
@@ -271,7 +271,8 @@ impl Handler {
                         // FIXME: version negotiation
                         const VERSION: Version = 0;
                         if self.connections.enqueue_negotiation_allowed(stream, seq, VERSION) {
-                            let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
+                            let node_id =
+                                self.connections.node_id(stream).ok_or_else(|| Error::InvalidStream(stream))?;
                             client.on_node_added(&extension_name, &node_id, VERSION);
                         } else {
                             return Err(format!("Cannot enqueue negotiation message for {}", stream).into())
@@ -279,8 +280,9 @@ impl Handler {
                     }
                     NegotiationBody::Allowed(extension_version) => {
                         let seq = msg.seq();
-                        if let Some(name) = self.connections.remove_requested_negotiation(stream, &seq) {
-                            let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
+                        if let Some(name) = self.connections.remove_requested_negotiation(stream, seq) {
+                            let node_id =
+                                self.connections.node_id(stream).ok_or_else(|| Error::InvalidStream(stream))?;
                             client.on_node_added(&name, &node_id, *extension_version);
                         } else {
                             return Err("Negotiation::Allowed message received from non requested seq".into())
@@ -288,11 +290,10 @@ impl Handler {
                     }
                     NegotiationBody::Denied => {
                         let seq = msg.seq();
-                        if let Some(_) = self.connections.remove_requested_negotiation(stream, &seq) {
-                            self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
-                        } else {
+                        if self.connections.remove_requested_negotiation(stream, seq).is_none() {
                             return Err("Negotiation::Denied message received from non requested seq".into())
                         }
+                        self.connections.node_id(stream).ok_or_else(|| Error::InvalidStream(stream))?;
                     }
                 };
                 true
@@ -300,10 +301,10 @@ impl Handler {
         })
     }
 
-    fn send(&self, stream: &StreamToken) -> IoHandlerResult<()> {
+    fn send(&self, stream: StreamToken) -> IoHandlerResult<()> {
         let (connection_type, remain) = self.connections.send(stream)?;
         match connection_type {
-            ConnectionType::None => Err(Error::InvalidStream(*stream).into()),
+            ConnectionType::None => Err(Error::InvalidStream(stream).into()),
             ConnectionType::AckWaiting => {
                 debug_assert!(!remain);
                 Ok(())
@@ -314,11 +315,11 @@ impl Handler {
                 }
                 // Ack message was sent
                 self.connections.establish_wait_sync_connection(stream);
-                self.connections.node_id(&stream).ok_or(Error::InvalidStream(*stream))?;
+                self.connections.node_id(stream).ok_or_else(|| Error::InvalidStream(stream))?;
                 Ok(())
             }
             ConnectionType::Established => Ok(()),
-            ConnectionType::Disconnecting => Err(Error::InvalidStream(*stream).into()),
+            ConnectionType::Disconnecting => Err(Error::InvalidStream(stream).into()),
         }
     }
 }
@@ -352,7 +353,7 @@ impl IoHandler<Message> for Handler {
                 Ok(())
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                let node_id = self.connections.node_id(&token).ok_or(Error::InvalidStream(token))?;
+                let node_id = self.connections.node_id(token).ok_or_else(|| Error::InvalidStream(token))?;
                 let address = node_id.into_addr();
 
                 if !self.routing_table.reset_session(&address) {
@@ -390,8 +391,8 @@ impl IoHandler<Message> for Handler {
             } => {
                 let versions = self.client.extension_versions();
                 for (extension_name, versions) in versions.into_iter() {
-                    let token = self.connections.stream_token(&node_id).ok_or(Error::InvalidNode(*node_id))?;
-                    if !self.connections.enqueue_negotiation_request(&token, extension_name, versions) {
+                    let token = self.connections.stream_token(&node_id).ok_or_else(|| Error::InvalidNode(*node_id))?;
+                    if !self.connections.enqueue_negotiation_request(token, extension_name, versions) {
                         return Err(Error::InvalidStream(token).into())
                     }
                     io.update_registration(token);
@@ -404,8 +405,8 @@ impl IoHandler<Message> for Handler {
                 need_encryption,
                 data,
             } => {
-                let token = self.connections.stream_token(node_id).ok_or(Error::InvalidNode(*node_id))?;
-                if !self.connections.enqueue_extension_message(&token, extension_name, *need_encryption, data) {
+                let token = self.connections.stream_token(node_id).ok_or_else(|| Error::InvalidNode(*node_id))?;
+                if !self.connections.enqueue_extension_message(token, extension_name, *need_encryption, data) {
                     return Err(Error::InvalidStream(token).into())
                 }
                 io.update_registration(token);
@@ -434,7 +435,7 @@ impl IoHandler<Message> for Handler {
             ACCEPT_TOKEN => unreachable!(),
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 ctrace!(NETWORK, "Hup event for {}", stream);
-                if !self.connections.is_connected(&stream) {
+                if !self.connections.is_connected(stream) {
                     return Err(format!("stream's hup event called twice from {:?}", stream).into())
                 }
                 let register_new_timer = AtomicBool::new(false);
@@ -446,9 +447,9 @@ impl IoHandler<Message> for Handler {
                 if self.connections.len() < self.min_peers {
                     register_new_timer.store(true, Ordering::SeqCst);
                 }
-                let was_established = self.connections.is_established(&stream);
-                self.connections.set_disconnecting(&stream);
-                let node_id = self.connections.node_id(&stream).ok_or(Error::InvalidStream(stream))?;
+                let was_established = self.connections.is_established(stream);
+                self.connections.set_disconnecting(stream);
+                let node_id = self.connections.node_id(stream).ok_or_else(|| Error::InvalidStream(stream))?;
                 self.routing_table.remove_node_on_shutdown(node_id.into_addr());
                 if was_established {
                     self.client.on_node_removed(&node_id);
@@ -473,7 +474,7 @@ impl IoHandler<Message> for Handler {
                     io.update_registration(stream);
                 });
                 loop {
-                    if !self.receive(&stream, &self.client, io)? {
+                    if !self.receive(stream, &self.client, io)? {
                         break
                     }
                 }
@@ -490,7 +491,7 @@ impl IoHandler<Message> for Handler {
                 let _f = finally(|| {
                     io.update_registration(stream);
                 });
-                self.send(&stream)
+                self.send(stream)
             }
             _ => unreachable!(),
         }
@@ -509,7 +510,7 @@ impl IoHandler<Message> for Handler {
                 Ok(())
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                self.connections.register(&stream, reg, event_loop)?;
+                self.connections.register(stream, reg, event_loop)?;
                 Ok(())
             }
             _ => {
@@ -529,7 +530,7 @@ impl IoHandler<Message> for Handler {
                 unreachable!();
             }
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
-                self.connections.reregister(&stream, reg, event_loop)?;
+                self.connections.reregister(stream, reg, event_loop)?;
                 Ok(())
             }
             _ => {
@@ -548,8 +549,8 @@ impl IoHandler<Message> for Handler {
             FIRST_CONNECTION_TOKEN...LAST_CONNECTION_TOKEN => {
                 let mut tokens = self.tokens.lock();
                 tokens.restore(stream);
-                self.connections.remove(&stream);
-                self.connections.deregister(&stream, event_loop)?;
+                self.connections.remove(stream);
+                self.connections.deregister(stream, event_loop)?;
             }
             _ => unreachable!(),
         }
@@ -559,6 +560,6 @@ impl IoHandler<Message> for Handler {
 
 impl From<SymmetricCipherError> for Error {
     fn from(err: SymmetricCipherError) -> Self {
-        Error::SymmetricCipherError(err)
+        Error::SymmetricCipher(err)
     }
 }

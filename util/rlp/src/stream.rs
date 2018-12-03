@@ -219,6 +219,10 @@ impl RlpStream {
         self.estimate_size(0)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Clear the output stream so far.
     ///
     /// ```rust
@@ -270,15 +274,13 @@ impl RlpStream {
     ///
     /// panic! if stream is not finished.
     pub fn out(self) -> Vec<u8> {
-        match self.is_finished() {
-            //true => self.encoder.out().into_vec(),
-            true => self.buffer.into_vec(),
-            false => panic!(),
-        }
+        assert!(self.is_finished());
+        // self.encoder.out().into_vec()
+        self.buffer.into_vec()
     }
 
     /// Try to finish lists
-    fn note_appended(&mut self, inserted_items: usize) -> () {
+    fn note_appended(&mut self, inserted_items: usize) {
         if self.unfinished_lists.len() == 0 {
             return
         }
@@ -311,10 +313,8 @@ impl RlpStream {
 
     /// Drain the object and return the underlying ElasticArray.
     pub fn drain(self) -> ElasticArray1024<u8> {
-        match self.is_finished() {
-            true => self.buffer,
-            false => panic!(),
-        }
+        assert!(self.is_finished());
+        self.buffer
     }
 
     /// Finalize current ubnbound list. Panics if no unbounded list has been opened.

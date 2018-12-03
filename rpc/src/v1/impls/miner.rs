@@ -70,7 +70,7 @@ where
                     target,
                 })
             })
-            .unwrap_or(Err(errors::internal("No work found.", "")))
+            .unwrap_or_else(|| Err(errors::internal("No work found.", "")))
     }
 
     fn submit_work(&self, pow_hash: H256, seal: Vec<Bytes>) -> Result<bool> {

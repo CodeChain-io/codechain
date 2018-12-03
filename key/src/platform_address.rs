@@ -38,7 +38,7 @@ pub struct PlatformAddress {
 
 impl PlatformAddress {
     pub fn new_v1(network_id: NetworkId, address: Address) -> Self {
-        assert!(check_network_id(&network_id));
+        assert!(check_network_id(network_id));
         Self {
             network_id,
             version: 1,
@@ -55,14 +55,14 @@ impl PlatformAddress {
     }
 
     pub fn try_address(&self) -> Result<&Address, Error> {
-        if !check_network_id(&self.network_id) {
+        if !check_network_id(self.network_id) {
             return Err(Error::InvalidNetworkId(self.network_id))
         }
         Ok(&self.address)
     }
 
     pub fn try_into_address(self) -> Result<Address, Error> {
-        if !check_network_id(&self.network_id) {
+        if !check_network_id(self.network_id) {
             return Err(Error::InvalidNetworkId(self.network_id))
         }
         Ok(self.address)
@@ -105,7 +105,7 @@ fn rearrange_bits(data: &[u8], from: usize, into: usize) -> Vec<u8> {
 
 impl fmt::Display for PlatformAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        assert!(check_network_id(&self.network_id));
+        assert!(check_network_id(self.network_id));
         let hrp = format!("{}c", self.network_id);
         let mut data = Vec::new();
         data.push(self.version);
@@ -139,7 +139,7 @@ impl FromStr for PlatformAddress {
             .expect("decoded.hrp.len() == 3")
             .parse::<NetworkId>()
             .map_err(|_| Error::Bech32UnknownHRP)?;
-        if !check_network_id(&network_id) {
+        if !check_network_id(network_id) {
             return Err(Error::InvalidNetworkId(network_id))
         }
         if Some("c") != decoded.hrp.get(2..3) {
@@ -154,9 +154,7 @@ impl FromStr for PlatformAddress {
             version: data[0],
             address: {
                 let mut arr = [0u8; 20];
-                for i in 0..20 {
-                    arr[i] = data[1 + i];
-                }
+                arr[..20].clone_from_slice(&data[1..=20]);
                 H160(arr).into()
             },
         })
@@ -165,7 +163,7 @@ impl FromStr for PlatformAddress {
 
 impl From<&'static str> for PlatformAddress {
     fn from(s: &'static str) -> Self {
-        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
+        s.parse().unwrap_or_else(|_| panic!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 
@@ -212,12 +210,12 @@ impl<'a> Visitor<'a> for PlatformAddressVisitor {
 lazy_static! {
     static ref NETWORK_ID: Mutex<Option<NetworkId>> = Mutex::new(None);
 }
-fn check_network_id(network_id: &NetworkId) -> bool {
+fn check_network_id(network_id: NetworkId) -> bool {
     let mut saved_network_id = NETWORK_ID.lock();
     if saved_network_id.is_none() {
-        *saved_network_id = Some(*network_id);
+        *saved_network_id = Some(network_id);
     }
-    saved_network_id.as_ref() == Some(network_id)
+    *saved_network_id == Some(network_id)
 }
 
 #[cfg(test)]

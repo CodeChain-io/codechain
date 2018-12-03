@@ -51,7 +51,7 @@ impl Filter {
                 self.list.insert(addr, tag);
             }
             None => {
-                self.list.entry(addr).or_insert(String::new());
+                self.list.entry(addr).or_insert_with(String::new);
             }
         };
     }

@@ -69,7 +69,7 @@ impl CodeChainMachine {
 
     /// Verify a particular parcel is valid, regardless of order.
     pub fn verify_parcel_unordered(&self, p: UnverifiedParcel, _header: &Header) -> Result<SignedParcel, Error> {
-        Ok(SignedParcel::new(p)?)
+        Ok(SignedParcel::try_new(p)?)
     }
 
     /// Does verification of the parcel against the parent state.
@@ -81,11 +81,8 @@ impl CodeChainMachine {
         verify_timelock: bool,
     ) -> Result<(), Error> {
         if verify_timelock {
-            match &parcel.action {
-                Action::AssetTransaction(transaction) => {
-                    Self::verify_transaction_timelock(transaction, header, client)?;
-                }
-                _ => (),
+            if let Action::AssetTransaction(transaction) = &parcel.action {
+                Self::verify_transaction_timelock(transaction, header, client)?;
             }
         }
         // FIXME: Filter parcels.
@@ -121,12 +118,13 @@ impl CodeChainMachine {
                         .into())
                     }
                     Timelock::BlockAge(value) => {
-                        let absolute = client.transaction_block_number(&input.prev_out.transaction_hash).ok_or(
-                            Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                timelock,
-                                remaining_time: u64::max_value(),
-                            })),
-                        )? + value;
+                        let absolute =
+                            client.transaction_block_number(&input.prev_out.transaction_hash).ok_or_else(|| {
+                                Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                    timelock,
+                                    remaining_time: u64::max_value(),
+                                }))
+                            })? + value;
                         if absolute > header.number() {
                             return Err(StateError::Transaction(TransactionError::Timelocked {
                                 timelock,
@@ -143,12 +141,13 @@ impl CodeChainMachine {
                         .into())
                     }
                     Timelock::TimeAge(value) => {
-                        let absolute = client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or(
-                            Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                timelock,
-                                remaining_time: u64::max_value(),
-                            })),
-                        )? + value;
+                        let absolute =
+                            client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or_else(|| {
+                                Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                    timelock,
+                                    remaining_time: u64::max_value(),
+                                }))
+                            })? + value;
                         if absolute > header.timestamp() {
                             return Err(StateError::Transaction(TransactionError::Timelocked {
                                 timelock,
@@ -179,6 +178,7 @@ impl WithBalances for CodeChainMachine {
     }
 
     fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: u64) -> Result<(), Self::Error> {
-        Ok(live.state_mut().add_balance(address, amount).map_err(StateError::from)?)
+        live.state_mut().add_balance(address, amount).map_err(StateError::from)?;
+        Ok(())
     }
 }

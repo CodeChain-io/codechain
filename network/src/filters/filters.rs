@@ -28,6 +28,7 @@ pub struct Filters {
 }
 
 impl Filters {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(whitelist_vector: Vec<FilterEntry>, blacklist_vector: Vec<FilterEntry>) -> Arc<Self> {
         let whitelist = Filter::new(whitelist_vector);
         let blacklist = Filter::new(blacklist_vector);
@@ -111,16 +112,12 @@ impl Control for Filters {
         let whitelist = self.whitelist.read();
         let blacklist = self.blacklist.read();
 
-        if whitelist.is_enabled() {
-            if !whitelist.contains(addr) {
-                return false
-            }
+        if whitelist.is_enabled() && !whitelist.contains(addr) {
+            return false
         }
 
-        if blacklist.is_enabled() {
-            if blacklist.contains(addr) {
-                return false
-            }
+        if blacklist.is_enabled() && blacklist.contains(addr) {
+            return false
         }
         true
     }

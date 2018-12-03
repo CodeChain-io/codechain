@@ -66,9 +66,10 @@ impl KeyStore {
 impl SimpleSecretStore for KeyStore {
     fn insert_account(&self, secret: Secret, password: &Password) -> Result<Address, Error> {
         let keypair = KeyPair::from_private(secret.into()).map_err(|_| Error::CreationFailed)?;
-        match self.has_account(&keypair.address())? {
-            true => Err(Error::AlreadyExists),
-            false => self.store.insert_account(secret, password),
+        if self.has_account(&keypair.address())? {
+            Err(Error::AlreadyExists)
+        } else {
+            self.store.insert_account(secret, password)
         }
     }
 
@@ -160,7 +161,7 @@ impl SecretStore for KeyStore {
         safe_account.meta = meta;
 
         // save to file
-        self.store.update(account_ref, old, safe_account)
+        self.store.update(account_ref, &old, safe_account)
     }
 
     fn local_path(&self) -> PathBuf {
@@ -283,7 +284,7 @@ impl KeyMultiStore {
         Ok(account_ref)
     }
 
-    fn update(&self, account_ref: &Address, old: SafeAccount, new: SafeAccount) -> Result<(), Error> {
+    fn update(&self, account_ref: &Address, old: &SafeAccount, new: SafeAccount) -> Result<(), Error> {
         // save to file
         let account = self.dir.update(new)?;
 
@@ -291,7 +292,7 @@ impl KeyMultiStore {
         let mut cache = self.cache.write();
         let accounts = cache.entry(*account_ref).or_insert_with(Vec::new);
         // Remove old account
-        accounts.retain(|acc| acc != &old);
+        accounts.retain(|acc| acc != old);
         // And push updated to the end
         accounts.push(account);
         Ok(())
@@ -368,7 +369,7 @@ impl SimpleSecretStore for KeyMultiStore {
         for account in accounts {
             // Change password
             let new_account = account.change_password(old_password, new_password, self.iterations)?;
-            self.update(account_ref, account, new_account)?;
+            self.update(account_ref, &account, new_account)?;
         }
 
         Ok(())

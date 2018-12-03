@@ -41,7 +41,7 @@ use rocksdb::{
 };
 
 use elastic_array::ElasticArray32;
-use kvdb::{DBOp, DBTransaction, DBValue, KeyValueDB, Result};
+use kvdb::{DBOp, DBTransaction, DBValue, KeyValueDB, KeyValueDBIterator, Result};
 use rlp::{Compressible, RlpType, UntrustedRlp};
 
 #[cfg(target_os = "linux")]
@@ -79,9 +79,9 @@ impl Default for CompactionProfile {
 
 /// Given output of df command return Linux rotational flag file path.
 #[cfg(target_os = "linux")]
-pub fn rotational_from_df_output(df_out: Vec<u8>) -> Option<PathBuf> {
+pub fn rotational_from_df_output(df_out: &[u8]) -> Option<PathBuf> {
     use std::str;
-    str::from_utf8(df_out.as_slice())
+    str::from_utf8(df_out)
 		.ok()
 		// Get the drive name.
 		.and_then(|df_str| Regex::new(r"/dev/(sd[:alpha:]{1,2})")
@@ -105,11 +105,8 @@ impl CompactionProfile {
         let hdd_check_file = db_path
             .to_str()
             .and_then(|path_str| Command::new("df").arg(path_str).output().ok())
-            .and_then(|df_res| match df_res.status.success() {
-                true => Some(df_res.stdout),
-                false => None,
-            })
-            .and_then(rotational_from_df_output);
+            .filter(|df| df.status.success())
+            .and_then(|df| rotational_from_df_output(&df.stdout));
         // Read out the file and match compaction profile.
         if let Some(hdd_check) = hdd_check_file {
             if let Ok(mut file) = File::open(hdd_check.as_path()) {
@@ -200,12 +197,13 @@ impl Default for DatabaseConfig {
     }
 }
 
+type KeyValueIntoIter = ::std::vec::IntoIter<(Box<[u8]>, Box<[u8]>)>;
 /// Database iterator (for flushed data only)
 // The compromise of holding only a virtual borrow vs. holding a lock on the
 // inner DB (to prevent closing via restoration) may be re-evaluated in the future.
 //
 pub struct DatabaseIterator<'a> {
-    iter: InterleaveOrdered<::std::vec::IntoIter<(Box<[u8]>, Box<[u8]>)>, DBIterator>,
+    iter: InterleaveOrdered<KeyValueIntoIter, DBIterator>,
     _marker: PhantomData<&'a Database>,
 }
 
@@ -369,16 +367,15 @@ impl Database {
                 warn!("DB corrupted: {}, attempting repair", s);
                 DB::repair(&opts, path)?;
 
-                match cfnames.is_empty() {
-                    true => DB::open(&opts, path)?,
-                    false => {
-                        let db = DB::open_cf(&opts, path, &cfnames, &cf_options)?;
-                        cfs = cfnames
-                            .iter()
-                            .map(|n| db.cf_handle(n).expect("rocksdb opens a cf_handle for each cfname; qed"))
-                            .collect();
-                        db
-                    }
+                if cfnames.is_empty() {
+                    DB::open(&opts, path)?
+                } else {
+                    let db = DB::open_cf(&opts, path, &cfnames, &cf_options)?;
+                    cfs = cfnames
+                        .iter()
+                        .map(|n| db.cf_handle(n).expect("rocksdb opens a cf_handle for each cfname; qed"))
+                        .collect();
+                    db
                 }
             }
             Err(s) => return Err(s.into()),
@@ -391,8 +388,8 @@ impl Database {
             })),
             config: *config,
             write_opts,
-            overlay: RwLock::new((0..(num_cols + 1)).map(|_| HashMap::new()).collect()),
-            flushing: RwLock::new((0..(num_cols + 1)).map(|_| HashMap::new()).collect()),
+            overlay: RwLock::new((0..=num_cols).map(|_| HashMap::new()).collect()),
+            flushing: RwLock::new((0..=num_cols).map(|_| HashMap::new()).collect()),
             flushing_lock: Mutex::new(false),
             path: path.to_owned(),
             read_opts,
@@ -403,11 +400,6 @@ impl Database {
     /// Helper to create new parcel for this database.
     pub fn transaction(&self) -> DBTransaction {
         DBTransaction::new()
-    }
-
-
-    fn to_overlay_column(col: Option<u32>) -> usize {
-        col.map_or(0, |c| (c + 1) as usize)
     }
 
     /// Commit parcel to database.
@@ -421,7 +413,7 @@ impl Database {
                     key,
                     value,
                 } => {
-                    let c = Self::to_overlay_column(col);
+                    let c = col_to_overlay_column(col);
                     overlay[c].insert(key, KeyState::Insert(value));
                 }
                 DBOp::InsertCompressed {
@@ -429,14 +421,14 @@ impl Database {
                     key,
                     value,
                 } => {
-                    let c = Self::to_overlay_column(col);
+                    let c = col_to_overlay_column(col);
                     overlay[c].insert(key, KeyState::InsertCompressed(value));
                 }
                 DBOp::Delete {
                     col,
                     key,
                 } => {
-                    let c = Self::to_overlay_column(col);
+                    let c = col_to_overlay_column(col);
                     overlay[c].insert(key, KeyState::Delete);
                 }
             }
@@ -558,14 +550,14 @@ impl Database {
                 ref db,
                 ref cfs,
             }) => {
-                let overlay = &self.overlay.read()[Self::to_overlay_column(col)];
+                let overlay = &self.overlay.read()[col_to_overlay_column(col)];
                 match overlay.get(key) {
                     Some(&KeyState::Insert(ref value)) | Some(&KeyState::InsertCompressed(ref value)) => {
                         Ok(Some(value.clone()))
                     }
                     Some(&KeyState::Delete) => Ok(None),
                     None => {
-                        let flushing = &self.flushing.read()[Self::to_overlay_column(col)];
+                        let flushing = &self.flushing.read()[col_to_overlay_column(col)];
                         match flushing.get(key) {
                             Some(&KeyState::Insert(ref value)) | Some(&KeyState::InsertCompressed(ref value)) => {
                                 Ok(Some(value.clone()))
@@ -613,7 +605,7 @@ impl Database {
                 ref db,
                 ref cfs,
             }) => {
-                let overlay = &self.overlay.read()[Self::to_overlay_column(col)];
+                let overlay = &self.overlay.read()[col_to_overlay_column(col)];
                 let mut overlay_data = overlay
                     .iter()
                     .filter_map(|(k, v)| match *v {
@@ -769,6 +761,10 @@ impl Database {
     }
 }
 
+fn col_to_overlay_column(col: Option<u32>) -> usize {
+    col.map_or(0, |c| (c + 1) as usize)
+}
+
 // duplicate declaration of methods here to avoid trait import in certain existing cases
 // at time of addition.
 impl KeyValueDB for Database {
@@ -792,16 +788,12 @@ impl KeyValueDB for Database {
         Database::flush(self)
     }
 
-    fn iter<'a>(&'a self, col: Option<u32>) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a> {
+    fn iter(&self, col: Option<u32>) -> KeyValueDBIterator {
         let unboxed = Database::iter(self, col);
         Box::new(unboxed.into_iter().flat_map(|inner| inner))
     }
 
-    fn iter_from_prefix<'a>(
-        &'a self,
-        col: Option<u32>,
-        prefix: &'a [u8],
-    ) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a> {
+    fn iter_from_prefix<'a>(&'a self, col: Option<u32>, prefix: &'a [u8]) -> KeyValueDBIterator {
         let unboxed = Database::iter_from_prefix(self, col, prefix);
         Box::new(unboxed.into_iter().flat_map(|inner| inner))
     }
@@ -900,7 +892,7 @@ mod tests {
             52, 52, 52, 54, 49, 54, 32, 32, 54, 55, 37, 32, 47, 10,
         ];
         let expected_output = Some(PathBuf::from("/sys/block/sda/queue/rotational"));
-        assert_eq!(rotational_from_df_output(example_df), expected_output);
+        assert_eq!(rotational_from_df_output(&example_df), expected_output);
     }
 
     #[test]

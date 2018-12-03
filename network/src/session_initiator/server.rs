@@ -126,12 +126,14 @@ impl Server {
     pub fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
         Message: Send + Sync + Clone + 'static, {
-        Ok(event_loop.register(&self.socket, reg, self.interest(), PollOpt::edge())?)
+        event_loop.register(&self.socket, reg, self.interest(), PollOpt::edge())?;
+        Ok(())
     }
 
     pub fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
         Message: Send + Sync + Clone + 'static, {
-        Ok(event_loop.reregister(&self.socket, reg, self.interest(), PollOpt::edge())?)
+        event_loop.reregister(&self.socket, reg, self.interest(), PollOpt::edge())?;
+        Ok(())
     }
 }

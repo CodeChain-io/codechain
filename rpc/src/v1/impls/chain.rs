@@ -71,19 +71,16 @@ where
     fn send_signed_parcel(&self, raw: Bytes) -> Result<H256> {
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
-            .map_err(errors::rlp)
+            .map_err(|e| errors::rlp(&e))
             .and_then(|parcel: UnverifiedParcel| {
-                match &parcel.action {
-                    Action::Custom(bytes) => {
-                        if !self.client.custom_handlers().iter().any(|c| c.is_target(bytes)) {
-                            return Err(errors::rlp(DecoderError::Custom("Invalid custom action!")))
-                        }
+                if let Action::Custom(bytes) = &parcel.action {
+                    if !self.client.custom_handlers().iter().any(|c| c.is_target(bytes)) {
+                        return Err(errors::rlp(&DecoderError::Custom("Invalid custom action!")))
                     }
-                    _ => {}
                 }
                 Ok(parcel)
             })
-            .and_then(|parcel| SignedParcel::new(parcel).map_err(errors::parcel_core))
+            .and_then(|parcel| SignedParcel::try_new(parcel).map_err(errors::parcel_core))
             .and_then(|signed| {
                 let hash = signed.hash();
                 self.miner.import_own_parcel(&*self.client, signed).map_err(errors::parcel_core).map(|_| hash)
@@ -92,14 +89,14 @@ where
     }
 
     fn get_parcel(&self, parcel_hash: H256) -> Result<Option<Parcel>> {
-        match self.client.parcel(parcel_hash.into()) {
+        match self.client.parcel(&parcel_hash.into()) {
             Some(parcel) => Ok(Some(parcel.into())),
             None => Ok(None),
         }
     }
 
     fn get_parcel_invoice(&self, parcel_hash: H256) -> Result<Option<Invoice>> {
-        Ok(self.client.parcel_invoice(parcel_hash.into()))
+        Ok(self.client.parcel_invoice(&parcel_hash.into()))
     }
 
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
@@ -198,20 +195,20 @@ where
     }
 
     fn get_block_hash(&self, block_number: u64) -> Result<Option<H256>> {
-        Ok(self.client.block_hash(BlockId::Number(block_number)))
+        Ok(self.client.block_hash(&BlockId::Number(block_number)))
     }
 
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {
         Ok(self
             .client
-            .block(BlockId::Number(block_number))
+            .block(&BlockId::Number(block_number))
             .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 
     fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
         Ok(self
             .client
-            .block(BlockId::Hash(block_hash))
+            .block(&BlockId::Hash(block_hash))
             .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 

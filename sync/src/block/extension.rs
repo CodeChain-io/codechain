@@ -65,6 +65,7 @@ pub struct Extension {
 }
 
 impl Extension {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(client: Arc<Client>) -> Arc<Self> {
         Arc::new(Self {
             requests: RwLock::new(HashMap::new()),
@@ -79,9 +80,9 @@ impl Extension {
         })
     }
 
-    fn send_message(&self, id: &NodeId, message: Message) {
+    fn send_message(&self, id: &NodeId, message: &Message) {
         let api = self.api.read();
-        api.as_ref().expect("Api must exist").send(id, &message.rlp_bytes().to_vec());
+        api.as_ref().expect("Api must exist").send(id, &*message.rlp_bytes());
     }
 
     fn dismiss_request(&self, id: &NodeId, request_id: u64) {
@@ -94,7 +95,7 @@ impl Extension {
         if let Some(requests) = self.requests.write().get_mut(id) {
             let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
             requests.push((request_id, request.clone()));
-            self.send_message(id, Message::Request(request_id, request));
+            self.send_message(id, &Message::Request(request_id, request));
         }
     }
 
@@ -113,7 +114,7 @@ impl Extension {
             if let Some(request) = self.body_downloader.lock().create_request() {
                 let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
                 requests.push((request_id, request.clone()));
-                self.send_message(id, Message::Request(request_id, request));
+                self.send_message(id, &Message::Request(request_id, request));
 
                 let tokens = self.tokens.read();
                 let mut tokens_info = self.tokens_info.write();
@@ -132,7 +133,7 @@ impl Extension {
     }
 
     fn send_response(&self, id: &NodeId, request_id: u64, response: ResponseMessage) {
-        self.send_message(id, Message::Response(request_id, response));
+        self.send_message(id, &Message::Response(request_id, response));
     }
 }
 
@@ -156,10 +157,10 @@ impl NetworkExtension for Extension {
 
         let mut header = self.client.best_header();
         let mut hollow_headers = vec![header.decode()];
-        while self.client.block_body(BlockId::Hash(header.hash())).is_none() {
+        while self.client.block_body(&BlockId::Hash(header.hash())).is_none() {
             header = self
                 .client
-                .block_header(BlockId::Hash(header.parent_hash()))
+                .block_header(&BlockId::Hash(header.parent_hash()))
                 .expect("Every imported header must have parent");
             hollow_headers.push(header.decode());
         }
@@ -182,7 +183,7 @@ impl NetworkExtension for Extension {
         let chain_info = self.client.chain_info();
         self.send_message(
             id,
-            Message::Status {
+            &Message::Status {
                 total_score: chain_info.total_score,
                 best_hash: chain_info.best_block_hash,
                 genesis_hash: chain_info.genesis_hash,
@@ -318,17 +319,17 @@ impl ChainNotify for Extension {
         }
         let mut enacted_headers: Vec<_> = enacted
             .into_iter()
-            .map(|hash| self.client.block_header(BlockId::Hash(hash)).expect("Enacted header must exist"))
+            .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
             .collect();
         enacted_headers.sort_unstable_by_key(|header| header.number());
 
         enacted_headers
             .into_iter()
-            .filter(|header| self.client.block_body(BlockId::Hash(header.hash())).is_none())
+            .filter(|header| self.client.block_body(&BlockId::Hash(header.hash())).is_none())
             .for_each(|header| {
                 let parent = self
                     .client
-                    .block_header(BlockId::Hash(header.parent_hash()))
+                    .block_header(&BlockId::Hash(header.parent_hash()))
                     .expect("Enacted header must have parent");
                 self.body_downloader.lock().add_target(&header.decode(), &parent.decode());
             });
@@ -353,7 +354,7 @@ impl ChainNotify for Extension {
         for id in peer_ids.keys() {
             self.send_message(
                 id,
-                Message::Status {
+                &Message::Status {
                     total_score: chain_info.total_score,
                     best_hash: chain_info.best_block_hash,
                     genesis_hash: chain_info.genesis_hash,
@@ -414,7 +415,7 @@ impl Extension {
                 ..
             } => true,
             RequestMessage::Bodies(hashes) => !hashes.is_empty(),
-            RequestMessage::StateHead(hash) => match self.client.block_number(BlockId::Hash(*hash)) {
+            RequestMessage::StateHead(hash) => match self.client.block_number(&BlockId::Hash(*hash)) {
                 Some(number) if number % SNAPSHOT_PERIOD == 0 => true,
                 _ => false,
             },
@@ -422,7 +423,7 @@ impl Extension {
                 block_hash,
                 ..
             } => {
-                let _is_checkpoint = match self.client.block_number(BlockId::Hash(*block_hash)) {
+                let _is_checkpoint = match self.client.block_number(&BlockId::Hash(*block_hash)) {
                     Some(number) if number % SNAPSHOT_PERIOD == 0 => true,
                     _ => false,
                 };
@@ -434,7 +435,7 @@ impl Extension {
 
     fn create_headers_response(&self, start_number: BlockNumber, max_count: u64) -> ResponseMessage {
         let headers = (0..max_count)
-            .map(|number| self.client.block(BlockId::Number(start_number + number)))
+            .map(|number| self.client.block(&BlockId::Number(start_number + number)))
             .take_while(|block| block.is_some())
             .map(|block| block.expect("take_while guarantees existance of item").header().decode())
             .collect();
@@ -444,7 +445,7 @@ impl Extension {
     fn create_bodies_response(&self, hashes: Vec<H256>) -> ResponseMessage {
         let bodies = hashes
             .into_iter()
-            .map(|hash| self.client.block_body(BlockId::Hash(hash)).map(|body| body.parcels()).unwrap_or_default())
+            .map(|hash| self.client.block_body(&BlockId::Hash(hash)).map(|body| body.parcels()).unwrap_or_default())
             .collect();
         ResponseMessage::Bodies(bodies)
     }
@@ -460,11 +461,8 @@ impl Extension {
     fn on_peer_response(&self, from: &NodeId, id: u64, mut response: ResponseMessage) {
         let last_request = self.requests.read()[from].iter().find(|(i, _)| *i == id).cloned();
         if let Some((_, request)) = last_request {
-            match &mut response {
-                ResponseMessage::Headers(headers) => {
-                    headers.sort_unstable_by_key(|h| h.number());
-                }
-                _ => {}
+            if let ResponseMessage::Headers(headers) = &mut response {
+                headers.sort_unstable_by_key(|h| h.number());
             }
 
             if !self.is_valid_response(&request, &response) {
@@ -474,7 +472,7 @@ impl Extension {
             match response {
                 ResponseMessage::Headers(headers) => {
                     self.dismiss_request(from, id);
-                    self.on_header_response(from, headers)
+                    self.on_header_response(from, &headers)
                 }
                 ResponseMessage::Bodies(bodies) => {
                     let hashes = match request {
@@ -549,10 +547,10 @@ impl Extension {
         }
     }
 
-    fn on_header_response(&self, from: &NodeId, headers: Vec<Header>) {
+    fn on_header_response(&self, from: &NodeId, headers: &[Header]) {
         let mut completed = if let Some(peer) = self.header_downloaders.write().get_mut(from) {
-            let encoded = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
-            peer.import_headers(encoded);
+            let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
+            peer.import_headers(&encoded);
             peer.downloaded()
         } else {
             Vec::new()
@@ -588,7 +586,7 @@ impl Extension {
             for (hash, parcels) in completed {
                 let header = self
                     .client
-                    .block_header(BlockId::Hash(hash))
+                    .block_header(&BlockId::Hash(hash))
                     .expect("Downloaded body's header must exist")
                     .decode();
                 let block = Block {
@@ -596,7 +594,7 @@ impl Extension {
                     parcels,
                 };
                 cdebug!(SYNC, "Body download completed for #{}({})", block.header.number(), hash);
-                match self.client.import_block(block.rlp_bytes(Seal::With)) {
+                match self.client.import_block(block.rlp_bytes(&Seal::With)) {
                     Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {
                         cwarn!(SYNC, "Downloaded already existing block({})", hash)
                     }

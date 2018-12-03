@@ -34,6 +34,7 @@ pub struct Extension {
 }
 
 impl Extension {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(config: Config) -> Arc<Self> {
         Arc::new(Self {
             config,
@@ -56,14 +57,14 @@ impl NetworkExtension for Extension {
     }
 
     fn versions(&self) -> &[u64] {
-        const VERSIONS: &'static [u64] = &[0];
+        const VERSIONS: &[u64] = &[0];
         &VERSIONS
     }
 
     fn on_initialize(&self, api: Arc<Api>) {
         let mut api_lock = self.api.write();
 
-        api.set_timer(REFRESH_TOKEN, Duration::milliseconds(self.config.t_refresh as i64))
+        api.set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(self.config.t_refresh)))
             .expect("Refresh msut be registered");
 
         *api_lock = Some(api);
@@ -73,7 +74,9 @@ impl NetworkExtension for Extension {
         let api = self.api.read();
         let mut nodes = self.nodes.write();
         nodes.insert(*node);
-        api.as_ref().map(|api| api.send(&node, &Message::Request(self.config.bucket_size).rlp_bytes()));
+        if let Some(api) = api.as_ref() {
+            api.send(&node, &Message::Request(self.config.bucket_size).rlp_bytes());
+        }
     }
 
     fn on_node_removed(&self, node: &NodeId) {
@@ -93,19 +96,14 @@ impl NetworkExtension for Extension {
             Message::Request(len) => {
                 let routing_table = self.routing_table.read();
                 let api = self.api.read();
-                match (&*api, &*routing_table) {
-                    (Some(api), Some(routing_table)) => {
-                        let mut addresses =
-                            routing_table.reachable_addresses(&node.into_addr()).into_iter().collect::<Vec<_>>();
-                        thread_rng().shuffle(&mut addresses);
-                        let addresses = addresses
-                            .into_iter()
-                            .take(::std::cmp::min(self.config.bucket_size, len) as usize)
-                            .collect();
-                        let response = Message::Response(addresses).rlp_bytes();
-                        api.send(&node, &response);
-                    }
-                    _ => {}
+                if let (Some(api), Some(routing_table)) = (&*api, &*routing_table) {
+                    let mut addresses =
+                        routing_table.reachable_addresses(&node.into_addr()).into_iter().collect::<Vec<_>>();
+                    thread_rng().shuffle(&mut addresses);
+                    let addresses =
+                        addresses.into_iter().take(::std::cmp::min(self.config.bucket_size, len) as usize).collect();
+                    let response = Message::Response(addresses).rlp_bytes();
+                    api.send(&node, &response);
                 }
             }
             Message::Response(addresses) => {
@@ -130,12 +128,12 @@ impl TimeoutHandler for Extension {
                 let mut api = self.api.read();
                 let nodes = self.nodes.read();
 
-                api.as_ref().map(|api| {
+                if let Some(api) = api.as_ref() {
                     let request = Message::Request(self.config.bucket_size).rlp_bytes();
                     for node in nodes.iter() {
                         api.send(&node, &request);
                     }
-                });
+                }
             }
             _ => unreachable!(),
         }

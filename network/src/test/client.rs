@@ -50,6 +50,7 @@ struct TestApi {
 }
 
 impl TestApi {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     fn new(extension: Weak<Extension>) -> Arc<Self> {
         Arc::new(Self {
             extension,
@@ -150,6 +151,7 @@ impl TestApi {
     }
 }
 
+#[derive(Default)]
 pub struct TestClient {
     nodes: HashSet<NodeId>,
     extensions: HashMap<&'static str, (Arc<Extension>, Arc<TestApi>)>,
@@ -157,10 +159,7 @@ pub struct TestClient {
 
 impl TestClient {
     pub fn new() -> Self {
-        Self {
-            nodes: HashSet::new(),
-            extensions: HashMap::new(),
-        }
+        Self::default()
     }
 
     pub fn register_extension(&mut self, extension: Arc<Extension>) {

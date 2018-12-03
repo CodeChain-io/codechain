@@ -74,8 +74,8 @@ impl Ord for ParcelOrigin {
 }
 
 impl ParcelOrigin {
-    fn is_local(&self) -> bool {
-        *self == ParcelOrigin::Local
+    fn is_local(self) -> bool {
+        self == ParcelOrigin::Local
     }
 }
 
@@ -265,7 +265,7 @@ impl ParcelSet {
         }
         self.by_fee.insert(order_fee, order_hash);
         assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-        assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_signer_public.len());
+        assert_eq!(self.by_fee.values().map(|v| v.len()).sum::<usize>(), self.by_signer_public.len());
         by_signer_public_replaced
     }
 
@@ -303,7 +303,7 @@ impl ParcelSet {
 
         Some(to_drop.into_iter().fold(HashMap::new(), |mut removed, (sender, seq)| {
             let order = self
-                .drop(&sender, &seq)
+                .drop(&sender, seq)
                 .expect("Parcel has just been found in `by_priority`; so it is in `by_signer_public` also.");
             ctrace!(MEM_POOL, "Dropped out of limit parcel: {:?}", order.hash);
 
@@ -322,8 +322,8 @@ impl ParcelSet {
     }
 
     /// Drop parcel from this set (remove from `by_priority` and `by_signer_public`)
-    fn drop(&mut self, signer_public: &Public, seq: &u64) -> Option<ParcelOrder> {
-        if let Some(parcel_order) = self.by_signer_public.remove(signer_public, seq) {
+    fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<ParcelOrder> {
+        if let Some(parcel_order) = self.by_signer_public.remove(signer_public, &seq) {
             assert!(
                 self.by_fee.remove(&parcel_order.fee, &parcel_order.hash),
                 "hash is in `by_signer_public`; all parcels' fee in `by_signer_public` must be in `by_fee`; qed"
@@ -333,11 +333,11 @@ impl ParcelSet {
                 "hash is in `by_signer_public`; all parcels in `by_signer_public` must be in `by_priority`; qed"
             );
             assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-            assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_signer_public.len());
+            assert_eq!(self.by_fee.values().map(|v| v.len()).sum::<usize>(), self.by_signer_public.len());
             return Some(parcel_order)
         }
         assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-        assert_eq!(self.by_fee.values().map(|v| v.len()).fold(0, |a, b| a + b), self.by_signer_public.len());
+        assert_eq!(self.by_fee.values().map(|v| v.len()).sum::<usize>(), self.by_signer_public.len());
         None
     }
 
@@ -519,7 +519,7 @@ impl MemPool {
             .collect::<HashMap<_, _>>();
 
         for (signer, details) in signers.iter() {
-            self.cull(*signer, details.seq, &current_time, timestamp);
+            self.cull(*signer, details.seq, current_time, timestamp);
         }
 
         let max_time = self.max_time_in_pool;
@@ -548,7 +548,7 @@ impl MemPool {
         let fetch_seq =
             |a: &Public| signers.get(a).expect("We fetch details for all signers from both current and future").seq;
         for hash in invalid {
-            self.remove(&hash, &fetch_seq, RemovalReason::Invalid, &current_time, timestamp);
+            self.remove(&hash, &fetch_seq, RemovalReason::Invalid, current_time, timestamp);
         }
     }
 
@@ -562,7 +562,7 @@ impl MemPool {
         parcel_hash: &H256,
         fetch_seq: &F,
         reason: RemovalReason,
-        current_time: &PoolingInstant,
+        current_time: PoolingInstant,
         timestamp: u64,
     ) where
         F: Fn(&Public) -> u64, {
@@ -589,7 +589,7 @@ impl MemPool {
         }
 
         // Remove from future
-        let order = self.future.drop(&signer_public, &seq);
+        let order = self.future.drop(&signer_public, seq);
         if order.is_some() {
             self.update_future(&signer_public, current_seq);
             // And now lets check if there is some chain of parcels in future
@@ -600,7 +600,7 @@ impl MemPool {
         }
 
         // Remove from current
-        let order = self.current.drop(&signer_public, &seq);
+        let order = self.current.drop(&signer_public, seq);
         if order.is_some() {
             // This will keep consistency in pool
             // Moves all to future and then promotes a batch from current:
@@ -612,16 +612,16 @@ impl MemPool {
 
     /// Removes all parcels from particular signer up to (excluding) given client (state) seq.
     /// Client (State) seq = next valid seq for this signer.
-    pub fn cull(&mut self, signer_public: Public, client_seq: u64, current_time: &PoolingInstant, timestamp: u64) {
+    pub fn cull(&mut self, signer_public: Public, client_seq: u64, current_time: PoolingInstant, timestamp: u64) {
         // Check if there is anything in current...
         let should_check_in_current = self.current.by_signer_public.row(&signer_public)
             // If seq == client_seq nothing is changed
-            .and_then(|by_seq| by_seq.keys().find(|seq| *seq < &client_seq))
+            .and_then(|by_seq| by_seq.keys().find(|seq| **seq < client_seq))
             .map(|_| ());
         // ... or future
         let should_check_in_future = self.future.by_signer_public.row(&signer_public)
             // if seq == client_seq we need to promote to current
-            .and_then(|by_seq| by_seq.keys().find(|seq| *seq <= &client_seq))
+            .and_then(|by_seq| by_seq.keys().find(|seq| **seq <= client_seq))
             .map(|_| ());
 
         if should_check_in_current.or(should_check_in_future).is_none() {
@@ -805,7 +805,7 @@ impl MemPool {
         // Update seqs of parcels in future (remove old parcels)
         self.update_future(&signer_public, state_seq);
         // State seq could be updated. Maybe there are some more items waiting in future?
-        self.move_matching_future_to_current(signer_public, state_seq, state_seq, &parcel.insertion_time, timestamp);
+        self.move_matching_future_to_current(signer_public, state_seq, state_seq, parcel.insertion_time, timestamp);
         // Check the next expected seq (might be updated by move above)
         let next_seq = self.last_seqs.get(&signer_public).map_or(state_seq, |n| *n + 1);
 
@@ -827,7 +827,7 @@ impl MemPool {
             // Enforce limit in Future
             let removed = self.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
             // Return an error if this parcel was not imported because of limit.
-            check_if_removed(&signer_public, &seq, removed)?;
+            check_if_removed(&signer_public, seq, removed)?;
 
             cdebug!(MEM_POOL, "Importing parcel to future: {:?}", hash);
             cdebug!(MEM_POOL, "status: {:?}", self.status());
@@ -835,8 +835,8 @@ impl MemPool {
         }
 
         // We might have filled a gap - move some more parcels from future
-        self.move_matching_future_to_current(signer_public, seq, state_seq, &parcel.insertion_time, timestamp);
-        self.move_matching_future_to_current(signer_public, seq + 1, state_seq, &parcel.insertion_time, timestamp);
+        self.move_matching_future_to_current(signer_public, seq, state_seq, parcel.insertion_time, timestamp);
+        self.move_matching_future_to_current(signer_public, seq + 1, state_seq, parcel.insertion_time, timestamp);
 
         if Self::should_wait_timelock(&parcel.timelock, parcel.insertion_time, timestamp) {
             // Check same seq is in current. If it
@@ -856,17 +856,11 @@ impl MemPool {
             ))?;
 
             if moved_to_future_flag {
-                self.move_matching_future_to_current(
-                    signer_public,
-                    state_seq,
-                    state_seq,
-                    &best_block_number,
-                    timestamp,
-                );
+                self.move_matching_future_to_current(signer_public, state_seq, state_seq, best_block_number, timestamp);
             }
 
             let removed = self.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
-            check_if_removed(&signer_public, &seq, removed)?;
+            check_if_removed(&signer_public, seq, removed)?;
             cdebug!(MEM_POOL, "Imported parcel to future: {:?}", hash);
             cdebug!(MEM_POOL, "status: {:?}", self.status());
             return Ok(ParcelImportResult::Future)
@@ -889,7 +883,7 @@ impl MemPool {
         // If some parcel were removed because of limit we need to update last_seqs also.
         self.update_last_seqs(&removed);
         // Trigger error if the parcel we are importing was removed.
-        check_if_removed(&signer_public, &seq, removed)?;
+        check_if_removed(&signer_public, seq, removed)?;
 
         cdebug!(MEM_POOL, "Imported parcel to current: {:?}", hash);
         cdebug!(MEM_POOL, "status: {:?}", self.status());
@@ -915,7 +909,7 @@ impl MemPool {
     }
 
     /// Always updates future and moves parcel from current to future.
-    fn cull_internal(&mut self, sender: Public, client_seq: u64, current_time: &PoolingInstant, timestamp: u64) {
+    fn cull_internal(&mut self, sender: Public, client_seq: u64, current_time: PoolingInstant, timestamp: u64) {
         // We will either move parcel to future or remove it completely
         // so there will be no parcels from this sender in current
         self.last_seqs.remove(&sender);
@@ -951,7 +945,7 @@ impl MemPool {
         for k in all_seqs_from_sender {
             let order = self
                 .future
-                .drop(signer_public, &k)
+                .drop(signer_public, k)
                 .expect("iterating over a collection that has been retrieved above; qed");
             if k >= current_seq {
                 self.future.insert(*signer_public, k, order.update_height(k, current_seq));
@@ -970,7 +964,7 @@ impl MemPool {
         public: Public,
         mut current_seq: u64,
         first_seq: u64,
-        best_block_number: &BlockNumber,
+        best_block_number: BlockNumber,
         best_block_timestamp: u64,
     ) {
         let mut update_last_seq_to = None;
@@ -981,7 +975,7 @@ impl MemPool {
             }
             let by_seq = by_seq.expect("None is tested in early-exit condition above; qed");
             while let Some(order) = by_seq.get(&current_seq).cloned() {
-                if Self::should_wait_timelock(&order.timelock, *best_block_number, best_block_timestamp) {
+                if Self::should_wait_timelock(&order.timelock, best_block_number, best_block_timestamp) {
                     break
                 }
                 let order = by_seq.remove(&current_seq).expect("None is tested in the while condition above.");
@@ -1026,7 +1020,7 @@ impl MemPool {
             // Goes to future or is removed
             let order = self
                 .current
-                .drop(signer_public, &k)
+                .drop(signer_public, k)
                 .expect("iterating over a collection that has been retrieved above; qed");
             if k >= current_seq {
                 let order = order.update_height(k, current_seq);
@@ -1078,7 +1072,7 @@ impl MemPool {
 
             for k in seqs_from_sender {
                 let mut order =
-                    set.drop(signer_public, &k).expect("parcel known to be in self.current/self.future; qed");
+                    set.drop(signer_public, k).expect("parcel known to be in self.current/self.future; qed");
                 order.origin = ParcelOrigin::Local;
                 mark(order.hash);
                 set.insert(*signer_public, k, order);
@@ -1204,10 +1198,10 @@ fn check_too_cheap(is_in: bool) -> Result<(), ParcelError> {
     }
 }
 
-fn check_if_removed(sender: &Public, seq: &u64, dropped: Option<HashMap<Public, u64>>) -> Result<(), ParcelError> {
+fn check_if_removed(sender: &Public, seq: u64, dropped: Option<HashMap<Public, u64>>) -> Result<(), ParcelError> {
     match dropped {
         Some(dropped) => match dropped.get(sender) {
-            Some(min) if seq >= min => Err(ParcelError::LimitReached),
+            Some(min) if seq >= *min => Err(ParcelError::LimitReached),
             _ => Ok(()),
         },
         _ => Ok(()),

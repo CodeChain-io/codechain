@@ -63,12 +63,14 @@ impl Api for ClientApi {
 
     fn set_timer(&self, token: TimerToken, duration: Duration) -> NetworkExtensionResult<()> {
         let duration = duration.to_std().expect("Cannot convert to standard duratino type");
-        Ok(self.timer.schedule_repeat(duration, token)?)
+        self.timer.schedule_repeat(duration, token)?;
+        Ok(())
     }
 
     fn set_timer_once(&self, token: TimerToken, duration: Duration) -> NetworkExtensionResult<()> {
         let duration = duration.to_std().expect("Cannot convert to standard duratino type");
-        Ok(self.timer.schedule_once(duration, token)?)
+        self.timer.schedule_once(duration, token)?;
+        Ok(())
     }
 
     fn clear_timer(&self, token: TimerToken) -> NetworkExtensionResult<()> {
@@ -104,9 +106,9 @@ macro_rules! define_broadcast_method {
 
 macro_rules! define_method {
     ($method_name: ident; $($var: ident, $t: ty);*) => {
-        pub fn $method_name (&self, name: &String, $($var: $t), *) {
+        pub fn $method_name (&self, name: &str, $($var: $t), *) {
             let extensions = self.extensions.read();
-            if let Some(ref extension) = extensions.get(name.as_str()) {
+            if let Some(ref extension) = extensions.get(name) {
                 extension.$method_name($($var),*);
             } else {
                 cdebug!(NETAPI, "{} doesn't exist.", name);
@@ -134,6 +136,7 @@ impl Client {
         }
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(p2p_channel: IoChannel<P2pMessage>, timer_loop: TimerLoop) -> Arc<Self> {
         Arc::new(Self {
             extensions: RwLock::new(HashMap::new()),
@@ -150,9 +153,9 @@ impl Client {
     define_method!(on_node_added; id, &NodeId; version, u64);
     define_broadcast_method!(on_node_removed; id, &NodeId);
 
-    pub fn on_message(&self, name: &String, id: &NodeId, data: &[u8]) {
+    pub fn on_message(&self, name: &str, id: &NodeId, data: &[u8]) {
         let extensions = self.extensions.read();
-        if let Some(ref extension) = extensions.get(name.as_str()) {
+        if let Some(ref extension) = extensions.get(name) {
             cdebug!(NETAPI, "`{}` receives {} bytes from {}", name, data.len(), id.into_addr());
             extension.on_message(id, data);
         } else {

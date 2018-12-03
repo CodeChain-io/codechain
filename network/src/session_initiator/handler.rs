@@ -60,8 +60,8 @@ impl Requests {
     }
 
     fn restore(&mut self, seq: usize, address: Option<SocketAddr>) -> IoHandlerResult<Option<SocketAddr>> {
-        match address {
-            Some(address) => match self.requests.get(&seq) {
+        if let Some(address) = address {
+            match self.requests.get(&seq) {
                 None => {
                     debug_assert!(!self.request_tokens.is_assigned(seq));
                     return Ok(None)
@@ -71,8 +71,7 @@ impl Requests {
                         return Err("Invalid address".into())
                     }
                 }
-            },
-            None => {}
+            }
         }
         let t = self.request_tokens.restore(seq);
         let address = self.requests.remove(&seq);
@@ -254,10 +253,8 @@ impl SessionInitiator {
                         let message = message::Message::secret_allowed(message.seq(), responder_pub_key);
                         self.server.enqueue(message, *from)?;
                         return Ok(())
-                    } else {
-                        if !self.routing_table.remove_node(*from) {
-                            cwarn!(NETWORK, "Cannot reset key pair to {}", from);
-                        }
+                    } else if !self.routing_table.remove_node(*from) {
+                        cwarn!(NETWORK, "Cannot reset key pair to {}", from);
                     }
                 }
 
@@ -337,11 +334,13 @@ impl SessionInitiator {
     }
 
     fn register(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()> {
-        Ok(self.server.register(reg, event_loop)?)
+        self.server.register(reg, event_loop)?;
+        Ok(())
     }
 
     fn reregister(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()> {
-        Ok(self.server.reregister(reg, event_loop)?)
+        self.server.reregister(reg, event_loop)?;
+        Ok(())
     }
 }
 
@@ -390,7 +389,7 @@ impl IoHandler<Message> for Handler {
                 {
                     None => {}
                     Some(address) => {
-                        if let Some(_) = session_initiator.requests.manually_connected_address.take(&address) {
+                        if session_initiator.requests.manually_connected_address.take(&address).is_some() {
                             cinfo!(NETWORK, "Timeout occurred when connecting to {}", address);
                         } else {
                             cinfo!(NETWORK, "The message to {} is dropped because of timeout", address);
@@ -423,7 +422,7 @@ impl IoHandler<Message> for Handler {
             }
             Message::RequestSession(n) => {
                 let mut session_initiator = self.session_initiator.write();
-                let addresses = session_initiator.routing_table.candidates(n);
+                let addresses = session_initiator.routing_table.candidates(*n);
                 if !addresses.is_empty() {
                     let _f = finally(|| {
                         io.update_registration(RECEIVE_TOKEN);
@@ -490,7 +489,8 @@ impl IoHandler<Message> for Handler {
             unreachable!()
         }
         let session_initiator = self.session_initiator.read();
-        Ok(session_initiator.register(reg, event_loop)?)
+        session_initiator.register(reg, event_loop)?;
+        Ok(())
     }
 
     fn update_stream(
@@ -503,7 +503,8 @@ impl IoHandler<Message> for Handler {
             unreachable!()
         }
         let session_initiator = self.session_initiator.read();
-        Ok(session_initiator.reregister(reg, event_loop)?)
+        session_initiator.reregister(reg, event_loop)?;
+        Ok(())
     }
 
     fn deregister_stream(

@@ -17,10 +17,12 @@ jobs:
         - npm install -g yarn
         - rustup toolchain install nightly-2018-10-18
         - rustup component add rustfmt-preview --toolchain nightly-2018-10-18
+        - rustup component add clippy-preview --toolchain nightly-2018-10-18
       before_script:
         - cargo fetch --verbose
       script:
         - cargo +nightly-2018-10-18 fmt -- --check || TEST_FAILED=true
+        - test $TEST_FAILED || cargo +nightly-2018-10-18 clippy --all || TEST_FAILED=true
         - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
         - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
         - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start || TEST_FAILED=true
@@ -36,10 +38,12 @@ jobs:
         - npm install -g yarn
         - rustup toolchain install nightly-2018-10-18
         - rustup component add rustfmt-preview --toolchain nightly-2018-10-18
+        - rustup component add clippy-preview --toolchain nightly-2018-10-18
       before_script:
         - cargo fetch --verbose
       script:
         - cargo +nightly-2018-10-18 fmt -- --check || TEST_FAILED=true
+        - test $TEST_FAILED || cargo +nightly-2018-10-18 clippy --all || TEST_FAILED=true
         - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
         - test $TEST_FAILED || cd test && yarn && yarn lint || TEST_FAILED=true
         - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start || TEST_FAILED=true

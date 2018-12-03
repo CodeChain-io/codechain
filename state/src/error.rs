@@ -54,12 +54,3 @@ impl From<TransactionError> for Error {
         Error::Transaction(err)
     }
 }
-
-impl<E> From<Box<E>> for Error
-where
-    Error: From<E>,
-{
-    fn from(err: Box<E>) -> Self {
-        Error::from(*err)
-    }
-}

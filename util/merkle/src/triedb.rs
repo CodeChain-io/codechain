@@ -42,7 +42,7 @@ use crate::{Query, Trie, TrieError};
 ///   let mut memdb = MemoryDB::new();
 ///   let mut root = H256::new();
 ///   TrieDBMut::new(&mut memdb, &mut root).insert(b"foo", b"bar").unwrap();
-///   let t = TrieDB::new(&memdb, &root).unwrap();
+///   let t = TrieDB::try_new(&memdb, &root).unwrap();
 ///   assert!(t.contains(b"foo").unwrap());
 ///   assert_eq!(t.get(b"foo").unwrap().unwrap(), DBValue::from_slice(b"bar"));
 /// }
@@ -55,9 +55,9 @@ pub struct TrieDB<'db> {
 impl<'db> TrieDB<'db> {
     /// Create a new trie with the backing database `db` and `root`
     /// Returns an error if `root` does not exist
-    pub fn new(db: &'db HashDB, root: &'db H256) -> crate::Result<Self> {
+    pub fn try_new(db: &'db HashDB, root: &'db H256) -> crate::Result<Self> {
         if !db.contains(root) {
-            Err(Box::new(TrieError::InvalidStateRoot(*root)))
+            Err(TrieError::InvalidStateRoot(*root))
         } else {
             Ok(TrieDB {
                 db,
@@ -74,17 +74,17 @@ impl<'db> TrieDB<'db> {
     /// Get auxiliary
     fn get_aux<Q: Query>(
         &self,
-        path: NibbleSlice,
+        path: &NibbleSlice,
         cur_node_hash: Option<H256>,
         query: Q,
     ) -> crate::Result<Option<Q::Item>> {
         match cur_node_hash {
             Some(hash) => {
-                let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
+                let node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
-                        if partial == path {
+                        if &partial == path {
                             Ok(Some(query.decode(value)))
                         } else {
                             Ok(None)
@@ -93,7 +93,7 @@ impl<'db> TrieDB<'db> {
                     Some(RlpNode::Branch(partial, children)) => {
                         if path.starts_with(&partial) {
                             self.get_aux(
-                                path.mid(partial.len() + 1),
+                                &path.mid(partial.len() + 1),
                                 children[path.mid(partial.len()).at(0) as usize],
                                 query,
                             )
@@ -118,7 +118,7 @@ impl<'db> Trie for TrieDB<'db> {
         let path = blake256(key);
         let root = *self.root;
 
-        self.get_aux(NibbleSlice::new(&path), Some(root), query)
+        self.get_aux(&NibbleSlice::new(&path), Some(root), query)
     }
 }
 
@@ -138,7 +138,7 @@ mod tests {
             t.insert(b"B", b"ABCBA").unwrap();
         }
 
-        let t = TrieDB::new(&memdb, &root).unwrap();
+        let t = TrieDB::try_new(&memdb, &root).unwrap();
         assert_eq!(t.get(b"A"), Ok(Some(DBValue::from_slice(b"ABC"))));
         assert_eq!(t.get(b"B"), Ok(Some(DBValue::from_slice(b"ABCBA"))));
         assert_eq!(t.get(b"C"), Ok(None));

@@ -59,6 +59,7 @@ pub struct RoutingTable {
 }
 
 impl RoutingTable {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
             entries: RwLock::new(HashMap::new()),
@@ -462,7 +463,7 @@ impl RoutingTable {
         remote_to_local_node_ids.get(&remote_node_id).cloned()
     }
 
-    pub fn candidates(&self, len: &usize) -> Vec<SocketAddr> {
+    pub fn candidates(&self, len: usize) -> Vec<SocketAddr> {
         let entries = self.entries.read();
         let mut rng = self.rng.lock();
 
@@ -476,7 +477,7 @@ impl RoutingTable {
             .collect::<Vec<_>>();
 
         rng.shuffle(&mut addresses);
-        addresses.into_iter().take(*len).collect::<Vec<_>>()
+        addresses.into_iter().take(len).collect::<Vec<_>>()
     }
 }
 

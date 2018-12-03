@@ -112,7 +112,7 @@ impl Stratum {
 
 impl PushWorkHandler for Stratum {
     fn push_work_all(&self, payload: String) -> Result<(), Error> {
-        self.implementation.push_work_all(payload, &self.tcp_dispatcher)
+        self.implementation.push_work_all(payload.as_str(), &self.tcp_dispatcher)
     }
 
     fn push_work(&self, payloads: Vec<String>) -> Result<(), Error> {
@@ -123,7 +123,9 @@ impl PushWorkHandler for Stratum {
 impl Drop for Stratum {
     fn drop(&mut self) {
         // shut down rpc server
-        self.rpc_server.take().map(|server| server.close());
+        if let Some(server) = self.rpc_server.take() {
+            server.close();
+        }
     }
 }
 
@@ -142,7 +144,13 @@ struct StratumImpl {
     notify_counter: RwLock<u32>,
 }
 
-impl StratumImpl {
+trait StratumRpc {
+    fn subscribe(&self, _params: Params, meta: SocketMetadata) -> RpcResult;
+    fn authorize(&self, params: Params, meta: SocketMetadata) -> RpcResult;
+    fn submit(&self, params: Params, meta: SocketMetadata) -> RpcResult;
+}
+
+impl StratumRpc for StratumImpl {
     /// rpc method `mining.subscribe`
     fn subscribe(&self, _params: Params, meta: SocketMetadata) -> RpcResult {
         use std::str::FromStr;
@@ -185,7 +193,7 @@ impl StratumImpl {
     /// rpc method `mining.submit`
     fn submit(&self, params: Params, meta: SocketMetadata) -> RpcResult {
         let workers = self.workers.read();
-        if workers.contains_key(&meta.addr) == false {
+        if !workers.contains_key(&meta.addr) {
             return Err(Error::UnauthorizedWorker.into())
         }
 
@@ -203,17 +211,19 @@ impl StratumImpl {
             }
         })
     }
+}
 
+impl StratumImpl {
     /// Helper method
     fn update_peers(&self, tcp_dispatcher: &Dispatcher) {
         if let Some(job) = self.dispatcher.job() {
-            if let Err(e) = self.push_work_all(job, tcp_dispatcher) {
+            if let Err(e) = self.push_work_all(job.as_str(), tcp_dispatcher) {
                 warn!("Failed to update some of the peers: {:?}", e);
             }
         }
     }
 
-    fn push_work_all(&self, payload: String, tcp_dispatcher: &Dispatcher) -> Result<(), Error> {
+    fn push_work_all(&self, payload: &str, tcp_dispatcher: &Dispatcher) -> Result<(), Error> {
         let hup_peers = {
             let workers = self.workers.read();
             let next_request_id = {
@@ -221,7 +231,7 @@ impl StratumImpl {
                 if *counter == ::std::u32::MAX {
                     *counter = NOTIFY_COUNTER_INITIAL;
                 } else {
-                    *counter = *counter + 1
+                    *counter += 1
                 }
                 *counter
             };
@@ -267,14 +277,14 @@ impl StratumImpl {
         }
         let mut que = payloads;
         let mut addr_index = 0;
-        while que.len() > 0 {
+        while !que.is_empty() {
             let next_worker = addrs[addr_index];
             let mut next_payload = que.drain(0..1);
             tcp_dispatcher.push_message(
                 next_worker,
                 next_payload.nth(0).expect("drained successfully of 0..1, so 0-th element should exist"),
             )?;
-            addr_index = addr_index + 1;
+            addr_index += 1;
         }
         Ok(())
     }

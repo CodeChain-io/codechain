@@ -177,25 +177,22 @@ where
     }
 
     pub fn item_count(&self) -> Result<usize, DecoderError> {
-        match self.is_list() {
-            true => match self.count_cache.get() {
-                Some(c) => Ok(c),
-                None => {
-                    let c = self.iter().count();
-                    self.count_cache.set(Some(c));
-                    Ok(c)
-                }
-            },
-            false => Err(DecoderError::RlpExpectedToBeList),
+        if !self.is_list() {
+            return Err(DecoderError::RlpExpectedToBeList)
         }
+        Ok(self.count_cache.get().unwrap_or_else(|| {
+            let c = self.iter().count();
+            self.count_cache.set(Some(c));
+            c
+        }))
     }
 
     pub fn size(&self) -> usize {
-        match self.is_data() {
-            // TODO: No panic on malformed data, but ideally would Err on no PayloadInfo.
-            true => BasicDecoder::payload_info(self.bytes).map(|b| b.value_len).unwrap_or(0),
-            false => 0,
+        // TODO: No panic on malformed data, but ideally would Err on no PayloadInfo.
+        if !self.is_data() {
+            return 0
         }
+        BasicDecoder::payload_info(self.bytes).map(|b| b.value_len).unwrap_or(0)
     }
 
     pub fn at(&'view self, index: usize) -> Result<UntrustedRlp<'a>, DecoderError> {
@@ -209,9 +206,10 @@ where
         // move to cached position if its index is less or equal to
         // current search index, otherwise move to beginning of list
         let c = self.offset_cache.get();
-        let (mut bytes, to_skip) = match c.index <= index {
-            true => (UntrustedRlp::consume(self.bytes, c.offset)?, index - c.index),
-            false => (self.consume_list_payload()?, index),
+        let (mut bytes, to_skip) = if c.index <= index {
+            (UntrustedRlp::consume(self.bytes, c.offset)?, index - c.index)
+        } else {
+            (self.consume_list_payload()?, index)
         };
 
         // skip up to x items
@@ -234,6 +232,7 @@ where
     }
 
     pub fn is_null(&self) -> bool {
+        #![cfg_attr(feature = "cargo-clippy", allow(clippy::len_zero))]
         self.bytes.len() == 0
     }
 
@@ -314,9 +313,10 @@ where
 
     /// consumes slice prefix of length `len`
     fn consume(bytes: &'a [u8], len: usize) -> Result<&'a [u8], DecoderError> {
-        match bytes.len() >= len {
-            true => Ok(&bytes[len..]),
-            false => Err(DecoderError::RlpIsTooShort),
+        if bytes.len() >= len {
+            Ok(&bytes[len..])
+        } else {
+            Err(DecoderError::RlpIsTooShort)
         }
     }
 }

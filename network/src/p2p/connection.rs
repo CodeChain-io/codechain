@@ -93,14 +93,13 @@ impl EstablishedConnection {
     fn enqueue_negotiation_request(&mut self, name: String, extension_versions: Vec<Version>) {
         let seq = self.next_negotiation_seq;
         self.next_negotiation_seq += 1;
-        if let Some(_) = self.requested_negotiation.insert(seq, name.clone()) {
-            unreachable!();
-        }
+        let t = self.requested_negotiation.insert(seq, name.clone());
+        assert_eq!(None, t);
         self.enqueue(Message::Negotiation(NegotiationMessage::request(seq, name, extension_versions)));
     }
 
-    fn remove_requested_negotiation(&mut self, seq: &u64) -> Option<String> {
-        self.requested_negotiation.remove(seq)
+    fn remove_requested_negotiation(&mut self, seq: u64) -> Option<String> {
+        self.requested_negotiation.remove(&seq)
     }
 
     fn enqueue_negotiation_allowed(&mut self, seq: Seq, version: u64) {
@@ -424,8 +423,8 @@ pub enum ConnectionType {
 
 enum State {
     WaitSync(WaitSyncConnection),
-    WaitAck(WaitAckConnection),
-    Established(EstablishedConnection),
+    WaitAck(Box<WaitAckConnection>),
+    Established(Box<EstablishedConnection>),
     Disconnecting(DisconnectingConnection),
     Intermediate, // An intermediate state before established
 }
@@ -444,7 +443,7 @@ impl Connection {
     ) -> Self {
         let connection = WaitAckConnection::new(stream, session, local_port, local_node_id, remote_node_id);
         Self {
-            state: RwLock::new(State::WaitAck(connection)),
+            state: RwLock::new(State::WaitAck(connection.into())),
         }
     }
 
@@ -500,7 +499,7 @@ impl Connection {
             State::Disconnecting(_) => unreachable!("Cannot establish a disconnecting connection"),
             State::Intermediate => unreachable!(),
         };
-        *state = State::Established(connection);
+        *state = State::Established(connection.into());
         true
     }
 
@@ -667,13 +666,13 @@ impl Connection {
         }
     }
 
-    pub fn enqueue_extension_message(&self, extension_name: &String, need_encryption: bool, data: &[u8]) -> bool {
+    pub fn enqueue_extension_message(&self, extension_name: &str, need_encryption: bool, data: &[u8]) -> bool {
         let mut state = self.state.write();
         match &mut *state {
             State::WaitAck(_) => false,
             State::WaitSync(_) => false,
             State::Established(connection) => {
-                connection.enqueue_extension_message(extension_name.clone(), need_encryption, &data);
+                connection.enqueue_extension_message(extension_name.to_string(), need_encryption, &data);
                 true
             }
             State::Disconnecting(_) => false,
@@ -681,7 +680,7 @@ impl Connection {
         }
     }
 
-    pub fn remove_requested_negotiation(&self, seq: &u64) -> Option<String> {
+    pub fn remove_requested_negotiation(&self, seq: u64) -> Option<String> {
         let mut state = self.state.write();
         match &mut *state {
             State::WaitAck(_) => None,

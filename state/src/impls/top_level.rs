@@ -98,28 +98,28 @@ impl TopStateView for TopLevelState {
     fn account(&self, a: &Address) -> TrieResult<Option<Account>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.account(&a, trie)
+        self.top_cache.account(&a, &trie)
     }
 
     fn regular_account_by_address(&self, a: &Address) -> TrieResult<Option<RegularAccount>> {
         let a = RegularAccountAddress::from_address(a);
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        Ok(self.top_cache.regular_account(&a, trie)?)
+        Ok(self.top_cache.regular_account(&a, &trie)?)
     }
 
     fn metadata(&self) -> TrieResult<Option<Metadata>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        self.top_cache.metadata(&address, trie)
+        self.top_cache.metadata(&address, &trie)
     }
 
     fn shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        self.top_cache.shard(&shard_address, trie)
+        self.top_cache.shard(&shard_address, &trie)
     }
 
     fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>> {
@@ -136,7 +136,7 @@ impl TopStateView for TopLevelState {
     fn action_data(&self, key: &H256) -> TrieResult<Option<ActionData>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        Ok(self.top_cache.action_data(key, trie)?.map(Into::into))
+        Ok(self.top_cache.action_data(key, &trie)?.map(Into::into))
     }
 }
 
@@ -297,7 +297,7 @@ impl TopLevelState {
         // The failed parcel also must pay the fee and increase seq.
         self.create_checkpoint(PARCEL_ACTION_CHECKPOINT);
 
-        match self.apply_action(&parcel.action, &parcel.network_id, &parcel.hash(), fee_payer, signer_public, client) {
+        match self.apply_action(&parcel.action, parcel.network_id, &parcel.hash(), fee_payer, signer_public, client) {
             Ok(invoice) => {
                 self.discard_checkpoint(PARCEL_ACTION_CHECKPOINT);
                 Ok(invoice)
@@ -335,7 +335,7 @@ impl TopLevelState {
     fn apply_action<C: ChainTimeInfo>(
         &mut self,
         action: &Action,
-        network_id: &NetworkId,
+        network_id: NetworkId,
         parcel_hash: &H256,
         fee_payer: &Address,
         signer_public: &Public,
@@ -343,7 +343,7 @@ impl TopLevelState {
     ) -> StateResult<Invoice> {
         match action {
             Action::AssetTransaction(transaction) => {
-                debug_assert_eq!(network_id, &transaction.network_id());
+                debug_assert_eq!(network_id, transaction.network_id());
                 Ok(self.apply_transaction(transaction, fee_payer, client)?)
             }
             Action::Payment {
@@ -389,7 +389,7 @@ impl TopLevelState {
                 parameters,
                 amount,
             } => Ok(self.apply_wrap_ccc(
-                *network_id,
+                network_id,
                 *shard_id,
                 *parcel_hash,
                 *lock_script_hash,
@@ -505,34 +505,34 @@ impl TopLevelState {
 
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.account_mut(&a, trie)
+        self.top_cache.account_mut(&a, &trie)
     }
 
     fn get_regular_account_mut(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.regular_account_mut(&regular_account_address, trie)
+        self.top_cache.regular_account_mut(&regular_account_address, &trie)
     }
 
     fn get_metadata_mut(&self) -> TrieResult<RefMut<Metadata>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let address = MetadataAddress::new();
-        self.top_cache.metadata_mut(&address, trie)
+        self.top_cache.metadata_mut(&address, &trie)
     }
 
     fn get_shard_mut(&self, shard_id: ShardId) -> TrieResult<RefMut<Shard>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         let shard_address = ShardAddress::new(shard_id);
-        self.top_cache.shard_mut(&shard_address, trie)
+        self.top_cache.shard_mut(&shard_address, &trie)
     }
 
     fn get_action_data_mut(&self, key: &H256) -> TrieResult<RefMut<ActionData>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.top_cache.action_data_mut(key, trie)
+        self.top_cache.action_data_mut(key, &trie)
     }
 
     pub fn journal_under(&self, batch: &mut DBTransaction, now: u64) -> Result<u32, UtilError> {
@@ -617,9 +617,9 @@ impl TopState for TopLevelState {
     fn set_regular_key(&mut self, signer_public: &Public, regular_key: &Public) -> StateResult<()> {
         let (owner_public, owner_address) = if self.regular_account_exists_and_not_null(signer_public)? {
             let regular_account = self.get_regular_account_mut(&signer_public)?;
-            let owner_public = regular_account.owner_public().clone();
-            let owner_address = public_to_address(&owner_public);
-            (owner_public, owner_address)
+            let owner_public = regular_account.owner_public();
+            let owner_address = public_to_address(owner_public);
+            (*owner_public, owner_address)
         } else {
             (*signer_public, public_to_address(&signer_public))
         };

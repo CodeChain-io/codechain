@@ -82,7 +82,7 @@ impl Worker {
                 .name(format!("{} Worker #{}", name, index))
                 .spawn(move || {
                     LOCAL_STACK_SIZE.with(|val| val.set(STACK_SIZE));
-                    Worker::work_loop(stealer, channel.clone(), wait, wait_mutex.clone(), deleting)
+                    Worker::work_loop(&stealer, &channel, &wait, &wait_mutex, &deleting)
                 })
                 .expect("Error creating worker thread"),
         );
@@ -90,11 +90,11 @@ impl Worker {
     }
 
     fn work_loop<Message>(
-        stealer: chase_lev::Stealer<Work<Message>>,
-        channel: IoChannel<Message>,
-        wait: Arc<SCondvar>,
-        wait_mutex: Arc<SMutex<()>>,
-        deleting: Arc<AtomicBool>,
+        stealer: &chase_lev::Stealer<Work<Message>>,
+        channel: &IoChannel<Message>,
+        wait: &SCondvar,
+        wait_mutex: &SMutex<()>,
+        deleting: &AtomicBool,
     ) where
         Message: Send + Sync + Clone + 'static, {
         loop {

@@ -17,12 +17,12 @@
 use std::env;
 use std::fs;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccore::{
-    AccountProvider, AccountProviderError, Client, ClientService, EngineType, Miner, MinerService, Scheme, Stratum,
-    StratumConfig, StratumError,
+    AccountProvider, AccountProviderError, ChainNotify, Client, ClientService, EngineType, Miner, MinerService, Scheme,
+    Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
 use cfinally::finally;
@@ -91,14 +91,14 @@ fn client_start(cfg: &config::Operating, scheme: &Scheme, miner: Arc<Miner>) -> 
     let db_path = cfg.db_path.as_ref().map(|s| s.as_str()).unwrap();
     let client_path = Path::new(db_path);
     let client_config = Default::default();
-    let service = ClientService::start(client_config, &scheme, &client_path, miner)
+    let service = ClientService::start(&client_config, &scheme, &client_path, miner)
         .map_err(|e| format!("Client service error: {}", e))?;
 
     Ok(service)
 }
 
-fn stratum_start(cfg: StratumConfig, miner: Arc<Miner>, client: Arc<Client>) -> Result<(), String> {
-    match Stratum::start(&cfg, miner.clone(), client) {
+fn stratum_start(cfg: &StratumConfig, miner: &Arc<Miner>, client: Arc<Client>) -> Result<(), String> {
+    match Stratum::start(cfg, Arc::clone(&miner), client) {
         // FIXME: Add specified condition like AddrInUse
         Err(StratumError::Service(_)) =>
             Err(format!("STRATUM address {} is already in use, make sure that another instance of a CodeChain node is not running or change the address using the --stratum-port option.", cfg.port)),
@@ -158,7 +158,7 @@ fn wait_for_exit() {
 
     // Wait for signal
     let mut l = exit.0.lock();
-    let _ = exit.1.wait(&mut l);
+    exit.1.wait(&mut l);
 }
 
 fn prepare_account_provider(keys_path: &str) -> Result<Arc<AccountProvider>, String> {
@@ -167,9 +167,9 @@ fn prepare_account_provider(keys_path: &str) -> Result<Arc<AccountProvider>, Str
     Ok(AccountProvider::new(keystore))
 }
 
-fn load_password_file(path: Option<String>) -> Result<PasswordFile, String> {
-    let pf = match path {
-        Some(ref path) => {
+fn load_password_file(path: &Option<String>) -> Result<PasswordFile, String> {
+    let pf = match path.as_ref() {
+        Some(path) => {
             let file = fs::File::open(path).map_err(|e| format!("Could not read password file at {}: {}", path, e))?;
             PasswordFile::load(file).map_err(|e| format!("Invalid password file {}: {}", path, e))?
         }
@@ -178,7 +178,7 @@ fn load_password_file(path: Option<String>) -> Result<PasswordFile, String> {
     Ok(pf)
 }
 
-fn unlock_accounts(ap: Arc<AccountProvider>, pf: &PasswordFile) -> Result<(), String> {
+fn unlock_accounts(ap: &AccountProvider, pf: &PasswordFile) -> Result<(), String> {
     for entry in pf.entries() {
         let entry_address = entry.address.into_address();
         ap.unlock_account_permanently(entry_address, entry.password.clone())
@@ -187,14 +187,14 @@ fn unlock_accounts(ap: Arc<AccountProvider>, pf: &PasswordFile) -> Result<(), St
     Ok(())
 }
 
-pub fn run_node(matches: ArgMatches) -> Result<(), String> {
+pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
 
     let _event_loop = EventLoop::spawn();
     let timer_loop = TimerLoop::new(2);
 
-    let config = load_config(&matches)?;
+    let config = load_config(matches)?;
 
     // FIXME: It is the hotfix for #348.
     // Remove the below code if you find the proper way to solve #348.
@@ -220,13 +220,13 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
     );
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
-    let pf = load_password_file(config.operating.password_path.clone())?;
+    let pf = load_password_file(&config.operating.password_path)?;
     let keys_path = match config.operating.keys_path {
         Some(ref keys_path) => keys_path,
         None => DEFAULT_KEYS_PATH,
     };
     let ap = prepare_account_provider(keys_path)?;
-    unlock_accounts(Arc::clone(&ap), &pf)?;
+    unlock_accounts(&*ap, &pf)?;
 
     let miner = new_miner(&config, &scheme, ap.clone())?;
     let client = client_start(&config.operating, &scheme, miner.clone())?;
@@ -245,7 +245,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
             if config.network.sync.unwrap() {
                 let sync = BlockSyncExtension::new(client.client());
                 service.register_extension(sync.clone());
-                client.client().add_notify(sync.clone());
+                client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
             }
             if config.network.parcel_relay.unwrap() {
                 service.register_extension(ParcelSyncExtension::new(client.client()));
@@ -271,7 +271,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _rpc_server = {
         if !config.rpc.disable.unwrap() {
-            Some(rpc_http_start(config.rpc_http_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_http_start(config.rpc_http_config(), config.rpc.enable_devel_api, &*rpc_apis_deps)?)
         } else {
             None
         }
@@ -279,7 +279,7 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _ipc_server = {
         if !config.ipc.disable.unwrap() {
-            Some(rpc_ipc_start(config.rpc_ipc_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_ipc_start(&config.rpc_ipc_config(), config.rpc.enable_devel_api, &*rpc_apis_deps)?)
         } else {
             None
         }
@@ -287,21 +287,21 @@ pub fn run_node(matches: ArgMatches) -> Result<(), String> {
 
     let _ws_server = {
         if !config.ws.disable.unwrap() {
-            Some(rpc_ws_start(config.rpc_ws_config(), config.rpc.enable_devel_api, Arc::clone(&rpc_apis_deps))?)
+            Some(rpc_ws_start(&config.rpc_ws_config(), config.rpc.enable_devel_api, &*rpc_apis_deps)?)
         } else {
             None
         }
     };
 
     if (!config.stratum.disable.unwrap()) && (miner.engine_type() == EngineType::PoW) {
-        stratum_start(config.stratum_config(), Arc::clone(&miner), client.client())?
+        stratum_start(&config.stratum_config(), &miner, client.client())?
     }
 
     let _snapshot_service = {
         if !config.snapshot.disable.unwrap() {
             let service =
                 SnapshotService::new(client.client(), config.snapshot.path.unwrap(), scheme.params().snapshot_period);
-            client.client().add_notify(service.clone());
+            client.client().add_notify(Arc::downgrade(&service) as Weak<ChainNotify>);
             Some(service)
         } else {
             None

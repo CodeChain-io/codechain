@@ -51,7 +51,7 @@ impl<'a> TrieDBMut<'a> {
     /// Returns an error if `root` does not exist.
     pub fn from_existing(db: &'a mut HashDB, root: &'a mut H256) -> crate::Result<Self> {
         if !db.contains(root) {
-            return Err(Box::new(TrieError::InvalidStateRoot(*root)))
+            return Err(TrieError::InvalidStateRoot(*root))
         }
 
         Ok(TrieDBMut {
@@ -70,7 +70,7 @@ impl<'a> TrieDBMut<'a> {
     ) -> crate::Result<H256> {
         match cur_node_hash {
             Some(hash) => {
-                let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
+                let node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
@@ -103,7 +103,7 @@ impl<'a> TrieDBMut<'a> {
                                 old_val,
                             )?);
 
-                            let node_rlp = RlpNode::encoded_until(RlpNode::Branch(partial, new_child), common);
+                            let node_rlp = RlpNode::encoded_until(RlpNode::Branch(partial, new_child.into()), common);
                             let hash = self.db.insert(&node_rlp);
 
                             Ok(hash)
@@ -130,7 +130,7 @@ impl<'a> TrieDBMut<'a> {
                                 old_val,
                             )?);
 
-                            node_rlp = RlpNode::encoded_until(RlpNode::Branch(partial, new_child), common);
+                            node_rlp = RlpNode::encoded_until(RlpNode::Branch(partial, new_child.into()), common);
                             let hash = self.db.insert(&node_rlp);
 
                             Ok(hash)
@@ -174,17 +174,17 @@ impl<'a> TrieDBMut<'a> {
     /// Remove auxiliary
     fn remove_aux(
         &mut self,
-        path: NibbleSlice,
+        path: &NibbleSlice,
         cur_node_hash: Option<H256>,
         old_val: &mut Option<DBValue>,
     ) -> crate::Result<Option<H256>> {
         match cur_node_hash {
             Some(hash) => {
-                let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
+                let node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
-                        if path == partial {
+                        if path == &partial {
                             *old_val = Some(DBValue::from_slice(&value));
 
                             Ok(None)
@@ -196,7 +196,7 @@ impl<'a> TrieDBMut<'a> {
                         if path.starts_with(&partial) {
                             let new_path = path.mid(partial.len());
                             children[new_path.at(0) as usize] =
-                                self.remove_aux(new_path.mid(1), children[new_path.at(0) as usize], old_val)?;
+                                self.remove_aux(&new_path.mid(1), children[new_path.at(0) as usize], old_val)?;
 
                             if children[new_path.at(0) as usize] == None {
                                 // Fix the node
@@ -211,23 +211,23 @@ impl<'a> TrieDBMut<'a> {
                                         // Transform the branch into Leaf
                                         let index = children
                                             .iter()
-                                            .position(|&x| !x.is_none())
+                                            .position(Option::is_some)
                                             .expect("Can not find leaf in the branch");
                                         let new_leaf_hash = children[index].expect("Index is wrong");
                                         let new_leaf_data = self
                                             .db
                                             .get(&new_leaf_hash)
-                                            .ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
+                                            .ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
                                         let new_leaf_node = RlpNode::decoded(&new_leaf_data);
 
                                         match new_leaf_node {
-                                            None => Err(Box::new(TrieError::IncompleteDatabase(hash))),
+                                            None => Err(TrieError::IncompleteDatabase(hash)),
                                             Some(RlpNode::Leaf(child_partial, child_value)) => {
                                                 let mut vec = partial.to_vec();
                                                 vec.push(index as u8);
                                                 vec.append(&mut child_partial.to_vec());
 
-                                                let (new_partial, offset) = NibbleSlice::from_vec(vec);
+                                                let (new_partial, offset) = NibbleSlice::from_vec(&vec);
                                                 let new_leaf = RlpNode::Leaf(
                                                     NibbleSlice::new_offset(&new_partial, offset),
                                                     child_value,
@@ -242,7 +242,7 @@ impl<'a> TrieDBMut<'a> {
                                                 vec.push(index as u8);
                                                 vec.append(&mut child_partial.to_vec());
 
-                                                let (new_partial, offset) = NibbleSlice::from_vec(vec);
+                                                let (new_partial, offset) = NibbleSlice::from_vec(&vec);
                                                 let new_branch = RlpNode::Branch(
                                                     NibbleSlice::new_offset(&new_partial, offset),
                                                     children,
@@ -288,8 +288,9 @@ impl<'a> fmt::Display for RlpNode<'a> {
             RlpNode::Branch(partial, children) => {
                 writeln!(f, "Branch - path({:?})", partial)?;
 
-                for i in 0..16 {
-                    writeln!(f, "child {} - hash({:?})", i, children[i])?;
+                debug_assert_eq!(16, children.len());
+                for (i, child) in children.iter().enumerate() {
+                    writeln!(f, "child {} - hash({:?})", i, child)?;
                 }
                 Ok(())
             }
@@ -307,7 +308,7 @@ impl<'a> TrieMut for TrieDBMut<'a> {
     }
 
     fn get(&self, key: &[u8]) -> crate::Result<Option<DBValue>> {
-        let t = TrieDB::new(self.db, self.root)?;
+        let t = TrieDB::try_new(self.db, self.root)?;
 
         t.get(key)
     }
@@ -326,7 +327,7 @@ impl<'a> TrieMut for TrieDBMut<'a> {
         let mut old_val = None;
         let cur_hash = *self.root;
 
-        *self.root = match self.remove_aux(NibbleSlice::new(&path), Some(cur_hash), &mut old_val)? {
+        *self.root = match self.remove_aux(&NibbleSlice::new(&path), Some(cur_hash), &mut old_val)? {
             Some(hash) => hash,
             None => BLAKE_NULL_RLP,
         };

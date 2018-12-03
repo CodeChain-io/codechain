@@ -75,7 +75,7 @@ impl SocketAddr {
                     if !self_ip.is_private() {
                         return false
                     }
-                    return is_same_private_subnet(&self_ip, &other_ip)
+                    return is_same_private_subnet(self_ip, other_ip)
                 }
                 true
             }
@@ -84,7 +84,7 @@ impl SocketAddr {
     }
 }
 
-fn is_same_private_subnet(ip1: &Ipv4Addr, ip2: &Ipv4Addr) -> bool {
+fn is_same_private_subnet(ip1: Ipv4Addr, ip2: Ipv4Addr) -> bool {
     debug_assert_eq!(true, ip1.is_private());
     debug_assert_eq!(true, ip2.is_private());
 

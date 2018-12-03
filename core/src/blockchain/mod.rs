@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod block_info;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod blockchain;
 mod body_db;
 mod extras;

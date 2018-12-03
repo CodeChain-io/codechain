@@ -98,7 +98,7 @@ impl Snapshot {
             }
 
             if let Node::Branch(_, childs) = node {
-                for child in &childs {
+                for child in childs.iter() {
                     if let Some(child) = child {
                         referenced_keys.insert(*child);
                     }
@@ -148,7 +148,7 @@ impl Chunk {
                 Some(_) if depth >= max_depth => return false,
                 Some(value) => {
                     if let Some(Node::Branch(_, childs)) = Node::decoded(&value) {
-                        for child in &childs {
+                        for child in childs.iter() {
                             if let Some(child) = child {
                                 stack.push((*child, depth + 1));
                             }
@@ -171,7 +171,7 @@ impl Chunk {
                 }
                 Some(value) => {
                     if let Some(Node::Branch(_, childs)) = Node::decoded(&value) {
-                        for child in &childs {
+                        for child in childs.iter() {
                             if let Some(child) = child {
                                 stack.push(*child);
                             }
@@ -240,7 +240,7 @@ impl ReadSnapshot for Snapshot {
                 cinfo!(SNAPSHOT, "Chunk contains garbages");
             }
 
-            if chunk.missing_keys(&chunk_root).len() > 0 {
+            if !chunk.missing_keys(&chunk_root).is_empty() {
                 return Err(Error::SyncError("Chunk is an incomplete trie".to_string()))
             }
 
@@ -366,7 +366,7 @@ mod tests {
             snapshot.read_snapshot(kvdb.clone(), &root).unwrap();
 
             let mut jdb = journaldb::new(kvdb.clone(), Algorithm::Archive, COL_STATE);
-            let t = TrieDB::new(jdb.as_hashdb_mut(), &mut root).unwrap();
+            let t = TrieDB::try_new(jdb.as_hashdb_mut(), &mut root).unwrap();
             let mut inserted_keys = HashSet::new();
             for &(ref key, ref value) in &x {
                 if inserted_keys.insert(key) == false {

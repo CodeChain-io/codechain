@@ -86,7 +86,7 @@ fn run() -> Result<(), String> {
     let matches = clap::App::from_yaml(yaml).get_matches();
 
     match matches.subcommand {
-        Some(_) => run_subcommand(matches),
-        None => run_node(matches),
+        Some(_) => run_subcommand(&matches),
+        None => run_node(&matches),
     }
 }

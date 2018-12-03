@@ -17,7 +17,7 @@
 use ccrypto::blake256;
 use cmerkle::TrieMut;
 use ctypes::invoice::Invoice;
-use primitives::{Bytes, H256};
+use primitives::H256;
 use rlp::{self, Decodable, DecoderError, Encodable, UntrustedRlp};
 
 use super::ActionHandler;
@@ -43,12 +43,12 @@ impl Decodable for HitAction {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct HitHandler {}
 
 impl HitHandler {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 
     fn address(&self) -> H256 {
@@ -66,16 +66,16 @@ impl ActionHandler for HitHandler {
         Ok(())
     }
 
-    fn is_target(&self, bytes: &Bytes) -> bool {
+    fn is_target(&self, bytes: &[u8]) -> bool {
         HitAction::decode(&UntrustedRlp::new(bytes)).is_ok()
     }
 
     /// `bytes` must be valid encoding of HitAction
-    fn execute(&self, bytes: &Bytes, state: &mut TopLevelState) -> Option<StateResult<Invoice>> {
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState) -> Option<StateResult<Invoice>> {
         HitAction::decode(&UntrustedRlp::new(bytes)).ok().map(|action| {
             let action_data = state.action_data(&self.address())?.unwrap_or_default();
             let prev_counter: u32 = rlp::decode(&*action_data);
-            let increase = action.increase as u32;
+            let increase = u32::from(action.increase);
             state.update_action_data(&self.address(), (prev_counter + increase).rlp_bytes().to_vec())?;
             Ok(Invoice::Success)
         })

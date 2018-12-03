@@ -16,7 +16,6 @@
 
 use std::io;
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use crate::rpc_apis;
 use crpc::{start_http, start_ipc, start_ws, HttpServer, IpcServer, WsError, WsErrorKind, WsServer};
@@ -33,7 +32,7 @@ pub struct RpcHttpConfig {
 pub fn rpc_http_start(
     cfg: RpcHttpConfig,
     enable_devel_api: bool,
-    deps: Arc<rpc_apis::ApiDependencies>,
+    deps: &rpc_apis::ApiDependencies,
 ) -> Result<HttpServer, String> {
     let url = format!("{}:{}", cfg.interface, cfg.port);
     let addr = url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?;
@@ -47,7 +46,7 @@ fn setup_http_rpc_server(
     cors_domains: Option<Vec<String>>,
     allowed_hosts: Option<Vec<String>>,
     enable_devel_api: bool,
-    deps: Arc<rpc_apis::ApiDependencies>,
+    deps: &rpc_apis::ApiDependencies,
 ) -> Result<HttpServer, String> {
     let server = setup_rpc_server(enable_devel_api, deps);
     let start_result = start_http(url, cors_domains, allowed_hosts, server);
@@ -66,9 +65,9 @@ pub struct RpcIpcConfig {
 }
 
 pub fn rpc_ipc_start(
-    cfg: RpcIpcConfig,
+    cfg: &RpcIpcConfig,
     enable_devel_api: bool,
-    deps: Arc<rpc_apis::ApiDependencies>,
+    deps: &rpc_apis::ApiDependencies,
 ) -> Result<IpcServer, String> {
     let server = setup_rpc_server(enable_devel_api, deps);
     let start_result = start_ipc(&cfg.socket_addr, server);
@@ -92,9 +91,9 @@ pub struct RpcWsConfig {
 }
 
 pub fn rpc_ws_start(
-    cfg: RpcWsConfig,
+    cfg: &RpcWsConfig,
     enable_devel_api: bool,
-    deps: Arc<rpc_apis::ApiDependencies>,
+    deps: &rpc_apis::ApiDependencies,
 ) -> Result<WsServer, String> {
     let server = setup_rpc_server(enable_devel_api, deps);
     let url = format!("{}:{}", cfg.interface, cfg.port);
@@ -112,7 +111,7 @@ pub fn rpc_ws_start(
     }
 }
 
-fn setup_rpc_server(enable_devel_api: bool, deps: Arc<rpc_apis::ApiDependencies>) -> MetaIoHandler<()> {
+fn setup_rpc_server(enable_devel_api: bool, deps: &rpc_apis::ApiDependencies) -> MetaIoHandler<()> {
     let mut handler = MetaIoHandler::with_compatibility(Compatibility::Both);
     deps.extend_api(enable_devel_api, &mut handler);
     rpc_apis::setup_rpc(handler)

@@ -91,6 +91,7 @@ pub struct AccountProvider {
 }
 
 impl AccountProvider {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(keystore: KeyStore) -> Arc<Self> {
         Arc::new(Self {
             unlocked: RwLock::new(HashMap::new()),
@@ -108,15 +109,15 @@ impl AccountProvider {
 
     pub fn new_account_and_public(&self, password: &Password) -> Result<(Address, Public), SignError> {
         let acc = Random.generate().expect("secp context has generation capabilities; qed");
-        self.insert_account_internal(acc, password)
+        self.insert_account_internal(&acc, password)
     }
 
     pub fn insert_account(&self, private: Private, password: &Password) -> Result<Address, SignError> {
         let acc = KeyPair::from_private(private)?;
-        self.insert_account_internal(acc, password).map(|(addr, _)| addr)
+        self.insert_account_internal(&acc, password).map(|(addr, _)| addr)
     }
 
-    fn insert_account_internal(&self, acc: KeyPair, password: &Password) -> Result<(Address, Public), SignError> {
+    fn insert_account_internal(&self, acc: &KeyPair, password: &Password) -> Result<(Address, Public), SignError> {
         let private = *acc.private();
         let public = *acc.public();
         let address = public_to_address(&public);
@@ -125,7 +126,8 @@ impl AccountProvider {
     }
 
     pub fn remove_account(&self, address: Address) -> Result<(), SignError> {
-        Ok(self.keystore.write().remove_account(&address)?)
+        self.keystore.write().remove_account(&address)?;
+        Ok(())
     }
 
     pub fn sign(&self, address: Address, password: Option<Password>, message: Message) -> Result<Signature, SignError> {
@@ -159,7 +161,8 @@ impl AccountProvider {
         old_password: &Password,
         new_password: &Password,
     ) -> Result<(), SignError> {
-        Ok(self.keystore.read().change_password(&address, &old_password, &new_password)?)
+        self.keystore.read().change_password(&address, &old_password, &new_password)?;
+        Ok(())
     }
 
     /// Unlocks account permanently.

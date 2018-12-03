@@ -24,7 +24,7 @@ use heapsize::HeapSizeOf;
 use primitives::{clean_0x, H160};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq)]
 pub struct Address(H160);
 
 impl Address {
@@ -62,6 +62,12 @@ impl PartialOrd for Address {
 impl Ord for Address {
     fn cmp(&self, m: &Address) -> cmp::Ordering {
         self.0.cmp(&m.0)
+    }
+}
+
+impl PartialEq for Address {
+    fn eq(&self, m: &Address) -> bool {
+        self.0.eq(&m.0)
     }
 }
 
@@ -120,7 +126,7 @@ impl From<[u8; 20]> for Address {
 
 impl From<&'static str> for Address {
     fn from(s: &'static str) -> Self {
-        s.parse().expect(&format!("invalid string literal for {}: '{}'", stringify!(Self), s))
+        s.parse().unwrap_or_else(|_| panic!("invalid string literal for {}: '{}'", stringify!(Self), s))
     }
 }
 

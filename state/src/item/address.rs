@@ -111,7 +111,7 @@ macro_rules! impl_address {
 
             #[inline]
             fn deref(&self) -> &Self::Target {
-                &(*&self.0)
+                &self.0
             }
         }
     };

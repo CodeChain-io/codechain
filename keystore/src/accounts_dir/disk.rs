@@ -131,9 +131,9 @@ where
     }
 
     fn last_modification_date(&self) -> Result<u64, Error> {
-        use std::time::{Duration, UNIX_EPOCH};
-        let duration = fs::metadata(&self.path)?.modified()?.duration_since(UNIX_EPOCH).unwrap_or(Duration::default());
-        let timestamp = duration.as_secs() ^ (duration.subsec_nanos() as u64);
+        use std::time::UNIX_EPOCH;
+        let duration = fs::metadata(&self.path)?.modified()?.duration_since(UNIX_EPOCH).unwrap_or_default();
+        let timestamp = duration.as_secs() ^ u64::from(duration.subsec_nanos());
         Ok(timestamp)
     }
 
@@ -194,9 +194,7 @@ where
 
             file.flush()?;
 
-            if let Err(_) = restrict_permissions_to_owner(keyfile_path.as_path()) {
-                return Err(Error::Io(io::Error::last_os_error()))
-            }
+            restrict_permissions_to_owner(keyfile_path.as_path()).map_err(|_| Error::Io(io::Error::last_os_error()))?;
 
             file.sync_all()?;
         }

@@ -44,7 +44,7 @@ pub struct Block {
 
 impl Block {
     /// Get the RLP-encoding of the block with or without the seal.
-    pub fn rlp_bytes(&self, seal: Seal) -> Bytes {
+    pub fn rlp_bytes(&self, seal: &Seal) -> Bytes {
         let mut block_rlp = RlpStream::new_list(2);
         self.header.stream_rlp(&mut block_rlp, seal);
         block_rlp.append_list(&self.parcels);
@@ -118,7 +118,7 @@ pub struct OpenBlock<'x> {
 
 impl<'x> OpenBlock<'x> {
     /// Create a new `OpenBlock` ready for parcel pushing.
-    pub fn new(
+    pub fn try_new(
         engine: &'x CodeChainEngine,
         db: StateDB,
         parent: &Header,
@@ -272,7 +272,7 @@ pub struct ClosedBlock {
 impl ClosedBlock {
     /// Get the hash of the header without seal arguments.
     pub fn hash(&self) -> H256 {
-        self.header().rlp_blake(Seal::Without)
+        self.header().rlp_blake(&Seal::Without)
     }
 
     /// Turn this into a `LockedBlock`, unable to be reopened again.
@@ -344,7 +344,7 @@ impl SealedBlock {
     /// Get the RLP-encoding of the block.
     pub fn rlp_bytes(&self) -> Bytes {
         let mut block_rlp = RlpStream::new_list(2);
-        self.block.header.stream_rlp(&mut block_rlp, Seal::With);
+        self.block.header.stream_rlp(&mut block_rlp, &Seal::With);
         block_rlp.append_list(&self.block.parcels);
         block_rlp.out()
     }
@@ -424,7 +424,7 @@ pub fn enact<C: ChainTimeInfo>(
     parent: &Header,
     is_epoch_begin: bool,
 ) -> Result<LockedBlock, Error> {
-    let mut b = OpenBlock::new(engine, db, parent, Address::default(), vec![], is_epoch_begin)?;
+    let mut b = OpenBlock::try_new(engine, db, parent, Address::default(), vec![], is_epoch_begin)?;
 
     b.populate_from(header);
     b.push_parcels(parcels, client)?;
@@ -444,7 +444,7 @@ mod tests {
         let scheme = Scheme::new_test();
         let genesis_header = scheme.genesis_header();
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
-        let b = OpenBlock::new(&*scheme.engine, db, &genesis_header, Address::default(), vec![], false).unwrap();
+        let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, Address::default(), vec![], false).unwrap();
         let parent_parcels_root = *genesis_header.parcels_root();
         let parent_invoices_root = *genesis_header.invoices_root();
         let b = b.close_and_lock(parent_parcels_root, parent_invoices_root).unwrap();

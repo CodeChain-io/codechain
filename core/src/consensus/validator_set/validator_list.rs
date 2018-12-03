@@ -74,7 +74,7 @@ impl ValidatorSet for ValidatorList {
             panic!("Cannot operate with an empty validator set.");
         }
 
-        self.validators.get(nonce % validator_n).expect("There are validator_n authorities; taking number modulo validator_n gives number in validator_n range; qed").clone()
+        *self.validators.get(nonce % validator_n).expect("There are validator_n authorities; taking number modulo validator_n gives number in validator_n range; qed")
     }
 
     fn count(&self, _bh: &H256) -> usize {
@@ -82,9 +82,10 @@ impl ValidatorSet for ValidatorList {
     }
 
     fn is_epoch_end(&self, first: bool, _chain_head: &Header) -> Option<Vec<u8>> {
-        match first {
-            true => Some(Vec::new()), // allow transition to fixed list, and instantly
-            false => None,
+        if first {
+            Some(Vec::new()) // allow transition to fixed list, and instantly
+        } else {
+            None
         }
     }
 

@@ -30,17 +30,17 @@ pub enum Status {
     /// The parcel is in future part of the mem pool.
     Future,
     /// Parcel is already mined.
-    Mined(SignedParcel),
+    Mined(Box<SignedParcel>),
     /// Parcel is dropped because of limit
-    Dropped(SignedParcel),
+    Dropped(Box<SignedParcel>),
     /// Replaced because of higher gas price of another parcel.
-    Replaced(SignedParcel, u64, H256),
+    Replaced(Box<SignedParcel>, u64, Box<H256>),
     /// Parcel was never accepted to the mem pool.
-    Rejected(SignedParcel, ParcelError),
+    Rejected(Box<SignedParcel>, Box<ParcelError>),
     /// Parcel is invalid.
-    Invalid(SignedParcel),
+    Invalid(Box<SignedParcel>),
     /// Parcel was canceled.
-    Canceled(SignedParcel),
+    Canceled(Box<SignedParcel>),
 }
 
 impl Status {
@@ -88,7 +88,7 @@ impl LocalParcelsList {
     /// Mark given parcel as rejected from the queue.
     pub fn mark_rejected(&mut self, parcel: SignedParcel, err: ParcelError) {
         cdebug!(OWN_PARCEL, "Parcel rejected (hash {:?}): {:?}", parcel.hash(), err);
-        self.parcels.insert(parcel.hash(), Status::Rejected(parcel, err));
+        self.parcels.insert(parcel.hash(), Status::Rejected(parcel.into(), err.into()));
         self.clear_old();
     }
 
@@ -101,35 +101,35 @@ impl LocalParcelsList {
             hash,
             gas_price
         );
-        self.parcels.insert(parcel.hash(), Status::Replaced(parcel, gas_price, hash));
+        self.parcels.insert(parcel.hash(), Status::Replaced(parcel.into(), gas_price, hash.into()));
         self.clear_old();
     }
 
     /// Mark parcel as invalid.
     pub fn mark_invalid(&mut self, signed: SignedParcel) {
         cwarn!(OWN_PARCEL, "Parcel marked invalid (hash {:?})", signed.hash());
-        self.parcels.insert(signed.hash(), Status::Invalid(signed));
+        self.parcels.insert(signed.hash(), Status::Invalid(signed.into()));
         self.clear_old();
     }
 
     /// Mark parcel as canceled.
     pub fn mark_canceled(&mut self, signed: SignedParcel) {
         cwarn!(OWN_PARCEL, "Parcel canceled (hash {:?})", signed.hash());
-        self.parcels.insert(signed.hash(), Status::Canceled(signed));
+        self.parcels.insert(signed.hash(), Status::Canceled(signed.into()));
         self.clear_old();
     }
 
     /// Mark parcel as dropped because of limit.
     pub fn mark_dropped(&mut self, signed: SignedParcel) {
         cwarn!(OWN_PARCEL, "Parcel dropped (hash {:?})", signed.hash());
-        self.parcels.insert(signed.hash(), Status::Dropped(signed));
+        self.parcels.insert(signed.hash(), Status::Dropped(signed.into()));
         self.clear_old();
     }
 
     /// Mark parcel as mined.
     pub fn mark_mined(&mut self, signed: SignedParcel) {
         cinfo!(OWN_PARCEL, "Parcel mined (hash {:?})", signed.hash());
-        self.parcels.insert(signed.hash(), Status::Mined(signed));
+        self.parcels.insert(signed.hash(), Status::Mined(signed.into()));
         self.clear_old();
     }
 

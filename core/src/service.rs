@@ -35,7 +35,7 @@ pub struct ClientService {
 
 impl ClientService {
     pub fn start(
-        config: ClientConfig,
+        config: &ClientConfig,
         scheme: &Scheme,
         client_path: &Path,
         miner: Arc<Miner>,
@@ -53,7 +53,7 @@ impl ClientService {
                 .map_err(::client::Error::Database)?,
         );
 
-        let client = Client::new(config, &scheme, db, miner, io_service.channel())?;
+        let client = Client::try_new(config, &scheme, db, miner, io_service.channel())?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),

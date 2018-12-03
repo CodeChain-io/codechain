@@ -193,9 +193,10 @@ impl Decodable for ConsensusMessage {
         }
         Ok(ConsensusMessage {
             vote_step: VoteStep::new(m.val_at(0)?, m.val_at(1)?, m.val_at(2)?),
-            block_hash: match block_message.is_zero() {
-                true => None,
-                false => Some(block_message),
+            block_hash: if block_message.is_zero() {
+                None
+            } else {
+                Some(block_message)
             },
             signature: rlp.val_at(0)?,
         })
@@ -218,7 +219,7 @@ pub fn message_info_rlp(vote_step: &VoteStep, block_hash: Option<BlockHash>) -> 
     s.out()
 }
 
-pub fn message_full_rlp(signature: &Signature, vote_info: &Bytes) -> Bytes {
+pub fn message_full_rlp(signature: &Signature, vote_info: &[u8]) -> Bytes {
     let mut s = RlpStream::new_list(2);
     s.append(signature).append_raw(vote_info, 1);
     s.out()
