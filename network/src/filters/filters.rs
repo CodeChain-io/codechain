@@ -22,6 +22,7 @@ use parking_lot::RwLock;
 use super::control::Control;
 use super::filter::{Filter, FilterEntry};
 
+#[derive(Default)]
 pub struct Filters {
     whitelist: RwLock<Filter>,
     blacklist: RwLock<Filter>,
@@ -37,15 +38,6 @@ impl Filters {
             whitelist: RwLock::new(whitelist),
             blacklist: RwLock::new(blacklist),
         })
-    }
-}
-
-impl Default for Filters {
-    fn default() -> Self {
-        Self {
-            whitelist: RwLock::new(Default::default()),
-            blacklist: RwLock::new(Default::default()),
-        }
     }
 }
 

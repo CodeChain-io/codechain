@@ -20,7 +20,7 @@ use serde_json;
 
 use super::password_entry::PasswordEntry;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct PasswordFile(Vec<PasswordEntry>);
 
 impl PasswordFile {
@@ -32,12 +32,6 @@ impl PasswordFile {
 
     pub fn entries(&self) -> &[PasswordEntry] {
         self.0.as_slice()
-    }
-}
-
-impl Default for PasswordFile {
-    fn default() -> Self {
-        PasswordFile(vec![])
     }
 }
 
