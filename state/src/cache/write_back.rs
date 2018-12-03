@@ -71,12 +71,13 @@ where
     }
 }
 
+type CheckPoints<Address, Item> = Vec<HashMap<Address, Option<Entry<Item>>>>;
 pub struct WriteBack<Item>
 where
     Item: CacheableItem, {
     cache: RefCell<HashMap<Item::Address, Entry<Item>>>,
     // The original item is preserved in
-    checkpoints: RefCell<Vec<HashMap<Item::Address, Option<Entry<Item>>>>>,
+    checkpoints: RefCell<CheckPoints<Item::Address, Item>>,
 }
 
 impl<Item> WriteBack<Item>

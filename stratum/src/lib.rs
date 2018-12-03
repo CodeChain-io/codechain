@@ -123,7 +123,9 @@ impl PushWorkHandler for Stratum {
 impl Drop for Stratum {
     fn drop(&mut self) {
         // shut down rpc server
-        self.rpc_server.take().map(|server| server.close());
+        if let Some(server) = self.rpc_server.take() {
+            server.close();
+        }
     }
 }
 
@@ -191,7 +193,7 @@ impl StratumRpc for StratumImpl {
     /// rpc method `mining.submit`
     fn submit(&self, params: Params, meta: SocketMetadata) -> RpcResult {
         let workers = self.workers.read();
-        if workers.contains_key(&meta.addr) == false {
+        if !workers.contains_key(&meta.addr) {
             return Err(Error::UnauthorizedWorker.into())
         }
 

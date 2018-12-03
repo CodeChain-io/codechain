@@ -82,7 +82,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(
+    pub fn try_new(
         config: &ClientConfig,
         scheme: &Scheme,
         db: Arc<KeyValueDB>,
@@ -108,7 +108,7 @@ impl Client {
 
         let engine = scheme.engine.clone();
 
-        let importer = Importer::new(config, engine.clone(), message_channel.clone(), miner)?;
+        let importer = Importer::try_new(config, engine.clone(), message_channel.clone(), miner)?;
         let genesis_accounts = scheme.genesis_accounts();
 
         let client = Arc::new(Client {
@@ -185,13 +185,8 @@ impl Client {
         self.transaction_address(hash).and_then(|transaction_address| {
             transaction_address
                 .into_iter()
-                .filter_map(|parcel_address| {
-                    if self.parcel_invoice(&parcel_address.into()).map_or(false, |invoice| invoice == Invoice::Success)
-                    {
-                        Some(parcel_address)
-                    } else {
-                        None
-                    }
+                .filter(|parcel_address| {
+                    self.parcel_invoice(&(*parcel_address).into()).map_or(false, |invoice| invoice == Invoice::Success)
                 })
                 .take(1)
                 .next()
@@ -235,9 +230,8 @@ impl Client {
     /// is unknown.
     fn state_at(&self, id: BlockId) -> Option<TopLevelState> {
         // fast path for latest state.
-        match id {
-            BlockId::Latest => return Some(self.latest_state()),
-            _ => {}
+        if BlockId::Latest == id {
+            return Some(self.latest_state())
         }
 
         self.block_header(&id).and_then(|header| {
@@ -604,7 +598,7 @@ impl PrepareOpenBlock for Client {
         let best_header = &chain.block_header(&h).expect("h is best block hash: so its header must exist: qed");
 
         let is_epoch_begin = chain.epoch_transition(best_header.number(), h).is_some();
-        OpenBlock::new(
+        OpenBlock::try_new(
             engine,
             self.state_db.read().clone(&best_header.state_root()),
             best_header,

@@ -64,8 +64,7 @@ impl fmt::Display for TrieError {
     }
 }
 
-/// Trie result type. Boxed to avoid copying around extra space for `H256`s on successful queries.
-pub type Result<T> = ::std::result::Result<T, Box<TrieError>>;
+pub type Result<T> = ::std::result::Result<T, TrieError>;
 
 /// Description of what kind of query will be made to the trie.
 pub trait Query {
@@ -142,7 +141,7 @@ pub enum TrieFactory {}
 impl TrieFactory {
     /// Create new immutable instance of Trie.
     pub fn readonly<'db>(db: &'db HashDB, root: &'db H256) -> Result<TrieDB<'db>> {
-        Ok(TrieDB::new(db, root)?)
+        Ok(TrieDB::try_new(db, root)?)
     }
 
     /// Create new mutable instance of Trie.

@@ -309,12 +309,13 @@ impl<'a> Iterator for AncestryIter<'a> {
     }
 }
 
+type TransitionIterInternal<'a> = Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>;
 /// An iterator which walks all epoch transitions.
 /// Returns epoch transitions.
 #[allow(dead_code)]
 pub struct EpochTransitionIter<'a> {
     chain: &'a BlockChain,
-    prefix_iter: Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>,
+    prefix_iter: TransitionIterInternal<'a>,
 }
 
 impl<'a> Iterator for EpochTransitionIter<'a> {

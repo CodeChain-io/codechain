@@ -60,8 +60,8 @@ impl Requests {
     }
 
     fn restore(&mut self, seq: usize, address: Option<SocketAddr>) -> IoHandlerResult<Option<SocketAddr>> {
-        match address {
-            Some(address) => match self.requests.get(&seq) {
+        if let Some(address) = address {
+            match self.requests.get(&seq) {
                 None => {
                     debug_assert!(!self.request_tokens.is_assigned(seq));
                     return Ok(None)
@@ -71,8 +71,7 @@ impl Requests {
                         return Err("Invalid address".into())
                     }
                 }
-            },
-            None => {}
+            }
         }
         let t = self.request_tokens.restore(seq);
         let address = self.requests.remove(&seq);
@@ -254,10 +253,8 @@ impl SessionInitiator {
                         let message = message::Message::secret_allowed(message.seq(), responder_pub_key);
                         self.server.enqueue(message, *from)?;
                         return Ok(())
-                    } else {
-                        if !self.routing_table.remove_node(*from) {
-                            cwarn!(NETWORK, "Cannot reset key pair to {}", from);
-                        }
+                    } else if !self.routing_table.remove_node(*from) {
+                        cwarn!(NETWORK, "Cannot reset key pair to {}", from);
                     }
                 }
 
@@ -392,7 +389,7 @@ impl IoHandler<Message> for Handler {
                 {
                     None => {}
                     Some(address) => {
-                        if let Some(_) = session_initiator.requests.manually_connected_address.take(&address) {
+                        if session_initiator.requests.manually_connected_address.take(&address).is_some() {
                             cinfo!(NETWORK, "Timeout occurred when connecting to {}", address);
                         } else {
                             cinfo!(NETWORK, "The message to {} is dropped because of timeout", address);

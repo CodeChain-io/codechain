@@ -41,7 +41,7 @@ use rocksdb::{
 };
 
 use elastic_array::ElasticArray32;
-use kvdb::{DBOp, DBTransaction, DBValue, KeyValueDB, Result};
+use kvdb::{DBOp, DBTransaction, DBValue, KeyValueDB, KeyValueDBIterator, Result};
 use rlp::{Compressible, RlpType, UntrustedRlp};
 
 #[cfg(target_os = "linux")]
@@ -105,11 +105,8 @@ impl CompactionProfile {
         let hdd_check_file = db_path
             .to_str()
             .and_then(|path_str| Command::new("df").arg(path_str).output().ok())
-            .and_then(|df_res| match df_res.status.success() {
-                true => Some(df_res.stdout),
-                false => None,
-            })
-            .and_then(|df| rotational_from_df_output(&df));
+            .filter(|df| df.status.success())
+            .and_then(|df| rotational_from_df_output(&df.stdout));
         // Read out the file and match compaction profile.
         if let Some(hdd_check) = hdd_check_file {
             if let Ok(mut file) = File::open(hdd_check.as_path()) {
@@ -200,12 +197,13 @@ impl Default for DatabaseConfig {
     }
 }
 
+type KeyValueIntoIter = ::std::vec::IntoIter<(Box<[u8]>, Box<[u8]>)>;
 /// Database iterator (for flushed data only)
 // The compromise of holding only a virtual borrow vs. holding a lock on the
 // inner DB (to prevent closing via restoration) may be re-evaluated in the future.
 //
 pub struct DatabaseIterator<'a> {
-    iter: InterleaveOrdered<::std::vec::IntoIter<(Box<[u8]>, Box<[u8]>)>, DBIterator>,
+    iter: InterleaveOrdered<KeyValueIntoIter, DBIterator>,
     _marker: PhantomData<&'a Database>,
 }
 
@@ -369,16 +367,15 @@ impl Database {
                 warn!("DB corrupted: {}, attempting repair", s);
                 DB::repair(&opts, path)?;
 
-                match cfnames.is_empty() {
-                    true => DB::open(&opts, path)?,
-                    false => {
-                        let db = DB::open_cf(&opts, path, &cfnames, &cf_options)?;
-                        cfs = cfnames
-                            .iter()
-                            .map(|n| db.cf_handle(n).expect("rocksdb opens a cf_handle for each cfname; qed"))
-                            .collect();
-                        db
-                    }
+                if cfnames.is_empty() {
+                    DB::open(&opts, path)?
+                } else {
+                    let db = DB::open_cf(&opts, path, &cfnames, &cf_options)?;
+                    cfs = cfnames
+                        .iter()
+                        .map(|n| db.cf_handle(n).expect("rocksdb opens a cf_handle for each cfname; qed"))
+                        .collect();
+                    db
                 }
             }
             Err(s) => return Err(s.into()),
@@ -791,16 +788,12 @@ impl KeyValueDB for Database {
         Database::flush(self)
     }
 
-    fn iter<'a>(&'a self, col: Option<u32>) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a> {
+    fn iter(&self, col: Option<u32>) -> KeyValueDBIterator {
         let unboxed = Database::iter(self, col);
         Box::new(unboxed.into_iter().flat_map(|inner| inner))
     }
 
-    fn iter_from_prefix<'a>(
-        &'a self,
-        col: Option<u32>,
-        prefix: &'a [u8],
-    ) -> Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a> {
+    fn iter_from_prefix<'a>(&'a self, col: Option<u32>, prefix: &'a [u8]) -> KeyValueDBIterator {
         let unboxed = Database::iter_from_prefix(self, col, prefix);
         Box::new(unboxed.into_iter().flat_map(|inner| inner))
     }

@@ -16,6 +16,7 @@
 
 mod error;
 mod service;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod snapshot;
 
 pub use self::service::Service as SnapshotService;

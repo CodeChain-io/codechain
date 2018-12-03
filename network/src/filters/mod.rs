@@ -16,6 +16,7 @@
 
 mod control;
 mod filter;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod filters;
 
 pub use self::control::Control as FiltersControl;

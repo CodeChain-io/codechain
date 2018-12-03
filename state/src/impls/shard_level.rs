@@ -69,7 +69,7 @@ impl<'db> ShardLevelState<'db> {
         cache: &'db mut ShardCache,
     ) -> cmerkle::Result<Self> {
         if !db.borrow().as_hashdb().contains(&root) {
-            return Err(TrieError::InvalidStateRoot(root).into())
+            return Err(TrieError::InvalidStateRoot(root))
         }
 
         Ok(Self {
@@ -84,7 +84,7 @@ impl<'db> ShardLevelState<'db> {
     /// Creates immutable shard state
     pub fn read_only(db: &RefCell<StateDB>, root: H256, cache: ShardCache) -> cmerkle::Result<ReadOnlyShardLevelState> {
         if !db.borrow().as_hashdb().contains(&root) {
-            return Err(TrieError::InvalidStateRoot(root).into())
+            return Err(TrieError::InvalidStateRoot(root))
         }
 
         Ok(ReadOnlyShardLevelState {

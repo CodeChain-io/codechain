@@ -110,9 +110,10 @@ pub mod headers {
         }
 
         fn verify(un: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error> {
-            match check_seal {
-                true => engine.verify_block_unordered(&un).map(|_| un),
-                false => Ok(un),
+            if check_seal {
+                engine.verify_block_unordered(&un).map(|_| un)
+            } else {
+                Ok(un)
             }
         }
 

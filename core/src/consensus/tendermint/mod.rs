@@ -184,6 +184,7 @@ pub struct Tendermint {
 }
 
 impl Tendermint {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let extension = TendermintExtension::new(our_params.timeouts);
@@ -961,27 +962,27 @@ impl TendermintExtension {
     fn broadcast_message(&self, message: Bytes) {
         let tokens = self.select_random_peers();
         let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
-        self.api.lock().as_ref().map(|api| {
+        if let Some(api) = self.api.lock().as_ref() {
             for token in tokens {
                 api.send(&token, &message);
             }
-        });
+        }
     }
 
     fn broadcast_proposal_block(&self, message: Bytes) {
         let message = TendermintMessage::ProposalBlock(message).rlp_bytes().into_vec();
-        self.api.lock().as_ref().map(|api| {
+        if let Some(api) = self.api.lock().as_ref() {
             for token in self.peers.read().iter() {
                 api.send(&token, &message);
             }
-        });
+        };
     }
 
     fn set_timer_step(&self, step: Step) {
-        self.api.lock().as_ref().map(|api| {
+        if let Some(api) = self.api.lock().as_ref() {
             api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
             api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&step)).expect("Timer set succeeds");
-        });
+        };
     }
 
     fn register_tendermint(&self, tendermint: Weak<Tendermint>) {
@@ -1079,7 +1080,7 @@ mod tests {
         let db = get_temp_state_db();
         let db = scheme.ensure_genesis_state(db).unwrap();
         let genesis_header = scheme.genesis_header();
-        let b = OpenBlock::new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![], false).unwrap();
+        let b = OpenBlock::try_new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![], false).unwrap();
         let b = b.close(*genesis_header.parcels_root(), *genesis_header.invoices_root()).unwrap();
         if let Seal::Proposal(seal) = scheme.engine.generate_seal(b.block(), &genesis_header) {
             (b, seal)

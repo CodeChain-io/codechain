@@ -95,9 +95,11 @@ struct SealingWork {
     enabled: bool,
 }
 
+type ParcelListener = Box<Fn(&[H256]) + Send + Sync>;
+
 pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
-    parcel_listener: RwLock<Vec<Box<Fn(&[H256]) + Send + Sync>>>,
+    parcel_listener: RwLock<Vec<ParcelListener>>,
     next_allowed_reseal: Mutex<Instant>,
     next_mandatory_reseal: RwLock<Instant>,
     sealing_block_last_request: Mutex<u64>,
@@ -118,6 +120,7 @@ impl Miner {
         self.notifiers.write().push(notifier);
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Arc<Self> {
         Arc::new(Self::new_raw(options, scheme, accounts))
     }
@@ -129,9 +132,10 @@ impl Miner {
     fn new_raw(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
         let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(options.mem_pool_size, mem_limit)));
-        let notifiers: Vec<Box<NotifyWork>> = match options.new_work_notify.is_empty() {
-            true => Vec::new(),
-            false => vec![Box::new(WorkPoster::new(&options.new_work_notify))],
+        let notifiers: Vec<Box<NotifyWork>> = if options.new_work_notify.is_empty() {
+            Vec::new()
+        } else {
+            vec![Box::new(WorkPoster::new(&options.new_work_notify))]
         };
 
         Self {
@@ -285,56 +289,50 @@ impl Miner {
     fn calculate_timelock<C: BlockChain>(&self, parcel: &SignedParcel, client: &C) -> Result<ParcelTimelock, Error> {
         let mut max_block = None;
         let mut max_timestamp = None;
-        match &parcel.action {
-            Action::AssetTransaction(transaction) => {
-                match transaction {
-                    Transaction::AssetTransfer {
-                        inputs,
-                        ..
-                    } => {
-                        for input in inputs {
-                            if let Some(timelock) = input.timelock {
-                                let (is_block_number, value) = match timelock {
-                                    Timelock::Block(value) => (true, value),
-                                    Timelock::BlockAge(value) => (
-                                        true,
-                                        client.transaction_block_number(&input.prev_out.transaction_hash).ok_or(
-                                            Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                                timelock,
-                                                remaining_time: u64::max_value(),
-                                            })),
-                                        )? + value,
-                                    ),
-                                    Timelock::Time(value) => (false, value),
-                                    Timelock::TimeAge(value) => (
-                                        false,
-                                        client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or(
-                                            Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                                timelock,
-                                                remaining_time: u64::max_value(),
-                                            })),
-                                        )? + value,
-                                    ),
-                                };
-                                if is_block_number {
-                                    if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
-                                        max_block = Some(value);
-                                    }
-                                } else {
-                                    if max_timestamp.is_none()
-                                        || max_timestamp.expect("The previous guard ensures") < value
-                                    {
-                                        max_timestamp = Some(value);
-                                    }
-                                }
+        if let Action::AssetTransaction(transaction) = &parcel.action {
+            if let Transaction::AssetTransfer {
+                inputs,
+                ..
+            } = transaction
+            {
+                for input in inputs {
+                    if let Some(timelock) = input.timelock {
+                        let (is_block_number, value) = match timelock {
+                            Timelock::Block(value) => (true, value),
+                            Timelock::BlockAge(value) => (
+                                true,
+                                client.transaction_block_number(&input.prev_out.transaction_hash).ok_or_else(|| {
+                                    Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                        timelock,
+                                        remaining_time: u64::max_value(),
+                                    }))
+                                })? + value,
+                            ),
+                            Timelock::Time(value) => (false, value),
+                            Timelock::TimeAge(value) => (
+                                false,
+                                client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or_else(
+                                    || {
+                                        Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                            timelock,
+                                            remaining_time: u64::max_value(),
+                                        }))
+                                    },
+                                )? + value,
+                            ),
+                        };
+                        if is_block_number {
+                            if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
+                                max_block = Some(value);
                             }
+                        } else if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value
+                        {
+                            max_timestamp = Some(value);
                         }
                     }
-                    _ => {}
-                };
+                }
             }
-            _ => (),
-        }
+        };
         Ok(ParcelTimelock {
             block: max_block,
             timestamp: max_timestamp,
@@ -427,12 +425,12 @@ impl Miner {
             (work, is_new)
         };
         if is_new {
-            work.map(|(pow_hash, score, _number)| {
+            if let Some((pow_hash, score, _number)) = work {
                 let target = self.engine.score_to_target(&score);
                 for notifier in self.notifiers.read().iter() {
                     notifier.notify(pow_hash, target)
                 }
-            });
+            }
         }
     }
 
@@ -833,15 +831,15 @@ impl MinerService for Miner {
         // | NOTE Code below requires mem_pool and sealing_queue locks.     |
         // | Make sure to release the locks before calling that method.     |
         // ------------------------------------------------------------------
-        if imported.is_ok() && self.options.reseal_on_own_parcel && self.parcel_reseal_allowed() {
+        if imported.is_ok() && self.options.reseal_on_own_parcel && self.parcel_reseal_allowed()
             // Make sure to do it after parcel is imported and lock is dropped.
             // We need to create pending block and enable sealing.
-            if self.engine.seals_internally().unwrap_or(false) || !self.prepare_work_sealing(chain) {
-                // If new block has not been prepared (means we already had one)
-                // or Engine might be able to seal internally,
-                // we need to update sealing.
-                self.update_sealing(chain);
-            }
+            && (self.engine.seals_internally().unwrap_or(false) || !self.prepare_work_sealing(chain))
+        {
+            // If new block has not been prepared (means we already had one)
+            // or Engine might be able to seal internally,
+            // we need to update sealing.
+            self.update_sealing(chain);
         }
         imported
     }
@@ -883,7 +881,7 @@ impl MinerService for Miner {
         let parcel_hash = parcel.hash();
         let sig = account_provider.sign(address, passphrase, parcel_hash)?;
         let unverified = UnverifiedParcel::new(parcel, sig);
-        let signed = SignedParcel::new(unverified)?;
+        let signed = SignedParcel::try_new(unverified)?;
         let hash = signed.hash();
         self.import_own_parcel(client, signed)?;
 

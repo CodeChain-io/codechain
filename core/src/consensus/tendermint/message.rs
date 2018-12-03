@@ -193,9 +193,10 @@ impl Decodable for ConsensusMessage {
         }
         Ok(ConsensusMessage {
             vote_step: VoteStep::new(m.val_at(0)?, m.val_at(1)?, m.val_at(2)?),
-            block_hash: match block_message.is_zero() {
-                true => None,
-                false => Some(block_message),
+            block_hash: if block_message.is_zero() {
+                None
+            } else {
+                Some(block_message)
             },
             signature: rlp.val_at(0)?,
         })

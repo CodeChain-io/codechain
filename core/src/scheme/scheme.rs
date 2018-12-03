@@ -224,11 +224,7 @@ impl Scheme {
         if db.keys().is_empty() {
             return true
         }
-        if db.contains(&self.state_root()) {
-            true
-        } else {
-            false
-        }
+        db.contains(&self.state_root())
     }
 
     /// Ensure that the given state DB has the trie nodes in for the genesis state.

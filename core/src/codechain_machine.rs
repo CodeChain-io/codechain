@@ -69,7 +69,7 @@ impl CodeChainMachine {
 
     /// Verify a particular parcel is valid, regardless of order.
     pub fn verify_parcel_unordered(&self, p: UnverifiedParcel, _header: &Header) -> Result<SignedParcel, Error> {
-        Ok(SignedParcel::new(p)?)
+        Ok(SignedParcel::try_new(p)?)
     }
 
     /// Does verification of the parcel against the parent state.
@@ -81,11 +81,8 @@ impl CodeChainMachine {
         verify_timelock: bool,
     ) -> Result<(), Error> {
         if verify_timelock {
-            match &parcel.action {
-                Action::AssetTransaction(transaction) => {
-                    Self::verify_transaction_timelock(transaction, header, client)?;
-                }
-                _ => (),
+            if let Action::AssetTransaction(transaction) = &parcel.action {
+                Self::verify_transaction_timelock(transaction, header, client)?;
             }
         }
         // FIXME: Filter parcels.

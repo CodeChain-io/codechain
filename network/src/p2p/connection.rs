@@ -93,9 +93,8 @@ impl EstablishedConnection {
     fn enqueue_negotiation_request(&mut self, name: String, extension_versions: Vec<Version>) {
         let seq = self.next_negotiation_seq;
         self.next_negotiation_seq += 1;
-        if let Some(_) = self.requested_negotiation.insert(seq, name.clone()) {
-            unreachable!();
-        }
+        let t = self.requested_negotiation.insert(seq, name.clone());
+        assert_eq!(None, t);
         self.enqueue(Message::Negotiation(NegotiationMessage::request(seq, name, extension_versions)));
     }
 

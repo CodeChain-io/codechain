@@ -51,7 +51,7 @@ impl<'a> TrieDBMut<'a> {
     /// Returns an error if `root` does not exist.
     pub fn from_existing(db: &'a mut HashDB, root: &'a mut H256) -> crate::Result<Self> {
         if !db.contains(root) {
-            return Err(Box::new(TrieError::InvalidStateRoot(*root)))
+            return Err(TrieError::InvalidStateRoot(*root))
         }
 
         Ok(TrieDBMut {
@@ -70,7 +70,7 @@ impl<'a> TrieDBMut<'a> {
     ) -> crate::Result<H256> {
         match cur_node_hash {
             Some(hash) => {
-                let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
+                let node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
@@ -180,7 +180,7 @@ impl<'a> TrieDBMut<'a> {
     ) -> crate::Result<Option<H256>> {
         match cur_node_hash {
             Some(hash) => {
-                let node_rlp = self.db.get(&hash).ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
+                let node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
@@ -217,11 +217,11 @@ impl<'a> TrieDBMut<'a> {
                                         let new_leaf_data = self
                                             .db
                                             .get(&new_leaf_hash)
-                                            .ok_or_else(|| Box::new(TrieError::IncompleteDatabase(hash)))?;
+                                            .ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
                                         let new_leaf_node = RlpNode::decoded(&new_leaf_data);
 
                                         match new_leaf_node {
-                                            None => Err(Box::new(TrieError::IncompleteDatabase(hash))),
+                                            None => Err(TrieError::IncompleteDatabase(hash)),
                                             Some(RlpNode::Leaf(child_partial, child_value)) => {
                                                 let mut vec = partial.to_vec();
                                                 vec.push(index as u8);
@@ -308,7 +308,7 @@ impl<'a> TrieMut for TrieDBMut<'a> {
     }
 
     fn get(&self, key: &[u8]) -> crate::Result<Option<DBValue>> {
-        let t = TrieDB::new(self.db, self.root)?;
+        let t = TrieDB::try_new(self.db, self.root)?;
 
         t.get(key)
     }

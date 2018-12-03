@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod chain_notify;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod client;
 mod config;
 mod error;

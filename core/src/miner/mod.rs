@@ -16,6 +16,7 @@
 
 mod local_parcels;
 mod mem_pool;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod miner;
 mod sealing_queue;
 mod stratum;

@@ -45,7 +45,7 @@ impl fmt::Display for Uuid {
         let d3 = &self.0[6..8];
         let d4 = &self.0[8..10];
         let d5 = &self.0[10..16];
-        write!(f, "{}", [d1, d2, d3, d4, d5].into_iter().map(|d| d.to_hex()).collect::<Vec<String>>().join("-"))
+        write!(f, "{}-{}-{}-{}-{}", d1.to_hex(), d2.to_hex(), d3.to_hex(), d4.to_hex(), d5.to_hex())
     }
 }
 

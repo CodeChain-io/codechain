@@ -194,9 +194,7 @@ where
 
             file.flush()?;
 
-            if let Err(_) = restrict_permissions_to_owner(keyfile_path.as_path()) {
-                return Err(Error::Io(io::Error::last_os_error()))
-            }
+            restrict_permissions_to_owner(keyfile_path.as_path()).map_err(|_| Error::Io(io::Error::last_os_error()))?;
 
             file.sync_all()?;
         }

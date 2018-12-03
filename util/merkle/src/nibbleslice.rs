@@ -44,7 +44,7 @@ where
 
     /// Create a new nibble slice from the given HPE encoded data (e.g. output of `encoded()`).
     pub fn from_encoded(data: &'a [u8]) -> NibbleSlice {
-        let offset = if data[0] & 16 == 16 {
+        let offset = if (data[0] & 0b1_0000) == 0b1_0000 {
             1
         } else {
             2
@@ -64,10 +64,11 @@ where
 
     /// Get the nibble at position `i`.
     pub fn at(&self, i: usize) -> u8 {
+        let word = self.data[(self.offset + i) >> 1];
         if (self.offset + i) & 1 == 1 {
-            self.data[(self.offset + i) / 2] & 15u8
+            word & 0b1111
         } else {
-            self.data[(self.offset + i) / 2] >> 4
+            word >> 4
         }
     }
 
@@ -103,12 +104,12 @@ where
         let mut r = ElasticArray36::new();
         let mut i = l % 2;
         r.push(if i == 1 {
-            0x10 + self.at(0)
+            0b1_0000 + self.at(0)
         } else {
             0
         });
         while i < l {
-            r.push(self.at(i) * 16 + self.at(i + 1));
+            r.push((self.at(i) << 4) + self.at(i + 1));
             i += 2;
         }
         r
@@ -122,12 +123,12 @@ where
         let mut r = ElasticArray36::new();
         let mut i = l % 2;
         r.push(if i == 1 {
-            0x10 + self.at(0)
+            0b1_0000 + self.at(0)
         } else {
             0
         });
         while i < l {
-            r.push(self.at(i) * 16 + self.at(i + 1));
+            r.push((self.at(i) << 4) + self.at(i + 1));
             i += 2;
         }
         r
@@ -146,12 +147,12 @@ where
         let l = v.len();
         let mut i = l % 2;
         r.push(if i == 1 {
-            0x10 + (v[0] & 15u8)
+            0b1_0000 + (v[0] & 0b1111)
         } else {
             0
         });
         while i < l {
-            r.push(((v[i] & 15u8) << 4) + (v[i + 1] & 15u8));
+            r.push(((v[i] & 0b1111) << 4) + (v[i + 1] & 0b1111));
             i += 2;
         }
         (r, 2 - (l % 2))
