@@ -113,14 +113,12 @@ impl Importer {
                 }
                 if let Ok(closed_block) = self.check_and_close_block(&block, client) {
                     if self.engine.is_proposal(&block.header) {
-                        self.engine.on_verified_proposal(encoded::Block::new(block.bytes));
-                        self.block_queue.mark_as_good(&[header.hash()]);
-                    } else {
-                        imported_blocks.push(header.hash());
-
-                        let route = self.commit_block(&closed_block, &header, &block.bytes, client);
-                        import_results.push(route);
+                        self.engine.on_verified_proposal(encoded::Block::new(block.bytes.clone()));
                     }
+
+                    imported_blocks.push(header.hash());
+                    let route = self.commit_block(&closed_block, &header, &block.bytes, client);
+                    import_results.push(route);
                 } else {
                     invalid_blocks.insert(header.hash());
                 }
@@ -397,12 +395,8 @@ impl Importer {
                 .expect("Parent of importing header must exist")
                 .decode();
             if self.check_header(&header, &parent_header) {
-                if self.engine.is_proposal(&header) {
-                    self.header_queue.mark_as_good(&[hash]);
-                } else {
-                    imported.push(hash);
-                    routes.push(self.commit_header(&header, client));
-                }
+                imported.push(hash);
+                routes.push(self.commit_header(&header, client));
             } else {
                 bad.insert(hash);
             }

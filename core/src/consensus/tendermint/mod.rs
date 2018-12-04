@@ -48,7 +48,6 @@ use crate::block::*;
 use crate::client::{Client, EngineClient};
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
-use crate::encoded;
 use crate::error::{BlockError, Error};
 use crate::header::Header;
 use crate::views::{BlockView, HeaderView};
@@ -79,10 +78,10 @@ pub struct Tendermint {
     last_lock: AtomicUsize,
     /// hash of the proposed block, used for seal submission.
     proposal: RwLock<Option<H256>>,
-    /// Current round's proposal block.
-    proposal_block: RwLock<Option<Bytes>>,
     /// Hash of the proposal parent block.
     proposal_parent: RwLock<H256>,
+    /// Proposal block which parent is not imported yet
+    future_proposal: RwLock<Option<Bytes>>,
     last_seal: RwLock<(H256, View, Vec<Signature>)>,
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
@@ -114,8 +113,8 @@ impl Tendermint {
             lock_change: RwLock::new(None),
             last_lock: AtomicUsize::new(0),
             proposal: RwLock::new(None),
-            proposal_block: RwLock::new(None),
             proposal_parent: Default::default(),
+            future_proposal: RwLock::new(None),
             last_seal: RwLock::new((Default::default(), 0, Vec::new())),
             validators: our_params.validators,
             block_reward: our_params.block_reward,
@@ -139,6 +138,30 @@ impl Tendermint {
 
     pub fn height(&self) -> Height {
         self.height.load(AtomicOrdering::SeqCst)
+    }
+
+    pub fn update_future_proposal(&self, future_proposal: Bytes) {
+        let prev_score = self
+            .future_proposal
+            .read()
+            .as_ref()
+            .map(|prev| BlockView::new(prev).header_view().score())
+            .unwrap_or_default();
+        let new_score = BlockView::new(&future_proposal).header_view().score();
+        if prev_score < new_score {
+            ctrace!(ENGINE, "future proposal changed");
+            *self.future_proposal.write() = Some(future_proposal);
+        } else {
+            ctrace!(ENGINE, "future proposal not changed");
+        }
+    }
+
+    pub fn future_proposal_prev_hash(&self) -> Option<H256> {
+        self.future_proposal.read().as_ref().map(|b| BlockView::new(b).header_view().parent_hash())
+    }
+
+    pub fn take_future_proposal(&self) -> Option<Bytes> {
+        self.future_proposal.write().take()
     }
 
     /// Check if address is a proposer for given view.
@@ -241,19 +264,6 @@ impl Tendermint {
         *self.last_seal.write() = (block_hash, view, seal);
     }
 
-    fn import_proposal_block(&self) {
-        if let Some(ref weak) = *self.client.read() {
-            if let Some(c) = weak.upgrade() {
-                let proposal_block = std::mem::replace(&mut *self.proposal_block.write(), None)
-                    .expect("Proposal should be set in commit phase");
-                ctrace!(ENGINE, "Import proposal block {}", BlockView::new(&proposal_block).hash());
-                if let Err(e) = c.import_block(proposal_block) {
-                    cdebug!(ENGINE, "proposal import fail {:?}", e);
-                }
-            }
-        }
-    }
-
     fn increment_view(&self, n: View) {
         ctrace!(ENGINE, "increment_view: New view.");
         self.view.fetch_add(n, AtomicOrdering::SeqCst);
@@ -279,14 +289,38 @@ impl Tendermint {
         *self.lock_change.write() = None;
         *self.proposal.write() = None;
         *self.proposal_parent.write() = Default::default();
-        *self.proposal_block.write() = None;
     }
 
     fn to_step(&self, step: Step) {
         self.extension.set_timer_step(step);
         *self.step.write() = step;
         match step {
-            Step::Propose => self.update_sealing(),
+            Step::Propose => {
+                let c = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
+                    Some(c) => c,
+                    None => return,
+                };
+
+                let vote_step = VoteStep::new(
+                    self.height.load(AtomicOrdering::SeqCst),
+                    self.view.load(AtomicOrdering::SeqCst),
+                    Step::Propose,
+                );
+
+                if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
+                    if let Some(header) = c.block_header(&BlockId::Hash(*hash)) {
+                        *self.proposal.write() = Some(*hash);
+                        *self.proposal_parent.write() = header.parent_hash();
+                    } else {
+                        ctrace!(ENGINE, "Proposal is received but not imported");
+                        // Proposal is received but is not verified yet.
+                        // Wait for verification.
+                        return
+                    }
+                } else {
+                    self.update_sealing()
+                }
+            }
             Step::Prevote => {
                 let block_hash = match *self.lock_change.read() {
                     Some(ref m) if !self.should_unlock(m.vote_step.view) => m.block_hash,
@@ -369,14 +403,16 @@ impl Tendermint {
                 }
                 Step::Precommit if self.has_enough_aligned_votes(message) => {
                     let bh = message.block_hash.expect("previous guard ensures is_some; qed");
-                    let saved_proposal_hash = *self.proposal.read();
-                    if saved_proposal_hash == Some(bh) {
+                    let c = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
+                        Some(c) => c,
+                        None => return,
+                    };
+                    if c.block(&BlockId::Hash(bh)).is_some() {
                         // Commit the block using a complete signature set.
                         // Generate seal and remove old votes.
                         let precommits = self.votes.round_signatures(vote_step, &bh);
                         ctrace!(ENGINE, "Collected seal: {:?}", precommits);
                         self.save_last_seal(bh, message.vote_step.view, precommits);
-                        self.import_proposal_block();
                         self.votes.throw_out_old(&vote_step);
                         self.to_next_height(self.height());
                         Some(Step::Commit)
@@ -396,6 +432,23 @@ impl Tendermint {
                 ctrace!(ENGINE, "Transition to {:?} triggered.", step);
                 self.to_step(step);
             }
+        }
+    }
+
+    pub fn on_imported_proposal(&self, proposal: &Header) {
+        let _guard = self.step_change_lock.lock();
+
+        let current_height = self.height.load(AtomicOrdering::SeqCst);
+        let height = proposal.number() as Height;
+        let view = consensus_view(proposal).expect("Imported block is already verified");
+        if current_height == height && self.view.load(AtomicOrdering::SeqCst) == view {
+            *self.proposal.write() = Some(proposal.hash());
+            *self.proposal_parent.write() = *proposal.parent_hash();
+        } else if current_height < height {
+            self.to_next_height(height - 1);
+            *self.proposal.write() = Some(proposal.hash());
+            *self.proposal_parent.write() = *proposal.parent_hash();
+            self.to_step(Step::Prevote);
         }
     }
 }
@@ -454,7 +507,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
         *self.proposal.write() = Some(hash);
         *self.proposal_parent.write() = *header.parent_hash();
-        *self.proposal_block.write() = Some(sealed_block.rlp_bytes());
         cdebug!(
             ENGINE,
             "Submitting proposal {} at height {}-{} view {}-{}.\n{:?}",
@@ -710,27 +762,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         !self.has_enough_precommit_votes(header.hash())
     }
 
-    fn on_verified_proposal(&self, verified_block_data: encoded::Block) {
-        let _guard = self.step_change_lock.lock();
-        let header = verified_block_data.decode_header();
-        let proposer = header.author();
-        let height = header.number() as usize;
-        let view = consensus_view(&header).unwrap();
-        cdebug!(ENGINE, "Received a new proposal {}-{} from {}.", height, view, proposer);
-
-        let current_height = self.height();
-        if current_height == height && self.view.load(AtomicOrdering::SeqCst) == view {
-            *self.proposal.write() = Some(header.hash());
-            *self.proposal_parent.write() = *header.parent_hash();
-            *self.proposal_block.write() = Some(verified_block_data.into_inner());
-        } else if current_height < height {
-            self.to_next_height(height);
-            *self.proposal.write() = Some(header.hash());
-            *self.proposal_parent.write() = *header.parent_hash();
-            self.to_step(Step::Commit);
-        }
-    }
-
     fn broadcast_proposal_block(&self, block: SealedBlock) {
         let header = block.header();
         let hash = header.hash();
@@ -840,15 +871,31 @@ impl ChainNotify for TendermintChainNotify {
             return
         }
         let _guard = t.step_change_lock.lock();
+        let mut height_changed = false;
         for hash in imported {
             // New Commit received, skip to next height.
             let header = c.block_header(&hash.into()).expect("ChainNotify is called after the block is imported");
-            ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
-            if t.height() <= header.number() as usize {
-                t.to_next_height(header.number() as usize);
+
+            let full_header = header.decode();
+            if t.is_proposal(&full_header) {
+                t.on_imported_proposal(&full_header);
+            } else if t.height() < header.number() as usize {
+                height_changed = true;
+                ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
+                t.to_next_height((header.number() - 1) as usize);
             }
         }
-        t.to_step(Step::Commit)
+        if height_changed {
+            t.to_step(Step::Commit)
+        }
+
+        if t.future_proposal_prev_hash().map(|hash| c.block(&BlockId::Hash(hash)).is_some()).unwrap_or(false) {
+            if let Err(err) = c
+                .import_block(t.take_future_proposal().expect("future_proposal_prev_hash is already checked existance"))
+            {
+                cwarn!(ENGINE, "Future proposal import failed {:?}", err);
+            }
+        }
     }
 }
 
@@ -1042,6 +1089,20 @@ impl NetworkExtension for TendermintExtension {
                     let header_view = block_view.header();
                     let number = header_view.number();
                     ctrace!(ENGINE, "Proposal received for {}-{:?}", number, header_view.hash());
+
+                    let parent_hash = header_view.parent_hash();
+                    if c.block(&BlockId::Hash(*parent_hash)).is_none() {
+                        let best_block_number = c.best_block_header().number();
+                        ctrace!(
+                            ENGINE,
+                            "Received future proposal {}-{}, current best block number is {}. ignore it",
+                            number,
+                            parent_hash,
+                            best_block_number
+                        );
+                        t.update_future_proposal(bytes.clone());
+                        return
+                    }
 
                     let message = match ConsensusMessage::new_proposal(signature, &header_view) {
                         Ok(message) => message,
