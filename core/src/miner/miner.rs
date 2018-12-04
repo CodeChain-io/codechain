@@ -549,7 +549,9 @@ impl Miner {
                         .seal(&*self.engine, seal.clone())
                         .map(|sealed| {
                             self.engine.proposal_generated(&sealed);
+                            let import_result = chain.import_sealed_block(&sealed);
                             self.engine.broadcast_proposal_block(sealed);
+                            import_result
                         })
                         .map_err(|e| {
                             cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
