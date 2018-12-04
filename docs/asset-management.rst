@@ -202,13 +202,13 @@ In order to create new assets, you must create a new instance of AssetScheme. In
             icon_url: "https://gold.image/",
         }),
         amount: 10000,
-        registrar: null,
+        approver: null,
     });
 
 .. note::
-    You should note that the registrar is kept as null. This value is only filled out when there should be an overseer amongst transactions.
-    If not null, the registrar must approve of every transaction being made with that newly created Asset. In this case, if the 10000 gold
-    that was minted had a registrar, then every time any of those 10000 gold is involved in a transaction, the set registrar would have to
+    You should note that the approver is kept as null. This value is only filled out when there should be an overseer amongst transactions.
+    If not null, the approver must approve of every transaction being made with that newly created Asset. In this case, if the 10000 gold
+    that was minted had a approver, then every time any of those 10000 gold is involved in a transaction, the set approver would have to
     sign off and approve for the transaction to be successful.
 
 After Gold has been defined in the scheme, the amount that is minted but belong to someone initially. In this example, we create 10000 gold for Alice.

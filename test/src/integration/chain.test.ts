@@ -308,9 +308,7 @@ describe("chain", function() {
             }
             expect(assetScheme.amount).to.deep.equal(txAssetScheme.amount);
             expect(assetScheme.metadata).to.equal(txAssetScheme.metadata);
-            expect(assetScheme.registrar).to.deep.equal(
-                txAssetScheme.registrar
-            );
+            expect(assetScheme.approver).to.deep.equal(txAssetScheme.approver);
         });
 
         it("getAssetSchemeByType", async function() {
@@ -325,9 +323,7 @@ describe("chain", function() {
             }
             expect(assetScheme.amount).to.deep.equal(txAssetScheme.amount);
             expect(assetScheme.metadata).to.equal(txAssetScheme.metadata);
-            expect(assetScheme.registrar).to.deep.equal(
-                txAssetScheme.registrar
-            );
+            expect(assetScheme.approver).to.deep.equal(txAssetScheme.approver);
         });
     });
 

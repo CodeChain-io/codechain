@@ -1472,7 +1472,7 @@ pub mod test {
                 parameters: vec![],
                 amount: None,
             },
-            registrar: None,
+            approver: None,
         };
         let parcel = Parcel {
             seq: 0,
@@ -1585,7 +1585,7 @@ pub mod test {
             network_id: "tc".into(),
             shard_id: 0,
             metadata: String::from_utf8(vec!['a' as u8; transaction_count]).unwrap(),
-            registrar: None,
+            approver: None,
             output: AssetMintOutput {
                 lock_script_hash: H160::zero(),
                 parameters: vec![],

@@ -369,15 +369,15 @@ describe("transactions", function() {
         expect(invoices![0].success).to.be.false;
     });
 
-    describe("registrar", function() {
-        let registrar: PlatformAddress;
-        let nonRegistrar: PlatformAddress;
+    describe("approver", function() {
+        let approver: PlatformAddress;
+        let nonApprover: PlatformAddress;
         let transferTx: AssetTransferTransaction;
         before(async function() {
-            registrar = await node.createPlatformAddress();
-            nonRegistrar = await node.createPlatformAddress();
-            await node.payment(registrar, 10000);
-            await node.payment(nonRegistrar, 10000);
+            approver = await node.createPlatformAddress();
+            nonApprover = await node.createPlatformAddress();
+            await node.payment(approver, 10000);
+            await node.payment(nonApprover, 10000);
         });
 
         beforeEach(async function() {
@@ -387,7 +387,7 @@ describe("transactions", function() {
                     shardId: 0,
                     metadata: "",
                     amount: 10000,
-                    registrar
+                    approver
                 },
                 recipient
             });
@@ -406,14 +406,14 @@ describe("transactions", function() {
             await node.signTransferInput(transferTx, 0);
         });
 
-        it("registrar sends a parcel", async function() {
+        it("approver sends a parcel", async function() {
             const invoice = await node
                 .sendParcel(
                     node.sdk.core.createAssetTransactionParcel({
                         transaction: transferTx
                     }),
                     {
-                        account: registrar
+                        account: approver
                     }
                 )
                 .then(hash => {
@@ -427,14 +427,14 @@ describe("transactions", function() {
             expect(invoice.success).to.be.true;
         });
 
-        it("nonRegistrar sends a parcel", async function() {
+        it("nonApprover sends a parcel", async function() {
             const invoice = await node
                 .sendParcel(
                     node.sdk.core.createAssetTransactionParcel({
                         transaction: transferTx
                     }),
                     {
-                        account: nonRegistrar
+                        account: nonApprover
                     }
                 )
                 .then(hash => {
@@ -447,7 +447,7 @@ describe("transactions", function() {
             }
             expect(invoice.success).to.be.false;
             expect(invoice.error!.type).to.equal("InvalidTransaction");
-            expect(invoice.error!.content.type).to.equal("NotRegistrar");
+            expect(invoice.error!.content.type).to.equal("NotApproved");
         });
     });
 

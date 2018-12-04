@@ -103,7 +103,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 
  - amount: `U64`
  - metadata: `string`
- - registrar: `PlatformAddress` | `null`
+ - approver: `PlatformAddress` | `null`
 
 ## Asset
 
@@ -127,7 +127,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  - shardId: `number`
  - metadata: `string`
  - output: `AssetMintOutput`
- - registrar: `PlatformAddress` | `null`
+ - approver: `PlatformAddress` | `null`
 
 ### AssetTranferData
 
@@ -143,7 +143,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  - metadata: `string`
  - inputs: `AssetTransferInput[]`
  - output: `AssetMintOutput`
- - registrar: `PlatformAddress` | `null`
+ - approver: `PlatformAddress` | `null`
 
 ### AssetDecomposeData
 
@@ -727,7 +727,7 @@ Errors: `Invalid Params`
       "parameters":[],
       "amount":10000
     },
-    "registrar":null,
+    "approver":null,
     "nonce":0
   },
   "id":null
@@ -794,7 +794,7 @@ Errors: `KVDB Error`, `Invalid Params`
   "result":{
     "amount":100,
     "metadata":"",
-    "registrar":null
+    "approver":null
   },
   "id":null
 }
@@ -829,7 +829,7 @@ Errors: `KVDB Error`, `Invalid Params`
   "result":{
     "amount":100,
     "metadata":"",
-    "registrar":null
+    "approver":null
   },
   "id":null
 }
@@ -1218,7 +1218,7 @@ Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeTransaction", "params": [{"type":"assetMint","data":{"networkId":"cc","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"registrar":null,"nonce":0}}, "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransaction", "params": [{"type":"assetMint","data":{"networkId":"cc","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"approver":null,"nonce":0}}, "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
     localhost:8080
 ```
 

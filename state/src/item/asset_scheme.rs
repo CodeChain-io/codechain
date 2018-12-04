@@ -30,25 +30,25 @@ use crate::CacheableItem;
 pub struct AssetScheme {
     metadata: String,
     amount: u64,
-    registrar: Option<Address>,
+    approver: Option<Address>,
     pool: Vec<Asset>,
 }
 
 impl AssetScheme {
-    pub fn new(metadata: String, amount: u64, registrar: Option<Address>) -> Self {
+    pub fn new(metadata: String, amount: u64, approver: Option<Address>) -> Self {
         Self {
             metadata,
             amount,
-            registrar,
+            approver,
             pool: Vec::new(),
         }
     }
 
-    pub fn new_with_pool(metadata: String, amount: u64, registrar: Option<Address>, pool: Vec<Asset>) -> Self {
+    pub fn new_with_pool(metadata: String, amount: u64, approver: Option<Address>, pool: Vec<Asset>) -> Self {
         Self {
             metadata,
             amount,
-            registrar,
+            approver,
             pool,
         }
     }
@@ -61,21 +61,21 @@ impl AssetScheme {
         self.amount
     }
 
-    pub fn registrar(&self) -> &Option<Address> {
-        &self.registrar
+    pub fn approver(&self) -> &Option<Address> {
+        &self.approver
     }
 
     pub fn is_permissioned(&self) -> bool {
-        self.registrar.is_some()
+        self.approver.is_some()
     }
 
-    pub fn init(&mut self, metadata: String, amount: u64, registrar: Option<Address>, pool: Vec<Asset>) {
+    pub fn init(&mut self, metadata: String, amount: u64, approver: Option<Address>, pool: Vec<Asset>) {
         assert_eq!("", &self.metadata);
         assert_eq!(0, self.amount);
-        assert_eq!(None, self.registrar);
+        assert_eq!(None, self.approver);
         self.metadata = metadata;
         self.amount = amount;
-        self.registrar = registrar;
+        self.approver = approver;
         self.pool = pool;
     }
 
@@ -98,7 +98,7 @@ impl Encodable for AssetScheme {
             .append(&PREFIX)
             .append(&self.metadata)
             .append(&self.amount)
-            .append(&self.registrar)
+            .append(&self.approver)
             .append_list(&self.pool);
     }
 }
@@ -117,7 +117,7 @@ impl Decodable for AssetScheme {
         Ok(Self {
             metadata: rlp.val_at(1)?,
             amount: rlp.val_at(2)?,
-            registrar: rlp.val_at(3)?,
+            approver: rlp.val_at(3)?,
             pool: rlp.list_at(4)?,
         })
     }
