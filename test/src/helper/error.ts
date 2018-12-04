@@ -115,6 +115,11 @@ export const ERROR = {
         code: -32099,
         data: stringContaining("InvalidTransaction(InvalidAssetType("),
         message: anything
+    },
+    INVALID_TX_DUPLICATED_PREV_OUT: {
+        code: -32099,
+        data: stringContaining("InvalidTransaction(DuplicatedPreviousOutput"),
+        message: anything
     }
 };
 

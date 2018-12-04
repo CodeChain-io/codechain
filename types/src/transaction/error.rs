@@ -46,6 +46,11 @@ pub enum Error {
     FailedToUnlock(H256),
     /// Returned when the sum of the transaction's inputs is different from the sum of outputs.
     InconsistentTransactionInOut,
+    /// There are burn/inputs that shares same previous output
+    DuplicatedPreviousOutput {
+        transaction_hash: H256,
+        index: usize,
+    },
     InsufficientPermission,
     EmptyShardOwners(ShardId),
     NotRegistrar(Mismatch<Address>),
@@ -81,6 +86,7 @@ const ERROR_ID_SCRIPT_HASH_MISMATCH: u8 = 8u8;
 const ERROR_ID_INVALID_SCRIPT: u8 = 9u8;
 const ERROR_ID_FAILED_TO_UNLOCK: u8 = 10u8;
 const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT: u8 = 11u8;
+const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 12u8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 13u8;
 const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 16u8;
 const ERROR_ID_NOT_REGISTRAR: u8 = 17u8;
@@ -114,6 +120,10 @@ impl Encodable for Error {
             Error::InvalidScript => s.begin_list(1).append(&ERROR_ID_INVALID_SCRIPT),
             Error::FailedToUnlock(hash) => s.begin_list(2).append(&ERROR_ID_FAILED_TO_UNLOCK).append(hash),
             Error::InconsistentTransactionInOut => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT),
+            Error::DuplicatedPreviousOutput {
+                transaction_hash,
+                index,
+            } => s.begin_list(3).append(&ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT).append(transaction_hash).append(index),
             Error::InsufficientPermission => s.begin_list(1).append(&ERROR_ID_INSUFFICIENT_PERMISSION),
             Error::EmptyShardOwners(shard_id) => s.begin_list(2).append(&ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id),
             Error::NotRegistrar(mismatch) => s.begin_list(2).append(&ERROR_ID_NOT_REGISTRAR).append(mismatch),
@@ -160,6 +170,15 @@ impl Decodable for Error {
             ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
             ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => Error::InconsistentTransactionInOut,
+            ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::DuplicatedPreviousOutput {
+                    transaction_hash: rlp.val_at(1)?,
+                    index: rlp.val_at(2)?,
+                }
+            }
             ERROR_ID_INSUFFICIENT_PERMISSION => {
                 if rlp.item_count()? != 1 {
                     return Err(DecoderError::RlpInvalidLength)
@@ -262,6 +281,10 @@ impl Display for Error {
             Error::InconsistentTransactionInOut => {
                 write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs")
             }
+            Error::DuplicatedPreviousOutput {
+                transaction_hash,
+                index,
+            } => write!(f, "The previous output of inputs/burns are duplicated: ({}, {})", transaction_hash, index),
             Error::InsufficientPermission => write!(f, "The current sender doesn't have the permission"),
             Error::EmptyShardOwners(shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
             Error::NotRegistrar(mismatch) => write!(
