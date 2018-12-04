@@ -732,7 +732,22 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn broadcast_proposal_block(&self, block: SealedBlock) {
-        self.extension.broadcast_proposal_block(block.rlp_bytes());
+        let header = block.header();
+        let hash = header.hash();
+        let parent_hash = header.parent_hash();
+        let vote_step =
+            VoteStep::new(header.number() as Height, consensus_view(&header).expect("Already verified"), Step::Propose);
+        cdebug!(ENGINE, "Send proposal {:?}", vote_step);
+
+        if self.is_signer_proposer(&parent_hash) {
+            let vote_info = message_info_rlp(&vote_step, Some(hash));
+            let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
+            self.extension.broadcast_proposal_block(signature, block.rlp_bytes());
+        } else if let Some(signature) = self.votes.round_signatures(&vote_step, &hash).first() {
+            self.extension.broadcast_proposal_block(*signature, block.rlp_bytes());
+        } else {
+            cwarn!(ENGINE, "There is a proposal but does not have signature {:?}", vote_step);
+        }
     }
 
     fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
@@ -936,8 +951,8 @@ impl TendermintExtension {
         }
     }
 
-    fn broadcast_proposal_block(&self, message: Bytes) {
-        let message = TendermintMessage::ProposalBlock(message).rlp_bytes().into_vec();
+    fn broadcast_proposal_block(&self, signature: Signature, message: Bytes) {
+        let message = TendermintMessage::ProposalBlock(signature, message).rlp_bytes().into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             for token in self.peers.read().iter() {
                 api.send(&token, &message);
@@ -998,13 +1013,59 @@ impl NetworkExtension for TendermintExtension {
                     }
                 }
             }
-            Ok(TendermintMessage::ProposalBlock(bytes)) => {
-                if let Some(ref weak) = *self.client.read() {
-                    if let Some(c) = weak.upgrade() {
-                        if let Err(e) = c.import_block(bytes) {
-                            cinfo!(ENGINE, "Failed to import proposal block {:?}", e);
+            Ok(TendermintMessage::ProposalBlock(signature, bytes)) => {
+                let c = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
+                    Some(c) => c,
+                    None => return,
+                };
+                let t = match self.tendermint.read().as_ref().and_then(|weak| weak.upgrade()) {
+                    Some(c) => c,
+                    None => return,
+                };
+
+                // This block borrows bytes
+                {
+                    let block_view = BlockView::new(&bytes);
+                    let header_view = block_view.header();
+                    let number = header_view.number();
+                    ctrace!(ENGINE, "Proposal received for {}-{:?}", number, header_view.hash());
+
+                    let message = match ConsensusMessage::new_proposal(signature, &header_view) {
+                        Ok(message) => message,
+                        Err(err) => {
+                            cdebug!(ENGINE, "Invalid proposal received: {:?}", err);
+                            return
                         }
+                    };
+
+                    let author_from_signature = match message.signer() {
+                        Ok(address) => address,
+                        Err(err) => {
+                            cdebug!(ENGINE, "Proposal verification failed: {:?}", err);
+                            return
+                        }
+                    };
+
+                    if *header_view.author() != author_from_signature {
+                        cdebug!(
+                            ENGINE,
+                            "Proposal author({}) not matched with header({})",
+                            author_from_signature,
+                            header_view.author()
+                        );
+                        return
                     }
+
+                    if t.votes.is_old_or_known(&message) {
+                        cdebug!(ENGINE, "Proposal is already known");
+                        return
+                    }
+
+                    t.votes.vote(message, author_from_signature);
+                }
+
+                if let Err(e) = c.import_block(bytes) {
+                    cinfo!(ENGINE, "Failed to import proposal block {:?}", e);
                 }
             }
             _ => cinfo!(ENGINE, "Invalid message from peer {}", token),

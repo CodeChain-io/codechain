@@ -17,12 +17,13 @@
 use std::cmp;
 
 use ccrypto::blake256;
-use ckey::Signature;
+use ckey::{public_to_address, recover, Address, Signature};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::vote_collector::Message;
 use super::{BlockHash, Height, Step, View};
+use crate::error::Error;
 use crate::header::Header;
 
 /// Complete step of the consensus process.
@@ -81,7 +82,7 @@ const MESSAGE_ID_PROPOSAL_BLOCK: u8 = 0x02;
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
     ConsensusMessage(Bytes),
-    ProposalBlock(Bytes),
+    ProposalBlock(Signature, Bytes),
 }
 
 impl Encodable for TendermintMessage {
@@ -92,9 +93,10 @@ impl Encodable for TendermintMessage {
                 s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
                 s.append(message);
             }
-            TendermintMessage::ProposalBlock(bytes) => {
-                s.begin_list(2);
+            TendermintMessage::ProposalBlock(signature, bytes) => {
+                s.begin_list(3);
                 s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
+                s.append(signature);
                 s.append(bytes);
             }
         }
@@ -103,15 +105,23 @@ impl Encodable for TendermintMessage {
 
 impl Decodable for TendermintMessage {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen)
-        }
         let id = rlp.val_at(0)?;
-        let bytes = rlp.at(1)?;
-
         Ok(match id {
-            MESSAGE_ID_CONSENSUS_MESSAGE => TendermintMessage::ConsensusMessage(bytes.as_val()?),
-            MESSAGE_ID_PROPOSAL_BLOCK => TendermintMessage::ProposalBlock(bytes.as_val()?),
+            MESSAGE_ID_CONSENSUS_MESSAGE => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                let bytes = rlp.at(1)?;
+                TendermintMessage::ConsensusMessage(bytes.as_val()?)
+            }
+            MESSAGE_ID_PROPOSAL_BLOCK => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                let signature = rlp.at(1)?;
+                let bytes = rlp.at(2)?;
+                TendermintMessage::ProposalBlock(signature.as_val()?, bytes.as_val()?)
+            }
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
     }
@@ -132,6 +142,23 @@ impl ConsensusMessage {
             block_hash,
             vote_step: VoteStep::new(height, view, step),
         }
+    }
+
+    pub fn new_proposal(signature: Signature, header: &Header) -> Result<Self, ::rlp::DecoderError> {
+        let height = header.number();
+        let view = consensus_view(header)?;
+        Ok(ConsensusMessage {
+            signature,
+            block_hash: Some(header.hash()),
+            vote_step: VoteStep::new(height as Height, view, Step::Propose),
+        })
+    }
+
+    pub fn signer(&self) -> Result<Address, Error> {
+        let full_rlp = ::rlp::encode(self);
+        let block_info = ::rlp::Rlp::new(&full_rlp).at(1);
+        let public_key = recover(&self.signature, &blake256(block_info.as_raw()))?;
+        Ok(public_to_address(&public_key))
     }
 }
 
@@ -233,7 +260,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_tendermint_message_2() {
-        rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock(vec![1u8, 2u8]));
+        rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock(Signature::random(), vec![1u8, 2u8]));
     }
 
     #[test]

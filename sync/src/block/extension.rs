@@ -312,7 +312,7 @@ impl ChainNotify for Extension {
         retracted: Vec<H256>,
         _sealed: Vec<H256>,
         _duration: u64,
-        new_highest_header: Option<H256>,
+        _new_highest_header: Option<H256>,
     ) {
         let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         for id in peer_ids {
@@ -322,7 +322,6 @@ impl ChainNotify for Extension {
         }
         let mut headers_to_download: Vec<_> = enacted
             .into_iter()
-            .chain(new_highest_header.into_iter())
             .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
             .collect();
         headers_to_download.sort_unstable_by_key(|header| header.number());
