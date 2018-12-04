@@ -53,7 +53,7 @@ pub enum Error {
     },
     InsufficientPermission,
     EmptyShardOwners(ShardId),
-    NotRegistrar(Mismatch<Address>),
+    NotApproved(Mismatch<Address>),
     /// Returned when the amount of either input or output is 0.
     ZeroAmount,
     TooManyOutputs(usize),
@@ -89,7 +89,7 @@ const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT: u8 = 11u8;
 const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 12u8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 13u8;
 const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 16u8;
-const ERROR_ID_NOT_REGISTRAR: u8 = 17u8;
+const ERROR_ID_NOT_APPROVED: u8 = 17u8;
 const ERROR_ID_ZERO_AMOUNT: u8 = 18u8;
 const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 19u8;
 const ERROR_ID_ASSET_SCHEME_DUPLICATED: u8 = 20u8;
@@ -126,7 +126,7 @@ impl Encodable for Error {
             } => s.begin_list(3).append(&ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT).append(transaction_hash).append(index),
             Error::InsufficientPermission => s.begin_list(1).append(&ERROR_ID_INSUFFICIENT_PERMISSION),
             Error::EmptyShardOwners(shard_id) => s.begin_list(2).append(&ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id),
-            Error::NotRegistrar(mismatch) => s.begin_list(2).append(&ERROR_ID_NOT_REGISTRAR).append(mismatch),
+            Error::NotApproved(mismatch) => s.begin_list(2).append(&ERROR_ID_NOT_APPROVED).append(mismatch),
             Error::ZeroAmount => s.begin_list(1).append(&ERROR_ID_ZERO_AMOUNT),
             Error::TooManyOutputs(num) => s.begin_list(2).append(&ERROR_ID_TOO_MANY_OUTPUTS).append(num),
             Error::EmptyInput => s.begin_list(1).append(&ERROR_ID_EMPTY_INPUT),
@@ -191,11 +191,11 @@ impl Decodable for Error {
                 }
                 Error::EmptyShardOwners(rlp.val_at(1)?)
             }
-            ERROR_ID_NOT_REGISTRAR => {
+            ERROR_ID_NOT_APPROVED => {
                 if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpInvalidLength)
                 }
-                Error::NotRegistrar(rlp.val_at(1)?)
+                Error::NotApproved(rlp.val_at(1)?)
             }
             ERROR_ID_ZERO_AMOUNT => {
                 if rlp.item_count()? != 1 {
@@ -287,9 +287,9 @@ impl Display for Error {
             } => write!(f, "The previous output of inputs/burns are duplicated: ({}, {})", transaction_hash, index),
             Error::InsufficientPermission => write!(f, "The current sender doesn't have the permission"),
             Error::EmptyShardOwners(shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
-            Error::NotRegistrar(mismatch) => write!(
+            Error::NotApproved(mismatch) => write!(
                 f,
-                "The signer of the parcel({}) does not match the asset's registrar({})",
+                "The signer of the parcel({}) does not match the asset's approver({})",
                 mismatch.found, mismatch.expected
             ),
             Error::ZeroAmount => write!(f, "An amount cannot be 0"),

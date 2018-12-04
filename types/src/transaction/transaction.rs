@@ -113,7 +113,7 @@ pub enum Transaction {
         network_id: NetworkId,
         shard_id: ShardId,
         metadata: String,
-        registrar: Option<Address>,
+        approver: Option<Address>,
 
         output: AssetMintOutput,
     },
@@ -127,7 +127,7 @@ pub enum Transaction {
         network_id: NetworkId,
         shard_id: ShardId,
         metadata: String,
-        registrar: Option<Address>,
+        approver: Option<Address>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
     },
@@ -458,10 +458,10 @@ impl HeapSizeOf for Transaction {
         match self {
             Transaction::AssetMint {
                 metadata,
-                registrar,
+                approver,
                 output,
                 ..
-            } => metadata.heap_size_of_children() + registrar.heap_size_of_children() + output.heap_size_of_children(),
+            } => metadata.heap_size_of_children() + approver.heap_size_of_children() + output.heap_size_of_children(),
             Transaction::AssetTransfer {
                 burns,
                 inputs,
@@ -470,13 +470,13 @@ impl HeapSizeOf for Transaction {
             } => burns.heap_size_of_children() + inputs.heap_size_of_children() + outputs.heap_size_of_children(),
             Transaction::AssetCompose {
                 metadata,
-                registrar,
+                approver,
                 inputs,
                 output,
                 ..
             } => {
                 metadata.heap_size_of_children()
-                    + registrar.heap_size_of_children()
+                    + approver.heap_size_of_children()
                     + inputs.heap_size_of_children()
                     + output.heap_size_of_children()
             }
@@ -623,7 +623,7 @@ impl PartialHashing for Transaction {
                 network_id,
                 shard_id,
                 metadata,
-                registrar,
+                approver,
                 inputs,
                 output,
             } => {
@@ -648,7 +648,7 @@ impl PartialHashing for Transaction {
                         network_id: *network_id,
                         shard_id: *shard_id,
                         metadata: metadata.to_string(),
-                        registrar: *registrar,
+                        approver: *approver,
                         inputs: new_inputs,
                         output: new_output,
                     }
@@ -732,7 +732,7 @@ impl Decodable for Transaction {
                         parameters: d.val_at(5)?,
                         amount: d.val_at(6)?,
                     },
-                    registrar: d.val_at(7)?,
+                    approver: d.val_at(7)?,
                 })
             }
             ASSET_TRANSFER_ID => {
@@ -754,7 +754,7 @@ impl Decodable for Transaction {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
                     metadata: d.val_at(3)?,
-                    registrar: d.val_at(4)?,
+                    approver: d.val_at(4)?,
                     inputs: d.list_at(5)?,
                     output: AssetMintOutput {
                         lock_script_hash: d.val_at(6)?,
@@ -800,7 +800,7 @@ impl Encodable for Transaction {
                         parameters,
                         amount,
                     },
-                registrar,
+                approver,
             } => s
                 .begin_list(8)
                 .append(&ASSET_MINT_ID)
@@ -810,7 +810,7 @@ impl Encodable for Transaction {
                 .append(lock_script_hash)
                 .append(parameters)
                 .append(amount)
-                .append(registrar),
+                .append(approver),
             Transaction::AssetTransfer {
                 network_id,
                 burns,
@@ -827,7 +827,7 @@ impl Encodable for Transaction {
                 network_id,
                 shard_id,
                 metadata,
-                registrar,
+                approver,
                 inputs,
                 output:
                     AssetMintOutput {
@@ -841,7 +841,7 @@ impl Encodable for Transaction {
                 .append(network_id)
                 .append(shard_id)
                 .append(metadata)
-                .append(registrar)
+                .append(approver)
                 .append_list(inputs)
                 .append(lock_script_hash)
                 .append(parameters)

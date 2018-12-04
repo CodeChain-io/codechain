@@ -106,7 +106,7 @@ impl<'db> ShardLevelState<'db> {
             InnerTransaction::General(transaction) => match transaction {
                 Transaction::AssetMint {
                     metadata,
-                    registrar,
+                    approver,
                     output:
                         AssetMintOutput {
                             lock_script_hash,
@@ -121,7 +121,7 @@ impl<'db> ShardLevelState<'db> {
                         lock_script_hash,
                         &parameters,
                         amount,
-                        registrar,
+                        approver,
                         sender,
                         shard_users,
                         Vec::new(),
@@ -140,11 +140,11 @@ impl<'db> ShardLevelState<'db> {
 
                 Transaction::AssetCompose {
                     metadata,
-                    registrar,
+                    approver,
                     inputs,
                     output,
                     ..
-                } => self.compose_asset(&transaction, metadata, registrar, inputs, output, sender, shard_users, client),
+                } => self.compose_asset(&transaction, metadata, approver, inputs, output, sender, shard_users, client),
                 Transaction::AssetDecompose {
                     input,
                     outputs,
@@ -175,7 +175,7 @@ impl<'db> ShardLevelState<'db> {
         lock_script_hash: &H160,
         parameters: &[Bytes],
         amount: &Option<u64>,
-        registrar: &Option<Address>,
+        approver: &Option<Address>,
         sender: &Address,
         shard_users: &[Address],
         pool: Vec<Asset>,
@@ -190,7 +190,7 @@ impl<'db> ShardLevelState<'db> {
         if !asset_scheme.is_null() {
             return Err(TransactionError::AssetSchemeDuplicated(transaction_hash).into())
         }
-        asset_scheme.init(metadata.to_string(), amount, *registrar, pool);
+        asset_scheme.init(metadata.to_string(), amount, *approver, pool);
 
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
@@ -252,10 +252,10 @@ impl<'db> ShardLevelState<'db> {
             .asset_scheme(&asset_scheme_address)?
             .ok_or_else(|| TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
 
-        if let Some(ref registrar) = asset_scheme.registrar() {
-            if registrar != sender {
-                return Err(TransactionError::NotRegistrar(Mismatch {
-                    expected: *registrar,
+        if let Some(approver) = asset_scheme.approver().as_ref() {
+            if approver != sender {
+                return Err(TransactionError::NotApproved(Mismatch {
+                    expected: *approver,
                     found: *sender,
                 })
                 .into())
@@ -330,7 +330,7 @@ impl<'db> ShardLevelState<'db> {
         &mut self,
         transaction: &Transaction,
         metadata: &str,
-        registrar: &Option<Address>,
+        approver: &Option<Address>,
         inputs: &[AssetTransferInput],
         output: &AssetMintOutput,
         sender: &Address,
@@ -366,7 +366,7 @@ impl<'db> ShardLevelState<'db> {
             &output.lock_script_hash,
             &output.parameters,
             &output.amount,
-            registrar,
+            approver,
             sender,
             shard_users,
             pool,
@@ -656,7 +656,7 @@ mod tests {
         let lock_script_hash = H160::random();
         let parameters = vec![];
         let amount = 100;
-        let registrar = Some(Address::random());
+        let approver = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
@@ -666,7 +666,7 @@ mod tests {
                 parameters: parameters.clone(),
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
 
         let result = state.apply(&transaction.clone().into(), &sender, &[sender], &get_test_client());
@@ -675,7 +675,7 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -693,7 +693,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
         let parameters = vec![];
-        let registrar = Some(Address::random());
+        let approver = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
@@ -703,7 +703,7 @@ mod tests {
                 parameters: parameters.clone(),
                 amount: None,
             },
-            registrar,
+            approver,
         };
 
         let result = state.apply(&transaction.clone().into(), &sender, &[sender], &get_test_client());
@@ -712,7 +712,7 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -733,7 +733,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
         let parameters = vec![];
-        let registrar = Some(Address::random());
+        let approver = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
@@ -743,7 +743,7 @@ mod tests {
                 parameters: parameters.clone(),
                 amount: None,
             },
-            registrar,
+            approver,
         };
 
         let result = state.apply(&transaction.clone().into(), &sender, &[sender], &get_test_client());
@@ -754,7 +754,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_registrar() {
+    fn invalid_approver() {
         let shard_id = 0;
         let network_id = "tc".into();
         let sender = address();
@@ -764,7 +764,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let registrar = Some(Address::random());
+        let approver = Some(Address::random());
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -775,7 +775,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
 
@@ -785,7 +785,7 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -815,8 +815,8 @@ mod tests {
 
         assert_eq!(
             Ok(Invoice::Failure(
-                TransactionError::NotRegistrar(Mismatch {
-                    expected: registrar.unwrap(),
+                TransactionError::NotApproved(Mismatch {
+                    expected: approver.unwrap(),
                     found: sender,
                 })
                 .into()
@@ -836,7 +836,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -847,7 +847,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
 
@@ -859,7 +859,7 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -929,7 +929,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -940,7 +940,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
 
@@ -952,7 +952,7 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -993,7 +993,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -1004,7 +1004,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
 
@@ -1016,7 +1016,7 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -1110,7 +1110,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -1121,7 +1121,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
 
@@ -1131,7 +1131,7 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -1182,7 +1182,7 @@ mod tests {
         let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
 
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
 
         let metadata1 = "metadata".to_string();
@@ -1195,7 +1195,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash1 = mint1.hash();
 
@@ -1205,7 +1205,7 @@ mod tests {
         let asset_scheme1 = state.asset_scheme(&asset_scheme_address1);
         let asset_type1 = asset_scheme_address1.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata1.clone(), amount, registrar))), asset_scheme1);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata1.clone(), amount, approver))), asset_scheme1);
 
         let asset_address1 = OwnedAssetAddress::new(mint_hash1, 0, shard_id);
         let asset1 = state.asset(&asset_address1);
@@ -1221,7 +1221,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash2 = mint2.hash();
 
@@ -1231,7 +1231,7 @@ mod tests {
         let asset_scheme2 = state.asset_scheme(&asset_scheme_address2);
         let asset_type2 = asset_scheme_address2.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata2.clone(), amount, registrar))), asset_scheme2);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata2.clone(), amount, approver))), asset_scheme2);
 
         let asset_address2 = OwnedAssetAddress::new(mint_hash2, 0, shard_id);
         let asset2 = state.asset(&asset_address2);
@@ -1276,7 +1276,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -1287,7 +1287,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.clone().into(), &sender, &[], &get_test_client()));
@@ -1299,7 +1299,7 @@ mod tests {
             network_id,
             shard_id,
             metadata: "composed".to_string(),
-            registrar,
+            approver,
             inputs: vec![AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: mint_hash,
@@ -1326,12 +1326,7 @@ mod tests {
         let composed_asset_type = composed_asset_scheme_address.into();
 
         assert_eq!(
-            Ok(Some(AssetScheme::new_with_pool(
-                "composed".to_string(),
-                1,
-                registrar,
-                vec![Asset::new(asset_type, 30)]
-            ))),
+            Ok(Some(AssetScheme::new_with_pool("composed".to_string(), 1, approver, vec![Asset::new(asset_type, 30)]))),
             composed_asset_scheme
         );
 
@@ -1351,7 +1346,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -1362,7 +1357,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.clone().into(), &sender, &[], &get_test_client()));
@@ -1373,7 +1368,7 @@ mod tests {
             network_id,
             shard_id,
             metadata: "composed".to_string(),
-            registrar,
+            approver,
             inputs: vec![AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: mint_hash,
@@ -1400,12 +1395,7 @@ mod tests {
         let composed_asset_type = composed_asset_scheme_address.into();
 
         assert_eq!(
-            Ok(Some(AssetScheme::new_with_pool(
-                "composed".to_string(),
-                1,
-                registrar,
-                vec![Asset::new(asset_type, 30)]
-            ))),
+            Ok(Some(AssetScheme::new_with_pool("composed".to_string(), 1, approver, vec![Asset::new(asset_type, 30)]))),
             composed_asset_scheme
         );
 
@@ -1440,7 +1430,7 @@ mod tests {
 
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
 
-        assert_eq!(Ok(Some(AssetScheme::new("metadata".to_string(), 30, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new("metadata".to_string(), 30, approver))), asset_scheme);
 
         let decomposed_asset_address = OwnedAssetAddress::new(decompose_hash, 0, shard_id);
         let decomposed_asset = state.asset(&decomposed_asset_address);
@@ -1458,7 +1448,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -1469,7 +1459,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.clone().into(), &sender, &[], &get_test_client()));
@@ -1485,7 +1475,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(1),
             },
-            registrar,
+            approver,
         };
         let mint2_hash = mint2.hash();
         let asset_scheme_address2 = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -1496,7 +1486,7 @@ mod tests {
             network_id,
             shard_id,
             metadata: "composed".to_string(),
-            registrar,
+            approver,
             inputs: vec![AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: mint_hash,
@@ -1523,12 +1513,7 @@ mod tests {
         let composed_asset_type = composed_asset_scheme_address.into();
 
         assert_eq!(
-            Ok(Some(AssetScheme::new_with_pool(
-                "composed".to_string(),
-                1,
-                registrar,
-                vec![Asset::new(asset_type, 30)]
-            ))),
+            Ok(Some(AssetScheme::new_with_pool("composed".to_string(), 1, approver, vec![Asset::new(asset_type, 30)]))),
             composed_asset_scheme
         );
 
@@ -1581,7 +1566,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -1592,7 +1577,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.clone().into(), &sender, &[], &get_test_client()));
@@ -1608,7 +1593,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(1),
             },
-            registrar,
+            approver,
         };
         let mint2_hash = mint2.hash();
         let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id);
@@ -1619,7 +1604,7 @@ mod tests {
             network_id,
             shard_id,
             metadata: "composed".to_string(),
-            registrar,
+            approver,
             inputs: vec![
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
@@ -1708,7 +1693,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -1719,7 +1704,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.clone().into(), &sender, &[], &get_test_client()));
@@ -1735,7 +1720,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(1),
             },
-            registrar,
+            approver,
         };
         let mint2_hash = mint2.hash();
         let asset_scheme_address2 = AssetSchemeAddress::new(mint2_hash, shard_id);
@@ -1746,7 +1731,7 @@ mod tests {
             network_id,
             shard_id,
             metadata: "composed".to_string(),
-            registrar,
+            approver,
             inputs: vec![
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
@@ -2014,7 +1999,7 @@ mod tests {
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let registrar = None;
+        let approver = None;
         let amount = 30;
         let mint = Transaction::AssetMint {
             network_id,
@@ -2025,7 +2010,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(amount),
             },
-            registrar,
+            approver,
         };
         let mint_hash = mint.hash();
 
@@ -2037,7 +2022,7 @@ mod tests {
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
         let asset_type = asset_scheme_address.into();
 
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(mint_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -2147,7 +2132,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
         let parameters = vec![];
-        let registrar = Some(Address::random());
+        let approver = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
@@ -2157,7 +2142,7 @@ mod tests {
                 parameters: parameters.clone(),
                 amount: None,
             },
-            registrar,
+            approver,
         };
 
         let result = state.apply(&transaction.clone().into(), &sender, &[sender], &get_test_client());
@@ -2166,7 +2151,7 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);
@@ -2187,7 +2172,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
         let parameters = vec![];
-        let registrar = Some(Address::random());
+        let approver = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
@@ -2197,7 +2182,7 @@ mod tests {
                 parameters: parameters.clone(),
                 amount: None,
             },
-            registrar,
+            approver,
         };
 
         let shard_user = address();
@@ -2225,7 +2210,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::random();
         let parameters = vec![];
-        let registrar = Some(Address::random());
+        let approver = Some(Address::random());
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id,
@@ -2235,7 +2220,7 @@ mod tests {
                 parameters: parameters.clone(),
                 amount: None,
             },
-            registrar,
+            approver,
         };
 
         let result = state.apply(&transaction.clone().into(), &sender, &[], &get_test_client());
@@ -2244,7 +2229,7 @@ mod tests {
         let transaction_hash = transaction.hash();
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(&asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, registrar))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, approver))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(&asset_address);

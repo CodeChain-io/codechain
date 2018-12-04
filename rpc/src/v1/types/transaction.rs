@@ -157,7 +157,7 @@ pub enum Transaction {
         network_id: NetworkId,
         shard_id: ShardId,
         metadata: String,
-        registrar: Option<PlatformAddress>,
+        approver: Option<PlatformAddress>,
 
         output: AssetMintOutput,
     },
@@ -173,7 +173,7 @@ pub enum Transaction {
         network_id: NetworkId,
         shard_id: ShardId,
         metadata: String,
-        registrar: Option<PlatformAddress>,
+        approver: Option<PlatformAddress>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
     },
@@ -198,18 +198,18 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 network_id,
                 shard_id,
                 metadata,
-                registrar,
+                approver,
                 output,
             } => {
-                let registrar = match registrar {
-                    Some(registrar) => Some(registrar.try_into_address()?),
+                let approver = match approver {
+                    Some(approver) => Some(approver.try_into_address()?),
                     None => None,
                 };
                 TransactionType::AssetMint {
                     network_id,
                     shard_id,
                     metadata,
-                    registrar,
+                    approver,
                     output: output.into(),
                 }
             }
@@ -228,19 +228,19 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 network_id,
                 shard_id,
                 metadata,
-                registrar,
+                approver,
                 inputs,
                 output,
             } => {
-                let registrar = match registrar {
-                    Some(registrar) => Some(registrar.try_into_address()?),
+                let approver = match approver {
+                    Some(approver) => Some(approver.try_into_address()?),
                     None => None,
                 };
                 TransactionType::AssetCompose {
                     network_id,
                     shard_id,
                     metadata,
-                    registrar,
+                    approver,
                     inputs: inputs.into_iter().map(|input| input.into()).collect(),
                     output: output.into(),
                 }

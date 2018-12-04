@@ -324,7 +324,7 @@ mod tests {
                 parameters: vec![],
                 amount: Some(10000),
             },
-            registrar: None,
+            approver: None,
         });
     }
 
@@ -339,7 +339,7 @@ mod tests {
                 parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
                 amount: Some(10000),
             },
-            registrar: None,
+            approver: None,
         });
     }
 
