@@ -16,12 +16,14 @@
 
 use std::fmt;
 
+use ckey::Error as KeyError;
 use cmerkle::TrieError;
 use ctypes::parcel::Error as ParcelError;
 use ctypes::transaction::Error as TransactionError;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
+    Key(KeyError),
     Trie(TrieError),
     Parcel(ParcelError),
     Transaction(TransactionError),
@@ -30,10 +32,17 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Error::Key(err) => err.fmt(f),
             Error::Parcel(err) => err.fmt(f),
             Error::Trie(err) => err.fmt(f),
             Error::Transaction(err) => err.fmt(f),
         }
+    }
+}
+
+impl From<KeyError> for Error {
+    fn from(err: KeyError) -> Self {
+        Error::Key(err)
     }
 }
 

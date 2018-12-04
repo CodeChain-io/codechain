@@ -327,7 +327,7 @@ impl AssetClient for Client {
 impl ExecuteClient for Client {
     fn execute_transaction(&self, transaction: &Transaction, sender: &Address) -> Result<Invoice, Error> {
         let mut state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
-        Ok(state.apply_transaction(transaction, sender, self)?)
+        Ok(state.apply_transaction(transaction, sender, &[], self)?)
     }
 }
 

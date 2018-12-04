@@ -31,7 +31,7 @@
   "dependencies": {
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "codechain-sdk": "https://github.com/jhs7jhs/codechain-sdk-js.git#build",
+    "codechain-sdk": "https://github.com/sgkim126/codechain-sdk-js.git#approval-lib",
     "codechain-test-helper": "https://github.com/CodeChain-io/codechain-test-helper-js.git#ca7035acba6213ea65ef2795df8821499d7d29ca",
     "lodash": "^4.17.11",
     "mocha": "^5.2.0",

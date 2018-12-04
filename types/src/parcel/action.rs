@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::Blake;
-use ckey::{Address, Public};
+use ckey::{Address, Public, Signature};
 use heapsize::HeapSizeOf;
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -34,7 +34,10 @@ const CUSTOM: u8 = 0xFF;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
-    AssetTransaction(Transaction),
+    AssetTransaction {
+        transaction: Transaction,
+        approvals: Vec<Signature>,
+    },
     Payment {
         receiver: Address,
         /// Transferred amount.
@@ -71,7 +74,10 @@ impl Action {
 impl HeapSizeOf for Action {
     fn heap_size_of_children(&self) -> usize {
         match self {
-            Action::AssetTransaction(transaction) => transaction.heap_size_of_children(),
+            Action::AssetTransaction {
+                transaction,
+                approvals,
+            } => transaction.heap_size_of_children() + approvals.heap_size_of_children(),
             Action::SetShardOwners {
                 owners,
                 ..
@@ -92,10 +98,14 @@ impl HeapSizeOf for Action {
 impl Encodable for Action {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Action::AssetTransaction(transaction) => {
-                s.begin_list(2);
+            Action::AssetTransaction {
+                transaction,
+                approvals,
+            } => {
+                s.begin_list(3);
                 s.append(&ASSET_TRANSACTION);
                 s.append(transaction);
+                s.append_list(approvals);
             }
             Action::Payment {
                 receiver,
@@ -161,10 +171,13 @@ impl Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
             ASSET_TRANSACTION => {
-                if rlp.item_count()? != 2 {
+                if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::AssetTransaction(rlp.val_at(1)?))
+                Ok(Action::AssetTransaction {
+                    transaction: rlp.val_at(1)?,
+                    approvals: rlp.list_at(2)?,
+                })
             }
             PAYMENT => {
                 if rlp.item_count()? != 3 {

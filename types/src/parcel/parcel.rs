@@ -59,7 +59,10 @@ impl Parcel {
 
     pub fn asset_transaction_hash(&self) -> Option<H256> {
         match &self.action {
-            Action::AssetTransaction(transaction) => Some(transaction.hash()),
+            Action::AssetTransaction {
+                transaction,
+                ..
+            } => Some(transaction.hash()),
             _ => None,
         }
     }

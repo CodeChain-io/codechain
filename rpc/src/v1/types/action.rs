@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson::uint::Uint;
-use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public};
+use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public, Signature};
 use ctypes::parcel::Action as ActionType;
 use ctypes::ShardId;
 use primitives::{Bytes, H160};
@@ -26,7 +26,8 @@ use super::{Transaction, TransactionWithHash};
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum Action {
     AssetTransaction {
-        transaction: Transaction,
+        transaction: Box<Transaction>,
+        approvals: Vec<Signature>,
     },
     Payment {
         receiver: PlatformAddress,
@@ -58,6 +59,7 @@ pub enum Action {
 pub enum ActionWithTxHash {
     AssetTransaction {
         transaction: Box<TransactionWithHash>,
+        approvals: Vec<Signature>,
     },
     Payment {
         receiver: PlatformAddress,
@@ -87,8 +89,12 @@ pub enum ActionWithTxHash {
 impl ActionWithTxHash {
     pub fn from_core(from: ActionType, network_id: NetworkId) -> Self {
         match from {
-            ActionType::AssetTransaction(transaction) => ActionWithTxHash::AssetTransaction {
+            ActionType::AssetTransaction {
+                transaction,
+                approvals,
+            } => ActionWithTxHash::AssetTransaction {
                 transaction: Box::new(transaction.into()),
+                approvals,
             },
             ActionType::Payment {
                 receiver,
@@ -139,7 +145,11 @@ impl From<Action> for Result<ActionType, KeyError> {
         Ok(match from {
             Action::AssetTransaction {
                 transaction,
-            } => ActionType::AssetTransaction(Result::from(transaction)?),
+                approvals,
+            } => ActionType::AssetTransaction {
+                transaction: Result::from(*transaction)?,
+                approvals,
+            },
             Action::Payment {
                 receiver,
                 amount,

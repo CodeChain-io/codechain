@@ -343,7 +343,10 @@ fn transaction_address_entries(
     parcel_hashes: impl IntoIterator<Item = UnverifiedParcel>,
 ) -> impl Iterator<Item = TransactionHashAndAddress> {
     parcel_hashes.into_iter().enumerate().filter_map(move |(parcel_index, parcel)| match &parcel.action {
-        Action::AssetTransaction(transaction) => Some((
+        Action::AssetTransaction {
+            transaction,
+            ..
+        } => Some((
             transaction.hash(),
             TransactionAddress::new(ParcelAddress {
                 block_hash,

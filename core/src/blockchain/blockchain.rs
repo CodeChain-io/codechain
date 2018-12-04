@@ -452,7 +452,10 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
             .map(|addr| self.parcel(addr))
             .filter_map(|parcel| {
                 parcel.and_then(|parcel| match Parcel::from(parcel).action {
-                    Action::AssetTransaction(transaction) => Some(transaction),
+                    Action::AssetTransaction {
+                        transaction,
+                        ..
+                    } => Some(transaction),
                     _ => None,
                 })
             })
