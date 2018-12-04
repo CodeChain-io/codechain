@@ -138,7 +138,10 @@ impl UnverifiedParcel {
             return Err(ParcelError::ParcelsTooBig)
         }
         match &self.action {
-            Action::AssetTransaction(transaction) => {
+            Action::AssetTransaction {
+                transaction,
+                ..
+            } => {
                 transaction.verify()?;
                 if transaction.network_id() != self.network_id {
                     return Err(ParcelError::InvalidNetworkId(transaction.network_id()))

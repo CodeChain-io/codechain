@@ -1478,7 +1478,10 @@ pub mod test {
             seq: 0,
             fee,
             network_id: "tc".into(),
-            action: Action::AssetTransaction(transaction),
+            action: Action::AssetTransaction {
+                transaction,
+                approvals: vec![],
+            },
         };
         let timelock = ParcelTimelock {
             block: None,
@@ -1504,7 +1507,10 @@ pub mod test {
             seq: 0,
             fee,
             network_id: "tc".into(),
-            action: Action::AssetTransaction(transaction),
+            action: Action::AssetTransaction {
+                transaction,
+                approvals: vec![],
+            },
         };
         let timelock = ParcelTimelock {
             block: None,
@@ -1597,7 +1603,10 @@ pub mod test {
             seq: 0,
             fee,
             network_id: "tc".into(),
-            action: Action::AssetTransaction(transaction),
+            action: Action::AssetTransaction {
+                transaction,
+                approvals: vec![],
+            },
         };
         let timelock = ParcelTimelock {
             block: None,

@@ -81,7 +81,11 @@ impl CodeChainMachine {
         verify_timelock: bool,
     ) -> Result<(), Error> {
         if verify_timelock {
-            if let Action::AssetTransaction(transaction) = &parcel.action {
+            if let Action::AssetTransaction {
+                transaction,
+                ..
+            } = &parcel.action
+            {
                 Self::verify_transaction_timelock(transaction, header, client)?;
             }
         }

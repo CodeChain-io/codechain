@@ -140,6 +140,7 @@ pub trait ShardState {
         transaction: &InnerTransaction,
         sender: &Address,
         shard_owners: &[Address],
+        approvers: &[Address],
         client: &C,
     ) -> StateResult<Invoice>;
 }

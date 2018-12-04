@@ -123,7 +123,7 @@ describe("solo - 1 node", function() {
         });
 
         [
-            { actionType: 1, actionLength: 3 },
+            { actionType: 1, actionLength: 4 },
             { actionType: 2, actionLength: 2 },
             { actionType: 2, actionLength: 4 },
             { actionType: 3, actionLength: 1 },

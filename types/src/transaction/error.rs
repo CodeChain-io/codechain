@@ -53,7 +53,7 @@ pub enum Error {
     },
     InsufficientPermission,
     EmptyShardOwners(ShardId),
-    NotApproved(Mismatch<Address>),
+    NotApproved(Address),
     /// Returned when the amount of either input or output is 0.
     ZeroAmount,
     TooManyOutputs(usize),
@@ -126,7 +126,7 @@ impl Encodable for Error {
             } => s.begin_list(3).append(&ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT).append(transaction_hash).append(index),
             Error::InsufficientPermission => s.begin_list(1).append(&ERROR_ID_INSUFFICIENT_PERMISSION),
             Error::EmptyShardOwners(shard_id) => s.begin_list(2).append(&ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id),
-            Error::NotApproved(mismatch) => s.begin_list(2).append(&ERROR_ID_NOT_APPROVED).append(mismatch),
+            Error::NotApproved(address) => s.begin_list(2).append(&ERROR_ID_NOT_APPROVED).append(address),
             Error::ZeroAmount => s.begin_list(1).append(&ERROR_ID_ZERO_AMOUNT),
             Error::TooManyOutputs(num) => s.begin_list(2).append(&ERROR_ID_TOO_MANY_OUTPUTS).append(num),
             Error::EmptyInput => s.begin_list(1).append(&ERROR_ID_EMPTY_INPUT),
@@ -287,11 +287,7 @@ impl Display for Error {
             } => write!(f, "The previous output of inputs/burns are duplicated: ({}, {})", transaction_hash, index),
             Error::InsufficientPermission => write!(f, "The current sender doesn't have the permission"),
             Error::EmptyShardOwners(shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
-            Error::NotApproved(mismatch) => write!(
-                f,
-                "The signer of the parcel({}) does not match the asset's approver({})",
-                mismatch.found, mismatch.expected
-            ),
+            Error::NotApproved(address) => write!(f, "{} should approve it.", address),
             Error::ZeroAmount => write!(f, "An amount cannot be 0"),
             Error::TooManyOutputs(num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
             Error::EmptyInput => write!(f, "The input is empty"),
