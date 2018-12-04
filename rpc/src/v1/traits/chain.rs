@@ -24,7 +24,7 @@ use primitives::H256;
 
 use jsonrpc_core::Result;
 
-use super::super::types::{Block, BlockNumberAndHash, Parcel, Transaction};
+use super::super::types::{Block, BlockNumberAndHash, Parcel, Transaction, TransactionWithHash};
 
 build_rpc_trait! {
     pub trait Chain {
@@ -42,7 +42,7 @@ build_rpc_trait! {
 
         /// Gets transaction with given hash.
         # [rpc(name = "chain_getTransaction")]
-        fn get_transaction(&self, H256) -> Result<Option<Transaction>>;
+        fn get_transaction(&self, H256) -> Result<Option<TransactionWithHash>>;
 
         /// Gets transaction invoice with given hash.
         # [rpc(name = "chain_getTransactionInvoices")]

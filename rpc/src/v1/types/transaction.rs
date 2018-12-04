@@ -14,10 +14,140 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId, PlatformAddress};
-use ctypes::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, Transaction as TransactionType};
+use ctypes::transaction::{
+    AssetMintOutput as AssetMintOutputType, AssetOutPoint as AssetOutPointType,
+    AssetTransferInput as AssetTransferInputType, AssetTransferOutput as AssetTransferOutputType, Timelock,
+    Transaction as TransactionType,
+};
 use ctypes::ShardId;
-use primitives::H256;
+use primitives::{Bytes, H160, H256};
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetOutPoint {
+    pub transaction_hash: H256,
+    pub index: usize,
+    pub asset_type: H256,
+    pub amount: Uint,
+}
+
+impl From<AssetOutPointType> for AssetOutPoint {
+    fn from(from: AssetOutPointType) -> Self {
+        AssetOutPoint {
+            transaction_hash: from.transaction_hash,
+            index: from.index,
+            asset_type: from.asset_type,
+            amount: from.amount.into(),
+        }
+    }
+}
+
+// FIXME: Use TryFrom.
+impl From<AssetOutPoint> for AssetOutPointType {
+    fn from(from: AssetOutPoint) -> Self {
+        AssetOutPointType {
+            transaction_hash: from.transaction_hash,
+            index: from.index,
+            asset_type: from.asset_type,
+            amount: from.amount.into(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetTransferInput {
+    pub prev_out: AssetOutPoint,
+    pub timelock: Option<Timelock>,
+    pub lock_script: Bytes,
+    pub unlock_script: Bytes,
+}
+
+impl From<AssetTransferInputType> for AssetTransferInput {
+    fn from(from: AssetTransferInputType) -> Self {
+        AssetTransferInput {
+            prev_out: from.prev_out.into(),
+            timelock: from.timelock,
+            lock_script: from.lock_script,
+            unlock_script: from.unlock_script,
+        }
+    }
+}
+
+// FIXME: Use TryFrom.
+impl From<AssetTransferInput> for AssetTransferInputType {
+    fn from(from: AssetTransferInput) -> Self {
+        AssetTransferInputType {
+            prev_out: from.prev_out.into(),
+            timelock: from.timelock,
+            lock_script: from.lock_script,
+            unlock_script: from.unlock_script,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetTransferOutput {
+    pub lock_script_hash: H160,
+    pub parameters: Vec<Bytes>,
+    pub asset_type: H256,
+    pub amount: Uint,
+}
+
+impl From<AssetTransferOutputType> for AssetTransferOutput {
+    fn from(from: AssetTransferOutputType) -> Self {
+        AssetTransferOutput {
+            lock_script_hash: from.lock_script_hash,
+            parameters: from.parameters,
+            asset_type: from.asset_type,
+            amount: from.amount.into(),
+        }
+    }
+}
+
+// FIXME: Use TryFrom.
+impl From<AssetTransferOutput> for AssetTransferOutputType {
+    fn from(from: AssetTransferOutput) -> Self {
+        AssetTransferOutputType {
+            lock_script_hash: from.lock_script_hash,
+            parameters: from.parameters,
+            asset_type: from.asset_type,
+            amount: from.amount.into(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetMintOutput {
+    pub lock_script_hash: H160,
+    pub parameters: Vec<Bytes>,
+    pub amount: Option<Uint>,
+}
+
+impl From<AssetMintOutputType> for AssetMintOutput {
+    fn from(from: AssetMintOutputType) -> Self {
+        AssetMintOutput {
+            lock_script_hash: from.lock_script_hash,
+            parameters: from.parameters,
+            amount: from.amount.map(|amount| amount.into()),
+        }
+    }
+}
+
+// FIXME: Use TryFrom.
+impl From<AssetMintOutput> for AssetMintOutputType {
+    fn from(from: AssetMintOutput) -> Self {
+        AssetMintOutputType {
+            lock_script_hash: from.lock_script_hash,
+            parameters: from.parameters,
+            amount: from.amount.map(|amount| amount.into()),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
@@ -30,7 +160,6 @@ pub enum Transaction {
         registrar: Option<PlatformAddress>,
 
         output: AssetMintOutput,
-        hash: H256,
     },
     #[serde(rename_all = "camelCase")]
     AssetTransfer {
@@ -38,7 +167,6 @@ pub enum Transaction {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
-        hash: H256,
     },
     #[serde(rename_all = "camelCase")]
     AssetCompose {
@@ -59,74 +187,7 @@ pub enum Transaction {
     AssetUnwrapCCC {
         network_id: NetworkId,
         burn: AssetTransferInput,
-        hash: H256,
     },
-}
-
-impl From<TransactionType> for Transaction {
-    fn from(from: TransactionType) -> Self {
-        let hash = from.hash();
-        match from {
-            TransactionType::AssetMint {
-                network_id,
-                shard_id,
-                metadata,
-                registrar,
-                output,
-            } => Transaction::AssetMint {
-                network_id,
-                shard_id,
-                metadata,
-                registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
-                output,
-                hash,
-            },
-            TransactionType::AssetTransfer {
-                network_id,
-                burns,
-                inputs,
-                outputs,
-            } => Transaction::AssetTransfer {
-                network_id,
-                burns,
-                inputs,
-                outputs,
-                hash,
-            },
-            TransactionType::AssetCompose {
-                network_id,
-                shard_id,
-                metadata,
-                registrar,
-                inputs,
-                output,
-            } => Transaction::AssetCompose {
-                network_id,
-                shard_id,
-                metadata,
-                registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
-                inputs,
-                output,
-            },
-            TransactionType::AssetDecompose {
-                network_id,
-                input,
-                outputs,
-            } => Transaction::AssetDecompose {
-                network_id,
-                input,
-                outputs,
-            },
-            TransactionType::AssetUnwrapCCC {
-                network_id,
-                burn,
-            } => Transaction::AssetUnwrapCCC {
-                network_id,
-                burn,
-                hash,
-            },
-        }
-    }
 }
 
 // FIXME: Use TryFrom.
@@ -139,7 +200,6 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 metadata,
                 registrar,
                 output,
-                ..
             } => {
                 let registrar = match registrar {
                     Some(registrar) => Some(registrar.try_into_address()?),
@@ -150,7 +210,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     shard_id,
                     metadata,
                     registrar,
-                    output,
+                    output: output.into(),
                 }
             }
             Transaction::AssetTransfer {
@@ -158,12 +218,11 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 burns,
                 inputs,
                 outputs,
-                ..
             } => TransactionType::AssetTransfer {
                 network_id,
-                burns,
-                inputs,
-                outputs,
+                burns: burns.into_iter().map(|burn| burn.into()).collect(),
+                inputs: inputs.into_iter().map(|input| input.into()).collect(),
+                outputs: outputs.into_iter().map(|output| output.into()).collect(),
             },
             Transaction::AssetCompose {
                 network_id,
@@ -182,8 +241,8 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     shard_id,
                     metadata,
                     registrar,
-                    inputs,
-                    output,
+                    inputs: inputs.into_iter().map(|input| input.into()).collect(),
+                    output: output.into(),
                 }
             }
             Transaction::AssetDecompose {
@@ -192,8 +251,8 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 outputs,
             } => TransactionType::AssetDecompose {
                 network_id,
-                input,
-                outputs,
+                input: input.into(),
+                outputs: outputs.into_iter().map(|output| output.into()).collect(),
             },
             Transaction::AssetUnwrapCCC {
                 network_id,
@@ -201,7 +260,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 ..
             } => TransactionType::AssetUnwrapCCC {
                 network_id,
-                burn,
+                burn: burn.into(),
             },
         })
     }

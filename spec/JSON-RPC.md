@@ -117,6 +117,10 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - type: "assetMint" | "assetTransfer" | "assetCompose" | "assetDecompose" | "assetUnwrapCCC"
  - data: `AssetMintData` | `AssetTransferData` | `AssetComposeData` | `AssetDecomposeData` | `AssetUnwrapCCCData`
 
+### Transaction in Response
+
+When `Transaction` is included in any response, there will be an additional field `hash` in the data, which is the hash value of the given transaction. This decreases the time to calculate the transaction hash when it is needed from the response.
+
 ### AssetMintData
 
  - networkId: `NetworkID`
