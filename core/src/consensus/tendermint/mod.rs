@@ -777,6 +777,15 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn register_chain_notify(&self, client: &Client) {
         client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<ChainNotify>);
     }
+
+    fn get_block_hash_to_mine_on(&self, _best_block_hash: H256) -> H256 {
+        let c = self.client.read().as_ref().and_then(|weak| weak.upgrade()).expect("Client should be exist");
+
+        let prev_height = self.height() - 1;
+        c.block_header(&BlockId::Number(prev_height as BlockNumber))
+            .expect("Previous height's block should be imported")
+            .hash()
+    }
 }
 
 struct TendermintChainNotify {

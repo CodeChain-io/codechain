@@ -594,7 +594,7 @@ impl PrepareOpenBlock for Client {
     fn prepare_open_block(&self, author: Address, extra_data: Bytes) -> OpenBlock {
         let engine = &*self.engine;
         let chain = self.block_chain();
-        let h = engine.get_latest_block_hash(chain.best_block_hash());
+        let h = engine.get_block_hash_to_mine_on(chain.best_block_hash());
         let latest_header = &chain.block_header(&h).expect("h is best block hash: so its header must exist: qed");
 
         let is_epoch_begin = chain.epoch_transition(latest_header.number(), h).is_some();
