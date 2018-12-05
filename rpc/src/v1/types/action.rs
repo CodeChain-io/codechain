@@ -51,7 +51,10 @@ pub enum Action {
         parameters: Vec<Bytes>,
         amount: Uint,
     },
-    Custom(Bytes),
+    Custom {
+        handler_id: u64,
+        bytes: Bytes,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -83,7 +86,10 @@ pub enum ActionWithTxHash {
         parameters: Vec<Bytes>,
         amount: Uint,
     },
-    Custom(Bytes),
+    Custom {
+        handler_id: u64,
+        bytes: Bytes,
+    },
 }
 
 impl ActionWithTxHash {
@@ -134,7 +140,13 @@ impl ActionWithTxHash {
                 parameters,
                 amount: amount.into(),
             },
-            ActionType::Custom(bytes) => ActionWithTxHash::Custom(bytes),
+            ActionType::Custom {
+                handler_id,
+                bytes,
+            } => ActionWithTxHash::Custom {
+                handler_id,
+                bytes,
+            },
         }
     }
 }
@@ -194,7 +206,13 @@ impl From<Action> for Result<ActionType, KeyError> {
                 parameters,
                 amount: amount.into(),
             },
-            Action::Custom(bytes) => ActionType::Custom(bytes),
+            Action::Custom {
+                handler_id,
+                bytes,
+            } => ActionType::Custom {
+                handler_id,
+                bytes,
+            },
         })
     }
 }

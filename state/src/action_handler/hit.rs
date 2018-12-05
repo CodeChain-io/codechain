@@ -18,29 +18,16 @@ use ccrypto::blake256;
 use cmerkle::TrieMut;
 use ctypes::invoice::Invoice;
 use primitives::H256;
-use rlp::{self, Decodable, DecoderError, Encodable, UntrustedRlp};
+use rlp::{self, Decodable, Encodable, UntrustedRlp};
 
-use super::ActionHandler;
+use super::{ActionHandler, ActionHandlerResult};
 use crate::{StateResult, TopLevelState, TopState, TopStateView};
 
-const ACTION_ID: u8 = 0;
+const ACTION_ID: u64 = 1;
 
+#[derive(RlpDecodable)]
 pub struct HitAction {
     increase: u8,
-}
-
-impl Decodable for HitAction {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen)
-        }
-        if rlp.val_at::<u8>(0)? != ACTION_ID {
-            return Err(DecoderError::Custom("Unknown message id detected"))
-        }
-        Ok(Self {
-            increase: rlp.val_at(1)?,
-        })
-    }
 }
 
 #[derive(Clone, Default)]
@@ -59,6 +46,10 @@ impl HitHandler {
 }
 
 impl ActionHandler for HitHandler {
+    fn handler_id(&self) -> u64 {
+        ACTION_ID
+    }
+
     fn init(&self, state: &mut TrieMut) -> StateResult<()> {
         let r = state.insert(&self.address(), &1u32.rlp_bytes());
         debug_assert_eq!(Ok(None), r);
@@ -66,18 +57,13 @@ impl ActionHandler for HitHandler {
         Ok(())
     }
 
-    fn is_target(&self, bytes: &[u8]) -> bool {
-        HitAction::decode(&UntrustedRlp::new(bytes)).is_ok()
-    }
-
     /// `bytes` must be valid encoding of HitAction
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState) -> Option<StateResult<Invoice>> {
-        HitAction::decode(&UntrustedRlp::new(bytes)).ok().map(|action| {
-            let action_data = state.action_data(&self.address())?.unwrap_or_default();
-            let prev_counter: u32 = rlp::decode(&*action_data);
-            let increase = u32::from(action.increase);
-            state.update_action_data(&self.address(), (prev_counter + increase).rlp_bytes().to_vec())?;
-            Ok(Invoice::Success)
-        })
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState) -> ActionHandlerResult {
+        let action = HitAction::decode(&UntrustedRlp::new(bytes))?;
+        let action_data = state.action_data(&self.address())?.unwrap_or_default();
+        let prev_counter: u32 = rlp::decode(&*action_data);
+        let increase = u32::from(action.increase);
+        state.update_action_data(&self.address(), (prev_counter + increase).rlp_bytes().to_vec())?;
+        Ok(Invoice::Success)
     }
 }

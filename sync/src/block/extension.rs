@@ -24,6 +24,7 @@ use ccore::{
     ImportError, Seal, UnverifiedParcel,
 };
 use cnetwork::{Api, NetworkExtension, NodeId, TimeoutHandler, TimerToken};
+use cstate::find_handler_for_id;
 use ctoken_generator::TokenGenerator;
 use ctypes::parcel::Action;
 use ctypes::BlockNumber;
@@ -530,7 +531,10 @@ impl Extension {
                 for body in bodies {
                     for parcel in body {
                         let is_valid = match &parcel.action {
-                            Action::Custom(bytes) => self.client.custom_handlers().iter().any(|c| c.is_target(bytes)),
+                            Action::Custom {
+                                handler_id,
+                                ..
+                            } => find_handler_for_id(*handler_id, &self.client.custom_handlers()).is_some(),
                             _ => true,
                         };
                         if !is_valid {

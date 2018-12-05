@@ -61,7 +61,10 @@ pub enum Action {
         parameters: Vec<Bytes>,
         amount: u64,
     },
-    Custom(Bytes),
+    Custom {
+        handler_id: u64,
+        bytes: Bytes,
+    },
 }
 
 impl Action {
@@ -158,9 +161,13 @@ impl Encodable for Action {
                 s.append(parameters);
                 s.append(amount);
             }
-            Action::Custom(bytes) => {
-                s.begin_list(2);
+            Action::Custom {
+                handler_id,
+                bytes,
+            } => {
+                s.begin_list(3);
                 s.append(&CUSTOM);
+                s.append(handler_id);
                 s.append(bytes);
             }
         }
@@ -232,10 +239,13 @@ impl Decodable for Action {
                 })
             }
             CUSTOM => {
-                if rlp.item_count()? != 2 {
+                if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::Custom(rlp.val_at(1)?))
+                Ok(Action::Custom {
+                    handler_id: rlp.val_at(1)?,
+                    bytes: rlp.val_at(2)?,
+                })
             }
             _ => Err(DecoderError::Custom("Unexpected action prefix")),
         }
