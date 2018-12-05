@@ -39,7 +39,6 @@
     "ncp": "^2.0.0",
     "rlp": "^2.0.0",
     "seedrandom": "^2.4.4",
-    "ts-mocha": "^2.0.0",
     "ts-node": "^7.0.0",
     "typescript": "^2.9.2"
   }
