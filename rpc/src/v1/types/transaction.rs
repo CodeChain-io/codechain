@@ -145,7 +145,7 @@ impl From<AssetMintOutput> for AssetMintOutputType {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum Transaction {
     #[serde(rename_all = "camelCase")]
@@ -262,7 +262,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum TransactionWithHash {
     #[serde(rename_all = "camelCase")]
