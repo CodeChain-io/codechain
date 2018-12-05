@@ -110,10 +110,11 @@ export default class CodeChain {
             chain?: ChainType;
             argv?: string[];
             additionalKeysPath?: string;
+            base?: number;
         } = {}
     ) {
-        const { chain, argv, additionalKeysPath } = options;
-        this._id = CodeChain.idCounter++;
+        const { chain, argv, additionalKeysPath, base = 0 } = options;
+        this._id = base + CodeChain.idCounter++;
 
         mkdirp.sync(`${projectRoot}/db/`);
         mkdirp.sync(`${projectRoot}/keys/`);

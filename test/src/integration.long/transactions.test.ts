@@ -37,8 +37,9 @@ const expect = chai.expect;
 
 describe("transactions", function() {
     let node: CodeChain;
+    const BASE = 700;
     before(async function() {
-        node = new CodeChain();
+        node = new CodeChain({ base: BASE });
         await node.start();
     });
 

@@ -68,6 +68,8 @@ describe("Test onChain block communication", async function() {
     let VALID_SEAL: Buffer[] = [];
     const INVALID_SEAL = [Buffer.from("DEADBEEF")];
 
+    const BASE = 300;
+
     const testArray = [
         {
             testName: "OnChain invalid parent block propagation test",
@@ -204,7 +206,8 @@ describe("Test onChain block communication", async function() {
 
     before(async function() {
         const node = new CodeChain({
-            argv: ["--force-sealing"]
+            argv: ["--force-sealing"],
+            base: BASE
         });
         await node.start();
 
@@ -273,7 +276,7 @@ describe("Test onChain block communication", async function() {
     });
 
     beforeEach(async function() {
-        nodeA = new CodeChain();
+        nodeA = new CodeChain({ base: BASE });
         await nodeA.start();
         TH = new TestHelper("0.0.0.0", nodeA.port);
         await TH.establish();
