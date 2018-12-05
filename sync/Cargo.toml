@@ -11,6 +11,7 @@ codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
+codechain-state = { path = "../state" }
 codechain-token-generator = { path = "../util/token_generator" }
 codechain-types = { path = "../types" }
 journaldb = { path = "../util/journaldb" }

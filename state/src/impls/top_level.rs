@@ -37,6 +37,7 @@
 
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, recover, Address, NetworkId, Public};
@@ -56,8 +57,8 @@ use crate::cache::{ShardCache, TopCache};
 use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
 use crate::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
 use crate::{
-    Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress,
-    ShardLevelState, StateDB, StateError, StateResult,
+    find_handler_for_id, Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard,
+    ShardAddress, ShardLevelState, StateDB, StateError, StateResult,
 };
 
 /// Representation of the entire state of all accounts in the system.
@@ -415,14 +416,18 @@ impl TopLevelState {
                 fee_payer,
                 client,
             )?),
-            Action::Custom(bytes) => {
-                let handlers = self.db.borrow().custom_handlers().to_vec();
-                for h in handlers {
-                    if let Some(result) = h.execute(bytes, self) {
-                        return result
-                    }
-                }
-                panic!("Unknown custom parcel accepted!")
+            Action::Custom {
+                handler_id,
+                bytes,
+            } => {
+                let handler = {
+                    let db = self.db.borrow();
+                    Arc::clone(
+                        find_handler_for_id(*handler_id, db.custom_handlers()).expect("Unknown custom parcel applied!"),
+                    )
+                };
+                let invoice = handler.execute(bytes, self).expect("Custom action hander execution failed");
+                Ok(invoice)
             }
         }
     }

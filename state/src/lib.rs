@@ -52,7 +52,7 @@ mod traits;
 #[cfg(test)]
 pub mod tests;
 
-pub use crate::action_handler::{ActionHandler, HitHandler};
+pub use crate::action_handler::{find_handler_for_id, ActionHandler, HitHandler};
 pub use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
 pub use crate::db::StateDB;
 pub use crate::error::Error as StateError;

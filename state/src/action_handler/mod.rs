@@ -16,15 +16,49 @@
 
 mod hit;
 
-use cmerkle::TrieMut;
-use ctypes::invoice::Invoice;
+use std::convert::From;
+use std::sync::Arc;
 
-use crate::{StateResult, TopLevelState};
+use cmerkle::{TrieError, TrieMut};
+use ctypes::invoice::Invoice;
+use rlp::DecoderError;
+
+use crate::{StateError, StateResult, TopLevelState};
 
 pub trait ActionHandler: Send + Sync {
+    fn handler_id(&self) -> u64;
     fn init(&self, state: &mut TrieMut) -> StateResult<()>;
-    fn is_target(&self, bytes: &[u8]) -> bool;
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState) -> Option<StateResult<Invoice>>;
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState) -> ActionHandlerResult;
+}
+
+pub fn find_handler_for_id<'a>(id: u64, handlers: &'a [Arc<ActionHandler>]) -> Option<&'a Arc<ActionHandler>> {
+    handlers.iter().find(|handler| handler.handler_id() == id)
+}
+
+pub type ActionHandlerResult = Result<Invoice, ActionHandlerError>;
+
+#[derive(Debug, PartialEq)]
+pub enum ActionHandlerError {
+    DecoderError(DecoderError),
+    StateError(StateError),
+}
+
+impl From<DecoderError> for ActionHandlerError {
+    fn from(error: DecoderError) -> Self {
+        ActionHandlerError::DecoderError(error)
+    }
+}
+
+impl From<StateError> for ActionHandlerError {
+    fn from(error: StateError) -> Self {
+        ActionHandlerError::StateError(error)
+    }
+}
+
+impl From<TrieError> for ActionHandlerError {
+    fn from(error: TrieError) -> Self {
+        ActionHandlerError::StateError(StateError::Trie(error))
+    }
 }
 
 pub use self::hit::HitHandler;
