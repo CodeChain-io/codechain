@@ -21,13 +21,14 @@ import "mocha";
 import { expect } from "chai";
 
 describe("sync", function() {
+    const BASE = 600;
     describe("2 nodes", function() {
         let nodeA: CodeChain;
         let nodeB: CodeChain;
 
         beforeEach(async function() {
-            nodeA = new CodeChain();
-            nodeB = new CodeChain();
+            nodeA = new CodeChain({ base: BASE });
+            nodeB = new CodeChain({ base: BASE });
 
             await Promise.all([nodeA.start(), nodeB.start()]);
         });
@@ -311,8 +312,8 @@ describe("sync", function() {
         const testSize: number = 5;
 
         beforeEach(async function() {
-            nodeA = new CodeChain();
-            nodeB = new CodeChain();
+            nodeA = new CodeChain({ base: BASE });
+            nodeB = new CodeChain({ base: BASE });
 
             await Promise.all([
                 nodeA.start(["--no-parcel-relay"]),
@@ -359,7 +360,10 @@ describe("sync", function() {
                 this.timeout(5000 + 5000 * numNodes);
 
                 for (let i = 0; i < numNodes; i++) {
-                    const node = new CodeChain({ argv: ["--no-discovery"] });
+                    const node = new CodeChain({
+                        argv: ["--no-discovery"],
+                        base: BASE
+                    });
                     nodes.push(node);
                     await node.start();
                 }

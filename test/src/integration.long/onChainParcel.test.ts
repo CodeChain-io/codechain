@@ -66,8 +66,10 @@ describe("Test onChain parcel communication", function() {
         }
     ];
 
+    const BASE = 400;
+
     beforeEach(async function() {
-        nodeA = new CodeChain();
+        nodeA = new CodeChain({ base: BASE });
         await nodeA.start();
     });
 

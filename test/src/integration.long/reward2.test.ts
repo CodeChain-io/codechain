@@ -25,14 +25,18 @@ describe("reward2", function() {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 
+    const BASE = 500;
+
     beforeEach(async function() {
         nodeA = new CodeChain({
             chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
-            argv: ["--author", aliceAddress.toString(), "--force-sealing"]
+            argv: ["--author", aliceAddress.toString(), "--force-sealing"],
+            base: BASE
         });
         nodeB = new CodeChain({
             chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
-            argv: ["--author", bobAddress.toString(), "--force-sealing"]
+            argv: ["--author", bobAddress.toString(), "--force-sealing"],
+            base: BASE
         });
 
         await Promise.all([nodeA.start(), nodeB.start()]);

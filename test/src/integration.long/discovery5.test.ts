@@ -22,16 +22,17 @@ import { expect } from "chai";
 const testSkippedInTravis = process.env.TRAVIS ? it.skip : it;
 
 describe("discovery5 nodes", function() {
+    const BASE = 100;
     const numOfNodes = 5;
     let nodes: CodeChain[];
     let bootstrapNode: CodeChain;
 
     beforeEach(async function() {
-        nodes = [new CodeChain()];
+        nodes = [new CodeChain({ base: BASE })];
         bootstrapNode = nodes[0];
 
         for (let i = 1; i < numOfNodes; i++) {
-            nodes.push(new CodeChain());
+            nodes.push(new CodeChain({ base: BASE }));
         }
 
         await Promise.all(
