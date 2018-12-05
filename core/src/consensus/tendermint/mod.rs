@@ -16,6 +16,7 @@
 
 mod message;
 mod params;
+pub mod types;
 
 use std::cmp;
 use std::collections::HashSet;
@@ -31,11 +32,12 @@ use ctypes::BlockNumber;
 use parking_lot::{Mutex, ReentrantMutex, RwLock};
 use primitives::{u256_from_u128, Bytes, H256};
 use rand::{thread_rng, Rng};
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
 use self::message::*;
 pub use self::params::{TendermintParams, TendermintTimeouts};
+use self::types::{Height, ProposalSeal, RegularSeal, Step, View};
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
@@ -53,98 +55,7 @@ use ChainNotify;
 /// Timer token representing the consensus step timeouts.
 pub const ENGINE_TIMEOUT_TOKEN: TimerToken = 23;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub enum Step {
-    Propose,
-    Prevote,
-    Precommit,
-    Commit,
-}
-
-impl Step {
-    pub fn is_pre(self) -> bool {
-        match self {
-            Step::Prevote | Step::Precommit => true,
-            _ => false,
-        }
-    }
-
-    fn number(self) -> u8 {
-        match self {
-            Step::Propose => 0,
-            Step::Prevote => 1,
-            Step::Precommit => 2,
-            Step::Commit => 3,
-        }
-    }
-}
-
-impl Decodable for Step {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        match rlp.as_val()? {
-            0u8 => Ok(Step::Propose),
-            1 => Ok(Step::Prevote),
-            2 => Ok(Step::Precommit),
-            // FIXME: Step::Commit case is not necessary if Api::send_local_message does not serialize message.
-            3 => Ok(Step::Commit),
-            _ => Err(DecoderError::Custom("Invalid step.")),
-        }
-    }
-}
-
-impl Encodable for Step {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        s.append_single_value(&self.number());
-    }
-}
-
-pub type Height = usize;
-pub type View = usize;
 pub type BlockHash = H256;
-
-struct ProposalSeal<'a> {
-    view: &'a View,
-    signature: &'a Signature,
-}
-
-impl<'a> ProposalSeal<'a> {
-    fn new(view: &'a View, signature: &'a Signature) -> Self {
-        Self {
-            view,
-            signature,
-        }
-    }
-
-    fn seal_fields(&self) -> Vec<Bytes> {
-        vec![
-            ::rlp::encode(&*self.view).into_vec(),
-            ::rlp::encode(&*self.signature).into_vec(),
-            ::rlp::EMPTY_LIST_RLP.to_vec(),
-        ]
-    }
-}
-
-struct RegularSeal<'a> {
-    view: &'a View,
-    signatures: &'a [Signature],
-}
-
-impl<'a> RegularSeal<'a> {
-    fn new(view: &'a View, signatures: &'a [Signature]) -> Self {
-        Self {
-            view,
-            signatures,
-        }
-    }
-
-    fn seal_fields(&self) -> Vec<Bytes> {
-        vec![
-            ::rlp::encode(&*self.view).into_vec(),
-            ::rlp::NULL_RLP.to_vec(),
-            ::rlp::encode_list(self.signatures).into_vec(),
-        ]
-    }
-}
 
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
