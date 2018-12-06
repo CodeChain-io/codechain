@@ -141,7 +141,13 @@ impl<'db> ShardLevelState<'db> {
                     debug_assert!(outputs.len() <= 512);
                     self.transfer_asset(&transaction, sender, approvers, burns, inputs, outputs, orders, client)
                 }
-
+                Transaction::AssetSchemeChange {
+                    asset_type,
+                    metadata,
+                    approver,
+                    administrator,
+                    ..
+                } => self.change_asset_scheme(sender, approvers, asset_type, metadata, approver, administrator),
                 Transaction::AssetCompose {
                     metadata,
                     approver,
@@ -326,6 +332,36 @@ impl<'db> ShardLevelState<'db> {
         Ok(())
     }
 
+    fn change_asset_scheme(
+        &mut self,
+        sender: &Address,
+        approvers: &[Address],
+        asset_type: &H256,
+        metadata: &str,
+        approver: &Option<Address>,
+        administrator: &Option<Address>,
+    ) -> StateResult<()> {
+        let asset_scheme_address = AssetSchemeAddress::from_hash(*asset_type)
+            .ok_or_else(|| TransactionError::AssetSchemeNotFound(*asset_type))?;
+        {
+            let asset_scheme = self
+                .asset_scheme(&asset_scheme_address)?
+                .ok_or_else(|| TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+
+            if !asset_scheme.is_centralized() {
+                return Err(TransactionError::InsufficientPermission.into())
+            }
+            let administrator = asset_scheme.administrator().as_ref().expect("Centralized asset has administrator");
+            if administrator != sender && !approvers.contains(administrator) {
+                return Err(TransactionError::InsufficientPermission.into())
+            }
+        }
+        let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
+        asset_scheme.change_data(metadata.to_string(), approver.clone(), administrator.clone());
+
+        Ok(())
+    }
+
     fn check_input_asset(
         &self,
         input: &AssetTransferInput,
@@ -428,6 +464,7 @@ impl<'db> ShardLevelState<'db> {
             ctrace!(TX, "Cannot run unlock/lock script {:?}", err);
             TransactionError::FailedToUnlock(address_hash)
         })?;
+
         Ok(script_result)
     }
 
@@ -2816,5 +2853,62 @@ mod tests {
             Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, ::std::u64::MAX, None))),
             asset
         );
+    }
+
+    #[test]
+    fn change_asset_scheme() {
+        let shard_id = 0;
+        let sender = address();
+        let mut state_db = RefCell::new(get_temp_state_db());
+        let mut shard_cache = ShardCache::default();
+        let mut state = get_temp_shard_state(&mut state_db, shard_id, &mut shard_cache);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let amount = 100;
+        let administrator = Address::random();
+        let mint = Transaction::AssetMint {
+            network_id: "tc".into(),
+            shard_id,
+            metadata: metadata.clone(),
+            output: AssetMintOutput {
+                lock_script_hash,
+                parameters: parameters.clone(),
+                amount: Some(amount),
+            },
+            approver: None,
+            administrator: Some(administrator),
+        };
+
+        let transaction_hash = mint.hash();
+        let result = state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client());
+        assert_eq!(Ok(Invoice::Success), result);
+
+        let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, None, Some(administrator)))), asset_scheme);
+
+        let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
+        let asset = state.asset(&asset_address);
+        assert_eq!(
+            Ok(Some(OwnedAsset::new(asset_scheme_address.into(), lock_script_hash, parameters, amount, None))),
+            asset
+        );
+
+        let approver = Some(Address::random());
+        let change_asset_scheme = Transaction::AssetSchemeChange {
+            network_id: "tc".into(),
+            asset_type: asset_scheme_address.into(),
+            metadata: "New metadata".to_string(),
+            approver,
+            administrator: None,
+        };
+        let result = state.apply(&change_asset_scheme.into(), &sender, &[], &[administrator], &get_test_client());
+        assert_eq!(Ok(Invoice::Success), result);
+
+        let asset_scheme = state.asset_scheme(&asset_scheme_address);
+        assert_eq!(Ok(Some(AssetScheme::new("New metadata".to_string(), amount, approver, None))), asset_scheme);
+        assert_eq!(Ok(Invoice::Success), result);
     }
 }
