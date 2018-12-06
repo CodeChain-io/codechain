@@ -29,6 +29,7 @@ extern crate codechain_key as ckey;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
+extern crate codechain_timer as ctimer;
 
 mod kademlia;
 mod unstructured;

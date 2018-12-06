@@ -17,7 +17,8 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable, TimeoutHandler, TimerToken};
+use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
+use ctimer::{TimeoutHandler, TimerToken};
 use parking_lot::RwLock;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;

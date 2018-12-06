@@ -18,7 +18,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use ccore::BlockChainClient;
-use cnetwork::{Api, NetworkExtension, NodeId, TimeoutHandler, TimerToken};
+use cnetwork::{Api, NetworkExtension, NodeId};
+use ctimer::{TimeoutHandler, TimerToken};
 use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Encodable, UntrustedRlp};

@@ -14,6 +14,7 @@ codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
+codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
 codechain-stratum = { path = "../stratum" }
 codechain-vm = { path = "../vm" }
