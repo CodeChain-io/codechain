@@ -18,10 +18,11 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::ops::Deref;
 use std::sync::{Arc, Weak};
 
+use ctimer::TimerToken;
 use parking_lot::Mutex;
 use time::Duration;
 
-use crate::extension::{Api, Extension, Result, TimerToken};
+use crate::extension::{Api, Extension, Result};
 use crate::NodeId;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]

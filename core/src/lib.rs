@@ -26,6 +26,7 @@ extern crate codechain_merkle as cmerkle;
 extern crate codechain_network as cnetwork;
 extern crate codechain_state as cstate;
 extern crate codechain_stratum as cstratum;
+extern crate codechain_timer as ctimer;
 extern crate codechain_types as ctypes;
 extern crate codechain_vm as cvm;
 extern crate cuckoo;

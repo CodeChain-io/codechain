@@ -25,7 +25,8 @@ use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
 use ckey::{public_to_address, recover, Address, Message, Password, Signature};
-use cnetwork::{Api, NetworkExtension, NetworkService, NodeId, TimeoutHandler, TimerToken};
+use cnetwork::{Api, NetworkExtension, NetworkService, NodeId};
+use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;

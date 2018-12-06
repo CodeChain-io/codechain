@@ -22,7 +22,7 @@ use cio::IoError;
 use time::Duration;
 
 use crate::NodeId;
-pub use ctimer::{TimeoutHandler, TimerScheduleError, TimerToken};
+use ctimer::{TimeoutHandler, TimerScheduleError, TimerToken};
 
 #[derive(Debug)]
 pub enum Error {

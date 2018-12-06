@@ -13,6 +13,7 @@ codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
 codechain-token-generator = { path = "../util/token_generator" }
+codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
 journaldb = { path = "../util/journaldb" }
 kvdb = { path = "../util/kvdb" }

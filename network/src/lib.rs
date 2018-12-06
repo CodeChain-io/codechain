@@ -62,7 +62,6 @@ pub use crate::control::{Control as NetworkControl, Error as NetworkControlError
 pub use crate::discovery::Api as DiscoveryApi;
 pub use crate::extension::{
     Api, Error as NetworkExtensionError, Extension as NetworkExtension, Result as NetworkExtensionResult,
-    TimeoutHandler, TimerToken,
 };
 pub use crate::node_id::{IntoSocketAddr, NodeId};
 pub use crate::service::{Error as NetworkServiceError, Service as NetworkService};

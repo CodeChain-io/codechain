@@ -8,6 +8,7 @@ codechain-crypto = { path = "../crypto" }
 codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }
 codechain-network = { path = "../network" }
+codechain-timer = { path = "../util/timer" }
 log = "0.4.6"
 parking_lot = "0.6.0"
 primitives = { path = "../util/primitives" }
