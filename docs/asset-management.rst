@@ -6,9 +6,11 @@ Getting Started
 ===============
 
 If you want to start creating assets that can be transferred amongst users, you can do it with codechain-sdk-js.
-If you visit this `link <https://api.codechain.io>`_, you can see an example JavaScript code.
+If you visit this link__, you can see an example JavaScript code.
 This page will guide you along on how to use codechain-sdk-js based on the example provided,
 called “Mint 10000 Gold and send 3000 Gold using AssetMintTransaction, AssetTransferTransaction”.
+
+__ https://api.codechain.io
 
 Before following any examples, please make sure to carefully go through the `setup section <https://codechain.readthedocs.io/en/latest/setup.html>`_ before starting any examples.
 
@@ -325,8 +327,10 @@ Parameters: [<Public Key Hash>]
 Use RemoteKeyStore to save Asset Address private key
 ==========================================================
 
-You should use a key management server to use Asset Address private keys safely. You can use a standalone key management server from this `link <https://github.com/codechain-io/codechain-keystore>`_.
+You should use a key management server to use Asset Address private keys safely. You can use a standalone key management server from this link__.
 In this section, we will install and run the key management server, and use the server in the SDK.
+
+__ https://github.com/codechain-io/codechain-keystore
 
 Setup the server
 -------------------
