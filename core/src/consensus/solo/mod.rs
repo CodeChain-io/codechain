@@ -92,8 +92,6 @@ mod tests {
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
 
-    use super::*;
-
     #[test]
     fn seal() {
         let scheme = Scheme::new_test_solo();
