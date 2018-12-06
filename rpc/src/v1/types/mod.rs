@@ -18,7 +18,6 @@ mod action;
 mod block;
 mod parcel;
 mod transaction;
-mod transaction_with_hash;
 mod unsigned_parcel;
 mod work;
 
@@ -28,8 +27,7 @@ pub use self::action::{Action, ActionWithTxHash};
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
 pub use self::parcel::Parcel;
-pub use self::transaction::Transaction;
-pub use self::transaction_with_hash::TransactionWithHash;
+pub use self::transaction::{Transaction, TransactionWithHash};
 pub use self::unsigned_parcel::UnsignedParcel;
 pub use self::work::Work;
 

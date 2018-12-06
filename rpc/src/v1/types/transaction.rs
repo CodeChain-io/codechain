@@ -44,7 +44,6 @@ impl From<AssetOutPointType> for AssetOutPoint {
     }
 }
 
-// FIXME: Use TryFrom.
 impl From<AssetOutPoint> for AssetOutPointType {
     fn from(from: AssetOutPoint) -> Self {
         AssetOutPointType {
@@ -76,7 +75,6 @@ impl From<AssetTransferInputType> for AssetTransferInput {
     }
 }
 
-// FIXME: Use TryFrom.
 impl From<AssetTransferInput> for AssetTransferInputType {
     fn from(from: AssetTransferInput) -> Self {
         AssetTransferInputType {
@@ -108,7 +106,6 @@ impl From<AssetTransferOutputType> for AssetTransferOutput {
     }
 }
 
-// FIXME: Use TryFrom.
 impl From<AssetTransferOutput> for AssetTransferOutputType {
     fn from(from: AssetTransferOutput) -> Self {
         AssetTransferOutputType {
@@ -138,7 +135,6 @@ impl From<AssetMintOutputType> for AssetMintOutput {
     }
 }
 
-// FIXME: Use TryFrom.
 impl From<AssetMintOutput> for AssetMintOutputType {
     fn from(from: AssetMintOutput) -> Self {
         AssetMintOutputType {
@@ -220,9 +216,9 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 outputs,
             } => TransactionType::AssetTransfer {
                 network_id,
-                burns: burns.into_iter().map(|burn| burn.into()).collect(),
-                inputs: inputs.into_iter().map(|input| input.into()).collect(),
-                outputs: outputs.into_iter().map(|output| output.into()).collect(),
+                burns: burns.into_iter().map(From::from).collect(),
+                inputs: inputs.into_iter().map(From::from).collect(),
+                outputs: outputs.into_iter().map(From::from).collect(),
             },
             Transaction::AssetCompose {
                 network_id,
@@ -263,5 +259,119 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 burn: burn.into(),
             },
         })
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", tag = "type", content = "data")]
+pub enum TransactionWithHash {
+    #[serde(rename_all = "camelCase")]
+    AssetMint {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        metadata: String,
+        approver: Option<PlatformAddress>,
+
+        output: AssetMintOutput,
+        hash: H256,
+    },
+    #[serde(rename_all = "camelCase")]
+    AssetTransfer {
+        network_id: NetworkId,
+        burns: Vec<AssetTransferInput>,
+        inputs: Vec<AssetTransferInput>,
+        outputs: Vec<AssetTransferOutput>,
+        hash: H256,
+    },
+    #[serde(rename_all = "camelCase")]
+    AssetCompose {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        metadata: String,
+        approver: Option<PlatformAddress>,
+        inputs: Vec<AssetTransferInput>,
+        output: AssetMintOutput,
+        hash: H256,
+    },
+    #[serde(rename_all = "camelCase")]
+    AssetDecompose {
+        network_id: NetworkId,
+        input: AssetTransferInput,
+        outputs: Vec<AssetTransferOutput>,
+        hash: H256,
+    },
+    #[serde(rename_all = "camelCase")]
+    AssetUnwrapCCC {
+        network_id: NetworkId,
+        burn: AssetTransferInput,
+        hash: H256,
+    },
+}
+
+impl From<TransactionType> for TransactionWithHash {
+    fn from(from: TransactionType) -> Self {
+        let hash = from.hash();
+        match from {
+            TransactionType::AssetMint {
+                network_id,
+                shard_id,
+                metadata,
+                approver,
+                output,
+            } => TransactionWithHash::AssetMint {
+                network_id,
+                shard_id,
+                metadata,
+                approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                output: output.into(),
+                hash,
+            },
+            TransactionType::AssetTransfer {
+                network_id,
+                burns,
+                inputs,
+                outputs,
+            } => TransactionWithHash::AssetTransfer {
+                network_id,
+                burns: burns.into_iter().map(From::from).collect(),
+                inputs: inputs.into_iter().map(From::from).collect(),
+                outputs: outputs.into_iter().map(From::from).collect(),
+                hash,
+            },
+            TransactionType::AssetCompose {
+                network_id,
+                shard_id,
+                metadata,
+                approver,
+                inputs,
+                output,
+            } => TransactionWithHash::AssetCompose {
+                network_id,
+                shard_id,
+                metadata,
+                approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                inputs: inputs.into_iter().map(From::from).collect(),
+                output: output.into(),
+                hash,
+            },
+            TransactionType::AssetDecompose {
+                network_id,
+                input,
+                outputs,
+            } => TransactionWithHash::AssetDecompose {
+                network_id,
+                input: input.into(),
+                outputs: outputs.into_iter().map(From::from).collect(),
+                hash,
+            },
+            TransactionType::AssetUnwrapCCC {
+                network_id,
+                burn,
+            } => TransactionWithHash::AssetUnwrapCCC {
+                network_id,
+                burn: burn.into(),
+                hash,
+            },
+        }
     }
 }
