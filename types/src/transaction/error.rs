@@ -59,6 +59,7 @@ pub enum Error {
     TooManyOutputs(usize),
     /// AssetCompose requires at least 1 input.
     EmptyInput,
+    CannotComposeCentralizedAsset,
     InvalidDecomposedInput {
         address: H256,
         got: u64,
@@ -110,6 +111,7 @@ pub enum Error {
     },
 }
 
+const ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET: u8 = 3u8;
 const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 5u8;
 const ERROR_ID_ASSET_SCHEME_NOT_FOUND: u8 = 6u8;
@@ -171,6 +173,7 @@ impl Encodable for Error {
             Error::ZeroAmount => s.begin_list(1).append(&ERROR_ID_ZERO_AMOUNT),
             Error::TooManyOutputs(num) => s.begin_list(2).append(&ERROR_ID_TOO_MANY_OUTPUTS).append(num),
             Error::EmptyInput => s.begin_list(1).append(&ERROR_ID_EMPTY_INPUT),
+            Error::CannotComposeCentralizedAsset => s.begin_list(1).append(&ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET),
             Error::InvalidDecomposedInput {
                 address,
                 got,
@@ -288,6 +291,12 @@ impl Decodable for Error {
                     return Err(DecoderError::RlpInvalidLength)
                 }
                 Error::EmptyInput
+            }
+            ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::CannotComposeCentralizedAsset
             }
             ERROR_ID_INVALID_DECOMPOSED_INPUT => {
                 if rlp.item_count()? != 3 {
@@ -433,6 +442,7 @@ impl Display for Error {
             Error::ZeroAmount => write!(f, "An amount cannot be 0"),
             Error::TooManyOutputs(num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
             Error::EmptyInput => write!(f, "The input is empty"),
+            Error::CannotComposeCentralizedAsset => write!(f, "Cannot compose the centralized asset"),
             Error::InvalidDecomposedInput {
                 address,
                 got,

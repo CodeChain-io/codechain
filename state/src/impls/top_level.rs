@@ -1338,6 +1338,7 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             approver,
+            administrator: None,
         };
         let mint_hash = mint.hash();
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -1419,6 +1420,7 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             approver,
+            administrator: None,
         };
         let mint_hash = mint.hash();
         let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
@@ -1582,6 +1584,7 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             approver,
+            administrator: None,
         };
         let transaction_hash = transaction.hash();
         let parcel = Parcel {
@@ -1603,7 +1606,7 @@ mod tests_parcel {
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver, None))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(shard_id, &asset_address);
@@ -1639,6 +1642,7 @@ mod tests_parcel {
                 amount: None,
             },
             approver,
+            administrator: None,
         };
         let transaction_hash = transaction.hash();
         let parcel = Parcel {
@@ -1660,7 +1664,7 @@ mod tests_parcel {
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, shard_id);
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, approver))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), ::std::u64::MAX, approver, None))), asset_scheme);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, shard_id);
         let asset = state.asset(shard_id, &asset_address);
@@ -1696,6 +1700,7 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             approver,
+            administrator: None,
         };
         let mint_hash = mint.hash();
 
@@ -1779,7 +1784,7 @@ mod tests_parcel {
         assert_eq!(Ok(2), state.seq(&sender));
 
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver, None))), asset_scheme);
 
         let asset = state.asset(shard_id, &asset_address);
         assert_eq!(Ok(None), asset);
@@ -1824,6 +1829,7 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             approver,
+            administrator: None,
         };
         let parcel = Parcel {
             fee: 11,
@@ -2309,6 +2315,7 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             approver,
+            administrator: None,
         };
         let parcel = Parcel {
             fee: 11,
@@ -2651,6 +2658,7 @@ mod tests_parcel {
                 amount: Some(amount),
             },
             approver,
+            administrator: None,
         };
         let mint_hash = mint.hash();
 
@@ -2673,7 +2681,7 @@ mod tests_parcel {
         assert_eq!(Ok(1), state.seq(&sender));
 
         let asset_scheme = state.asset_scheme(shard_id, &asset_scheme_address);
-        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver))), asset_scheme);
+        assert_eq!(Ok(Some(AssetScheme::new(metadata.clone(), amount, approver, None))), asset_scheme);
 
         let asset_type = asset_scheme_address.into();
         let asset = state.asset(shard_id, &asset_address);
