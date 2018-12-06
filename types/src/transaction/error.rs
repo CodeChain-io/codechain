@@ -17,7 +17,7 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::Address;
-use primitives::{H160, H256};
+use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::Timelock;
@@ -76,6 +76,38 @@ pub enum Error {
         timelock: Timelock,
         remaining_time: u64,
     },
+    /// Errors on orders
+    /// Order of OwnedAsset and AssetTransferInput is different
+    OrderChanged {
+        prev_out_order_hash: H256,
+        transfer_order_hash: H256,
+    },
+    /// origin_outputs of order is not satisfied.
+    InvalidOriginOutputs(H256),
+    /// The input/output indices of the order on transfer is not valid.
+    InvalidOrderInOutIndices,
+    /// the input and output of tx is not consistent with its orders
+    InconsistentTransactionInOutWithOrders,
+    /// asset_type_from and asset_type_to is equal
+    InvalidOrderAssetTypes {
+        from: H256,
+        to: H256,
+        fee: H256,
+    },
+    /// invalid asset_amount_from, asset_amount_to because of ratio
+    InvalidOrderAssetAmounts {
+        from: u64,
+        to: u64,
+        fee: u64,
+    },
+    /// the lock script hash of the order is different from the output
+    InvalidOrderLockScriptHash(H160),
+    /// the parameters of the order is different from the output
+    InvalidOrderParameters(Vec<Bytes>),
+    OrderExpired {
+        expiration: u64,
+        timestamp: u64,
+    },
 }
 
 const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
@@ -99,6 +131,15 @@ const ERROR_ID_INVALID_COMPOSED_OUTPUT: u8 = 23u8;
 const ERROR_ID_INVALID_DECOMPOSED_OUTPUT: u8 = 24u8;
 const ERROR_ID_EMPTY_OUTPUT: u8 = 25u8;
 const ERROR_ID_TIMELOCKED: u8 = 26u8;
+const ERROR_ID_ORDER_CHANGED: u8 = 27u8;
+const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 28u8;
+const ERROR_ID_INVALID_ORDER_IN_OUT_INDICES: u8 = 29u8;
+const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS: u8 = 30u8;
+const ERROR_ID_INVALID_ORDER_ASSET_TYPES: u8 = 31u8;
+const ERROR_ID_INVALID_ORDER_ASSET_AMOUNTS: u8 = 32u8;
+const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 33u8;
+const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 34u8;
+const ERROR_ID_ORDER_EXPIRED: u8 = 35u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -149,6 +190,39 @@ impl Encodable for Error {
                 timelock,
                 remaining_time,
             } => s.begin_list(3).append(&ERROR_ID_TIMELOCKED).append(timelock).append(remaining_time),
+            Error::OrderChanged {
+                prev_out_order_hash,
+                transfer_order_hash,
+            } => {
+                s.begin_list(3).append(&ERROR_ID_ORDER_CHANGED).append(prev_out_order_hash).append(transfer_order_hash)
+            }
+            Error::InvalidOriginOutputs(order_hash) => {
+                s.begin_list(2).append(&ERROR_ID_INVALID_ORIGIN_OUTPUTS).append(order_hash)
+            }
+            Error::InvalidOrderInOutIndices => s.begin_list(1).append(&ERROR_ID_INVALID_ORDER_IN_OUT_INDICES),
+            Error::InconsistentTransactionInOutWithOrders => {
+                s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS)
+            }
+            Error::InvalidOrderAssetTypes {
+                from,
+                to,
+                fee,
+            } => s.begin_list(4).append(&ERROR_ID_INVALID_ORDER_ASSET_TYPES).append(from).append(to).append(fee),
+            Error::InvalidOrderAssetAmounts {
+                from,
+                to,
+                fee,
+            } => s.begin_list(4).append(&ERROR_ID_INVALID_ORDER_ASSET_AMOUNTS).append(from).append(to).append(fee),
+            Error::InvalidOrderLockScriptHash(lock_script_hash) => {
+                s.begin_list(2).append(&ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH).append(lock_script_hash)
+            }
+            Error::InvalidOrderParameters(parameters) => {
+                s.begin_list(2).append(&ERROR_ID_INVALID_ORDER_PARAMETERS).append(parameters)
+            }
+            Error::OrderExpired {
+                expiration,
+                timestamp,
+            } => s.begin_list(3).append(&ERROR_ID_ORDER_EXPIRED).append(expiration).append(timestamp),
         };
     }
 }
@@ -252,6 +326,74 @@ impl Decodable for Error {
                 timelock: rlp.val_at(1)?,
                 remaining_time: rlp.val_at(2)?,
             },
+            ERROR_ID_ORDER_CHANGED => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::OrderChanged {
+                    prev_out_order_hash: rlp.val_at(1)?,
+                    transfer_order_hash: rlp.val_at(2)?,
+                }
+            }
+            ERROR_ID_INVALID_ORIGIN_OUTPUTS => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidOriginOutputs(rlp.val_at(1)?)
+            }
+            ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidOrderInOutIndices
+            }
+            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InconsistentTransactionInOutWithOrders
+            }
+            ERROR_ID_INVALID_ORDER_ASSET_TYPES => {
+                if rlp.item_count()? != 4 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidOrderAssetTypes {
+                    from: rlp.val_at(1)?,
+                    to: rlp.val_at(2)?,
+                    fee: rlp.val_at(3)?,
+                }
+            }
+            ERROR_ID_INVALID_ORDER_ASSET_AMOUNTS => {
+                if rlp.item_count()? != 4 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidOrderAssetAmounts {
+                    from: rlp.val_at(1)?,
+                    to: rlp.val_at(2)?,
+                    fee: rlp.val_at(3)?,
+                }
+            }
+            ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidOrderLockScriptHash(rlp.val_at(1)?)
+            }
+            ERROR_ID_INVALID_ORDER_PARAMETERS => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::InvalidOrderParameters(rlp.val_at(1)?)
+            }
+            ERROR_ID_ORDER_EXPIRED => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::OrderExpired {
+                    expiration: rlp.val_at(1)?,
+                    timestamp: rlp.val_at(2)?,
+                }
+            }
             _ => return Err(DecoderError::Custom("Invalid transaction error")),
         })
     }
@@ -316,6 +458,43 @@ impl Display for Error {
                 "The transaction cannot be executed because of the timelock({:?}). The remaining time is {}",
                 timelock, remaining_time
             ),
+            Error::OrderChanged {
+                prev_out_order_hash,
+                transfer_order_hash,
+            } => write!(
+                f,
+                "The order hash of the previous output is {}, but the order hash of the transfer tx is {}",
+                prev_out_order_hash, transfer_order_hash
+            ),
+            Error::InvalidOriginOutputs(order_hash) => {
+                write!(f, "The order({}) is invalid because its origin outputs are wrong", order_hash)
+            }
+            Error::InvalidOrderInOutIndices => {
+                write!(f, "The order on transfer is invalid because its input/output indices are wrong or overlapped with other orders")
+            }
+            Error::InconsistentTransactionInOutWithOrders => {
+                write!(f, "The transaction's input and output do not follow its orders")
+            }
+            Error::InvalidOrderAssetTypes {
+                from,
+                to,
+                fee,
+            } => write!(f, "There are asset types in the order which are same: from:{}, to:{}, fee:{}", from, to, fee),
+            Error::InvalidOrderAssetAmounts {
+                from,
+                to,
+                fee,
+            } => write!(f, "The asset exchange ratio of the order is invalid: from:to:fee = {}:{}:{}", from, to, fee),
+            Error::InvalidOrderLockScriptHash(lock_script_hash) => {
+                write!(f, "The lock script hash of the order is different from the output: {}", lock_script_hash)
+            }
+            Error::InvalidOrderParameters(parameters) => {
+                write!(f, "The parameters of the order is different from the output: {:?}", parameters)
+            }
+            Error::OrderExpired {
+                expiration,
+                timestamp,
+            } => write!(f, "The order is expired. Expiration: {}, Block timestamp: {}", expiration, timestamp),
         }
     }
 }

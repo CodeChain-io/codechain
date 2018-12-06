@@ -216,7 +216,7 @@ describe("sync", function() {
                         }
                     );
 
-                    await nodeA.signTransferInput(tx1, 0);
+                    await nodeA.signTransactionInput(tx1, 0);
                     const invoices1 = await nodeA.sendTransaction(tx1);
                     expect(invoices1!.length).to.equal(1);
                     expect(invoices1![0].success).to.be.true;
@@ -229,7 +229,7 @@ describe("sync", function() {
                         amount: 100
                     });
 
-                    await nodeA.signTransferInput(tx2, 0);
+                    await nodeA.signTransactionInput(tx2, 0);
                     const invoicesA = await nodeA.sendTransaction(tx2);
                     expect(invoicesA!.length).to.equal(1);
                     expect(invoicesA![0].success).to.be.false;

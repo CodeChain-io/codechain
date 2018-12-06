@@ -17,13 +17,12 @@
 use std::cmp;
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Address, Signature};
+use ckey::Signature;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::vote_collector::Message;
 use super::{BlockHash, Height, Step, View};
-use crate::error::Error;
 use crate::header::Header;
 
 /// Complete step of the consensus process.
@@ -134,33 +133,17 @@ impl ConsensusMessage {
             vote_step: VoteStep::new(height, view, step),
         }
     }
-
-    pub fn new_proposal(header: &Header) -> Result<Self, ::rlp::DecoderError> {
-        Ok(ConsensusMessage {
-            signature: proposal_signature(header)?,
-            vote_step: VoteStep::new(header.number() as Height, consensus_view(header)?, Step::Propose),
-            block_hash: Some(header.bare_hash()),
-        })
-    }
-
-    pub fn verify(&self) -> Result<Address, Error> {
-        let full_rlp = ::rlp::encode(self);
-        let block_info = ::rlp::Rlp::new(&full_rlp).at(1);
-        let public_key = recover(&self.signature, &blake256(block_info.as_raw()))?;
-        Ok(public_to_address(&public_key))
-    }
 }
 
 /// Header consensus view.
 pub fn consensus_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
-    let view_rlp = header.seal().get(0).expect("seal passed basic verification; seal has 3 fields; qed");
+    let view_rlp = header.seal().get(1).expect("seal passed basic verification; seal has 3 fields; qed");
     UntrustedRlp::new(view_rlp.as_slice()).as_val()
 }
 
-/// Proposal signature.
-pub fn proposal_signature(header: &Header) -> Result<Signature, ::rlp::DecoderError> {
-    UntrustedRlp::new(header.seal().get(1).expect("seal passed basic verification; seal has 3 fields; qed").as_slice())
-        .as_val()
+pub fn previous_block_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
+    let view_rlp = header.seal().get(0).expect("seal passed basic verification; seal has 3 fields; qed");
+    UntrustedRlp::new(view_rlp.as_slice()).as_val()
 }
 
 impl Message for ConsensusMessage {

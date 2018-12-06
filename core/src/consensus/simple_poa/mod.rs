@@ -113,7 +113,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
         if self.validators.contains(header.parent_hash(), author) {
             // account should be permanently unlocked, otherwise sealing will fail
             if let Ok(signature) = self.sign(header.bare_hash()) {
-                return Seal::Regular(vec![::rlp::encode(&signature).into_vec()])
+                return Seal::SimplePoA(signature)
             } else {
                 ctrace!(ENGINE, "generate_seal: FAIL: accounts secret key unavailable");
             }
@@ -240,7 +240,7 @@ mod tests {
         let parent_parcels_root = *genesis_header.parcels_root();
         let parent_invoices_root = *genesis_header.invoices_root();
         let b = b.close_and_lock(parent_parcels_root, parent_invoices_root).unwrap();
-        if let Seal::Regular(seal) = engine.generate_seal(b.block(), &genesis_header) {
+        if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {
             assert!(b.try_seal(engine, seal).is_ok());
         }
     }

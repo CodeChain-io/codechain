@@ -44,9 +44,11 @@ use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};
+use self::tendermint::types::View;
 use crate::account_provider::AccountProvider;
 use crate::block::SealedBlock;
 use crate::codechain_machine::CodeChainMachine;
+use crate::encoded;
 use crate::error::Error;
 use crate::header::Header;
 use crate::parcel::{SignedParcel, UnverifiedParcel};
@@ -54,15 +56,34 @@ use crate::scheme::CommonParams;
 use crate::views::HeaderView;
 use Client;
 
-/// Seal type.
-#[derive(Debug, PartialEq, Eq)]
 pub enum Seal {
-    /// Proposal seal; should be broadcasted, but not inserted into blockchain.
-    Proposal(Vec<Bytes>),
-    /// Regular block seal; should be part of the blockchain.
-    Regular(Vec<Bytes>),
-    /// Engine does generate seal for this block right now.
+    Solo,
+    SimplePoA(Signature),
+    Tendermint {
+        prev_view: View,
+        cur_view: View,
+        precommits: Vec<Signature>,
+    },
     None,
+}
+
+impl Seal {
+    pub fn seal_fields(&self) -> Option<Vec<Bytes>> {
+        match self {
+            Seal::None => None,
+            Seal::Solo => Some(Vec::new()),
+            Seal::SimplePoA(signature) => Some(vec![::rlp::encode(signature).into_vec()]),
+            Seal::Tendermint {
+                prev_view,
+                cur_view,
+                precommits,
+            } => Some(vec![
+                ::rlp::encode(prev_view).into_vec(),
+                ::rlp::encode(cur_view).into_vec(),
+                ::rlp::encode_list(precommits).into_vec(),
+            ]),
+        }
+    }
 }
 
 /// Engine type.
@@ -108,6 +129,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn generate_seal(&self, _block: &M::LiveBlock, _parent: &M::Header) -> Seal {
         Seal::None
     }
+
+    fn proposal_generated(&self, _sealed_block: &SealedBlock) {}
 
     /// Verify a locally-generated seal of a header.
     ///
@@ -215,7 +238,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     /// Called when proposal block is verified.
     /// Consensus many hold the verified proposal block until it should be imported.
-    fn on_verified_proposal(&self, _header: &Header) {}
+    fn on_verified_proposal(&self, _verified_block_data: encoded::Block) {}
 
     /// Broadcast a block proposal.
     fn broadcast_proposal_block(&self, _block: SealedBlock) {}

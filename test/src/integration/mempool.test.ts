@@ -248,7 +248,7 @@ describe("Timelock", function() {
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
-        await node.signTransferInput(tx, 0);
+        await node.signTransactionInput(tx, 0);
         await node.sendTransaction(tx, { awaitInvoice: false });
         return tx.hash();
     }
@@ -332,7 +332,7 @@ describe("Timelock", function() {
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
-        await node.signTransferInput(tx, 0);
+        await node.signTransactionInput(tx, 0);
         try {
             await node.sendTransaction(tx, { awaitInvoice: false });
             expect.fail();
@@ -401,7 +401,7 @@ describe("Timelock", function() {
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
-        await node.signTransferInput(tx, 0);
+        await node.signTransactionInput(tx, 0);
         const { fee } = options;
         await node.sendTransaction(tx, { awaitInvoice: false, fee });
         return tx.hash();
@@ -474,7 +474,7 @@ describe("Timelock", function() {
                     recipient
                 }))
             );
-            await node.signTransferInput(transferTx, 0);
+            await node.signTransactionInput(transferTx, 0);
             await node.sendTransaction(transferTx);
             return transferTx.getTransferredAssets();
         }
@@ -498,8 +498,8 @@ describe("Timelock", function() {
                 })
             ]);
             tx.addOutputs({ amount: 2, recipient, assetType });
-            await node.signTransferInput(tx, 0);
-            await node.signTransferInput(tx, 1);
+            await node.signTransactionInput(tx, 0);
+            await node.signTransactionInput(tx, 1);
             await node.sendTransaction(tx, { awaitInvoice: false });
 
             expect(await node.getBestBlockNumber()).to.equal(3);
@@ -534,8 +534,8 @@ describe("Timelock", function() {
                 })
             ]);
             tx.addOutputs({ amount: 2, recipient, assetType });
-            await node.signTransferInput(tx, 0);
-            await node.signTransferInput(tx, 1);
+            await node.signTransactionInput(tx, 0);
+            await node.signTransactionInput(tx, 1);
             await node.sendTransaction(tx, { awaitInvoice: false });
 
             expect(await node.getBestBlockNumber()).to.equal(3);
@@ -570,8 +570,8 @@ describe("Timelock", function() {
                 })
             ]);
             tx.addOutputs({ amount: 2, recipient, assetType });
-            await node.signTransferInput(tx, 0);
-            await node.signTransferInput(tx, 1);
+            await node.signTransactionInput(tx, 0);
+            await node.signTransactionInput(tx, 1);
             await node.sendTransaction(tx, { awaitInvoice: false });
 
             expect(await node.getBestBlockNumber()).to.equal(3);
@@ -601,8 +601,8 @@ describe("Timelock", function() {
                 })
             ]);
             tx.addOutputs({ amount: 2, recipient, assetType });
-            await node.signTransferInput(tx, 0);
-            await node.signTransferInput(tx, 1);
+            await node.signTransactionInput(tx, 0);
+            await node.signTransactionInput(tx, 1);
             await node.sendTransaction(tx, { awaitInvoice: false });
 
             expect(await node.getBestBlockNumber()).to.equal(3);

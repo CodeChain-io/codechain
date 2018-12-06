@@ -345,7 +345,7 @@ describe("chain", function() {
             recipient,
             amount: "0xa"
         });
-        await node.signTransferInput(tx, 0);
+        await node.signTransactionInput(tx, 0);
         const invoices = await node.sendTransaction(tx);
         expect(invoices!.length).to.equal(1);
         expect(invoices![0].success).to.be.true;
