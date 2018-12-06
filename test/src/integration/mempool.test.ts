@@ -61,9 +61,13 @@ describe("Memory pool size test", function() {
     });
 
     it("To self", async function() {
+        const sending = [];
         for (let i = 0; i < sizeLimit * 2; i++) {
-            await nodeA.sendSignedParcel({ seq: i, awaitInvoice: false });
+            sending.push(
+                nodeA.sendSignedParcel({ seq: i, awaitInvoice: false })
+            );
         }
+        await Promise.all(sending);
         const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
         expect(pendingParcels.length).to.equal(sizeLimit * 2);
     }).timeout(10_000);
@@ -153,18 +157,24 @@ describe("Memory pool memory limit test", function() {
         });
 
         it("More than limit", async function() {
-            const aBlockNumber = await nodeA.sdk.rpc.chain.getBestBlockNumber();
-            const bBlockNumber = await nodeB.sdk.rpc.chain.getBestBlockNumber();
+            const [aBlockNumber, bBlockNumber] = await Promise.all([
+                nodeA.sdk.rpc.chain.getBestBlockNumber(),
+                nodeB.sdk.rpc.chain.getBestBlockNumber()
+            ]);
             expect(aBlockNumber).to.equal(bBlockNumber);
             const metadata = "Very large parcel" + " ".repeat(1 * 1024 * 1024);
+            const minting = [];
             for (let i = 0; i < sizeLimit; i++) {
-                await nodeA.mintAsset({
-                    amount: mintSize,
-                    seq: i,
-                    metadata,
-                    awaitMint: false
-                });
+                minting.push(
+                    nodeA.mintAsset({
+                        amount: mintSize,
+                        seq: i,
+                        metadata,
+                        awaitMint: false
+                    })
+                );
             }
+            await Promise.all(minting);
             await wait(3_000);
 
             const pendingParcels = await nodeB.sdk.rpc.chain.getPendingParcels();
