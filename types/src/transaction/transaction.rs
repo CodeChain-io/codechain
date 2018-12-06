@@ -38,8 +38,7 @@ pub enum HashingError {
     InvalidFilter,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
 pub struct AssetOutPoint {
     pub transaction_hash: H256,
     pub index: usize,
@@ -47,8 +46,7 @@ pub struct AssetOutPoint {
     pub amount: u64,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
 pub struct AssetTransferInput {
     pub prev_out: AssetOutPoint,
     pub timelock: Option<Timelock>,
@@ -97,8 +95,7 @@ impl Decodable for Timelock {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
 pub struct AssetTransferOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
@@ -142,8 +139,7 @@ pub enum Transaction {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
