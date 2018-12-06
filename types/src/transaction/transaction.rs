@@ -139,6 +139,7 @@ pub enum Transaction {
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
+        administrator: Option<Address>,
 
         output: AssetMintOutput,
     },
@@ -967,7 +968,7 @@ impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             ASSET_MINT_ID => {
-                if d.item_count()? != 8 {
+                if d.item_count()? != 9 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetMint {
@@ -980,6 +981,7 @@ impl Decodable for Transaction {
                         amount: d.val_at(6)?,
                     },
                     approver: d.val_at(7)?,
+                    administrator: d.val_at(8)?,
                 })
             }
             ASSET_TRANSFER_ID => {
@@ -1049,8 +1051,9 @@ impl Encodable for Transaction {
                         amount,
                     },
                 approver,
+                administrator,
             } => s
-                .begin_list(8)
+                .begin_list(9)
                 .append(&ASSET_MINT_ID)
                 .append(network_id)
                 .append(shard_id)
@@ -1058,7 +1061,8 @@ impl Encodable for Transaction {
                 .append(lock_script_hash)
                 .append(parameters)
                 .append(amount)
-                .append(approver),
+                .append(approver)
+                .append(administrator),
             Transaction::AssetTransfer {
                 network_id,
                 burns,

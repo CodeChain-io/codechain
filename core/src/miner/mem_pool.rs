@@ -1473,6 +1473,7 @@ pub mod test {
                 amount: None,
             },
             approver: None,
+            administrator: None,
         };
         let parcel = Parcel {
             seq: 0,
@@ -1593,6 +1594,7 @@ pub mod test {
             shard_id: 0,
             metadata: String::from_utf8(vec!['a' as u8; transaction_count]).unwrap(),
             approver: None,
+            administrator: None,
             output: AssetMintOutput {
                 lock_script_hash: H160::zero(),
                 parameters: vec![],

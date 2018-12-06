@@ -328,6 +328,7 @@ mod tests {
                 amount: Some(10000),
             },
             approver: None,
+            administrator: None,
         });
     }
 
@@ -343,6 +344,7 @@ mod tests {
                 amount: Some(10000),
             },
             approver: None,
+            administrator: None,
         });
     }
 
