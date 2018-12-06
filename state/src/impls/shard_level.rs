@@ -1384,8 +1384,8 @@ mod tests {
         )
     }
 
-    fn mint_for_transfer<'d>(
-        state: &mut ShardLevelState<'d>,
+    fn mint_for_transfer(
+        state: &mut ShardLevelState,
         shard_id: u16,
         sender: Address,
         metadata: String,
