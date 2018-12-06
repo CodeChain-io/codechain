@@ -51,10 +51,17 @@ pub struct OwnedAsset {
     asset: Asset,
     lock_script_hash: H160,
     parameters: Vec<Bytes>,
+    order_hash: Option<H256>,
 }
 
 impl OwnedAsset {
-    pub fn new(asset_type: H256, lock_script_hash: H160, parameters: Vec<Bytes>, amount: u64) -> Self {
+    pub fn new(
+        asset_type: H256,
+        lock_script_hash: H160,
+        parameters: Vec<Bytes>,
+        amount: u64,
+        order_hash: Option<H256>,
+    ) -> Self {
         Self {
             asset: Asset {
                 asset_type,
@@ -62,6 +69,7 @@ impl OwnedAsset {
             },
             lock_script_hash,
             parameters,
+            order_hash,
         }
     }
 
@@ -81,7 +89,18 @@ impl OwnedAsset {
         self.asset.amount()
     }
 
-    pub fn init(&mut self, asset_type: H256, lock_script_hash: H160, parameters: Vec<Bytes>, amount: u64) {
+    pub fn order_hash(&self) -> &Option<H256> {
+        &self.order_hash
+    }
+
+    pub fn init(
+        &mut self,
+        asset_type: H256,
+        lock_script_hash: H160,
+        parameters: Vec<Bytes>,
+        amount: u64,
+        order_hash: Option<H256>,
+    ) {
         assert_eq!(
             Asset {
                 asset_type: H256::zero(),
@@ -97,6 +116,7 @@ impl OwnedAsset {
         };
         self.lock_script_hash = lock_script_hash;
         self.parameters = parameters;
+        self.order_hash = order_hash;
     }
 }
 
@@ -109,6 +129,7 @@ impl Default for OwnedAsset {
             },
             lock_script_hash: H160::zero(),
             parameters: vec![],
+            order_hash: None,
         }
     }
 }
@@ -125,18 +146,19 @@ const PREFIX: u8 = super::OWNED_ASSET_PREFIX;
 
 impl Encodable for OwnedAsset {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(5)
+        s.begin_list(6)
             .append(&PREFIX)
             .append(self.asset.asset_type())
             .append(&self.asset.amount())
             .append(&self.lock_script_hash)
-            .append(&self.parameters);
+            .append(&self.parameters)
+            .append(&self.order_hash);
     }
 }
 
 impl Decodable for OwnedAsset {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 5 {
+        if rlp.item_count()? != 6 {
             return Err(DecoderError::RlpInvalidLength)
         }
 
@@ -152,6 +174,7 @@ impl Decodable for OwnedAsset {
             },
             lock_script_hash: rlp.val_at(3)?,
             parameters: rlp.val_at(4)?,
+            order_hash: rlp.val_at(5)?,
         })
     }
 }

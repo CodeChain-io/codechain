@@ -120,6 +120,51 @@ export const ERROR = {
         code: -32099,
         data: stringContaining("InvalidTransaction(DuplicatedPreviousOutput"),
         message: anything
+    },
+    ORDER_IS_NOT_EMPTY: {
+        code: -32099,
+        message: anything,
+        data: stringContaining("OrderIsNotEmpty")
+    },
+    INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS: {
+        code: -32099,
+        message: anything,
+        data: stringContaining("InconsistentTransactionInOutWithOrders")
+    },
+    INVALID_ORIGIN_OUTPUTS: {
+        code: -32099,
+        message: anything,
+        data: stringContaining("InvalidOriginOutputs")
+    },
+    INVALID_ORDER_ASSET_AMOUNTS: {
+        code: -32099,
+        message: anything,
+        data: stringContaining("InvalidOrderAssetAmounts")
+    },
+    INVALID_ORDER_ASSET_TYPES: {
+        code: -32099,
+        message: anything,
+        data: stringContaining("InvalidOrderAssetTypes")
+    },
+    INVALID_ORDER_LOCK_SCRIPT_HASH: {
+        code: -32099,
+        message: anything,
+        data: stringContaining("InvalidOrderLockScriptHash")
+    },
+    INVALID_ORDER_PARAMETERS: {
+        code: -32099,
+        message: anything,
+        data: stringContaining("InvalidOrderParameters")
+    },
+    INVALID_OUTPUT_WITH_ORDER: {
+        code: -32099,
+        message: anything,
+        data: stringContaining("InvalidOutputWithOrder")
+    },
+    ORDER_EXPIRED: {
+        code: -32099,
+        message: anything,
+        data: stringContaining("OrderExpired")
     }
 };
 

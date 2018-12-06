@@ -80,14 +80,15 @@ impl CodeChainMachine {
         client: &C,
         verify_timelock: bool,
     ) -> Result<(), Error> {
-        if verify_timelock {
-            if let Action::AssetTransaction {
-                transaction,
-                ..
-            } = &parcel.action
-            {
+        if let Action::AssetTransaction {
+            transaction,
+            ..
+        } = &parcel.action
+        {
+            if verify_timelock {
                 Self::verify_transaction_timelock(transaction, header, client)?;
             }
+            Self::verify_transaction_order_expired(transaction, header)?;
         }
         // FIXME: Filter parcels.
         Ok(())
@@ -162,6 +163,26 @@ impl CodeChainMachine {
                     }
                     _ => (),
                 }
+            }
+        }
+        Ok(())
+    }
+
+    fn verify_transaction_order_expired(transaction: &Transaction, header: &Header) -> Result<(), Error> {
+        let orders = match transaction {
+            Transaction::AssetTransfer {
+                orders,
+                ..
+            } => orders,
+            _ => return Ok(()),
+        };
+        for order_tx in orders {
+            if order_tx.order.expiration < header.timestamp() {
+                return Err(StateError::Transaction(TransactionError::OrderExpired {
+                    expiration: order_tx.order.expiration,
+                    timestamp: header.timestamp(),
+                })
+                .into())
             }
         }
         Ok(())
