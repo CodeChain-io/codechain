@@ -35,6 +35,7 @@ use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateView};
+use ctimer::TimerApi;
 use ctypes::invoice::Invoice;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
@@ -101,7 +102,7 @@ pub trait EngineInfo: Send + Sync {
 /// Client facilities used by internally sealing Engines.
 pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock + BlockInfo {
     /// Make a new block and seal it.
-    fn update_sealing(&self);
+    fn update_sealing(&self, allow_empty_block: bool);
 
     /// Submit a seal for a block in the mining queue.
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>);
@@ -183,6 +184,16 @@ pub trait Shard {
     fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256>;
 }
 
+/// Provides a timer API for reseal_min_period/reseal_max_period on miner client
+pub trait ResealTimer {
+    /// Register timer API
+    fn register_timer(&self, timer: TimerApi);
+    /// Set reseal min timer as reseal_min_period, for creating blocks with parcels which are pending because of reseal_min_period
+    fn set_min_timer(&self);
+    /// Set reseal max timer as reseal_max_period, for creating empty blocks every reseal_max_period
+    fn set_max_timer(&self);
+}
+
 /// Provides methods to access account info
 pub trait AccountData: Seq + Balance {}
 
@@ -200,7 +211,7 @@ pub trait BlockChain: ChainInfo + BlockInfo + ParcelInfo + TransactionInfo {}
 
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
 pub trait BlockChainClient:
-    Sync + Send + AccountData + BlockChain + ImportBlock + RegularKeyOwner + ChainTimeInfo {
+    Sync + Send + AccountData + BlockChain + ImportBlock + RegularKeyOwner + ChainTimeInfo + ResealTimer {
     /// Get block queue information.
     fn queue_info(&self) -> BlockQueueInfo;
 

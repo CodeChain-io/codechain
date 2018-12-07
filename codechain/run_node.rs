@@ -86,13 +86,21 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
     Ok(())
 }
 
-fn client_start(cfg: &config::Operating, scheme: &Scheme, miner: Arc<Miner>) -> Result<ClientService, String> {
+fn client_start(
+    timer_loop: &TimerLoop,
+    cfg: &config::Operating,
+    scheme: &Scheme,
+    miner: Arc<Miner>,
+) -> Result<ClientService, String> {
     cinfo!(CLIENT, "Starting client");
     let db_path = cfg.db_path.as_ref().map(|s| s.as_str()).unwrap();
     let client_path = Path::new(db_path);
     let client_config = Default::default();
     let service = ClientService::start(&client_config, &scheme, &client_path, miner)
         .map_err(|e| format!("Client service error: {}", e))?;
+
+    let reseal_timer = timer_loop.new_timer("Client reseal timer", service.client());
+    service.client().register_reseal_timer(reseal_timer);
 
     Ok(service)
 }
@@ -229,7 +237,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     unlock_accounts(&*ap, &pf)?;
 
     let miner = new_miner(&config, &scheme, ap.clone())?;
-    let client = client_start(&config.operating, &scheme, miner.clone())?;
+    let client = client_start(&timer_loop, &config.operating, &scheme, miner.clone())?;
     let sync = BlockSyncExtension::new(client.client());
 
     scheme.engine.register_chain_notify(client.client().as_ref());
