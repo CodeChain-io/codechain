@@ -145,6 +145,7 @@ impl<'db> ShardLevelState<'db> {
                 Transaction::AssetCompose {
                     metadata,
                     approver,
+                    administrator,
                     inputs,
                     output,
                     ..
@@ -152,6 +153,7 @@ impl<'db> ShardLevelState<'db> {
                     &transaction,
                     metadata,
                     approver,
+                    administrator,
                     inputs,
                     output,
                     sender,
@@ -429,11 +431,14 @@ impl<'db> ShardLevelState<'db> {
         Ok(script_result)
     }
 
+    // FIXME: Remove this clippy config
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::too_many_arguments))]
     fn compose_asset<C: ChainTimeInfo>(
         &mut self,
         transaction: &Transaction,
         metadata: &str,
         approver: &Option<Address>,
+        administrator: &Option<Address>,
         inputs: &[AssetTransferInput],
         output: &AssetMintOutput,
         sender: &Address,
@@ -480,7 +485,7 @@ impl<'db> ShardLevelState<'db> {
             &output.parameters,
             &output.amount,
             approver,
-            &None,
+            administrator,
             sender,
             shard_users,
             pool,
@@ -1828,6 +1833,7 @@ mod tests {
             shard_id,
             metadata: "composed".to_string(),
             approver,
+            administrator: None,
             inputs: vec![AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: mint_hash,
@@ -1907,6 +1913,7 @@ mod tests {
             shard_id,
             metadata: "composed".to_string(),
             approver,
+            administrator: None,
             inputs: vec![AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: mint_hash,
@@ -2033,6 +2040,7 @@ mod tests {
             shard_id,
             metadata: "composed".to_string(),
             approver,
+            administrator: None,
             inputs: vec![AssetTransferInput {
                 prev_out: AssetOutPoint {
                     transaction_hash: mint_hash,
@@ -2159,6 +2167,7 @@ mod tests {
             shard_id,
             metadata: "composed".to_string(),
             approver,
+            administrator: None,
             inputs: vec![
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
@@ -2288,6 +2297,7 @@ mod tests {
             shard_id,
             metadata: "composed".to_string(),
             approver,
+            administrator: None,
             inputs: vec![
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
