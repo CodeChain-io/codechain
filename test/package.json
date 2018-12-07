@@ -6,7 +6,7 @@
   "author": "CodeChain Team <codechain@kodebox.io>",
   "license": "AGPL-3.0",
   "engines": {
-    "node": ">=8",
+    "node": ">=10",
     "yarn": "^1.10.0"
   },
   "scripts": {
