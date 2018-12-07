@@ -252,6 +252,7 @@ pub enum Transaction {
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
+        administrator: Option<PlatformAddress>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
     },
@@ -315,6 +316,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 inputs,
                 output,
             } => {
@@ -322,11 +324,16 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     Some(approver) => Some(approver.try_into_address()?),
                     None => None,
                 };
+                let administrator = match administrator {
+                    Some(administrator) => Some(administrator.try_into_address()?),
+                    None => None,
+                };
                 TransactionType::AssetCompose {
                     network_id,
                     shard_id,
                     metadata,
                     approver,
+                    administrator,
                     inputs: inputs.into_iter().map(|input| input.into()).collect(),
                     output: output.into(),
                 }
@@ -381,6 +388,7 @@ pub enum TransactionWithHash {
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
+        administrator: Option<PlatformAddress>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
         hash: H256,
@@ -439,6 +447,7 @@ impl From<TransactionType> for TransactionWithHash {
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 inputs,
                 output,
             } => TransactionWithHash::AssetCompose {
@@ -446,6 +455,7 @@ impl From<TransactionType> for TransactionWithHash {
                 shard_id,
                 metadata,
                 approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
                 inputs: inputs.into_iter().map(From::from).collect(),
                 output: output.into(),
                 hash,

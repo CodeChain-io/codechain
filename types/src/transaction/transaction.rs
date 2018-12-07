@@ -155,6 +155,7 @@ pub enum Transaction {
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
+        administrator: Option<Address>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
     },
@@ -857,6 +858,7 @@ impl PartialHashing for Transaction {
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 inputs,
                 output,
             } => {
@@ -882,6 +884,7 @@ impl PartialHashing for Transaction {
                         shard_id: *shard_id,
                         metadata: metadata.to_string(),
                         approver: *approver,
+                        administrator: *administrator,
                         inputs: new_inputs,
                         output: new_output,
                     }
@@ -997,7 +1000,7 @@ impl Decodable for Transaction {
                 })
             }
             ASSET_COMPOSE_ID => {
-                if d.item_count()? != 9 {
+                if d.item_count()? != 10 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetCompose {
@@ -1005,11 +1008,12 @@ impl Decodable for Transaction {
                     shard_id: d.val_at(2)?,
                     metadata: d.val_at(3)?,
                     approver: d.val_at(4)?,
-                    inputs: d.list_at(5)?,
+                    administrator: d.val_at(5)?,
+                    inputs: d.list_at(6)?,
                     output: AssetMintOutput {
-                        lock_script_hash: d.val_at(6)?,
-                        parameters: d.val_at(7)?,
-                        amount: d.val_at(8)?,
+                        lock_script_hash: d.val_at(7)?,
+                        parameters: d.val_at(8)?,
+                        amount: d.val_at(9)?,
                     },
                 })
             }
@@ -1082,6 +1086,7 @@ impl Encodable for Transaction {
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 inputs,
                 output:
                     AssetMintOutput {
@@ -1090,12 +1095,13 @@ impl Encodable for Transaction {
                         amount,
                     },
             } => s
-                .begin_list(9)
+                .begin_list(10)
                 .append(&ASSET_COMPOSE_ID)
                 .append(network_id)
                 .append(shard_id)
                 .append(metadata)
                 .append(approver)
+                .append(administrator)
                 .append_list(inputs)
                 .append(lock_script_hash)
                 .append(parameters)
