@@ -234,6 +234,7 @@ pub enum Transaction {
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
+        administrator: Option<PlatformAddress>,
 
         output: AssetMintOutput,
     },
@@ -246,11 +247,20 @@ pub enum Transaction {
         orders: Vec<OrderOnTransfer>,
     },
     #[serde(rename_all = "camelCase")]
+    AssetSchemeChange {
+        network_id: NetworkId,
+        asset_type: H256,
+        metadata: String,
+        approver: Option<PlatformAddress>,
+        administrator: Option<PlatformAddress>,
+    },
+    #[serde(rename_all = "camelCase")]
     AssetCompose {
         network_id: NetworkId,
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
+        administrator: Option<PlatformAddress>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
     },
@@ -276,10 +286,15 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 output,
             } => {
                 let approver = match approver {
                     Some(approver) => Some(approver.try_into_address()?),
+                    None => None,
+                };
+                let administrator = match administrator {
+                    Some(administrator) => Some(administrator.try_into_address()?),
                     None => None,
                 };
                 TransactionType::AssetMint {
@@ -287,6 +302,7 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     shard_id,
                     metadata,
                     approver,
+                    administrator,
                     output: output.into(),
                 }
             }
@@ -303,11 +319,35 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                 outputs: outputs.into_iter().map(From::from).collect(),
                 orders: orders.into_iter().map(From::from).collect(),
             },
+            Transaction::AssetSchemeChange {
+                network_id,
+                asset_type,
+                metadata,
+                approver,
+                administrator,
+            } => {
+                let approver = match approver {
+                    Some(approver) => Some(approver.try_into_address()?),
+                    None => None,
+                };
+                let administrator = match administrator {
+                    Some(administrator) => Some(administrator.try_into_address()?),
+                    None => None,
+                };
+                TransactionType::AssetSchemeChange {
+                    network_id,
+                    asset_type,
+                    metadata,
+                    approver,
+                    administrator,
+                }
+            }
             Transaction::AssetCompose {
                 network_id,
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 inputs,
                 output,
             } => {
@@ -315,11 +355,16 @@ impl From<Transaction> for Result<TransactionType, KeyError> {
                     Some(approver) => Some(approver.try_into_address()?),
                     None => None,
                 };
+                let administrator = match administrator {
+                    Some(administrator) => Some(administrator.try_into_address()?),
+                    None => None,
+                };
                 TransactionType::AssetCompose {
                     network_id,
                     shard_id,
                     metadata,
                     approver,
+                    administrator,
                     inputs: inputs.into_iter().map(|input| input.into()).collect(),
                     output: output.into(),
                 }
@@ -354,6 +399,7 @@ pub enum TransactionWithHash {
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
+        administrator: Option<PlatformAddress>,
 
         output: AssetMintOutput,
         hash: H256,
@@ -368,11 +414,20 @@ pub enum TransactionWithHash {
         hash: H256,
     },
     #[serde(rename_all = "camelCase")]
+    AssetSchemeChange {
+        network_id: NetworkId,
+        asset_type: H256,
+        metadata: String,
+        approver: Option<PlatformAddress>,
+        administrator: Option<PlatformAddress>,
+    },
+    #[serde(rename_all = "camelCase")]
     AssetCompose {
         network_id: NetworkId,
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
+        administrator: Option<PlatformAddress>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
         hash: H256,
@@ -401,12 +456,14 @@ impl From<TransactionType> for TransactionWithHash {
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 output,
             } => TransactionWithHash::AssetMint {
                 network_id,
                 shard_id,
                 metadata,
                 approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
                 output: output.into(),
                 hash,
             },
@@ -424,11 +481,25 @@ impl From<TransactionType> for TransactionWithHash {
                 orders: orders.into_iter().map(From::from).collect(),
                 hash,
             },
+            TransactionType::AssetSchemeChange {
+                network_id,
+                asset_type,
+                metadata,
+                approver,
+                administrator,
+            } => TransactionWithHash::AssetSchemeChange {
+                network_id,
+                asset_type,
+                metadata,
+                approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+            },
             TransactionType::AssetCompose {
                 network_id,
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 inputs,
                 output,
             } => TransactionWithHash::AssetCompose {
@@ -436,6 +507,7 @@ impl From<TransactionType> for TransactionWithHash {
                 shard_id,
                 metadata,
                 approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
                 inputs: inputs.into_iter().map(From::from).collect(),
                 output: output.into(),
                 hash,

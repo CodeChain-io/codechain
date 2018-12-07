@@ -31,24 +31,33 @@ pub struct AssetScheme {
     metadata: String,
     amount: u64,
     approver: Option<Address>,
+    administrator: Option<Address>,
     pool: Vec<Asset>,
 }
 
 impl AssetScheme {
-    pub fn new(metadata: String, amount: u64, approver: Option<Address>) -> Self {
+    pub fn new(metadata: String, amount: u64, approver: Option<Address>, administrator: Option<Address>) -> Self {
         Self {
             metadata,
             amount,
             approver,
+            administrator,
             pool: Vec::new(),
         }
     }
 
-    pub fn new_with_pool(metadata: String, amount: u64, approver: Option<Address>, pool: Vec<Asset>) -> Self {
+    pub fn new_with_pool(
+        metadata: String,
+        amount: u64,
+        approver: Option<Address>,
+        administrator: Option<Address>,
+        pool: Vec<Asset>,
+    ) -> Self {
         Self {
             metadata,
             amount,
             approver,
+            administrator,
             pool,
         }
     }
@@ -65,22 +74,45 @@ impl AssetScheme {
         &self.approver
     }
 
+    pub fn administrator(&self) -> &Option<Address> {
+        &self.administrator
+    }
+
     pub fn is_permissioned(&self) -> bool {
         self.approver.is_some()
     }
 
-    pub fn init(&mut self, metadata: String, amount: u64, approver: Option<Address>, pool: Vec<Asset>) {
+    pub fn is_centralized(&self) -> bool {
+        self.administrator.is_some()
+    }
+
+    pub fn init(
+        &mut self,
+        metadata: String,
+        amount: u64,
+        approver: Option<Address>,
+        administrator: Option<Address>,
+        pool: Vec<Asset>,
+    ) {
         assert_eq!("", &self.metadata);
         assert_eq!(0, self.amount);
         assert_eq!(None, self.approver);
+        assert_eq!(None, self.administrator);
         self.metadata = metadata;
         self.amount = amount;
         self.approver = approver;
+        self.administrator = administrator;
         self.pool = pool;
     }
 
     pub fn pool(&self) -> &[Asset] {
         &self.pool
+    }
+
+    pub fn change_data(&mut self, metadata: String, approver: Option<Address>, administrator: Option<Address>) {
+        self.metadata = metadata;
+        self.approver = approver;
+        self.administrator = administrator;
     }
 }
 
@@ -88,24 +120,25 @@ const PREFIX: u8 = super::ASSET_SCHEME_PREFIX;
 
 impl Default for AssetScheme {
     fn default() -> Self {
-        Self::new("".to_string(), 0, None)
+        Self::new("".to_string(), 0, None, None)
     }
 }
 
 impl Encodable for AssetScheme {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(5)
+        s.begin_list(6)
             .append(&PREFIX)
             .append(&self.metadata)
             .append(&self.amount)
             .append(&self.approver)
+            .append(&self.administrator)
             .append_list(&self.pool);
     }
 }
 
 impl Decodable for AssetScheme {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 5 {
+        if rlp.item_count()? != 6 {
             return Err(DecoderError::RlpInvalidLength)
         }
 
@@ -118,7 +151,8 @@ impl Decodable for AssetScheme {
             metadata: rlp.val_at(1)?,
             amount: rlp.val_at(2)?,
             approver: rlp.val_at(3)?,
-            pool: rlp.list_at(4)?,
+            administrator: rlp.val_at(4)?,
+            pool: rlp.list_at(5)?,
         })
     }
 }

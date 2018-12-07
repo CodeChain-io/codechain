@@ -139,6 +139,7 @@ pub enum Transaction {
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
+        administrator: Option<Address>,
 
         output: AssetMintOutput,
     },
@@ -149,11 +150,19 @@ pub enum Transaction {
         outputs: Vec<AssetTransferOutput>,
         orders: Vec<OrderOnTransfer>,
     },
+    AssetSchemeChange {
+        network_id: NetworkId,
+        asset_type: H256,
+        metadata: String,
+        approver: Option<Address>,
+        administrator: Option<Address>,
+    },
     AssetCompose {
         network_id: NetworkId,
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
+        administrator: Option<Address>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
     },
@@ -284,6 +293,10 @@ impl Transaction {
                 network_id,
                 ..
             } => *network_id,
+            Transaction::AssetSchemeChange {
+                network_id,
+                ..
+            } => *network_id,
             Transaction::AssetDecompose {
                 network_id,
                 ..
@@ -315,6 +328,10 @@ impl Transaction {
                 shard_id,
                 ..
             } => vec![*shard_id],
+            Transaction::AssetSchemeChange {
+                asset_type,
+                ..
+            } => vec![(ShardId::from(asset_type[2]) << 8) + ShardId::from(asset_type[3])],
             Transaction::AssetCompose {
                 inputs,
                 shard_id,
@@ -387,6 +404,9 @@ impl Transaction {
                 Some(amount) if amount == 0 => Err(Error::ZeroAmount),
                 _ => Ok(()),
             },
+            Transaction::AssetSchemeChange {
+                ..
+            } => Ok(()),
             Transaction::AssetCompose {
                 inputs,
                 output,
@@ -463,6 +483,9 @@ impl Transaction {
                 outputs,
                 ..
             } => index < outputs.len(),
+            Transaction::AssetSchemeChange {
+                ..
+            } => false,
             Transaction::AssetCompose {
                 ..
             } => index == 0,
@@ -489,6 +512,9 @@ impl Transaction {
                 outputs,
                 ..
             } => id == outputs[index].related_shard(),
+            Transaction::AssetSchemeChange {
+                ..
+            } => unreachable!("AssetSchemeChange doesn't have a valid index"),
             Transaction::AssetCompose {
                 shard_id,
                 ..
@@ -596,6 +622,10 @@ impl HeapSizeOf for Transaction {
                     + outputs.heap_size_of_children()
                     + orders.heap_size_of_children()
             }
+            Transaction::AssetSchemeChange {
+                metadata,
+                ..
+            } => metadata.heap_size_of_children(),
             Transaction::AssetCompose {
                 metadata,
                 approver,
@@ -856,6 +886,7 @@ impl PartialHashing for Transaction {
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 inputs,
                 output,
             } => {
@@ -881,6 +912,7 @@ impl PartialHashing for Transaction {
                         shard_id: *shard_id,
                         metadata: metadata.to_string(),
                         approver: *approver,
+                        administrator: *administrator,
                         inputs: new_inputs,
                         output: new_output,
                     }
@@ -960,6 +992,7 @@ type TransactionId = u8;
 const ASSET_UNWRAP_CCC_ID: TransactionId = 0x01;
 const ASSET_MINT_ID: TransactionId = 0x03;
 const ASSET_TRANSFER_ID: TransactionId = 0x04;
+const ASSET_SCHEME_CHANGE_ID: TransactionId = 0x05;
 const ASSET_COMPOSE_ID: TransactionId = 0x06;
 const ASSET_DECOMPOSE_ID: TransactionId = 0x07;
 
@@ -967,7 +1000,7 @@ impl Decodable for Transaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             ASSET_MINT_ID => {
-                if d.item_count()? != 8 {
+                if d.item_count()? != 9 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetMint {
@@ -980,6 +1013,7 @@ impl Decodable for Transaction {
                         amount: d.val_at(6)?,
                     },
                     approver: d.val_at(7)?,
+                    administrator: d.val_at(8)?,
                 })
             }
             ASSET_TRANSFER_ID => {
@@ -994,8 +1028,20 @@ impl Decodable for Transaction {
                     orders: d.list_at(5)?,
                 })
             }
+            ASSET_SCHEME_CHANGE_ID => {
+                if d.item_count()? != 6 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Transaction::AssetSchemeChange {
+                    network_id: d.val_at(1)?,
+                    asset_type: d.val_at(2)?,
+                    metadata: d.val_at(3)?,
+                    approver: d.val_at(4)?,
+                    administrator: d.val_at(5)?,
+                })
+            }
             ASSET_COMPOSE_ID => {
-                if d.item_count()? != 9 {
+                if d.item_count()? != 10 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Transaction::AssetCompose {
@@ -1003,11 +1049,12 @@ impl Decodable for Transaction {
                     shard_id: d.val_at(2)?,
                     metadata: d.val_at(3)?,
                     approver: d.val_at(4)?,
-                    inputs: d.list_at(5)?,
+                    administrator: d.val_at(5)?,
+                    inputs: d.list_at(6)?,
                     output: AssetMintOutput {
-                        lock_script_hash: d.val_at(6)?,
-                        parameters: d.val_at(7)?,
-                        amount: d.val_at(8)?,
+                        lock_script_hash: d.val_at(7)?,
+                        parameters: d.val_at(8)?,
+                        amount: d.val_at(9)?,
                     },
                 })
             }
@@ -1049,8 +1096,9 @@ impl Encodable for Transaction {
                         amount,
                     },
                 approver,
+                administrator,
             } => s
-                .begin_list(8)
+                .begin_list(9)
                 .append(&ASSET_MINT_ID)
                 .append(network_id)
                 .append(shard_id)
@@ -1058,7 +1106,8 @@ impl Encodable for Transaction {
                 .append(lock_script_hash)
                 .append(parameters)
                 .append(amount)
-                .append(approver),
+                .append(approver)
+                .append(administrator),
             Transaction::AssetTransfer {
                 network_id,
                 burns,
@@ -1073,11 +1122,26 @@ impl Encodable for Transaction {
                 .append_list(inputs)
                 .append_list(outputs)
                 .append_list(orders),
+            Transaction::AssetSchemeChange {
+                network_id,
+                asset_type,
+                metadata,
+                approver,
+                administrator,
+            } => s
+                .begin_list(6)
+                .append(&ASSET_SCHEME_CHANGE_ID)
+                .append(network_id)
+                .append(asset_type)
+                .append(metadata)
+                .append(approver)
+                .append(administrator),
             Transaction::AssetCompose {
                 network_id,
                 shard_id,
                 metadata,
                 approver,
+                administrator,
                 inputs,
                 output:
                     AssetMintOutput {
@@ -1086,12 +1150,13 @@ impl Encodable for Transaction {
                         amount,
                     },
             } => s
-                .begin_list(9)
+                .begin_list(10)
                 .append(&ASSET_COMPOSE_ID)
                 .append(network_id)
                 .append(shard_id)
                 .append(metadata)
                 .append(approver)
+                .append(administrator)
                 .append_list(inputs)
                 .append(lock_script_hash)
                 .append(parameters)
