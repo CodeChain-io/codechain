@@ -18,7 +18,7 @@ use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
-use primitives::{H128, U128};
+use primitives::H128;
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -74,7 +74,7 @@ impl Distribution<Nonce> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Nonce {
         let mut result = [0u8; 16];
         rng.fill_bytes(&mut result);
-        Nonce(H128::from(U128::from(result)))
+        Nonce(H128::from(result))
     }
 }
 

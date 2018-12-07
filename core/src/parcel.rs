@@ -351,12 +351,14 @@ mod tests {
         let burns = vec![];
         let inputs = vec![];
         let outputs = vec![];
+        let orders = vec![];
         let network_id = "tc".into();
         rlp_encode_and_decode_test!(Transaction::AssetTransfer {
             network_id,
             burns,
             inputs,
             outputs,
+            orders,
         });
     }
 

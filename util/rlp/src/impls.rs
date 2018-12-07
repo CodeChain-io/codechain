@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use byteorder::{BigEndian, ByteOrder};
-use primitives::{H128, H160, H256, H512, H520, H64, U128, U256};
+use primitives::{H128, H160, H256, H512, H520, U256};
 use std::{cmp, mem, str};
 use stream::RlpStream;
 use traits::{Decodable, Encodable};
@@ -256,14 +256,12 @@ macro_rules! impl_decodable_for_hash {
     };
 }
 
-impl_encodable_for_hash!(H64);
 impl_encodable_for_hash!(H128);
 impl_encodable_for_hash!(H160);
 impl_encodable_for_hash!(H256);
 impl_encodable_for_hash!(H512);
 impl_encodable_for_hash!(H520);
 
-impl_decodable_for_hash!(H64, 8);
 impl_decodable_for_hash!(H128, 16);
 impl_decodable_for_hash!(H160, 20);
 impl_decodable_for_hash!(H256, 32);
@@ -302,10 +300,8 @@ macro_rules! impl_decodable_for_uint {
 }
 
 impl_encodable_for_uint!(U256, 32);
-impl_encodable_for_uint!(U128, 16);
 
 impl_decodable_for_uint!(U256, 32);
-impl_decodable_for_uint!(U128, 16);
 
 impl<'a> Encodable for &'a str {
     fn rlp_append(&self, s: &mut RlpStream) {

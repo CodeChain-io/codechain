@@ -29,8 +29,7 @@ describe("sync", function() {
             nodeA = new CodeChain();
             nodeB = new CodeChain();
 
-            await nodeA.start();
-            await nodeB.start();
+            await Promise.all([nodeA.start(), nodeB.start()]);
         });
 
         describe("A-B connected", function() {
@@ -217,7 +216,7 @@ describe("sync", function() {
                         }
                     );
 
-                    await nodeA.signTransferInput(tx1, 0);
+                    await nodeA.signTransactionInput(tx1, 0);
                     const invoices1 = await nodeA.sendTransaction(tx1);
                     expect(invoices1!.length).to.equal(1);
                     expect(invoices1![0].success).to.be.true;
@@ -230,7 +229,7 @@ describe("sync", function() {
                         amount: 100
                     });
 
-                    await nodeA.signTransferInput(tx2, 0);
+                    await nodeA.signTransactionInput(tx2, 0);
                     const invoicesA = await nodeA.sendTransaction(tx2);
                     expect(invoicesA!.length).to.equal(1);
                     expect(invoicesA![0].success).to.be.false;
@@ -302,8 +301,7 @@ describe("sync", function() {
                 nodeA.testFailed(this.currentTest!.fullTitle());
                 nodeB.testFailed(this.currentTest!.fullTitle());
             }
-            await nodeA.clean();
-            await nodeB.clean();
+            await Promise.all([nodeA.clean(), nodeB.clean()]);
         });
     });
 
@@ -316,12 +314,16 @@ describe("sync", function() {
             nodeA = new CodeChain();
             nodeB = new CodeChain();
 
-            await nodeA.start(["--no-parcel-relay"]);
-            await nodeB.start(["--no-parcel-relay"]);
+            await Promise.all([
+                nodeA.start(["--no-parcel-relay"]),
+                nodeB.start(["--no-parcel-relay"])
+            ]);
             await nodeA.connect(nodeB);
 
-            await nodeA.sdk.rpc.devel.stopSealing();
-            await nodeB.sdk.rpc.devel.stopSealing();
+            await Promise.all([
+                nodeA.sdk.rpc.devel.stopSealing(),
+                nodeB.sdk.rpc.devel.stopSealing()
+            ]);
         });
 
         it("parcels must not be propagated", async function() {
@@ -345,8 +347,7 @@ describe("sync", function() {
                 nodeA.testFailed(this.currentTest!.fullTitle());
                 nodeB.testFailed(this.currentTest!.fullTitle());
             }
-            await nodeA.clean();
-            await nodeB.clean();
+            await Promise.all([nodeA.clean(), nodeB.clean()]);
         });
     });
 
@@ -403,9 +404,13 @@ describe("sync", function() {
                         });
 
                         it("Every node should be synced to one", async function() {
+                            const waits = [];
                             for (let i = 1; i < numNodes; i++) {
-                                await nodes[i].waitBlockNumberSync(nodes[0]);
+                                waits.push(
+                                    nodes[i].waitBlockNumberSync(nodes[0])
+                                );
                             }
+                            await Promise.all(waits);
                         }).timeout(5000 + 5000 * numNodes);
 
                         it("It should be synced when the first node becomes ahead", async function() {
@@ -490,9 +495,11 @@ describe("sync", function() {
                     });
 
                     it("Every node should be synced", async function() {
+                        const waits = [];
                         for (let i = 1; i < numNodes; i++) {
-                            await nodes[i].waitBlockNumberSync(nodes[0]);
+                            waits.push(nodes[i].waitBlockNumberSync(nodes[0]));
                         }
+                        await Promise.all(waits);
                     }).timeout(5000 + 5000 * numNodes);
 
                     it("It should be synced when the first node becomes ahead", async function() {

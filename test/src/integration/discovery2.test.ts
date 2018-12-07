@@ -41,7 +41,6 @@ describe("discovery2 nodes", function() {
             nodeA.testFailed(this.currentTest!.fullTitle());
             nodeB.testFailed(this.currentTest!.fullTitle());
         }
-        await nodeA.clean();
-        await nodeB.clean();
+        await Promise.all([nodeA.clean(), nodeB.clean()]);
     });
 });

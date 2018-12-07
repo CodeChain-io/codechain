@@ -1502,6 +1502,7 @@ pub mod test {
             burns: vec![],
             inputs: vec![],
             outputs: vec![],
+            orders: vec![],
         };
         let parcel = Parcel {
             seq: 0,

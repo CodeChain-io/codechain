@@ -135,6 +135,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  - burns: `AssetTransferInput[]`
  - inputs: `AssetTransferInput[]`
  - outputs: `AssetTransferOutput[]`
+ - orders: `OrderOnTransfer[]`
 
 ### AssetComposeData
 
@@ -187,6 +188,26 @@ When `Transaction` is included in any response, there will be an additional fiel
  - parameters: `number[][]`
  - assetType: `H256`
  - amount: `U64`
+
+### Order
+
+ - assetTypeFrom: `H256`
+ - assetTypeTo: `H256`
+ - assetTypeFee: `H256`
+ - assetAmountFrom: `U64`
+ - assetAmountTo: `U64`
+ - assetAmountFee: `U64`
+ - originOutputs: `AssetOutPoint[]`
+ - expiration: `number`
+ - lockScriptHash: `H160`
+ - parameters: `number[][]`
+
+### OrderOnTransfer
+
+ - order: `Order`
+ - spentAmount: `U64`
+ - inputIndices: `number[]`
+ - outputIndices: `number[]`
 
 ## Signature
 `H520` for ECDSA signature | `H512` for Schnorr signature

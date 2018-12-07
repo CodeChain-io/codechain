@@ -22,9 +22,9 @@ use crate::uint::Uint;
 #[derive(Debug, PartialEq, Deserialize)]
 pub struct TendermintSeal {
     /// Seal round.
-    pub round: Uint,
+    pub prev_view: Uint,
     /// Proposal seal signature.
-    pub proposal: H520,
+    pub cur_view: Uint,
     /// Proposal seal signature.
     pub precommits: Vec<H520>,
 }
@@ -55,8 +55,8 @@ mod tests {
             "generic": "0xe011bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa"
         },{
             "tendermint": {
-                "round": "0x3",
-                "proposal": "0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003",
+                "prev_view": "0x3",
+                "cur_view": "0x4",
                 "precommits": [
                 "0x4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"
                 ]
@@ -77,8 +77,8 @@ mod tests {
 
         // [1]
         assert_eq!(deserialized[1], Seal::Tendermint(TendermintSeal {
-            round: Uint(U256::from(0x3)),
-            proposal: H520(Core520::from("0x3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003")),
+            prev_view: Uint(U256::from(0x3)),
+            cur_view: Uint(U256::from(0x4)),
             precommits: vec![H520(Core520::from("0x4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"))]
         }));
     }

@@ -151,6 +151,10 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
         self.votes.read().get(&message.round()).map_or(0, |m| m.count_block(&message.block_hash()))
     }
 
+    pub fn count_block_round_votes(&self, round: &M::Round, block_hash: &Option<H256>) -> usize {
+        self.votes.read().get(round).map_or(0, |m| m.count_block(block_hash))
+    }
+
     /// Count all votes collected for a given round.
     pub fn count_round_votes(&self, vote_round: &M::Round) -> usize {
         self.votes.read().get(vote_round).map_or(0, StepCollector::count)
