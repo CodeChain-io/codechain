@@ -152,8 +152,11 @@ describe("chain", function() {
                 seq
             })
         );
-        const invoice = await node.sdk.rpc.chain.getParcelInvoice(parcelHash);
-        expect(invoice).to.deep.equal({ success: true, error: undefined });
+        const invoice = (await node.sdk.rpc.chain.getParcelInvoice(
+            parcelHash
+        ))!;
+        expect(invoice.error).to.be.undefined;
+        expect(invoice.success).to.be.true;
         const signedParcel = await node.sdk.rpc.chain.getParcel(parcelHash);
         if (signedParcel == null) {
             throw Error("Cannot get the parcel");

@@ -89,9 +89,12 @@ describe("solo - 1 node", function() {
         ).toString();
 
         await node.sendSignedParcel({ amount: 5, recipient: address });
-        const invoice = await node.setRegularKey(pubKey);
-        expect(invoice).to.deep.equal(
-            INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT
+        const invoice = (await node.setRegularKey(pubKey))!;
+        expect(invoice.error!.type).to.equal(
+            INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT.error.type
+        );
+        expect(invoice.success).to.equal(
+            INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT.success
         );
     }).timeout(10_000);
 
@@ -105,13 +108,19 @@ describe("solo - 1 node", function() {
 
         await node.sendSignedParcel({ amount: 100, recipient: address });
         const seq = await node.sdk.rpc.chain.getSeq(address);
-        let invoice = await node.setRegularKey(pubKey, {
+        let invoice = (await node.setRegularKey(pubKey, {
             seq,
             secret: newPrivKey
-        });
-        expect(invoice).to.deep.equal(INVOICE.SUCCESS);
-        invoice = await node.setRegularKey(pubKey);
-        expect(invoice).to.deep.equal(INVOICE.REGULARKEY_ALREADY_IN_USE);
+        }))!;
+        expect(invoice.error).to.be.undefined;
+        expect(invoice.success).to.be.true;
+        invoice = (await node.setRegularKey(pubKey))!;
+        expect(invoice.error!.type).to.equal(
+            INVOICE.REGULARKEY_ALREADY_IN_USE.error.type
+        );
+        expect(invoice.success).to.equal(
+            INVOICE.REGULARKEY_ALREADY_IN_USE.success
+        );
     });
 
     afterEach(async function() {

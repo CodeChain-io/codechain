@@ -258,9 +258,9 @@ describe("Timelock", function() {
             txhash
         );
         if (shouldBeConfirmed) {
-            expect(invoices).to.deep.equal([
-                { success: true, error: undefined }
-            ]);
+            expect(invoices.length).to.equal(1);
+            expect(invoices[0].error).to.be.undefined;
+            expect(invoices[0].success).to.be.true;
         } else {
             expect(invoices.length).to.equal(0);
         }
