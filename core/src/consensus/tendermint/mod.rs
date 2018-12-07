@@ -51,7 +51,7 @@ use crate::consensus::EngineType;
 use crate::encoded;
 use crate::error::{BlockError, Error};
 use crate::header::Header;
-use crate::views::BlockView;
+use crate::views::{BlockView, HeaderView};
 use crate::BlockId;
 use ChainNotify;
 
@@ -785,6 +785,10 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         c.block_header(&BlockId::Number(prev_height as BlockNumber))
             .expect("Previous height's block should be imported")
             .hash()
+    }
+
+    fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
+        header.parent_hash()
     }
 }
 
