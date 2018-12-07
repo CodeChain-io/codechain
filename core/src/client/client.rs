@@ -25,6 +25,7 @@ use cnetwork::NodeId;
 use cstate::{
     ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, TopLevelState, TopStateView,
 };
+use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockNumber, ShardId};
@@ -41,7 +42,8 @@ use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
     Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
-    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, Seq, Shard, StateOrBlock, TransactionInfo,
+    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, ResealTimer, Seq, Shard, StateOrBlock,
+    TransactionInfo,
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{
@@ -79,6 +81,9 @@ pub struct Client {
     genesis_accounts: Vec<Address>,
 
     importer: Importer,
+
+    /// Timer for reseal_min_period/reseal_max_period on miner client
+    reseal_timer: RwLock<Option<TimerApi>>,
 }
 
 impl Client {
@@ -121,11 +126,16 @@ impl Client {
             queue_parcels: AtomicUsize::new(0),
             genesis_accounts,
             importer,
+            reseal_timer: RwLock::new(None),
         });
 
         // ensure buffered changes are flushed.
         client.db.read().flush().map_err(ClientError::Database)?;
         Ok(client)
+    }
+
+    pub fn register_reseal_timer(&self, timer: TimerApi) {
+        self.register_timer(timer);
     }
 
     /// Returns engine reference.
@@ -260,6 +270,53 @@ impl Client {
     }
 }
 
+const RESEAL_MAX_TIMER_TOKEN: TimerToken = 0;
+const RESEAL_MIN_TIMER_TOKEN: TimerToken = 1;
+
+impl TimeoutHandler for Client {
+    fn on_timeout(&self, token: TimerToken) {
+        match token {
+            RESEAL_MAX_TIMER_TOKEN => {
+                // Working in PoW only
+                if self.engine().seals_internally().is_none() && !self.importer.miner.prepare_work_sealing(self) {
+                    self.update_sealing(true);
+                }
+            }
+            RESEAL_MIN_TIMER_TOKEN => {
+                // Checking self.ready_parcels() for efficiency
+                if !self.ready_parcels().is_empty() {
+                    self.update_sealing(false);
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ResealTimer for Client {
+    fn register_timer(&self, timer: TimerApi) {
+        *self.reseal_timer.write() = Some(timer);
+    }
+
+    fn set_max_timer(&self) {
+        if let Some(reseal_timer) = self.reseal_timer.read().as_ref() {
+            reseal_timer.cancel(RESEAL_MAX_TIMER_TOKEN).expect("Reseal max timer clear succeeds");
+            reseal_timer
+                .schedule_once(self.importer.miner.get_options().reseal_max_period, RESEAL_MAX_TIMER_TOKEN)
+                .expect("Reseal max timer set succeeds");
+        };
+    }
+
+    fn set_min_timer(&self) {
+        if let Some(reseal_timer) = self.reseal_timer.read().as_ref() {
+            reseal_timer.cancel(RESEAL_MIN_TIMER_TOKEN).expect("Reseal min timer clear succeeds");
+            reseal_timer
+                .schedule_once(self.importer.miner.get_options().reseal_min_period, RESEAL_MIN_TIMER_TOKEN)
+                .expect("Reseal min timer set succeeds");
+        };
+    }
+}
+
 impl DatabaseClient for Client {
     fn database(&self) -> Arc<KeyValueDB> {
         Arc::clone(&self.db())
@@ -367,8 +424,8 @@ impl EngineInfo for Client {
 
 impl EngineClient for Client {
     /// Make a new block and seal it.
-    fn update_sealing(&self) {
-        self.importer.miner.update_sealing(self)
+    fn update_sealing(&self, allow_empty_block: bool) {
+        self.importer.miner.update_sealing(self, allow_empty_block)
     }
 
     /// Submit a seal for a block in the mining queue.

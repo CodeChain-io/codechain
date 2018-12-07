@@ -39,6 +39,7 @@ use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Ra
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, StateDB};
+use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, Parcel};
 use ctypes::transaction::Transaction;
@@ -55,8 +56,8 @@ use crate::blockchain_info::BlockChainInfo;
 use crate::client::ImportResult;
 use crate::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
-    ImportSealedBlock, MiningBlockChainClient, ParcelInfo, PrepareOpenBlock, RegularKeyOwner, ReopenBlock, Seq,
-    StateOrBlock, TransactionInfo,
+    ImportSealedBlock, MiningBlockChainClient, ParcelInfo, PrepareOpenBlock, RegularKeyOwner, ReopenBlock, ResealTimer,
+    Seq, StateOrBlock, TransactionInfo,
 };
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
@@ -529,6 +530,18 @@ impl BlockChainClient for TestBlockChainClient {
     }
 }
 
+impl TimeoutHandler for TestBlockChainClient {
+    fn on_timeout(&self, _token: TimerToken) {}
+}
+
+impl ResealTimer for TestBlockChainClient {
+    fn register_timer(&self, _timer: TimerApi) {}
+
+    fn set_max_timer(&self) {}
+
+    fn set_min_timer(&self) {}
+}
+
 impl ChainTimeInfo for TestBlockChainClient {
     fn best_block_number(&self) -> u64 {
         0
@@ -548,8 +561,8 @@ impl ChainTimeInfo for TestBlockChainClient {
 }
 
 impl super::EngineClient for TestBlockChainClient {
-    fn update_sealing(&self) {
-        self.miner.update_sealing(self)
+    fn update_sealing(&self, allow_empty_block: bool) {
+        self.miner.update_sealing(self, allow_empty_block)
     }
 
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {

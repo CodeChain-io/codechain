@@ -258,7 +258,7 @@ impl Tendermint {
     fn update_sealing(&self) {
         if let Some(ref weak) = *self.client.read() {
             if let Some(c) = weak.upgrade() {
-                c.update_sealing();
+                c.update_sealing(true);
             }
         }
     }

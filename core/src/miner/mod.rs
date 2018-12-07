@@ -34,6 +34,7 @@ use crate::account_provider::{AccountProvider, SignError};
 use crate::block::ClosedBlock;
 use crate::client::{
     AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
+    ResealTimer,
 };
 use crate::consensus::EngineType;
 use crate::error::Error;
@@ -79,10 +80,15 @@ pub trait MinerService: Send + Sync {
     /// Get the type of consensus engine.
     fn engine_type(&self) -> EngineType;
 
-    /// New chain head event. Restart mining operation.
-    fn update_sealing<C>(&self, chain: &C)
+    /// Returns true if we had to prepare new pending block.
+    fn prepare_work_sealing<C>(&self, &C) -> bool
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ChainTimeInfo;
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo;
+
+    /// New chain head event. Restart mining operation.
+    fn update_sealing<C>(&self, chain: &C, allow_empty_block: bool)
+    where
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ResealTimer + ChainTimeInfo;
 
     /// Submit `seal` as a valid solution for the header of `pow_hash`.
     /// Will check the seal, but not actually insert the block into the chain.
