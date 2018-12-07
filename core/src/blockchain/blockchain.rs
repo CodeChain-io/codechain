@@ -32,9 +32,9 @@ use super::extras::{BlockDetails, EpochTransitions, ParcelAddress, TransactionAd
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::{tree_route, ImportRoute};
-use consensus::CodeChainEngine;
 use crate::blockchain_info::BlockChainInfo;
 use crate::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
+use crate::consensus::CodeChainEngine;
 use crate::db::{self, Readable, Writable};
 use crate::encoded;
 use crate::parcel::LocalizedParcel;

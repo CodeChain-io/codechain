@@ -309,19 +309,17 @@ mod tests {
 
     #[test]
     fn unverified_parcel_rlp() {
-        rlp_encode_and_decode_test!(
-            UnverifiedParcel {
-                unsigned: Parcel {
-                    seq: 0,
-                    fee: 10,
-                    action: Action::CreateShard,
-                    network_id: "tc".into(),
-                },
-                sig: Signature::default(),
-                hash: H256::default(),
-            }
-            .compute_hash()
-        );
+        rlp_encode_and_decode_test!(UnverifiedParcel {
+            unsigned: Parcel {
+                seq: 0,
+                fee: 10,
+                action: Action::CreateShard,
+                network_id: "tc".into(),
+            },
+            sig: Signature::default(),
+            hash: H256::default(),
+        }
+        .compute_hash());
     }
 
     #[test]
@@ -382,57 +380,51 @@ mod tests {
 
     #[test]
     fn encode_and_decode_payment_parcel() {
-        rlp_encode_and_decode_test!(
-            UnverifiedParcel {
-                unsigned: Parcel {
-                    seq: 30,
-                    fee: 40,
-                    network_id: "tc".into(),
-                    action: Action::Payment {
-                        receiver: Address::random(),
-                        amount: 300,
-                    },
+        rlp_encode_and_decode_test!(UnverifiedParcel {
+            unsigned: Parcel {
+                seq: 30,
+                fee: 40,
+                network_id: "tc".into(),
+                action: Action::Payment {
+                    receiver: Address::random(),
+                    amount: 300,
                 },
-                sig: Signature::default(),
-                hash: H256::default(),
-            }
-            .compute_hash()
-        );
+            },
+            sig: Signature::default(),
+            hash: H256::default(),
+        }
+        .compute_hash());
     }
 
     #[test]
     fn encode_and_decode_set_regular_key_parcel() {
-        rlp_encode_and_decode_test!(
-            UnverifiedParcel {
-                unsigned: Parcel {
-                    seq: 30,
-                    fee: 40,
-                    network_id: "tc".into(),
-                    action: Action::SetRegularKey {
-                        key: Public::random(),
-                    },
+        rlp_encode_and_decode_test!(UnverifiedParcel {
+            unsigned: Parcel {
+                seq: 30,
+                fee: 40,
+                network_id: "tc".into(),
+                action: Action::SetRegularKey {
+                    key: Public::random(),
                 },
-                sig: Signature::default(),
-                hash: H256::default(),
-            }
-            .compute_hash()
-        );
+            },
+            sig: Signature::default(),
+            hash: H256::default(),
+        }
+        .compute_hash());
     }
 
     #[test]
     fn encode_and_decode_create_shard_parcel() {
-        rlp_encode_and_decode_test!(
-            UnverifiedParcel {
-                unsigned: Parcel {
-                    seq: 30,
-                    fee: 40,
-                    network_id: "tc".into(),
-                    action: Action::CreateShard,
-                },
-                sig: Signature::default(),
-                hash: H256::default(),
-            }
-            .compute_hash()
-        );
+        rlp_encode_and_decode_test!(UnverifiedParcel {
+            unsigned: Parcel {
+                seq: 30,
+                fee: 40,
+                network_id: "tc".into(),
+                action: Action::CreateShard,
+            },
+            sig: Signature::default(),
+            hash: H256::default(),
+        }
+        .compute_hash());
     }
 }

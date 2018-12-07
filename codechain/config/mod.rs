@@ -24,10 +24,10 @@ use ccore::{MinerOptions, StratumConfig};
 use ckey::PlatformAddress;
 use clap;
 use cnetwork::{FilterEntry, NetworkConfig, SocketAddr};
-use crate::rpc::{RpcHttpConfig, RpcIpcConfig, RpcWsConfig};
 use toml;
 
 pub use self::chain_type::ChainType;
+use crate::rpc::{RpcHttpConfig, RpcIpcConfig, RpcWsConfig};
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

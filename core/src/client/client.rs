@@ -304,9 +304,10 @@ impl AssetClient for Client {
         match self.block_number(&block_id) {
             None => return Ok(None),
             Some(block_number)
-                if block_number < self
-                    .block_number(&parcel_address.block_hash.into())
-                    .expect("There is a successful transaction") =>
+                if block_number
+                    < self
+                        .block_number(&parcel_address.block_hash.into())
+                        .expect("There is a successful transaction") =>
             {
                 return Ok(None)
             }

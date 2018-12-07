@@ -33,7 +33,7 @@ impl Encodable for ResponseMessage {
             }
             ResponseMessage::Bodies(bodies) => {
                 s.begin_list(bodies.len());
-                bodies.into_iter().for_each(|body| {
+                bodies.iter().for_each(|body| {
                     s.append_list(body);
                 });
             }

@@ -27,7 +27,7 @@ use rlp_compress::{blocks_swapper, compress, decompress};
 use super::block_info::BestHeaderChanged;
 use super::extras::BlockDetails;
 use super::route::tree_route;
-use consensus::CodeChainEngine;
+use crate::consensus::CodeChainEngine;
 use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 use crate::encoded;
 use crate::header::{Header, Seal};

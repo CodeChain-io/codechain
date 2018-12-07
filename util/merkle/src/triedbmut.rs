@@ -20,11 +20,11 @@ use hashdb::DBValue;
 use hashdb::HashDB;
 use primitives::H256;
 
-use crate::{Trie, TrieError, TrieMut};
 use nibbleslice::NibbleSlice;
 use node::Node as RlpNode;
 use triedb::TrieDB;
 
+use crate::{Trie, TrieError, TrieMut};
 
 fn empty_children() -> [Option<H256>; 16] {
     [None; 16]
@@ -339,13 +339,15 @@ impl<'a> TrieMut for TrieDBMut<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ccrypto::BLAKE_NULL_RLP;
-    use crate::triehash::trie_root;
-    use crate::TrieMut;
     use memorydb::*;
     use primitives::bytes::ToPretty;
     use standardmap::*;
+
+    use crate::triehash::trie_root;
+    use crate::TrieMut;
+
+    use super::*;
 
     fn populate_trie<'db>(db: &'db mut HashDB, root: &'db mut H256, v: &[(Vec<u8>, Vec<u8>)]) -> TrieDBMut<'db> {
         let mut t = TrieDBMut::new(db, root);

@@ -145,6 +145,7 @@ mod tests {
     use std::str::FromStr;
 
     use ckey::{verify, Generator, Random};
+
     use crate::json;
     use crate::json::{Aes128Ctr, Cipher, Crypto, Kdf, KeyFile, Scrypt, Uuid};
 
