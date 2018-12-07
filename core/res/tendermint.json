@@ -12,7 +12,10 @@
         "timeoutPropose": 10000,
         "timeoutPrevote": 10000,
         "timeoutPrecommit": 10000,
-        "timeoutCommit": 10000
+        "timeoutCommit": 10000,
+        "genesisStakes": {
+          "tccq8qlwpt7xcs9lec3c8tyt3kqxlgsus8q4qp3m6ft": 100
+        }
       }
     }
   },

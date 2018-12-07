@@ -26,7 +26,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{Address, Error, NetworkId};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash)]
 pub struct PlatformAddress {
     /// The network id of the address.
     pub network_id: NetworkId,

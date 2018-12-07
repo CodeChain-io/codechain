@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
+
 use ckey::PlatformAddress;
 
 use crate::uint::Uint;
@@ -34,6 +36,8 @@ pub struct TendermintParams {
     pub timeout_commit: Option<Uint>,
     /// Reward per block.
     pub block_reward: Option<Uint>,
+    /// How much tokens are distributed at Genesis?
+    pub genesis_stakes: Option<HashMap<PlatformAddress, u64>>,
 }
 
 /// Tendermint engine deserialization.
