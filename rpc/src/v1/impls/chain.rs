@@ -23,7 +23,7 @@ use ccore::{
 use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
-use cstate::{AssetScheme, AssetSchemeAddress, OwnedAsset};
+use cstate::{find_handler_for_id, AssetScheme, AssetSchemeAddress, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::Action;
 use ctypes::{BlockNumber, ShardId};
@@ -74,8 +74,12 @@ where
             .as_val()
             .map_err(|e| errors::rlp(&e))
             .and_then(|parcel: UnverifiedParcel| {
-                if let Action::Custom(bytes) = &parcel.action {
-                    if !self.client.custom_handlers().iter().any(|c| c.is_target(bytes)) {
+                if let Action::Custom {
+                    handler_id,
+                    ..
+                } = &parcel.action
+                {
+                    if find_handler_for_id(*handler_id, &self.client.custom_handlers()).is_none() {
                         return Err(errors::rlp(&DecoderError::Custom("Invalid custom action!")))
                     }
                 }
