@@ -20,10 +20,11 @@ use time;
 
 use atty;
 use colored::Colorize;
-use crate::slogger;
-use crate::structured_logger;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
 use log::{LevelFilter, Log, Metadata, Record};
+
+use crate::slogger;
+use crate::structured_logger;
 
 pub struct Config {
     pub instance_id: usize,
