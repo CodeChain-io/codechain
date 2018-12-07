@@ -278,6 +278,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn get_block_hash_to_mine_on(&self, best_block_hash: H256) -> H256 {
         best_block_hash
     }
+
+    fn action_handlers(&self) -> &[Arc<ActionHandler>] {
+        &[]
+    }
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.
@@ -374,10 +378,6 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
     /// Verify a particular parcel is valid.
     fn verify_parcel_unordered(&self, p: UnverifiedParcel, header: &Header) -> Result<SignedParcel, Error> {
         self.machine().verify_parcel_unordered(p, header)
-    }
-
-    fn action_handlers(&self) -> &[Arc<ActionHandler>] {
-        &[]
     }
 }
 

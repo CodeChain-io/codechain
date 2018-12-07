@@ -15,7 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
-use ckey::PlatformAddress;
+use ckey::{Address, PlatformAddress};
+use std::collections::HashMap;
 use time::Duration;
 
 use super::super::validator_set::{new_validator_set, ValidatorSet};
@@ -29,6 +30,8 @@ pub struct TendermintParams {
     pub timeouts: TendermintTimeouts,
     /// Reward per block in base units.
     pub block_reward: u64,
+    /// Tokens distributed at genesis.
+    pub genesis_stakes: HashMap<Address, u64>,
 }
 
 impl From<cjson::scheme::TendermintParams> for TendermintParams {
@@ -43,6 +46,12 @@ impl From<cjson::scheme::TendermintParams> for TendermintParams {
                 commit: p.timeout_commit.map_or(dt.commit, to_duration),
             },
             block_reward: p.block_reward.map_or(0, Into::into),
+            genesis_stakes: p
+                .genesis_stakes
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(pa, amount)| (PlatformAddress::into_address(pa), amount))
+                .collect(),
         }
     }
 }
