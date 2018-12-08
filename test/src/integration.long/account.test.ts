@@ -16,7 +16,6 @@
 
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
-import { ERROR, errorMatcher } from "../helper/error";
 import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
 
 import "mocha";
@@ -74,46 +73,6 @@ describe("account", function() {
                 ).to.equal(address.toString());
             }
         }).timeout(500 * testSize + 5000);
-
-        it(`Scenario #3: unlock 1 second ${unlockTestSize} times and check working well with sign`, async function() {
-            const secret = node.sdk.util.generatePrivateKey();
-            const account = node.sdk.util.getAccountIdFromPrivate(secret);
-            const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
-                account,
-                { networkId: "tc" }
-            );
-            const passphrase = makeRandomPassphrase();
-            await node.sdk.rpc.account.importRaw(secret, passphrase);
-
-            for (let i = 0; i < unlockTestSize; i++) {
-                const message = makeRandomH256();
-                const { r, s, v } = node.sdk.util.signEcdsa(message, secret);
-                await node.sdk.rpc.account.unlock(address, passphrase, 1);
-
-                for (let j = 0; j <= 2; j++) {
-                    try {
-                        const signature = await node.sdk.rpc.account.sign(
-                            message,
-                            address
-                        );
-                        expect(signature).to.include(r);
-                        expect(signature).to.include(s);
-                        expect(signature).to.include(v);
-                    } catch (e) {
-                        expect.fail();
-                    }
-                    await wait(100);
-                }
-                await wait(1000 - 100 * 3);
-
-                try {
-                    await node.sdk.rpc.account.sign(message, address);
-                    expect.fail();
-                } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.NOT_UNLOCKED));
-                }
-            }
-        }).timeout(2000 * unlockTestSize + 5000);
 
         it(`Scenario #X: random agent runs ${randomTestSize} commands`, async function() {
             enum Action {
