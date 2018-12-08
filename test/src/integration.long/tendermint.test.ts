@@ -31,6 +31,7 @@ const expect = chai.expect;
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
 describeSkippedInTravis("Tendermint ", function() {
+    const BASE = 800;
     let nodes: CodeChain[];
 
     beforeEach(async function() {
@@ -52,6 +53,7 @@ describeSkippedInTravis("Tendermint ", function() {
                     "test/tendermint/password.json",
                     "--force-sealing"
                 ],
+                base: BASE,
                 additionalKeysPath: "tendermint/keys"
             });
         });
