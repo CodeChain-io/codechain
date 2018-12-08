@@ -36,7 +36,6 @@ describe("Test onChain block communication", async function() {
         "0x1111111111111111111111111111111111111111111111111111111111111111"
     );
     const VALID_TIMESTAMP = new U256(1537944287);
-    const INVALID_TIMESTAMP = new U256(1537509962);
     const VALID_NUMBER = new U256(1);
     const INVALID_NUMBER = new U256(2);
     let VALID_AUTHOR = new H160("7777777777777777777777777777777777777777");
@@ -289,39 +288,6 @@ describe("Test onChain block communication", async function() {
         await TH.end();
         await nodeA.clean();
     });
-
-    it("OnChain valid block propagation test", async function() {
-        // TH.setLog();
-        const sdk = nodeA.sdk;
-
-        // Genesis block
-        const header = soloGenesisBlock;
-
-        // Block 1
-        const header1 = soloBlock1;
-
-        // Block 2
-        const header2 = soloBlock2;
-
-        await TH.sendEncodedBlock(
-            [
-                header.toEncodeObject(),
-                header1.toEncodeObject(),
-                header2.toEncodeObject()
-            ],
-            [[], []],
-            header2.hashing(),
-            header2.getScore()
-        );
-
-        await TH.waitStatusMessage();
-
-        const block1 = await sdk.rpc.chain.getBlock(1);
-        const block2 = await sdk.rpc.chain.getBlock(2);
-
-        expect(block1).not.to.be.null;
-        expect(block2).not.to.be.null;
-    }).timeout(30_000);
 
     describe("OnChain invalid block test", async function() {
         testArray.forEach(function(params: {
