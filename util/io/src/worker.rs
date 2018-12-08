@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use crossbeam::sync::chase_lev;
+use crossbeam::deque;
 use service::{HandlerId, IoChannel, IoContext};
 use std::cell::Cell;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
@@ -61,7 +61,7 @@ impl Worker {
     /// Creates a new worker instance.
     pub fn new<Message>(
         index: usize,
-        stealer: chase_lev::Stealer<Work<Message>>,
+        stealer: deque::Stealer<Work<Message>>,
         channel: IoChannel<Message>,
         wait: Arc<SCondvar>,
         wait_mutex: Arc<SMutex<()>>,
@@ -90,7 +90,7 @@ impl Worker {
     }
 
     fn work_loop<Message>(
-        stealer: &chase_lev::Stealer<Work<Message>>,
+        stealer: &deque::Stealer<Work<Message>>,
         channel: &IoChannel<Message>,
         wait: &SCondvar,
         wait_mutex: &SMutex<()>,
@@ -108,7 +108,7 @@ impl Worker {
 
             while !deleting.load(AtomicOrdering::Acquire) {
                 match stealer.steal() {
-                    chase_lev::Steal::Data(work) => Worker::do_work(work, channel.clone()),
+                    deque::Steal::Data(work) => Worker::do_work(work, channel.clone()),
                     _ => break,
                 }
             }

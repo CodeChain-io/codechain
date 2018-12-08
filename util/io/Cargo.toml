@@ -10,6 +10,6 @@ authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <codechain@k
 codechain-limited-table = { path = "../limited_table" }
 codechain-logger = { path = "../logger" }
 mio = "0.6.16"
-crossbeam = "0.3"
+crossbeam = "0.5.0"
 parking_lot = "0.6.0"
 log = "0.4.6"

@@ -15,7 +15,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use climited_table::LimitedTable;
-use crossbeam::sync::chase_lev;
+use crossbeam::deque;
 use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
 use mio::timer::Timeout;
 use mio::*;
@@ -196,7 +196,7 @@ where
     timers: Arc<RwLock<HashMap<HandlerId, UserTimer>>>,
     handlers: Arc<HandlersType<Message>>,
     workers: Vec<Worker>,
-    worker_channel: chase_lev::Worker<Work<Message>>,
+    worker_channel: deque::Worker<Work<Message>>,
     work_ready: Arc<SCondvar>,
 }
 
@@ -210,7 +210,7 @@ where
         handlers: Arc<HandlersType<Message>>,
         name: &str,
     ) -> Result<(), IoError> {
-        let (worker, stealer) = chase_lev::deque();
+        let (worker, stealer) = deque::lifo();
         let num_workers = 4;
         let work_ready_mutex = Arc::new(SMutex::new(()));
         let work_ready = Arc::new(SCondvar::new());
