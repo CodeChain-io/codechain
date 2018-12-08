@@ -19,9 +19,9 @@ import CodeChain from "../helper/spawn";
 import "mocha";
 import { expect } from "chai";
 
-const testSkippedInTravis = process.env.TRAVIS ? it.skip : it;
+const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
-describe("discovery5 nodes", function() {
+describeSkippedInTravis("discovery5 nodes", function() {
     const BASE = 100;
     const numOfNodes = 5;
     let nodes: CodeChain[];
@@ -47,7 +47,7 @@ describe("discovery5 nodes", function() {
         );
     });
 
-    testSkippedInTravis("number of peers", async function() {
+    it("number of peers", async function() {
         await Promise.all([
             nodes[0].waitPeers(numOfNodes - 1),
             nodes[1].waitPeers(numOfNodes - 1),

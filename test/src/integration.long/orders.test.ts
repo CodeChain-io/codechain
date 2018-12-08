@@ -35,11 +35,12 @@ import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
-describe("transactions", function() {
+describe("orders", function() {
+    const BASE = 750;
     let node: CodeChain;
 
     before(async function() {
-        node = new CodeChain();
+        node = new CodeChain({ base: BASE });
         await node.start();
     });
 
