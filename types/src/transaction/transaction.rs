@@ -773,12 +773,14 @@ fn verify_input_and_output_consistent_with_order(
         if !is_ratio_valid(order.asset_amount_from, order.asset_amount_to, order_tx.spent_amount, output_amount_to) {
             return Err(Error::InconsistentTransactionInOutWithOrders)
         }
-        if input_amount_fee < output_amount_fee || !is_ratio_valid(
-            order.asset_amount_from,
-            order.asset_amount_fee,
-            order_tx.spent_amount,
-            input_amount_fee - output_amount_fee,
-        ) {
+        if input_amount_fee < output_amount_fee
+            || !is_ratio_valid(
+                order.asset_amount_from,
+                order.asset_amount_fee,
+                order_tx.spent_amount,
+                input_amount_fee - output_amount_fee,
+            )
+        {
             return Err(Error::InconsistentTransactionInOutWithOrders)
         }
     }
