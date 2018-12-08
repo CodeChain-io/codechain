@@ -142,7 +142,7 @@ describe("Test onChain parcel communication", function() {
                 expect(parcels.length).to.equal(0);
 
                 await TH.end();
-            }).timeout(20_000);
+            }).timeout(30_000);
         });
     });
 });
