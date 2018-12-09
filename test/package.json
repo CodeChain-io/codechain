@@ -12,10 +12,10 @@
   "scripts": {
     "start": "yarn start-short && yarn start-long",
     "start-short": "cargo build && mocha -r ts-node/register --timeout 5000 src/integration/*.test.ts",
-    "start-long": "cargo build && mocha-parallel-tests -r ts-node/register --timeout 5000 src/integration.long/*.test.ts",
+    "start-long": "cargo build && mocha-parallel-tests -r ts-node/register --timeout 10000 src/integration.long/*.test.ts",
     "start-release": "yarn start-short-release && yarn start-long-release",
     "start-short-release": "cargo build --release && NODE_ENV=production mocha -r ts-node/register --timeout 5000 src/integration/*.test.ts",
-    "start-long-release": "cargo build --release && NODE_ENV=production mocha-parallel-tests -r ts-node/register --timeout 5000 src/integration.long/*.test.ts",
+    "start-long-release": "cargo build --release && NODE_ENV=production mocha-parallel-tests -r ts-node/register --timeout 10000 src/integration.long/*.test.ts",
     "lint": "tslint -p . && prettier 'src/*/**.{ts, json}' -l",
     "fmt": "tslint -p . --fix && prettier 'src/*/**.{ts, json}' --write"
   },
