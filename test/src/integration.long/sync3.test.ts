@@ -20,7 +20,7 @@ import "mocha";
 import { expect } from "chai";
 
 describe("sync 3 nodes", function() {
-    const BASE = 630;
+    const BASE = 650;
     const NUM_NODES = 3;
     let nodes: CodeChain[] = [];
 
@@ -173,46 +173,6 @@ describe("sync 3 nodes", function() {
             }).timeout(5000 + 10000 * NUM_NODES);
         });
     });
-
-    if (NUM_NODES > 3) {
-        describe("Connected in a star", function() {
-            describe("All connected", function() {
-                beforeEach(async function() {
-                    this.timeout(5000 + 5000 * NUM_NODES);
-
-                    let connects = [];
-                    for (let i = 1; i < NUM_NODES; i++) {
-                        connects.push(nodes[0].connect(nodes[i]));
-                    }
-                    await Promise.all(connects);
-                });
-
-                it("It should be synced when the center node created a block", async function() {
-                    const parcel = await nodes[0].sendSignedParcel();
-                    for (let i = 1; i < NUM_NODES; i++) {
-                        await nodes[0].waitBlockNumberSync(nodes[i]);
-                        expect(await nodes[i].getBestBlockHash()).to.deep.equal(
-                            parcel.blockHash
-                        );
-                    }
-                }).timeout(5000 + 5000 * NUM_NODES);
-
-                it("It should be synced when one of the outside node created a block", async function() {
-                    const parcel = await nodes[
-                        NUM_NODES - 1
-                    ].sendSignedParcel();
-                    for (let i = 0; i < NUM_NODES - 1; i++) {
-                        await nodes[NUM_NODES - 1].waitBlockNumberSync(
-                            nodes[i]
-                        );
-                        expect(await nodes[i].getBestBlockHash()).to.deep.equal(
-                            parcel.blockHash
-                        );
-                    }
-                }).timeout(5000 + 10000 * NUM_NODES);
-            });
-        });
-    }
 
     afterEach(async function() {
         this.timeout(5000 + 3000 * NUM_NODES);
