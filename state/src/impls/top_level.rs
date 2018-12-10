@@ -425,7 +425,7 @@ impl TopLevelState {
                         find_handler_for_id(*handler_id, db.custom_handlers()).expect("Unknown custom parcel applied!"),
                     )
                 };
-                let invoice = handler.execute(bytes, self).expect("Custom action hander execution failed");
+                let invoice = handler.execute(bytes, self, fee_payer).expect("Custom action hander execution failed");
                 Ok(invoice)
             }
         }
