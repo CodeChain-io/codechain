@@ -84,6 +84,11 @@ impl Account {
         self.balance -= x;
     }
 
+    #[cfg(test)]
+    pub fn set_balance(&mut self, x: u64) {
+        self.balance = x;
+    }
+
     /// Set the regular key of the account.
     /// Overwrite if the key already exists.
     pub fn set_regular_key(&mut self, key: &Public) {
