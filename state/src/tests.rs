@@ -56,7 +56,7 @@ pub mod helpers {
 
     pub fn get_temp_state() -> TopLevelState {
         let state_db = get_temp_state_db();
-        TopLevelState::new(state_db)
+        TopLevelState::new_for_testing(state_db)
     }
 
     pub fn get_test_client() -> TestChainTimeInfoClient {
