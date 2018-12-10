@@ -12,10 +12,10 @@
   "scripts": {
     "start": "yarn start-short && yarn start-long",
     "start-short": "cargo build && mocha -r ts-node/register --timeout 5000 src/integration/*.test.ts",
-    "start-long": "cargo build && mocha-parallel-tests -r ts-node/register --timeout 10000 src/integration.long/*.test.ts",
+    "start-long": "cargo build && mocha -r ts-node/register --timeout 10000 src/integration.long/*.test.ts",
     "start-release": "yarn start-short-release && yarn start-long-release",
     "start-short-release": "cargo build --release && NODE_ENV=production mocha -r ts-node/register --timeout 5000 src/integration/*.test.ts",
-    "start-long-release": "cargo build --release && NODE_ENV=production mocha-parallel-tests -r ts-node/register --timeout 10000 src/integration.long/*.test.ts",
+    "start-long-release": "cargo build --release && NODE_ENV=production mocha -r ts-node/register --timeout 10000 src/integration.long/*.test.ts",
     "lint": "tslint -p . && prettier 'src/*/**.{ts, json}' -l",
     "fmt": "tslint -p . --fix && prettier 'src/*/**.{ts, json}' --write"
   },
@@ -29,7 +29,6 @@
     "@types/node": "^10.12.12",
     "@types/seedrandom": "^2.4.27",
     "mocha": "^5.2.0",
-    "mocha-parallel-tests": "^2.0.6-alpha.3",
     "prettier": "^1.15.3",
     "tslint": "^5.11.0",
     "tslint-config-prettier": "^1.17.0"
