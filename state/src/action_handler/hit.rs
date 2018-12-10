@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
+use ckey::Address;
 use cmerkle::TrieMut;
 use ctypes::invoice::Invoice;
 use primitives::H256;
@@ -58,7 +59,7 @@ impl ActionHandler for HitHandler {
     }
 
     /// `bytes` must be valid encoding of HitAction
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState) -> ActionHandlerResult {
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, _sender: &Address) -> ActionHandlerResult {
         let action = HitAction::decode(&UntrustedRlp::new(bytes))?;
         let action_data = state.action_data(&self.address())?.unwrap_or_default();
         let prev_counter: u32 = rlp::decode(&*action_data);

@@ -19,6 +19,7 @@ mod hit;
 use std::convert::From;
 use std::sync::Arc;
 
+use ckey::Address;
 use cmerkle::{TrieError, TrieMut};
 use ctypes::invoice::Invoice;
 use rlp::DecoderError;
@@ -28,7 +29,7 @@ use crate::{StateError, StateResult, TopLevelState};
 pub trait ActionHandler: Send + Sync {
     fn handler_id(&self) -> u64;
     fn init(&self, state: &mut TrieMut) -> StateResult<()>;
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState) -> ActionHandlerResult;
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> ActionHandlerResult;
 }
 
 pub fn find_handler_for_id<'a>(id: u64, handlers: &'a [Arc<ActionHandler>]) -> Option<&'a Arc<ActionHandler>> {
