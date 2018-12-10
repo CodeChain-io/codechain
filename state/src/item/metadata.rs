@@ -42,6 +42,11 @@ impl Metadata {
         self.number_of_shards += 1;
         r
     }
+
+    #[cfg(test)]
+    pub fn set_number_of_shards(&mut self, number_of_shards: ShardId) {
+        self.number_of_shards = number_of_shards;
+    }
 }
 
 impl Default for Metadata {
