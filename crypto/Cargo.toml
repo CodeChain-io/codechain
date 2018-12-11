@@ -10,4 +10,4 @@ rust-crypto = "0.2.36"
 primitives = { path = "../util/primitives" }
 
 [dev-dependencies]
-rand = "0.5.3"
+rand = "0.6.1"

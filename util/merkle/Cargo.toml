@@ -5,7 +5,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 elastic-array = "0.10"
-rand = "0.5.3"
+rand = "0.6.1"
 hashdb = {path = "../hashdb" }
 codechain-crypto = { path = "../../crypto" }
 primitives = { path = "../primitives" }

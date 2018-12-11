@@ -31,7 +31,8 @@ use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, ReentrantMutex, RwLock};
 use primitives::{u256_from_u128, Bytes, H256, U256};
-use rand::{thread_rng, Rng};
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
@@ -995,7 +996,7 @@ impl TendermintExtension {
         let mut count = (peers.len() as f64).powf(0.5).round() as usize;
         count = cmp::min(count, MAX_PEERS_PROPAGATION);
         count = cmp::max(count, MIN_PEERS_PROPAGATION);
-        thread_rng().shuffle(&mut peers);
+        peers.shuffle(&mut thread_rng());
         peers.truncate(count);
         peers
     }
