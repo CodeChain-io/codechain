@@ -20,6 +20,12 @@ import { faucetAddress, faucetSecret } from "../helper/constants";
 
 import "mocha";
 import { expect } from "chai";
+import { AssetTransferAddress } from "codechain-primitives/lib";
+import {
+    AssetScheme,
+    AssetTransferInput,
+    AssetTransferOutput
+} from "codechain-sdk/lib/core/classes";
 
 const RLP = require("rlp");
 
@@ -180,12 +186,600 @@ describe("solo - 1 node", function() {
         });
     });
 
-    it(
-        "Sending invalid parcels over the limits (in action 1: AssetTransaction)"
-    );
-    it("Sending invalid parcels over the limits (in action 5: SetShardOwners)");
-    it("Sending invalid parcels over the limits (in action 6: SetShardUsers)");
-    it("Sending invalid parcels over the limits (in action 7: WrapCCC)");
+    describe("Sending invalid parcels over the limits (in action 1: AssetTransaction)", function() {
+        let scheme: AssetScheme;
+        let input: AssetTransferInput;
+        let output: AssetTransferOutput;
+        let recipient: AssetTransferAddress;
+
+        before(async function() {
+            recipient = await node.createP2PKHAddress();
+            scheme = node.sdk.core.createAssetScheme({
+                shardId: 0,
+                metadata: "Valid metadata",
+                amount: 10
+            });
+            input = node.sdk.core.createAssetTransferInput({
+                assetOutPoint: {
+                    transactionHash: "0x" + "0".repeat(64),
+                    index: 0,
+                    assetType: "0x" + "1".repeat(64),
+                    amount: 12345
+                },
+                timelock: {
+                    type: "block",
+                    value: 0
+                }
+            });
+            output = node.sdk.core.createAssetTransferOutput({
+                assetType: "0x" + "0".repeat(64),
+                amount: 12345,
+                recipient
+            });
+        });
+
+        describe("In assetMintTransction", function() {
+            let parcelEncoded: any[];
+            beforeEach(async function() {
+                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+                const tx = node.sdk.core.createAssetMintTransaction({
+                    scheme,
+                    recipient
+                });
+                const parcel = node.sdk.core
+                    .createAssetTransactionParcel({
+                        transaction: tx
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        fee: 10,
+                        seq
+                    });
+                parcelEncoded = parcel.toEncodeObject();
+            });
+
+            [65536, 100000].forEach(function(shardId) {
+                it(`shardId: ${shardId}`, async function() {
+                    parcelEncoded[3][1][2] = shardId;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
+                amount
+            ) {
+                it(`amount: ${amount}`, async function() {
+                    parcelEncoded[3][1][6][0] = amount;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(40), "0x" + "f".repeat(41)].forEach(function(
+                lockScriptHash
+            ) {
+                it(`lockScriptHash: ${lockScriptHash}`, async function() {
+                    parcelEncoded[3][1][4] = lockScriptHash;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            it("parameters");
+            it("registrar");
+        });
+
+        describe("In assetTransferTransaction", function() {
+            let parcelEncoded: any[];
+            beforeEach(async function() {
+                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+                const tx = node.sdk.core
+                    .createAssetTransferTransaction()
+                    .addBurns(input)
+                    .addInputs(input)
+                    .addOutputs(output);
+
+                const parcel = node.sdk.core
+                    .createAssetTransactionParcel({
+                        transaction: tx
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        fee: 10,
+                        seq
+                    });
+                parcelEncoded = parcel.toEncodeObject();
+            });
+
+            ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
+                amount
+            ) {
+                it(`amount: ${amount}`, async function() {
+                    // Burn
+                    parcelEncoded[3][1][2][0][0][3] = amount;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                    // Input
+                    parcelEncoded[3][1][3][0][0][3] = amount;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+
+                    // Output
+                    parcelEncoded[3][1][4][0][3] = amount;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
+                transactionHash
+            ) {
+                it(`transactionHash: ${transactionHash}`, async function() {
+                    // Burn
+                    parcelEncoded[3][1][2][0][0][0] = transactionHash;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                    // Input
+                    parcelEncoded[3][1][3][0][0][0] = transactionHash;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
+                assetType
+            ) {
+                it(`assetType: ${assetType}`, async function() {
+                    // Burn
+                    parcelEncoded[3][1][2][0][0][2] = assetType;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                    // Input
+                    parcelEncoded[3][1][3][0][0][2] = assetType;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+
+                    // Output
+                    parcelEncoded[3][1][4][0][2] = assetType;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(40), "0x" + "f".repeat(41)].forEach(function(
+                lockScriptHash
+            ) {
+                it(`lockScriptHash: ${lockScriptHash}`, async function() {
+                    parcelEncoded[3][1][4][0][0] = lockScriptHash;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            it("parameters");
+            it("index");
+            it("timelock");
+            it("lockscript/unlockscript");
+        });
+
+        describe("In assetComposeTransaction", function() {
+            let parcelEncoded: any[];
+            beforeEach(async function() {
+                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+                const tx = node.sdk.core.createAssetComposeTransaction({
+                    scheme,
+                    inputs: [input],
+                    recipient
+                });
+                const parcel = node.sdk.core
+                    .createAssetTransactionParcel({
+                        transaction: tx
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        fee: 10,
+                        seq
+                    });
+                parcelEncoded = parcel.toEncodeObject();
+            });
+
+            [65536, 100000].forEach(function(shardId) {
+                it(`shardId: ${shardId}`, async function() {
+                    parcelEncoded[3][1][2] = shardId;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
+                amount
+            ) {
+                it(`amount: ${amount}`, async function() {
+                    // Input
+                    parcelEncoded[3][1][6][0][0][3] = amount;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+
+                    // Output
+                    parcelEncoded[3][1][9][0] = amount;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
+                assetType
+            ) {
+                it(`assetType: ${assetType}`, async function() {
+                    // Input
+                    parcelEncoded[3][1][6][0][0][2] = assetType;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(40), "0x" + "f".repeat(41)].forEach(function(
+                lockScriptHash
+            ) {
+                it(`lockScriptHash: ${lockScriptHash}`, async function() {
+                    parcelEncoded[3][1][7] = lockScriptHash;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            it("parameters");
+            it("index");
+            it("timelock");
+            it("registrar");
+            it("lockscript/unlockscript");
+        });
+
+        describe("In assetDecomposeTransaction", function() {
+            let parcelEncoded: any[];
+            beforeEach(async function() {
+                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+                const tx = node.sdk.core.createAssetDecomposeTransaction({
+                    input,
+                    outputs: [output]
+                });
+
+                const parcel = node.sdk.core
+                    .createAssetTransactionParcel({
+                        transaction: tx
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        fee: 10,
+                        seq
+                    });
+                parcelEncoded = parcel.toEncodeObject();
+            });
+
+            ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
+                amount
+            ) {
+                it(`amount: ${amount}`, async function() {
+                    // Input
+                    parcelEncoded[3][1][2][0][3] = amount;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+
+                    // Output
+                    parcelEncoded[3][1][3][0][3] = amount;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
+                transactionHash
+            ) {
+                it(`transactionHash: ${transactionHash}`, async function() {
+                    // Input
+                    parcelEncoded[3][1][2][0][0] = transactionHash;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
+                assetType
+            ) {
+                it(`assetType: ${assetType}`, async function() {
+                    // Input
+                    parcelEncoded[3][1][2][0][2] = assetType;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+
+                    // Output
+                    parcelEncoded[3][1][3][0][2] = assetType;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(40), "0x" + "f".repeat(41)].forEach(function(
+                lockScriptHash
+            ) {
+                it(`lockScriptHash: ${lockScriptHash}`, async function() {
+                    parcelEncoded[3][1][3][0][0] = lockScriptHash;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            it("parameters");
+            it("index");
+            it("timelock");
+            it("lockscript/unlockscript");
+        });
+
+        describe("In assetUnwrapCCCTransaction", function() {
+            let parcelEncoded: any[];
+            beforeEach(async function() {
+                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+                const tx = node.sdk.core.createAssetUnwrapCCCTransaction({
+                    burn: input
+                });
+
+                const parcel = node.sdk.core
+                    .createAssetTransactionParcel({
+                        transaction: tx
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        fee: 10,
+                        seq
+                    });
+                parcelEncoded = parcel.toEncodeObject();
+            });
+
+            ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
+                amount
+            ) {
+                it(`amount: ${amount}`, async function() {
+                    parcelEncoded[3][1][2][0][3] = amount;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
+                transactionHash
+            ) {
+                it(`transactionHash: ${transactionHash}`, async function() {
+                    parcelEncoded[3][1][2][0][0] = transactionHash;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
+                assetType
+            ) {
+                it(`assetType: ${assetType}`, async function() {
+                    parcelEncoded[3][1][2][0][2] = assetType;
+                    try {
+                        await node.sendSignedParcelWithRlpBytes(
+                            RLP.encode(parcelEncoded)
+                        );
+                        expect.fail();
+                    } catch (e) {
+                        expect(e).to.satisfy(
+                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                        );
+                    }
+                });
+            });
+
+            it("parameters");
+            it("index");
+            it("timelock");
+            it("lockscript/unlockscript");
+        });
+    });
 
     describe("Sending invalid parcels over the limits (in action 2: Payment)", function() {
         let parcelEncoded: any[];
@@ -286,6 +880,155 @@ describe("solo - 1 node", function() {
                 }
             });
         });
+    });
+
+    describe("Sending invalid parcels over the limits (in action 5: SetShardOwners)", function() {
+        let parcelEncoded: any[];
+        beforeEach(async function() {
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const account = await node.createPlatformAddress();
+            const parcel = node.sdk.core
+                .createSetShardOwnersParcel({
+                    shardId: 0,
+                    owners: [account]
+                })
+                .sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq
+                });
+            parcelEncoded = parcel.toEncodeObject();
+        });
+
+        [65536, 100000].forEach(function(shardId) {
+            it(`shardId: ${shardId}`, async function() {
+                parcelEncoded[3][1] = shardId;
+                try {
+                    await node.sendSignedParcelWithRlpBytes(
+                        RLP.encode(parcelEncoded)
+                    );
+                    expect.fail();
+                } catch (e) {
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                    );
+                }
+            });
+        });
+
+        it("Owners");
+    });
+
+    describe("Sending invalid parcels over the limits (in action 6: SetShardUsers)", function() {
+        let parcelEncoded: any[];
+        beforeEach(async function() {
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const account = await node.createPlatformAddress();
+            const parcel = node.sdk.core
+                .createSetShardUsersParcel({
+                    shardId: 0,
+                    users: [account]
+                })
+                .sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq
+                });
+            parcelEncoded = parcel.toEncodeObject();
+        });
+
+        [65536, 100000].forEach(function(shardId) {
+            it(`shardId: ${shardId}`, async function() {
+                parcelEncoded[3][1] = shardId;
+                try {
+                    await node.sendSignedParcelWithRlpBytes(
+                        RLP.encode(parcelEncoded)
+                    );
+                    expect.fail();
+                } catch (e) {
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                    );
+                }
+            });
+        });
+
+        it("Users");
+    });
+
+    describe("Sending invalid parcels over the limits (in action 7: WrapCCC)", function() {
+        let parcelEncoded: any[];
+        beforeEach(async function() {
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const account = await node.createPlatformAddress();
+            const recipient = await node.createP2PKHAddress();
+            const parcel = node.sdk.core
+                .createWrapCCCParcel({
+                    shardId: 0,
+                    recipient,
+                    amount: 10
+                })
+                .sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq
+                });
+            parcelEncoded = parcel.toEncodeObject();
+        });
+
+        [65536, 100000].forEach(function(shardId) {
+            it(`shardId: ${shardId}`, async function() {
+                parcelEncoded[3][1] = shardId;
+                try {
+                    await node.sendSignedParcelWithRlpBytes(
+                        RLP.encode(parcelEncoded)
+                    );
+                    expect.fail();
+                } catch (e) {
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                    );
+                }
+            });
+        });
+
+        ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
+            amount
+        ) {
+            it(`amount: ${amount}`, async function() {
+                parcelEncoded[3][4] = amount;
+                try {
+                    await node.sendSignedParcelWithRlpBytes(
+                        RLP.encode(parcelEncoded)
+                    );
+                    expect.fail();
+                } catch (e) {
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                    );
+                }
+            });
+        });
+
+        ["0x1" + "0".repeat(40), "0x" + "f".repeat(41)].forEach(function(
+            lockScriptHash
+        ) {
+            it(`lockScriptHash: ${lockScriptHash}`, async function() {
+                parcelEncoded[3][2] = lockScriptHash;
+                try {
+                    await node.sendSignedParcelWithRlpBytes(
+                        RLP.encode(parcelEncoded)
+                    );
+                    expect.fail();
+                } catch (e) {
+                    expect(e).to.satisfy(
+                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
+                    );
+                }
+            });
+        });
+
+        it("parameters");
     });
 
     [0, 9].forEach(function(fee) {

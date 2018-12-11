@@ -187,4 +187,9 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
             .and_then(|c| c.block_votes.get(&message.block_hash()))
             .and_then(|origins| origins.get(&message.signature()).cloned())
     }
+
+    pub fn get_block_hashes(&self, round: &M::Round) -> Vec<H256> {
+        let guard = self.votes.read();
+        guard.get(round).map(|c| c.block_votes.keys().cloned().filter_map(|x| x).collect()).unwrap_or_else(Vec::new)
+    }
 }
