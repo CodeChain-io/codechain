@@ -39,6 +39,7 @@ use crate::client::{
     AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
 };
 use crate::consensus::{CodeChainEngine, EngineType};
+use crate::encoded;
 use crate::error::Error;
 use crate::header::Header;
 use crate::parcel::{SignedParcel, UnverifiedParcel};
@@ -550,7 +551,7 @@ impl Miner {
                         .map(|sealed| {
                             self.engine.proposal_generated(&sealed);
                             let import_result = chain.import_sealed_block(&sealed);
-                            self.engine.broadcast_proposal_block(sealed);
+                            self.engine.broadcast_proposal_block(encoded::Block::new(sealed.rlp_bytes()));
                             import_result
                         })
                         .map_err(|e| {
