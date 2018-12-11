@@ -51,7 +51,8 @@ describeSkippedInTravis("Tendermint ", function() {
                     address.toString(),
                     "--password-path",
                     "test/tendermint/password.json",
-                    "--force-sealing"
+                    "--force-sealing",
+                    "--no-discovery"
                 ],
                 base: BASE,
                 additionalKeysPath: "tendermint/keys"
@@ -60,13 +61,15 @@ describeSkippedInTravis("Tendermint ", function() {
         await Promise.all(nodes.map(node => node.start()));
     });
 
-    it("Wait block generation", async function() {
-        nodes[0].connect(nodes[1]);
-        nodes[0].connect(nodes[2]);
-        nodes[0].connect(nodes[3]);
-        nodes[1].connect(nodes[2]);
-        nodes[1].connect(nodes[3]);
-        nodes[2].connect(nodes[3]);
+    it("Block generation", async function() {
+        await Promise.all([
+            nodes[0].connect(nodes[1]),
+            nodes[0].connect(nodes[2]),
+            nodes[0].connect(nodes[3]),
+            nodes[1].connect(nodes[2]),
+            nodes[1].connect(nodes[3]),
+            nodes[2].connect(nodes[3])
+        ]);
         await Promise.all([
             nodes[0].waitPeers(4 - 1),
             nodes[1].waitPeers(4 - 1),
@@ -80,13 +83,15 @@ describeSkippedInTravis("Tendermint ", function() {
         await nodes[3].waitBlockNumber(2);
         await expect(
             nodes[0].sdk.rpc.chain.getBestBlockNumber()
-        ).to.eventually.equal(2);
-    }).timeout(90_000);
+        ).to.eventually.greaterThan(1);
+    }).timeout(20_000);
 
-    it("Wait block generation and block sync", async function() {
-        nodes[0].connect(nodes[1]);
-        nodes[0].connect(nodes[2]);
-        nodes[1].connect(nodes[2]);
+    it("Block sync", async function() {
+        await Promise.all([
+            nodes[0].connect(nodes[1]),
+            nodes[0].connect(nodes[2]),
+            nodes[1].connect(nodes[2])
+        ]);
         await Promise.all([
             nodes[0].waitPeers(3 - 1),
             nodes[1].waitPeers(3 - 1),
@@ -97,9 +102,11 @@ describeSkippedInTravis("Tendermint ", function() {
         await nodes[1].waitBlockNumber(2);
         await nodes[2].waitBlockNumber(2);
 
-        nodes[3].connect(nodes[0]);
-        nodes[3].connect(nodes[1]);
-        nodes[3].connect(nodes[2]);
+        await Promise.all([
+            nodes[3].connect(nodes[0]),
+            nodes[3].connect(nodes[1]),
+            nodes[3].connect(nodes[2])
+        ]);
 
         await nodes[0].waitBlockNumber(3);
         await nodes[1].waitBlockNumber(3);
@@ -107,8 +114,24 @@ describeSkippedInTravis("Tendermint ", function() {
         await nodes[3].waitBlockNumber(3);
         await expect(
             nodes[0].sdk.rpc.chain.getBestBlockNumber()
-        ).to.eventually.equal(3);
-    }).timeout(120_000);
+        ).to.eventually.greaterThan(2);
+    }).timeout(30_000);
+
+    it("Gossip", async function() {
+        await Promise.all([
+            nodes[0].connect(nodes[1]),
+            nodes[1].connect(nodes[2]),
+            nodes[2].connect(nodes[3])
+        ]);
+
+        await nodes[0].waitBlockNumber(3);
+        await nodes[1].waitBlockNumber(3);
+        await nodes[2].waitBlockNumber(3);
+        await nodes[3].waitBlockNumber(3);
+        await expect(
+            nodes[0].sdk.rpc.chain.getBestBlockNumber()
+        ).to.eventually.greaterThan(1);
+    }).timeout(20_000);
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {

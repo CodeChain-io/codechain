@@ -48,6 +48,7 @@ use crate::block::*;
 use crate::client::{Client, EngineClient};
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
+use crate::encoded;
 use crate::error::{BlockError, Error};
 use crate::header::Header;
 use crate::views::{BlockView, HeaderView};
@@ -760,8 +761,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         !self.has_enough_precommit_votes(header.hash())
     }
 
-    fn broadcast_proposal_block(&self, block: SealedBlock) {
-        let header = block.header();
+    fn broadcast_proposal_block(&self, block: encoded::Block) {
+        let header = block.decode_header();
         let hash = header.hash();
         let parent_hash = header.parent_hash();
         let vote_step =
@@ -771,9 +772,9 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         if self.is_signer_proposer(&parent_hash) {
             let vote_info = message_info_rlp(&vote_step, Some(hash));
             let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-            self.extension.broadcast_proposal_block(signature, block.rlp_bytes());
+            self.extension.broadcast_proposal_block(signature, block.into_inner());
         } else if let Some(signature) = self.votes.round_signatures(&vote_step, &hash).first() {
-            self.extension.broadcast_proposal_block(*signature, block.rlp_bytes());
+            self.extension.broadcast_proposal_block(*signature, block.into_inner());
         } else {
             cwarn!(ENGINE, "There is a proposal but does not have signature {:?}", vote_step);
         }
@@ -1020,8 +1021,15 @@ impl TendermintExtension {
 
     fn set_timer_step(&self, step: Step) {
         if let Some(api) = self.api.lock().as_ref() {
+            let t = match self.tendermint.read().as_ref().and_then(|weak| weak.upgrade()) {
+                Some(c) => c,
+                None => return,
+            };
+            let view = t.view.load(AtomicOrdering::SeqCst);
+            let du = Duration::seconds(view as i64);
+
             api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
-            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&step)).expect("Timer set succeeds");
+            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&step) + du).expect("Timer set succeeds");
         };
     }
 
