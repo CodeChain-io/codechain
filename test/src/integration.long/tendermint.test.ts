@@ -80,8 +80,8 @@ describeSkippedInTravis("Tendermint ", function() {
         await nodes[3].waitBlockNumber(2);
         await expect(
             nodes[0].sdk.rpc.chain.getBestBlockNumber()
-        ).to.eventually.equal(2);
-    }).timeout(90_000);
+        ).to.eventually.greaterThan(1);
+    }).timeout(20_000);
 
     it("Wait block generation and block sync", async function() {
         nodes[0].connect(nodes[1]);
@@ -107,8 +107,8 @@ describeSkippedInTravis("Tendermint ", function() {
         await nodes[3].waitBlockNumber(3);
         await expect(
             nodes[0].sdk.rpc.chain.getBestBlockNumber()
-        ).to.eventually.equal(3);
-    }).timeout(120_000);
+        ).to.eventually.greaterThan(2);
+    }).timeout(30_000);
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {

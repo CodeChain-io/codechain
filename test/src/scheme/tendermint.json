@@ -9,10 +9,10 @@
                     "tccq8fj6lxn9tchqdqqe93yaga6fzxh5rndzu8k2gdw",
                     "tccq9y6e0k6af9058qq4h4ffpt9xmat2vkeyue23j8y"
                 ],
-                "timeoutPropose": 10000,
-                "timeoutPrevote": 10000,
-                "timeoutPrecommit": 10000,
-                "timeoutCommit": 10000
+                "timeoutPropose": 1000,
+                "timeoutPrevote": 1000,
+                "timeoutPrecommit": 1000,
+                "timeoutCommit": 1000
             }
         }
     },
