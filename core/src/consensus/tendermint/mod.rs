@@ -1023,8 +1023,15 @@ impl TendermintExtension {
 
     fn set_timer_step(&self, step: Step) {
         if let Some(api) = self.api.lock().as_ref() {
+            let t = match self.tendermint.read().as_ref().and_then(|weak| weak.upgrade()) {
+                Some(c) => c,
+                None => return,
+            };
+            let view = t.view.load(AtomicOrdering::SeqCst);
+            let du = Duration::seconds(view as i64);
+
             api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
-            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&step)).expect("Timer set succeeds");
+            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&step) + du).expect("Timer set succeeds");
         };
     }
 
