@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Generator, KeyPair, SECP256K1};
-use rand::os::OsRng;
+use rand::rngs::OsRng;
 
 pub struct Random;
 

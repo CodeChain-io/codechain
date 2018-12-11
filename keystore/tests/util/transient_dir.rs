@@ -19,7 +19,8 @@ use std::{env, fs};
 
 use ckeystore::accounts_dir::{KeyDirectory, RootDiskDirectory};
 use ckeystore::{Error, SafeAccount};
-use rand::{OsRng, RngCore};
+use rand::rngs::OsRng;
+use rand::RngCore;
 
 pub fn random_dir() -> PathBuf {
     let mut rng = OsRng::new().unwrap();

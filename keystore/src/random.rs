@@ -15,7 +15,8 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use rand::distributions::Alphanumeric;
-use rand::{OsRng, Rng, RngCore};
+use rand::rngs::OsRng;
+use rand::{Rng, RngCore};
 
 pub trait Random {
     fn random() -> Self
