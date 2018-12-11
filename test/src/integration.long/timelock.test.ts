@@ -33,7 +33,7 @@ describe("Timelock", function() {
 
     beforeEach(async function() {
         node = new CodeChain({
-            argv: ["--force-sealing"],
+            argv: ["--force-sealing", "--no-reseal-timer"],
             base: BASE
         });
         await node.start();
@@ -157,9 +157,10 @@ describe("Timelock", function() {
                 value: 3
             });
 
-            expect(await node.getBestBlockNumber()).to.equal(2);
+            expect(await node.getBestBlockNumber()).to.equal(1);
             await checkTx(txhash, false);
 
+            await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
 
             expect(await node.getBestBlockNumber()).to.equal(3);
@@ -173,7 +174,7 @@ describe("Timelock", function() {
                 value: 3
             });
 
-            for (let i = 2; i <= 3; i++) {
+            for (let i = 1; i <= 3; i++) {
                 expect(await node.getBestBlockNumber()).to.equal(i);
                 await checkTx(txhash, false);
 
@@ -278,9 +279,10 @@ describe("Timelock", function() {
             await node.signTransactionInput(tx, 1);
             await node.sendTransaction(tx, { awaitInvoice: false });
 
-            expect(await node.getBestBlockNumber()).to.equal(3);
+            expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.hash(), false);
 
+            await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(4);
             await checkTx(tx.hash(), false);
@@ -314,9 +316,10 @@ describe("Timelock", function() {
             await node.signTransactionInput(tx, 1);
             await node.sendTransaction(tx, { awaitInvoice: false });
 
-            expect(await node.getBestBlockNumber()).to.equal(3);
+            expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.hash(), false);
 
+            await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(4);
             await checkTx(tx.hash(), false);
@@ -350,9 +353,10 @@ describe("Timelock", function() {
             await node.signTransactionInput(tx, 1);
             await node.sendTransaction(tx, { awaitInvoice: false });
 
-            expect(await node.getBestBlockNumber()).to.equal(3);
+            expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.hash(), false);
 
+            await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(4);
             await checkTx(tx.hash(), true);
@@ -381,14 +385,15 @@ describe("Timelock", function() {
             await node.signTransactionInput(tx, 1);
             await node.sendTransaction(tx, { awaitInvoice: false });
 
-            expect(await node.getBestBlockNumber()).to.equal(3);
+            expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.hash(), false);
 
+            await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(4);
             await checkTx(tx.hash(), false);
 
-            await wait(3000);
+            await wait(3_000);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
