@@ -83,6 +83,7 @@ impl Config {
             reseal_on_external_parcel,
             reseal_min_period: Duration::from_millis(self.mining.reseal_min_period.unwrap()),
             reseal_max_period: Duration::from_millis(self.mining.reseal_max_period.unwrap()),
+            no_reseal_timer: self.mining.no_reseal_timer.unwrap(),
             work_queue_size: self.mining.work_queue_size.unwrap(),
         })
     }
@@ -218,6 +219,7 @@ pub struct Mining {
     pub reseal_on_txs: Option<String>,
     pub reseal_min_period: Option<u64>,
     pub reseal_max_period: Option<u64>,
+    pub no_reseal_timer: Option<bool>,
     pub work_queue_size: Option<usize>,
 }
 
@@ -375,6 +377,9 @@ impl Mining {
         if other.reseal_max_period.is_some() {
             self.reseal_max_period = other.reseal_max_period;
         }
+        if other.no_reseal_timer.is_some() {
+            self.no_reseal_timer = other.no_reseal_timer;
+        }
         if other.work_queue_size.is_some() {
             self.work_queue_size = other.work_queue_size;
         }
@@ -411,6 +416,9 @@ impl Mining {
         }
         if let Some(reseal_max_period) = matches.value_of("reseal-max-period") {
             self.reseal_max_period = Some(reseal_max_period.parse().map_err(|_| "Invalid period")?);
+        }
+        if matches.is_present("no-reseal-timer") {
+            self.no_reseal_timer = Some(true);
         }
         if let Some(work_queue_size) = matches.value_of("work-queue-size") {
             self.work_queue_size = Some(work_queue_size.parse().map_err(|_| "Invalid size")?);
