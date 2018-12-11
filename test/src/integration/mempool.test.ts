@@ -80,7 +80,7 @@ describe("Timelock", function() {
 
     beforeEach(async function() {
         node = new CodeChain({
-            argv: ["--force-sealing"]
+            argv: ["--force-sealing", "--no-reseal-timer"]
         });
         await node.start();
     });
@@ -144,6 +144,8 @@ describe("Timelock", function() {
 
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(2);
+            await checkTx(txhash1, false);
+            await checkTx(txhash2, false);
 
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(3);
