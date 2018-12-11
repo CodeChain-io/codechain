@@ -62,6 +62,8 @@ pub struct MinerOptions {
     pub reseal_min_period: Duration,
     /// Maximum period between blocks (enables force sealing after that).
     pub reseal_max_period: Duration,
+    /// Disable the reseal timer
+    pub no_reseal_timer: bool,
     /// Maximum size of the mem pool.
     pub mem_pool_size: usize,
     /// Maximum memory usage of parcels in the queue (current / future).
@@ -79,6 +81,7 @@ impl Default for MinerOptions {
             reseal_on_own_parcel: true,
             reseal_min_period: Duration::from_secs(2),
             reseal_max_period: Duration::from_secs(120),
+            no_reseal_timer: false,
             mem_pool_size: 8192,
             mem_pool_memory_limit: Some(2 * 1024 * 1024),
             work_queue_size: 20,
@@ -746,13 +749,17 @@ impl MinerService for Miner {
                     self.prepare_work(block, original_work_hash);
                     // Set the reseal max timer, for creating empty blocks every reseal_max_period
                     // Not related to next_mandatory_reseal, which is used in seal_and_import_block_internally
-                    chain.set_max_timer();
+                    if !self.options.no_reseal_timer {
+                        chain.set_max_timer();
+                    }
                 }
             }
 
             // Sealing successful
             *self.next_allowed_reseal.lock() = Instant::now() + self.options.reseal_min_period;
-            chain.set_min_timer();
+            if !self.options.no_reseal_timer {
+                chain.set_min_timer();
+            }
         }
     }
 

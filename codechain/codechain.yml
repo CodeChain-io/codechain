@@ -192,6 +192,12 @@ args:
         takes_value: true
         conflicts_with:
             - no-miner
+    - no-reseal-timer:
+        long: no-reseal-timer
+        help: Do not use reseal timer.
+        takes_value: false
+        conflicts_with:
+            - no-miner
     - work-queue-size:
         long: work-queue-size
         value_name: ITEMS
