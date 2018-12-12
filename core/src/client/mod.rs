@@ -109,6 +109,8 @@ pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock + BlockInfo {
 
     /// Convert PoW difficulty to target.
     fn score_to_target(&self, score: &U256) -> U256;
+
+    fn get_kvdb(&self) -> Arc<KeyValueDB>;
 }
 
 /// Provides `seq` and `latest_seq` methods
