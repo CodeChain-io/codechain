@@ -23,7 +23,7 @@ use cmerkle::{self, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, Error as TransactionError,
-    InnerTransaction, OrderOnTransfer, PartialHashing, Transaction,
+    InnerTransaction, Order, OrderOnTransfer, PartialHashing, Transaction,
 };
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
@@ -237,22 +237,23 @@ impl<'db> ShardLevelState<'db> {
         orders: &[OrderOnTransfer],
         client: &C,
     ) -> StateResult<()> {
-        let mut values_to_hash: Vec<&PartialHashing> = vec![transaction; inputs.len()];
+        let mut values_to_hash = vec![None; inputs.len()];
         for order_tx in orders {
             let order = &order_tx.order;
             for input_idx in order_tx.input_indices.iter() {
-                values_to_hash[*input_idx] = order;
+                values_to_hash[*input_idx] = Some(order);
             }
         }
 
-        for (input, to_hash, burn) in inputs
+        for (input, transaction, order, burn) in inputs
             .iter()
             .enumerate()
-            .map(|(index, input)| (input, values_to_hash[index], false))
-            .chain(burns.iter().map(|input| (input, transaction as &PartialHashing, true)))
+            .map(|(index, input)| (input, transaction, values_to_hash[index], false))
+            .chain(burns.iter().map(|input| (input, transaction, None, true)))
         {
             let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
-            let script_result = self.check_and_run_input_script(input, to_hash, burn, sender, approvers, client)?;
+            let script_result =
+                self.check_and_run_input_script(input, transaction, order, burn, sender, approvers, client)?;
             match (script_result, burn) {
                 (ScriptResult::Unlocked, false) => {}
                 (ScriptResult::Burnt, true) => {}
@@ -405,12 +406,15 @@ impl<'db> ShardLevelState<'db> {
     fn check_and_run_input_script<C: ChainTimeInfo>(
         &self,
         input: &AssetTransferInput,
-        to_hash: &PartialHashing,
+        transaction: &PartialHashing,
+        order: Option<&Order>,
         burn: bool,
         sender: &Address,
         approvers: &[Address],
         client: &C,
     ) -> StateResult<ScriptResult> {
+        debug_assert!(!burn || order.is_none());
+
         let (address_hash, asset) = {
             let index = input.prev_out.index;
             let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
@@ -437,6 +441,18 @@ impl<'db> ShardLevelState<'db> {
                 return Ok(ScriptResult::Fail)
             }
         }
+
+        let to_hash: &PartialHashing = if let Some(order) = order {
+            if let Some(order_hash) = &asset.order_hash() {
+                if *order_hash == order.hash() {
+                    // If order on prev_out and input is same, skip checking lock script and running VM
+                    return Ok(ScriptResult::Unlocked)
+                }
+            }
+            order
+        } else {
+            transaction
+        };
 
         if *asset.lock_script_hash() != Blake::blake(&input.lock_script) {
             return Err(TransactionError::ScriptHashMismatch(Mismatch {
@@ -489,7 +505,7 @@ impl<'db> ShardLevelState<'db> {
         for input in inputs.iter() {
             let (_, asset_address) = self.check_input_asset(input, sender, approvers)?;
             let script_result =
-                self.check_and_run_input_script(input, transaction, false, sender, approvers, client)?;
+                self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
             match script_result {
                 ScriptResult::Unlocked => {}
@@ -596,7 +612,8 @@ impl<'db> ShardLevelState<'db> {
 
 
         let (_, asset_address) = self.check_input_asset(input, sender, approvers)?;
-        let script_result = self.check_and_run_input_script(input, transaction, false, sender, approvers, client)?;
+        let script_result =
+            self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
         match script_result {
             ScriptResult::Unlocked => {}
@@ -662,7 +679,8 @@ impl<'db> ShardLevelState<'db> {
         // WCCC has no approvers
         let approvers = [];
         let address = OwnedAssetAddress::new(burn.prev_out.transaction_hash, burn.prev_out.index, self.shard_id);
-        let script_result = self.check_and_run_input_script(burn, transaction, true, sender, &approvers, client)?;
+        let script_result =
+            self.check_and_run_input_script(burn, transaction, None, true, sender, &approvers, client)?;
         if script_result != ScriptResult::Burnt {
             return Err(TransactionError::FailedToUnlock(address.into()).into())
         }
