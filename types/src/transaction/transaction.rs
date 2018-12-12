@@ -68,9 +68,9 @@ pub struct OrderOnTransfer {
     pub order: Order,
     /// Spent amount of asset_type_from
     pub spent_amount: u64,
-    /// Incides of transfer inputs which are moved as order
+    /// Indices of transfer inputs which are moved as order
     pub input_indices: Vec<usize>,
-    /// Incides of transfer outputs which are moved as order
+    /// Indices of transfer outputs which are moved as order
     pub output_indices: Vec<usize>,
 }
 
