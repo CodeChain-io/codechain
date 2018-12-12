@@ -1581,7 +1581,7 @@ describe("orders", function() {
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
-                await node.signTransactionInput(transferTx2, 0);
+                // Sign on input 0 is not needed
                 await node.signTransactionInput(transferTx2, 1);
 
                 const invoices2 = await node.sendTransaction(transferTx2);

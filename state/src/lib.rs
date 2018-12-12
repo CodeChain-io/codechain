@@ -49,7 +49,6 @@ mod impls;
 mod item;
 mod traits;
 
-#[cfg(test)]
 pub mod tests;
 
 pub use crate::action_handler::{find_handler_for_id, ActionHandler, HitHandler};
