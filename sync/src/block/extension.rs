@@ -24,7 +24,7 @@ use ccore::{
     ImportError, Seal, UnverifiedParcel,
 };
 use cnetwork::{Api, NetworkExtension, NodeId};
-use cstate::find_handler_for_id;
+use cstate::FindActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
 use ctoken_generator::TokenGenerator;
 use ctypes::parcel::Action;
@@ -535,7 +535,7 @@ impl Extension {
                             Action::Custom {
                                 handler_id,
                                 ..
-                            } => find_handler_for_id(*handler_id, &self.client.custom_handlers()).is_some(),
+                            } => self.client.find_action_handler_for(*handler_id).is_some(),
                             _ => true,
                         };
                         if !is_valid {

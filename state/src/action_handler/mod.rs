@@ -32,8 +32,10 @@ pub trait ActionHandler: Send + Sync {
     fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> ActionHandlerResult;
 }
 
-pub fn find_handler_for_id<'a>(id: u64, handlers: &'a [Arc<ActionHandler>]) -> Option<&'a Arc<ActionHandler>> {
-    handlers.iter().find(|handler| handler.handler_id() == id)
+pub trait FindActionHandler {
+    fn find_action_handler_for(&self, _id: u64) -> Option<&Arc<ActionHandler>> {
+        None
+    }
 }
 
 pub type ActionHandlerResult = Result<Invoice, ActionHandlerError>;

@@ -19,7 +19,7 @@ use std::collections::HashSet;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
-use cstate::{StateDB, StateError, StateWithCache, TopLevelState};
+use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::invoice::Invoice;
 use ctypes::machine::{LiveBlock, Parcels};
 use ctypes::parcel::Error as ParcelError;
@@ -149,7 +149,7 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Push a parcel into the block.
-    pub fn push_parcel<C: ChainTimeInfo>(
+    pub fn push_parcel<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
         parcel: SignedParcel,
         h: Option<H256>,
@@ -168,7 +168,11 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Push parcels onto the block.
-    pub fn push_parcels<C: ChainTimeInfo>(&mut self, parcels: &[SignedParcel], client: &C) -> Result<(), Error> {
+    pub fn push_parcels<C: ChainTimeInfo + FindActionHandler>(
+        &mut self,
+        parcels: &[SignedParcel],
+        client: &C,
+    ) -> Result<(), Error> {
         for parcel in parcels {
             self.push_parcel(parcel.clone(), None, client)?;
         }
@@ -415,7 +419,7 @@ impl IsBlock for SealedBlock {
 }
 
 /// Enact the block given by block header, parcels and uncles
-pub fn enact<C: ChainTimeInfo>(
+pub fn enact<C: ChainTimeInfo + FindActionHandler>(
     header: &Header,
     parcels: &[SignedParcel],
     engine: &CodeChainEngine,
