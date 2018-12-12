@@ -78,11 +78,6 @@ pub enum Error {
         remaining_time: u64,
     },
     /// Errors on orders
-    /// Order of OwnedAsset and AssetTransferInput is different
-    OrderChanged {
-        prev_out_order_hash: H256,
-        transfer_order_hash: H256,
-    },
     /// origin_outputs of order is not satisfied.
     InvalidOriginOutputs(H256),
     /// The input/output indices of the order on transfer is not valid.
@@ -133,15 +128,14 @@ const ERROR_ID_INVALID_COMPOSED_OUTPUT: u8 = 23u8;
 const ERROR_ID_INVALID_DECOMPOSED_OUTPUT: u8 = 24u8;
 const ERROR_ID_EMPTY_OUTPUT: u8 = 25u8;
 const ERROR_ID_TIMELOCKED: u8 = 26u8;
-const ERROR_ID_ORDER_CHANGED: u8 = 27u8;
-const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 28u8;
-const ERROR_ID_INVALID_ORDER_IN_OUT_INDICES: u8 = 29u8;
-const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS: u8 = 30u8;
-const ERROR_ID_INVALID_ORDER_ASSET_TYPES: u8 = 31u8;
-const ERROR_ID_INVALID_ORDER_ASSET_AMOUNTS: u8 = 32u8;
-const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 33u8;
-const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 34u8;
-const ERROR_ID_ORDER_EXPIRED: u8 = 35u8;
+const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 27u8;
+const ERROR_ID_INVALID_ORDER_IN_OUT_INDICES: u8 = 28u8;
+const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS: u8 = 29u8;
+const ERROR_ID_INVALID_ORDER_ASSET_TYPES: u8 = 30u8;
+const ERROR_ID_INVALID_ORDER_ASSET_AMOUNTS: u8 = 31u8;
+const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 32u8;
+const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 33u8;
+const ERROR_ID_ORDER_EXPIRED: u8 = 34u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -193,12 +187,6 @@ impl Encodable for Error {
                 timelock,
                 remaining_time,
             } => s.begin_list(3).append(&ERROR_ID_TIMELOCKED).append(timelock).append(remaining_time),
-            Error::OrderChanged {
-                prev_out_order_hash,
-                transfer_order_hash,
-            } => {
-                s.begin_list(3).append(&ERROR_ID_ORDER_CHANGED).append(prev_out_order_hash).append(transfer_order_hash)
-            }
             Error::InvalidOriginOutputs(order_hash) => {
                 s.begin_list(2).append(&ERROR_ID_INVALID_ORIGIN_OUTPUTS).append(order_hash)
             }
@@ -335,15 +323,6 @@ impl Decodable for Error {
                 timelock: rlp.val_at(1)?,
                 remaining_time: rlp.val_at(2)?,
             },
-            ERROR_ID_ORDER_CHANGED => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::OrderChanged {
-                    prev_out_order_hash: rlp.val_at(1)?,
-                    transfer_order_hash: rlp.val_at(2)?,
-                }
-            }
             ERROR_ID_INVALID_ORIGIN_OUTPUTS => {
                 if rlp.item_count()? != 2 {
                     return Err(DecoderError::RlpInvalidLength)
@@ -467,14 +446,6 @@ impl Display for Error {
                 f,
                 "The transaction cannot be executed because of the timelock({:?}). The remaining time is {}",
                 timelock, remaining_time
-            ),
-            Error::OrderChanged {
-                prev_out_order_hash,
-                transfer_order_hash,
-            } => write!(
-                f,
-                "The order hash of the previous output is {}, but the order hash of the transfer tx is {}",
-                prev_out_order_hash, transfer_order_hash
             ),
             Error::InvalidOriginOutputs(order_hash) => {
                 write!(f, "The order({}) is invalid because its origin outputs are wrong", order_hash)
