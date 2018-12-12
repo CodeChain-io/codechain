@@ -30,7 +30,8 @@ use ctypes::parcel::Action;
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
 use primitives::{H256, U256};
-use rand::{thread_rng, Rng};
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
@@ -247,7 +248,7 @@ impl TimeoutHandler for Extension {
             SYNC_TIMER_TOKEN => {
                 let highest_score = self.client.chain_info().highest_score;
                 let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
-                thread_rng().shuffle(&mut peer_ids);
+                peer_ids.shuffle(&mut thread_rng());
 
                 for id in peer_ids {
                     if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
@@ -617,7 +618,7 @@ impl Extension {
 
         let total_score = self.client.chain_info().highest_score;
         let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
-        thread_rng().shuffle(&mut peer_ids);
+        peer_ids.shuffle(&mut thread_rng());
 
         for id in peer_ids {
             let peer_score = if let Some(peer) = self.header_downloaders.read().get(&id) {

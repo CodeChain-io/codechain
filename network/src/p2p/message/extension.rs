@@ -145,7 +145,8 @@ impl Decodable for Message {
 #[cfg(test)]
 mod tests {
     use ckey::Secret;
-    use rand::{OsRng, Rng};
+    use rand::rngs::OsRng;
+    use rand::Rng;
 
     use super::super::super::message::Nonce;
     use super::*;

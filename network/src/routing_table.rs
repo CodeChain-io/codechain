@@ -19,7 +19,8 @@ use std::sync::Arc;
 
 use ckey::{exchange, Generator, KeyPair, Public, Random, Secret};
 use parking_lot::{Mutex, RwLock};
-use rand::{OsRng, Rng};
+use rand::rngs::OsRng;
+use rand::Rng;
 use rlp::{Decodable, Encodable, UntrustedRlp};
 
 use crate::session::{Nonce, Session};

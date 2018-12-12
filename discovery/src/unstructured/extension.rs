@@ -19,7 +19,8 @@ use std::sync::Arc;
 
 use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable, TimeoutHandler, TimerToken};
 use parking_lot::RwLock;
-use rand::{thread_rng, Rng};
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
 use rlp::{Decodable, Encodable, UntrustedRlp};
 use time::Duration;
 
@@ -99,7 +100,7 @@ impl NetworkExtension for Extension {
                 if let (Some(api), Some(routing_table)) = (&*api, &*routing_table) {
                     let mut addresses =
                         routing_table.reachable_addresses(&node.into_addr()).into_iter().collect::<Vec<_>>();
-                    thread_rng().shuffle(&mut addresses);
+                    addresses.shuffle(&mut thread_rng());
                     let addresses =
                         addresses.into_iter().take(::std::cmp::min(self.config.bucket_size, len) as usize).collect();
                     let response = Message::Response(addresses).rlp_bytes();
