@@ -306,18 +306,8 @@ impl<'db> ShardLevelState<'db> {
                 let asset = self.asset(&address)?.ok_or_else(|| TransactionError::AssetNotFound(address.into()))?;
 
                 match &asset.order_hash() {
-                    Some(order_hash) => {
-                        // Is order consistent?
-                        if *order_hash != order.hash() {
-                            return Err(TransactionError::OrderChanged {
-                                prev_out_order_hash: *order_hash,
-                                transfer_order_hash: order.hash(),
-                            }
-                            .into())
-                        }
-                    }
-                    None => {
-                        // Are origin outputs of the order is valid?
+                    Some(order_hash) if *order_hash == order.hash() => {}
+                    _ => {
                         if order.origin_outputs.contains(&input.prev_out) {
                             counter += 1;
                         } else {
@@ -445,7 +435,8 @@ impl<'db> ShardLevelState<'db> {
         let to_hash: &PartialHashing = if let Some(order) = order {
             if let Some(order_hash) = &asset.order_hash() {
                 if *order_hash == order.hash() {
-                    // If order on prev_out and input is same, skip checking lock script and running VM
+                    // If an order on an input and an order on the corresponding prev_out(asset) is same,
+                    // then skip checking lock script and running VM.
                     return Ok(ScriptResult::Unlocked)
                 }
             }
