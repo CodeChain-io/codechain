@@ -35,7 +35,7 @@ use crate::cache::ShardCache;
 use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
 use crate::traits::{ShardState, ShardStateView};
 use crate::{
-    Asset, AssetScheme, AssetSchemeAddress, CacheableItem, OwnedAsset, OwnedAssetAddress, StateDB, StateError,
+    Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, StateError,
     StateResult,
 };
 
@@ -210,18 +210,30 @@ impl<'db> ShardLevelState<'db> {
         }
 
         let asset_scheme_address = AssetSchemeAddress::new(transaction_hash, self.shard_id);
-        let amount = amount.unwrap_or(::std::u64::MAX);
-        let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
-        if !asset_scheme.is_null() {
+        if self.asset_scheme(&asset_scheme_address)?.is_some() {
             return Err(TransactionError::AssetSchemeDuplicated(transaction_hash).into())
         }
-        asset_scheme.init(metadata.to_string(), amount, *approver, *administrator, pool);
+        let amount = amount.unwrap_or(::std::u64::MAX);
+        let asset_scheme = self.create_asset_scheme(
+            &asset_scheme_address,
+            metadata.to_string(),
+            amount,
+            *approver,
+            *administrator,
+            pool,
+        )?;
 
         ctrace!(TX, "{:?} is minted on {:?}", asset_scheme, asset_scheme_address);
 
         let asset_address = OwnedAssetAddress::new(transaction_hash, 0, self.shard_id);
-        let mut asset = self.get_asset_mut(&asset_address)?;
-        asset.init(asset_scheme_address.into(), *lock_script_hash, parameters.to_vec(), amount, None);
+        let asset = self.create_asset(
+            &asset_address,
+            asset_scheme_address.into(),
+            *lock_script_hash,
+            parameters.to_vec(),
+            amount,
+            None,
+        )?;
         ctrace!(TX, "{:?} is generated on {:?}", asset, asset_address);
         Ok(())
     }
@@ -279,14 +291,14 @@ impl<'db> ShardLevelState<'db> {
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
             let asset_address = OwnedAssetAddress::new(transaction.hash(), index, self.shard_id);
-            let mut asset = self.get_asset_mut(&asset_address)?;
-            asset.init(
+            let _asset = self.create_asset(
+                &asset_address,
                 output.asset_type,
                 output.lock_script_hash,
                 output.parameters.clone(),
                 output.amount,
                 output_order_hashes[index],
-            );
+            )?;
             created_asset.push((asset_address, output.amount));
         }
         ctrace!(TX, "Deleted assets {:?}", deleted_asset);
@@ -619,8 +631,14 @@ impl<'db> ShardLevelState<'db> {
         // Put asset into DB
         for (index, output) in outputs.iter().enumerate() {
             let asset_address = OwnedAssetAddress::new(transaction.hash(), index, self.shard_id);
-            let mut asset = self.get_asset_mut(&asset_address)?;
-            asset.init(output.asset_type, output.lock_script_hash, output.parameters.clone(), output.amount, None);
+            let _asset = self.create_asset(
+                &asset_address,
+                output.asset_type,
+                output.lock_script_hash,
+                output.parameters.clone(),
+                output.amount,
+                None,
+            )?;
         }
 
         Ok(())
@@ -634,16 +652,16 @@ impl<'db> ShardLevelState<'db> {
         amount: u64,
     ) -> StateResult<()> {
         let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(self.shard_id);
-        let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
-        if asset_scheme.is_null() {
-            // FIXME: Wrapped CCC is minted in here, but the metadata is not well-defined.
-            asset_scheme.init(
+        if self.asset_scheme(&asset_scheme_address)?.is_none() {
+            let asset_scheme = self.create_asset_scheme(
+                &asset_scheme_address,
                 format!("{{\"name\":\"Wrapped CCC\",\"description\":\"Wrapped CCC in shard {}\"}}", self.shard_id),
                 ::std::u64::MAX,
                 None,
                 None,
                 Vec::new(),
             );
+            // FIXME: Wrapped CCC is minted in here, but the metadata is not well-defined.
             ctrace!(
                 TX,
                 "Wrapped CCC in shard {} ({:?}) is minted on {:?}",
@@ -654,8 +672,14 @@ impl<'db> ShardLevelState<'db> {
         }
 
         let asset_address = OwnedAssetAddress::new(*parcel_hash, 0, self.shard_id);
-        let mut asset = self.get_asset_mut(&asset_address)?;
-        asset.init(asset_scheme_address.into(), *lock_script_hash, parameters.to_vec(), amount, None);
+        let asset = self.create_asset(
+            &asset_address,
+            asset_scheme_address.into(),
+            *lock_script_hash,
+            parameters.to_vec(),
+            amount,
+            None,
+        )?;
         ctrace!(TX, "Created Wrapped CCC {:?} on {:?}", asset, asset_address);
         Ok(())
     }
@@ -690,6 +714,20 @@ impl<'db> ShardLevelState<'db> {
         self.cache.remove_asset_scheme(account);
     }
 
+    fn create_asset_scheme(
+        &self,
+        a: &AssetSchemeAddress,
+        metadata: String,
+        amount: u64,
+        approver: Option<Address>,
+        administrator: Option<Address>,
+        pool: Vec<Asset>,
+    ) -> cmerkle::Result<AssetScheme> {
+        let mut asset_scheme = self.get_asset_scheme_mut(a)?;
+        asset_scheme.init(metadata, amount, approver, administrator, pool);
+        Ok(asset_scheme.clone())
+    }
+
     fn get_asset_scheme_mut(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
@@ -700,6 +738,20 @@ impl<'db> ShardLevelState<'db> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         self.cache.asset_mut(a, &trie)
+    }
+
+    fn create_asset(
+        &self,
+        a: &OwnedAssetAddress,
+        asset_type: H256,
+        lock_script_hash: H160,
+        parameters: Vec<Bytes>,
+        amount: u64,
+        order_hash: Option<H256>,
+    ) -> cmerkle::Result<OwnedAsset> {
+        let mut asset = self.get_asset_mut(a)?;
+        asset.init(asset_type, lock_script_hash, parameters, amount, order_hash);
+        Ok(asset.clone())
     }
 }
 
