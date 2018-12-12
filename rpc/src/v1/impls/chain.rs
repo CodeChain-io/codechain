@@ -23,7 +23,7 @@ use ccore::{
 use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
-use cstate::{find_handler_for_id, AssetScheme, AssetSchemeAddress, OwnedAsset};
+use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::Action;
 use ctypes::{BlockNumber, ShardId};
@@ -66,6 +66,7 @@ where
         + RegularKeyOwner
         + ExecuteClient
         + EngineInfo
+        + FindActionHandler
         + 'static,
     M: MinerService + 'static,
 {
@@ -79,7 +80,7 @@ where
                     ..
                 } = &parcel.action
                 {
-                    if find_handler_for_id(*handler_id, &self.client.custom_handlers()).is_none() {
+                    if self.client.find_action_handler_for(*handler_id).is_none() {
                         return Err(errors::rlp(&DecoderError::Custom("Invalid custom action!")))
                     }
                 }

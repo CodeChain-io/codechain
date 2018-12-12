@@ -23,7 +23,7 @@ mod stratum;
 mod work_notify;
 
 use ckey::{Address, Password, PlatformAddress};
-use cstate::TopStateView;
+use cstate::{FindActionHandler, TopStateView};
 use ctypes::parcel::IncompleteParcel;
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
@@ -83,12 +83,19 @@ pub trait MinerService: Send + Sync {
     /// Returns true if we had to prepare new pending block.
     fn prepare_work_sealing<C>(&self, &C) -> bool
     where
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo;
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler;
 
     /// New chain head event. Restart mining operation.
     fn update_sealing<C>(&self, chain: &C, allow_empty_block: bool)
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ResealTimer + ChainTimeInfo;
+        C: AccountData
+            + BlockChain
+            + BlockProducer
+            + ImportSealedBlock
+            + RegularKeyOwner
+            + ResealTimer
+            + ChainTimeInfo
+            + FindActionHandler;
 
     /// Submit `seal` as a valid solution for the header of `pow_hash`.
     /// Will check the seal, but not actually insert the block into the chain.
@@ -97,7 +104,7 @@ pub trait MinerService: Send + Sync {
     /// Get the sealing work package and if `Some`, apply some transform.
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo,
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
         F: FnOnce(&ClosedBlock) -> T,
         Self: Sized;
 

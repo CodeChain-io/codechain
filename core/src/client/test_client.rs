@@ -38,7 +38,7 @@ use std::sync::Arc;
 use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
-use cstate::{ActionHandler, StateDB};
+use cstate::{FindActionHandler, StateDB};
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, Parcel};
@@ -292,7 +292,7 @@ impl TestBlockChainClient {
 pub fn get_temp_state_db() -> StateDB {
     let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
     let journal_db = journaldb::new(Arc::new(db), journaldb::Algorithm::Archive, COL_STATE);
-    StateDB::new(journal_db, Vec::new())
+    StateDB::new(journal_db)
 }
 
 impl ReopenBlock for TestBlockChainClient {
@@ -524,10 +524,6 @@ impl BlockChainClient for TestBlockChainClient {
     fn transaction_invoices(&self, _: &H256) -> Vec<Invoice> {
         unimplemented!();
     }
-
-    fn custom_handlers(&self) -> Vec<Arc<ActionHandler>> {
-        unimplemented!()
-    }
 }
 
 impl TimeoutHandler for TestBlockChainClient {
@@ -559,6 +555,8 @@ impl ChainTimeInfo for TestBlockChainClient {
         Some(0)
     }
 }
+
+impl FindActionHandler for TestBlockChainClient {}
 
 impl super::EngineClient for TestBlockChainClient {
     fn update_sealing(&self, allow_empty_block: bool) {

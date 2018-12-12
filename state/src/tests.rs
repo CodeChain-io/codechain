@@ -24,11 +24,11 @@ pub mod helpers {
     use primitives::H256;
 
     use crate::impls::TopLevelState;
-    use crate::StateDB;
+    use crate::{FindActionHandler, StateDB};
 
-    pub struct TestChainTimeInfoClient {}
+    pub struct TestClient {}
 
-    impl ChainTimeInfo for TestChainTimeInfoClient {
+    impl ChainTimeInfo for TestClient {
         fn best_block_number(&self) -> u64 {
             0
         }
@@ -46,12 +46,14 @@ pub mod helpers {
         }
     }
 
+    impl FindActionHandler for TestClient {}
+
     pub fn get_memory_db() -> Arc<KeyValueDB> {
         Arc::new(kvdb_memorydb::create(1))
     }
 
     pub fn get_temp_state_db() -> StateDB {
-        StateDB::new_with_memorydb(Vec::new())
+        StateDB::new_with_memorydb()
     }
 
     pub fn get_temp_state() -> TopLevelState {
@@ -59,7 +61,7 @@ pub mod helpers {
         TopLevelState::new_for_testing(state_db)
     }
 
-    pub fn get_test_client() -> TestChainTimeInfoClient {
-        TestChainTimeInfoClient {}
+    pub fn get_test_client() -> TestClient {
+        TestClient {}
     }
 }

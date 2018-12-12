@@ -21,7 +21,7 @@ use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::{Address, NetworkId};
 use cmerkle::TrieFactory;
-use cstate::{ActionHandler, Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult};
+use cstate::{Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult};
 use ctypes::transaction::Error as TransactionError;
 use ctypes::ShardId;
 use hashdb::{AsHashDB, HashDB};
@@ -104,8 +104,6 @@ pub struct Scheme {
     /// Genesis state as plain old data.
     genesis_accounts: PodAccounts,
     genesis_shards: PodShards,
-
-    pub custom_handlers: Vec<Arc<ActionHandler>>,
 }
 
 // helper for formatting errors.
@@ -212,7 +210,7 @@ impl Scheme {
         {
             let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
 
-            for handler in &self.custom_handlers {
+            for handler in self.engine.action_handlers() {
                 handler.init(t.as_mut())?;
             }
         }
@@ -358,9 +356,6 @@ fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
     let GenericSeal(seal_rlp) = g.seal.into();
     let params = CommonParams::from(s.params);
     let engine = Scheme::engine(s.engine, params);
-    let custom_handlers = match &engine {
-        _ => vec![],
-    };
 
     let mut s = Scheme {
         name: s.name.clone(),
@@ -378,15 +373,13 @@ fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
         state_root_memo: RwLock::new(Default::default()), // will be overwritten right after.
         genesis_accounts: s.accounts.into(),
         genesis_shards: s.shards.into(),
-
-        custom_handlers,
     };
 
     // use memoized state root if provided.
     match g.state_root {
         Some(root) => *s.state_root_memo.get_mut() = root,
         None => {
-            let db = StateDB::new_with_memorydb(s.custom_handlers.clone());
+            let db = StateDB::new_with_memorydb();
             let _ = s.initialize_state(db)?;
         }
     }

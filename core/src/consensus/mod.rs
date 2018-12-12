@@ -39,6 +39,7 @@ use std::sync::{Arc, Weak};
 
 use ckey::{Address, Password, Signature};
 use cnetwork::NetworkService;
+use cstate::ActionHandler;
 use ctypes::machine::Machine;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
@@ -369,6 +370,10 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
     /// Verify a particular parcel is valid.
     fn verify_parcel_unordered(&self, p: UnverifiedParcel, header: &Header) -> Result<SignedParcel, Error> {
         self.machine().verify_parcel_unordered(p, header)
+    }
+
+    fn action_handlers(&self) -> &[Arc<ActionHandler>] {
+        &[]
     }
 }
 
