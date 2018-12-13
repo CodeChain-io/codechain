@@ -228,6 +228,11 @@ impl Tendermint {
         self.check_above_threshold(step_votes).is_ok()
     }
 
+    fn has_all_votes(&self, vote_step: &VoteStep) -> bool {
+        let step_votes = self.votes.count_round_votes(vote_step);
+        self.validators.count(&*self.proposal_parent.read()) == step_votes
+    }
+
     fn has_enough_aligned_votes(&self, message: &ConsensusMessage) -> bool {
         let aligned_count = self.votes.count_aligned_votes(&message);
         self.check_above_threshold(aligned_count).is_ok()
@@ -439,6 +444,13 @@ impl Tendermint {
                 ctrace!(ENGINE, "Transition to {:?} triggered.", step);
                 self.to_step(step);
             }
+        } else if vote_step.step == Step::Precommit
+            && self.height() - 1 == vote_step.height
+            && *self.step.read() == Step::Commit
+            && self.has_all_votes(vote_step)
+        {
+            ctrace!(ENGINE, "Transition to Propose because all pre-commits are received");
+            self.to_step(Step::Propose);
         }
     }
 
