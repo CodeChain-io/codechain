@@ -85,7 +85,7 @@ pub struct Tendermint {
     proposal_parent: RwLock<H256>,
     /// Proposal block which parent is not imported yet
     future_proposal: RwLock<Option<Bytes>>,
-    last_seal: RwLock<(H256, View, Vec<Signature>)>,
+    last_confirmed_view: RwLock<(H256, View)>,
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
@@ -118,7 +118,7 @@ impl Tendermint {
             proposal: RwLock::new(None),
             proposal_parent: Default::default(),
             future_proposal: RwLock::new(None),
-            last_seal: RwLock::new((Default::default(), 0, Vec::new())),
+            last_confirmed_view: RwLock::new((Default::default(), 0)),
             validators: our_params.validators,
             block_reward: our_params.block_reward,
             extension: Arc::new(extension),
@@ -263,8 +263,8 @@ impl Tendermint {
         }
     }
 
-    fn save_last_seal(&self, block_hash: H256, view: View, seal: Vec<Signature>) {
-        *self.last_seal.write() = (block_hash, view, seal);
+    fn save_last_confirmed_view(&self, block_hash: H256, view: View) {
+        *self.last_confirmed_view.write() = (block_hash, view);
     }
 
     fn increment_view(&self, n: View) {
@@ -413,9 +413,7 @@ impl Tendermint {
                     if c.block(&BlockId::Hash(bh)).is_some() {
                         // Commit the block using a complete signature set.
                         // Generate seal and remove old votes.
-                        let precommits = self.votes.round_signatures(vote_step, &bh);
-                        ctrace!(ENGINE, "Collected seal: {:?}", precommits);
-                        self.save_last_seal(bh, message.vote_step.view, precommits);
+                        self.save_last_confirmed_view(bh, message.vote_step.view);
                         self.votes.throw_out_old(&vote_step);
                         self.to_next_height(self.height());
                         Some(Step::Commit)
@@ -496,11 +494,15 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
         let view = self.view.load(AtomicOrdering::SeqCst);
 
-        let (_, last_block_view, seal) = &*self.last_seal.read();
+        let (last_block_hash, last_block_view) = &*self.last_confirmed_view.read();
+        let precommits = self
+            .votes
+            .round_signatures(&VoteStep::new(height - 1, *last_block_view, Step::Precommit), &last_block_hash);
+        ctrace!(ENGINE, "Collected seal: {:?}", precommits);
         Seal::Tendermint {
             prev_view: *last_block_view,
             cur_view: view,
-            precommits: seal.clone(),
+            precommits: precommits.clone(),
         }
     }
 
@@ -710,7 +712,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn register_client(&self, client: Weak<EngineClient>) {
         if let Some(c) = client.upgrade() {
             self.height.store(c.chain_info().best_block_number as usize + 1, AtomicOrdering::SeqCst);
-            *self.last_seal.write() = (c.best_block_header().hash(), 0, Vec::new());
+            *self.last_confirmed_view.write() = (c.best_block_header().hash(), 0);
         }
         *self.client.write() = Some(client.clone());
         self.extension.register_client(client.clone());
