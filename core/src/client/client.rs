@@ -68,7 +68,7 @@ pub struct Client {
     chain: RwLock<BlockChain>,
 
     /// Client uses this to store blocks, traces, etc.
-    db: RwLock<Arc<KeyValueDB>>,
+    db: Arc<KeyValueDB>,
 
     state_db: RwLock<StateDB>,
 
@@ -120,7 +120,7 @@ impl Client {
             engine,
             io_channel: Mutex::new(message_channel),
             chain: RwLock::new(chain),
-            db: RwLock::new(db),
+            db,
             state_db: RwLock::new(state_db),
             notify: RwLock::new(Vec::new()),
             queue_parcels: AtomicUsize::new(0),
@@ -130,7 +130,7 @@ impl Client {
         });
 
         // ensure buffered changes are flushed.
-        client.db.read().flush().map_err(ClientError::Database)?;
+        client.db.flush().map_err(ClientError::Database)?;
         Ok(client)
     }
 
@@ -265,8 +265,8 @@ impl Client {
         self.chain.read()
     }
 
-    pub fn db(&self) -> RwLockReadGuard<Arc<KeyValueDB>> {
-        self.db.read()
+    pub fn db(&self) -> &Arc<KeyValueDB> {
+        &self.db
     }
 }
 

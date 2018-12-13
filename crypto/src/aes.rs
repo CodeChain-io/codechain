@@ -94,7 +94,8 @@ mod tests {
 
     use primitives::{H128, H256};
 
-    use self::rand::{OsRng, RngCore};
+    use self::rand::rngs::OsRng;
+    use self::rand::RngCore;
     use super::{decrypt, encrypt};
 
     #[test]

@@ -384,6 +384,11 @@ describe("transactions", function() {
         const invoices2 = await node.sendTransaction(tx2);
         expect(invoices2!.length).to.equal(1);
         expect(invoices2![0].success).to.be.false;
+        expect(invoices2![0].error!.type).to.equal("InvalidTransaction");
+        expect(invoices2![0].error!.content.type).to.equal("FailedToUnlock");
+        expect(invoices2![0].error!.content.content.reason).to.be.equal(
+            "ScriptShouldBeBurnt"
+        );
 
         expect(await node.sdk.rpc.chain.getAsset(tx1.hash(), 0)).not.to.be.null;
     });
@@ -397,6 +402,11 @@ describe("transactions", function() {
         const invoices = await node.sendTransaction(tx);
         expect(invoices!.length).to.equal(1);
         expect(invoices![0].success).to.be.false;
+        expect(invoices![0].error!.type).to.equal("InvalidTransaction");
+        expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
+        expect(invoices![0].error!.content.content.reason).to.be.equal(
+            "ScriptShouldNotBeBurnt"
+        );
     });
 
     describe("approver", function() {
@@ -559,6 +569,9 @@ describe("transactions", function() {
             expect(invoices![0].success).to.be.false;
             expect(invoices![0].error!.type).to.equal("InvalidTransaction");
             expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
+            expect(invoices![0].error!.content.content.reason).to.equal(
+                "ScriptError"
+            );
         });
 
         it("Can add burns after signing with the signature tag of single input", async function() {
@@ -598,6 +611,9 @@ describe("transactions", function() {
             expect(invoices![0].success).to.be.false;
             expect(invoices![0].error!.type).to.equal("InvalidTransaction");
             expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
+            expect(invoices![0].error!.content.content.reason).to.equal(
+                "ScriptError"
+            );
         });
 
         it("Can add inputs after signing with the signature tag of single input", async function() {
@@ -635,6 +651,9 @@ describe("transactions", function() {
             expect(invoices![0].success).to.be.false;
             expect(invoices![0].error!.type).to.equal("InvalidTransaction");
             expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
+            expect(invoices![0].error!.content.content.reason).to.equal(
+                "ScriptError"
+            );
         });
 
         it("Can add outputs after signing the signature tag of some outputs", async function() {
