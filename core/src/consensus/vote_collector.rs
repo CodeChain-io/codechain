@@ -113,20 +113,21 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
 
     /// Checks if the message should be ignored.
     pub fn is_old_or_known(&self, message: &M) -> bool {
-        self.votes.read().get(&message.round()).map_or(false, |c| {
-            let is_known = c.messages.contains(message);
-            if is_known {
-                ctrace!(ENGINE, "Known message: {:?}.", message);
-            }
-            is_known
-        }) || {
-            let guard = self.votes.read();
-            let is_old = guard.keys().next().map_or(true, |oldest| message.round() <= oldest);
-            if is_old {
-                ctrace!(ENGINE, "Old message {:?}.", message);
-            }
-            is_old
+        let read_guard = self.votes.read();
+
+        let is_known = read_guard.get(&message.round()).map_or(false, |c| c.messages.contains(message));
+        if is_known {
+            ctrace!(ENGINE, "Known message: {:?}.", message);
+            return true
         }
+
+        let is_old = read_guard.keys().next().map_or(true, |oldest| message.round() <= oldest);
+        if is_old {
+            ctrace!(ENGINE, "Old message {:?}.", message);
+            return true
+        }
+
+        false
     }
 
     /// Throws out messages older than message, leaves message as marker for the oldest.
