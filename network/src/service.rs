@@ -48,8 +48,8 @@ impl Service {
         max_peers: usize,
         filters_control: Arc<FiltersControl>,
     ) -> Result<Arc<Self>, Error> {
-        let p2p = IoService::start("P2P")?;
-        let session_initiator = IoService::start("SessionInitiator")?;
+        let p2p = IoService::start("P2P", 4)?;
+        let session_initiator = IoService::start("SessionInitiator", 1)?;
 
         let routing_table = RoutingTable::new();
 

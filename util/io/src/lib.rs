@@ -20,8 +20,10 @@
 //!
 //! ```rust
 //! extern crate codechain_io as cio;
-//! use cio::*;
+//!
 //! use std::sync::Arc;
+//!
+//! use cio::*;
 //!
 //! struct MyHandler;
 //!
@@ -47,7 +49,8 @@
 //! }
 //!
 //! fn main () {
-//! 	let mut service = IoService::<MyMessage>::start("Test").expect("Error creating network service");
+//! 	let mut service = IoService::<MyMessage>::start("Test", 1)
+//!         .expect("Error creating network service");
 //! 	service.register_handler(Arc::new(MyHandler)).unwrap();
 //!
 //! 	// Wait for quit condition
@@ -199,8 +202,9 @@ pub use service::TOKENS_PER_HANDLER;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::Arc;
+
+    use super::*;
 
     struct MyHandler;
 
@@ -227,7 +231,7 @@ mod tests {
 
     #[test]
     fn service_register_handler() {
-        let service = IoService::<MyMessage>::start("Test").expect("Error creating network service");
+        let service = IoService::<MyMessage>::start("Test", 1).expect("Error creating network service");
         service.register_handler(Arc::new(MyHandler)).unwrap();
     }
 }

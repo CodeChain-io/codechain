@@ -41,7 +41,7 @@ impl ClientService {
         client_path: &Path,
         miner: Arc<Miner>,
     ) -> Result<ClientService, Error> {
-        let io_service = IoService::<ClientIoMessage>::start("Client")?;
+        let io_service = IoService::<ClientIoMessage>::start("Client", 4)?;
 
         let mut db_config = DatabaseConfig::with_columns(crate::db::NUM_COLUMNS);
 

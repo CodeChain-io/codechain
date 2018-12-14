@@ -14,15 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
+use std::sync::{Arc, Weak};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
+
 use crossbeam::deque;
 use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
 use mio::timer::Timeout;
 use mio::*;
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::HashMap;
-use std::sync::{Arc, Weak};
-use std::thread::{self, JoinHandle};
-use std::time::Duration;
 use worker::{Work, WorkType, Worker};
 
 use super::{IoError, IoHandler};
@@ -180,11 +181,15 @@ where
         event_loop: &mut EventLoop<IoManager<Message>>,
         handler: Arc<HandlerType<Message>>,
         name: &str,
+        num_workers: usize,
     ) -> Result<(), IoError> {
         let (worker, stealer) = deque::lifo();
-        let num_workers = 4;
         let work_ready_mutex = Arc::new(Mutex::new(()));
         let work_ready = Arc::new(Condvar::new());
+
+        if num_workers == 0 {
+            return Err(IoError::Handler("Invalid number of workers".to_string().into()))
+        }
 
         let workers = (0..num_workers)
             .map(|i| {
@@ -432,7 +437,7 @@ where
     Message: Send + Sync + 'static,
 {
     /// Starts IO event loop
-    pub fn start(name: &'static str) -> Result<IoService<Message>, IoError> {
+    pub fn start(name: &'static str, num_workers: usize) -> Result<IoService<Message>, IoError> {
         let mut config = EventLoopBuilder::new();
         config.messages_per_tick(1024);
         let mut event_loop = config.build().expect("Error creating event loop");
@@ -440,7 +445,7 @@ where
         let handler = Arc::new(RwLock::new(None));
         let h = Arc::clone(&handler);
         let thread = thread::spawn(move || {
-            IoManager::<Message>::start(&mut event_loop, h, name).expect("Error starting IO service");
+            IoManager::<Message>::start(&mut event_loop, h, name, num_workers).expect("Error starting IO service");
         });
         Ok(IoService {
             thread: Mutex::new(Some(thread)),

@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn message_only_to_target() {
-        let p2p_service = IoService::start("P2P").unwrap();
+        let p2p_service = IoService::start("P2P", 4).unwrap();
         let timer_loop = TimerLoop::new(2);
 
         let client = Client::new(p2p_service.channel(), timer_loop);
