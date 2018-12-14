@@ -98,6 +98,8 @@ pub struct Tendermint {
     chain_notify: Arc<TendermintChainNotify>,
     /// Lock for changing step. We use ReentrantMutex because handle_valid_message called recursively.
     pub step_change_lock: ReentrantMutex<()>,
+    /// The token counter for timeout. If timeout is called with the token which is less than this value, it should be discarded.
+    timeout_token_counter: AtomicUsize,
 }
 
 impl Tendermint {
@@ -125,6 +127,7 @@ impl Tendermint {
             chain_notify: Arc::new(chain_notify),
             machine,
             step_change_lock: ReentrantMutex::new(()),
+            timeout_token_counter: AtomicUsize::new(0),
         });
         engine.extension.register_tendermint(Arc::downgrade(&engine));
         engine.chain_notify.register_tendermint(Arc::downgrade(&engine));
@@ -295,7 +298,10 @@ impl Tendermint {
     }
 
     fn to_step(&self, step: Step) {
-        self.extension.set_timer_step(step);
+        // Should be protected by step_change_lock
+        let counter = self.timeout_token_counter.load(AtomicOrdering::SeqCst);
+        self.extension.set_timer_step(step, counter + 1);
+        self.timeout_token_counter.store(counter + 1, AtomicOrdering::SeqCst);
         *self.step.write() = step;
         match step {
             Step::Propose => {
@@ -644,8 +650,12 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     /// Equivalent to a timeout: to be used for tests.
-    fn step(&self) {
+    fn step(&self, token: usize) {
         let _guard = self.step_change_lock.lock();
+        if token < self.timeout_token_counter.load(AtomicOrdering::SeqCst) {
+            return
+        }
+
         let next_step = match *self.step.read() {
             Step::Propose => {
                 ctrace!(ENGINE, "Propose timeout.");
@@ -1023,7 +1033,7 @@ impl TendermintExtension {
         };
     }
 
-    fn set_timer_step(&self, step: Step) {
+    fn set_timer_step(&self, step: Step, counter: usize) {
         if let Some(api) = self.api.lock().as_ref() {
             let t = match self.tendermint.read().as_ref().and_then(|weak| weak.upgrade()) {
                 Some(c) => c,
@@ -1032,8 +1042,9 @@ impl TendermintExtension {
             let view = t.view.load(AtomicOrdering::SeqCst);
             let du = Duration::seconds(view as i64);
 
-            api.clear_timer(ENGINE_TIMEOUT_TOKEN).expect("Timer clear succeeds");
-            api.set_timer_once(ENGINE_TIMEOUT_TOKEN, self.timeouts.timeout(&step) + du).expect("Timer set succeeds");
+            api.clear_timer(ENGINE_TIMEOUT_TOKEN + counter - 1).expect("Timer clear succeeds");
+            api.set_timer_once(ENGINE_TIMEOUT_TOKEN + counter, self.timeouts.timeout(&step) + du)
+                .expect("Timer set succeeds");
         };
     }
 
@@ -1158,16 +1169,12 @@ impl NetworkExtension for TendermintExtension {
 }
 
 impl TimeoutHandler for TendermintExtension {
-    fn on_timeout(&self, timer: TimerToken) {
-        match timer {
-            ENGINE_TIMEOUT_TOKEN => {
-                if let Some(ref weak) = *self.tendermint.read() {
-                    if let Some(c) = weak.upgrade() {
-                        c.step();
-                    }
-                }
+    fn on_timeout(&self, token: TimerToken) {
+        debug_assert!(token >= ENGINE_TIMEOUT_TOKEN);
+        if let Some(ref weak) = *self.tendermint.read() {
+            if let Some(c) = weak.upgrade() {
+                c.step(token);
             }
-            _ => debug_assert!(false),
         }
     }
 }
