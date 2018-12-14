@@ -51,7 +51,9 @@ mod traits;
 
 pub mod tests;
 
-pub use crate::action_handler::{ActionHandler, FindActionHandler, HitHandler};
+pub use crate::action_handler::{
+    ActionHandler, ActionHandlerError, ActionHandlerResult, FindActionHandler, HitHandler,
+};
 pub use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
 pub use crate::db::StateDB;
 pub use crate::error::Error as StateError;

@@ -170,6 +170,11 @@ impl StateWithCache for TopLevelState {
         }
         Ok(self.root)
     }
+
+    fn commit_and_into_db(mut self) -> StateResult<(StateDB, H256)> {
+        let root = self.commit()?;
+        Ok((self.db.into_inner(), root))
+    }
 }
 
 const PARCEL_FEE_CHECKPOINT: CheckpointId = 123;

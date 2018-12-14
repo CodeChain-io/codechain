@@ -21,7 +21,10 @@ use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::{Address, NetworkId};
 use cmerkle::TrieFactory;
-use cstate::{Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult};
+use cstate::{
+    ActionHandlerError, ActionHandlerResult, Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult,
+    StateWithCache, TopLevelState,
+};
 use ctypes::transaction::Error as TransactionError;
 use ctypes::ShardId;
 use hashdb::{AsHashDB, HashDB};
@@ -142,11 +145,15 @@ impl Scheme {
         }
     }
 
-    fn initialize_state<DB: AsHashDB>(&self, db: DB) -> StateResult<DB> {
+    fn initialize_state(&self, db: StateDB) -> StateResult<StateDB> {
         let root = BLAKE_NULL_RLP;
         let (db, root) = self.initialize_accounts(db, root)?;
         let (db, root) = self.initialize_shards(db, root)?;
-        let (db, root) = self.initialize_custom_actions(db, root)?;
+        let (db, root) = match self.initialize_action_handlers(db, root) {
+            Ok(x) => Ok(x),
+            Err(ActionHandlerError::StateError(e)) => Err(e),
+            Err(ActionHandlerError::DecoderError(_)) => unreachable!("DecoderError from genesis shouldn't be occured"),
+        }?;
 
         *self.state_root_memo.write() = root;
         Ok(db)
@@ -205,17 +212,13 @@ impl Scheme {
         Ok((db, root))
     }
 
-    fn initialize_custom_actions<DB: AsHashDB>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
+    fn initialize_action_handlers(&self, db: StateDB, root: H256) -> ActionHandlerResult<(StateDB, H256)> {
         // basic accounts in scheme.
-        {
-            let mut t = TrieFactory::from_existing(db.as_hashdb_mut(), &mut root)?;
-
-            for handler in self.engine.action_handlers() {
-                handler.init(t.as_mut())?;
-            }
+        let mut top_level = TopLevelState::from_existing(db, root)?;
+        for handler in self.engine.action_handlers() {
+            handler.init(&mut top_level)?;
         }
-
-        Ok((db, root))
+        Ok(top_level.commit_and_into_db()?)
     }
 
     pub fn check_genesis_root(&self, db: &HashDB) -> bool {
@@ -226,7 +229,7 @@ impl Scheme {
     }
 
     /// Ensure that the given state DB has the trie nodes in for the genesis state.
-    pub fn ensure_genesis_state<DB: AsHashDB>(&self, db: DB) -> Result<DB, Error> {
+    pub fn ensure_genesis_state(&self, db: StateDB) -> Result<StateDB, Error> {
         if !self.check_genesis_root(db.as_hashdb()) {
             return Err(SchemeError::InvalidState.into())
         }

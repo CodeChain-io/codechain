@@ -20,16 +20,16 @@ use std::convert::From;
 use std::sync::Arc;
 
 use ckey::Address;
-use cmerkle::{TrieError, TrieMut};
+use cmerkle::TrieError;
 use ctypes::invoice::Invoice;
 use rlp::DecoderError;
 
-use crate::{StateError, StateResult, TopLevelState};
+use crate::{StateError, TopLevelState};
 
 pub trait ActionHandler: Send + Sync {
     fn handler_id(&self) -> u64;
-    fn init(&self, state: &mut TrieMut) -> StateResult<()>;
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> ActionHandlerResult;
+    fn init(&self, state: &mut TopLevelState) -> ActionHandlerResult<()>;
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> ActionHandlerResult<Invoice>;
 }
 
 pub trait FindActionHandler {
@@ -38,7 +38,7 @@ pub trait FindActionHandler {
     }
 }
 
-pub type ActionHandlerResult = Result<Invoice, ActionHandlerError>;
+pub type ActionHandlerResult<T> = Result<T, ActionHandlerError>;
 
 #[derive(Debug, PartialEq)]
 pub enum ActionHandlerError {
