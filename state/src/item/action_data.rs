@@ -21,7 +21,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp, NULL_RLP}
 
 use crate::CacheableItem;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ActionData(Bytes);
 
 impl Default for ActionData {

@@ -16,13 +16,12 @@
 
 use ccrypto::blake256;
 use ckey::Address;
-use cmerkle::TrieMut;
 use ctypes::invoice::Invoice;
 use primitives::H256;
 use rlp::{self, Decodable, Encodable, UntrustedRlp};
 
 use super::{ActionHandler, ActionHandlerResult};
-use crate::{StateResult, TopLevelState, TopState, TopStateView};
+use crate::{TopLevelState, TopState, TopStateView};
 
 const ACTION_ID: u64 = 1;
 
@@ -51,15 +50,15 @@ impl ActionHandler for HitHandler {
         ACTION_ID
     }
 
-    fn init(&self, state: &mut TrieMut) -> StateResult<()> {
-        let r = state.insert(&self.address(), &1u32.rlp_bytes());
-        debug_assert_eq!(Ok(None), r);
-        r?;
+    fn init(&self, state: &mut TopLevelState) -> ActionHandlerResult<()> {
+        let existing = state.action_data(&self.address());
+        debug_assert_eq!(Ok(None), existing);
+        state.update_action_data(&self.address(), 1u32.rlp_bytes().to_vec())?;
         Ok(())
     }
 
     /// `bytes` must be valid encoding of HitAction
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, _sender: &Address) -> ActionHandlerResult {
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, _sender: &Address) -> ActionHandlerResult<Invoice> {
         let action = HitAction::decode(&UntrustedRlp::new(bytes))?;
         let action_data = state.action_data(&self.address())?.unwrap_or_default();
         let prev_counter: u32 = rlp::decode(&*action_data);
