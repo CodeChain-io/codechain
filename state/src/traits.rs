@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{public_to_address, Address, Public};
+use ckey::{public_to_address, Address, Public, Signature};
 use cmerkle::Result as TrieResult;
 use ctypes::invoice::Invoice;
 use ctypes::transaction::InnerTransaction;
@@ -24,7 +24,7 @@ use primitives::{Bytes, H256};
 
 use crate::{
     Account, ActionData, AssetScheme, AssetSchemeAddress, CacheableItem, Metadata, OwnedAsset, OwnedAssetAddress,
-    RegularAccount, Shard, StateDB, StateResult,
+    RegularAccount, Shard, StateDB, StateResult, Text,
 };
 
 
@@ -124,6 +124,8 @@ pub trait TopStateView {
         }
     }
 
+    fn text(&self, key: &H256) -> TrieResult<Option<Text>>;
+
     fn action_data(&self, key: &H256) -> TrieResult<Option<ActionData>>;
 }
 
@@ -170,6 +172,9 @@ pub trait TopState {
     fn set_shard_root(&mut self, shard_id: ShardId, new_root: H256) -> StateResult<()>;
     fn set_shard_owners(&mut self, shard_id: ShardId, new_owners: Vec<Address>) -> StateResult<()>;
     fn set_shard_users(&mut self, shard_id: ShardId, new_users: Vec<Address>) -> StateResult<()>;
+
+    fn store_text(&mut self, key: &H256, text: Text, sig: &Signature) -> StateResult<()>;
+    fn remove_text(&mut self, key: &H256, sig: &Signature) -> StateResult<()>;
 
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()>;
 }

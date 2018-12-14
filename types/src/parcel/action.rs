@@ -30,6 +30,8 @@ const CREATE_SHARD: u8 = 4;
 const SET_SHARD_OWNERS: u8 = 5;
 const SET_SHARD_USERS: u8 = 6;
 const WRAP_CCC: u8 = 7;
+const STORE: u8 = 8;
+const REMOVE: u8 = 9;
 const CUSTOM: u8 = 0xFF;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,6 +66,15 @@ pub enum Action {
     Custom {
         handler_id: u64,
         bytes: Bytes,
+    },
+    Store {
+        content: String,
+        certifier: Address,
+        signature: Signature,
+    },
+    Remove {
+        hash: H256,
+        signature: Signature,
     },
 }
 
@@ -161,6 +172,26 @@ impl Encodable for Action {
                 s.append(parameters);
                 s.append(amount);
             }
+            Action::Store {
+                content,
+                certifier,
+                signature,
+            } => {
+                s.begin_list(4);
+                s.append(&STORE);
+                s.append(content);
+                s.append(certifier);
+                s.append(signature);
+            }
+            Action::Remove {
+                hash,
+                signature,
+            } => {
+                s.begin_list(3);
+                s.append(&REMOVE);
+                s.append(hash);
+                s.append(signature);
+            }
             Action::Custom {
                 handler_id,
                 bytes,
@@ -236,6 +267,25 @@ impl Decodable for Action {
                     lock_script_hash: rlp.val_at(2)?,
                     parameters: rlp.val_at(3)?,
                     amount: rlp.val_at(4)?,
+                })
+            }
+            STORE => {
+                if rlp.item_count()? != 4 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::Store {
+                    content: rlp.val_at(1)?,
+                    certifier: rlp.val_at(2)?,
+                    signature: rlp.val_at(3)?,
+                })
+            }
+            REMOVE => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::Remove {
+                    hash: rlp.val_at(1)?,
+                    signature: rlp.val_at(2)?,
                 })
             }
             CUSTOM => {
