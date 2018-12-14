@@ -18,7 +18,7 @@ use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public, Signature};
 use ctypes::parcel::Action as ActionType;
 use ctypes::ShardId;
-use primitives::{Bytes, H160};
+use primitives::{Bytes, H160, H256};
 
 use super::{Transaction, TransactionWithHash};
 
@@ -50,6 +50,15 @@ pub enum Action {
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         amount: Uint,
+    },
+    Store {
+        content: String,
+        certifier: PlatformAddress,
+        signature: Signature,
+    },
+    Remove {
+        hash: H256,
+        signature: Signature,
     },
     Custom {
         handler_id: u64,
@@ -85,6 +94,15 @@ pub enum ActionWithTxHash {
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         amount: Uint,
+    },
+    Store {
+        content: String,
+        certifier: PlatformAddress,
+        signature: Signature,
+    },
+    Remove {
+        hash: H256,
+        signature: Signature,
     },
     Custom {
         handler_id: u64,
@@ -139,6 +157,22 @@ impl ActionWithTxHash {
                 lock_script_hash,
                 parameters,
                 amount: amount.into(),
+            },
+            ActionType::Store {
+                content,
+                certifier,
+                signature,
+            } => ActionWithTxHash::Store {
+                content,
+                certifier: PlatformAddress::new_v1(network_id, certifier),
+                signature,
+            },
+            ActionType::Remove {
+                hash,
+                signature,
+            } => ActionWithTxHash::Remove {
+                hash,
+                signature,
             },
             ActionType::Custom {
                 handler_id,
@@ -205,6 +239,22 @@ impl From<Action> for Result<ActionType, KeyError> {
                 lock_script_hash,
                 parameters,
                 amount: amount.into(),
+            },
+            Action::Store {
+                content,
+                certifier,
+                signature,
+            } => ActionType::Store {
+                content,
+                certifier: certifier.try_into_address()?,
+                signature,
+            },
+            Action::Remove {
+                hash,
+                signature,
+            } => ActionType::Remove {
+                hash,
+                signature,
             },
             Action::Custom {
                 handler_id,

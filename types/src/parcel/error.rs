@@ -72,6 +72,9 @@ pub enum Error {
     InvalidTransaction(TransactionError),
     InsufficientPermission,
     NewOwnersMustContainSender,
+    /// Store/Remove Text error
+    TextVerificationFail(String),
+    TextNotExist,
 }
 
 const ERROR_ID_PARCEL_ALREADY_IMPORTED: u8 = 1u8;
@@ -95,6 +98,8 @@ const ERROR_ID_INVALID_TRANSACTION: u8 = 20u8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 21u8;
 const ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER: u8 = 22u8;
 const ERROR_ID_ZERO_AMOUNT: u8 = 23u8;
+const ERROR_ID_TEXT_VERIFICATION_FAIL: u8 = 24u8;
+const ERROR_ID_TEXT_NOT_EXIST: u8 = 25u8;
 
 impl Error {
     fn item_count(&self) -> usize {
@@ -124,6 +129,8 @@ impl Error {
             Error::InvalidTransaction(_) => 2,
             Error::InsufficientPermission => 1,
             Error::NewOwnersMustContainSender => 1,
+            Error::TextVerificationFail(_) => 2,
+            Error::TextNotExist => 1,
         }
     }
 }
@@ -161,6 +168,8 @@ impl Encodable for Error {
             Error::InvalidTransaction(err) => s.append(&ERROR_ID_INVALID_TRANSACTION).append(err),
             Error::InsufficientPermission => s.append(&ERROR_ID_INSUFFICIENT_PERMISSION),
             Error::NewOwnersMustContainSender => s.append(&ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER),
+            Error::TextVerificationFail(err) => s.append(&ERROR_ID_TEXT_VERIFICATION_FAIL).append(err),
+            Error::TextNotExist => s.append(&ERROR_ID_TEXT_NOT_EXIST),
         };
     }
 }
@@ -197,6 +206,8 @@ impl Decodable for Error {
             ERROR_ID_INVALID_TRANSACTION => Error::InvalidTransaction(rlp.val_at(1)?),
             ERROR_ID_INSUFFICIENT_PERMISSION => Error::InsufficientPermission,
             ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER => Error::NewOwnersMustContainSender,
+            ERROR_ID_TEXT_VERIFICATION_FAIL => Error::TextVerificationFail(rlp.val_at(1)?),
+            ERROR_ID_TEXT_NOT_EXIST => Error::TextNotExist,
             _ => return Err(DecoderError::Custom("Invalid parcel error")),
         };
         if rlp.item_count()? != error.item_count() {
@@ -239,6 +250,8 @@ impl Display for Error {
             Error::InvalidTransaction(err) => format!("Parcel has an invalid transaction: {}", err),
             Error::InsufficientPermission => "Sender doesn't have a permission".to_string(),
             Error::NewOwnersMustContainSender => "New owners must contain the sender".to_string(),
+            Error::TextVerificationFail(err) => format!("Text verification has failed: {}", err),
+            Error::TextNotExist => "The text does not exist".to_string(),
         };
 
         f.write_fmt(format_args!("Parcel error ({})", msg))
