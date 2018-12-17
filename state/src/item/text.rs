@@ -22,7 +22,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use crate::CacheableItem;
 
 /// Text stored in the DB. Used by Store/Remove Action.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Text {
     // Content of the text
     content: String,
@@ -88,5 +88,26 @@ impl Decodable for Text {
             content: rlp.val_at(1)?,
             certifier: rlp.val_at(2)?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rlp::rlp_encode_and_decode_test;
+
+    use super::*;
+
+    #[test]
+    fn rlp_encode_and_decode() {
+        rlp_encode_and_decode_test!(Text {
+            content: "CodeChain".to_string(),
+            certifier: Address::random()
+        });
+    }
+
+    #[test]
+    fn cachable_item_is_null() {
+        let text: Text = Default::default();
+        assert!(text.is_null());
     }
 }
