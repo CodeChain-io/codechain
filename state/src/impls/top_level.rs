@@ -1207,6 +1207,7 @@ mod tests_parcel {
     use ckey::{sign, Generator, Private, Random};
     use ctypes::transaction::Error as TransactionError;
     use primitives::H160;
+    use rlp::Encodable;
 
     use super::*;
     use crate::tests::helpers::{get_temp_state, get_test_client};
@@ -1946,6 +1947,118 @@ mod tests_parcel {
             (asset: (transfer_tx_hash, 0, 0) => { asset_type: asset_type, amount: 10 }),
             (asset: (transfer_tx_hash, 1, 0)),
             (asset: (transfer_tx_hash, 2, 0) => { asset_type: asset_type, amount: 15 })
+        ]);
+    }
+
+    #[test]
+    fn store_and_remove() {
+        let (sender, sender_public, sender_private) = address();
+        let shard_id = 0;
+
+        let mut state = get_temp_state();
+        set_top_level_state!(state, [
+            (shard: shard_id => owners: [sender]),
+            (metadata: shards: 1),
+            (account: sender => balance: 20)
+        ]);
+
+        let content = "CodeChain".to_string();
+        let content_hash = Blake::blake(content.rlp_bytes());
+        let signature = sign(&sender_private, &content_hash).unwrap();
+
+        let store_parcel = parcel!(fee: 10, store!(content.clone(), sender, signature));
+        let dummy_signed_hash = H256::random();
+
+        assert_eq!(
+            Ok(Invoice::Success),
+            state.apply(&store_parcel, &dummy_signed_hash, &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 10)),
+            (text: &dummy_signed_hash => { content: &content, certifier: &sender })
+        ]);
+
+        let signature = sign(&sender_private, &dummy_signed_hash).unwrap();
+        let remove_parcel = parcel!(seq: 1, fee: 10, remove!(dummy_signed_hash, signature));
+
+        assert_eq!(
+            Ok(Invoice::Success),
+            state.apply(&remove_parcel, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 2, balance: 0)),
+            (text: &dummy_signed_hash)
+        ]);
+    }
+
+    #[test]
+    fn store_with_wrong_signature() {
+        let (sender, sender_public, _) = address();
+        let shard_id = 0;
+
+        let mut state = get_temp_state();
+        set_top_level_state!(state, [
+            (shard: shard_id => owners: [sender]),
+            (metadata: shards: 1),
+            (account: sender => balance: 20)
+        ]);
+
+        let content = "CodeChain".to_string();
+        let content_hash = Blake::blake(content.rlp_bytes());
+        let signature = Signature::random();
+
+        let parcel = parcel!(fee: 10, store!(content.clone(), sender, signature));
+
+        assert_eq!(
+            Ok(Invoice::Failure(ParcelError::TextVerificationFail("Invalid Signature".to_string()))),
+            state.apply(&parcel, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 10)),
+            (text: &parcel.hash())
+        ]);
+
+        let signature = sign(Random.generate().unwrap().private(), &content_hash).unwrap();
+
+        let parcel = parcel!(seq: 1, fee: 10, store!(content.clone(), sender, signature));
+
+        assert_eq!(
+            Ok(Invoice::Failure(ParcelError::TextVerificationFail("Certifier and signer are different".to_string()))),
+            state.apply(&parcel, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 2, balance: 0)),
+            (text: &parcel.hash())
+        ]);
+    }
+
+    #[test]
+    fn remove_on_nothing() {
+        let (sender, sender_public, sender_private) = address();
+        let shard_id = 0;
+
+        let mut state = get_temp_state();
+        set_top_level_state!(state, [
+            (shard: shard_id => owners: [sender]),
+            (metadata: shards: 1),
+            (account: sender => balance: 20)
+        ]);
+
+        let hash = H256::random();
+        let signature = sign(&sender_private, &hash).unwrap();
+        let remove_parcel = parcel!(fee: 10, remove!(hash, signature));
+
+        assert_eq!(
+            Ok(Invoice::Failure(ParcelError::TextNotExist)),
+            state.apply(&remove_parcel, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 10))
         ]);
     }
 

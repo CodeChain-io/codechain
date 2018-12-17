@@ -323,4 +323,21 @@ mod tests {
             users: vec![Address::random(), Address::random()],
         });
     }
+
+    #[test]
+    fn encode_and_decode_store() {
+        rlp_encode_and_decode_test!(Action::Store {
+            content: "CodeChain".to_string(),
+            certifier: Address::random(),
+            signature: Signature::random(),
+        });
+    }
+
+    #[test]
+    fn encode_and_decode_remove() {
+        rlp_encode_and_decode_test!(Action::Remove {
+            hash: H256::random(),
+            signature: Signature::random(),
+        });
+    }
 }
