@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
-    Shard, SignedParcel, UnverifiedParcel,
+    Shard, SignedParcel, TextClient, UnverifiedParcel,
 };
 use cjson::bytes::Bytes;
 use cjson::uint::Uint;
@@ -34,7 +34,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, Parcel, Transaction, TransactionWithHash};
+use super::super::types::{Block, BlockNumberAndHash, Parcel, Text, Transaction, TransactionWithHash};
 
 pub struct ChainClient<C, M>
 where
@@ -46,7 +46,14 @@ where
 
 impl<C, M> ChainClient<C, M>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + RegularKeyOwner + ExecuteClient + EngineInfo,
+    C: AssetClient
+        + MiningBlockChainClient
+        + Shard
+        + RegularKey
+        + RegularKeyOwner
+        + ExecuteClient
+        + EngineInfo
+        + TextClient,
     M: MinerService,
 {
     pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
@@ -67,6 +74,7 @@ where
         + ExecuteClient
         + EngineInfo
         + FindActionHandler
+        + TextClient
         + 'static,
     M: MinerService + 'static,
 {
@@ -129,6 +137,15 @@ where
             Some(address) => self.client.get_asset_scheme(address, block_id).map_err(errors::parcel_state),
             None => Ok(None),
         }
+    }
+
+    fn get_text(&self, parcel_hash: H256, block_number: Option<u64>) -> Result<Option<Text>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self
+            .client
+            .get_text(parcel_hash, block_id)
+            .map_err(errors::parcel_state)?
+            .map(|text| Text::from_core(text, self.client.common_params().network_id)))
     }
 
     fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<OwnedAsset>> {

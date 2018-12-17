@@ -24,7 +24,7 @@ use primitives::H256;
 
 use jsonrpc_core::Result;
 
-use super::super::types::{Block, BlockNumberAndHash, Parcel, Transaction, TransactionWithHash};
+use super::super::types::{Block, BlockNumberAndHash, Parcel, Text, Transaction, TransactionWithHash};
 
 build_rpc_trait! {
     pub trait Chain {
@@ -55,6 +55,10 @@ build_rpc_trait! {
         /// Gets asset scheme with given asset type.
         # [rpc(name = "chain_getAssetSchemeByType")]
         fn get_asset_scheme_by_type(&self, H256, Option<u64>) -> Result<Option<AssetScheme>>;
+
+        /// Gets text with given parcel hash.
+        # [rpc(name = "chain_getText")]
+        fn get_text(&self, H256, Option<u64>) -> Result<Option<Text>>;
 
         /// Gets asset with given asset type.
         # [rpc(name = "chain_getAsset")]

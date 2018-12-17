@@ -14,33 +14,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod action;
-mod block;
-mod parcel;
-mod text;
-mod transaction;
-mod unsigned_parcel;
-mod work;
+use ckey::{NetworkId, PlatformAddress};
+use cstate::Text as TextType;
 
-use primitives::H256;
-
-pub use self::action::{Action, ActionWithTxHash};
-pub use self::block::Block;
-pub use self::block::BlockNumberAndHash;
-pub use self::parcel::Parcel;
-pub use self::text::Text;
-pub use self::transaction::{Transaction, TransactionWithHash};
-pub use self::unsigned_parcel::UnsignedParcel;
-pub use self::work::Work;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FilterStatus {
-    pub list: Vec<(::std::net::IpAddr, String)>,
-    pub enabled: bool,
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Text {
+    pub content: String,
+    pub certifier: PlatformAddress,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SendParcelResult {
-    pub hash: H256,
-    pub seq: u64,
+impl Text {
+    pub fn from_core(from: TextType, network_id: NetworkId) -> Self {
+        Self {
+            content: from.content().to_string(),
+            certifier: PlatformAddress::new_v1(network_id, *from.certifier()),
+        }
+    }
 }

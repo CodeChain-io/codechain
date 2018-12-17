@@ -23,7 +23,7 @@ use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
-    ActionHandler, AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, OwnedAssetAddress, StateDB,
+    ActionHandler, AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, OwnedAssetAddress, StateDB, Text,
     TopLevelState, TopStateView,
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
@@ -44,7 +44,7 @@ use super::{
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
     Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
     ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, ResealTimer, Seq, Shard, StateOrBlock,
-    TransactionInfo,
+    TextClient, TransactionInfo,
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{
@@ -380,6 +380,16 @@ impl AssetClient for Client {
         let state = Client::state_at(&self, block_id).unwrap();
         let address = OwnedAssetAddress::new(transaction_hash, index, shard_id);
         Ok(Some(state.asset(shard_id, &address)?.is_none()))
+    }
+}
+
+impl TextClient for Client {
+    fn get_text(&self, parcel_hash: H256, id: BlockId) -> TrieResult<Option<Text>> {
+        if let Some(state) = Client::state_at(&self, id) {
+            Ok(state.text(&parcel_hash)?)
+        } else {
+            Ok(None)
+        }
     }
 }
 

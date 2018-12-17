@@ -81,7 +81,7 @@ pub use crate::block::Block;
 pub use crate::client::{
     AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
     EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq, Shard,
-    TestBlockChainClient,
+    TestBlockChainClient, TextClient,
 };
 pub use crate::consensus::EngineType;
 pub use crate::db::COL_STATE;
