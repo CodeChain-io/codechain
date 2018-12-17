@@ -34,7 +34,7 @@ use std::sync::Arc;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, TopStateView};
+use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, Text, TopStateView};
 use ctimer::TimerApi;
 use ctypes::invoice::Invoice;
 use ctypes::transaction::Transaction;
@@ -294,6 +294,11 @@ pub trait AssetClient {
         shard_id: ShardId,
         block_id: BlockId,
     ) -> TrieResult<Option<bool>>;
+}
+
+/// Provides methods to texts
+pub trait TextClient {
+    fn get_text(&self, parcel_hash: H256, id: BlockId) -> TrieResult<Option<Text>>;
 }
 
 pub trait ExecuteClient: ChainTimeInfo {
