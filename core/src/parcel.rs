@@ -190,6 +190,14 @@ impl UnverifiedParcel {
                     return Err(ParcelError::ZeroAmount)
                 }
             }
+            Action::Store {
+                content,
+                ..
+            } => {
+                if content.len() > params.max_text_content_size {
+                    return Err(ParcelError::TextContentTooBig)
+                }
+            }
             _ => {}
         }
         Ok(())
