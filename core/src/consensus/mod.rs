@@ -207,7 +207,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn populate_from_parent(&self, _header: &mut M::Header, _parent: &M::Header) {}
 
     /// Trigger next step of the consensus engine.
-    fn step(&self) {}
+    fn step(&self, _token: usize) {}
 
     /// Stops any services that the may hold the Engine and makes it safe to drop.
     fn stop(&self) {}
