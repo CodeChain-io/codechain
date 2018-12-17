@@ -53,6 +53,10 @@ impl CodeChainMachine {
         self.params().max_metadata_size
     }
 
+    pub fn max_text_content_size(&self) -> usize {
+        self.params().max_text_content_size
+    }
+
     /// Does basic verification of the parcel.
     pub fn verify_parcel_basic(&self, p: &UnverifiedParcel, _header: &Header) -> Result<(), Error> {
         if p.fee < self.params.min_parcel_cost {

@@ -75,6 +75,7 @@ pub enum Error {
     /// Store/Remove Text error
     TextVerificationFail(String),
     TextNotExist,
+    TextContentTooBig,
 }
 
 const ERROR_ID_PARCEL_ALREADY_IMPORTED: u8 = 1u8;
@@ -100,6 +101,7 @@ const ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER: u8 = 22u8;
 const ERROR_ID_ZERO_AMOUNT: u8 = 23u8;
 const ERROR_ID_TEXT_VERIFICATION_FAIL: u8 = 24u8;
 const ERROR_ID_TEXT_NOT_EXIST: u8 = 25u8;
+const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 26u8;
 
 impl Error {
     fn item_count(&self) -> usize {
@@ -131,6 +133,7 @@ impl Error {
             Error::NewOwnersMustContainSender => 1,
             Error::TextVerificationFail(_) => 2,
             Error::TextNotExist => 1,
+            Error::TextContentTooBig => 1,
         }
     }
 }
@@ -170,6 +173,7 @@ impl Encodable for Error {
             Error::NewOwnersMustContainSender => s.append(&ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER),
             Error::TextVerificationFail(err) => s.append(&ERROR_ID_TEXT_VERIFICATION_FAIL).append(err),
             Error::TextNotExist => s.append(&ERROR_ID_TEXT_NOT_EXIST),
+            Error::TextContentTooBig => s.append(&ERROR_ID_TEXT_CONTENT_TOO_BIG),
         };
     }
 }
@@ -208,6 +212,7 @@ impl Decodable for Error {
             ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER => Error::NewOwnersMustContainSender,
             ERROR_ID_TEXT_VERIFICATION_FAIL => Error::TextVerificationFail(rlp.val_at(1)?),
             ERROR_ID_TEXT_NOT_EXIST => Error::TextNotExist,
+            ERROR_ID_TEXT_CONTENT_TOO_BIG => Error::TextContentTooBig,
             _ => return Err(DecoderError::Custom("Invalid parcel error")),
         };
         if rlp.item_count()? != error.item_count() {
@@ -252,6 +257,7 @@ impl Display for Error {
             Error::NewOwnersMustContainSender => "New owners must contain the sender".to_string(),
             Error::TextVerificationFail(err) => format!("Text verification has failed: {}", err),
             Error::TextNotExist => "The text does not exist".to_string(),
+            Error::TextContentTooBig => "The content of the text is too big".into(),
         };
 
         f.write_fmt(format_args!("Parcel error ({})", msg))

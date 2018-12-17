@@ -48,6 +48,8 @@ pub struct CommonParams {
     pub max_extra_data_size: usize,
     /// Maximum size of metadata.
     pub max_metadata_size: usize,
+    /// Maximum size of the content of text used in store/remove actions.
+    pub max_text_content_size: usize,
     /// Network id.
     pub network_id: NetworkId,
     /// Minimum parcel cost.
@@ -63,6 +65,7 @@ impl From<cjson::scheme::Params> for CommonParams {
         Self {
             max_extra_data_size: p.max_extra_data_size.into(),
             max_metadata_size: p.max_metadata_size.into(),
+            max_text_content_size: p.max_text_content_size.into(),
             network_id: p.network_id,
             min_parcel_cost: p.min_parcel_cost.into(),
             max_body_size: p.max_body_size.into(),

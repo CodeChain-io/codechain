@@ -26,6 +26,8 @@ pub struct Params {
     pub max_extra_data_size: Uint,
     /// Maximum size of metadata.
     pub max_metadata_size: Uint,
+    /// Maximum size of the content of text used in store/remove actions.
+    pub max_text_content_size: Uint,
     /// Network id.
     #[serde(rename = "networkID")]
     pub network_id: NetworkId,
@@ -50,6 +52,7 @@ mod tests {
         let s = r#"{
             "maxExtraDataSize": "0x20",
             "maxMetadataSize": "0x0400",
+            "maxTextContentSize": "0x0200",
             "networkID" : "tc",
             "minParcelCost" : "10",
             "maxBodySize" : 4194304,
@@ -59,6 +62,7 @@ mod tests {
         let deserialized: Params = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.max_extra_data_size, Uint(U256::from(0x20)));
         assert_eq!(deserialized.max_metadata_size, Uint(U256::from(0x0400)));
+        assert_eq!(deserialized.max_text_content_size, Uint(U256::from(0x0200)));
         assert_eq!(deserialized.network_id, "tc".into());
         assert_eq!(deserialized.min_parcel_cost, Uint(U256::from(10)));
         assert_eq!(deserialized.max_body_size, Uint(4194304.into()));

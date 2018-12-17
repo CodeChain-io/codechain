@@ -15,6 +15,7 @@
   },
   "params": {
     "maxMetadataSize": "0x0400",
+    "maxTextContentSize": "0x0200",
     "maxExtraDataSize": "0x20",
     "networkID": "tc",
     "minParcelCost": "10",

@@ -9,6 +9,7 @@
   "params": {
     "maxExtraDataSize": "0x20",
     "maxMetadataSize": "0x200000",
+    "maxTextContentSize": "0x0200",
     "networkID": "tc",
     "minParcelCost": "10",
     "maxBodySize": 4194304,

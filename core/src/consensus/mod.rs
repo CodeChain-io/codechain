@@ -362,6 +362,10 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
         self.machine().max_metadata_size()
     }
 
+    fn max_text_content_size(&self) -> usize {
+        self.machine().max_text_content_size()
+    }
+
     /// Additional verification for parcels in blocks.
     fn verify_parcel_basic(&self, p: &UnverifiedParcel, header: &Header) -> Result<(), Error> {
         self.machine().verify_parcel_basic(p, header)
