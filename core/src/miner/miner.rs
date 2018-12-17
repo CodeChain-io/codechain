@@ -21,7 +21,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
-use cstate::{StateError, TopLevelState};
+use cstate::{FindActionHandler, StateError, TopLevelState};
 use ctypes::parcel::{Action, Error as ParcelError, IncompleteParcel};
 use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
 use ctypes::BlockNumber;
@@ -399,7 +399,9 @@ impl Miner {
     }
 
     /// Prepares new block for sealing including top parcels from queue.
-    fn prepare_block<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo>(
+    fn prepare_block<
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
+    >(
         &self,
         chain: &C,
     ) -> Result<(ClosedBlock, Option<H256>), Error> {
@@ -666,7 +668,9 @@ impl MinerService for Miner {
         self.engine.engine_type()
     }
 
-    fn prepare_work_sealing<C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo>(
+    fn prepare_work_sealing<
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
+    >(
         &self,
         client: &C,
     ) -> bool {
@@ -714,8 +718,14 @@ impl MinerService for Miner {
 
     fn update_sealing<C>(&self, chain: &C, allow_empty_block: bool)
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ResealTimer + ChainTimeInfo,
-    {
+        C: AccountData
+            + BlockChain
+            + BlockProducer
+            + ImportSealedBlock
+            + RegularKeyOwner
+            + ResealTimer
+            + ChainTimeInfo
+            + FindActionHandler, {
         ctrace!(MINER, "update_sealing: preparing a block");
 
         if self.requires_reseal(chain.chain_info().best_block_number) {
@@ -792,7 +802,7 @@ impl MinerService for Miner {
 
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo,
+        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
         F: FnOnce(&ClosedBlock) -> T, {
         ctrace!(MINER, "map_sealing_work: entering");
         self.prepare_work_sealing(client);

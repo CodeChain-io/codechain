@@ -37,7 +37,6 @@
 
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, recover, Address, NetworkId, Public};
@@ -57,7 +56,7 @@ use crate::cache::{ShardCache, TopCache};
 use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
 use crate::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
 use crate::{
-    find_handler_for_id, Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard,
+    Account, ActionData, FindActionHandler, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard,
     ShardAddress, ShardLevelState, StateDB, StateError, StateResult,
 };
 #[cfg(test)]
@@ -245,7 +244,7 @@ impl TopLevelState {
 
     /// Execute a given parcel, charging parcel fee.
     /// This will change the state accordingly.
-    pub fn apply<C: ChainTimeInfo>(
+    pub fn apply<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
         parcel: &Parcel,
         signer_public: &Public,
@@ -279,7 +278,7 @@ impl TopLevelState {
     }
 
 
-    fn apply_internal<C: ChainTimeInfo>(
+    fn apply_internal<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
         parcel: &Parcel,
         fee_payer: &Address,
@@ -339,7 +338,7 @@ impl TopLevelState {
         }
     }
 
-    fn apply_action<C: ChainTimeInfo>(
+    fn apply_action<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
         action: &Action,
         network_id: NetworkId,
@@ -421,13 +420,8 @@ impl TopLevelState {
                 handler_id,
                 bytes,
             } => {
-                let handler = {
-                    let db = self.db.borrow();
-                    Arc::clone(
-                        find_handler_for_id(*handler_id, db.custom_handlers()).expect("Unknown custom parcel applied!"),
-                    )
-                };
-                let invoice = handler.execute(bytes, self, fee_payer).expect("Custom action hander execution failed");
+                let handler = client.find_action_handler_for(*handler_id).expect("Unknown custom parsel applied!");
+                let invoice = handler.execute(bytes, self, fee_payer).expect("Custom action handler execution failed");
                 Ok(invoice)
             }
         }
@@ -856,10 +850,10 @@ mod tests_state {
     fn get_from_database() {
         let memory_db = get_memory_db();
         let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
-        let db = StateDB::new(jorunal.boxed_clone(), vec![]);
+        let db = StateDB::new(jorunal.boxed_clone());
         let a = Address::default();
         let root = {
-            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal, vec![]));
+            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.add_balance(&a, 100));
             assert_eq!(Ok(100), state.balance(&a));
@@ -887,10 +881,10 @@ mod tests_state {
     fn get_from_cache() {
         let memory_db = get_memory_db();
         let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
-        let mut db = StateDB::new(jorunal.boxed_clone(), vec![]);
+        let mut db = StateDB::new(jorunal.boxed_clone());
         let a = Address::default();
         let root = {
-            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal, vec![]));
+            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.add_balance(&a, 69));
             assert_eq!(Ok(69), state.balance(&a));
@@ -959,9 +953,9 @@ mod tests_state {
         let a = Address::default();
         let memory_db = get_memory_db();
         let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
-        let mut db = StateDB::new(jorunal.boxed_clone(), vec![]);
+        let mut db = StateDB::new(jorunal.boxed_clone());
         let root = {
-            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal, vec![]));
+            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal));
             assert_eq!(Ok(()), state.inc_seq(&a));
             let root = state.commit();
             assert!(root.is_ok(), "{:?}", root);

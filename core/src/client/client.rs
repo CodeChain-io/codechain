@@ -23,7 +23,8 @@ use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
-    ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, TopLevelState, TopStateView,
+    ActionHandler, AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, OwnedAssetAddress, StateDB,
+    TopLevelState, TopStateView,
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
@@ -95,7 +96,7 @@ impl Client {
         message_channel: IoChannel<ClientIoMessage>,
     ) -> Result<Arc<Client>, Error> {
         let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, ::db::COL_STATE);
-        let mut state_db = StateDB::new(journal_db, scheme.custom_handlers.clone());
+        let mut state_db = StateDB::new(journal_db);
         if !scheme.check_genesis_root(state_db.as_hashdb()) {
             return Err(SchemeError::InvalidState.into())
         }
@@ -594,10 +595,6 @@ impl BlockChainClient for Client {
             })
             .unwrap_or_default()
     }
-
-    fn custom_handlers(&self) -> Vec<Arc<ActionHandler>> {
-        self.state_db.read().custom_handlers().to_vec()
-    }
 }
 
 impl AccountData for Client {}
@@ -716,5 +713,11 @@ impl ChainTimeInfo for Client {
     fn transaction_time_age(&self, hash: &H256) -> Option<u64> {
         self.transaction_block_timestamp(hash)
             .map(|block_timestamp| self.chain_info().best_block_timestamp - block_timestamp)
+    }
+}
+
+impl FindActionHandler for Client {
+    fn find_action_handler_for(&self, id: u64) -> Option<&Arc<ActionHandler>> {
+        self.engine.action_handlers().iter().find(|handler| handler.handler_id() == id)
     }
 }

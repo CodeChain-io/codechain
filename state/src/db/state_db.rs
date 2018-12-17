@@ -43,32 +43,29 @@ use util_error::UtilError;
 
 use crate::cache::{GlobalCache, ShardCache, TopCache};
 use crate::impls::TopLevelState;
-use crate::ActionHandler;
 
 /// State database abstraction.
 pub struct StateDB {
     /// Backing database.
     db: Box<JournalDB>,
-    custom_handlers: Vec<Arc<ActionHandler>>,
     cache: GlobalCache,
     current_hash: Option<H256>,
 }
 
 impl StateDB {
     /// Create a new instance wrapping `JournalDB`
-    pub fn new(db: Box<JournalDB>, custom_handlers: Vec<Arc<ActionHandler>>) -> StateDB {
+    pub fn new(db: Box<JournalDB>) -> StateDB {
         StateDB {
             db,
-            custom_handlers,
             cache: Default::default(),
             current_hash: None,
         }
     }
 
-    pub fn new_with_memorydb(custom_handlers: Vec<Arc<ActionHandler>>) -> Self {
+    pub fn new_with_memorydb() -> Self {
         let memorydb = Arc::new(kvdb_memorydb::create(0));
         let db = journaldb::new(memorydb, Algorithm::Archive, None);
-        Self::new(db, custom_handlers)
+        Self::new(db)
     }
 
     /// Journal all recent operations under the given era and ID.
@@ -99,10 +96,6 @@ impl StateDB {
         self.db.is_empty()
     }
 
-    pub fn custom_handlers(&self) -> &[Arc<ActionHandler>] {
-        &self.custom_handlers
-    }
-
     pub fn top_cache(&self) -> TopCache {
         self.cache.top_cache()
     }
@@ -125,7 +118,6 @@ impl StateDB {
 
         Self {
             db: self.db.boxed_clone(),
-            custom_handlers: self.custom_handlers.clone(),
             cache,
             current_hash,
         }

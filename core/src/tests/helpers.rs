@@ -58,5 +58,5 @@ pub fn get_good_dummy_block_hash() -> (H256, Bytes) {
 }
 
 pub fn get_temp_state_db() -> StateDB {
-    StateDB::new_with_memorydb(Vec::new())
+    StateDB::new_with_memorydb()
 }

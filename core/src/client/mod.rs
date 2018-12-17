@@ -34,7 +34,7 @@ use std::sync::Arc;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{ActionHandler, AssetScheme, AssetSchemeAddress, OwnedAsset, TopStateView};
+use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, TopStateView};
 use ctimer::TimerApi;
 use ctypes::invoice::Invoice;
 use ctypes::transaction::Transaction;
@@ -247,8 +247,6 @@ pub trait BlockChainClient:
     fn transaction(&self, hash: &H256) -> Option<Transaction>;
 
     fn transaction_invoices(&self, hash: &H256) -> Vec<Invoice>;
-
-    fn custom_handlers(&self) -> Vec<Arc<ActionHandler>>;
 }
 
 /// Result of import block operation.
@@ -276,7 +274,7 @@ pub trait PrepareOpenBlock {
 pub trait BlockProducer: PrepareOpenBlock + ReopenBlock {}
 
 /// Extended client interface used for mining
-pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + ImportSealedBlock {}
+pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + ImportSealedBlock + FindActionHandler {}
 
 /// Provides methods to access database.
 pub trait DatabaseClient {
