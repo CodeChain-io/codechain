@@ -18,7 +18,6 @@ app_dirs = "^1.2.1"
 clap = { version = "2", features = ["yaml"] }
 codechain-core = { path = "core" }
 codechain-discovery = { path = "discovery" }
-codechain-finally = { path = "util/finally" }
 codechain-logger = { path = "util/logger" }
 codechain-key = { path = "key" }
 codechain-keystore = { path = "keystore" }
@@ -34,6 +33,7 @@ codechain-vm = { path = "vm" }
 codechain-stratum = { path = "stratum" }
 ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
+finally = { git = "https://github.com/CodeChain-io/rust-finally.git" }
 futures = "0.1"
 log = "0.4.6"
 env_logger = "0.5.3"

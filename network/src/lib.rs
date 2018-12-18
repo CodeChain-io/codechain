@@ -27,13 +27,13 @@ extern crate rlp;
 extern crate rlp_derive;
 
 extern crate codechain_crypto as ccrypto;
-extern crate codechain_finally as cfinally;
 extern crate codechain_io as cio;
 extern crate codechain_key as ckey;
 extern crate codechain_limited_table as climited_table;
 extern crate codechain_timer as ctimer;
 extern crate codechain_token_generator as ctoken_generator;
 extern crate codechain_types as ctypes;
+extern crate finally;
 extern crate table as ctable;
 extern crate time;
 

@@ -201,7 +201,6 @@ dependencies = [
  "clap 2.31.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-core 0.1.0",
  "codechain-discovery 0.1.0",
- "codechain-finally 0.1.0",
  "codechain-key 0.1.0",
  "codechain-keystore 0.1.0",
  "codechain-logger 0.1.0",
@@ -218,6 +217,7 @@ dependencies = [
  "ctrlc 1.1.1 (git+https://github.com/paritytech/rust-ctrlc.git)",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "fdlimit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "finally 0.1.0 (git+https://github.com/CodeChain-io/rust-finally.git)",
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)",
@@ -303,10 +303,6 @@ dependencies = [
  "rlp 0.2.1",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "codechain-finally"
-version = "0.1.0"
 
 [[package]]
 name = "codechain-io"
@@ -419,7 +415,6 @@ name = "codechain-network"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0",
- "codechain-finally 0.1.0",
  "codechain-io 1.9.0",
  "codechain-key 0.1.0",
  "codechain-limited-table 0.1.0",
@@ -427,6 +422,7 @@ dependencies = [
  "codechain-timer 0.1.0",
  "codechain-token-generator 0.1.0",
  "codechain-types 0.1.0",
+ "finally 0.1.0 (git+https://github.com/CodeChain-io/rust-finally.git)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mio 0.6.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -858,6 +854,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.2.44 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "finally"
+version = "0.1.0"
+source = "git+https://github.com/CodeChain-io/rust-finally.git#e3cc545345189c1b4565e3b69073cef7b76f64e4"
 
 [[package]]
 name = "fixed-hash"
@@ -2646,6 +2647,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum ethereum-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9c48729b8aea8aedb12cf4cb2e5cef439fdfe2dda4a89e47eeebd15778ef53b6"
 "checksum ethereum-types-serialize 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4ac59a21a9ce98e188f3dace9eb67a6c4a3c67ec7fbc7218cb827852679dc002"
 "checksum fdlimit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b1ee15a7050e5580b3712877157068ea713b245b080ff302ae2ca973cfcd9baa"
+"checksum finally 0.1.0 (git+https://github.com/CodeChain-io/rust-finally.git)" = "<none>"
 "checksum fixed-hash 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b18d6fd718fb4396e7a9c93ac59ba7143501467ca7a143c145b5555a571d5576"
 "checksum fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 "checksum fuchsia-zircon 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "2e9763c69ebaae630ba35f74888db465e49e259ba1bc0eda7d06f4a067615d82"

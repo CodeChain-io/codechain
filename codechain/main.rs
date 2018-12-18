@@ -30,7 +30,6 @@ extern crate serde_json;
 extern crate app_dirs;
 extern crate codechain_core as ccore;
 extern crate codechain_discovery as cdiscovery;
-extern crate codechain_finally as cfinally;
 extern crate codechain_key as ckey;
 extern crate codechain_keystore as ckeystore;
 #[macro_use]
@@ -45,6 +44,7 @@ extern crate codechain_types as ctypes;
 extern crate ctrlc;
 extern crate env_logger;
 extern crate fdlimit;
+extern crate finally;
 extern crate never;
 extern crate panic_hook;
 extern crate parking_lot;
