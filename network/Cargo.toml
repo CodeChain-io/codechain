@@ -5,7 +5,6 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 codechain-crypto = { path = "../crypto" }
-codechain-token-generator = { path = "../util/token_generator" }
 codechain-io = { path = "../util/io" }
 codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }
@@ -22,3 +21,4 @@ rlp = { path = "../util/rlp" }
 rlp_derive = { path = "../util/rlp_derive" }
 table = { path = "../util/table" }
 time = "0.1"
+token-generator = { git = "https://github.com/CodeChain-io/rust-token-generator.git" }

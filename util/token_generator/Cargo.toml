@@ -1,7 +1,0 @@
-[package]
-name = "codechain-token-generator"
-version = "0.1.0"
-authors = ["CodeChain Team <codechain@kodebox.io>"]
-
-[dependencies]
-limited-table = { git = "https://github.com/CodeChain-io/rust-limited-table.git" }

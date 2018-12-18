@@ -23,7 +23,6 @@ extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_state as cstate;
 extern crate codechain_timer as ctimer;
-extern crate codechain_token_generator as ctoken_generator;
 extern crate codechain_types as ctypes;
 
 #[cfg(test)]
@@ -41,6 +40,7 @@ extern crate snap;
 #[cfg(test)]
 extern crate tempfile;
 extern crate time;
+extern crate token_generator;
 #[cfg(test)]
 extern crate trie_standardmap;
 extern crate util_error;

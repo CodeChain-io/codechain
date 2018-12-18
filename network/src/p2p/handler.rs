@@ -19,13 +19,13 @@ use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
-use ctoken_generator::TokenGenerator;
 use ctypes::util::unexpected::Mismatch;
 use finally::finally;
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
 use parking_lot::Mutex;
 use rlp::UntrustedRlp;
+use token_generator::TokenGenerator;
 
 use super::connections::{ConnectionType, Connections, ReceivedMessage};
 use super::listener::Listener;

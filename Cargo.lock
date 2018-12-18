@@ -412,7 +412,6 @@ dependencies = [
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-timer 0.1.0",
- "codechain-token-generator 0.1.0",
  "codechain-types 0.1.0",
  "finally 0.1.0 (git+https://github.com/CodeChain-io/rust-finally.git)",
  "limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)",
@@ -425,6 +424,7 @@ dependencies = [
  "rlp_derive 0.1.0",
  "table 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
+ "token-generator 0.1.0 (git+https://github.com/CodeChain-io/rust-token-generator.git)",
 ]
 
 [[package]]
@@ -524,7 +524,6 @@ dependencies = [
  "codechain-network 0.1.0",
  "codechain-state 0.1.0",
  "codechain-timer 0.1.0",
- "codechain-token-generator 0.1.0",
  "codechain-types 0.1.0",
  "hashdb 0.1.1",
  "journaldb 0.1.0",
@@ -538,6 +537,7 @@ dependencies = [
  "snap 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
+ "token-generator 0.1.0 (git+https://github.com/CodeChain-io/rust-token-generator.git)",
  "trie-standardmap 0.1.0",
  "util-error 0.1.0",
 ]
@@ -547,13 +547,6 @@ name = "codechain-timer"
 version = "0.1.0"
 dependencies = [
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "codechain-token-generator"
-version = "0.1.0"
-dependencies = [
- "limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)",
 ]
 
 [[package]]
@@ -2182,6 +2175,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "token-generator"
+version = "0.1.0"
+source = "git+https://github.com/CodeChain-io/rust-token-generator.git#7313b70c8cffef191b1f26ac83bee843eb15c67a"
+dependencies = [
+ "limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)",
+]
+
+[[package]]
 name = "tokio"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2790,6 +2791,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
 "checksum time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "d825be0eb33fda1a7e68012d51e9c7f451dc1a69391e7fdc197060bb8c56667b"
 "checksum tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e9175261fbdb60781fcd388a4d6cc7e14764a2b629a7ad94abb439aed223a44f"
+"checksum token-generator 0.1.0 (git+https://github.com/CodeChain-io/rust-token-generator.git)" = "<none>"
 "checksum tokio 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "7d00555353b013e170ed8bc4e13f648a317d1fd12157dbcae13f7013f6cf29f5"
 "checksum tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)" = "aeeffbbb94209023feaef3c196a41cbcdafa06b4a6f893f68779bb5e53796f71"
 "checksum tokio-executor 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "8cac2a7883ff3567e9d66bb09100d09b33d90311feca0206c7ca034bc0c55113"
