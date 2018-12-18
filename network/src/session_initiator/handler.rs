@@ -21,12 +21,12 @@ use std::sync::Arc;
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use ckey::{Error as KeyError, Secret};
-use ctoken_generator::TokenGenerator;
 use finally::finally;
 use mio::deprecated::EventLoop;
 use mio::Token;
 use parking_lot::RwLock;
 use rlp::DecoderError;
+use token_generator::TokenGenerator;
 
 use super::message;
 use super::server::{Error as ServerError, Server};

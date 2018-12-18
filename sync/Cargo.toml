@@ -12,7 +12,6 @@ codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
-codechain-token-generator = { path = "../util/token_generator" }
 codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
 journaldb = { path = "../util/journaldb" }
@@ -24,6 +23,7 @@ rand = "0.6.1"
 rlp = { path = "../util/rlp" }
 snap = "0.2"
 time = "0.1"
+token-generator = { git = "https://github.com/CodeChain-io/rust-token-generator.git" }
 util-error = { path = "../util/error" }
 
 [dev-dependencies]

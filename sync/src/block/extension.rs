@@ -26,7 +26,6 @@ use ccore::{
 use cnetwork::{Api, NetworkExtension, NodeId};
 use cstate::FindActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
-use ctoken_generator::TokenGenerator;
 use ctypes::parcel::Action;
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
@@ -35,6 +34,7 @@ use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
+use token_generator::TokenGenerator;
 
 use super::super::block::BlockSyncInfo;
 use super::downloader::{BodyDownloader, HeaderDownloader};
