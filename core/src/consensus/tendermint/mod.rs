@@ -462,14 +462,8 @@ impl Tendermint {
         let height = proposal.number() as Height;
         let view = consensus_view(proposal).expect("Imported block is already verified");
         if current_height == height && self.view.load(AtomicOrdering::SeqCst) == view {
-            {
-                let mut proposal_guard = self.proposal.write();
-                if proposal_guard.is_some() {
-                    return
-                }
-                *proposal_guard = Some(proposal.hash());
-                *self.proposal_parent.write() = *proposal.parent_hash();
-            }
+            *self.proposal.write() = Some(proposal.hash());
+            *self.proposal_parent.write() = *proposal.parent_hash();
             if *self.step.read() == Step::Propose {
                 self.to_step(Step::Prevote);
             }
