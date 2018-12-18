@@ -99,6 +99,19 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - parameters: `number[][]`
  - amount: `U64`
 
+### Store Action
+
+ - action: "store"
+ - content: `string`
+ - certifier: `PlatformAddress`
+ - signature: `Signature`
+
+### Remove Action
+
+ - action: "remove"
+ - hash: `H256` - parcel hash
+ - signature: `Signature`
+
 ## AssetScheme
 
  - amount: `U64`
@@ -111,6 +124,11 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - assetType: `H256`
  - lockScriptHash: `H160`
  - parameters: `number[][]`
+
+## Text
+
+ - content: `string`
+ - certifier: `PlatformAddress`
 
 ## Transactions
 
@@ -257,6 +275,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getAssetSchemeByHash](#chain_getassetschemebyhash)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
+ * [chain_getText](#chain_gettext)
  * [chain_isAssetSpent](#chain_isassetspent)
  * [chain_getSeq](#chain_getseq)
  * [chain_getBalance](#chain_getbalance)
@@ -890,6 +909,38 @@ Errors: `KVDB Error`, `Invalid Params`
     "parameters":[
 
     ]
+  },
+  "id":null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## chain_getText
+Gets the text with given parcel hash.
+
+### Params
+ 1. parcel hash - `H256` - Hash of signed parcel
+ 2. block number: `number` | `null`
+
+### Returns
+`null` | `Text`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getText", "params": ["0xd04303364ed7658fa2fba39a72ef5f0bb1308a23b42fd565f5949fc9b68485e5", null], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "content": "CodeChain",
+    "certifier": "tccqy6r92677phvflf0g08wgevum33jsavvmcl53d7e",
   },
   "id":null
 }
