@@ -31,8 +31,24 @@ pub struct Params {
     /// Network id.
     #[serde(rename = "networkID")]
     pub network_id: NetworkId,
+
     /// Minimum parcel cost.
-    pub min_parcel_cost: Uint,
+    pub min_payment_parcel_cost: Uint,
+    pub min_set_regular_key_parcel_cost: Uint,
+    pub min_create_shard_parcel_cost: Uint,
+    pub min_set_shard_owners_parcel_cost: Uint,
+    pub min_set_shard_users_parcel_cost: Uint,
+    pub min_wrap_ccc_parcel_cost: Uint,
+    pub min_custom_parcel_cost: Uint,
+    pub min_store_parcel_cost: Uint,
+    pub min_remove_parcel_cost: Uint,
+    pub min_asset_mint_cost: Uint,
+    pub min_asset_transfer_cost: Uint,
+    pub min_asset_scheme_change_cost: Uint,
+    pub min_asset_compose_cost: Uint,
+    pub min_asset_decompose_cost: Uint,
+    pub min_asset_unwrap_ccc_cost: Uint,
+
     /// Maximum size of block body.
     pub max_body_size: Uint,
     /// Snapshot creation period in unit of block numbers.
@@ -54,7 +70,21 @@ mod tests {
             "maxMetadataSize": "0x0400",
             "maxTextContentSize": "0x0200",
             "networkID" : "tc",
-            "minParcelCost" : "10",
+            "minPaymentParcelCost" : 10,
+            "minSetRegularKeyParcelCost" : 11,
+            "minCreateShardParcelCost" : 12,
+            "minSetShardOwnersParcelCost" : 13,
+            "minSetShardUsersParcelCost" : 14,
+            "minWrapCccParcelCost" : 15,
+            "minCustomParcelCost" : 16,
+            "minStoreParcelCost" : 17,
+            "minRemoveParcelCost" : 18,
+            "minAssetMintCost" : 19,
+            "minAssetTransferCost" : 20,
+            "minAssetSchemeChangeCost" : 21,
+            "minAssetComposeCost" : 22,
+            "minAssetDecomposeCost" : 23,
+            "minAssetUnwrapCccCost" : 24,
             "maxBodySize" : 4194304,
             "snapshotPeriod": 16384
         }"#;
@@ -64,7 +94,21 @@ mod tests {
         assert_eq!(deserialized.max_metadata_size, Uint(U256::from(0x0400)));
         assert_eq!(deserialized.max_text_content_size, Uint(U256::from(0x0200)));
         assert_eq!(deserialized.network_id, "tc".into());
-        assert_eq!(deserialized.min_parcel_cost, Uint(U256::from(10)));
+        assert_eq!(deserialized.min_payment_parcel_cost, Uint(10.into()));
+        assert_eq!(deserialized.min_set_regular_key_parcel_cost, Uint(11.into()));
+        assert_eq!(deserialized.min_create_shard_parcel_cost, Uint(12.into()));
+        assert_eq!(deserialized.min_set_shard_owners_parcel_cost, Uint(13.into()));
+        assert_eq!(deserialized.min_set_shard_users_parcel_cost, Uint(14.into()));
+        assert_eq!(deserialized.min_wrap_ccc_parcel_cost, Uint(15.into()));
+        assert_eq!(deserialized.min_custom_parcel_cost, Uint(16.into()));
+        assert_eq!(deserialized.min_store_parcel_cost, Uint(17.into()));
+        assert_eq!(deserialized.min_remove_parcel_cost, Uint(18.into()));
+        assert_eq!(deserialized.min_asset_mint_cost, Uint(19.into()));
+        assert_eq!(deserialized.min_asset_transfer_cost, Uint(20.into()));
+        assert_eq!(deserialized.min_asset_scheme_change_cost, Uint(21.into()));
+        assert_eq!(deserialized.min_asset_compose_cost, Uint(22.into()));
+        assert_eq!(deserialized.min_asset_decompose_cost, Uint(23.into()));
+        assert_eq!(deserialized.min_asset_unwrap_ccc_cost, Uint(24.into()));
         assert_eq!(deserialized.max_body_size, Uint(4194304.into()));
         assert_eq!(deserialized.snapshot_period, Uint(16384.into()));
     }

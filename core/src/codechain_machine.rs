@@ -59,9 +59,10 @@ impl CodeChainMachine {
 
     /// Does basic verification of the parcel.
     pub fn verify_parcel_basic(&self, p: &UnverifiedParcel, _header: &Header) -> Result<(), Error> {
-        if p.fee < self.params.min_parcel_cost {
+        let min_cost = self.min_cost(&p.action);
+        if p.fee < min_cost {
             return Err(StateError::Parcel(ParcelError::InsufficientFee {
-                minimal: self.params.min_parcel_cost,
+                minimal: min_cost,
                 got: p.fee,
             })
             .into())
@@ -190,6 +191,59 @@ impl CodeChainMachine {
             }
         }
         Ok(())
+    }
+
+    fn min_cost(&self, action: &Action) -> u64 {
+        match action {
+            Action::AssetTransaction {
+                transaction,
+                ..
+            } => match transaction {
+                Transaction::AssetMint {
+                    ..
+                } => self.params.min_asset_mint_cost,
+                Transaction::AssetTransfer {
+                    ..
+                } => self.params.min_asset_transfer_cost,
+                Transaction::AssetSchemeChange {
+                    ..
+                } => self.params.min_asset_scheme_change_cost,
+                Transaction::AssetCompose {
+                    ..
+                } => self.params.min_asset_compose_cost,
+                Transaction::AssetDecompose {
+                    ..
+                } => self.params.min_asset_decompose_cost,
+                Transaction::AssetUnwrapCCC {
+                    ..
+                } => self.params.min_asset_unwrap_ccc_cost,
+            },
+            Action::Payment {
+                ..
+            } => self.params.min_payment_parcel_cost,
+            Action::SetRegularKey {
+                ..
+            } => self.params.min_set_regular_key_parcel_cost,
+            Action::CreateShard => self.params.min_create_shard_parcel_cost,
+            Action::SetShardOwners {
+                ..
+            } => self.params.min_set_shard_owners_parcel_cost,
+            Action::SetShardUsers {
+                ..
+            } => self.params.min_set_shard_users_parcel_cost,
+            Action::WrapCCC {
+                ..
+            } => self.params.min_wrap_ccc_parcel_cost,
+            Action::Custom {
+                ..
+            } => self.params.min_custom_parcel_cost,
+            Action::Store {
+                ..
+            } => self.params.min_custom_parcel_cost,
+            Action::Remove {
+                ..
+            } => self.params.min_custom_parcel_cost,
+        }
     }
 }
 
