@@ -20,7 +20,7 @@ kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 lazy_static = "1.2"
 log = "0.4.6"
 parking_lot = "0.6.0"
-primitives = { path = "../util/primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
 rlp = { path = "../util/rlp" }
 serde = "1.0"
 serde_json = "1.0"

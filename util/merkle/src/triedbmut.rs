@@ -341,7 +341,6 @@ impl<'a> TrieMut for TrieDBMut<'a> {
 mod tests {
     use ccrypto::BLAKE_NULL_RLP;
     use memorydb::*;
-    use primitives::bytes::ToPretty;
     use standardmap::*;
 
     use crate::triehash::trie_root;
@@ -392,7 +391,7 @@ mod tests {
                 println!();
                 println!("{:?} vs {:?}", memtrie.root(), real);
                 for i in &x {
-                    println!("{:?} -> {:?}", i.0.pretty(), i.1.pretty());
+                    println!("{:?} -> {:?}", i.0, i.1);
                 }
             }
             assert_eq!(*memtrie.root(), real);
@@ -403,7 +402,7 @@ mod tests {
                 println!();
                 println!("{:?} vs {:?}", memtrie.root(), real);
                 for i in &x {
-                    println!("{:?} -> {:?}", i.0.pretty(), i.1.pretty());
+                    println!("{:?} -> {:?}", i.0, i.1);
                 }
             }
             assert_eq!(*memtrie.root(), BLAKE_NULL_RLP);
@@ -623,11 +622,11 @@ mod tests {
                 println!();
                 println!("ORIGINAL... {:?}", memtrie.root());
                 for i in &x {
-                    println!("{:?} -> {:?}", i.0.pretty(), i.1.pretty());
+                    println!("{:?} -> {:?}", i.0, i.1);
                 }
                 println!("SORTED... {:?}", memtrie_sorted.root());
                 for i in &y {
-                    println!("{:?} -> {:?}", i.0.pretty(), i.1.pretty());
+                    println!("{:?} -> {:?}", i.0, i.1);
                 }
             }
             assert_eq!(*memtrie.root(), real);

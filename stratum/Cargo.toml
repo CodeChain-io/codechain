@@ -14,7 +14,7 @@ jsonrpc-macros = { git = "https://github.com/paritytech/jsonrpc.git", branch = "
 jsonrpc-tcp-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
 log = "0.4.6"
 parking_lot = "0.6.0"
-primitives = { path = "../util/primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
 
 [dev-dependencies]
 env_logger = "0.6.0"

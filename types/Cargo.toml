@@ -8,7 +8,7 @@ byteorder = "1.2.7"
 codechain-crypto = { path = "../crypto" }
 codechain-key = { path = "../key" }
 heapsize = "0.4"
-primitives = { path = "../util/primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
 rlp = { path = "../util/rlp" }
 rlp_derive = { path = "../util/rlp_derive" }
 serde = "1.0"

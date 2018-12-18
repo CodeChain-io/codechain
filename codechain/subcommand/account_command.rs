@@ -25,7 +25,7 @@ use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
-use primitives::clean_0x;
+use primitives::remove_0x_prefix;
 
 use crate::config::ChainType;
 use crate::constants::DEFAULT_KEYS_PATH;
@@ -85,7 +85,7 @@ fn import(ap: &AccountProvider, network_id: NetworkId, json_path: &str) -> Resul
 }
 
 fn import_raw(ap: &AccountProvider, network_id: NetworkId, raw_key: &str) -> Result<(), String> {
-    let private = Private::from_str(clean_0x(raw_key)).map_err(|err| err.to_string())?;
+    let private = Private::from_str(remove_0x_prefix(raw_key)).map_err(|err| err.to_string())?;
     let password = read_password_and_confirm().ok_or("The password does not match")?;
     let address = ap.insert_account(private, &password).map_err(|err| err.to_string())?;
     println!("{}", PlatformAddress::new_v1(network_id, address));

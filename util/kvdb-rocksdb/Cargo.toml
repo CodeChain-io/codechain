@@ -15,5 +15,5 @@ rocksdb = { git = "https://github.com/paritytech/rust-rocksdb", rev = "ecf06adf3
 interleaved-ordered = "0.1.0"
 
 [dev-dependencies]
-primitives = { path = "../primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
 tempdir = "0.3"
