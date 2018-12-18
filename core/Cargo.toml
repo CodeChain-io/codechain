@@ -30,7 +30,7 @@ kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 memorydb = { path = "../util/memorydb" }
-multimap = { path = "../util/multimap" }
+multimap = { git = "https://github.com/CodeChain-io/rust-multimap.git" }
 parking_lot = "0.6.0"
 primitives = { path = "../util/primitives" }
 rand = "0.6.1"
