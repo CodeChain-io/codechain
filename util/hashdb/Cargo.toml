@@ -7,4 +7,4 @@ license = "GPL-3.0"
 
 [dependencies]
 elastic-array = "0.10"
-primitives = { path="../primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }

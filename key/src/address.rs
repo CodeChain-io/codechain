@@ -21,7 +21,7 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use heapsize::HeapSizeOf;
-use primitives::{clean_0x, H160};
+use primitives::{remove_0x_prefix, H160};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq)]
@@ -100,7 +100,7 @@ impl FromStr for Address {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = clean_0x(s);
+        let s = remove_0x_prefix(s);
         let a = H160::from_str(s).map_err(|_| format!("Invalid address {}", s))?;
         Ok(Address(a))
     }

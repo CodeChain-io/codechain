@@ -11,7 +11,7 @@ codechain-network = { path = "../network" }
 codechain-timer = { path = "../util/timer" }
 log = "0.4.6"
 parking_lot = "0.6.0"
-primitives = { path = "../util/primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
 rand = "0.6.1"
 rlp = { path = "../util/rlp" }
 time = "0.1"

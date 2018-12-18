@@ -10,7 +10,7 @@ byteorder = "1.2.7"
 codechain-crypto = { path = "../crypto" }
 codechain-key = { path = "../key" }
 codechain-types = { path = "../types" }
-primitives = { path = "../util/primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
 rlp = { path = "../util/rlp" }
 
 [dev-dependencies]

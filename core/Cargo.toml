@@ -32,7 +32,7 @@ kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 memorydb = { path = "../util/memorydb" }
 multimap = { git = "https://github.com/CodeChain-io/rust-multimap.git" }
 parking_lot = "0.6.0"
-primitives = { path = "../util/primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
 rand = "0.6.1"
 rlp = { path = "../util/rlp" }
 rlp_compress = { path = "../util/rlp_compress" }

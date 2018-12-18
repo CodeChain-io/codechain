@@ -40,7 +40,7 @@ env_logger = "0.5.3"
 never = { git = "https://github.com/CodeChain-io/rust-never.git" }
 panic_hook = { path = "util/panic_hook" }
 parking_lot = "0.6.0"
-primitives = { path = "util/primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
 rpassword = "2.0.0"
 serde = "1.0"
 serde_derive = "1.0"

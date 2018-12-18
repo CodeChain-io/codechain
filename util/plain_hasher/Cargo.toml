@@ -9,4 +9,4 @@ homepage = "https://github.com/paritytech/plain_hasher"
 
 [dependencies]
 crunchy = "0.1.6"
-primitives = { path = "../primitives" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
