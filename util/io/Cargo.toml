@@ -7,7 +7,7 @@ version = "1.9.0"
 authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-codechain-limited-table = { path = "../limited_table" }
+limited-table = { git = "https://github.com/CodeChain-io/rust-limited-table.git" }
 codechain-logger = { path = "../logger" }
 mio = "0.6.16"
 crossbeam = "0.5.0"

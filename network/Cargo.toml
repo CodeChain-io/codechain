@@ -5,7 +5,6 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
 codechain-crypto = { path = "../crypto" }
-codechain-limited-table = { path = "../util/limited_table" }
 codechain-token-generator = { path = "../util/token_generator" }
 codechain-io = { path = "../util/io" }
 codechain-key = { path = "../key" }
@@ -14,6 +13,7 @@ codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
 finally = { git = "https://github.com/CodeChain-io/rust-finally.git" }
 primitives = { path = "../util/primitives" }
+limited-table = { git = "https://github.com/CodeChain-io/rust-limited-table.git" }
 log = "0.4.6"
 mio = "0.6.16"
 parking_lot = "0.6.0"

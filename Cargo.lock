@@ -308,9 +308,9 @@ dependencies = [
 name = "codechain-io"
 version = "1.9.0"
 dependencies = [
- "codechain-limited-table 0.1.0",
  "codechain-logger 0.1.0",
  "crossbeam 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mio 0.6.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -374,13 +374,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "codechain-limited-table"
-version = "0.1.0"
-dependencies = [
- "slab 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "codechain-logger"
 version = "0.1.0"
 dependencies = [
@@ -417,12 +410,12 @@ dependencies = [
  "codechain-crypto 0.1.0",
  "codechain-io 1.9.0",
  "codechain-key 0.1.0",
- "codechain-limited-table 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-timer 0.1.0",
  "codechain-token-generator 0.1.0",
  "codechain-types 0.1.0",
  "finally 0.1.0 (git+https://github.com/CodeChain-io/rust-finally.git)",
+ "limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mio 0.6.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -560,7 +553,7 @@ dependencies = [
 name = "codechain-token-generator"
 version = "0.1.0"
 dependencies = [
- "codechain-limited-table 0.1.0",
+ "limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)",
 ]
 
 [[package]]
@@ -1242,6 +1235,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "libc"
 version = "0.2.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "limited-table"
+version = "0.1.0"
+source = "git+https://github.com/CodeChain-io/rust-limited-table.git#1dcc3240bf0bb0c9f7d9b3d23e7b262791bcd859"
+dependencies = [
+ "slab 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "linked-hash-map"
@@ -2685,6 +2686,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a374c89b9db55895453a74c1e38861d9deec0b01b405a82516e9d5de4820dea1"
 "checksum lazycell 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ddba4c30a78328befecec92fc94970e53b3ae385827d28620f0f5bb2493081e0"
 "checksum libc 0.2.44 (registry+https://github.com/rust-lang/crates.io-index)" = "10923947f84a519a45c8fefb7dd1b3e8c08747993381adee176d7a82b4195311"
+"checksum limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)" = "<none>"
 "checksum linked-hash-map 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7860ec297f7008ff7a1e3382d7f7e1dcd69efc94751a2284bafc3d013c2aa939"
 "checksum linked-hash-map 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "70fb39025bc7cdd76305867c4eccf2f2dcf6e9a57f5b21a93e1c2d86cd03ec9e"
 "checksum local-encoding 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e1ceb20f39ff7ae42f3ff9795f3986b1daad821caaa1e1732a0944103a5a1a66"
