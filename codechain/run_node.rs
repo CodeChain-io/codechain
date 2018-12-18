@@ -25,7 +25,6 @@ use ccore::{
     Stratum, StratumConfig, StratumError,
 };
 use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
-use cfinally::finally;
 use ckey::Address;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
@@ -37,6 +36,7 @@ use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
+use finally::finally;
 use parking_lot::{Condvar, Mutex};
 
 use crate::config::{self, load_config};

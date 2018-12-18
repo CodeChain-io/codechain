@@ -19,10 +19,10 @@ use std::io;
 use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
-use cfinally::finally;
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use ckey::{Error as KeyError, Secret};
 use ctoken_generator::TokenGenerator;
+use finally::finally;
 use mio::deprecated::EventLoop;
 use mio::Token;
 use parking_lot::RwLock;
