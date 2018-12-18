@@ -112,7 +112,7 @@ describe("solo - 1 node", function() {
             });
         });
 
-        [0, 8, 100].forEach(function(action) {
+        [0, 10, 100].forEach(function(action) {
             it(`action (invalid type): ${action}`, async function() {
                 parcelEncoded[3] = [action];
                 try {
