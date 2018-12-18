@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use climited_table::LimitedTable;
 use crossbeam::deque;
+use limited_table::LimitedTable;
 use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
 use mio::timer::Timeout;
 use mio::*;
