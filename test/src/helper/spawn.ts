@@ -63,6 +63,7 @@ export default class CodeChain {
     private _logFile: string;
     private _logPath: string;
     private _chain: ChainType;
+    private _rpcPort: number;
     private argv: string[];
     private isTestFailed: boolean;
     private process?: ChildProcess;
@@ -93,7 +94,7 @@ export default class CodeChain {
         return this._logPath;
     }
     public get rpcPort(): number {
-        return 8081 + this.id;
+        return this._rpcPort;
     }
     public get port(): number {
         return 3486 + this.id;
@@ -111,10 +112,14 @@ export default class CodeChain {
             argv?: string[];
             additionalKeysPath?: string;
             base?: number;
+            rpcPort?: number;
         } = {}
     ) {
         const { chain, argv, additionalKeysPath, base = 0 } = options;
         this._id = base + CodeChain.idCounter++;
+
+        const { rpcPort = 8081 + this.id } = options;
+        this._rpcPort = rpcPort;
 
         mkdirp.sync(`${projectRoot}/db/`);
         mkdirp.sync(`${projectRoot}/keys/`);
@@ -147,7 +152,8 @@ export default class CodeChain {
 
     public async start(
         argv: string[] = [],
-        logLevel = "trace,mio=warn,tokio=warn,hyper=warn"
+        logLevel = "trace,mio=warn,tokio=warn,hyper=warn",
+        disableLog = false
     ) {
         if (this.keyFileMovePromise) {
             await this.keyFileMovePromise;
@@ -186,9 +192,11 @@ export default class CodeChain {
             );
 
             this.isTestFailed = true;
-            const logStream = createWriteStream(this.logPath);
-            this.process!.stdout.pipe(logStream);
-            this.process!.stderr.pipe(logStream);
+            if (!disableLog) {
+                const logStream = createWriteStream(this.logPath);
+                this.process!.stdout.pipe(logStream);
+                this.process!.stderr.pipe(logStream);
+            }
 
             this.process
                 .on("error", e => {
