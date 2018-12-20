@@ -177,8 +177,10 @@ macro_rules! order {
             asset_amount_fee: $fee_amount,
             origin_outputs: vec![$($output,)*],
             expiration: $expiration,
-            lock_script_hash: $lock_script_hash,
-            parameters: Vec::new(),
+            lock_script_hash_from: $lock_script_hash,
+            parameters_from: Vec::new(),
+            lock_script_hash_fee: $lock_script_hash,
+            parameters_fee: vec![vec![0x1]],
         }
     }
 }

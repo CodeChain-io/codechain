@@ -16,18 +16,20 @@ Assets with orders must be able to be spent by takers or relayers without any pe
 
 The format of `Order` is as shown below.
 
-|       Name      |    Data Type    |                                                Description                                                |
-|-----------------|-----------------|-----------------------------------------------------------------------------------------------------------|
-| assetTypeFrom   | H256            | The type of the asset offered by maker                                                                    |
-| assetTypeTo     | H256            | The type of the asset requested by maker                                                                  |
-| assetTypeFee    | H256            | The type of the asset offered by maker to give as fees                                                    |
-| assetAmountFrom | U64             | Total amount of assets with the type assetTypeFrom                                                        |
-| assetAmountTo   | U64             | Total amount of assets with the type assetTypeTo                                                          |
-| assetAmountFee  | U64             | Total amount of assets with the type assetTypeFee                                                         |
-| originOutputs   | AssetOutPoint[] | The previous outputs composed of assetTypeFrom / assetTypeFee assets, which the order starts from         |
-| expiration      | U64             | Time at which the order expires                                                                           |
-| lockScriptHash  | H160            | Lock script hash provided by maker, which should be written in every output with the order                |
-| parameters      | Bytes[]         | Parameters provided by maker, which should be written in every output with the order                      |
+|        Name        |    Data Type    |                                                Description                                                |
+|--------------------|-----------------|-----------------------------------------------------------------------------------------------------------|
+| assetTypeFrom      | H256            | The type of the asset offered by maker                                                                    |
+| assetTypeTo        | H256            | The type of the asset requested by maker                                                                  |
+| assetTypeFee       | H256            | The type of the asset offered by maker to give as fees                                                    |
+| assetAmountFrom    | U64             | Total amount of assets with the type assetTypeFrom                                                        |
+| assetAmountTo      | U64             | Total amount of assets with the type assetTypeTo                                                          |
+| assetAmountFee     | U64             | Total amount of assets with the type assetTypeFee                                                         |
+| originOutputs      | AssetOutPoint[] | The previous outputs composed of assetTypeFrom / assetTypeFee assets, which the order starts from         |
+| expiration         | U64             | Time at which the order expires                                                                           |
+| lockScriptHashFrom | H160            | Lock script hash provided by maker, which should be written in every output with the order except fee     |
+| parametersFrom     | Bytes[]         | Parameters provided by maker, which should be written in every output with the order except fee           |
+| lockScriptHashFee  | H160            | Lock script hash provided by relayer, which should be written in every fee output with the order          |
+| parametersFee      | Bytes[]         | Parameters provided by relayer, which should be written in every fee output with the order                |
 
 To make a point-to-point order, put a zero on the `assetAmountFee` field.
 To write an order on a transfer transaction, the order should be wrapped once more, to `OrderOnTransfer`.
