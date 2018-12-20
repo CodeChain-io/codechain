@@ -23,6 +23,7 @@ extern crate never;
 extern crate parking_lot;
 extern crate primitives;
 extern crate rand;
+extern crate rand_xorshift;
 extern crate rlp;
 extern crate rustc_hex;
 extern crate rustc_serialize;
