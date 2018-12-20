@@ -215,8 +215,8 @@ impl Tendermint {
         )
     }
 
-    fn is_authority(&self, address: &Address) -> bool {
-        self.validators.contains(&*self.proposal_parent.read(), address)
+    fn is_authority(&self, prev_hash: &H256, address: &Address) -> bool {
+        self.validators.contains(&prev_hash, address)
     }
 
     fn check_above_threshold(&self, n: usize) -> Result<(), EngineError> {
@@ -665,7 +665,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let view = consensus_view(header).unwrap();
         ctrace!(ENGINE, "Verify external at {}-{}, {:?}", height, view, header);
         let proposer = header.author();
-        if !self.is_authority(proposer) {
+        if !self.is_authority(header.parent_hash(), proposer) {
             return Err(EngineError::NotAuthorized(*proposer).into())
         }
         self.check_view_proposer(header.parent_hash(), header.number() as usize, consensus_view(header)?, &proposer)
@@ -853,10 +853,18 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         if !self.votes.is_old_or_known(&message) {
             let msg_hash = blake256(rlp.at(1).map_err(fmt_err)?.as_raw());
             let sender = public_to_address(&recover(&message.signature, &msg_hash).map_err(fmt_err)?);
-
-            if !self.is_authority(&sender) {
+            let prev_height = (message.vote_step.height - 1) as u64;
+            if let Some(prev_block_hash) =
+                self.client().block_header(&BlockId::Number(prev_height)).map(|header| header.parent_hash())
+            {
+                if !self.is_authority(&prev_block_hash, &sender) {
+                    return Err(EngineError::NotAuthorized(sender))
+                }
+            } else {
+                // Because the members of the committee could change in future height, we could not verify future height's message.
                 return Err(EngineError::NotAuthorized(sender))
             }
+
             self.broadcast_message(rlp.as_raw().to_vec());
             if let Some(double) = self.votes.vote(message.clone(), sender) {
                 let height = message.vote_step.height as BlockNumber;
