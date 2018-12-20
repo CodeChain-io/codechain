@@ -84,8 +84,6 @@ pub struct Tendermint {
     last_lock: AtomicUsize,
     /// hash of the proposed block, used for seal submission.
     proposal: RwLock<Option<H256>>,
-    /// Hash of the proposal parent block.
-    proposal_parent: RwLock<H256>,
     /// Proposal block which parent is not imported yet
     future_proposal: RwLock<Option<Bytes>>,
     last_confirmed_view: RwLock<(H256, View)>,
@@ -121,7 +119,6 @@ impl Tendermint {
             lock_change: RwLock::new(None),
             last_lock: AtomicUsize::new(0),
             proposal: RwLock::new(None),
-            proposal_parent: Default::default(),
             future_proposal: RwLock::new(None),
             last_confirmed_view: RwLock::new((Default::default(), 0)),
             validators: our_params.validators,
@@ -146,6 +143,15 @@ impl Tendermint {
             .expect("Only writes in initialize")
             .upgrade()
             .expect("Client lives longer than consensus")
+    }
+
+    /// Get previous block hash to determine validator set
+    fn prev_block_hash(&self) -> H256 {
+        let prev_height = (self.height() - 1) as u64;
+        self.client()
+            .block_header(&BlockId::Number(prev_height))
+            .expect("Height is increased when previous block is imported")
+            .hash()
     }
 
     /// Find the designated for the given view.
@@ -220,7 +226,7 @@ impl Tendermint {
     }
 
     fn check_above_threshold(&self, n: usize) -> Result<(), EngineError> {
-        let threshold = self.validators.count(&*self.proposal_parent.read()) * 2 / 3;
+        let threshold = self.validators.count(&self.prev_block_hash()) * 2 / 3;
         if n > threshold {
             Ok(())
         } else {
@@ -243,7 +249,7 @@ impl Tendermint {
 
     fn has_all_votes(&self, vote_step: &VoteStep) -> bool {
         let step_votes = self.votes.count_round_votes(vote_step);
-        self.validators.count(&*self.proposal_parent.read()) == step_votes
+        self.validators.count(&self.prev_block_hash()) == step_votes
     }
 
     fn has_enough_aligned_votes(&self, message: &ConsensusMessage) -> bool {
@@ -308,7 +314,6 @@ impl Tendermint {
         self.view.store(0, AtomicOrdering::SeqCst);
         *self.lock_change.write() = None;
         *self.proposal.write() = None;
-        *self.proposal_parent.write() = Default::default();
     }
 
     fn to_step(&self, step: Step) {
@@ -327,9 +332,8 @@ impl Tendermint {
                 );
 
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
-                    if let Some(header) = self.client().block_header(&BlockId::Hash(*hash)) {
+                    if self.client().block_header(&BlockId::Hash(*hash)).is_some() {
                         *self.proposal.write() = Some(*hash);
-                        *self.proposal_parent.write() = header.parent_hash();
                         self.to_step(Step::Prevote);
                     } else {
                         ctrace!(ENGINE, "Proposal is received but not imported");
@@ -465,14 +469,12 @@ impl Tendermint {
         let view = consensus_view(proposal).expect("Imported block is already verified");
         if current_height == height && self.view.load(AtomicOrdering::SeqCst) == view {
             *self.proposal.write() = Some(proposal.hash());
-            *self.proposal_parent.write() = *proposal.parent_hash();
             if *self.step.read() == Step::Propose {
                 self.to_step(Step::Prevote);
             }
         } else if current_height < height {
             self.to_next_height(height - 1);
             *self.proposal.write() = Some(proposal.hash());
-            *self.proposal_parent.write() = *proposal.parent_hash();
             self.to_step(Step::Prevote);
         }
     }
@@ -503,9 +505,6 @@ impl Tendermint {
                     *self.proposal.write() = Some(proposal);
                 }
             }
-            let prev_header =
-                client.block_header(&BlockId::Number(backup.height as u64 - 1)).expect("Prev block should be imported");
-            *self.proposal_parent.write() = prev_header.hash();
 
             let mut to_next_height = None;
             for vote in backup.votes {
@@ -628,7 +627,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let hash = header.hash();
 
         *self.proposal.write() = Some(hash);
-        *self.proposal_parent.write() = *header.parent_hash();
         cdebug!(
             ENGINE,
             "Submitting proposal {} at height {}-{} view {}-{}.\n{:?}",
@@ -774,11 +772,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 if self.proposal.read().is_none() {
                     // Report the proposer if no proposal was received.
                     let height = self.height.load(AtomicOrdering::SeqCst);
-                    let current_proposer = self.view_proposer(
-                        &*self.proposal_parent.read(),
-                        height,
-                        self.view.load(AtomicOrdering::SeqCst),
-                    );
+                    let current_proposer =
+                        self.view_proposer(&self.prev_block_hash(), height, self.view.load(AtomicOrdering::SeqCst));
                     self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
                 }
                 Step::Prevote
@@ -1300,6 +1295,7 @@ impl TimeoutHandler for TendermintExtension {
 #[cfg(test)]
 mod tests {
     use crate::block::{ClosedBlock, IsBlock, OpenBlock};
+    use crate::client::TestBlockChainClient;
     use crate::consensus::CodeChainEngine;
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
@@ -1307,10 +1303,12 @@ mod tests {
     use super::*;
 
     /// Accounts inserted with "0" and "1" are validators. First proposer is "0".
-    fn setup() -> (Scheme, Arc<AccountProvider>) {
+    fn setup() -> (Scheme, Arc<AccountProvider>, Arc<EngineClient>) {
         let tap = AccountProvider::transient_provider();
         let scheme = Scheme::new_test_tendermint();
-        (scheme, tap)
+        let test_client: Arc<EngineClient> = Arc::new(TestBlockChainClient::new());
+        scheme.engine.register_client(Arc::downgrade(&test_client));
+        (scheme, tap, test_client)
     }
 
     fn propose_default(scheme: &Scheme, proposer: Address) -> (ClosedBlock, Vec<Bytes>) {
@@ -1364,7 +1362,7 @@ mod tests {
 
     #[test]
     fn generate_seal() {
-        let (scheme, tap) = setup();
+        let (scheme, tap, _c) = setup();
 
         let proposer = insert_and_register(&tap, scheme.engine.as_ref(), "1");
 
@@ -1374,7 +1372,7 @@ mod tests {
 
     #[test]
     fn seal_signatures_checking() {
-        let (spec, tap) = setup();
+        let (spec, tap, _c) = setup();
         let engine = spec.engine;
 
         let mut header = Header::default();
