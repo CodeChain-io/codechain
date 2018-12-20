@@ -26,8 +26,9 @@ use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::Action;
+use ctypes::transaction::Transaction as TransactionType;
 use ctypes::{BlockNumber, ShardId};
-use primitives::H256;
+use primitives::{Bytes as BytesArray, H256};
 use rlp::{DecoderError, UntrustedRlp};
 
 use jsonrpc_core::Result;
@@ -251,5 +252,16 @@ where
         let sender_address = sender.try_address().map_err(errors::core)?;
         let transaction_type = ::std::result::Result::from(transaction).map_err(errors::core)?;
         Ok(self.client.execute_transaction(&transaction_type, sender_address).map_err(errors::core)?)
+    }
+
+    fn execute_vm(&self, tx: Transaction, params: Vec<Vec<BytesArray>>, indices: Vec<usize>) -> Result<Vec<String>> {
+        let tx_type = ::std::result::Result::from(tx).map_err(errors::core)?;
+        match &tx_type {
+            TransactionType::AssetTransfer {
+                inputs,
+                ..
+            } => Ok(self.client.execute_vm(&tx_type, inputs, &params, &indices).map_err(errors::core)?),
+            _ => Err(errors::transfer_only()),
+        }
     }
 }
