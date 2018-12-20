@@ -104,6 +104,7 @@ pub enum Error {
     InvalidOrderLockScriptHash(H160),
     /// the parameters of the order is different from the output
     InvalidOrderParameters(Vec<Bytes>),
+    OrderRecipientsAreSame,
     OrderExpired {
         expiration: u64,
         timestamp: u64,
@@ -140,7 +141,8 @@ const ERROR_ID_INVALID_ORDER_ASSET_TYPES: u8 = 30u8;
 const ERROR_ID_INVALID_ORDER_ASSET_AMOUNTS: u8 = 31u8;
 const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 32u8;
 const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 33u8;
-const ERROR_ID_ORDER_EXPIRED: u8 = 34u8;
+const ERROR_ID_ORDER_RECIPIENTS_ARE_SAME: u8 = 34u8;
+const ERROR_ID_ORDER_EXPIRED: u8 = 35u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -219,6 +221,7 @@ impl Encodable for Error {
             Error::InvalidOrderParameters(parameters) => {
                 s.begin_list(2).append(&ERROR_ID_INVALID_ORDER_PARAMETERS).append(parameters)
             }
+            Error::OrderRecipientsAreSame => s.begin_list(1).append(&ERROR_ID_ORDER_RECIPIENTS_ARE_SAME),
             Error::OrderExpired {
                 expiration,
                 timestamp,
@@ -436,6 +439,12 @@ impl Decodable for Error {
                 }
                 Error::InvalidOrderParameters(rlp.val_at(1)?)
             }
+            ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => {
+                if rlp.item_count()? != 1 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::OrderRecipientsAreSame
+            }
             ERROR_ID_ORDER_EXPIRED => {
                 if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpInvalidLength)
@@ -538,6 +547,9 @@ impl Display for Error {
             }
             Error::InvalidOrderParameters(parameters) => {
                 write!(f, "The parameters of the order is different from the output: {:?}", parameters)
+            }
+            Error::OrderRecipientsAreSame => {
+                write!(f, "Both the lock script hash and parameters should not be same between maker and relayer")
             }
             Error::OrderExpired {
                 expiration,

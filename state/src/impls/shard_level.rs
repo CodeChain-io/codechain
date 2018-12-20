@@ -1376,13 +1376,13 @@ mod tests {
                 (lock_script_hash, asset_type_3, 10),
                 (lock_script_hash, asset_type_1, 20),
                 (lock_script_hash, asset_type_2, 20),
-                (lock_script_hash, asset_type_3, 20),
+                (lock_script_hash, vec![vec![0x1]], asset_type_3, 20),
             ],
             vec![order_on_transfer! (
                 order,
                 20,
                 input_indices: [0, 2],
-                output_indices: [0, 1, 2]
+                output_indices: [0, 1, 2, 5]
             )]
         );
         let transfer_hash = transfer.hash();
@@ -1401,7 +1401,7 @@ mod tests {
             (asset: (transfer_hash, 2, SHARD_ID) => { asset_type: asset_type_3, amount: 10, order: order_consumed_hash }),
             (asset: (transfer_hash, 3, SHARD_ID) => { asset_type: asset_type_1, amount: 20, order }),
             (asset: (transfer_hash, 4, SHARD_ID) => { asset_type: asset_type_2, amount: 20, order }),
-            (asset: (transfer_hash, 5, SHARD_ID) => { asset_type: asset_type_3, amount: 20, order })
+            (asset: (transfer_hash, 5, SHARD_ID) => { asset_type: asset_type_3, amount: 20, order: order_consumed_hash })
         ]);
     }
 

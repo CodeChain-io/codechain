@@ -59,8 +59,10 @@ pub struct Order {
     pub origin_outputs: Vec<AssetOutPoint>,
     /// expiration time by second
     pub expiration: u64,
-    pub lock_script_hash: H160,
-    pub parameters: Vec<Bytes>,
+    pub lock_script_hash_from: H160,
+    pub parameters_from: Vec<Bytes>,
+    pub lock_script_hash_fee: H160,
+    pub parameters_fee: Vec<Bytes>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
@@ -235,6 +237,12 @@ impl Order {
                 fee: self.asset_amount_fee,
             })
         }
+        if self.asset_amount_fee != 0
+            && self.lock_script_hash_fee == self.lock_script_hash_from
+            && self.parameters_fee == self.parameters_from
+        {
+            return Err(Error::OrderRecipientsAreSame)
+        }
         if self.origin_outputs.is_empty() {
             return Err(Error::InvalidOriginOutputs(self.hash()))
         }
@@ -246,14 +254,24 @@ impl Order {
         Ok(())
     }
 
-    pub fn check_transfer_output(&self, output: &AssetTransferOutput) -> Result<(), Error> {
-        if self.lock_script_hash != output.lock_script_hash {
-            return Err(Error::InvalidOrderLockScriptHash(self.lock_script_hash))
+    pub fn check_transfer_output(&self, output: &AssetTransferOutput) -> Result<bool, Error> {
+        if self.asset_amount_fee != 0
+            && self.asset_type_fee == output.asset_type
+            && self.lock_script_hash_fee == output.lock_script_hash
+            && self.parameters_fee == output.parameters
+        {
+            // owned by relayer
+            return Ok(false)
         }
-        if self.parameters != output.parameters {
-            return Err(Error::InvalidOrderParameters(self.parameters.to_vec()))
+
+        if self.lock_script_hash_from != output.lock_script_hash {
+            return Err(Error::InvalidOrderLockScriptHash(self.lock_script_hash_from))
         }
-        Ok(())
+        if self.parameters_from != output.parameters {
+            return Err(Error::InvalidOrderParameters(self.parameters_from.to_vec()))
+        }
+        // owned by maker
+        Ok(true)
     }
 
     pub fn consume(&self, amount: u64) -> Order {
@@ -268,8 +286,10 @@ impl Order {
                 - (u128::from(amount) * u128::from(self.asset_amount_fee) / u128::from(self.asset_amount_from)) as u64,
             origin_outputs: self.origin_outputs.clone(),
             expiration: self.expiration,
-            lock_script_hash: self.lock_script_hash,
-            parameters: self.parameters.clone(),
+            lock_script_hash_from: self.lock_script_hash_from,
+            parameters_from: self.parameters_from.clone(),
+            lock_script_hash_fee: self.lock_script_hash_fee,
+            parameters_fee: self.parameters_fee.clone(),
         }
     }
 }
@@ -571,7 +591,9 @@ impl HeapSizeOf for AssetOutPoint {
 
 impl HeapSizeOf for Order {
     fn heap_size_of_children(&self) -> usize {
-        self.origin_outputs.heap_size_of_children() + self.parameters.heap_size_of_children()
+        self.origin_outputs.heap_size_of_children()
+            + self.parameters_from.heap_size_of_children()
+            + self.parameters_fee.heap_size_of_children()
     }
 }
 
@@ -724,7 +746,8 @@ fn verify_input_and_output_consistent_with_order(
         let mut input_amount_fee: u64 = 0;
         let mut output_amount_from: u64 = 0;
         let mut output_amount_to: u64 = 0;
-        let mut output_amount_fee: u64 = 0;
+        let mut output_amount_fee_remaining: u64 = 0;
+        let mut output_amount_fee_given: u64 = 0;
 
         let order = &order_tx.order;
 
@@ -744,7 +767,7 @@ fn verify_input_and_output_consistent_with_order(
 
         for output_idx in order_tx.output_indices.iter() {
             let output = &outputs[*output_idx];
-            order.check_transfer_output(output)?;
+            let owned_by_taker = order.check_transfer_output(output)?;
             if output.asset_type == order.asset_type_from {
                 if output_amount_from != 0 {
                     return Err(Error::InconsistentTransactionInOutWithOrders)
@@ -756,10 +779,17 @@ fn verify_input_and_output_consistent_with_order(
                 }
                 output_amount_to = output.amount;
             } else if output.asset_type == order.asset_type_fee {
-                if output_amount_fee != 0 {
-                    return Err(Error::InconsistentTransactionInOutWithOrders)
+                if owned_by_taker {
+                    if output_amount_fee_remaining != 0 {
+                        return Err(Error::InconsistentTransactionInOutWithOrders)
+                    }
+                    output_amount_fee_remaining = output.amount;
+                } else {
+                    if output_amount_fee_given != 0 {
+                        return Err(Error::InconsistentTransactionInOutWithOrders)
+                    }
+                    output_amount_fee_given = output.amount;
                 }
-                output_amount_fee = output.amount;
             } else {
                 return Err(Error::InconsistentTransactionInOutWithOrders)
             }
@@ -773,12 +803,13 @@ fn verify_input_and_output_consistent_with_order(
         if !is_ratio_valid(order.asset_amount_from, order.asset_amount_to, order_tx.spent_amount, output_amount_to) {
             return Err(Error::InconsistentTransactionInOutWithOrders)
         }
-        if input_amount_fee < output_amount_fee
+        if input_amount_fee < output_amount_fee_remaining
+            || input_amount_fee - output_amount_fee_remaining != output_amount_fee_given
             || !is_ratio_valid(
                 order.asset_amount_from,
                 order.asset_amount_fee,
                 order_tx.spent_amount,
-                input_amount_fee - output_amount_fee,
+                output_amount_fee_given,
             )
         {
             return Err(Error::InconsistentTransactionInOutWithOrders)
@@ -1547,8 +1578,10 @@ mod tests {
                         amount: 30,
                     }],
                     expiration: 10,
-                    lock_script_hash: H160::random(),
-                    parameters: vec![vec![1]],
+                    lock_script_hash_from: H160::random(),
+                    parameters_from: vec![vec![1]],
+                    lock_script_hash_fee: H160::random(),
+                    parameters_fee: vec![vec![1]],
                 },
                 spent_amount: 10,
                 input_indices: vec![0],
@@ -1630,8 +1663,10 @@ mod tests {
             asset_amount_fee: 0,
             origin_outputs: vec![origin_output.clone()],
             expiration: 10,
-            lock_script_hash,
-            parameters: parameters.clone(),
+            lock_script_hash_from: lock_script_hash,
+            parameters_from: parameters.clone(),
+            lock_script_hash_fee: lock_script_hash,
+            parameters_fee: parameters.clone(),
         };
 
         let tx = Transaction::AssetTransfer {
@@ -1686,7 +1721,8 @@ mod tests {
         let asset_type_b = H256::random();
         let asset_type_c = H256::random();
         let lock_script_hash = H160::random();
-        let parameters = vec![vec![1]];
+        let parameters1 = vec![vec![1]];
+        let parameters2 = vec![vec![2]];
 
         let origin_output_1 = AssetOutPoint {
             transaction_hash: H256::random(),
@@ -1710,8 +1746,10 @@ mod tests {
             asset_amount_fee: 30,
             origin_outputs: vec![origin_output_1.clone(), origin_output_2.clone()],
             expiration: 10,
-            lock_script_hash,
-            parameters: parameters.clone(),
+            lock_script_hash_from: lock_script_hash,
+            parameters_from: parameters1.clone(),
+            lock_script_hash_fee: lock_script_hash,
+            parameters_fee: parameters2.clone(),
         };
 
         let tx = Transaction::AssetTransfer {
@@ -1745,19 +1783,19 @@ mod tests {
             outputs: vec![
                 AssetTransferOutput {
                     lock_script_hash,
-                    parameters: parameters.clone(),
+                    parameters: parameters1.clone(),
                     asset_type: asset_type_a,
                     amount: 25,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
-                    parameters: parameters.clone(),
+                    parameters: parameters1.clone(),
                     asset_type: asset_type_b,
                     amount: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
-                    parameters: parameters.clone(),
+                    parameters: parameters1.clone(),
                     asset_type: asset_type_c,
                     amount: 15,
                 },
@@ -1769,7 +1807,7 @@ mod tests {
                 },
                 AssetTransferOutput {
                     lock_script_hash,
-                    parameters: vec![],
+                    parameters: parameters2.clone(),
                     asset_type: asset_type_c,
                     amount: 15,
                 },
@@ -1778,7 +1816,7 @@ mod tests {
                 order,
                 spent_amount: 15,
                 input_indices: vec![0, 1],
-                output_indices: vec![0, 1, 2],
+                output_indices: vec![0, 1, 2, 4],
             }],
         };
 
@@ -1792,6 +1830,7 @@ mod tests {
         let asset_type_c = H256::random();
         let lock_script_hash = H160::random();
         let parameters = vec![vec![1]];
+        let parameters_fee = vec![vec![2]];
 
         // Case 1: ratio is wrong
         let origin_output = AssetOutPoint {
@@ -1809,8 +1848,10 @@ mod tests {
             asset_amount_fee: 0,
             origin_outputs: vec![origin_output.clone()],
             expiration: 10,
-            lock_script_hash,
-            parameters: parameters.clone(),
+            lock_script_hash_from: lock_script_hash,
+            parameters_from: parameters.clone(),
+            lock_script_hash_fee: lock_script_hash,
+            parameters_fee: parameters_fee.clone(),
         };
 
         let tx = Transaction::AssetTransfer {
@@ -1880,8 +1921,10 @@ mod tests {
             asset_amount_fee: 30,
             origin_outputs: vec![origin_output_1.clone(), origin_output_2.clone()],
             expiration: 10,
-            lock_script_hash,
-            parameters: parameters.clone(),
+            lock_script_hash_from: lock_script_hash,
+            parameters_from: parameters.clone(),
+            lock_script_hash_fee: lock_script_hash,
+            parameters_fee: parameters_fee.clone(),
         };
 
         // Case 2-1: asset_type_from
@@ -1946,7 +1989,7 @@ mod tests {
                 },
                 AssetTransferOutput {
                     lock_script_hash,
-                    parameters: vec![],
+                    parameters: parameters_fee.clone(),
                     asset_type: asset_type_c,
                     amount: 30,
                 },
@@ -1955,7 +1998,7 @@ mod tests {
                 order: order.clone(),
                 spent_amount: 30,
                 input_indices: vec![0, 1],
-                output_indices: vec![0, 1, 2, 3],
+                output_indices: vec![0, 1, 2, 3, 5],
             }],
         };
         assert_eq!(tx.verify(), Err(Error::InconsistentTransactionInOutWithOrders));
@@ -2022,7 +2065,7 @@ mod tests {
                 },
                 AssetTransferOutput {
                     lock_script_hash,
-                    parameters: vec![],
+                    parameters: parameters_fee.clone(),
                     asset_type: asset_type_c,
                     amount: 30,
                 },
@@ -2031,12 +2074,12 @@ mod tests {
                 order: order.clone(),
                 spent_amount: 30,
                 input_indices: vec![0, 1],
-                output_indices: vec![0, 1, 2, 3],
+                output_indices: vec![0, 1, 2, 3, 5],
             }],
         };
         assert_eq!(tx.verify(), Err(Error::InconsistentTransactionInOutWithOrders));
 
-        // Case 2-3: asset_type_from
+        // Case 2-3: asset_type_fee
         let tx = Transaction::AssetTransfer {
             network_id: NetworkId::default(),
             burns: vec![],
@@ -2098,7 +2141,7 @@ mod tests {
                 },
                 AssetTransferOutput {
                     lock_script_hash,
-                    parameters: vec![],
+                    parameters: parameters_fee.clone(),
                     asset_type: asset_type_c,
                     amount: 30,
                 },
@@ -2107,7 +2150,7 @@ mod tests {
                 order: order.clone(),
                 spent_amount: 30,
                 input_indices: vec![0, 1],
-                output_indices: vec![0, 1, 2, 3],
+                output_indices: vec![0, 1, 2, 3, 5],
             }],
         };
         assert_eq!(tx.verify(), Err(Error::InconsistentTransactionInOutWithOrders));
@@ -2141,8 +2184,10 @@ mod tests {
             asset_amount_fee: 0,
             origin_outputs: vec![origin_output_1.clone()],
             expiration: 10,
-            lock_script_hash,
-            parameters: parameters.clone(),
+            lock_script_hash_from: lock_script_hash,
+            parameters_from: parameters.clone(),
+            lock_script_hash_fee: lock_script_hash,
+            parameters_fee: parameters.clone(),
         };
         let order_2 = Order {
             asset_type_from: asset_type_b,
@@ -2153,8 +2198,10 @@ mod tests {
             asset_amount_fee: 0,
             origin_outputs: vec![origin_output_2.clone()],
             expiration: 10,
-            lock_script_hash,
-            parameters: parameters.clone(),
+            lock_script_hash_from: lock_script_hash,
+            parameters_from: parameters.clone(),
+            lock_script_hash_fee: lock_script_hash,
+            parameters_fee: parameters.clone(),
         };
 
         let tx = Transaction::AssetTransfer {
@@ -2231,8 +2278,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(order.verify(), Ok(()));
 
@@ -2250,8 +2299,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(order.verify(), Ok(()));
 
@@ -2269,8 +2320,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(order.verify(), Ok(()));
     }
@@ -2295,8 +2348,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(order.verify(), Err(Error::InvalidOriginOutputs(order.hash())));
 
@@ -2309,8 +2364,10 @@ mod tests {
             asset_amount_fee: 3,
             origin_outputs: vec![],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(order.verify(), Err(Error::InvalidOriginOutputs(order.hash())));
 
@@ -2329,8 +2386,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(
             order.verify(),
@@ -2355,8 +2414,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(
             order.verify(),
@@ -2381,8 +2442,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(
             order.verify(),
@@ -2407,8 +2470,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(
             order.verify(),
@@ -2435,8 +2500,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(
             order.verify(),
@@ -2462,8 +2529,10 @@ mod tests {
                 amount: 10,
             }],
             expiration: 10,
-            lock_script_hash: H160::random(),
-            parameters: vec![vec![1]],
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
         };
         assert_eq!(
             order.verify(),

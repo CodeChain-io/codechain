@@ -156,8 +156,10 @@ pub struct Order {
     pub asset_amount_fee: Uint,
     pub origin_outputs: Vec<AssetOutPoint>,
     pub expiration: u64,
-    pub lock_script_hash: H160,
-    pub parameters: Vec<Bytes>,
+    pub lock_script_hash_from: H160,
+    pub parameters_from: Vec<Bytes>,
+    pub lock_script_hash_fee: H160,
+    pub parameters_fee: Vec<Bytes>,
 }
 
 impl From<OrderType> for Order {
@@ -171,8 +173,10 @@ impl From<OrderType> for Order {
             asset_amount_fee: from.asset_amount_fee.into(),
             origin_outputs: from.origin_outputs.into_iter().map(From::from).collect(),
             expiration: from.expiration,
-            lock_script_hash: from.lock_script_hash,
-            parameters: from.parameters,
+            lock_script_hash_from: from.lock_script_hash_from,
+            parameters_from: from.parameters_from,
+            lock_script_hash_fee: from.lock_script_hash_fee,
+            parameters_fee: from.parameters_fee,
         }
     }
 }
@@ -188,8 +192,10 @@ impl From<Order> for OrderType {
             asset_amount_fee: from.asset_amount_fee.into(),
             origin_outputs: from.origin_outputs.into_iter().map(From::from).collect(),
             expiration: from.expiration,
-            lock_script_hash: from.lock_script_hash,
-            parameters: from.parameters,
+            lock_script_hash_from: from.lock_script_hash_from,
+            parameters_from: from.parameters_from,
+            lock_script_hash_fee: from.lock_script_hash_fee,
+            parameters_fee: from.parameters_fee,
         }
     }
 }
