@@ -919,7 +919,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         {
             self.signer.write().set(ap, address, password);
         }
-        self.to_step(Step::Propose);
     }
 
     fn sign(&self, hash: H256) -> Result<Signature, Error> {
