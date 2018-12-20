@@ -13,6 +13,7 @@ codechain-crypto = { path = "../crypto" }
 never = { git = "https://github.com/CodeChain-io/rust-never.git" }
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+rand_xorshift = "0.1.0"
 heapsize = "0.4"
 rlp = { path = "../util/rlp" }
 secp256k1 = { path = "../util/secp256k1" }
