@@ -15,6 +15,7 @@ codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
 codechain-sync = { path = "../sync" }
 codechain-types = { path = "../types" }
+codechain-vm = { path = "../vm" }
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 lazy_static = "1.2"

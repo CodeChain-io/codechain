@@ -20,7 +20,7 @@ use ckey::{NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::{BlockNumber, ShardId};
-use primitives::H256;
+use primitives::{Bytes as BytesArray, H256};
 
 use jsonrpc_core::Result;
 
@@ -131,5 +131,9 @@ build_rpc_trait! {
         /// Execute Transactions
         # [rpc(name = "chain_executeTransaction")]
         fn execute_transaction(&self, Transaction, PlatformAddress) -> Result<Invoice>;
+
+        /// Execute AssetTransfer transaction inputs in VM
+        # [rpc(name = "chain_executeVM")]
+        fn execute_vm(&self, Transaction, Vec<Vec<BytesArray>>, Vec<usize>) -> Result<Vec<String>>;
     }
 }

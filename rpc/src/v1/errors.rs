@@ -51,6 +51,7 @@ mod codes {
     pub const WRONG_PASSWORD: i64 = -32043;
     pub const NO_SUCH_ACCOUNT: i64 = -32044;
     pub const NOT_UNLOCKED: i64 = -32045;
+    pub const TRANSFER_ONLY_IN_EXECUTE_VM: i64 = -32046;
     pub const UNKNOWN_ERROR: i64 = -32099;
 }
 
@@ -235,6 +236,14 @@ pub fn network_control(error: &NetworkControlError) -> Error {
             message: "Network is diabled.".into(),
             data: None,
         },
+    }
+}
+
+pub fn transfer_only() -> Error {
+    Error {
+        code: ErrorCode::ServerError(codes::TRANSFER_ONLY_IN_EXECUTE_VM),
+        message: "chain_executeVM() only accepts AssetTransfer transactions.".into(),
+        data: None,
     }
 }
 
