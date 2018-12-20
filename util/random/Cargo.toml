@@ -1,7 +1,0 @@
-[package]
-name = "codechain-random"
-version = "0.1.0"
-authors = ["CodeChain Team <codechain@kodebox.io>"]
-
-[dependencies]
-rand = "0.6.1"
