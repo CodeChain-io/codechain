@@ -18,7 +18,7 @@ mod params;
 
 use std::sync::{Arc, Weak};
 
-use ckey::{public_to_address, recover, Address, Password, Signature};
+use ckey::{public_to_address, recover, Address, Password, Public, Signature};
 use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
 use primitives::H256;
@@ -195,6 +195,10 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
 
     fn sign(&self, hash: H256) -> Result<Signature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
+    }
+
+    fn signer_public(&self) -> Option<Public> {
+        self.signer.read().public().cloned()
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {

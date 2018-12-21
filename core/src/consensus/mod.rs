@@ -37,7 +37,7 @@ pub use self::validator_set::ValidatorSet;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
-use ckey::{Address, Password, Signature};
+use ckey::{Address, Password, Public, Signature};
 use cnetwork::NetworkService;
 use cstate::ActionHandler;
 use ctypes::machine::Machine;
@@ -250,6 +250,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Sign using the EngineSigner, to be used for consensus parcel signing.
     fn sign(&self, _hash: H256) -> Result<Signature, Error> {
         unimplemented!()
+    }
+
+    fn signer_public(&self) -> Option<Public> {
+        None
     }
 
     fn register_network_extension_to_service(&self, _: &NetworkService) {}

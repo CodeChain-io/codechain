@@ -26,7 +26,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Address, Message, Password, Signature};
+use ckey::{public_to_address, recover, Address, Message, Password, Public, Signature};
 use cnetwork::{Api, NetworkExtension, NetworkService, NodeId};
 use cstate::ActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
@@ -368,7 +368,7 @@ impl Tendermint {
             (Some(validator), Ok(signature)) => {
                 let message_rlp = message_full_rlp(&signature, &vote_info);
                 let message = ConsensusMessage::new(signature, height, r, step, block_hash);
-                self.votes.vote(message.clone(), validator);
+                self.votes.vote(message.clone(), *validator);
                 cdebug!(ENGINE, "Generated {:?} as {}.", message, validator);
                 self.handle_valid_message(&message);
 
@@ -896,6 +896,10 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn sign(&self, hash: H256) -> Result<Signature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
+    }
+
+    fn signer_public(&self) -> Option<Public> {
+        self.signer.read().public().cloned()
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
