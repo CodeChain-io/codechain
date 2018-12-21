@@ -350,9 +350,7 @@ mod tests {
 
     fn populate_trie<'db>(db: &'db mut HashDB, root: &'db mut H256, v: &[(Vec<u8>, Vec<u8>)]) -> TrieDBMut<'db> {
         let mut t = TrieDBMut::new(db, root);
-        for i in 0..v.len() {
-            let key: &[u8] = &v[i].0;
-            let val: &[u8] = &v[i].1;
+        for (key, val) in v {
             t.insert(key, val).unwrap();
         }
         t

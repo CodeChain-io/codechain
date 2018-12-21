@@ -63,7 +63,15 @@ mod tests {
     #[test]
     fn make_partial_signing_tag() {
         let bitvec = vec![
-            0b10000000, 0b01000000, 0b00100000, 0b00010000, 0b00001000, 0b00000100, 0b00000010, 0b00000001, 0b00100001,
+            0b1000_0000,
+            0b0100_0000,
+            0b0010_0000,
+            0b0001_0000,
+            0b0000_1000,
+            0b0000_0100,
+            0b0000_0010,
+            0b0000_0001,
+            0b0010_0001,
         ];
         let tag = Tag::try_new(bitvec).unwrap();
 
@@ -72,26 +80,51 @@ mod tests {
         assert_eq!(tag.filter_len, 8);
         assert_eq!(
             tag.filter.clone(),
-            vec![0b10000000, 0b01000000, 0b00100000, 0b00010000, 0b00001000, 0b00000100, 0b00000010, 0b00000001]
+            vec![
+                0b1000_0000,
+                0b0100_0000,
+                0b0010_0000,
+                0b0001_0000,
+                0b0000_1000,
+                0b0000_0100,
+                0b0000_0010,
+                0b0000_0001
+            ]
         );
     }
 
     #[test]
     fn trailing_zero() {
         let bitvec = vec![
-            0b00000000, 0b01000000, 0b00100000, 0b00010000, 0b00001000, 0b00000100, 0b00000010, 0b00000001, 0b00100001,
+            0b0000_0000,
+            0b0100_0000,
+            0b0010_0000,
+            0b0001_0000,
+            0b0000_1000,
+            0b0000_0100,
+            0b0000_0010,
+            0b0000_0001,
+            0b0010_0001,
         ];
         assert_eq!(Tag::try_new(bitvec), Err(HashingError::InvalidFilter));
 
         let bitvec = vec![
-            0b00000100, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00100001,
+            0b0000_0100,
+            0b0000_0000,
+            0b0000_0000,
+            0b0000_0000,
+            0b0000_0000,
+            0b0000_0000,
+            0b0000_0000,
+            0b0000_0000,
+            0b0010_0001,
         ];
         assert_ne!(Tag::try_new(bitvec), Err(HashingError::InvalidFilter));
     }
 
     #[test]
     fn zero_length_filter() {
-        let bitvec = vec![0b00000001];
+        let bitvec = vec![0b0000_0001];
         assert_eq!(
             Tag::try_new(bitvec),
             Ok(Tag {
@@ -99,7 +132,7 @@ mod tests {
                 sign_all_outputs: false,
                 filter_len: 0,
                 filter: vec![],
-                bitvec: vec![0b00000001],
+                bitvec: vec![0b0000_0001],
             })
         );
     }

@@ -165,7 +165,7 @@ mod tests {
     fn encrypted_with_unencrypted_data_function_internally_encrypts() {
         let extension_name = "encrypt".to_string();
         let extension_version = 3;
-        let unencrypted_data = "this data must be encrypted".as_bytes();
+        let unencrypted_data = b"this data must be encrypted";
         let shared_secret = Secret::random();
 
         let mut rng = OsRng::new().expect("Cannot generate random number");
@@ -173,7 +173,7 @@ mod tests {
 
         let session = Session::new(shared_secret, nonce);
         let encrypted =
-            Message::encrypted_from_unencrypted_data(extension_name, extension_version, &unencrypted_data, &session)
+            Message::encrypted_from_unencrypted_data(extension_name, extension_version, unencrypted_data, &session)
                 .unwrap();
         assert_ne!(unencrypted_data, encrypted.data());
         assert_eq!(unencrypted_data, encrypted.unencrypted_data(&session).unwrap().as_slice());

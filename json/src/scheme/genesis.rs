@@ -88,7 +88,7 @@ mod tests {
                     H520(Core520::from("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
                 ]
             }),
-            score: Uint(U256::from(0x400000000u64)),
+            score: Uint(U256::from(0x0004_0000_0000u64)),
             author: Some(PlatformAddress::from_str("tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3").unwrap()),
             timestamp: Some(Uint(U256::from(0x07))),
             parent_hash: Some(H256(Core256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),

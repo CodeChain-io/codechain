@@ -27,7 +27,7 @@ fn bench_stream_u64_value(b: &mut Bencher) {
     b.iter(|| {
         // u64
         let mut stream = RlpStream::new();
-        stream.append_single_value(&0x1023456789abcdefu64);
+        stream.append_single_value(&0x1023_4567_89ab_cdefu64);
         let _ = stream.out();
     });
 }

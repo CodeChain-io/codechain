@@ -369,17 +369,14 @@ mod tests {
             .and_then(|stream| io::write_all(stream, &data_vec))
             .and_then(|(stream, _)| io::read(stream, &mut buffer))
             .and_then(|(_, read_buf, len)| future::ok(read_buf[0..len].to_vec()));
-        let result = core.run(stream).expect("Core should run with no errors");
-
-        result
+        core.run(stream).expect("Core should run with no errors")
     }
 
     fn get_available_test_addr(start: u32, end: u32) -> SocketAddr {
-        let addr = (start..end)
+        (start..end)
             .map(|port| SocketAddr::from_str(&format!("127.0.0.1:{}", port)).unwrap())
             .find(|addr| TcpListener::bind(addr).is_ok())
-            .unwrap();
-        addr
+            .unwrap()
     }
 
     #[test]
@@ -469,9 +466,8 @@ mod tests {
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
 
-        let mut auth_request = r#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#
-            .as_bytes()
-            .to_vec();
+        let mut auth_request =
+            br#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#.to_vec();
         auth_request.extend(b"\n");
 
         let mut core = Core::new().expect("Tokio Core should be created with no errors");
@@ -519,13 +515,12 @@ mod tests {
             Stratum::start(&addr, Arc::new(DummyManager::build().of_initial(r#"["dummy authorize payload"]"#)), None)
                 .expect("There should be no error starting stratum");
 
-        let mut auth_request = r#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#
-            .as_bytes()
-            .to_vec();
+        let mut auth_request =
+            br#"{"jsonrpc": "2.0", "method": "mining.authorize", "params": ["miner1", ""], "id": 1}"#.to_vec();
         auth_request.extend(b"\n");
 
         let mut submit_request =
-            r#"{"jsonrpc": "2.0", "method": "mining.submit", "params": ["0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", ["0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"]], "id": 2}"#.as_bytes()
+            br#"{"jsonrpc": "2.0", "method": "mining.submit", "params": ["0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", ["0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"]], "id": 2}"#
                 .to_vec();
         submit_request.extend(b"\n");
 
@@ -561,7 +556,7 @@ mod tests {
                 .expect("There should be no error starting stratum");
 
         let mut submit_request =
-            r#"{"jsonrpc": "2.0", "method": "mining.submit", "params": ["0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", ["0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"]], "id": 2}"#.as_bytes()
+            br#"{"jsonrpc": "2.0", "method": "mining.submit", "params": ["0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", ["0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"]], "id": 2}"#
                 .to_vec();
         submit_request.extend(b"\n");
 

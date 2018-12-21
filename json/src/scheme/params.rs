@@ -109,7 +109,7 @@ mod tests {
         assert_eq!(deserialized.min_asset_compose_cost, Uint(22.into()));
         assert_eq!(deserialized.min_asset_decompose_cost, Uint(23.into()));
         assert_eq!(deserialized.min_asset_unwrap_ccc_cost, Uint(24.into()));
-        assert_eq!(deserialized.max_body_size, Uint(4194304.into()));
-        assert_eq!(deserialized.snapshot_period, Uint(16384.into()));
+        assert_eq!(deserialized.max_body_size, Uint(4_194_304.into()));
+        assert_eq!(deserialized.snapshot_period, Uint(16_384.into()));
     }
 }

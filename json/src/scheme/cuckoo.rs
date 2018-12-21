@@ -59,7 +59,7 @@ mod tests {
         let deserialized: Cuckoo = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
         assert_eq!(deserialized.params.block_interval, Some(Uint(U256::from(120))));
-        assert_eq!(deserialized.params.min_score, Some(Uint(U256::from(0x020000))));
+        assert_eq!(deserialized.params.min_score, Some(Uint(U256::from(0x0002_0000))));
         assert_eq!(deserialized.params.max_vertex, Some(Uint(U256::from(16))));
         assert_eq!(deserialized.params.max_edge, Some(Uint(U256::from(8))));
         assert_eq!(deserialized.params.cycle_length, Some(Uint(U256::from(6))));

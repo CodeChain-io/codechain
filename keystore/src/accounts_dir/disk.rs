@@ -349,7 +349,7 @@ mod test {
         let directory = RootDiskDirectory::create(&temp_path).unwrap();
 
         let hash = directory.files_hash().expect("Files hash should be calculated ok");
-        assert_eq!(hash, 15130871412783076140);
+        assert_eq!(hash, 15_130_871_412_783_076_140);
 
         let keypair = Random.generate().unwrap();
         let password = &"test pass".into();

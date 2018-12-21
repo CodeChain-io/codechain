@@ -208,8 +208,8 @@ mod tests {
                 if address[0] == PREFIX {
                     continue
                 }
-                for i in 1..8 {
-                    if address[i] == 0 {
+                for a in address.iter().take(8).skip(1) {
+                    if *a == 0 {
                         continue 'address
                     }
                 }
@@ -217,7 +217,7 @@ mod tests {
             }
             address
         };
-        let shard_id = 0xBeef;
+        let shard_id = 0xBEEF;
         let address1 = OwnedAssetAddress::new(parcel_id, 0, shard_id);
         let address2 = OwnedAssetAddress::new(parcel_id, 1, shard_id);
         assert_ne!(address1, address2);
@@ -236,8 +236,8 @@ mod tests {
                 if hash[0] == PREFIX {
                     continue
                 }
-                for i in 1..6 {
-                    if hash[i] == 0 {
+                for h in hash.iter().take(6).skip(1) {
+                    if *h == 0 {
                         continue
                     }
                 }
@@ -277,7 +277,7 @@ mod tests {
             hash
         };
         assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-        let shard_id = ((hash[2] as ShardId) << 8) + (hash[3] as ShardId);
+        let shard_id = (ShardId::from(hash[2]) << 8) + ShardId::from(hash[3]);
         let asset_address = OwnedAssetAddress::from_hash(hash).unwrap();
         assert_eq!(shard_id, asset_address.shard_id());
     }
