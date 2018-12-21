@@ -27,7 +27,7 @@ use crate::error::Error;
 use crate::header::Header;
 
 /// Complete step of the consensus process.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RlpDecodable, RlpEncodable)]
 pub struct VoteStep {
     pub height: Height,
     pub view: View,
@@ -127,20 +127,28 @@ impl Decodable for TendermintMessage {
     }
 }
 
-/// Message transmitted between consensus participants.
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Default)]
-pub struct ConsensusMessage {
-    pub vote_step: VoteStep,
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Default, RlpDecodable, RlpEncodable)]
+pub struct VoteOn {
+    pub step: VoteStep,
     pub block_hash: Option<BlockHash>,
+}
+
+/// Message transmitted between consensus participants.
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Default, RlpDecodable, RlpEncodable)]
+pub struct ConsensusMessage {
     pub signature: Signature,
+    pub on: VoteOn,
 }
 
 impl ConsensusMessage {
-    pub fn new(signature: Signature, height: Height, view: View, step: Step, block_hash: Option<BlockHash>) -> Self {
+    #[cfg(test)]
+    fn new(signature: Signature, height: Height, view: View, step: Step, block_hash: Option<BlockHash>) -> Self {
         ConsensusMessage {
             signature,
-            block_hash,
-            vote_step: VoteStep::new(height, view, step),
+            on: VoteOn {
+                step: VoteStep::new(height, view, step),
+                block_hash,
+            },
         }
     }
 
@@ -149,8 +157,10 @@ impl ConsensusMessage {
         let view = consensus_view(header)?;
         Ok(ConsensusMessage {
             signature,
-            block_hash: Some(header.hash()),
-            vote_step: VoteStep::new(height as Height, view, Step::Propose),
+            on: VoteOn {
+                step: VoteStep::new(height as Height, view, Step::Propose),
+                block_hash: Some(header.hash()),
+            },
         })
     }
 
@@ -181,62 +191,32 @@ impl Message for ConsensusMessage {
     }
 
     fn block_hash(&self) -> Option<H256> {
-        self.block_hash
+        self.on.block_hash
     }
 
     fn round(&self) -> &VoteStep {
-        &self.vote_step
+        &self.on.step
     }
 
     fn is_broadcastable(&self) -> bool {
-        self.vote_step.step.is_pre()
+        self.on.step.step.is_pre()
     }
 }
 
-/// (signature, (height, view, step, block_hash))
-impl Decodable for ConsensusMessage {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let m = rlp.at(1)?;
-        let block_message: H256 = m.val_at(3)?;
-        if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpInvalidLength)
-        }
-        Ok(ConsensusMessage {
-            vote_step: VoteStep::new(m.val_at(0)?, m.val_at(1)?, m.val_at(2)?),
-            block_hash: if block_message.is_zero() {
-                None
-            } else {
-                Some(block_message)
-            },
-            signature: rlp.val_at(0)?,
-        })
-    }
+pub fn message_info_rlp(step: VoteStep, block_hash: Option<BlockHash>) -> Bytes {
+    let vote_on = VoteOn {
+        step,
+        block_hash,
+    };
+    vote_on.rlp_bytes().into_vec()
 }
 
-impl Encodable for ConsensusMessage {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        let info = message_info_rlp(&self.vote_step, self.block_hash);
-        s.begin_list(2).append(&self.signature).append_raw(&info, 1);
-    }
-}
-
-pub fn message_info_rlp(vote_step: &VoteStep, block_hash: Option<BlockHash>) -> Bytes {
-    let mut s = RlpStream::new_list(4);
-    s.append(&vote_step.height)
-        .append(&vote_step.view)
-        .append(&vote_step.step)
-        .append(&block_hash.unwrap_or_else(H256::zero));
-    s.out()
-}
-
-pub fn message_full_rlp(signature: &Signature, vote_info: &[u8]) -> Bytes {
-    let mut s = RlpStream::new_list(2);
-    s.append(signature).append_raw(vote_info, 1);
-    s.out()
-}
-
-pub fn message_hash(vote_step: VoteStep, block_hash: H256) -> H256 {
-    blake256(message_info_rlp(&vote_step, Some(block_hash)))
+pub fn message_hash(step: VoteStep, block_hash: H256) -> H256 {
+    let vote_on = VoteOn {
+        step,
+        block_hash: Some(block_hash),
+    };
+    blake256(&vote_on.rlp_bytes())
 }
 
 #[cfg(test)]
@@ -289,8 +269,7 @@ mod tests {
         let signature = Signature::random();
         let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"));
         let consensus_message = ConsensusMessage::new(signature, height, view, step, block_hash);
-        let vote_info = message_info_rlp(&VoteStep::new(height, view, step), block_hash);
-        let encoded = message_full_rlp(&signature, &vote_info);
+        let encoded = consensus_message.rlp_bytes();
         let decoded = rlp::decode::<ConsensusMessage>(&encoded);
         assert_eq!(consensus_message, decoded);
     }
