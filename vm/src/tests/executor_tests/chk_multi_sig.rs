@@ -15,12 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake128, blake256_with_key};
-use ckey::{sign, KeyPair, NetworkId, Private, Signature};
+use ckey::{sign, KeyPair, NetworkId, Private};
 use ctypes::transaction::{AssetOutPoint, AssetTransferInput, Transaction};
 use primitives::H256;
 use rlp::Encodable;
 
-use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY, TWO_KEY};
+use secp256k1::key::{MINUS_ONE_KEY, ONE_KEY, TWO_KEY};
 
 use crate::executor::{execute, Config, RuntimeError, ScriptResult};
 use crate::instruction::Instruction;
@@ -48,8 +48,8 @@ fn valid_multi_sig_0_of_2() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
 
@@ -89,8 +89,8 @@ fn valid_multi_sig_1_of_2() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
@@ -104,7 +104,7 @@ fn valid_multi_sig_1_of_2() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
 
     let unlock_script = vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1)];
     let lock_script = vec![
@@ -142,8 +142,8 @@ fn valid_multi_sig_2_of_2() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
@@ -157,8 +157,8 @@ fn valid_multi_sig_2_of_2() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
-    let signature2 = Signature::from(sign(keypair2.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
+    let signature2 = sign(keypair2.private(), &message).unwrap().to_vec();
 
     let unlock_script =
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
@@ -197,9 +197,9 @@ fn valid_multi_sig_2_of_3_110() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
-    let keypair3 = KeyPair::from_private(Private::from(SecretKey::from(TWO_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
+    let keypair3 = KeyPair::from_private(Private::from(TWO_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let pubkey3 = <&[u8]>::from(keypair3.public()).to_vec();
@@ -214,8 +214,8 @@ fn valid_multi_sig_2_of_3_110() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
-    let signature2 = Signature::from(sign(keypair2.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
+    let signature2 = sign(keypair2.private(), &message).unwrap().to_vec();
 
     let unlock_script =
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
@@ -255,9 +255,9 @@ fn valid_multi_sig_2_of_3_101() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
-    let keypair3 = KeyPair::from_private(Private::from(SecretKey::from(TWO_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
+    let keypair3 = KeyPair::from_private(Private::from(TWO_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let pubkey3 = <&[u8]>::from(keypair3.public()).to_vec();
@@ -272,8 +272,8 @@ fn valid_multi_sig_2_of_3_101() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
-    let signature3 = Signature::from(sign(keypair3.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
+    let signature3 = sign(keypair3.private(), &message).unwrap().to_vec();
 
     let unlock_script =
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature3)];
@@ -313,9 +313,9 @@ fn valid_multi_sig_2_of_3_011() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
-    let keypair3 = KeyPair::from_private(Private::from(SecretKey::from(TWO_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
+    let keypair3 = KeyPair::from_private(Private::from(TWO_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let pubkey3 = <&[u8]>::from(keypair3.public()).to_vec();
@@ -330,8 +330,8 @@ fn valid_multi_sig_2_of_3_011() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature2 = Signature::from(sign(keypair2.private(), &message).unwrap()).to_vec();
-    let signature3 = Signature::from(sign(keypair3.private(), &message).unwrap()).to_vec();
+    let signature2 = sign(keypair2.private(), &message).unwrap().to_vec();
+    let signature3 = sign(keypair3.private(), &message).unwrap().to_vec();
 
     let unlock_script =
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature2), Instruction::PushB(signature3)];
@@ -371,8 +371,8 @@ fn invalid_multi_sig_1_of_2() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
@@ -386,7 +386,7 @@ fn invalid_multi_sig_1_of_2() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
 
     let unlock_script = vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1)];
     let lock_script = vec![
@@ -425,8 +425,8 @@ fn invalid_multi_sig_2_of_2() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
@@ -440,8 +440,8 @@ fn invalid_multi_sig_2_of_2() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
-    let signature2 = Signature::from(sign(keypair2.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
+    let signature2 = sign(keypair2.private(), &message).unwrap().to_vec();
 
     let unlock_script =
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
@@ -480,8 +480,8 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message1 = blake256_with_key(
@@ -506,8 +506,8 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message1).unwrap()).to_vec();
-    let signature2 = Signature::from(sign(keypair2.private(), &message2).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message1).unwrap().to_vec();
+    let signature2 = sign(keypair2.private(), &message2).unwrap().to_vec();
 
     let unlock_script =
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
@@ -546,8 +546,8 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
@@ -561,8 +561,8 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
-    let signature2 = Signature::from(sign(keypair2.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
+    let signature2 = sign(keypair2.private(), &message).unwrap().to_vec();
 
     let unlock_script =
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature2), Instruction::PushB(signature1)];
@@ -601,8 +601,8 @@ fn invalid_multi_sig_with_less_sig_than_m() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
@@ -616,7 +616,7 @@ fn invalid_multi_sig_with_less_sig_than_m() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
 
     let unlock_script = vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1)];
     let lock_script = vec![
@@ -654,8 +654,8 @@ fn invalid_multi_sig_with_more_sig_than_m() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
@@ -669,8 +669,8 @@ fn invalid_multi_sig_with_more_sig_than_m() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
-    let signature2 = Signature::from(sign(keypair2.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
+    let signature2 = sign(keypair2.private(), &message).unwrap().to_vec();
 
     let unlock_script =
         vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
@@ -709,7 +709,7 @@ fn invalid_multi_sig_with_too_many_arg() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
@@ -722,7 +722,7 @@ fn invalid_multi_sig_with_too_many_arg() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
+    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
 
     let unlock_script = vec![
         Instruction::PushB(vec![0b11 as u8]),

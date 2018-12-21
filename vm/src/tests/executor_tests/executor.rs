@@ -735,7 +735,7 @@ fn timelock_block_number_fail() {
 #[test]
 fn timelock_block_timestamp_success() {
     // 0x5BD02BF2, 2018-10-24T08:23:14+00:00
-    let client = TestClient::new(0, 1540369394, None, None);
+    let client = TestClient::new(0, 1_540_369_394, None, None);
     assert_eq!(
         execute(
             &[],
@@ -754,7 +754,7 @@ fn timelock_block_timestamp_success() {
 #[test]
 fn timelock_block_timestamp_fail() {
     // 0x5BD02BF1, 2018-10-24T08:23:13+00:00
-    let client = TestClient::new(0, 1540369393, None, None);
+    let client = TestClient::new(0, 1_540_369_393, None, None);
     assert_eq!(
         execute(
             &[],
@@ -845,7 +845,7 @@ fn timelock_time_age_fail_due_to_none() {
 #[test]
 fn timelock_time_age_fail() {
     // 0x278D00 seconds = 2592000 seconds = 30 days
-    let client = TestClient::new(0, 0, None, Some(2591999));
+    let client = TestClient::new(0, 0, None, Some(2_591_999));
     assert_eq!(
         execute(
             &[],
@@ -863,7 +863,7 @@ fn timelock_time_age_fail() {
 
 #[test]
 fn timelock_time_age_success() {
-    let client = TestClient::new(0, 0, None, Some(2592000));
+    let client = TestClient::new(0, 0, None, Some(2_592_000));
     assert_eq!(
         execute(
             &[],

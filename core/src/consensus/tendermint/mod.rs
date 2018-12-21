@@ -1351,8 +1351,8 @@ mod tests {
 
         match verify_result {
             Err(Error::Block(BlockError::InvalidSealArity(_))) => {}
-            Err(_) => {
-                panic!("should be block seal-arity mismatch error (got {:?})", verify_result);
+            Err(err) => {
+                panic!("should be block seal-arity mismatch error (got {:?})", err);
             }
             _ => {
                 panic!("Should be error, got Ok");
@@ -1381,7 +1381,7 @@ mod tests {
         header.set_author(proposer);
         header.set_parent_hash(Default::default());
 
-        let vote_info = message_info_rlp(&VoteStep::new(3, 0, Step::Precommit), Some(header.parent_hash().clone()));
+        let vote_info = message_info_rlp(&VoteStep::new(3, 0, Step::Precommit), Some(*header.parent_hash()));
         let signature0 = tap.sign(proposer, None, blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {

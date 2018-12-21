@@ -232,7 +232,7 @@ mod tests {
         }
 
         fn versions(&self) -> &[u64] {
-            const VERSIONS: &'static [u64] = &[0];
+            const VERSIONS: &[u64] = &[0];
             &VERSIONS
         }
 
@@ -279,7 +279,7 @@ mod tests {
         let e2 = Arc::new(TestExtension::new("e2"));
         client.register_extension(Arc::clone(&e2));
 
-        client.on_message(&"e1".to_string(), &node_id1, &vec![]);
+        client.on_message(&"e1".to_string(), &node_id1, &[]);
         {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
@@ -287,7 +287,7 @@ mod tests {
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize]);
         }
 
-        client.on_message(&"e2".to_string(), &node_id1, &vec![]);
+        client.on_message(&"e2".to_string(), &node_id1, &[]);
         {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
@@ -295,8 +295,8 @@ mod tests {
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
         }
 
-        client.on_message(&"e2".to_string(), &node_id5, &vec![]);
-        client.on_message(&"e2".to_string(), &node_id1, &vec![]);
+        client.on_message(&"e2".to_string(), &node_id5, &[]);
+        client.on_message(&"e2".to_string(), &node_id1, &[]);
         {
             let callbacks = e1.callbacks.lock();
             assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);

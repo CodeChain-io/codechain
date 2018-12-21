@@ -427,8 +427,8 @@ mod tests_check_multi_sig {
         let pubkey2 = *key_pair2.public();
         let pubkey3 = *key_pair3.public();
         let message = H256::random();
-        let signature1 = Signature::from(sign(key_pair1.private(), &message).unwrap());
-        let signature2 = Signature::from(sign(key_pair2.private(), &message).unwrap());
+        let signature1 = sign(key_pair1.private(), &message).unwrap();
+        let signature2 = sign(key_pair2.private(), &message).unwrap();
 
         assert!(check_multi_sig(&message, vec![pubkey1, pubkey2, pubkey3], vec![signature1, signature2]));
     }
@@ -442,8 +442,8 @@ mod tests_check_multi_sig {
         let pubkey2 = *key_pair2.public();
         let pubkey3 = *key_pair3.public();
         let message = H256::random();
-        let signature1 = Signature::from(sign(key_pair1.private(), &message).unwrap());
-        let signature3 = Signature::from(sign(key_pair3.private(), &message).unwrap());
+        let signature1 = sign(key_pair1.private(), &message).unwrap();
+        let signature3 = sign(key_pair3.private(), &message).unwrap();
 
         assert!(check_multi_sig(&message, vec![pubkey1, pubkey2, pubkey3], vec![signature1, signature3]));
     }
@@ -457,8 +457,8 @@ mod tests_check_multi_sig {
         let pubkey2 = *key_pair2.public();
         let pubkey3 = *key_pair3.public();
         let message = H256::random();
-        let signature2 = Signature::from(sign(key_pair2.private(), &message).unwrap());
-        let signature3 = Signature::from(sign(key_pair3.private(), &message).unwrap());
+        let signature2 = sign(key_pair2.private(), &message).unwrap();
+        let signature3 = sign(key_pair3.private(), &message).unwrap();
 
         assert!(check_multi_sig(&message, vec![pubkey1, pubkey2, pubkey3], vec![signature2, signature3]));
     }
@@ -470,8 +470,8 @@ mod tests_check_multi_sig {
         let pubkey1 = *key_pair1.public();
         let pubkey2 = *key_pair2.public();
         let message = H256::random();
-        let signature1 = Signature::from(sign(key_pair1.private(), &message).unwrap());
-        let signature2 = Signature::from(sign(key_pair2.private(), &message).unwrap());
+        let signature1 = sign(key_pair1.private(), &message).unwrap();
+        let signature2 = sign(key_pair2.private(), &message).unwrap();
 
         assert!(!check_multi_sig(&message, vec![pubkey2, pubkey1], vec![signature1, signature2]));
     }

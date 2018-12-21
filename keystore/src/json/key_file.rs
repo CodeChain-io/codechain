@@ -113,7 +113,7 @@ mod tests {
                 }),
                 ciphertext: "7203da0676d141b138cd7f8e1a4365f59cc1aa6978dc5443f364ca943d7cb4bc".into(),
                 kdf: Kdf::Scrypt(Scrypt {
-                    n: 262144,
+                    n: 262_144,
                     dklen: 32,
                     p: 1,
                     r: 8,
@@ -166,7 +166,7 @@ mod tests {
                 }),
                 ciphertext: "7203da0676d141b138cd7f8e1a4365f59cc1aa6978dc5443f364ca943d7cb4bc".into(),
                 kdf: Kdf::Scrypt(Scrypt {
-                    n: 262144,
+                    n: 262_144,
                     dklen: 32,
                     p: 1,
                     r: 8,
@@ -216,7 +216,7 @@ mod tests {
                 }),
                 ciphertext: "7203da0676d141b138cd7f8e1a4365f59cc1aa6978dc5443f364ca943d7cb4bc".into(),
                 kdf: Kdf::Scrypt(Scrypt {
-                    n: 262144,
+                    n: 262_144,
                     dklen: 32,
                     p: 1,
                     r: 8,
@@ -274,7 +274,7 @@ mod tests {
                 }),
                 ciphertext: "7203da0676d141b138cd7f8e1a4365f59cc1aa6978dc5443f364ca943d7cb4bc".into(),
                 kdf: Kdf::Scrypt(Scrypt {
-                    n: 262144,
+                    n: 262_144,
                     dklen: 32,
                     p: 1,
                     r: 8,

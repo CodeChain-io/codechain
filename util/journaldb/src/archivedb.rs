@@ -268,29 +268,29 @@ mod tests {
         // history is 1
         let mut jdb = ArchiveDB::new(Arc::new(kvdb_memorydb::create(0)), None);
 
-        let foo = jdb.insert(b"foo");
-        let bar = jdb.insert(b"bar");
+        let foo_hash = jdb.insert(b"foo");
+        let bar_hash = jdb.insert(b"bar");
         jdb.commit_batch(0, &blake256(b"0"), None).unwrap();
-        assert!(jdb.contains(&foo));
-        assert!(jdb.contains(&bar));
+        assert!(jdb.contains(&foo_hash));
+        assert!(jdb.contains(&bar_hash));
 
-        jdb.remove(&foo);
-        jdb.remove(&bar);
-        let baz = jdb.insert(b"baz");
+        jdb.remove(&foo_hash);
+        jdb.remove(&bar_hash);
+        let baz_hash = jdb.insert(b"baz");
         jdb.commit_batch(1, &blake256(b"1"), Some((0, blake256(b"0")))).unwrap();
-        assert!(jdb.contains(&foo));
-        assert!(jdb.contains(&bar));
-        assert!(jdb.contains(&baz));
+        assert!(jdb.contains(&foo_hash));
+        assert!(jdb.contains(&bar_hash));
+        assert!(jdb.contains(&baz_hash));
 
-        let foo = jdb.insert(b"foo");
-        jdb.remove(&baz);
+        let foo_hash = jdb.insert(b"foo");
+        jdb.remove(&baz_hash);
         jdb.commit_batch(2, &blake256(b"2"), Some((1, blake256(b"1")))).unwrap();
-        assert!(jdb.contains(&foo));
-        assert!(jdb.contains(&baz));
+        assert!(jdb.contains(&foo_hash));
+        assert!(jdb.contains(&baz_hash));
 
-        jdb.remove(&foo);
+        jdb.remove(&foo_hash);
         jdb.commit_batch(3, &blake256(b"3"), Some((2, blake256(b"2")))).unwrap();
-        assert!(jdb.contains(&foo));
+        assert!(jdb.contains(&foo_hash));
 
         jdb.commit_batch(4, &blake256(b"4"), Some((3, blake256(b"3")))).unwrap();
     }
@@ -300,25 +300,25 @@ mod tests {
         // history is 1
         let mut jdb = ArchiveDB::new(Arc::new(kvdb_memorydb::create(0)), None);
 
-        let foo = jdb.insert(b"foo");
-        let bar = jdb.insert(b"bar");
+        let foo_hash = jdb.insert(b"foo");
+        let bar_hash = jdb.insert(b"bar");
         jdb.commit_batch(0, &blake256(b"0"), None).unwrap();
-        assert!(jdb.contains(&foo));
-        assert!(jdb.contains(&bar));
+        assert!(jdb.contains(&foo_hash));
+        assert!(jdb.contains(&bar_hash));
 
-        jdb.remove(&foo);
-        let baz = jdb.insert(b"baz");
+        jdb.remove(&foo_hash);
+        let baz_hash = jdb.insert(b"baz");
         jdb.commit_batch(1, &blake256(b"1a"), Some((0, blake256(b"0")))).unwrap();
 
-        jdb.remove(&bar);
+        jdb.remove(&bar_hash);
         jdb.commit_batch(1, &blake256(b"1b"), Some((0, blake256(b"0")))).unwrap();
 
-        assert!(jdb.contains(&foo));
-        assert!(jdb.contains(&bar));
-        assert!(jdb.contains(&baz));
+        assert!(jdb.contains(&foo_hash));
+        assert!(jdb.contains(&bar_hash));
+        assert!(jdb.contains(&baz_hash));
 
         jdb.commit_batch(2, &blake256(b"2b"), Some((1, blake256(b"1b")))).unwrap();
-        assert!(jdb.contains(&foo));
+        assert!(jdb.contains(&foo_hash));
     }
 
     #[test]
@@ -326,18 +326,18 @@ mod tests {
         // history is 1
         let mut jdb = ArchiveDB::new(Arc::new(kvdb_memorydb::create(0)), None);
 
-        let foo = jdb.insert(b"foo");
+        let foo_hash = jdb.insert(b"foo");
         jdb.commit_batch(0, &blake256(b"0"), None).unwrap();
-        assert!(jdb.contains(&foo));
+        assert!(jdb.contains(&foo_hash));
 
-        jdb.remove(&foo);
+        jdb.remove(&foo_hash);
         jdb.commit_batch(1, &blake256(b"1"), Some((0, blake256(b"0")))).unwrap();
         jdb.insert(b"foo");
-        assert!(jdb.contains(&foo));
+        assert!(jdb.contains(&foo_hash));
         jdb.commit_batch(2, &blake256(b"2"), Some((1, blake256(b"1")))).unwrap();
-        assert!(jdb.contains(&foo));
+        assert!(jdb.contains(&foo_hash));
         jdb.commit_batch(3, &blake256(b"2"), Some((0, blake256(b"2")))).unwrap();
-        assert!(jdb.contains(&foo));
+        assert!(jdb.contains(&foo_hash));
     }
 
     #[test]
@@ -346,41 +346,41 @@ mod tests {
         let mut jdb = ArchiveDB::new(Arc::new(kvdb_memorydb::create(0)), None);
         jdb.commit_batch(0, &blake256(b"0"), None).unwrap();
 
-        let foo = jdb.insert(b"foo");
+        let foo_hash = jdb.insert(b"foo");
         jdb.commit_batch(1, &blake256(b"1a"), Some((0, blake256(b"0")))).unwrap();
 
         jdb.insert(b"foo");
         jdb.commit_batch(1, &blake256(b"1b"), Some((0, blake256(b"0")))).unwrap();
-        assert!(jdb.contains(&foo));
+        assert!(jdb.contains(&foo_hash));
 
         jdb.commit_batch(2, &blake256(b"2a"), Some((1, blake256(b"1a")))).unwrap();
-        assert!(jdb.contains(&foo));
+        assert!(jdb.contains(&foo_hash));
     }
 
     #[test]
     fn reopen() {
         let shared_db = Arc::new(kvdb_memorydb::create(0));
-        let bar = H256::random();
+        let bar_hash = H256::random();
 
-        let foo = {
+        let foo_hash = {
             let mut jdb = ArchiveDB::new(shared_db.clone(), None);
             // history is 1
-            let foo = jdb.insert(b"foo");
-            jdb.emplace(bar.clone(), DBValue::from_slice(b"bar"));
+            let foo_hash = jdb.insert(b"foo");
+            jdb.emplace(bar_hash, DBValue::from_slice(b"bar"));
             jdb.commit_batch(0, &blake256(b"0"), None).unwrap();
-            foo
+            foo_hash
         };
 
         {
             let mut jdb = ArchiveDB::new(shared_db.clone(), None);
-            jdb.remove(&foo);
+            jdb.remove(&foo_hash);
             jdb.commit_batch(1, &blake256(b"1"), Some((0, blake256(b"0")))).unwrap();
         }
 
         {
             let mut jdb = ArchiveDB::new(shared_db, None);
-            assert!(jdb.contains(&foo));
-            assert!(jdb.contains(&bar));
+            assert!(jdb.contains(&foo_hash));
+            assert!(jdb.contains(&bar_hash));
             jdb.commit_batch(2, &blake256(b"2"), Some((1, blake256(b"1")))).unwrap();
         }
     }
@@ -389,10 +389,10 @@ mod tests {
     fn reopen_remove() {
         let shared_db = Arc::new(kvdb_memorydb::create(0));
 
-        let foo = {
+        let foo_hash = {
             let mut jdb = ArchiveDB::new(shared_db.clone(), None);
             // history is 1
-            let foo = jdb.insert(b"foo");
+            let foo_hash = jdb.insert(b"foo");
             jdb.commit_batch(0, &blake256(b"0"), None).unwrap();
             jdb.commit_batch(1, &blake256(b"1"), Some((0, blake256(b"0")))).unwrap();
 
@@ -400,15 +400,15 @@ mod tests {
 
             jdb.insert(b"foo");
             jdb.commit_batch(2, &blake256(b"2"), Some((1, blake256(b"1")))).unwrap();
-            foo
+            foo_hash
         };
 
         {
             let mut jdb = ArchiveDB::new(shared_db, None);
-            jdb.remove(&foo);
+            jdb.remove(&foo_hash);
             jdb.commit_batch(3, &blake256(b"3"), Some((2, blake256(b"2")))).unwrap();
-            assert!(jdb.contains(&foo));
-            jdb.remove(&foo);
+            assert!(jdb.contains(&foo_hash));
+            jdb.remove(&foo_hash);
             jdb.commit_batch(4, &blake256(b"4"), Some((3, blake256(b"3")))).unwrap();
             jdb.commit_batch(5, &blake256(b"5"), Some((4, blake256(b"4")))).unwrap();
         }
@@ -417,25 +417,25 @@ mod tests {
     #[test]
     fn reopen_fork() {
         let shared_db = Arc::new(kvdb_memorydb::create(0));
-        let (foo, ..) = {
+        let (foo_hash, ..) = {
             let mut jdb = ArchiveDB::new(shared_db.clone(), None);
             // history is 1
-            let foo = jdb.insert(b"foo");
-            let bar = jdb.insert(b"bar");
+            let foo_hash = jdb.insert(b"foo");
+            let bar_hash = jdb.insert(b"bar");
             jdb.commit_batch(0, &blake256(b"0"), None).unwrap();
-            jdb.remove(&foo);
-            let baz = jdb.insert(b"baz");
+            jdb.remove(&foo_hash);
+            let baz_hash = jdb.insert(b"baz");
             jdb.commit_batch(1, &blake256(b"1a"), Some((0, blake256(b"0")))).unwrap();
 
-            jdb.remove(&bar);
+            jdb.remove(&bar_hash);
             jdb.commit_batch(1, &blake256(b"1b"), Some((0, blake256(b"0")))).unwrap();
-            (foo, bar, baz)
+            (foo_hash, bar_hash, baz_hash)
         };
 
         {
             let mut jdb = ArchiveDB::new(shared_db, None);
             jdb.commit_batch(2, &blake256(b"2b"), Some((1, blake256(b"1b")))).unwrap();
-            assert!(jdb.contains(&foo));
+            assert!(jdb.contains(&foo_hash));
         }
     }
 

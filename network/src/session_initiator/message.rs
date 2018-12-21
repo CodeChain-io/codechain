@@ -284,7 +284,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_large_nonce_request() {
-        let nonce = Nonce::from(0xDEADBEEF);
+        let nonce = Nonce::from(0xDEAD_BEEF);
         let nonce = nonce.rlp_bytes();
 
         const SEQ: Seq = 0;
@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_large_nonce_allowed() {
-        let nonce = Nonce::from(0xCCAFEC);
+        let nonce = Nonce::from(0x00CC_AFEC);
         let nonce = nonce.rlp_bytes();
 
         const SEQ: Seq = 0x4a;
