@@ -257,7 +257,8 @@ where
             Instruction::ChkMultiSig => {
                 // Get n pubkey. If there are more than six pubkeys, return error.
                 let n = stack.pop()?.assert_len(1)?.as_ref()[0] as usize;
-                let mut pubkey: Vec<Public> = Vec::new();
+
+                let mut pubkey: Vec<Public> = Vec::with_capacity(n);
                 for _ in 0..n {
                     pubkey.push(Public::from_slice(stack.pop()?.assert_len(64)?.as_ref()));
                 }
@@ -267,7 +268,8 @@ where
                 if m > n || m == 0 || m > 6 {
                     return Err(RuntimeError::InvalidSigCount)
                 }
-                let mut signatures: Vec<Signature> = Vec::new();
+
+                let mut signatures: Vec<Signature> = Vec::with_capacity(m);
                 for _ in 0..m {
                     signatures.push(Signature::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref()));
                 }
@@ -275,14 +277,11 @@ where
                 let tag = Tag::try_new(stack.pop()?.as_ref().to_vec())?;
                 let tx_hash = tx.hash_partially(tag, cur, burn)?;
 
-                let mut result = 1;
-                while let Some(sig) = signatures.pop() {
-                    let public = pubkey.pop().unwrap();
-                    result = match verify(&public, &sig, &tx_hash) {
-                        Ok(true) => 1,
-                        _ => 0,
-                    }
-                }
+                let result = if check_multi_sig(&tx_hash, pubkey, signatures) {
+                    1
+                } else {
+                    0
+                };
                 stack.push(Item(vec![result]))?;
             }
             Instruction::Blake256 => {
@@ -348,6 +347,22 @@ where
     }
 }
 
+#[inline]
+fn check_multi_sig(tx_hash: &H256, mut pubkey: Vec<Public>, mut signatures: Vec<Signature>) -> bool {
+    while let Some(sig) = signatures.pop() {
+        loop {
+            let public = match pubkey.pop() {
+                None => return false,
+                Some(public) => public,
+            };
+            if verify(&public, &sig, &tx_hash) == Ok(true) {
+                break
+            }
+        }
+    }
+    true
+}
+
 pub trait ChainTimeInfo {
     /// Get the best block number.
     fn best_block_number(&self) -> u64;
@@ -394,5 +409,70 @@ mod tests {
         let item = Item(vec![0, 0, 0, 1, 0, 0, 0]);
         let result: bool = item.into();
         assert!(result);
+    }
+}
+
+#[cfg(test)]
+mod tests_check_multi_sig {
+    use ckey::{sign, Generator, Random};
+
+    use super::*;
+
+    #[test]
+    fn valid_2_of_3_110() {
+        let key_pair1 = Random.generate().unwrap();
+        let key_pair2 = Random.generate().unwrap();
+        let key_pair3 = Random.generate().unwrap();
+        let pubkey1 = *key_pair1.public();
+        let pubkey2 = *key_pair2.public();
+        let pubkey3 = *key_pair3.public();
+        let message = H256::random();
+        let signature1 = Signature::from(sign(key_pair1.private(), &message).unwrap());
+        let signature2 = Signature::from(sign(key_pair2.private(), &message).unwrap());
+
+        assert!(check_multi_sig(&message, vec![pubkey1, pubkey2, pubkey3], vec![signature1, signature2]));
+    }
+
+    #[test]
+    fn valid_2_of_3_101() {
+        let key_pair1 = Random.generate().unwrap();
+        let key_pair2 = Random.generate().unwrap();
+        let key_pair3 = Random.generate().unwrap();
+        let pubkey1 = *key_pair1.public();
+        let pubkey2 = *key_pair2.public();
+        let pubkey3 = *key_pair3.public();
+        let message = H256::random();
+        let signature1 = Signature::from(sign(key_pair1.private(), &message).unwrap());
+        let signature3 = Signature::from(sign(key_pair3.private(), &message).unwrap());
+
+        assert!(check_multi_sig(&message, vec![pubkey1, pubkey2, pubkey3], vec![signature1, signature3]));
+    }
+
+    #[test]
+    fn valid_2_of_3_011() {
+        let key_pair1 = Random.generate().unwrap();
+        let key_pair2 = Random.generate().unwrap();
+        let key_pair3 = Random.generate().unwrap();
+        let pubkey1 = *key_pair1.public();
+        let pubkey2 = *key_pair2.public();
+        let pubkey3 = *key_pair3.public();
+        let message = H256::random();
+        let signature2 = Signature::from(sign(key_pair2.private(), &message).unwrap());
+        let signature3 = Signature::from(sign(key_pair3.private(), &message).unwrap());
+
+        assert!(check_multi_sig(&message, vec![pubkey1, pubkey2, pubkey3], vec![signature2, signature3]));
+    }
+
+    #[test]
+    fn invalid_2_of_2_if_order_is_different() {
+        let key_pair1 = Random.generate().unwrap();
+        let key_pair2 = Random.generate().unwrap();
+        let pubkey1 = *key_pair1.public();
+        let pubkey2 = *key_pair2.public();
+        let message = H256::random();
+        let signature1 = Signature::from(sign(key_pair1.private(), &message).unwrap());
+        let signature2 = Signature::from(sign(key_pair2.private(), &message).unwrap());
+
+        assert!(!check_multi_sig(&message, vec![pubkey2, pubkey1], vec![signature1, signature2]));
     }
 }

@@ -20,7 +20,7 @@ use ctypes::transaction::{AssetOutPoint, AssetTransferInput, Transaction};
 use primitives::H256;
 use rlp::Encodable;
 
-use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
+use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY, TWO_KEY};
 
 use crate::executor::{execute, Config, RuntimeError, ScriptResult};
 use crate::instruction::Instruction;
@@ -167,6 +167,180 @@ fn valid_multi_sig_2_of_2() {
         Instruction::PushB(pubkey1),
         Instruction::PushB(pubkey2),
         Instruction::PushB(vec![2]),
+        Instruction::ChkMultiSig,
+    ];
+
+    assert_eq!(
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        Ok(ScriptResult::Unlocked)
+    );
+}
+
+#[test]
+fn valid_multi_sig_2_of_3_110() {
+    let client = get_test_client();
+    let transaction = Transaction::AssetTransfer {
+        network_id: NetworkId::default(),
+        burns: Vec::new(),
+        inputs: Vec::new(),
+        outputs: Vec::new(),
+        orders: Vec::new(),
+    };
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
+    };
+    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair3 = KeyPair::from_private(Private::from(SecretKey::from(TWO_KEY))).unwrap();
+    let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
+    let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkey3 = <&[u8]>::from(keypair3.public()).to_vec();
+    let message = blake256_with_key(
+        &Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+            orders: Vec::new(),
+        }
+        .rlp_bytes(),
+        &blake128(&[0b11 as u8]),
+    );
+    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
+    let signature2 = Signature::from(sign(keypair2.private(), &message).unwrap()).to_vec();
+
+    let unlock_script =
+        vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature2)];
+    let lock_script = vec![
+        Instruction::PushB(vec![2]),
+        Instruction::PushB(pubkey1),
+        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkey3),
+        Instruction::PushB(vec![3]),
+        Instruction::ChkMultiSig,
+    ];
+
+    assert_eq!(
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        Ok(ScriptResult::Unlocked)
+    );
+}
+
+#[test]
+fn valid_multi_sig_2_of_3_101() {
+    let client = get_test_client();
+    let transaction = Transaction::AssetTransfer {
+        network_id: NetworkId::default(),
+        burns: Vec::new(),
+        inputs: Vec::new(),
+        outputs: Vec::new(),
+        orders: Vec::new(),
+    };
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
+    };
+    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair3 = KeyPair::from_private(Private::from(SecretKey::from(TWO_KEY))).unwrap();
+    let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
+    let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkey3 = <&[u8]>::from(keypair3.public()).to_vec();
+    let message = blake256_with_key(
+        &Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+            orders: Vec::new(),
+        }
+        .rlp_bytes(),
+        &blake128(&[0b11 as u8]),
+    );
+    let signature1 = Signature::from(sign(keypair1.private(), &message).unwrap()).to_vec();
+    let signature3 = Signature::from(sign(keypair3.private(), &message).unwrap()).to_vec();
+
+    let unlock_script =
+        vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature1), Instruction::PushB(signature3)];
+    let lock_script = vec![
+        Instruction::PushB(vec![2]),
+        Instruction::PushB(pubkey1),
+        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkey3),
+        Instruction::PushB(vec![3]),
+        Instruction::ChkMultiSig,
+    ];
+
+    assert_eq!(
+        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        Ok(ScriptResult::Unlocked)
+    );
+}
+
+#[test]
+fn valid_multi_sig_2_of_3_011() {
+    let client = get_test_client();
+    let transaction = Transaction::AssetTransfer {
+        network_id: NetworkId::default(),
+        burns: Vec::new(),
+        inputs: Vec::new(),
+        outputs: Vec::new(),
+        orders: Vec::new(),
+    };
+    let outpoint = AssetTransferInput {
+        prev_out: AssetOutPoint {
+            transaction_hash: H256::default(),
+            index: 0,
+            asset_type: H256::default(),
+            amount: 0,
+        },
+        timelock: None,
+        lock_script: Vec::new(),
+        unlock_script: Vec::new(),
+    };
+    let keypair1 = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair2 = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
+    let keypair3 = KeyPair::from_private(Private::from(SecretKey::from(TWO_KEY))).unwrap();
+    let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
+    let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
+    let pubkey3 = <&[u8]>::from(keypair3.public()).to_vec();
+    let message = blake256_with_key(
+        &Transaction::AssetTransfer {
+            network_id: NetworkId::default(),
+            burns: Vec::new(),
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+            orders: Vec::new(),
+        }
+        .rlp_bytes(),
+        &blake128(&[0b11 as u8]),
+    );
+    let signature2 = Signature::from(sign(keypair2.private(), &message).unwrap()).to_vec();
+    let signature3 = Signature::from(sign(keypair3.private(), &message).unwrap()).to_vec();
+
+    let unlock_script =
+        vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature2), Instruction::PushB(signature3)];
+    let lock_script = vec![
+        Instruction::PushB(vec![2]),
+        Instruction::PushB(pubkey1),
+        Instruction::PushB(pubkey2),
+        Instruction::PushB(pubkey3),
+        Instruction::PushB(vec![3]),
         Instruction::ChkMultiSig,
     ];
 
