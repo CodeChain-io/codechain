@@ -48,6 +48,10 @@ pub const ZERO_KEY: SecretKey =
 pub const ONE_KEY: SecretKey =
     SecretKey([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
 
+/// The number 2 encoded as a secret key
+pub const TWO_KEY: SecretKey =
+    SecretKey([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+
 /// The number -1 encoded as a secret key
 pub const MINUS_ONE_KEY: SecretKey = SecretKey([
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe, 0xba, 0xae, 0xdc,
