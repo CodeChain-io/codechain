@@ -450,6 +450,10 @@ impl EngineClient for Client {
     fn score_to_target(&self, score: &U256) -> U256 {
         self.engine.score_to_target(score)
     }
+
+    fn get_kvdb(&self) -> Arc<KeyValueDB> {
+        self.db.clone()
+    }
 }
 
 impl BlockInfo for Client {

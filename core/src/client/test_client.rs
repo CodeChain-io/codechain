@@ -46,6 +46,7 @@ use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use journaldb;
+use kvdb::KeyValueDB;
 use kvdb_memorydb;
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
@@ -571,5 +572,10 @@ impl super::EngineClient for TestBlockChainClient {
 
     fn score_to_target(&self, _score: &U256) -> U256 {
         U256::zero()
+    }
+
+    fn get_kvdb(&self) -> Arc<KeyValueDB> {
+        let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
+        Arc::new(db)
     }
 }

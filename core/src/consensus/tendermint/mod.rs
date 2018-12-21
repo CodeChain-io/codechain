@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod backup;
 mod message;
 mod params;
 pub mod types;
@@ -37,6 +38,7 @@ use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 
+use self::backup::{backup, restore, BackupView};
 use self::message::*;
 pub use self::params::{TendermintParams, TendermintTimeouts};
 use self::types::{Height, Step, View};
@@ -308,6 +310,7 @@ impl Tendermint {
         self.extension.set_timer_step(step, counter + 1);
         self.timeout_token_counter.store(counter + 1, AtomicOrdering::SeqCst);
         *self.step.write() = step;
+        self.backup();
         match step {
             Step::Propose => {
                 let c = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
@@ -363,6 +366,7 @@ impl Tendermint {
 
     fn generate_and_broadcast_message(&self, block_hash: Option<BlockHash>) {
         if let Some(message) = self.generate_message(block_hash) {
+            self.backup();
             self.broadcast_message(message);
         }
     }
@@ -473,6 +477,100 @@ impl Tendermint {
             *self.proposal_parent.write() = *proposal.parent_hash();
             self.to_step(Step::Prevote);
         }
+    }
+
+    fn backup(&self) {
+        if let Some(c) = self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
+            backup(
+                c.get_kvdb().as_ref(),
+                BackupView {
+                    height: &self.height(),
+                    view: &self.view.load(AtomicOrdering::SeqCst),
+                    step: &*self.step.read(),
+                    votes: &self.votes.get_all(),
+                    last_confirmed_view: &self.last_confirmed_view.read(),
+                },
+            );
+        }
+    }
+
+    fn restore(&self) {
+        let c = self.client.read().as_ref().and_then(|weak| weak.upgrade()).expect("Client should be initialized");
+
+        let backup = restore(c.get_kvdb().as_ref());
+        if let Some(backup) = backup {
+            *self.step.write() = backup.step;
+            self.height.store(backup.height, AtomicOrdering::SeqCst);
+            self.view.store(backup.view, AtomicOrdering::SeqCst);
+            *self.last_confirmed_view.write() = backup.last_confirmed_view;
+            if let Some(proposal) = backup.proposal {
+                if c.block_header(&BlockId::Hash(proposal)).is_some() {
+                    *self.proposal.write() = Some(proposal);
+                }
+            }
+            let prev_header =
+                c.block_header(&BlockId::Number(backup.height as u64 - 1)).expect("Prev block should be imported");
+            *self.proposal_parent.write() = prev_header.hash();
+
+            let mut to_next_height = None;
+            for vote in backup.votes {
+                if let Some(committed) = self.load_vote_from_backup(&vote, backup.height) {
+                    to_next_height = Some(committed);
+                }
+            }
+
+            if let Some(committed) = to_next_height {
+                if c.block(&BlockId::Hash(committed)).is_some() {
+                    self.to_next_height(backup.height);
+                    return
+                } else {
+                    cwarn!(ENGINE, "Cannot find a proposal which committed");
+                }
+            }
+
+            let counter = self.timeout_token_counter.load(AtomicOrdering::SeqCst);
+            self.extension.set_timer_step(backup.step, counter + 1);
+            self.timeout_token_counter.store(counter + 1, AtomicOrdering::SeqCst);
+        }
+    }
+
+    fn load_vote_from_backup(&self, vote: &ConsensusMessage, height: Height) -> Option<H256> {
+        let voter = vote.signer().expect("Already checked vote");
+        self.votes.vote(vote.clone(), voter);
+
+        if vote.vote_step.height != height {
+            return None
+        }
+
+        match vote.vote_step.step {
+            Step::Prevote => {
+                let vote_step = vote.vote_step;
+                let is_newer_than_lock = match &*self.lock_change.read() {
+                    Some(lock) => vote_step > lock.vote_step,
+                    None => true,
+                };
+                let lock_change =
+                    is_newer_than_lock && vote.block_hash.is_some() && self.has_enough_aligned_votes(vote);
+                if lock_change {
+                    ctrace!(ENGINE, "load: Lock change.");
+                    *self.lock_change.write() = Some(vote.clone());
+                }
+            }
+            Step::Precommit => {
+                let vote_step = vote.vote_step;
+                if vote_step.height == height && vote.block_hash.is_some() && self.has_enough_aligned_votes(vote) {
+                    let bh = vote.block_hash.unwrap();
+
+                    self.save_last_confirmed_view(bh, vote_step.view);
+                    self.votes.throw_out_old(&vote_step);
+
+                    return Some(bh)
+                }
+            }
+            _ => {}
+        }
+
+        None
     }
 }
 
@@ -744,6 +842,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             *self.last_confirmed_view.write() = (c.best_block_header().hash(), 0);
         }
         *self.client.write() = Some(client.clone());
+        self.restore();
         self.extension.register_client(client.clone());
         self.validators.register_client(client.clone());
         self.chain_notify.register_client(client);
