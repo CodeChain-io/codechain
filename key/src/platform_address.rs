@@ -267,7 +267,7 @@ mod tests {
 
     #[test]
     fn rearrange_bits_from_8_into_5() {
-        let vec = vec![0b11101110, 0b11101110, 0b11101110, 0b11101110, 0b11101110];
+        let vec = vec![0b1110_1110, 0b1110_1110, 0b1110_1110, 0b1110_1110, 0b1110_1110];
         let rearranged = rearrange_bits(&vec, 8, 5);
         assert_eq!(rearranged, vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110]);
     }
@@ -276,12 +276,12 @@ mod tests {
     fn rearrange_bits_from_5_into_8() {
         let vec = vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101, 0b11011, 0b10111, 0b01110];
         let rearranged = rearrange_bits(&vec, 5, 8);
-        assert_eq!(rearranged, vec![0b11101110, 0b11101110, 0b11101110, 0b11101110, 0b11101110]);
+        assert_eq!(rearranged, vec![0b1110_1110, 0b1110_1110, 0b1110_1110, 0b1110_1110, 0b1110_1110]);
     }
 
     #[test]
     fn rearrange_bits_from_8_into_5_padded() {
-        let vec = vec![0b11101110, 0b11101110, 0b11101110];
+        let vec = vec![0b1110_1110, 0b1110_1110, 0b1110_1110];
         let rearranged = rearrange_bits(&vec, 8, 5);
         assert_eq!(rearranged, vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11100]);
     }
@@ -290,6 +290,6 @@ mod tests {
     fn rearrange_bits_from_5_into_8_padded() {
         let vec = vec![0b11101, 0b11011, 0b10111, 0b01110, 0b11101];
         let rearranged = rearrange_bits(&vec, 5, 8);
-        assert_eq!(rearranged, vec![0b11101110, 0b11101110, 0b11101110, 0b10000000]);
+        assert_eq!(rearranged, vec![0b1110_1110, 0b1110_1110, 0b1110_1110, 0b1000_0000]);
     }
 }

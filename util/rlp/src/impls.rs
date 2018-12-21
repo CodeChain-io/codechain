@@ -386,8 +386,9 @@ mod tests {
         };
         let hash: H256 = {
             let mut hash = H256::zero();
-            for i in 0..32 {
-                hash[i] = i as u8;
+            assert_eq!(32, hash.iter().len());
+            for (i, h) in hash.iter_mut().enumerate().take(32) {
+                *h = i as u8;
             }
             hash
         };
@@ -398,16 +399,18 @@ mod tests {
     fn slice_and_hash() {
         let array: [u8; 32] = {
             let mut array = [0 as u8; 32];
-            for i in 0..32 {
-                array[i] = i as u8;
+            assert_eq!(32, array.iter().len());
+            for (i, a) in array.iter_mut().enumerate().take(32) {
+                *a = i as u8;
             }
             array
         };
         let slice: &[u8] = &array;
         let hash: H256 = {
             let mut hash = H256::zero();
-            for i in 0..32 {
-                hash[i] = i as u8;
+            assert_eq!(32, hash.iter().len());
+            for (i, h) in hash.iter_mut().enumerate().take(32) {
+                *h = i as u8;
             }
             hash
         };

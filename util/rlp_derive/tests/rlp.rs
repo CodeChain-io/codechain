@@ -16,28 +16,28 @@ struct FooWrapper {
 
 #[test]
 fn encode_foo() {
-    let foo = Foo {
+    let f = Foo {
         a: "cat".into(),
     };
 
     let expected = vec![0xc4, 0x83, b'c', b'a', b't'];
-    let out = encode(&foo).into_vec();
+    let out = encode(&f).into_vec();
     assert_eq!(out, expected);
 
     let decoded = decode(&expected);
-    assert_eq!(foo, decoded);
+    assert_eq!(f, decoded);
 }
 
 #[test]
 fn encode_foo_wrapper() {
-    let foo = FooWrapper {
+    let f = FooWrapper {
         a: "cat".into(),
     };
 
     let expected = vec![0x83, b'c', b'a', b't'];
-    let out = encode(&foo).into_vec();
+    let out = encode(&f).into_vec();
     assert_eq!(out, expected);
 
     let decoded = decode(&expected);
-    assert_eq!(foo, decoded);
+    assert_eq!(f, decoded);
 }

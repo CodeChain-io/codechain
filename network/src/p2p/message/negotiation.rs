@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_allowed() {
-        const SEQ: Seq = 0x716216a8b1;
+        const SEQ: Seq = 0x0071_6216_a8b1;
         const VERSION: Version = 2;
         rlp_encode_and_decode_test!(Message::allowed(SEQ, VERSION));
     }

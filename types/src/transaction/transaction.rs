@@ -2586,11 +2586,11 @@ mod tests {
             outputs: outputs.clone(),
             orders: vec![],
         };
-        let mut tag: Vec<u8> = vec![0b00001111 as u8];
+        let mut tag: Vec<u8> = vec![0b0000_1111 as u8];
         for _i in 0..12 {
-            tag.push(0b11111111 as u8);
+            tag.push(0b1111_1111 as u8);
         }
-        tag.push(0b00110101);
+        tag.push(0b0011_0101);
         assert_eq!(
             transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &input, false),
             Ok(blake256_with_key(&transaction.rlp_bytes(), &blake128(&tag)))
@@ -2605,11 +2605,11 @@ mod tests {
             outputs: outputs.clone(),
             orders: vec![],
         };
-        tag = vec![0b00000111 as u8];
+        tag = vec![0b0000_0111 as u8];
         for _i in 0..12 {
-            tag.push(0b11111111 as u8);
+            tag.push(0b1111_1111 as u8);
         }
-        tag.push(0b00110101);
+        tag.push(0b0011_0101);
         assert_eq!(
             transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &input, false),
             Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))
@@ -2624,11 +2624,11 @@ mod tests {
             outputs,
             orders: vec![],
         };
-        tag = vec![0b00000011 as u8];
+        tag = vec![0b0000_0011 as u8];
         for _i in 0..12 {
-            tag.push(0b11111111 as u8);
+            tag.push(0b1111_1111 as u8);
         }
-        tag.push(0b00110101);
+        tag.push(0b0011_0101);
         assert_eq!(
             transaction.hash_partially(Tag::try_new(tag.clone()).unwrap(), &input, false),
             Ok(blake256_with_key(&transaction_aux.rlp_bytes(), &blake128(&tag)))

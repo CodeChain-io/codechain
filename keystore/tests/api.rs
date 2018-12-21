@@ -41,7 +41,7 @@ fn secret_store_open_not_existing() {
 
 fn random_secret() -> Secret {
     let keypair = Random.generate().unwrap();
-    return **keypair.private()
+    **keypair.private()
 }
 
 #[test]

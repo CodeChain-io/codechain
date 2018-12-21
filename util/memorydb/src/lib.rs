@@ -321,8 +321,8 @@ mod tests {
 
         let overlay = main.drain();
 
-        assert_eq!(overlay.get(&remove_key).unwrap(), &(DBValue::from_slice(b"doggo"), 0));
-        assert_eq!(overlay.get(&insert_key).unwrap(), &(DBValue::from_slice(b"arf"), 2));
-        assert_eq!(overlay.get(&negative_remove_key).unwrap(), &(DBValue::from_slice(b"negative"), -2));
+        assert_eq!(overlay[&remove_key], (DBValue::from_slice(b"doggo"), 0));
+        assert_eq!(overlay[&insert_key], (DBValue::from_slice(b"arf"), 2));
+        assert_eq!(overlay[&negative_remove_key], (DBValue::from_slice(b"negative"), -2));
     }
 }

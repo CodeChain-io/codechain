@@ -200,11 +200,11 @@ mod tests {
             let mut address;
             'address: loop {
                 address = H256::random();
-                if address[0] == 'S' as u8 {
+                if address[0] == b'S' {
                     continue
                 }
-                for i in 1..6 {
-                    if address[i] == 0 {
+                for a in address.iter().take(6).skip(1) {
+                    if *a == 0 {
                         continue 'address
                     }
                 }
@@ -237,7 +237,7 @@ mod tests {
             hash
         };
         assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-        let shard_id = ((hash[2] as ShardId) << 8) + (hash[3] as ShardId);
+        let shard_id = (ShardId::from(hash[2]) << 8) + ShardId::from(hash[3]);
         let asset_scheme_address = AssetSchemeAddress::from_hash(hash).unwrap();
         assert_eq!(shard_id, asset_scheme_address.shard_id());
     }

@@ -109,12 +109,12 @@ mod tests {
         let total: Vec<H256> = vec![
             0xCAFE.into(),
             0xDEAD.into(),
-            0xBEEFCAFE.into(),
-            0xDEADBEEF.into(),
-            0xDEADBEEFCAFE.into(),
+            0xBEEF_CAFE.into(),
+            0xDEAD_BEEF.into(),
+            0xDEAD_BEEF_CAFE.into(),
             0xBEEF.into(),
             0xBEBE.into(),
-            0xFEEd.into(),
+            0xFEED.into(),
         ];
 
         let parent: Vec<H256> = total.iter().take(4).map(Clone::clone).collect();

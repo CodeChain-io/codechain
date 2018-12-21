@@ -80,7 +80,7 @@ mod tests {
 
         let session = Session::new(secret, id);
 
-        let data = Vec::from("some short data".as_bytes());
+        let data = b"some short data".to_vec();
 
         let encrypted = session.encrypt(&data).ok().unwrap();
         let decrypted = session.decrypt(&encrypted).ok().unwrap();
@@ -97,7 +97,7 @@ mod tests {
         let session1 = Session::new(secret, id);
         let session2 = Session::new(secret, id);
 
-        let data = Vec::from("some short data".as_bytes());
+        let data = b"some short data".to_vec();
 
         let encrypted = session1.encrypt(&data).ok().unwrap();
         let decrypted = session2.decrypt(&encrypted).ok().unwrap();
@@ -115,7 +115,7 @@ mod tests {
         let session1 = Session::new(secret, id1);
         let session2 = Session::new(secret, id2);
 
-        let data = Vec::from("some short data".as_bytes());
+        let data = b"some short data".to_vec();
         let encrypted1 = session1.encrypt(&data).ok().unwrap();
         let encrypted2 = session2.encrypt(&data).ok().unwrap();
 
@@ -132,7 +132,7 @@ mod tests {
         let session1 = Session::new(secret1, id);
         let session2 = Session::new(secret2, id);
 
-        let data = Vec::from("some short data".as_bytes());
+        let data = b"some short data".to_vec();
         let encrypted1 = session1.encrypt(&data).ok().unwrap();
         let encrypted2 = session2.encrypt(&data).ok().unwrap();
 

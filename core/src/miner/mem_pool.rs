@@ -1528,7 +1528,7 @@ pub mod test {
     #[test]
     fn payment_increases_cost() {
         let fee = 100;
-        let amount = 100000;
+        let amount = 100_000;
         let receiver = 1u64.into();
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
@@ -1552,8 +1552,8 @@ pub mod test {
 
     #[test]
     fn fee_per_byte_order_simple() {
-        let order1 = create_parcel_order(1000_000_000, 100);
-        let order2 = create_parcel_order(1500_000_000, 300);
+        let order1 = create_parcel_order(1_000_000_000, 100);
+        let order2 = create_parcel_order(1_500_000_000, 300);
         assert!(
             order1.fee_per_byte > order2.fee_per_byte,
             "{} must be larger than {}",
@@ -1574,7 +1574,7 @@ pub mod test {
         ];
         let mut orders: Vec<ParcelOrder> = Vec::new();
         for factor in factors {
-            let fee = 1000_000 * (factor[0] as u64);
+            let fee = 1_000_000 * (factor[0] as u64);
             orders.push(create_parcel_order(fee, 10 * factor[1]));
         }
 
@@ -1592,7 +1592,7 @@ pub mod test {
         let transaction = Transaction::AssetMint {
             network_id: "tc".into(),
             shard_id: 0,
-            metadata: String::from_utf8(vec!['a' as u8; transaction_count]).unwrap(),
+            metadata: String::from_utf8(vec![b'a'; transaction_count]).unwrap(),
             approver: None,
             administrator: None,
             output: AssetMintOutput {

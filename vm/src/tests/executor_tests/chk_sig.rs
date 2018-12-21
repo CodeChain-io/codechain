@@ -15,12 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::{blake128, blake256_with_key};
-use ckey::{sign, KeyPair, NetworkId, Private, Signature};
+use ckey::{sign, KeyPair, NetworkId, Private};
 use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
 use primitives::{H160, H256};
 use rlp::Encodable;
 
-use secp256k1::key::{SecretKey, MINUS_ONE_KEY, ONE_KEY};
+use secp256k1::key::{MINUS_ONE_KEY, ONE_KEY};
 
 use crate::executor::{execute, Config, ScriptResult};
 use crate::instruction::Instruction;
@@ -48,7 +48,7 @@ fn valid_pay_to_public_key() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
@@ -61,7 +61,7 @@ fn valid_pay_to_public_key() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
+    let signature = sign(keypair.private(), &message).unwrap().to_vec();
     let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b11 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
@@ -92,7 +92,7 @@ fn invalid_pay_to_public_key() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
@@ -106,8 +106,8 @@ fn invalid_pay_to_public_key() {
         &blake128(&[0b11 as u8]),
     );
 
-    let invalid_keypair = KeyPair::from_private(Private::from(SecretKey::from(MINUS_ONE_KEY))).unwrap();
-    let invalid_signature = Signature::from(sign(invalid_keypair.private(), &message).unwrap()).to_vec();
+    let invalid_keypair = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
+    let invalid_signature = sign(invalid_keypair.private(), &message).unwrap().to_vec();
     let unlock_script = vec![Instruction::PushB(invalid_signature), Instruction::PushB(vec![0b11 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
@@ -169,7 +169,7 @@ fn sign_all_input_all_output() {
     };
 
     // Execute sciprt in input0
-    let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
@@ -183,7 +183,7 @@ fn sign_all_input_all_output() {
         &blake128(&[0b11 as u8]),
     );
 
-    let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
+    let signature = sign(keypair.private(), &message).unwrap().to_vec();
     let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b11 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
@@ -245,7 +245,7 @@ fn sign_single_input_all_output() {
     };
 
     // Execute sciprt in input0
-    let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
@@ -258,7 +258,7 @@ fn sign_single_input_all_output() {
         .rlp_bytes(),
         &blake128(&[0b10 as u8]),
     );
-    let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
+    let signature = sign(keypair.private(), &message).unwrap().to_vec();
     let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b10 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
@@ -320,7 +320,7 @@ fn sign_all_input_partial_output() {
     };
 
     // Execute sciprt in input0
-    let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
@@ -331,10 +331,10 @@ fn sign_all_input_partial_output() {
             orders: Vec::new(),
         }
         .rlp_bytes(),
-        &blake128(&[0b1, 0b00000101 as u8]),
+        &blake128(&[0b1, 0b0000_0101 as u8]),
     );
-    let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
-    let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b1, 0b00000101 as u8])];
+    let signature = sign(keypair.private(), &message).unwrap().to_vec();
+    let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b1, 0b0000_0101 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
@@ -395,7 +395,7 @@ fn sign_single_input_partial_output() {
     };
 
     // Execute sciprt in input0
-    let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
@@ -406,10 +406,10 @@ fn sign_single_input_partial_output() {
             orders: Vec::new(),
         }
         .rlp_bytes(),
-        &blake128(&[0b1, 0b00000100 as u8]),
+        &blake128(&[0b1, 0b0000_0100 as u8]),
     );
-    let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
-    let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b1, 0b00000100 as u8])];
+    let signature = sign(keypair.private(), &message).unwrap().to_vec();
+    let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b1, 0b0000_0100 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
@@ -450,7 +450,7 @@ fn distinguish_sign_single_input_with_sign_all() {
     };
 
     // Execute sciprt in input0
-    let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
@@ -463,7 +463,7 @@ fn distinguish_sign_single_input_with_sign_all() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
+    let signature = sign(keypair.private(), &message).unwrap().to_vec();
     let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b10 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
@@ -506,7 +506,7 @@ fn distinguish_sign_single_output_with_sign_all() {
     };
 
     // Execute sciprt in input0
-    let keypair = KeyPair::from_private(Private::from(SecretKey::from(ONE_KEY))).unwrap();
+    let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
         &Transaction::AssetTransfer {
@@ -519,8 +519,8 @@ fn distinguish_sign_single_output_with_sign_all() {
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
     );
-    let signature = Signature::from(sign(keypair.private(), &message).unwrap()).to_vec();
-    let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b1, 0b00000101 as u8])];
+    let signature = sign(keypair.private(), &message).unwrap().to_vec();
+    let unlock_script = vec![Instruction::PushB(signature), Instruction::PushB(vec![0b1, 0b0000_0101 as u8])];
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
