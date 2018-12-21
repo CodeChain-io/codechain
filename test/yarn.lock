@@ -909,9 +909,9 @@ codechain-primitives@^0.4.2, codechain-primitives@^0.4.3:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-sdk@https://github.com/jhs7jhs/codechain-sdk-js.git#store-and-remove-lib":
+"codechain-sdk@https://github.com/jhs7jhs/codechain-sdk-js.git#order-lib":
   version "0.5.1"
-  resolved "https://github.com/jhs7jhs/codechain-sdk-js.git#9b57fc6b265695b41c6566d966fe6ebcfa0ed48a"
+  resolved "https://github.com/jhs7jhs/codechain-sdk-js.git#41c84d25090b0a17282bf47ba0473eac64603df1"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"

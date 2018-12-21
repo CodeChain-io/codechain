@@ -90,7 +90,7 @@ describe("orders", function() {
                     assetAmountTo: 5000,
                     expiration,
                     originOutputs: [splitGoldInputs[0].prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
 
                 (order.assetTypeTo as any) = gold.assetType;
@@ -171,7 +171,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
                     .createAssetTransferTransaction()
@@ -244,7 +244,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: splitGoldInputs.map(input => input.prevOut),
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
 
                 const transferTx = node.sdk.core
@@ -302,7 +302,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
                     .createAssetTransferTransaction()
@@ -350,7 +350,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
 
                 const bobOrder = node.sdk.core.createOrder({
@@ -360,7 +360,7 @@ describe("orders", function() {
                     assetAmountTo: 100,
                     expiration,
                     originOutputs: [silverInput.prevOut],
-                    recipient: bobAddress
+                    recipientFrom: bobAddress
                 });
 
                 const transferTx = node.sdk.core
@@ -420,7 +420,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
 
                 const bobOrder = node.sdk.core.createOrder({
@@ -430,7 +430,7 @@ describe("orders", function() {
                     assetAmountTo: 50,
                     expiration,
                     originOutputs: [silverInput.prevOut],
-                    recipient: bobAddress
+                    recipientFrom: bobAddress
                 });
 
                 const transferTx = node.sdk.core
@@ -497,7 +497,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
                     .createAssetTransferTransaction()
@@ -557,7 +557,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
                     .createAssetTransferTransaction()
@@ -615,7 +615,7 @@ describe("orders", function() {
                 }
             });
 
-            it("Correct order, wrong transfer - Lock script hash is wrong", async function() {
+            it("Correct order, wrong transfer - Lock script hash of maker is wrong", async function() {
                 const goldInput = gold.createTransferInput();
                 const silverInput = silver.createTransferInput();
 
@@ -627,7 +627,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
 
                 const transferTx = node.sdk.core
@@ -662,7 +662,8 @@ describe("orders", function() {
                         outputIndices: [0, 1]
                     });
 
-                (transferTx.orders[0].order.lockScriptHash as any) = new H160(
+                (transferTx.orders[0].order
+                    .lockScriptHashFrom as any) = new H160(
                     "0000000000000000000000000000000000000000"
                 );
 
@@ -689,7 +690,7 @@ describe("orders", function() {
                 }
             });
 
-            it("Correct order, wrong transfer - Parameters are wrong", async function() {
+            it("Correct order, wrong transfer - Parameters of maker are wrong", async function() {
                 const goldInput = gold.createTransferInput();
                 const silverInput = silver.createTransferInput();
 
@@ -701,7 +702,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
                     .createAssetTransferTransaction()
@@ -735,7 +736,7 @@ describe("orders", function() {
                         outputIndices: [0, 1]
                     });
 
-                (transferTx.orders[0].order.parameters as any) = [];
+                (transferTx.orders[0].order.parametersFrom as any) = [];
 
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -772,7 +773,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
                     .createAssetTransferTransaction()
@@ -847,7 +848,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
                     .createAssetTransferTransaction()
@@ -922,7 +923,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
                     .createAssetTransferTransaction()
@@ -1002,7 +1003,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 (order.originOutputs as any) = [];
 
@@ -1072,7 +1073,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [silverInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
 
                 const transferTx = node.sdk.core
@@ -1163,7 +1164,7 @@ describe("orders", function() {
                     originOutputs: splitGoldInputs
                         .slice(0, 9)
                         .map(input => input.prevOut),
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
 
                 const transferTx = node.sdk.core
@@ -1241,7 +1242,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: splitGoldInputs.map(input => input.prevOut),
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
 
                 const transferTx = node.sdk.core
@@ -1299,7 +1300,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 (order.assetAmountFrom as any) = new U64(0);
 
@@ -1369,7 +1370,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 (order.assetAmountTo as any) = new U64(0);
 
@@ -1439,7 +1440,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
                     .createAssetTransferTransaction()
@@ -1505,7 +1506,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
 
                 const transferTx1 = node.sdk.core
@@ -1601,7 +1602,7 @@ describe("orders", function() {
                     assetAmountTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
-                    recipient: aliceAddress
+                    recipientFrom: aliceAddress
                 });
                 const transferTx1 = node.sdk.core
                     .createAssetTransferTransaction()
@@ -1713,7 +1714,7 @@ describe("orders", function() {
                         assetAmountTo: 100,
                         expiration: U64.MAX_VALUE,
                         originOutputs: [inputs[i].prevOut],
-                        recipient: addresses[i]
+                        recipientFrom: addresses[i]
                     });
                     transferTx.addOrder({
                         order,
