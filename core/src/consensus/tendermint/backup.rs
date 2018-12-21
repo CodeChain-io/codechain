@@ -82,9 +82,10 @@ fn find_proposal(votes: &[ConsensusMessage], height: Height, view: View) -> Opti
     votes
         .iter()
         .rev()
-        .find(|vote| {
-            vote.vote_step.step == Step::Propose && vote.vote_step.view == view && vote.vote_step.height == height
+        .map(|vote| &vote.on)
+        .find(|vote_on| {
+            vote_on.step.step == Step::Propose && vote_on.step.view == view && vote_on.step.height == height
         })
-        .map(|vote| vote.block_hash)
+        .map(|vote_on| vote_on.block_hash)
         .unwrap_or(None)
 }
