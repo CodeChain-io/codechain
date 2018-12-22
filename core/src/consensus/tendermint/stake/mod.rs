@@ -16,6 +16,7 @@
 
 mod action_data;
 mod actions;
+mod distribute;
 
 use std::collections::HashMap;
 
@@ -26,6 +27,7 @@ use rlp::UntrustedRlp;
 
 use self::action_data::{StakeAccount, Stakeholders};
 use self::actions::Action;
+pub use self::distribute::fee_distribute;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 
@@ -91,6 +93,16 @@ fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address,
     receiver_account.save_to_state(state)?;
 
     Ok(Invoice::Success)
+}
+
+pub fn get_stakes(state: &TopLevelState) -> StakeResult<HashMap<Address, u64>> {
+    let stakeholders = Stakeholders::load_from_state(state)?;
+    let mut result = HashMap::new();
+    for stakeholder in stakeholders.iter() {
+        let account = StakeAccount::load_from_state(state, stakeholder)?;
+        result.insert(*stakeholder, account.balance);
+    }
+    Ok(result)
 }
 
 #[cfg(test)]

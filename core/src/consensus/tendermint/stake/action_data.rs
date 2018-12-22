@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::BTreeSet;
+use std::collections::{btree_set, BTreeSet};
 
 use ccrypto::blake256;
 use ckey::Address;
@@ -129,6 +129,10 @@ impl Stakeholders {
         } else {
             self.0.remove(account.address);
         }
+    }
+
+    pub fn iter(&self) -> btree_set::Iter<Address> {
+        self.0.iter()
     }
 }
 
