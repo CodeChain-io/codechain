@@ -22,6 +22,7 @@ use std::sync::Arc;
 use ckey::Address;
 use cmerkle::TrieError;
 use ctypes::invoice::Invoice;
+use ctypes::parcel::Error as ParcelError;
 use rlp::DecoderError;
 
 use crate::{StateError, TopLevelState};
@@ -61,6 +62,12 @@ impl From<StateError> for ActionHandlerError {
 impl From<TrieError> for ActionHandlerError {
     fn from(error: TrieError) -> Self {
         ActionHandlerError::StateError(StateError::Trie(error))
+    }
+}
+
+impl From<ParcelError> for ActionHandlerError {
+    fn from(error: ParcelError) -> Self {
+        ActionHandlerError::StateError(StateError::Parcel(error))
     }
 }
 

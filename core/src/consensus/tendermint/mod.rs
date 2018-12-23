@@ -17,6 +17,7 @@
 mod backup;
 mod message;
 mod params;
+mod stake;
 pub mod types;
 
 use std::cmp;
@@ -27,6 +28,7 @@ use std::sync::{Arc, Weak};
 use ccrypto::blake256;
 use ckey::{public_to_address, recover, Address, Message, Password, Signature};
 use cnetwork::{Api, NetworkExtension, NetworkService, NodeId};
+use cstate::ActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
@@ -101,6 +103,8 @@ pub struct Tendermint {
     pub step_change_lock: ReentrantMutex<()>,
     /// The token counter for timeout. If timeout is called with the token which is less than this value, it should be discarded.
     timeout_token_counter: AtomicUsize,
+    /// Action handlers for this consensus method
+    action_handlers: Vec<Arc<ActionHandler>>,
 }
 
 impl Tendermint {
@@ -128,6 +132,7 @@ impl Tendermint {
             machine,
             step_change_lock: ReentrantMutex::new(()),
             timeout_token_counter: AtomicUsize::new(0),
+            action_handlers: vec![Arc::new(stake::Stake::new(our_params.genesis_stakes))],
         });
         engine.extension.register_tendermint(Arc::downgrade(&engine));
         engine.chain_notify.register_tendermint(Arc::downgrade(&engine));
@@ -920,6 +925,10 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
         header.parent_hash()
+    }
+
+    fn action_handlers(&self) -> &[Arc<ActionHandler>] {
+        &self.action_handlers
     }
 }
 
