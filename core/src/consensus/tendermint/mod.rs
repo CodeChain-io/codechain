@@ -422,7 +422,6 @@ impl Tendermint {
                         // Commit the block using a complete signature set.
                         // Generate seal and remove old votes.
                         self.save_last_confirmed_view(bh, message.on.step.view);
-                        self.votes.throw_out_old(&vote_step);
                         self.to_next_height(self.height());
                         Some(Step::Commit)
                     } else {
@@ -453,6 +452,16 @@ impl Tendermint {
 
     pub fn on_imported_proposal(&self, proposal: &Header) {
         let _guard = self.step_change_lock.lock();
+
+        if proposal.number() < 1 {
+            return
+        }
+
+        self.votes.throw_out_old(&VoteStep {
+            height: (proposal.number() - 1) as usize,
+            view: 0,
+            step: Step::Propose,
+        });
 
         let current_height = self.height();
         let height = proposal.number() as Height;
@@ -546,7 +555,6 @@ impl Tendermint {
                     let bh = vote.on.block_hash.unwrap();
 
                     self.save_last_confirmed_view(bh, vote_step.view);
-                    self.votes.throw_out_old(vote_step);
 
                     return Some(bh)
                 }
