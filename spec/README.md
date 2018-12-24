@@ -5,7 +5,7 @@ CodeChain is a programmable blockchain supporting multiple asset types. You can 
 * [CodeChain Account](CodeChain-Account.md)
 * [CodeChain Address](CodeChain-Address.md)
 * [CodeChain Coin](CodeChain-Coin.md)
-* [Parcel](Parcel.md)
+* [Transaction](Transaction.md)
 * [Asset Exchange Protocol](Asset-Exchange-Protocol.md)
 * [Consensus](Consensus.md)
 * [Script](Script.md)
