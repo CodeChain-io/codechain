@@ -215,7 +215,7 @@ mod tests {
         let parcel = Parcel {
             seq,
             fee: 1245,
-            action: Action::Payment {
+            action: Action::Pay {
                 receiver: keypair.address(),
                 amount: 0,
             },

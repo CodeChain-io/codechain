@@ -70,7 +70,7 @@ describe("Reward = 50, 1 miner", function() {
     });
 
     it("Mining a block with a parcel that pays the author", async function() {
-        await node.payment(aliceAddress, 100);
+        await node.pay(aliceAddress, 100);
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
             new U64(50 + 10 + 100)
         );
@@ -83,7 +83,7 @@ describe("Reward = 50, 1 miner", function() {
         );
 
         const parcel = await node.sdk.core
-            .createPaymentParcel({
+            .createPayParcel({
                 recipient: faucetAddress,
                 amount: 50
             })

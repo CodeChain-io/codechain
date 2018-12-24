@@ -24,7 +24,7 @@ use crate::transaction::Transaction;
 use crate::ShardId;
 
 const ASSET_TRANSACTION: u8 = 1;
-const PAYMENT: u8 = 2;
+const PAY: u8 = 2;
 const SET_REGULAR_KEY: u8 = 3;
 const CREATE_SHARD: u8 = 4;
 const SET_SHARD_OWNERS: u8 = 5;
@@ -40,7 +40,7 @@ pub enum Action {
         transaction: Transaction,
         approvals: Vec<Signature>,
     },
-    Payment {
+    Pay {
         receiver: Address,
         /// Transferred amount.
         amount: u64,
@@ -121,12 +121,12 @@ impl Encodable for Action {
                 s.append(transaction);
                 s.append_list(approvals);
             }
-            Action::Payment {
+            Action::Pay {
                 receiver,
                 amount,
             } => {
                 s.begin_list(3);
-                s.append(&PAYMENT);
+                s.append(&PAY);
                 s.append(receiver);
                 s.append(amount);
             }
@@ -217,11 +217,11 @@ impl Decodable for Action {
                     approvals: rlp.list_at(2)?,
                 })
             }
-            PAYMENT => {
+            PAY => {
                 if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                Ok(Action::Payment {
+                Ok(Action::Pay {
                     receiver: rlp.val_at(1)?,
                     amount: rlp.val_at(2)?,
                 })

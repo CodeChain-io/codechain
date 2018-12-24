@@ -416,8 +416,8 @@ describe("transactions", function() {
         before(async function() {
             approver = await node.createPlatformAddress();
             nonApprover = await node.createPlatformAddress();
-            await node.payment(approver, 10000);
-            await node.payment(nonApprover, 10000);
+            await node.pay(approver, 10000);
+            await node.pay(nonApprover, 10000);
         });
 
         beforeEach(async function() {

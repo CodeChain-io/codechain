@@ -38,7 +38,7 @@ import CodeChain from "../helper/spawn";
             { networkId: "tc" }
         );
         const parcel = node.sdk.core
-            .createPaymentParcel({
+            .createPayParcel({
                 recipient,
                 amount: 1
             })

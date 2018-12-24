@@ -361,12 +361,12 @@ export default class CodeChain {
         return this.sdk.key.createPlatformAddress({ keyStore });
     }
 
-    public async payment(
+    public async pay(
         recipient: string | PlatformAddress,
         amount: U64 | string | number
     ) {
         const parcel = this.sdk.core
-            .createPaymentParcel({
+            .createPayParcel({
                 recipient,
                 amount
             })
@@ -381,7 +381,7 @@ export default class CodeChain {
         })) as Invoice | null;
         if (invoice === null || !invoice.success) {
             throw Error(
-                `An error occurred while payment: ${invoice && invoice.error}`
+                `An error occurred while pay: ${invoice && invoice.error}`
             );
         }
     }
@@ -550,7 +550,7 @@ export default class CodeChain {
             fee = 10 + this.id
         } = options || {};
         const parcel = this.sdk.core
-            .createPaymentParcel({
+            .createPayParcel({
                 recipient,
                 amount
             })

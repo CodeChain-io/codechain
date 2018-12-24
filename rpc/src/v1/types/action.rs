@@ -29,7 +29,7 @@ pub enum Action {
         transaction: Box<Transaction>,
         approvals: Vec<Signature>,
     },
-    Payment {
+    Pay {
         receiver: PlatformAddress,
         amount: Uint,
     },
@@ -73,7 +73,7 @@ pub enum ActionWithTxHash {
         transaction: Box<TransactionWithHash>,
         approvals: Vec<Signature>,
     },
-    Payment {
+    Pay {
         receiver: PlatformAddress,
         amount: Uint,
     },
@@ -120,10 +120,10 @@ impl ActionWithTxHash {
                 transaction: Box::new(transaction.into()),
                 approvals,
             },
-            ActionType::Payment {
+            ActionType::Pay {
                 receiver,
                 amount,
-            } => ActionWithTxHash::Payment {
+            } => ActionWithTxHash::Pay {
                 receiver: PlatformAddress::new_v1(network_id, receiver),
                 amount: amount.into(),
             },
@@ -196,10 +196,10 @@ impl From<Action> for Result<ActionType, KeyError> {
                 transaction: Result::from(*transaction)?,
                 approvals,
             },
-            Action::Payment {
+            Action::Pay {
                 receiver,
                 amount,
-            } => ActionType::Payment {
+            } => ActionType::Pay {
                 receiver: receiver.try_into_address()?,
                 amount: amount.into(),
             },

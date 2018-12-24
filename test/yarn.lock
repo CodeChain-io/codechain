@@ -884,6 +884,19 @@ codechain-primitives@^0.4.4:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#rename-lib":
+  version "0.5.1"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#b56d4844ec521542df02144b2b6fe754e7116298"
+  dependencies:
+    buffer "5.1.0"
+    codechain-keystore "^0.6.0"
+    codechain-primitives "^0.4.4"
+    jayson "^2.0.6"
+    lodash "^4.17.10"
+    node-fetch "^2.1.2"
+    request-promise "^4.2.2"
+    rlp "^2.0.0"
+
 "codechain-test-helper@https://github.com/sgkim126/codechain-test-helper-js.git#dc4b97ddc8d11551750cdb79fcd68c60e53654e6":
   version "1.0.0"
   resolved "https://github.com/sgkim126/codechain-test-helper-js.git#dc4b97ddc8d11551750cdb79fcd68c60e53654e6"
