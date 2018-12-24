@@ -86,8 +86,6 @@ pub struct Tendermint {
     last_lock: AtomicUsize,
     /// hash of the proposed block, used for seal submission.
     proposal: RwLock<Option<H256>>,
-    /// Proposal block which parent is not imported yet
-    future_proposal: RwLock<Option<Bytes>>,
     last_confirmed_view: RwLock<(H256, View)>,
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
@@ -123,7 +121,6 @@ impl Tendermint {
             lock_change: RwLock::new(None),
             last_lock: AtomicUsize::new(0),
             proposal: RwLock::new(None),
-            future_proposal: RwLock::new(None),
             last_confirmed_view: RwLock::new((Default::default(), 0)),
             validators: our_params.validators,
             block_reward: our_params.block_reward,
@@ -172,30 +169,6 @@ impl Tendermint {
 
     pub fn view(&self) -> View {
         self.view.load(AtomicOrdering::SeqCst)
-    }
-
-    pub fn update_future_proposal(&self, future_proposal: Bytes) {
-        let prev_score = self
-            .future_proposal
-            .read()
-            .as_ref()
-            .map(|prev| BlockView::new(prev).header_view().score())
-            .unwrap_or_default();
-        let new_score = BlockView::new(&future_proposal).header_view().score();
-        if prev_score < new_score {
-            ctrace!(ENGINE, "future proposal changed");
-            *self.future_proposal.write() = Some(future_proposal);
-        } else {
-            ctrace!(ENGINE, "future proposal not changed");
-        }
-    }
-
-    pub fn future_proposal_prev_hash(&self) -> Option<H256> {
-        self.future_proposal.read().as_ref().map(|b| BlockView::new(b).header_view().parent_hash())
-    }
-
-    pub fn take_future_proposal(&self) -> Option<Bytes> {
-        self.future_proposal.write().take()
     }
 
     /// Check if address is a proposer for given view.
@@ -1027,14 +1000,6 @@ impl ChainNotify for TendermintChainNotify {
         if height_changed {
             t.to_step(Step::Commit)
         }
-
-        if t.future_proposal_prev_hash().map(|hash| c.block(&BlockId::Hash(hash)).is_some()).unwrap_or(false) {
-            if let Err(err) = c
-                .import_block(t.take_future_proposal().expect("future_proposal_prev_hash is already checked existance"))
-            {
-                cwarn!(ENGINE, "Future proposal import failed {:?}", err);
-            }
-        }
     }
 }
 
@@ -1247,7 +1212,6 @@ impl NetworkExtension for TendermintExtension {
                             parent_hash,
                             best_block_number
                         );
-                        t.update_future_proposal(bytes.clone());
                         return
                     }
 
