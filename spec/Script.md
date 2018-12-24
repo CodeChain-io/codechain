@@ -30,7 +30,7 @@ Result is **SUCCESS** when **all** of the following conditions are met:
 
 * There are no more instructions to execute
 * Stack has only one item
-* Stack’s topmost value is true when converted into an integer
+* Stack’s topmost value is not zero when converted into an integer
 
 Result is **BURNT** when one of the following conditions are met:
 * Self-burning instruction was executed
