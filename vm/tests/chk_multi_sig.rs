@@ -14,22 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate codechain_crypto as ccrypto;
+extern crate codechain_key as ckey;
+extern crate codechain_types as ctypes;
+extern crate codechain_vm as cvm;
+extern crate primitives;
+extern crate rlp;
+extern crate secp256k1;
+
+mod common;
+
 use ccrypto::{blake128, blake256_with_key};
 use ckey::{sign, KeyPair, NetworkId, Private};
 use ctypes::transaction::{AssetOutPoint, AssetTransferInput, ShardTransaction};
 use primitives::H256;
 use rlp::Encodable;
-
 use secp256k1::key::{MINUS_ONE_KEY, ONE_KEY, TWO_KEY};
 
-use crate::executor::{execute, Config, RuntimeError, ScriptResult};
-use crate::instruction::Instruction;
+use cvm::Instruction;
+use cvm::{execute, RuntimeError, ScriptResult, VMConfig};
 
-use super::executor::get_test_client;
+use common::TestClient;
 
 #[test]
 fn valid_multi_sig_0_of_2() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -63,14 +72,14 @@ fn valid_multi_sig_0_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Err(RuntimeError::InvalidSigCount)
     );
 }
 
 #[test]
 fn valid_multi_sig_1_of_2() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -116,14 +125,14 @@ fn valid_multi_sig_1_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn valid_multi_sig_2_of_2() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -171,14 +180,14 @@ fn valid_multi_sig_2_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn valid_multi_sig_2_of_3_110() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -229,14 +238,14 @@ fn valid_multi_sig_2_of_3_110() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn valid_multi_sig_2_of_3_101() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -287,14 +296,14 @@ fn valid_multi_sig_2_of_3_101() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn valid_multi_sig_2_of_3_011() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -345,14 +354,14 @@ fn valid_multi_sig_2_of_3_011() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn invalid_multi_sig_1_of_2() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -398,7 +407,7 @@ fn invalid_multi_sig_1_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
@@ -406,7 +415,7 @@ fn invalid_multi_sig_1_of_2() {
 
 #[test]
 fn invalid_multi_sig_2_of_2() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -454,14 +463,14 @@ fn invalid_multi_sig_2_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -520,14 +529,14 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -575,14 +584,14 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn invalid_multi_sig_with_less_sig_than_m() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -628,14 +637,14 @@ fn invalid_multi_sig_with_less_sig_than_m() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Err(RuntimeError::TypeMismatch)
     );
 }
 
 #[test]
 fn invalid_multi_sig_with_more_sig_than_m() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -683,14 +692,14 @@ fn invalid_multi_sig_with_more_sig_than_m() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Err(RuntimeError::InvalidFilter)
     );
 }
 
 #[test]
 fn invalid_multi_sig_with_too_many_arg() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -748,7 +757,7 @@ fn invalid_multi_sig_with_too_many_arg() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
         Err(RuntimeError::InvalidSigCount)
     );
 }

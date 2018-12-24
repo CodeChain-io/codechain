@@ -29,8 +29,6 @@ mod executor;
 mod instruction;
 mod opcode;
 
-#[cfg(test)]
-mod tests;
-
 pub use crate::decoder::{decode, DecoderError};
 pub use crate::executor::{execute, ChainTimeInfo, Config as VMConfig, RuntimeError, ScriptResult};
+pub use crate::instruction::Instruction;
