@@ -622,6 +622,15 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let header = sealed_block.header();
         let hash = header.hash();
 
+        let vote_step =
+            VoteStep::new(header.number() as Height, consensus_view(&header).expect("I am proposer"), Step::Propose);
+        let vote_info = message_info_rlp(vote_step, Some(hash));
+        let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
+        self.votes.vote(
+            ConsensusMessage::new_proposal(signature, header).expect("I am proposer"),
+            *self.signer.read().address().expect("I am proposer"),
+        );
+
         *self.proposal.write() = Some(hash);
         cdebug!(
             ENGINE,
