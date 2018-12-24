@@ -17,10 +17,11 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::iter::Iterator;
 
 use ckey::{public_to_address, Address, Public, SchnorrSignature};
 use parking_lot::RwLock;
-use primitives::{Bytes, H256};
+use primitives::H256;
 use rlp::{Encodable, RlpStream};
 
 pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
@@ -177,25 +178,6 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
         self.votes.read().get(vote_round).map_or(0, StepCollector::count)
     }
 
-    /// Get all messages older than the round.
-    pub fn get_up_to(&self, round: &M::Round) -> Vec<Bytes> {
-        let guard = self.votes.read();
-        guard
-            .iter()
-            .take_while(|&(r, _)| r <= round)
-            .map(|(_, c)| {
-                c.messages
-                    .iter()
-                    .filter(|m| m.is_broadcastable())
-                    .map(|m| ::rlp::encode(m).to_vec())
-                    .collect::<Vec<_>>()
-            })
-            .fold(Vec::new(), |mut acc, mut messages| {
-                acc.append(&mut messages);
-                acc
-            })
-    }
-
     /// Retrieve address from which the message was sent from cache.
     pub fn get(&self, message: &M) -> Option<Address> {
         let guard = self.votes.read();
@@ -212,5 +194,19 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
 
     pub fn get_all(&self) -> Vec<M> {
         self.votes.read().iter().flat_map(|(_round, collector)| collector.messages.iter()).cloned().collect()
+    }
+
+    pub fn get_all_votes_in_round(&self, round: &M::Round) -> Vec<M> {
+        let guard = self.votes.read();
+        let c = guard.get(round);
+        c.map(|c| c.messages.iter().cloned().collect()).unwrap_or_default()
+    }
+
+    pub fn get_all_votes_and_authors_in_round(&self, round: &M::Round) -> Vec<(Address, M)> {
+        let guard = self.votes.read();
+        guard
+            .get(round)
+            .map(|c| c.voted.iter().map(|(k, v)| (public_to_address(k), v.clone())).collect())
+            .unwrap_or_default()
     }
 }
