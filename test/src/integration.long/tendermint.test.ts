@@ -103,18 +103,25 @@ describeSkippedInTravis("Tendermint ", function() {
         await nodes[2].waitBlockNumber(2);
 
         await Promise.all([
-            nodes[3].connect(nodes[0]),
+            nodes[0].disconnect(nodes[1]),
+            nodes[0].disconnect(nodes[2])
+        ]);
+
+        // Now create blocks without nodes[0]. To create new blocks, the
+        // nodes[4] should sync all message and participate in the network.
+
+        await Promise.all([
             nodes[3].connect(nodes[1]),
             nodes[3].connect(nodes[2])
         ]);
 
-        await nodes[0].waitBlockNumber(3);
-        await nodes[1].waitBlockNumber(3);
-        await nodes[2].waitBlockNumber(3);
-        await nodes[3].waitBlockNumber(3);
+        const best_number = await nodes[1].getBestBlockNumber();
+        await nodes[1].waitBlockNumber(best_number + 1);
+        await nodes[2].waitBlockNumber(best_number + 1);
+        await nodes[3].waitBlockNumber(best_number + 1);
         await expect(
-            nodes[0].sdk.rpc.chain.getBestBlockNumber()
-        ).to.eventually.greaterThan(2);
+            nodes[3].sdk.rpc.chain.getBestBlockNumber()
+        ).to.eventually.greaterThan(best_number);
     }).timeout(30_000);
 
     it("Gossip", async function() {
