@@ -26,7 +26,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Address, Message, Password, Signature};
+use ckey::{public_to_address, recover, Address, Message, Password, Public, Signature};
 use cnetwork::{Api, NetworkExtension, NetworkService, NodeId};
 use cstate::ActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
@@ -218,11 +218,11 @@ impl Tendermint {
     }
 
     fn is_view(&self, message: &ConsensusMessage) -> bool {
-        message.vote_step.is_view(self.height(), self.view())
+        message.on.step.is_view(self.height(), self.view())
     }
 
     fn is_step(&self, message: &ConsensusMessage) -> bool {
-        message.vote_step.is_step(self.height(), self.view(), *self.step.read())
+        message.on.step.is_step(self.height(), self.view(), *self.step.read())
     }
 
     fn is_authority(&self, prev_hash: &H256, address: &Address) -> bool {
@@ -330,7 +330,7 @@ impl Tendermint {
             }
             Step::Prevote => {
                 let block_hash = match *self.lock_change.read() {
-                    Some(ref m) if !self.should_unlock(m.vote_step.view) => m.block_hash,
+                    Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
                     _ => *self.proposal.read(),
                 };
                 self.generate_and_broadcast_message(block_hash);
@@ -338,10 +338,10 @@ impl Tendermint {
             Step::Precommit => {
                 ctrace!(ENGINE, "to_step: Precommit.");
                 let block_hash = match *self.lock_change.read() {
-                    Some(ref m) if self.is_view(m) && m.block_hash.is_some() => {
-                        ctrace!(ENGINE, "Setting last lock: {}", m.vote_step.view);
-                        self.last_lock.store(m.vote_step.view, AtomicOrdering::SeqCst);
-                        m.block_hash
+                    Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
+                        ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
+                        self.last_lock.store(m.on.step.view, AtomicOrdering::SeqCst);
+                        m.on.block_hash
                     }
                     _ => None,
                 };
@@ -364,12 +364,19 @@ impl Tendermint {
         let height = self.height();
         let r = self.view();
         let step = *self.step.read();
-        let vote_info = message_info_rlp(&VoteStep::new(height, r, step), block_hash);
+        let on = VoteOn {
+            step: VoteStep::new(height, r, step),
+            block_hash,
+        };
+        let vote_info = on.rlp_bytes();
         match (self.signer.read().address(), self.sign(blake256(&vote_info))) {
             (Some(validator), Ok(signature)) => {
-                let message_rlp = message_full_rlp(&signature, &vote_info);
-                let message = ConsensusMessage::new(signature, height, r, step, block_hash);
-                self.votes.vote(message.clone(), validator);
+                let message = ConsensusMessage {
+                    signature,
+                    on,
+                };
+                let message_rlp = message.rlp_bytes().into_vec();
+                self.votes.vote(message.clone(), *validator);
                 cdebug!(ENGINE, "Generated {:?} as {}.", message, validator);
                 self.handle_valid_message(&message);
 
@@ -388,15 +395,15 @@ impl Tendermint {
 
     fn handle_valid_message(&self, message: &ConsensusMessage) {
         let _guard = self.step_change_lock.lock();
-        let vote_step = &message.vote_step;
+        let vote_step = &message.on.step;
         let is_newer_than_lock = match &*self.lock_change.read() {
-            Some(lock) => *vote_step > lock.vote_step,
+            Some(lock) => *vote_step > lock.on.step,
             None => true,
         };
         let lock_change = is_newer_than_lock
             && vote_step.height == self.height()
             && vote_step.step == Step::Prevote
-            && message.block_hash.is_some()
+            && message.on.block_hash.is_some()
             && self.has_enough_aligned_votes(message);
         if lock_change {
             ctrace!(ENGINE, "handle_valid_message: Lock change.");
@@ -405,16 +412,16 @@ impl Tendermint {
         // Check if it can affect the step transition.
         if self.is_step(message) {
             let next_step = match *self.step.read() {
-                Step::Precommit if message.block_hash.is_none() && self.has_enough_aligned_votes(message) => {
+                Step::Precommit if message.on.block_hash.is_none() && self.has_enough_aligned_votes(message) => {
                     self.increment_view(1);
                     Some(Step::Propose)
                 }
                 Step::Precommit if self.has_enough_aligned_votes(message) => {
-                    let bh = message.block_hash.expect("previous guard ensures is_some; qed");
+                    let bh = message.on.block_hash.expect("previous guard ensures is_some; qed");
                     if self.client().block(&BlockId::Hash(bh)).is_some() {
                         // Commit the block using a complete signature set.
                         // Generate seal and remove old votes.
-                        self.save_last_confirmed_view(bh, message.vote_step.view);
+                        self.save_last_confirmed_view(bh, message.on.step.view);
                         self.votes.throw_out_old(&vote_step);
                         self.to_next_height(self.height());
                         Some(Step::Commit)
@@ -515,31 +522,31 @@ impl Tendermint {
         let voter = vote.signer().expect("Already checked vote");
         self.votes.vote(vote.clone(), voter);
 
-        if vote.vote_step.height != height {
+        if vote.on.step.height != height {
             return None
         }
 
-        match vote.vote_step.step {
+        match vote.on.step.step {
             Step::Prevote => {
-                let vote_step = vote.vote_step;
+                let vote_step = &vote.on.step;
                 let is_newer_than_lock = match &*self.lock_change.read() {
-                    Some(lock) => vote_step > lock.vote_step,
+                    Some(lock) => *vote_step > lock.on.step,
                     None => true,
                 };
                 let lock_change =
-                    is_newer_than_lock && vote.block_hash.is_some() && self.has_enough_aligned_votes(vote);
+                    is_newer_than_lock && vote.on.block_hash.is_some() && self.has_enough_aligned_votes(vote);
                 if lock_change {
                     ctrace!(ENGINE, "load: Lock change.");
                     *self.lock_change.write() = Some(vote.clone());
                 }
             }
             Step::Precommit => {
-                let vote_step = vote.vote_step;
-                if vote_step.height == height && vote.block_hash.is_some() && self.has_enough_aligned_votes(vote) {
-                    let bh = vote.block_hash.unwrap();
+                let vote_step = &vote.on.step;
+                if vote_step.height == height && vote.on.block_hash.is_some() && self.has_enough_aligned_votes(vote) {
+                    let bh = vote.on.block_hash.unwrap();
 
                     self.save_last_confirmed_view(bh, vote_step.view);
-                    self.votes.throw_out_old(&vote_step);
+                    self.votes.throw_out_old(vote_step);
 
                     return Some(bh)
                 }
@@ -650,16 +657,18 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             .map_err(Error::from)?;
 
         let previous_block_view = previous_block_view(header)?;
-        let vote_step = VoteStep::new((header.number() - 1) as usize, previous_block_view, Step::Precommit);
-        let precommit_hash = message_hash(vote_step, *header.parent_hash());
+        let step = VoteStep::new((header.number() - 1) as usize, previous_block_view, Step::Precommit);
+        let precommit_hash = message_hash(step, *header.parent_hash());
         let precommits_field =
             &header.seal().get(2).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
         let mut origins = HashSet::new();
         for rlp in UntrustedRlp::new(precommits_field).iter() {
             let precommit = ConsensusMessage {
                 signature: rlp.as_val()?,
-                block_hash: Some(header.hash()),
-                vote_step,
+                on: VoteOn {
+                    step,
+                    block_hash: Some(header.hash()),
+                },
             };
             let address = match self.votes.get(&precommit) {
                 Some(a) => a,
@@ -827,7 +836,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         if !self.votes.is_old_or_known(&message) {
             let msg_hash = blake256(rlp.at(1).map_err(fmt_err)?.as_raw());
             let sender = public_to_address(&recover(&message.signature, &msg_hash).map_err(fmt_err)?);
-            let prev_height = (message.vote_step.height - 1) as u64;
+            let prev_height = (message.on.step.height - 1) as u64;
             if let Some(prev_block_hash) =
                 self.client().block_header(&BlockId::Number(prev_height)).map(|header| header.parent_hash())
             {
@@ -841,7 +850,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
             self.broadcast_message(rlp.as_raw().to_vec());
             if let Some(double) = self.votes.vote(message.clone(), sender) {
-                let height = message.vote_step.height as BlockNumber;
+                let height = message.on.step.height as BlockNumber;
                 self.validators.report_malicious(&sender, height, height, ::rlp::encode(&double).into_vec());
                 return Err(EngineError::DoubleVote(sender))
             }
@@ -878,7 +887,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         cdebug!(ENGINE, "Send proposal {:?}", vote_step);
 
         if self.is_signer_proposer(&parent_hash) {
-            let vote_info = message_info_rlp(&vote_step, Some(hash));
+            let vote_info = message_info_rlp(vote_step, Some(hash));
             let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
             self.extension.broadcast_proposal_block(signature, block.into_inner());
         } else if let Some(signature) = self.votes.round_signatures(&vote_step, &hash).first() {
@@ -897,6 +906,10 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn sign(&self, hash: H256) -> Result<Signature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
+    }
+
+    fn signer_public(&self) -> Option<Public> {
+        self.signer.read().public().cloned()
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
@@ -1364,7 +1377,7 @@ mod tests {
         header.set_author(proposer);
         header.set_parent_hash(Default::default());
 
-        let vote_info = message_info_rlp(&VoteStep::new(3, 0, Step::Precommit), Some(*header.parent_hash()));
+        let vote_info = message_info_rlp(VoteStep::new(3, 0, Step::Precommit), Some(*header.parent_hash()));
         let signature0 = tap.sign(proposer, None, blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {

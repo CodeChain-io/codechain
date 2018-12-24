@@ -135,6 +135,11 @@ impl AccountProvider {
         Ok(self.keystore.read().sign(&address, &password, &message)?)
     }
 
+    pub fn public(&self, address: &Address, password: Option<Password>) -> Result<Public, SignError> {
+        let password = password.map(Ok).unwrap_or_else(|| self.password(address))?;
+        Ok(self.keystore.read().public(&address, &password)?)
+    }
+
     pub fn has_account(&self, address: &Address) -> Result<bool, SignError> {
         let has = self.keystore.read().has_account(address)?;
         Ok(has)

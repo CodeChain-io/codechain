@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ckey::{Address, Password, Signature};
+use ckey::{Address, Password, Public, Signature};
 use primitives::H256;
 
 use crate::account_provider::{AccountProvider, SignError};
@@ -24,7 +24,7 @@ use crate::account_provider::{AccountProvider, SignError};
 /// Everything that an Engine needs to sign messages.
 pub struct EngineSigner {
     account_provider: Arc<AccountProvider>,
-    address: Option<Address>,
+    signer: Option<(Address, Public)>,
     password: Option<Password>,
 }
 
@@ -32,7 +32,7 @@ impl Default for EngineSigner {
     fn default() -> Self {
         EngineSigner {
             account_provider: AccountProvider::transient_provider(),
-            address: Default::default(),
+            signer: Default::default(),
             password: Default::default(),
         }
     }
@@ -41,29 +41,39 @@ impl Default for EngineSigner {
 impl EngineSigner {
     /// Set up the signer to sign with given address and password.
     pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
+        let public = ap.public(&address, password.clone()).expect("The address must be registered in AccountProvier");
         self.account_provider = ap;
-        self.address = Some(address);
+        self.signer = Some((address, public));
         self.password = password;
         cdebug!(ENGINE, "Setting Engine signer to {}", address);
     }
 
     /// Sign a consensus message hash.
     pub fn sign(&self, hash: H256) -> Result<Signature, SignError> {
-        self.account_provider.sign(self.address.unwrap_or_else(Default::default), self.password.clone(), hash)
+        self.account_provider.sign(
+            self.signer.map(|(address, _public)| address).unwrap_or_else(Default::default),
+            self.password.clone(),
+            hash,
+        )
     }
 
     /// Signing address.
-    pub fn address(&self) -> Option<Address> {
-        self.address
+    pub fn address(&self) -> Option<&Address> {
+        self.signer.as_ref().map(|(address, _public)| address)
+    }
+
+    /// Public Key of signer.
+    pub fn public(&self) -> Option<&Public> {
+        self.signer.as_ref().map(|(_address, public)| public)
     }
 
     /// Check if the given address is the signing address.
-    pub fn is_address(&self, address: &Address) -> bool {
-        self.address.map_or(false, |a| a == *address)
+    pub fn is_address(&self, a: &Address) -> bool {
+        self.signer.map_or(false, |(address, _public)| *a == address)
     }
 
     /// Check if the signing address was set.
     pub fn is_some(&self) -> bool {
-        self.address.is_some()
+        self.signer.is_some()
     }
 }
