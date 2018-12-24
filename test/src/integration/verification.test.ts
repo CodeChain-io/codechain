@@ -43,7 +43,7 @@ describe("solo - 1 node", function() {
         beforeEach(async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
-                .createPaymentParcel({
+                .createPayParcel({
                     recipient,
                     amount: 0
                 })
@@ -781,12 +781,12 @@ describe("solo - 1 node", function() {
         });
     });
 
-    describe("Sending invalid parcels over the limits (in action 2: Payment)", function() {
+    describe("Sending invalid parcels over the limits (in action 2: Pay)", function() {
         let parcelEncoded: any[];
         beforeEach(async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
-                .createPaymentParcel({
+                .createPayParcel({
                     recipient,
                     amount: 0
                 })
@@ -1035,7 +1035,7 @@ describe("solo - 1 node", function() {
         it(`Sending invalid parcels (low fee): ${fee}`, async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const parcel = node.sdk.core
-                .createPaymentParcel({
+                .createPayParcel({
                     recipient,
                     amount: 0
                 })

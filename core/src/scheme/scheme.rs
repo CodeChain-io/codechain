@@ -53,7 +53,7 @@ pub struct CommonParams {
     /// Network id.
     pub network_id: NetworkId,
     /// Minimum parcel cost.
-    pub min_payment_parcel_cost: u64,
+    pub min_pay_parcel_cost: u64,
     pub min_set_regular_key_parcel_cost: u64,
     pub min_create_shard_parcel_cost: u64,
     pub min_set_shard_owners_parcel_cost: u64,
@@ -81,7 +81,7 @@ impl From<cjson::scheme::Params> for CommonParams {
             max_metadata_size: p.max_metadata_size.into(),
             max_text_content_size: p.max_text_content_size.into(),
             network_id: p.network_id,
-            min_payment_parcel_cost: p.min_payment_parcel_cost.into(),
+            min_pay_parcel_cost: p.min_pay_parcel_cost.into(),
             min_set_regular_key_parcel_cost: p.min_set_regular_key_parcel_cost.into(),
             min_create_shard_parcel_cost: p.min_create_shard_parcel_cost.into(),
             min_set_shard_owners_parcel_cost: p.min_set_shard_owners_parcel_cost.into(),

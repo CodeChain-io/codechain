@@ -250,9 +250,9 @@ macro_rules! asset_unwrap_ccc {
     };
 }
 
-macro_rules! payment {
+macro_rules! pay {
     ($receiver:expr, $amount:expr) => {
-        $crate::ctypes::parcel::Action::Payment {
+        $crate::ctypes::parcel::Action::Pay {
             receiver: $receiver,
             amount: $amount,
         }
