@@ -14,70 +14,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate codechain_crypto as ccrypto;
+extern crate codechain_key as ckey;
+extern crate codechain_types as ctypes;
+extern crate codechain_vm as cvm;
+extern crate primitives;
+
+mod common;
+
 use ccrypto::{BLAKE_EMPTY, BLAKE_NULL_RLP};
 use ckey::NetworkId;
 use ctypes::transaction::{AssetOutPoint, AssetTransferInput, ShardTransaction};
+use cvm::Instruction;
+use cvm::{execute, RuntimeError, ScriptResult, VMConfig};
 use primitives::{H160, H256};
 
-use crate::executor::{execute, ChainTimeInfo, Config, RuntimeError, ScriptResult};
-use crate::instruction::Instruction;
-
-#[cfg(test)]
-pub struct TestClient {
-    block_number: u64,
-    block_timestamp: u64,
-    block_age: Option<u64>,
-    time_age: Option<u64>,
-}
-
-#[cfg(test)]
-impl TestClient {
-    fn new(block_number: u64, block_timestamp: u64, block_age: Option<u64>, time_age: Option<u64>) -> Self {
-        TestClient {
-            block_number,
-            block_timestamp,
-            block_age,
-            time_age,
-        }
-    }
-
-    fn default() -> Self {
-        TestClient {
-            block_number: 0,
-            block_timestamp: 0,
-            block_age: Some(0),
-            time_age: Some(0),
-        }
-    }
-}
-
-#[cfg(test)]
-impl ChainTimeInfo for TestClient {
-    fn best_block_number(&self) -> u64 {
-        self.block_number
-    }
-
-    fn best_block_timestamp(&self) -> u64 {
-        self.block_timestamp
-    }
-
-    fn transaction_block_age(&self, _: &H256) -> Option<u64> {
-        self.block_age
-    }
-
-    fn transaction_time_age(&self, _: &H256) -> Option<u64> {
-        self.time_age
-    }
-}
-
-#[cfg(test)]
-pub fn get_test_client() -> TestClient {
-    TestClient::default()
-}
+use common::TestClient;
 
 #[test]
 fn simple_success() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -97,19 +53,19 @@ fn simple_success() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Push(1)], &transaction, Config::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Push(1)], &transaction, VMConfig::default(), &input, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 
     assert_eq!(
-        execute(&[], &[], &[Instruction::Success], &transaction, Config::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Success], &transaction, VMConfig::default(), &input, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn simple_failure() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -129,18 +85,18 @@ fn simple_failure() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[Instruction::Push(0)], &[], &[], &transaction, Config::default(), &input, false, &client),
+        execute(&[Instruction::Push(0)], &[], &[], &transaction, VMConfig::default(), &input, false, &client),
         Ok(ScriptResult::Fail)
     );
     assert_eq!(
-        execute(&[], &[], &[Instruction::Fail], &transaction, Config::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Fail], &transaction, VMConfig::default(), &input, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn simple_burn() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -160,14 +116,14 @@ fn simple_burn() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Burn], &transaction, Config::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Burn], &transaction, VMConfig::default(), &input, false, &client),
         Ok(ScriptResult::Burnt)
     );
 }
 
 #[test]
 fn underflow() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -187,14 +143,14 @@ fn underflow() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Pop], &transaction, Config::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Pop], &transaction, VMConfig::default(), &input, false, &client),
         Err(RuntimeError::StackUnderflow)
     );
 }
 
 #[test]
 fn out_of_memory() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -213,7 +169,7 @@ fn out_of_memory() {
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
     };
-    let config = Config {
+    let config = VMConfig {
         max_memory: 2,
     };
     assert_eq!(
@@ -233,7 +189,7 @@ fn out_of_memory() {
 
 #[test]
 fn invalid_unlock_script() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -253,14 +209,14 @@ fn invalid_unlock_script() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[Instruction::Nop], &[], &[], &transaction, Config::default(), &input, false, &client),
+        execute(&[Instruction::Nop], &[], &[], &transaction, VMConfig::default(), &input, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn conditional_burn() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -286,7 +242,7 @@ fn conditional_burn() {
             &[vec![0]],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -299,7 +255,7 @@ fn conditional_burn() {
             &[vec![1]],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -310,7 +266,7 @@ fn conditional_burn() {
 
 #[test]
 fn _blake256() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -336,7 +292,7 @@ fn _blake256() {
             &[vec![], BLAKE_EMPTY.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -349,7 +305,7 @@ fn _blake256() {
             &[vec![], BLAKE_NULL_RLP.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -362,7 +318,7 @@ fn _blake256() {
             &[vec![0x80], BLAKE_NULL_RLP.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -375,7 +331,7 @@ fn _blake256() {
             &[vec![0x80], BLAKE_EMPTY.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -386,7 +342,7 @@ fn _blake256() {
 
 #[test]
 fn _ripemd160() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -420,7 +376,7 @@ fn _ripemd160() {
             &[vec![], RIPEMD160_EMPTY.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -433,7 +389,7 @@ fn _ripemd160() {
             &[vec![], RIPEMD160_NULL_RLP.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -446,7 +402,7 @@ fn _ripemd160() {
             &[vec![0x80], RIPEMD160_NULL_RLP.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -459,7 +415,7 @@ fn _ripemd160() {
             &[vec![0x80], RIPEMD160_EMPTY.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -470,7 +426,7 @@ fn _ripemd160() {
 
 #[test]
 fn _sha256() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -504,7 +460,7 @@ fn _sha256() {
             &[vec![], SHA256_EMPTY.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -517,7 +473,7 @@ fn _sha256() {
             &[vec![], SHA256_NULL_RLP.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -530,7 +486,7 @@ fn _sha256() {
             &[vec![0x80], SHA256_NULL_RLP.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -543,7 +499,7 @@ fn _sha256() {
             &[vec![0x80], SHA256_EMPTY.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -554,7 +510,7 @@ fn _sha256() {
 
 #[test]
 fn _keccak256() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -588,7 +544,7 @@ fn _keccak256() {
             &[vec![], KECCAK256_EMPTY.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -601,7 +557,7 @@ fn _keccak256() {
             &[vec![], KECCAK256_NULL_RLP.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -614,7 +570,7 @@ fn _keccak256() {
             &[vec![0x80], KECCAK256_NULL_RLP.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -627,7 +583,7 @@ fn _keccak256() {
             &[vec![0x80], KECCAK256_EMPTY.to_vec()],
             &lock_script,
             &transaction,
-            Config::default(),
+            VMConfig::default(),
             &input,
             false,
             &client
@@ -647,7 +603,6 @@ fn dummy_tx() -> ShardTransaction {
     }
 }
 
-#[cfg(test)]
 fn dummy_input() -> AssetTransferInput {
     AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -670,10 +625,10 @@ fn timelock_invalid_type() {
             &[],
             &[Instruction::Push(0), Instruction::Push(5), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
-            &get_test_client()
+            &TestClient::default()
         ),
         Err(RuntimeError::InvalidTimelockType)
     )
@@ -687,10 +642,10 @@ fn timelock_invalid_value() {
             &[],
             &[Instruction::PushB(vec![0, 0, 0, 0, 0, 0, 0, 0, 0]), Instruction::Push(1), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
-            &get_test_client()
+            &TestClient::default()
         ),
         Err(RuntimeError::TypeMismatch)
     )
@@ -705,7 +660,7 @@ fn timelock_block_number_success() {
             &[],
             &[Instruction::PushB(vec![10]), Instruction::Push(1), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -723,7 +678,7 @@ fn timelock_block_number_fail() {
             &[],
             &[Instruction::PushB(vec![10]), Instruction::Push(1), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -742,7 +697,7 @@ fn timelock_block_timestamp_success() {
             &[],
             &[Instruction::PushB(vec![0x00, 0x5B, 0xD0, 0x2B, 0xF2]), Instruction::Push(3), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -761,7 +716,7 @@ fn timelock_block_timestamp_fail() {
             &[],
             &[Instruction::PushB(vec![0x00, 0x5B, 0xD0, 0x2B, 0xF2]), Instruction::Push(3), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -779,7 +734,7 @@ fn timelock_block_age_fail_due_to_none() {
             &[],
             &[Instruction::PushB(vec![1]), Instruction::Push(2), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -797,7 +752,7 @@ fn timelock_block_age_fail() {
             &[],
             &[Instruction::PushB(vec![5]), Instruction::Push(2), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -815,7 +770,7 @@ fn timelock_block_age_success() {
             &[],
             &[Instruction::PushB(vec![5]), Instruction::Push(2), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -833,7 +788,7 @@ fn timelock_time_age_fail_due_to_none() {
             &[],
             &[Instruction::PushB(vec![0x27, 0x8D, 0x00]), Instruction::Push(4), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -852,7 +807,7 @@ fn timelock_time_age_fail() {
             &[],
             &[Instruction::PushB(vec![0x27, 0x8D, 0x00]), Instruction::Push(4), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -870,7 +825,7 @@ fn timelock_time_age_success() {
             &[],
             &[Instruction::PushB(vec![0x27, 0x8D, 0x00]), Instruction::Push(4), Instruction::ChkTimelock],
             &dummy_tx(),
-            Config::default(),
+            VMConfig::default(),
             &dummy_input(),
             false,
             &client
@@ -881,7 +836,7 @@ fn timelock_time_age_success() {
 
 #[test]
 fn copy_stack_underflow() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -901,7 +856,7 @@ fn copy_stack_underflow() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Copy(1)], &transaction, Config::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Copy(1)], &transaction, VMConfig::default(), &input, false, &client),
         Err(RuntimeError::StackUnderflow)
     );
 }
