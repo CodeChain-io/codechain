@@ -676,7 +676,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 signature: rlp.as_val()?,
                 on: VoteOn {
                     step,
-                    block_hash: Some(header.hash()),
+                    block_hash: Some(*header.parent_hash()),
                 },
             };
             let address = match self.votes.get(&precommit) {
