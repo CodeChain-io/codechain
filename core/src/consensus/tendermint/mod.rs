@@ -585,7 +585,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     ///
     /// This operation is synchronous and may (quite reasonably) not be available, in which case
     /// `Seal::None` will be returned.
-    fn generate_seal(&self, block: &ExecutedBlock, _parent: &Header) -> Seal {
+    fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
         let header = block.header();
         let height = header.number() as Height;
         // Only proposer can generate seal if None was generated.
@@ -596,6 +596,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let view = self.view();
 
         let (last_block_hash, last_block_view) = &*self.last_confirmed_view.read();
+        assert_eq!(last_block_hash, &parent.hash());
         let precommits = self
             .votes
             .round_signatures(&VoteStep::new(height - 1, *last_block_view, Step::Precommit), &last_block_hash);
@@ -932,11 +933,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn get_block_hash_to_mine_on(&self, _best_block_hash: H256) -> H256 {
-        let prev_height = self.height() - 1;
-        self.client()
-            .block_header(&BlockId::Number(prev_height as BlockNumber))
-            .expect("Previous height's block should be imported")
-            .hash()
+        let (hash, _) = &*self.last_confirmed_view.read();
+        *hash
     }
 
     fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
@@ -1305,7 +1303,8 @@ mod tests {
     fn setup() -> (Scheme, Arc<AccountProvider>, Arc<EngineClient>) {
         let tap = AccountProvider::transient_provider();
         let scheme = Scheme::new_test_tendermint();
-        let test_client: Arc<EngineClient> = Arc::new(TestBlockChainClient::new());
+        let test_client: Arc<EngineClient> =
+            Arc::new(TestBlockChainClient::new_with_scheme(Scheme::new_test_tendermint()));
         scheme.engine.register_client(Arc::downgrade(&test_client));
         (scheme, tap, test_client)
     }
