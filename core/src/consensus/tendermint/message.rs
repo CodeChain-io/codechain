@@ -22,6 +22,7 @@ use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::vote_collector::Message;
+use super::types::BitSet;
 use super::{BlockHash, Height, Step, View};
 use crate::error::Error;
 use crate::header::Header;
@@ -78,11 +79,27 @@ impl Ord for VoteStep {
 
 const MESSAGE_ID_CONSENSUS_MESSAGE: u8 = 0x01;
 const MESSAGE_ID_PROPOSAL_BLOCK: u8 = 0x02;
+const MESSAGE_ID_STEP_STATE: u8 = 0x03;
+const MESSAGE_ID_REQUEST_MESSAGE: u8 = 0x04;
+const MESSAGE_ID_REQUEST_PROPOSAL: u8 = 0x05;
 
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
     ConsensusMessage(Bytes),
     ProposalBlock(SchnorrSignature, Public, Bytes),
+    StepState {
+        vote_step: VoteStep,
+        proposal: Option<H256>,
+        known_votes: BitSet,
+    },
+    RequestMessage {
+        vote_step: VoteStep,
+        requested_votes: BitSet,
+    },
+    RequestProposal {
+        height: Height,
+        view: View,
+    },
 }
 
 impl Encodable for TendermintMessage {
@@ -99,6 +116,35 @@ impl Encodable for TendermintMessage {
                 s.append(signature);
                 s.append(signer_public);
                 s.append(bytes);
+            }
+            TendermintMessage::StepState {
+                vote_step,
+                proposal,
+                known_votes,
+            } => {
+                s.begin_list(4);
+                s.append(&MESSAGE_ID_STEP_STATE);
+                s.append(vote_step);
+                s.append(proposal);
+                s.append(known_votes);
+            }
+            TendermintMessage::RequestMessage {
+                vote_step,
+                requested_votes,
+            } => {
+                s.begin_list(3);
+                s.append(&MESSAGE_ID_REQUEST_MESSAGE);
+                s.append(vote_step);
+                s.append(requested_votes);
+            }
+            TendermintMessage::RequestProposal {
+                height,
+                view,
+            } => {
+                s.begin_list(3);
+                s.append(&MESSAGE_ID_REQUEST_PROPOSAL);
+                s.append(height);
+                s.append(view);
             }
         }
     }
@@ -123,6 +169,41 @@ impl Decodable for TendermintMessage {
                 let signer_public = rlp.at(2)?;
                 let bytes = rlp.at(3)?;
                 TendermintMessage::ProposalBlock(signature.as_val()?, signer_public.as_val()?, bytes.as_val()?)
+            }
+            MESSAGE_ID_STEP_STATE => {
+                if rlp.item_count()? != 4 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                let vote_step = rlp.at(1)?.as_val()?;
+                let proposal = rlp.at(2)?.as_val()?;
+                let known_votes = rlp.at(3)?.as_val()?;
+                TendermintMessage::StepState {
+                    vote_step,
+                    proposal,
+                    known_votes,
+                }
+            }
+            MESSAGE_ID_REQUEST_MESSAGE => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                let vote_step = rlp.at(1)?.as_val()?;
+                let requested_votes = rlp.at(2)?.as_val()?;
+                TendermintMessage::RequestMessage {
+                    vote_step,
+                    requested_votes,
+                }
+            }
+            MESSAGE_ID_REQUEST_PROPOSAL => {
+                if rlp.item_count()? != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                let height = rlp.at(1)?.as_val()?;
+                let view = rlp.at(2)?.as_val()?;
+                TendermintMessage::RequestProposal {
+                    height,
+                    view,
+                }
             }
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
@@ -268,6 +349,35 @@ mod tests {
             Public::random(),
             vec![1u8, 2u8]
         ));
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_3() {
+        let mut bit_set = BitSet::new();
+        bit_set.set(2);
+        rlp_encode_and_decode_test!(TendermintMessage::StepState {
+            vote_step: VoteStep::new(10, 123, Step::Prevote),
+            proposal: Some(Default::default()),
+            known_votes: bit_set
+        });
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_4() {
+        let mut bit_set = BitSet::new();
+        bit_set.set(1);
+        rlp_encode_and_decode_test!(TendermintMessage::RequestMessage {
+            vote_step: VoteStep::new(10, 123, Step::Prevote),
+            requested_votes: bit_set,
+        });
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_5() {
+        rlp_encode_and_decode_test!(TendermintMessage::RequestProposal {
+            height: 10,
+            view: 123,
+        });
     }
 
     #[test]
