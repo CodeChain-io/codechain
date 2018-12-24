@@ -15,9 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{HashMap, HashSet};
-use std::io::Cursor;
 
-use byteorder::{BigEndian, ReadBytesExt};
 use ccrypto::{blake128, blake256, blake256_with_key};
 use ckey::{Address, NetworkId};
 use heapsize::HeapSizeOf;
@@ -25,113 +23,13 @@ use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::error::Error;
+use super::{
+    AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, HashingError, Order, OrderOnTransfer,
+    PartialHashing,
+};
 use crate::util::tag::Tag;
 use crate::ShardId;
 
-
-pub trait PartialHashing {
-    fn hash_partially(&self, tag: Tag, cur: &AssetTransferInput, burn: bool) -> Result<H256, HashingError>;
-}
-
-#[derive(Debug, PartialEq)]
-pub enum HashingError {
-    InvalidFilter,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
-pub struct AssetOutPoint {
-    pub transaction_hash: H256,
-    pub index: usize,
-    pub asset_type: H256,
-    pub amount: u64,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
-pub struct Order {
-    // Main order information
-    pub asset_type_from: H256,
-    pub asset_type_to: H256,
-    pub asset_type_fee: H256,
-    pub asset_amount_from: u64,
-    pub asset_amount_to: u64,
-    pub asset_amount_fee: u64,
-    /// previous outputs that order is started
-    pub origin_outputs: Vec<AssetOutPoint>,
-    /// expiration time by second
-    pub expiration: u64,
-    pub lock_script_hash_from: H160,
-    pub parameters_from: Vec<Bytes>,
-    pub lock_script_hash_fee: H160,
-    pub parameters_fee: Vec<Bytes>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
-pub struct OrderOnTransfer {
-    pub order: Order,
-    /// Spent amount of asset_type_from
-    pub spent_amount: u64,
-    /// Indices of transfer inputs which are moved as order
-    pub input_indices: Vec<usize>,
-    /// Indices of transfer outputs which are moved as order
-    pub output_indices: Vec<usize>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
-pub struct AssetTransferInput {
-    pub prev_out: AssetOutPoint,
-    pub timelock: Option<Timelock>,
-    pub lock_script: Bytes,
-    pub unlock_script: Bytes,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase", tag = "type", content = "value")]
-pub enum Timelock {
-    Block(u64),
-    BlockAge(u64),
-    Time(u64),
-    TimeAge(u64),
-}
-
-type TimelockType = u8;
-const BLOCK: TimelockType = 0x01;
-const BLOCK_AGE: TimelockType = 0x02;
-const TIME: TimelockType = 0x03;
-const TIME_AGE: TimelockType = 0x04;
-
-impl Encodable for Timelock {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        match self {
-            Timelock::Block(val) => s.begin_list(2).append(&BLOCK).append(val),
-            Timelock::BlockAge(val) => s.begin_list(2).append(&BLOCK_AGE).append(val),
-            Timelock::Time(val) => s.begin_list(2).append(&TIME).append(val),
-            Timelock::TimeAge(val) => s.begin_list(2).append(&TIME_AGE).append(val),
-        };
-    }
-}
-
-impl Decodable for Timelock {
-    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen)
-        }
-        match d.val_at(0)? {
-            BLOCK => Ok(Timelock::Block(d.val_at(1)?)),
-            BLOCK_AGE => Ok(Timelock::BlockAge(d.val_at(1)?)),
-            TIME => Ok(Timelock::Time(d.val_at(1)?)),
-            TIME_AGE => Ok(Timelock::TimeAge(d.val_at(1)?)),
-            _ => Err(DecoderError::Custom("Unexpected timelock type")),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
-pub struct AssetTransferOutput {
-    pub lock_script_hash: H160,
-    pub parameters: Vec<Bytes>,
-    pub asset_type: H256,
-    pub amount: u64,
-}
 
 /// Parcel transaction type.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -179,13 +77,6 @@ pub enum Transaction {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AssetMintOutput {
-    pub lock_script_hash: H160,
-    pub parameters: Vec<Bytes>,
-    pub amount: Option<u64>,
-}
-
 /// Parcel transaction type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InnerTransaction {
@@ -203,95 +94,6 @@ pub struct AssetWrapCCCOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub amount: u64,
-}
-
-impl Order {
-    // FIXME: Remove this after the clippy nonminimal bool bug is fixed
-    // https://rust-lang.github.io/rust-clippy/v0.0.212/#nonminimal_bool
-    #![cfg_attr(feature = "cargo-clippy", allow(clippy::nonminimal_bool))]
-    pub fn verify(&self) -> Result<(), Error> {
-        // If asset_amount_fee is zero, it means there's no fee to pay.
-        if self.asset_type_from == self.asset_type_to
-            || self.asset_amount_fee != 0
-                && (self.asset_type_from == self.asset_type_fee || self.asset_type_to == self.asset_type_fee)
-        {
-            return Err(Error::InvalidOrderAssetTypes {
-                from: self.asset_type_from,
-                to: self.asset_type_to,
-                fee: self.asset_type_fee,
-            })
-        }
-        if (self.asset_amount_from == 0) ^ (self.asset_amount_to == 0) {
-            return Err(Error::InvalidOrderAssetAmounts {
-                from: self.asset_amount_from,
-                to: self.asset_amount_to,
-                fee: self.asset_amount_fee,
-            })
-        }
-        if self.asset_amount_from == 0 && self.asset_amount_fee != 0
-            || self.asset_amount_from != 0 && self.asset_amount_fee % self.asset_amount_from != 0
-        {
-            return Err(Error::InvalidOrderAssetAmounts {
-                from: self.asset_amount_from,
-                to: self.asset_amount_to,
-                fee: self.asset_amount_fee,
-            })
-        }
-        if self.asset_amount_fee != 0
-            && self.lock_script_hash_fee == self.lock_script_hash_from
-            && self.parameters_fee == self.parameters_from
-        {
-            return Err(Error::OrderRecipientsAreSame)
-        }
-        if self.origin_outputs.is_empty() {
-            return Err(Error::InvalidOriginOutputs(self.hash()))
-        }
-        for origin_output in self.origin_outputs.iter() {
-            if origin_output.asset_type != self.asset_type_from && origin_output.asset_type != self.asset_type_fee {
-                return Err(Error::InvalidOriginOutputs(self.hash()))
-            }
-        }
-        Ok(())
-    }
-
-    pub fn check_transfer_output(&self, output: &AssetTransferOutput) -> Result<bool, Error> {
-        if self.asset_amount_fee != 0
-            && self.asset_type_fee == output.asset_type
-            && self.lock_script_hash_fee == output.lock_script_hash
-            && self.parameters_fee == output.parameters
-        {
-            // owned by relayer
-            return Ok(false)
-        }
-
-        if self.lock_script_hash_from != output.lock_script_hash {
-            return Err(Error::InvalidOrderLockScriptHash(self.lock_script_hash_from))
-        }
-        if self.parameters_from != output.parameters {
-            return Err(Error::InvalidOrderParameters(self.parameters_from.to_vec()))
-        }
-        // owned by maker
-        Ok(true)
-    }
-
-    pub fn consume(&self, amount: u64) -> Order {
-        Order {
-            asset_type_from: self.asset_type_from,
-            asset_type_to: self.asset_type_to,
-            asset_type_fee: self.asset_type_fee,
-            asset_amount_from: self.asset_amount_from - amount,
-            asset_amount_to: self.asset_amount_to
-                - (u128::from(amount) * u128::from(self.asset_amount_to) / u128::from(self.asset_amount_from)) as u64,
-            asset_amount_fee: self.asset_amount_fee
-                - (u128::from(amount) * u128::from(self.asset_amount_fee) / u128::from(self.asset_amount_from)) as u64,
-            origin_outputs: self.origin_outputs.clone(),
-            expiration: self.expiration,
-            lock_script_hash_from: self.lock_script_hash_from,
-            parameters_from: self.parameters_from.clone(),
-            lock_script_hash_fee: self.lock_script_hash_fee,
-            parameters_fee: self.parameters_fee.clone(),
-        }
-    }
 }
 
 impl Transaction {
@@ -586,34 +388,6 @@ impl From<Transaction> for InnerTransaction {
 impl HeapSizeOf for AssetOutPoint {
     fn heap_size_of_children(&self) -> usize {
         0
-    }
-}
-
-impl HeapSizeOf for Order {
-    fn heap_size_of_children(&self) -> usize {
-        self.origin_outputs.heap_size_of_children()
-            + self.parameters_from.heap_size_of_children()
-            + self.parameters_fee.heap_size_of_children()
-    }
-}
-
-impl HeapSizeOf for OrderOnTransfer {
-    fn heap_size_of_children(&self) -> usize {
-        self.order.heap_size_of_children()
-            + self.input_indices.heap_size_of_children()
-            + self.output_indices.heap_size_of_children()
-    }
-}
-
-impl HeapSizeOf for AssetTransferInput {
-    fn heap_size_of_children(&self) -> usize {
-        self.lock_script.heap_size_of_children() + self.unlock_script.heap_size_of_children()
-    }
-}
-
-impl HeapSizeOf for AssetTransferOutput {
-    fn heap_size_of_children(&self) -> usize {
-        self.parameters.heap_size_of_children()
     }
 }
 
@@ -1207,46 +981,11 @@ impl Encodable for Transaction {
     }
 }
 
-impl AssetTransferOutput {
-    pub fn related_shard(&self) -> ShardId {
-        debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-        Cursor::new(&self.asset_type[2..4]).read_u16::<BigEndian>().unwrap()
-    }
-}
-
-impl AssetOutPoint {
-    pub fn related_shard(&self) -> ShardId {
-        debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-        Cursor::new(&self.asset_type[2..4]).read_u16::<BigEndian>().unwrap()
-    }
-}
-
-impl AssetTransferInput {
-    pub fn related_shard(&self) -> ShardId {
-        self.prev_out.related_shard()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
-
-    #[test]
-    fn related_shard_of_asset_out_point() {
-        let mut asset_type = H256::new();
-        asset_type[2..4].clone_from_slice(&[0xBE, 0xEF]);
-
-        let p = AssetOutPoint {
-            transaction_hash: H256::random(),
-            index: 3,
-            asset_type,
-            amount: 34,
-        };
-
-        assert_eq!(0xBEEF, p.related_shard());
-    }
 
     #[test]
     fn related_shard_of_asset_transfer_input() {
@@ -2257,291 +1996,6 @@ mod tests {
             ],
         };
         assert_eq!(tx.verify(), Ok(()));
-    }
-
-    #[test]
-    fn verify_order_success() {
-        let asset_type_from = H256::random();
-        let asset_type_to = H256::random();
-        let asset_type_fee = H256::random();
-        let order = Order {
-            asset_type_from,
-            asset_type_to,
-            asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type: asset_type_from,
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(order.verify(), Ok(()));
-
-        let order = Order {
-            asset_type_from,
-            asset_type_to,
-            asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 0,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type: asset_type_from,
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(order.verify(), Ok(()));
-
-        let order = Order {
-            asset_type_from,
-            asset_type_to,
-            asset_type_fee,
-            asset_amount_from: 0,
-            asset_amount_to: 0,
-            asset_amount_fee: 0,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type: asset_type_from,
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(order.verify(), Ok(()));
-    }
-
-    #[test]
-    fn verify_order_fail() {
-        // 1. origin outputs are invalid
-        let asset_type_from = H256::random();
-        let asset_type_to = H256::random();
-        let asset_type_fee = H256::random();
-        let order = Order {
-            asset_type_from,
-            asset_type_to,
-            asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type: H256::random(),
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(order.verify(), Err(Error::InvalidOriginOutputs(order.hash())));
-
-        let order = Order {
-            asset_type_from,
-            asset_type_to,
-            asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
-            origin_outputs: vec![],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(order.verify(), Err(Error::InvalidOriginOutputs(order.hash())));
-
-        // 2. asset amounts are invalid
-        let order = Order {
-            asset_type_from,
-            asset_type_to,
-            asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 0,
-            asset_amount_fee: 3,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type: asset_type_from,
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(
-            order.verify(),
-            Err(Error::InvalidOrderAssetAmounts {
-                from: 3,
-                to: 0,
-                fee: 3,
-            })
-        );
-
-        let order = Order {
-            asset_type_from,
-            asset_type_to,
-            asset_type_fee,
-            asset_amount_from: 0,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type: asset_type_from,
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(
-            order.verify(),
-            Err(Error::InvalidOrderAssetAmounts {
-                from: 0,
-                to: 2,
-                fee: 3,
-            })
-        );
-
-        let order = Order {
-            asset_type_from,
-            asset_type_to,
-            asset_type_fee,
-            asset_amount_from: 0,
-            asset_amount_to: 0,
-            asset_amount_fee: 3,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type: asset_type_from,
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(
-            order.verify(),
-            Err(Error::InvalidOrderAssetAmounts {
-                from: 0,
-                to: 0,
-                fee: 3,
-            })
-        );
-
-        let order = Order {
-            asset_type_from,
-            asset_type_to,
-            asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 2,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type: asset_type_from,
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(
-            order.verify(),
-            Err(Error::InvalidOrderAssetAmounts {
-                from: 3,
-                to: 2,
-                fee: 2,
-            })
-        );
-
-        // 3. asset types are same
-        let asset_type = H256::random();
-        let order = Order {
-            asset_type_from: asset_type,
-            asset_type_to: asset_type,
-            asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type,
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(
-            order.verify(),
-            Err(Error::InvalidOrderAssetTypes {
-                from: asset_type,
-                to: asset_type,
-                fee: asset_type_fee,
-            })
-        );
-
-        let asset_type = H256::random();
-        let order = Order {
-            asset_type_from: asset_type,
-            asset_type_to,
-            asset_type_fee: asset_type,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
-            origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
-                index: 0,
-                asset_type,
-                amount: 10,
-            }],
-            expiration: 10,
-            lock_script_hash_from: H160::random(),
-            parameters_from: vec![vec![1]],
-            lock_script_hash_fee: H160::random(),
-            parameters_fee: vec![vec![1]],
-        };
-        assert_eq!(
-            order.verify(),
-            Err(Error::InvalidOrderAssetTypes {
-                from: asset_type,
-                to: asset_type_to,
-                fee: asset_type,
-            })
-        );
     }
 
     #[test]
