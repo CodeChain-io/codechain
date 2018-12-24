@@ -14,21 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod asset_out_point;
-mod error;
-mod input;
-mod order;
-mod output;
-mod partial_hashing;
-mod timelock;
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
-mod transaction;
+use primitives::H256;
 
-pub use self::asset_out_point::AssetOutPoint;
-pub use self::error::{Error, UnlockFailureReason};
-pub use self::input::AssetTransferInput;
-pub use self::order::{Order, OrderOnTransfer};
-pub use self::output::{AssetMintOutput, AssetTransferOutput};
-pub use self::partial_hashing::{HashingError, PartialHashing};
-pub use self::timelock::Timelock;
-pub use self::transaction::{AssetWrapCCCOutput, InnerTransaction, Transaction};
+use super::AssetTransferInput;
+use crate::util::tag::Tag;
+
+pub trait PartialHashing {
+    fn hash_partially(&self, tag: Tag, cur: &AssetTransferInput, burn: bool) -> Result<H256, HashingError>;
+}
+
+#[derive(Debug, PartialEq)]
+pub enum HashingError {
+    InvalidFilter,
+}
