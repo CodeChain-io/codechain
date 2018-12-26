@@ -766,8 +766,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         header.set_score(new_score);
     }
 
-    /// Equivalent to a timeout: to be used for tests.
-    fn step(&self, token: usize) {
+    fn on_timeout(&self, token: usize) {
         let _guard = self.step_change_lock.lock();
         if token < self.timeout_token_counter.load(AtomicOrdering::SeqCst) {
             return
@@ -1300,7 +1299,7 @@ impl TimeoutHandler for TendermintExtension {
         debug_assert!(token >= ENGINE_TIMEOUT_TOKEN);
         if let Some(ref weak) = *self.tendermint.read() {
             if let Some(c) = weak.upgrade() {
-                c.step(token);
+                c.on_timeout(token);
             }
         }
     }
