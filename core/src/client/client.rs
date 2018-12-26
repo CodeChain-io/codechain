@@ -28,9 +28,9 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
-use ctypes::transaction::Transaction;
+use ctypes::transaction::{AssetTransferInput, PartialHashing, Transaction};
 use ctypes::{BlockNumber, ShardId};
-use cvm::ChainTimeInfo;
+use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
@@ -397,6 +397,36 @@ impl ExecuteClient for Client {
     fn execute_transaction(&self, transaction: &Transaction, sender: &Address) -> Result<Invoice, Error> {
         let mut state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
         Ok(state.apply_transaction(transaction, sender, &[], self)?)
+    }
+
+    fn execute_vm(
+        &self,
+        tx: &PartialHashing,
+        inputs: &[AssetTransferInput],
+        params: &[Vec<Bytes>],
+        indices: &[usize],
+    ) -> Result<Vec<String>, Error> {
+        let mut results = vec![];
+        for (i, index) in indices.iter().enumerate() {
+            let input = &inputs[*index];
+            let param = &params[i];
+            let result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
+                (Ok(lock_script), Ok(unlock_script)) => {
+                    let script_result =
+                        execute(&unlock_script, &param, &lock_script, tx, VMConfig::default(), &input, false, self);
+                    match script_result {
+                        Ok(ScriptResult::Burnt) => "burnt",
+                        Ok(ScriptResult::Unlocked) => "unlocked",
+                        _ => "failed",
+                    }
+                }
+                _ => "invalid",
+            }
+            .to_string();
+
+            results.push(result);
+        }
+        Ok(results)
     }
 }
 

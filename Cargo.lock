@@ -450,6 +450,7 @@ dependencies = [
  "codechain-state 0.1.0",
  "codechain-sync 0.1.0",
  "codechain-types 0.1.0",
+ "codechain-vm 0.1.0",
  "jsonrpc-core 8.0.1 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
  "jsonrpc-http-server 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",
  "jsonrpc-ipc-server 8.0.0 (git+https://github.com/paritytech/jsonrpc.git?branch=parity-1.11)",

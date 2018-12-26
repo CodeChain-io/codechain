@@ -37,7 +37,7 @@ use cnetwork::NodeId;
 use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, Text, TopStateView};
 use ctimer::TimerApi;
 use ctypes::invoice::Invoice;
-use ctypes::transaction::Transaction;
+use ctypes::transaction::{AssetTransferInput, PartialHashing, Transaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
@@ -305,4 +305,12 @@ pub trait TextClient {
 
 pub trait ExecuteClient: ChainTimeInfo {
     fn execute_transaction(&self, transaction: &Transaction, sender: &Address) -> Result<Invoice, CoreError>;
+
+    fn execute_vm(
+        &self,
+        tx: &PartialHashing,
+        inputs: &[AssetTransferInput],
+        params: &[Vec<Bytes>],
+        indices: &[usize],
+    ) -> Result<Vec<String>, CoreError>;
 }
