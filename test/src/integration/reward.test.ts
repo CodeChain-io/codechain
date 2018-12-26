@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import { aliceAddress, aliceSecret, faucetAddress } from "../helper/constants";
 import { U64 } from "codechain-sdk/lib/core/classes";
+import { aliceAddress, aliceSecret, faucetAddress } from "../helper/constants";
+import CodeChain from "../helper/spawn";
 
 import "mocha";
+
 import { expect } from "chai";
 
 describe("Reward = 50, 1 miner", function() {
@@ -39,26 +40,26 @@ describe("Reward = 50, 1 miner", function() {
         );
     });
 
-    it("Mining a block with 1 parcel", async function() {
-        await node.sendSignedParcel({ fee: 10 });
+    it("Mining a block with 1 transaction", async function() {
+        await node.sendPayTx({ fee: 10 });
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
             new U64(50 + 10)
         );
     });
 
-    it("Mining a block with 3 parcels", async function() {
+    it("Mining a block with 3 transactions", async function() {
         await node.sdk.rpc.devel.stopSealing();
-        await node.sendSignedParcel({
+        await node.sendPayTx({
             fee: 10,
             seq: 0,
             awaitInvoice: false
         });
-        await node.sendSignedParcel({
+        await node.sendPayTx({
             fee: 10,
             seq: 1,
             awaitInvoice: false
         });
-        await node.sendSignedParcel({
+        await node.sendPayTx({
             fee: 15,
             seq: 2,
             awaitInvoice: false
@@ -69,26 +70,26 @@ describe("Reward = 50, 1 miner", function() {
         );
     });
 
-    it("Mining a block with a parcel that pays the author", async function() {
+    it("Mining a block with a transaction that pays the author", async function() {
         await node.pay(aliceAddress, 100);
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
             new U64(50 + 10 + 100)
         );
     });
 
-    it("Mining a block with a parcel which author pays someone in", async function() {
-        await node.sendSignedParcel({ fee: 10 }); // +60
+    it("Mining a block with a transaction which author pays someone in", async function() {
+        await node.sendPayTx({ fee: 10 }); // +60
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
             new U64(60)
         );
 
-        const parcel = await node.sdk.core
-            .createPayParcel({
+        const tx = await node.sdk.core
+            .createPayTransaction({
                 recipient: faucetAddress,
                 amount: 50
             })
             .sign({ secret: aliceSecret, seq: 0, fee: 10 }); // -60
-        await node.sdk.rpc.chain.sendSignedParcel(parcel); // +60
+        await node.sdk.rpc.chain.sendSignedTransaction(tx); // +60
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
             new U64(60)
         );

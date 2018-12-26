@@ -18,8 +18,6 @@ use std::mem;
 use std::sync::Arc;
 
 use ctypes::invoice::{BlockInvoices, Invoice};
-use ctypes::parcel::{Action, Parcel};
-use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
@@ -443,23 +441,6 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
             self.block_number(&address.block_hash)
                 .and_then(|n| body.view().localized_parcel_at(&address.block_hash, n, address.index))
         })
-    }
-
-    /// Get the transaction with given transaction hash.
-    fn transaction(&self, transaction: &TransactionAddress) -> Option<Transaction> {
-        transaction
-            .iter()
-            .map(|addr| self.parcel(addr))
-            .filter_map(|parcel| {
-                parcel.and_then(|parcel| match Parcel::from(parcel).action {
-                    Action::AssetTransaction {
-                        transaction,
-                        ..
-                    } => Some(transaction),
-                    _ => None,
-                })
-            })
-            .next() // FIXME: Add an assertion that all transactions are identical.
     }
 
     /// Get a list of parcels for a given block.

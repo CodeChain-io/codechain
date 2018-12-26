@@ -246,7 +246,7 @@ pub trait BlockChainClient:
     fn parcel_invoice(&self, id: &ParcelId) -> Option<Invoice>;
 
     /// Get the transaction with given hash.
-    fn transaction(&self, hash: &H256) -> Option<Transaction>;
+    fn transaction(&self, hash: &H256) -> Option<LocalizedParcel>;
 
     fn transaction_invoices(&self, hash: &H256) -> Vec<Invoice>;
 }

@@ -18,6 +18,7 @@ import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
 import "mocha";
+
 import { expect } from "chai";
 
 const BASE = 200;
@@ -38,13 +39,11 @@ describe("Memory pool size test", function() {
     it("To self", async function() {
         const sending = [];
         for (let i = 0; i < sizeLimit * 2; i++) {
-            sending.push(
-                nodeA.sendSignedParcel({ seq: i, awaitInvoice: false })
-            );
+            sending.push(nodeA.sendPayTx({ seq: i, awaitInvoice: false }));
         }
         await Promise.all(sending);
-        const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
-        expect(pendingParcels.length).to.equal(sizeLimit * 2);
+        const pendingTransactions = await nodeA.sdk.rpc.chain.getPendingTransactions();
+        expect(pendingTransactions.length).to.equal(sizeLimit * 2);
     }).timeout(10_000);
 
     describe("To others", async function() {
@@ -63,7 +62,7 @@ describe("Memory pool size test", function() {
 
         it("More than limit", async function() {
             for (let i = 0; i < sizeLimit * 2; i++) {
-                await nodeA.sendSignedParcel({
+                await nodeA.sendPayTx({
                     seq: i,
                     awaitInvoice: false
                 });
@@ -71,7 +70,7 @@ describe("Memory pool size test", function() {
 
             let counter = 0;
             while (
-                (await nodeB.sdk.rpc.chain.getPendingParcels()).length <
+                (await nodeB.sdk.rpc.chain.getPendingTransactions()).length <
                 sizeLimit
             ) {
                 await wait(500);
@@ -79,9 +78,9 @@ describe("Memory pool size test", function() {
             }
             await wait(500 * (counter + 1));
 
-            const pendingParcels = await nodeB.sdk.rpc.chain.getPendingParcels();
+            const pendingTransactions = await nodeB.sdk.rpc.chain.getPendingTransactions();
             expect(
-                (await nodeB.sdk.rpc.chain.getPendingParcels()).length
+                (await nodeB.sdk.rpc.chain.getPendingTransactions()).length
             ).to.equal(sizeLimit);
         }).timeout(20_000);
 
@@ -115,8 +114,8 @@ describe("Memory pool memory limit test", function() {
         for (let i = 0; i < sizeLimit; i++) {
             await nodeA.mintAsset({ amount: 1, seq: i, awaitMint: false });
         }
-        const pendingParcels = await nodeA.sdk.rpc.chain.getPendingParcels();
-        expect(pendingParcels.length).to.equal(sizeLimit);
+        const pendingTransactions = await nodeA.sdk.rpc.chain.getPendingTransactions();
+        expect(pendingTransactions.length).to.equal(sizeLimit);
     }).timeout(50_000);
 
     describe("To others", async function() {
@@ -140,7 +139,8 @@ describe("Memory pool memory limit test", function() {
                 nodeB.sdk.rpc.chain.getBestBlockNumber()
             ]);
             expect(aBlockNumber).to.equal(bBlockNumber);
-            const metadata = "Very large parcel" + " ".repeat(1 * 1024 * 1024);
+            const metadata =
+                "Very large transaction" + " ".repeat(1 * 1024 * 1024);
             const minting = [];
             for (let i = 0; i < sizeLimit; i++) {
                 minting.push(
@@ -155,8 +155,8 @@ describe("Memory pool memory limit test", function() {
             await Promise.all(minting);
             await wait(3_000);
 
-            const pendingParcels = await nodeB.sdk.rpc.chain.getPendingParcels();
-            expect(pendingParcels.length).to.equal(0);
+            const pendingTransactions = await nodeB.sdk.rpc.chain.getPendingTransactions();
+            expect(pendingTransactions.length).to.equal(0);
             expect(await nodeA.sdk.rpc.chain.getBestBlockNumber()).to.equal(
                 aBlockNumber
             );

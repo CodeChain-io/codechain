@@ -28,6 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
+use ctypes::parcel::Action;
 use ctypes::transaction::{AssetTransferInput, PartialHashing, Transaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
@@ -372,7 +373,16 @@ impl AssetClient for Client {
             Some(_) => {}
         }
 
-        let transaction = self.transaction(&transaction_hash).expect("There is a successful transaction");
+        let parcel = self.transaction(&transaction_hash).expect("There is a successful transaction");
+        let transaction = if let Action::AssetTransaction {
+            ref transaction,
+            ..
+        } = parcel.action
+        {
+            transaction
+        } else {
+            return Ok(None)
+        };
         if !transaction.is_valid_shard_id_index(index, shard_id) {
             return Ok(None)
         }
@@ -623,9 +633,10 @@ impl BlockChainClient for Client {
         self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
 
-    fn transaction(&self, hash: &H256) -> Option<Transaction> {
+    fn transaction(&self, hash: &H256) -> Option<LocalizedParcel> {
         let chain = self.block_chain();
-        self.transaction_address(hash).and_then(|address| chain.transaction(&address))
+        let address = self.transaction_address(hash)?;
+        address.into_iter().map(Into::into).map(|address| chain.parcel(&address)).next()?
     }
 
     fn transaction_invoices(&self, hash: &H256) -> Vec<Invoice> {

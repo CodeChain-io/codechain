@@ -14,16 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
+import { H256 } from "codechain-primitives/lib";
 import {
-    Timelock,
     Asset,
-    AssetTransferAddress
+    AssetTransferAddress,
+    Timelock
 } from "codechain-sdk/lib/core/classes";
 import { faucetAddress } from "../helper/constants";
-import { H256 } from "codechain-primitives/lib";
+import CodeChain from "../helper/spawn";
 
 import "mocha";
+
 import { expect } from "chai";
 
 describe("Sealing test", function() {
@@ -36,7 +37,7 @@ describe("Sealing test", function() {
 
     it("stopSealing then startSealing", async function() {
         await node.sdk.rpc.devel.stopSealing();
-        await node.sendSignedParcel({ awaitInvoice: false });
+        await node.sendPayTx({ awaitInvoice: false });
         expect(await node.getBestBlockNumber()).to.equal(0);
         await node.sdk.rpc.devel.startSealing();
         expect(await node.getBestBlockNumber()).to.equal(1);
@@ -55,16 +56,16 @@ describe("Future queue", function() {
         await node.start();
     });
 
-    it("all pending parcel must be mined", async function() {
+    it("all pending transactions must be mined", async function() {
         const seq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
 
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq + 3 });
+        await node.sendPayTx({ awaitInvoice: false, seq: seq + 3 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq + 2 });
+        await node.sendPayTx({ awaitInvoice: false, seq: seq + 2 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq + 1 });
+        await node.sendPayTx({ awaitInvoice: false, seq: seq + 1 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
-        await node.sendSignedParcel({ awaitInvoice: false, seq: seq });
+        await node.sendPayTx({ awaitInvoice: false, seq: seq });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(
             seq + 4
         );
@@ -86,9 +87,7 @@ describe("Timelock", function() {
     });
 
     async function checkTx(txhash: H256, shouldBeConfirmed: boolean) {
-        const invoices = await node.sdk.rpc.chain.getTransactionInvoices(
-            txhash
-        );
+        const invoices = await node.sdk.rpc.chain.getInvoicesById(txhash);
         if (shouldBeConfirmed) {
             expect(invoices.length).to.equal(1);
             expect(invoices[0].error).to.be.undefined;
@@ -105,7 +104,7 @@ describe("Timelock", function() {
             fee?: number;
         } = {}
     ): Promise<H256> {
-        const tx = node.sdk.core.createAssetTransferTransaction();
+        const tx = node.sdk.core.createTransferAssetTransaction();
         tx.addInputs(
             timelock
                 ? asset.createTransferInput({
@@ -120,8 +119,8 @@ describe("Timelock", function() {
         });
         await node.signTransactionInput(tx, 0);
         const { fee } = options;
-        await node.sendTransaction(tx, { awaitInvoice: false, fee });
-        return tx.hash();
+        await node.sendAssetTransaction(tx, { awaitInvoice: false, fee });
+        return tx.id();
     }
 
     describe("The current items should move to the future queue", async function() {

@@ -19,7 +19,7 @@ use ckey::{NetworkId, PlatformAddress};
 use ctypes::BlockNumber;
 use primitives::{H256, U256};
 
-use super::{ActionWithTxHash, Parcel};
+use super::{ActionWithId, Transaction};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,7 +31,7 @@ pub struct Block {
 
     extra_data: Vec<u8>,
 
-    parcels_root: H256,
+    transactions_root: H256,
     state_root: H256,
     invoices_root: H256,
 
@@ -39,7 +39,7 @@ pub struct Block {
     seal: Vec<Vec<u8>>,
 
     hash: H256,
-    parcels: Vec<Parcel>,
+    transactions: Vec<Transaction>,
 }
 
 impl Block {
@@ -54,7 +54,7 @@ impl Block {
 
             extra_data: block.header.extra_data().clone(),
 
-            parcels_root: *block.header.parcels_root(),
+            transactions_root: *block.header.parcels_root(),
             state_root: *block.header.state_root(),
             invoices_root: *block.header.invoices_root(),
 
@@ -62,21 +62,21 @@ impl Block {
             seal: block.header.seal().to_vec(),
 
             hash: block.header.hash(),
-            parcels: block
+            transactions: block
                 .parcels
                 .into_iter()
                 .enumerate()
                 .map(|(i, unverified)| {
                     let sig = unverified.signature();
                     let network_id = unverified.network_id;
-                    Parcel {
+                    Transaction {
                         block_number: Some(block_number),
                         block_hash: Some(block_hash),
-                        parcel_index: Some(i),
+                        transaction_index: Some(i),
                         seq: unverified.seq,
                         fee: unverified.fee.into(),
                         network_id,
-                        action: ActionWithTxHash::from_core(unverified.action.clone(), network_id),
+                        action: ActionWithId::from_core(unverified.action.clone(), network_id),
                         hash: unverified.hash(),
                         sig,
                     }

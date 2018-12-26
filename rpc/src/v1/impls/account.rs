@@ -28,7 +28,7 @@ use primitives::H256;
 
 use super::super::errors::{self, account_provider};
 use super::super::traits::Account;
-use super::super::types::{SendParcelResult, UnsignedParcel};
+use super::super::types::{SendTransactionResult, UnsignedTransaction};
 
 pub struct AccountClient<C, M>
 where
@@ -87,18 +87,18 @@ where
         self.account_provider.sign(address, passphrase, message_digest).map_err(account_provider)
     }
 
-    fn send_parcel(
+    fn send_transaction(
         &self,
-        parcel: UnsignedParcel,
+        tx: UnsignedTransaction,
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
-    ) -> Result<SendParcelResult> {
+    ) -> Result<SendTransactionResult> {
         lazy_static! {
             static ref LOCK: Mutex<()> = Mutex::new(());
         }
         let _guard = LOCK.lock();
         let (parcel, seq): (IncompleteParcel, Option<u64>) =
-            ::std::result::Result::from(parcel).map_err(AccountProviderError::KeyError).map_err(account_provider)?;
+            ::std::result::Result::from(tx).map_err(AccountProviderError::KeyError).map_err(account_provider)?;
 
         let (hash, seq) = self
             .miner
@@ -112,7 +112,7 @@ where
             )
             .map_err(errors::core)?;
 
-        Ok(SendParcelResult {
+        Ok(SendTransactionResult {
             hash,
             seq,
         })

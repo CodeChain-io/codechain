@@ -70,19 +70,19 @@ describe("reward1", function() {
     it("mining reward includes the block fee", async function() {
         await node.sdk.rpc.devel.stopSealing();
         const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        await node.sendSignedParcel({
+        await node.sendPayTx({
             amount: 10,
             fee: 123,
             seq,
             awaitInvoice: false
         });
-        await node.sendSignedParcel({
+        await node.sendPayTx({
             amount: 10,
             fee: 456,
             seq: seq + 1,
             awaitInvoice: false
         });
-        await node.sendSignedParcel({
+        await node.sendPayTx({
             amount: 10,
             fee: 321,
             seq: seq + 2,

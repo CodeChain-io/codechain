@@ -52,6 +52,7 @@ mod codes {
     pub const NO_SUCH_ACCOUNT: i64 = -32044;
     pub const NOT_UNLOCKED: i64 = -32045;
     pub const TRANSFER_ONLY_IN_EXECUTE_VM: i64 = -32046;
+    pub const ASSET_TRANSACTION_ONLY_IN_EXECUTE_TRANSACITON: i64 = -32047;
     pub const UNKNOWN_ERROR: i64 = -32099;
 }
 
@@ -243,6 +244,14 @@ pub fn transfer_only() -> Error {
     Error {
         code: ErrorCode::ServerError(codes::TRANSFER_ONLY_IN_EXECUTE_VM),
         message: "chain_executeVM() only accepts AssetTransfer transactions.".into(),
+        data: None,
+    }
+}
+
+pub fn asset_transaction_only() -> Error {
+    Error {
+        code: ErrorCode::ServerError(codes::ASSET_TRANSACTION_ONLY_IN_EXECUTE_TRANSACITON),
+        message: "chain_executeTransaction() only accepts asset transactions.".into(),
         data: None,
     }
 }
