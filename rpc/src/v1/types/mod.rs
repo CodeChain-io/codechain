@@ -15,7 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod action;
+mod asset_input;
+mod asset_output;
 mod block;
+mod order;
 mod parcel;
 mod text;
 mod transaction;
@@ -23,6 +26,10 @@ mod unsigned_parcel;
 mod work;
 
 use primitives::H256;
+
+use self::asset_input::{AssetOutPoint, AssetTransferInput};
+use self::asset_output::{AssetMintOutput, AssetTransferOutput};
+use self::order::OrderOnTransfer;
 
 pub use self::action::{Action, ActionWithTxHash};
 pub use self::block::Block;
