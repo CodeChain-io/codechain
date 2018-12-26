@@ -16,16 +16,19 @@
 
 use std::sync::Arc;
 
-use ccore::{EngineInfo, MinerService};
+use ccore::{BlockId, EngineInfo, MinerService, StateInfo};
+use cjson::bytes::{Bytes, WithoutPrefix};
 use ckey::PlatformAddress;
+use cstate::FindActionHandler;
 
 use jsonrpc_core::Result;
 
+use super::super::errors;
 use super::super::traits::Engine;
 
 pub struct EngineClient<C, M>
 where
-    C: EngineInfo,
+    C: EngineInfo + StateInfo + FindActionHandler,
     M: MinerService, {
     client: Arc<C>,
     miner: Arc<M>,
@@ -33,7 +36,7 @@ where
 
 impl<C, M> EngineClient<C, M>
 where
-    C: EngineInfo,
+    C: EngineInfo + StateInfo + FindActionHandler,
     M: MinerService,
 {
     pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
@@ -46,7 +49,7 @@ where
 
 impl<C, M> Engine for EngineClient<C, M>
 where
-    C: EngineInfo + 'static,
+    C: EngineInfo + StateInfo + FindActionHandler + 'static,
     M: MinerService + 'static,
 {
     fn get_block_reward(&self, block_number: u64) -> Result<u64> {
@@ -65,5 +68,23 @@ where
 
     fn get_recommended_confirmation(&self) -> Result<u32> {
         Ok(self.client.recommended_confirmation())
+    }
+
+    fn get_custom_action_data(
+        &self,
+        handler_id: u64,
+        key_fragment: Bytes,
+        block_number: Option<u64>,
+    ) -> Result<Option<WithoutPrefix<Bytes>>> {
+        let handler =
+            self.client.find_action_handler_for(handler_id).ok_or_else(errors::action_data_handler_not_found)?;
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        let state = self.client.state_at(block_id).ok_or_else(errors::state_not_exist)?;
+
+        match handler.query(&key_fragment, &state) {
+            Ok(Some(action_data)) => Ok(Some(Bytes::new(action_data).into_without_prefix())),
+            Ok(None) => Ok(None),
+            Err(e) => Err(errors::action_data_handler_error(e)),
+        }
     }
 }
