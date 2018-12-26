@@ -399,9 +399,6 @@ describe("chain", function() {
         });
 
         const data = tx.toJSON();
-        data.data.output.lockScriptHash = `0x${
-            data.data.output.lockScriptHash
-        }`;
 
         await node.sdk.rpc
             .sendRpcRequest("chain_executeTransaction", [

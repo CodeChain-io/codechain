@@ -555,18 +555,6 @@ binary-extensions@^1.0.0:
   resolved "https://registry.yarnpkg.com/binary-extensions/-/binary-extensions-1.12.0.tgz#c2d780f53d45bba8317a8902d4ceeaf3a6385b14"
   integrity sha512-DYWGk01lDcxeS/K9IHPGWfT8PsJmbXRtRd2Sx72Tnb8pcYZQFF1oSDb8hJtS1vhp212q1Rzi5dUf9+nq0o9UIg==
 
-bitcore-lib@^0.15.0:
-  version "0.15.0"
-  resolved "https://registry.yarnpkg.com/bitcore-lib/-/bitcore-lib-0.15.0.tgz#f924be13869f2aab7e04aeec5642ad3359b6cec2"
-  integrity sha512-AeXLWhiivF6CDFzrABZHT4jJrflyylDWTi32o30rF92HW9msfuKpjzrHtFKYGa9w0kNVv5HABQjCB3OEav4PhQ==
-  dependencies:
-    bn.js "=4.11.8"
-    bs58 "=4.0.1"
-    buffer-compare "=1.1.1"
-    elliptic "=6.4.0"
-    inherits "=2.0.1"
-    lodash "=4.17.4"
-
 bitcore-lib@^0.16.0:
   version "0.16.0"
   resolved "https://registry.yarnpkg.com/bitcore-lib/-/bitcore-lib-0.16.0.tgz#a2c3ec1108cdb90386f728282ab833e0c77c9533"
@@ -838,19 +826,6 @@ code-point-at@^1.0.0:
   resolved "https://registry.yarnpkg.com/code-point-at/-/code-point-at-1.1.0.tgz#0d070b4d043a5bea33a2f1a40e2edb3d9a4ccf77"
   integrity sha1-DQcLTQQ6W+ozovGkDi7bPZpMz3c=
 
-codechain-keystore@^0.5.4:
-  version "0.5.4"
-  resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.5.4.tgz#46bf95509d19ed19242d30067b80d3085547160f"
-  integrity sha512-UzYV1x7c3WllQJaonw1IWAM8yfJGEm42tzXLmiiHlz+L74MHgQcL0rlPpblKxpIZTzpbFYF8yn/zZhX55fMRcA==
-  dependencies:
-    bitcore-lib "^0.15.0"
-    codechain-primitives "^0.3.0"
-    config "^2.0.1"
-    lodash "^4.17.10"
-    lowdb "^1.0.0"
-    lowdb-session-storage-adapter "^1.0.0"
-    uuid "^3.3.2"
-
 codechain-keystore@^0.6.0:
   version "0.6.1"
   resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.6.1.tgz#b0b27fec28afe1b31bd42a2858d2d5fb59838252"
@@ -880,10 +855,10 @@ codechain-primitives@^0.3.0:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-codechain-primitives@^0.4.2, codechain-primitives@^0.4.3:
-  version "0.4.3"
-  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.3.tgz#e8dd9e1b52e0af7069e78f2c79e9affd417e2f44"
-  integrity sha512-z70qQt4YK5jwnrsMj0oG6C07KA2AqBDkrjf1YpT1FtjUDvE2SMHWvM3XlpA6fvOdF1fEtLPQpvpaDkPsYduvCA==
+codechain-primitives@^0.4.4:
+  version "0.4.4"
+  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.4.tgz#3930367fad8d9af25ce56e4900d95c5120d09756"
+  integrity sha512-DwZ7I5dQTTQruFq0DTkFbU66XGzqXfGL5vAvN/p3Y+F8Em9Diy8ew3I+wmDaOi5taAJWdDwmWKCoyMTutkPTwA==
   dependencies:
     bignumber.js "^7.2.1"
     blakejs "^1.1.0"
@@ -896,40 +871,27 @@ codechain-primitives@^0.4.2, codechain-primitives@^0.4.3:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-"codechain-sdk@https://github.com/jhs7jhs/codechain-sdk-js.git#build":
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#lib":
   version "0.5.1"
-  resolved "https://github.com/jhs7jhs/codechain-sdk-js.git#55dae963a87b28c647e2d8e786ffdd959a661434"
-  dependencies:
-    buffer "5.1.0"
-    codechain-keystore "^0.5.4"
-    codechain-primitives "^0.4.2"
-    jayson "^2.0.6"
-    lodash "^4.17.10"
-    node-fetch "^2.1.2"
-    request-promise "^4.2.2"
-    rlp "^2.0.0"
-
-"codechain-sdk@https://github.com/jhs7jhs/codechain-sdk-js.git#order-lib":
-  version "0.5.1"
-  resolved "https://github.com/jhs7jhs/codechain-sdk-js.git#41c84d25090b0a17282bf47ba0473eac64603df1"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#8cc368f370d44e90834c2ec78e080b8745c03f8c"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"
-    codechain-primitives "^0.4.3"
+    codechain-primitives "^0.4.4"
     jayson "^2.0.6"
     lodash "^4.17.10"
     node-fetch "^2.1.2"
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-test-helper@https://github.com/CodeChain-io/codechain-test-helper-js.git#ca7035acba6213ea65ef2795df8821499d7d29ca":
+"codechain-test-helper@https://github.com/sgkim126/codechain-test-helper-js.git#dc4b97ddc8d11551750cdb79fcd68c60e53654e6":
   version "1.0.0"
-  resolved "https://github.com/CodeChain-io/codechain-test-helper-js.git#ca7035acba6213ea65ef2795df8821499d7d29ca"
+  resolved "https://github.com/sgkim126/codechain-test-helper-js.git#dc4b97ddc8d11551750cdb79fcd68c60e53654e6"
   dependencies:
     "@types/crypto-js" "^3.1.43"
     blakejs "^1.1.0"
-    codechain-primitives "^0.4.3"
-    codechain-sdk "https://github.com/jhs7jhs/codechain-sdk-js.git#build"
+    codechain-primitives "^0.4.4"
+    codechain-sdk "https://github.com/sgkim126/codechain-sdk-js.git#lib"
     crypto "^1.0.1"
     dgram "^1.0.1"
     elliptic "^6.4.1"
@@ -2904,11 +2866,6 @@ lodash@4, lodash@=4.17.11, lodash@^4.13.1, lodash@^4.17.10, lodash@^4.17.11, lod
   version "4.17.11"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.11.tgz#b39ea6229ef607ecd89e2c8df12536891cac9b8d"
   integrity sha512-cQKh8igo5QUhZ7lg38DYWAxMvjSAKG0A8wGSVimP07SIUEK2UO+arSRKbRZWtelMtN5V0Hkwh5ryOto/SshYIg==
-
-lodash@=4.17.4:
-  version "4.17.4"
-  resolved "http://registry.npmjs.org/lodash/-/lodash-4.17.4.tgz#78203a4d1c328ae1d86dca6460e369b57f4055ae"
-  integrity sha1-eCA6TRwyiuHYbcpkYONptX9AVa4=
 
 loose-envify@^1.0.0:
   version "1.4.0"
