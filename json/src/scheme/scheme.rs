@@ -78,7 +78,7 @@ mod tests {
                 "maxMetadataSize": "0x0400",
                 "maxTextContentSize": "0x0200",
                 "networkID" : "tc",
-                "minPaymentParcelCost" : 10,
+                "minPayParcelCost" : 10,
                 "minSetRegularKeyParcelCost" : 11,
                 "minCreateShardParcelCost" : 12,
                 "minSetShardOwnersParcelCost" : 13,

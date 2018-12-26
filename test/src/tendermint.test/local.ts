@@ -79,7 +79,7 @@ import CodeChain from "../helper/spawn";
             { networkId: "tc" }
         );
         const parcel = nodes[0].sdk.core
-            .createPaymentParcel({
+            .createPayParcel({
                 recipient,
                 amount: 1
             })

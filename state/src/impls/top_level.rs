@@ -386,7 +386,7 @@ impl TopLevelState {
                     .collect::<StateResult<Vec<_>>>()?;
                 Ok(self.apply_transaction(transaction, fee_payer, &approvers, client)?)
             }
-            Action::Payment {
+            Action::Pay {
                 receiver,
                 amount,
             } => {
@@ -1225,7 +1225,7 @@ mod tests_parcel {
         let (sender, sender_public, _) = address();
         set_top_level_state!(state, [(account: sender => balance: 20)]);
 
-        let parcel = parcel!(seq: 2, fee: 5, payment!(address().0, 10));
+        let parcel = parcel!(seq: 2, fee: 5, pay!(address().0, 10));
         assert_eq!(
             Err(StateError::Parcel(ParcelError::InvalidSeq(Mismatch {
                 expected: 0,
@@ -1246,7 +1246,7 @@ mod tests_parcel {
         let (sender, sender_public, _) = address();
         set_top_level_state!(state, [(account: sender => balance: 4)]);
 
-        let parcel = parcel!(fee: 5, payment!(address().0, 10));
+        let parcel = parcel!(fee: 5, pay!(address().0, 10));
         assert_eq!(
             Err(StateError::Parcel(ParcelError::InsufficientBalance {
                 address: sender,
@@ -1262,14 +1262,14 @@ mod tests_parcel {
     }
 
     #[test]
-    fn apply_payment() {
+    fn apply_pay() {
         let mut state = get_temp_state();
 
         let (sender, sender_public, _) = address();
         set_top_level_state!(state, [(account: sender => balance: 20)]);
 
         let receiver = 1u64.into();
-        let parcel = parcel!(fee: 5, payment!(receiver, 10));
+        let parcel = parcel!(fee: 5, pay!(receiver, 10));
         assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &H256::random(), &sender_public, &get_test_client()));
 
         check_top_level_state!(state, [
@@ -1521,7 +1521,7 @@ mod tests_parcel {
             (regular_key: sender_public => regular_public)
         ]);
 
-        let parcel = parcel!(fee: 5, payment!(regular_address, 5));
+        let parcel = parcel!(fee: 5, pay!(regular_address, 5));
         assert_eq!(
             Ok(Invoice::Failure(ParcelError::InvalidTransferDestination)),
             state.apply(&parcel, &H256::random(), &sender_public, &get_test_client())
@@ -1542,7 +1542,7 @@ mod tests_parcel {
         ]);
 
         let receiver = 1u64.into();
-        let parcel = parcel!(fee: 5, payment!(receiver, 30));
+        let parcel = parcel!(fee: 5, pay!(receiver, 30));
 
         assert_eq!(
             Ok(Invoice::Failure(ParcelError::InsufficientBalance {

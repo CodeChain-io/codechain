@@ -201,7 +201,7 @@ impl TestBlockChainClient {
                     seq: 0,
                     fee: 10,
                     network_id: NetworkId::default(),
-                    action: Action::Payment {
+                    action: Action::Pay {
                         receiver: Address::random(),
                         amount: 0,
                     },
@@ -269,7 +269,7 @@ impl TestBlockChainClient {
             seq: 0,
             fee: 10,
             network_id: NetworkId::default(),
-            action: Action::Payment {
+            action: Action::Pay {
                 receiver: Address::random(),
                 amount: 0,
             },

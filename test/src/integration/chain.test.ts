@@ -140,7 +140,7 @@ describe("chain", function() {
     });
 
     it("sendSignedParcel, getParcelInvoice, getParcel", async function() {
-        const parcel = node.sdk.core.createPaymentParcel({
+        const parcel = node.sdk.core.createPayParcel({
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount: 0
         });
@@ -399,9 +399,6 @@ describe("chain", function() {
         });
 
         const data = tx.toJSON();
-        data.data.output.lockScriptHash = `0x${
-            data.data.output.lockScriptHash
-        }`;
 
         await node.sdk.rpc
             .sendRpcRequest("chain_executeTransaction", [

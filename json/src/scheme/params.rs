@@ -33,7 +33,7 @@ pub struct Params {
     pub network_id: NetworkId,
 
     /// Minimum parcel cost.
-    pub min_payment_parcel_cost: Uint,
+    pub min_pay_parcel_cost: Uint,
     pub min_set_regular_key_parcel_cost: Uint,
     pub min_create_shard_parcel_cost: Uint,
     pub min_set_shard_owners_parcel_cost: Uint,
@@ -70,7 +70,7 @@ mod tests {
             "maxMetadataSize": "0x0400",
             "maxTextContentSize": "0x0200",
             "networkID" : "tc",
-            "minPaymentParcelCost" : 10,
+            "minPayParcelCost" : 10,
             "minSetRegularKeyParcelCost" : 11,
             "minCreateShardParcelCost" : 12,
             "minSetShardOwnersParcelCost" : 13,
@@ -94,7 +94,7 @@ mod tests {
         assert_eq!(deserialized.max_metadata_size, Uint(U256::from(0x0400)));
         assert_eq!(deserialized.max_text_content_size, Uint(U256::from(0x0200)));
         assert_eq!(deserialized.network_id, "tc".into());
-        assert_eq!(deserialized.min_payment_parcel_cost, Uint(10.into()));
+        assert_eq!(deserialized.min_pay_parcel_cost, Uint(10.into()));
         assert_eq!(deserialized.min_set_regular_key_parcel_cost, Uint(11.into()));
         assert_eq!(deserialized.min_create_shard_parcel_cost, Uint(12.into()));
         assert_eq!(deserialized.min_set_shard_owners_parcel_cost, Uint(13.into()));

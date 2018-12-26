@@ -285,6 +285,7 @@ impl Tendermint {
     fn increment_view(&self, n: View) {
         ctrace!(ENGINE, "increment_view: New view.");
         self.view.fetch_add(n, AtomicOrdering::SeqCst);
+        *self.proposal.write() = None;
     }
 
     fn should_unlock(&self, lock_change_view: View) -> bool {
