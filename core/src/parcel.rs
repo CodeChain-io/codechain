@@ -379,21 +379,21 @@ mod tests {
     }
 
     #[test]
-    fn encode_and_decode_payment_action() {
-        rlp_encode_and_decode_test!(Action::Payment {
+    fn encode_and_decode_pay_action() {
+        rlp_encode_and_decode_test!(Action::Pay {
             receiver: Address::random(),
             amount: 300,
         });
     }
 
     #[test]
-    fn encode_and_decode_payment_parcel() {
+    fn encode_and_decode_pay_parcel() {
         rlp_encode_and_decode_test!(UnverifiedParcel {
             unsigned: Parcel {
                 seq: 30,
                 fee: 40,
                 network_id: "tc".into(),
-                action: Action::Payment {
+                action: Action::Pay {
                     receiver: Address::random(),
                     amount: 300,
                 },

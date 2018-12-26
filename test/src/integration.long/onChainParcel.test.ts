@@ -35,30 +35,28 @@ describe("Test onChain parcel communication", function() {
     const INVALID_SIG = "0x1221fzcv441";
     const testArray = [
         {
-            testName: "OnChain invalid fee PaymentParcel propagation test",
+            testName: "OnChain invalid fee PayParcel propagation test",
             tfee: INVALID_FEE,
             tseq: VALID_SEQ,
             tnetworkId: VALID_NETWORKID,
             tsig: VALID_SIG
         },
         {
-            testName: "OnChain invalid seq PaymentParcel propagation test",
+            testName: "OnChain invalid seq PayParcel propagation test",
             tfee: VALID_FEE,
             tseq: INVALID_SEQ,
             tnetworkId: VALID_NETWORKID,
             tsig: VALID_SIG
         },
         {
-            testName:
-                "OnChain invalid networkId PaymentParcel propagation test",
+            testName: "OnChain invalid networkId PayParcel propagation test",
             tfee: VALID_FEE,
             tseq: VALID_SEQ,
             tnetworkId: INVALID_NETWORKID,
             tsig: VALID_SIG
         },
         {
-            testName:
-                "OnChain invalid signature PaymentParcel propagation test",
+            testName: "OnChain invalid signature PayParcel propagation test",
             tfee: VALID_FEE,
             tseq: VALID_SEQ,
             tnetworkId: VALID_NETWORKID,
@@ -80,14 +78,14 @@ describe("Test onChain parcel communication", function() {
         await nodeA.clean();
     });
 
-    it("OnChain PaymentParcel propagation test", async function() {
+    it("OnChain PayParcel propagation test", async function() {
         const TH = new TestHelper("0.0.0.0", nodeA.port);
         await TH.establish();
 
         const sdk = nodeA.sdk;
 
         const ACCOUNT_SECRET = process.env.ACCOUNT_SECRET || faucetSecret;
-        const parcel = sdk.core.createPaymentParcel({
+        const parcel = sdk.core.createPayParcel({
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount: 10000
         });
@@ -105,7 +103,7 @@ describe("Test onChain parcel communication", function() {
         await TH.end();
     }).timeout(20_000);
 
-    describe("OnChain invalid PaymentParcel test", async function() {
+    describe("OnChain invalid PayParcel test", async function() {
         testArray.forEach(function(params: {
             testName: string;
             tfee: number;
@@ -122,7 +120,7 @@ describe("Test onChain parcel communication", function() {
 
                 const ACCOUNT_SECRET =
                     process.env.ACCOUNT_SECRET || faucetSecret;
-                const parcel = sdk.core.createPaymentParcel({
+                const parcel = sdk.core.createPayParcel({
                     recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
                     amount: 10000
                 });

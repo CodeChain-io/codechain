@@ -14,21 +14,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod asset_out_point;
-mod error;
-mod input;
-mod order;
-mod output;
-mod partial_hashing;
-mod timelock;
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
-mod transaction;
+use heapsize::HeapSizeOf;
+use primitives::Bytes;
 
-pub use self::asset_out_point::AssetOutPoint;
-pub use self::error::{Error, UnlockFailureReason};
-pub use self::input::AssetTransferInput;
-pub use self::order::{Order, OrderOnTransfer};
-pub use self::output::{AssetMintOutput, AssetTransferOutput};
-pub use self::partial_hashing::{HashingError, PartialHashing};
-pub use self::timelock::Timelock;
-pub use self::transaction::{AssetWrapCCCOutput, InnerTransaction, Transaction};
+use super::{AssetOutPoint, Timelock};
+use crate::ShardId;
+
+#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
+pub struct AssetTransferInput {
+    pub prev_out: AssetOutPoint,
+    pub timelock: Option<Timelock>,
+    pub lock_script: Bytes,
+    pub unlock_script: Bytes,
+}
+
+impl HeapSizeOf for AssetTransferInput {
+    fn heap_size_of_children(&self) -> usize {
+        self.lock_script.heap_size_of_children() + self.unlock_script.heap_size_of_children()
+    }
+}
+
+impl AssetTransferInput {
+    pub fn related_shard(&self) -> ShardId {
+        self.prev_out.related_shard()
+    }
+}

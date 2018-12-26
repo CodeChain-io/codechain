@@ -102,10 +102,10 @@ describe("reward2", function() {
 
         // nodeA creates 2 blocks
         {
-            await nodeA.payment(aliceAddress, 100); // +160 for alice in nodeA
+            await nodeA.pay(aliceAddress, 100); // +160 for alice in nodeA
             await nodeA.sdk.rpc.chain.sendSignedParcel(
                 nodeA.sdk.core
-                    .createPaymentParcel({
+                    .createPayParcel({
                         recipient: bobAddress,
                         amount: 5
                     })
@@ -125,11 +125,11 @@ describe("reward2", function() {
 
         // nodeB creates 3 blocks
         {
-            await nodeB.payment(aliceAddress, 200); // +200 for alice, +60 for bob in nodeB
-            await nodeB.payment(bobAddress, 300); // +360 for bob in nodeB
+            await nodeB.pay(aliceAddress, 200); // +200 for alice, +60 for bob in nodeB
+            await nodeB.pay(bobAddress, 300); // +360 for bob in nodeB
             await nodeB.sdk.rpc.chain.sendSignedParcel(
                 nodeB.sdk.core
-                    .createPaymentParcel({
+                    .createPayParcel({
                         recipient: bobAddress,
                         amount: 15
                     })
@@ -168,7 +168,7 @@ describe("reward2", function() {
 
         // nodeA creates a block
         {
-            await nodeA.payment(aliceAddress, 1000); // +1060 for alice
+            await nodeA.pay(aliceAddress, 1000); // +1060 for alice
             expect(
                 await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
             ).to.deep.equal(new U64(225 + 1060));

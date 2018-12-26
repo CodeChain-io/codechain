@@ -218,9 +218,9 @@ impl CodeChainMachine {
                     ..
                 } => self.params.min_asset_unwrap_ccc_cost,
             },
-            Action::Payment {
+            Action::Pay {
                 ..
-            } => self.params.min_payment_parcel_cost,
+            } => self.params.min_pay_parcel_cost,
             Action::SetRegularKey {
                 ..
             } => self.params.min_set_regular_key_parcel_cost,

@@ -220,7 +220,7 @@ impl MemPoolItem {
 
     fn cost(&self) -> u64 {
         match &self.parcel.action {
-            Action::Payment {
+            Action::Pay {
                 amount,
                 ..
             } => self.parcel.fee + *amount,
@@ -1526,7 +1526,7 @@ pub mod test {
     }
 
     #[test]
-    fn payment_increases_cost() {
+    fn pay_transaction_increases_cost() {
         let fee = 100;
         let amount = 100_000;
         let receiver = 1u64.into();
@@ -1535,7 +1535,7 @@ pub mod test {
             seq: 0,
             fee,
             network_id: "tc".into(),
-            action: Action::Payment {
+            action: Action::Pay {
                 receiver,
                 amount,
             },
