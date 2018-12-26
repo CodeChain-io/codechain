@@ -206,8 +206,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Usually implements the chain scoring rule based on weight.
     fn populate_from_parent(&self, _header: &mut M::Header, _parent: &M::Header) {}
 
-    /// Trigger next step of the consensus engine.
-    fn step(&self, _token: usize) {}
+    /// Called when the step is not changed in time
+    fn on_timeout(&self, _token: usize) {}
 
     /// Stops any services that the may hold the Engine and makes it safe to drop.
     fn stop(&self) {}
