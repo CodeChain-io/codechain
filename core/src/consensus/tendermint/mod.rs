@@ -827,9 +827,12 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        let total_reward = self.block_reward(block.header().number())
-            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
-        self.machine.add_balance(block, &author, total_reward)
+        let fee = self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
+        let stakes = stake::get_stakes(block.state()).expect("Cannot get Stake status");
+        for (address, share) in stake::fee_distribute(&author, fee, &stakes) {
+            self.machine.add_balance(block, &address, share)?
+        }
+        Ok(())
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::{btree_set, BTreeSet};
+
 use ccrypto::blake256;
 use ckey::Address;
 use cstate::{TopLevelState, TopState, TopStateView};
@@ -29,6 +31,14 @@ fn get_account_key(address: &Address) -> H256 {
     let mut rlp = RlpStream::new();
     rlp.begin_list(2).append(&ACTION_DATA_KEY_PREFIX).append(address);
     blake256(rlp.drain())
+}
+
+lazy_static! {
+    pub static ref stakeholder_addresses_key: H256 = {
+        let mut rlp = RlpStream::new();
+        rlp.begin_list(2).append(&ACTION_DATA_KEY_PREFIX).append(&"StakeholderAddresses");
+        blake256(rlp.drain())
+    };
 }
 
 pub type StakeBalance = u64;
@@ -79,10 +89,64 @@ impl<'a> StakeAccount<'a> {
     }
 }
 
+pub struct Stakeholders(BTreeSet<Address>);
+
+impl Stakeholders {
+    pub fn load_from_state(state: &TopLevelState) -> StakeResult<Stakeholders> {
+        let key = *stakeholder_addresses_key;
+        let action_data = state.action_data(&key)?;
+
+        let mut addresses = BTreeSet::new();
+
+        if let Some(rlp) = action_data.as_ref().map(|x| UntrustedRlp::new(x)) {
+            for i in 0..rlp.item_count()? {
+                addresses.insert(rlp.val_at(i)?);
+            }
+        }
+
+        Ok(Stakeholders(addresses))
+    }
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StakeResult<()> {
+        let key = *stakeholder_addresses_key;
+        let mut rlp = RlpStream::new();
+        rlp.begin_list(self.0.len());
+        for address in self.0.iter() {
+            rlp.append(address);
+        }
+        state.update_action_data(&key, rlp.drain().into_vec())?;
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub fn contains(&self, address: &Address) -> bool {
+        self.0.contains(address)
+    }
+
+    pub fn update(&mut self, account: &StakeAccount) {
+        if account.balance > 0 {
+            self.0.insert(*account.address);
+        } else {
+            self.0.remove(account.address);
+        }
+    }
+
+    pub fn iter(&self) -> btree_set::Iter<Address> {
+        self.0.iter()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use cstate::tests::helpers;
+    use rand::{Rng, SeedableRng};
+    use rand_xorshift::XorShiftRng;
+
+    fn rng() -> XorShiftRng {
+        let seed: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7];
+        XorShiftRng::from_seed(seed)
+    }
 
     #[test]
     fn default_balance_is_zero() {
@@ -149,5 +213,66 @@ mod tests {
 
         let account = StakeAccount::load_from_state(&state, &address).unwrap();
         assert_eq!(account.balance, 10);
+    }
+
+    #[test]
+    fn stakeholders_track() {
+        let mut rng = rng();
+        let mut state = helpers::get_temp_state();
+        let addresses: Vec<_> = (1..100).map(|_| Address::random()).collect();
+        let accounts: Vec<_> = addresses
+            .iter()
+            .map(|address| StakeAccount {
+                address,
+                balance: rng.gen_range(1, 100),
+            })
+            .collect();
+
+        let mut stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        for account in &accounts {
+            stakeholders.update(account);
+        }
+        stakeholders.save_to_state(&mut state).unwrap();
+
+        let stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        assert!(addresses.iter().all(|address| stakeholders.contains(address)));
+    }
+
+    #[test]
+    fn stakeholders_untrack() {
+        let mut rng = rng();
+        let mut state = helpers::get_temp_state();
+        let addresses: Vec<_> = (1..100).map(|_| Address::random()).collect();
+        let mut accounts: Vec<_> = addresses
+            .iter()
+            .map(|address| StakeAccount {
+                address,
+                balance: rng.gen_range(1, 100),
+            })
+            .collect();
+
+        let mut stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        for account in &accounts {
+            stakeholders.update(account);
+        }
+        stakeholders.save_to_state(&mut state).unwrap();
+
+        for account in &mut accounts {
+            if rand::random() {
+                account.balance = 0;
+            }
+        }
+        let mut stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        for account in &accounts {
+            stakeholders.update(account);
+        }
+        stakeholders.save_to_state(&mut state).unwrap();
+
+        let stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        for account in &accounts {
+            let tracked = stakeholders.contains(account.address);
+            let has_balance = account.balance > 0;
+            assert!(tracked && has_balance || !tracked && !has_balance);
+        }
     }
 }
