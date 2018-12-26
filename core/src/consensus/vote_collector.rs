@@ -18,7 +18,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use ckey::{Address, Signature};
+use ckey::{public_to_address, Address, Public, Signature};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp::{Encodable, RlpStream};
@@ -27,6 +27,8 @@ pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
     type Round: Clone + Copy + PartialEq + Eq + Hash + Default + Debug + Ord;
 
     fn signature(&self) -> Signature;
+
+    fn signer_public(&self) -> Public;
 
     fn block_hash(&self) -> Option<H256>;
 
@@ -43,8 +45,8 @@ pub struct VoteCollector<M: Message> {
 
 #[derive(Debug, Default)]
 struct StepCollector<M: Message> {
-    voted: HashMap<Address, M>,
-    block_votes: HashMap<Option<H256>, HashMap<Signature, Address>>,
+    voted: HashMap<Public, M>,
+    block_votes: HashMap<Option<H256>, HashMap<Signature, Public>>,
     messages: HashSet<M>,
 }
 
@@ -63,13 +65,13 @@ impl<M: Message> Encodable for DoubleVote<M> {
 
 impl<M: Message> StepCollector<M> {
     /// Returns Some(&Address) when validator is double voting.
-    fn insert(&mut self, message: M, address: Address) -> Option<DoubleVote<M>> {
+    fn insert(&mut self, message: M) -> Option<DoubleVote<M>> {
         // Do nothing when message was seen.
         if self.messages.insert(message.clone()) {
-            if let Some(previous) = self.voted.insert(address, message.clone()) {
+            if let Some(previous) = self.voted.insert(message.signer_public(), message.clone()) {
                 // Bad validator sent a different message.
                 return Some(DoubleVote {
-                    author: address,
+                    author: public_to_address(&message.signer_public()),
                     vote_one: previous,
                     vote_two: message,
                 })
@@ -77,7 +79,7 @@ impl<M: Message> StepCollector<M> {
                 self.block_votes
                     .entry(message.block_hash())
                     .or_insert_with(HashMap::new)
-                    .insert(message.signature(), address);
+                    .insert(message.signature(), message.signer_public());
             }
         }
         None
@@ -107,8 +109,8 @@ impl<M: Message + Default> Default for VoteCollector<M> {
 
 impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     /// Insert vote if it is newer than the oldest one.
-    pub fn vote(&self, message: M, voter: Address) -> Option<DoubleVote<M>> {
-        self.votes.write().entry(*message.round()).or_insert_with(Default::default).insert(message, voter)
+    pub fn vote(&self, message: M) -> Option<DoubleVote<M>> {
+        self.votes.write().entry(*message.round()).or_insert_with(Default::default).insert(message)
     }
 
     /// Checks if the message should be ignored.
@@ -146,6 +148,15 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
             .and_then(|c| c.block_votes.get(&Some(*block_hash)))
             .map(|votes| votes.keys().cloned().collect())
             .unwrap_or_else(Vec::new)
+    }
+
+    /// Returns the first signature and the public key of its signer for a given round and hash if exists.
+    pub fn round_signature_and_public(&self, round: &M::Round, block_hash: &H256) -> Option<(Signature, Public)> {
+        let guard = self.votes.read();
+        guard
+            .get(round)
+            .and_then(|c| c.block_votes.get(&Some(*block_hash)))
+            .and_then(|votes| votes.iter().next().map(|(k, v)| (*k, *v)))
     }
 
     /// Count votes which agree with the given message.
@@ -187,7 +198,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
         guard
             .get(&message.round())
             .and_then(|c| c.block_votes.get(&message.block_hash()))
-            .and_then(|origins| origins.get(&message.signature()).cloned())
+            .and_then(|origins| origins.get(&message.signature()).map(|public| public_to_address(public)))
     }
 
     pub fn get_block_hashes(&self, round: &M::Round) -> Vec<H256> {
