@@ -147,6 +147,12 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - hash: `H256` - transaction hash
  - signature: `Signature`
 
+### Custom Action
+
+ - action: "custom"
+ - handlerId: `number`
+ - bytes: `string`
+
 ## AssetScheme
 
  - amount: `U64`
@@ -1455,6 +1461,36 @@ No parameters
 {
   "jsonrpc":"2.0",
   "result": 6,
+  "id":411
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## engine_getCustomActionData
+Gets custom action data for given custom action handler id and rlp encoded key.
+
+### Params
+ 1. handlerId: `number`
+ 2. bytes: `string`
+ 3. blockNumber: `number` | `null`
+
+### Returns
+`string`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getCustomActionData", "params": [1,"0xcd8c6d6574616461746120686974",null], "id": 411}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0c",
   "id":411
 }
 ```
