@@ -17,7 +17,7 @@
 use std::cmp;
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Address, Signature};
+use ckey::{public_to_address, verify, Address, Public, Signature};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -82,7 +82,7 @@ const MESSAGE_ID_PROPOSAL_BLOCK: u8 = 0x02;
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
     ConsensusMessage(Bytes),
-    ProposalBlock(Signature, Bytes),
+    ProposalBlock(Signature, Public, Bytes),
 }
 
 impl Encodable for TendermintMessage {
@@ -93,10 +93,11 @@ impl Encodable for TendermintMessage {
                 s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
                 s.append(message);
             }
-            TendermintMessage::ProposalBlock(signature, bytes) => {
-                s.begin_list(3);
+            TendermintMessage::ProposalBlock(signature, signer_public, bytes) => {
+                s.begin_list(4);
                 s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
                 s.append(signature);
+                s.append(signer_public);
                 s.append(bytes);
             }
         }
@@ -115,12 +116,13 @@ impl Decodable for TendermintMessage {
                 TendermintMessage::ConsensusMessage(bytes.as_val()?)
             }
             MESSAGE_ID_PROPOSAL_BLOCK => {
-                if rlp.item_count()? != 3 {
+                if rlp.item_count()? != 4 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 let signature = rlp.at(1)?;
-                let bytes = rlp.at(2)?;
-                TendermintMessage::ProposalBlock(signature.as_val()?, bytes.as_val()?)
+                let signer_public = rlp.at(2)?;
+                let bytes = rlp.at(3)?;
+                TendermintMessage::ProposalBlock(signature.as_val()?, signer_public.as_val()?, bytes.as_val()?)
             }
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
@@ -137,14 +139,23 @@ pub struct VoteOn {
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Default, RlpDecodable, RlpEncodable)]
 pub struct ConsensusMessage {
     pub signature: Signature,
+    pub signer_public: Public,
     pub on: VoteOn,
 }
 
 impl ConsensusMessage {
     #[cfg(test)]
-    fn new(signature: Signature, height: Height, view: View, step: Step, block_hash: Option<BlockHash>) -> Self {
+    fn new(
+        signature: Signature,
+        signer_public: Public,
+        height: Height,
+        view: View,
+        step: Step,
+        block_hash: Option<BlockHash>,
+    ) -> Self {
         ConsensusMessage {
             signature,
+            signer_public,
             on: VoteOn {
                 step: VoteStep::new(height, view, step),
                 block_hash,
@@ -152,11 +163,17 @@ impl ConsensusMessage {
         }
     }
 
-    pub fn new_proposal(signature: Signature, header: &Header) -> Result<Self, ::rlp::DecoderError> {
+    pub fn new_proposal(
+        signature: Signature,
+        signer_public: Public,
+        header: &Header,
+    ) -> Result<Self, ::rlp::DecoderError> {
         let height = header.number();
         let view = consensus_view(header)?;
+
         Ok(ConsensusMessage {
             signature,
+            signer_public,
             on: VoteOn {
                 step: VoteStep::new(height as Height, view, Step::Propose),
                 block_hash: Some(header.hash()),
@@ -164,11 +181,13 @@ impl ConsensusMessage {
         })
     }
 
-    pub fn signer(&self) -> Result<Address, Error> {
-        let full_rlp = ::rlp::encode(self);
-        let block_info = ::rlp::Rlp::new(&full_rlp).at(1);
-        let public_key = recover(&self.signature, &blake256(block_info.as_raw()))?;
-        Ok(public_to_address(&public_key))
+    pub fn verify(&self) -> Result<bool, Error> {
+        let vote_info = message_info_rlp(self.on.step, self.on.block_hash);
+        Ok(verify(&self.signer_public, &self.signature, &blake256(vote_info))?)
+    }
+
+    pub fn signer(&self) -> Address {
+        public_to_address(&self.signer_public)
     }
 }
 
@@ -188,6 +207,10 @@ impl Message for ConsensusMessage {
 
     fn signature(&self) -> Signature {
         self.signature
+    }
+
+    fn signer_public(&self) -> Public {
+        self.signer_public
     }
 
     fn block_hash(&self) -> Option<H256> {
@@ -240,7 +263,11 @@ mod tests {
 
     #[test]
     fn encode_and_decode_tendermint_message_2() {
-        rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock(Signature::random(), vec![1u8, 2u8]));
+        rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock(
+            Signature::random(),
+            Public::random(),
+            vec![1u8, 2u8]
+        ));
     }
 
     #[test]
@@ -253,6 +280,7 @@ mod tests {
     fn encode_and_decode_consensus_message_2() {
         let message = ConsensusMessage::new(
             Signature::random(),
+            Public::random(),
             2usize,
             3usize,
             Step::Commit,
@@ -267,8 +295,9 @@ mod tests {
         let view = 3usize;
         let step = Step::Commit;
         let signature = Signature::random();
+        let signer = Public::random();
         let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"));
-        let consensus_message = ConsensusMessage::new(signature, height, view, step, block_hash);
+        let consensus_message = ConsensusMessage::new(signature, signer, height, view, step, block_hash);
         let encoded = consensus_message.rlp_bytes();
         let decoded = rlp::decode::<ConsensusMessage>(&encoded);
         assert_eq!(consensus_message, decoded);
