@@ -54,27 +54,27 @@ describe("solo - 1 node", function() {
 
     it("Make regular key", async function() {
         try {
-            await node.sendSignedParcel({ secret: privKey });
+            await node.sendPayTx({ secret: privKey });
             expect.fail("It must fail");
         } catch (e) {
             expect(e).to.satisfy(errorMatcher(ERROR.NOT_ENOUGH_BALANCE));
         }
 
         await node.setRegularKey(pubKey);
-        await node.sendSignedParcel({ secret: privKey });
+        await node.sendPayTx({ secret: privKey });
     });
 
     it("Make then change regular key", async function() {
         await node.setRegularKey(pubKey);
-        await node.sendSignedParcel({ secret: privKey });
+        await node.sendPayTx({ secret: privKey });
 
         const newPrivKey = node.sdk.util.generatePrivateKey();
         const newPubKey = node.sdk.util.getPublicFromPrivate(newPrivKey);
 
         await node.setRegularKey(newPubKey);
-        await node.sendSignedParcel({ secret: newPrivKey });
+        await node.sendPayTx({ secret: newPrivKey });
         try {
-            await node.sendSignedParcel({ secret: privKey });
+            await node.sendPayTx({ secret: privKey });
             expect.fail("It must fail");
         } catch (e) {
             expect(e).to.satisfy(errorMatcher(ERROR.NOT_ENOUGH_BALANCE));
@@ -88,7 +88,7 @@ describe("solo - 1 node", function() {
             { networkId: "tc" }
         ).toString();
 
-        await node.sendSignedParcel({ amount: 5, recipient: address });
+        await node.sendPayTx({ amount: 5, recipient: address });
         const invoice = (await node.setRegularKey(pubKey))!;
         expect(invoice.error!.type).to.equal(
             INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT.error.type
@@ -106,7 +106,7 @@ describe("solo - 1 node", function() {
             { networkId: "tc" }
         ).toString();
 
-        await node.sendSignedParcel({ amount: 100, recipient: address });
+        await node.sendPayTx({ amount: 100, recipient: address });
         const seq = await node.sdk.rpc.chain.getSeq(address);
         let invoice = (await node.setRegularKey(pubKey, {
             seq,

@@ -19,10 +19,9 @@ mod asset_input;
 mod asset_output;
 mod block;
 mod order;
-mod parcel;
 mod text;
 mod transaction;
-mod unsigned_parcel;
+mod unsigned_transaction;
 mod work;
 
 use primitives::H256;
@@ -31,13 +30,12 @@ use self::asset_input::{AssetOutPoint, AssetTransferInput};
 use self::asset_output::{AssetMintOutput, AssetTransferOutput};
 use self::order::OrderOnTransfer;
 
-pub use self::action::{Action, ActionWithTxHash};
+pub use self::action::{Action, ActionWithId};
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
-pub use self::parcel::Parcel;
 pub use self::text::Text;
-pub use self::transaction::{Transaction, TransactionWithHash};
-pub use self::unsigned_parcel::UnsignedParcel;
+pub use self::transaction::Transaction;
+pub use self::unsigned_transaction::UnsignedTransaction;
 pub use self::work::Work;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,7 +45,7 @@ pub struct FilterStatus {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SendParcelResult {
+pub struct SendTransactionResult {
     pub hash: H256,
     pub seq: u64,
 }

@@ -50,7 +50,7 @@ describe("sync 5 nodes", function() {
             });
 
             it("It should be synced when the first node created a block", async function() {
-                const parcel = await nodes[0].sendSignedParcel({
+                const parcel = await nodes[0].sendPayTx({
                     awaitInvoice: true
                 });
                 for (let i = 1; i < NUM_NODES; i++) {
@@ -65,8 +65,8 @@ describe("sync 5 nodes", function() {
                 beforeEach(async function() {
                     const nodeA = nodes[0],
                         nodeB = nodes[NUM_NODES - 1];
-                    await nodeA.sendSignedParcel();
-                    await nodeB.sendSignedParcel();
+                    await nodeA.sendPayTx();
+                    await nodeB.sendPayTx();
                     expect(await nodeA.getBestBlockNumber()).to.equal(
                         await nodeB.getBestBlockNumber()
                     );
@@ -84,7 +84,7 @@ describe("sync 5 nodes", function() {
                 }).timeout(5000 + 5000 * NUM_NODES);
 
                 it("It should be synced when the first node becomes ahead", async function() {
-                    await nodes[0].sendSignedParcel();
+                    await nodes[0].sendPayTx();
                     for (let i = 1; i < NUM_NODES; i++) {
                         await nodes[i].waitBlockNumberSync(nodes[i - 1]);
                         expect(await nodes[i].getBestBlockHash()).to.deep.equal(
@@ -97,7 +97,7 @@ describe("sync 5 nodes", function() {
 
         describe("the first node becomes ahead", function() {
             beforeEach(async function() {
-                await nodes[0].sendSignedParcel();
+                await nodes[0].sendPayTx();
             });
 
             it("It should be synced when every node connected", async function() {
@@ -126,7 +126,7 @@ describe("sync 5 nodes", function() {
         });
 
         it("It should be synced when the first node created a block", async function() {
-            const parcel = await nodes[0].sendSignedParcel();
+            const parcel = await nodes[0].sendPayTx();
             for (let i = 1; i <= numHalf; i++) {
                 await nodes[0].waitBlockNumberSync(nodes[i]);
                 expect(await nodes[i].getBestBlockHash()).to.deep.equal(
@@ -144,8 +144,8 @@ describe("sync 5 nodes", function() {
             beforeEach(async function() {
                 const nodeA = nodes[0],
                     nodeB = nodes[numHalf];
-                await nodeA.sendSignedParcel();
-                await nodeB.sendSignedParcel();
+                await nodeA.sendPayTx();
+                await nodeB.sendPayTx();
                 expect(await nodeA.getBestBlockNumber()).to.equal(
                     await nodeB.getBestBlockNumber()
                 );
@@ -163,7 +163,7 @@ describe("sync 5 nodes", function() {
             }).timeout(5000 + 5000 * NUM_NODES);
 
             it("It should be synced when the first node becomes ahead", async function() {
-                await nodes[0].sendSignedParcel();
+                await nodes[0].sendPayTx();
                 for (let i = 1; i < NUM_NODES; i++) {
                     await nodes[i].waitBlockNumberSync(nodes[i - 1]);
                     expect(await nodes[i].getBestBlockHash()).to.deep.equal(
@@ -187,7 +187,7 @@ describe("sync 5 nodes", function() {
             });
 
             it("It should be synced when the center node created a block", async function() {
-                const parcel = await nodes[0].sendSignedParcel();
+                const parcel = await nodes[0].sendPayTx();
                 for (let i = 1; i < NUM_NODES; i++) {
                     await nodes[0].waitBlockNumberSync(nodes[i]);
                     expect(await nodes[i].getBestBlockHash()).to.deep.equal(
@@ -197,7 +197,7 @@ describe("sync 5 nodes", function() {
             }).timeout(5000 + 5000 * NUM_NODES);
 
             it("It should be synced when one of the outside node created a block", async function() {
-                const parcel = await nodes[NUM_NODES - 1].sendSignedParcel();
+                const parcel = await nodes[NUM_NODES - 1].sendPayTx();
                 for (let i = 0; i < NUM_NODES - 1; i++) {
                     await nodes[NUM_NODES - 1].waitBlockNumberSync(nodes[i]);
                     expect(await nodes[i].getBestBlockHash()).to.deep.equal(

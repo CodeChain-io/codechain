@@ -78,7 +78,7 @@ describe("Test onChain block communication", async function() {
             new U256(genesisBlock.number),
             genesisBlock.author.accountId,
             Buffer.from(genesisBlock.extraData),
-            genesisBlock.parcelsRoot,
+            genesisBlock.transactionsRoot,
             genesisBlock.stateRoot,
             genesisBlock.invoicesRoot,
             genesisBlock.score,
@@ -90,7 +90,7 @@ describe("Test onChain block communication", async function() {
             new U256(block1.number),
             block1.author.accountId,
             Buffer.from(block1.extraData),
-            block1.parcelsRoot,
+            block1.transactionsRoot,
             block1.stateRoot,
             block1.invoicesRoot,
             new U256(2222222222222),
@@ -102,7 +102,7 @@ describe("Test onChain block communication", async function() {
             new U256(block2.number),
             block2.author.accountId,
             Buffer.from(block2.extraData),
-            block2.parcelsRoot,
+            block2.transactionsRoot,
             block2.stateRoot,
             block2.invoicesRoot,
             new U256(33333333333333),
@@ -111,7 +111,7 @@ describe("Test onChain block communication", async function() {
 
         VALID_PARENT = block1.parentHash;
         VALID_AUTHOR = block1.author.accountId;
-        VALID_PARCELROOT = block1.parcelsRoot;
+        VALID_PARCELROOT = block1.transactionsRoot;
         VALID_STATEROOT = block1.stateRoot;
         VALID_INVOICEROOT = block1.invoicesRoot;
         VALID_SEAL = block1.seal;

@@ -15,11 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
+    AssetScheme,
     H256,
     H512,
-    U64,
-    AssetMintTransaction,
-    AssetScheme
+    MintAsset,
+    U64
 } from "codechain-sdk/lib/core/classes";
 import {
     faucetAddress,
@@ -36,7 +36,7 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("chain", function() {
-    const invalidHash = new H256("0".repeat(64));
+    const invalidId = new H256("0".repeat(64));
 
     let node: CodeChain;
     before(async function() {
@@ -78,7 +78,7 @@ describe("chain", function() {
         expect(
             (await node.sdk.rpc.chain.getBlock(blockHash!))!.number
         ).to.equal(bestBlockNumber);
-        expect(await node.sdk.rpc.chain.getBlock(invalidHash)).to.be.null;
+        expect(await node.sdk.rpc.chain.getBlock(invalidId)).to.be.null;
     });
 
     it("getSeq", async function() {
@@ -134,34 +134,32 @@ describe("chain", function() {
         expect(reward).to.equal(0);
     });
 
-    it("getPendingParcels", async function() {
-        const pendingParcels = await node.sdk.rpc.chain.getPendingParcels();
-        expect(pendingParcels.length).to.equal(0);
+    it("getPendingTransactions", async function() {
+        const pending = await node.sdk.rpc.chain.getPendingTransactions();
+        expect(pending.length).to.equal(0);
     });
 
-    it("sendSignedParcel, getParcelInvoice, getParcel", async function() {
-        const parcel = node.sdk.core.createPayParcel({
+    it("sendPayTx, getInvoice, getTransaction", async function() {
+        const tx = node.sdk.core.createPayTransaction({
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount: 0
         });
         const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const parcelHash = await node.sdk.rpc.chain.sendSignedParcel(
-            parcel.sign({
+        const hash = await node.sdk.rpc.chain.sendSignedTransaction(
+            tx.sign({
                 secret: faucetSecret,
                 fee: 10,
                 seq
             })
         );
-        const invoice = (await node.sdk.rpc.chain.getParcelInvoice(
-            parcelHash
-        ))!;
+        const invoice = (await node.sdk.rpc.chain.getInvoice(hash))!;
         expect(invoice.error).to.be.undefined;
         expect(invoice.success).to.be.true;
-        const signedParcel = await node.sdk.rpc.chain.getParcel(parcelHash);
-        if (signedParcel == null) {
-            throw Error("Cannot get the parcel");
+        const signed = await node.sdk.rpc.chain.getTransaction(hash);
+        if (signed == null) {
+            throw Error("Cannot get the transaction");
         }
-        expect(signedParcel.unsigned).to.deep.equal(parcel);
+        expect(signed.unsigned).to.deep.equal(tx);
     });
 
     it("getRegularKey, getRegularKeyOwner", async function() {
@@ -172,8 +170,8 @@ describe("chain", function() {
             .null;
         expect(await node.sdk.rpc.chain.getRegularKeyOwner(key)).to.be.null;
 
-        const parcel = node.sdk.core
-            .createSetRegularKeyParcel({
+        const tx = node.sdk.core
+            .createSetRegularKeyTransaction({
                 key
             })
             .sign({
@@ -181,7 +179,7 @@ describe("chain", function() {
                 fee: 10,
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
-        await node.sdk.rpc.chain.sendSignedParcel(parcel);
+        await node.sdk.rpc.chain.sendSignedTransaction(tx);
 
         expect(
             await node.sdk.rpc.chain.getRegularKey(faucetAddress)
@@ -219,12 +217,12 @@ describe("chain", function() {
     });
 
     describe("Mint an asset", function() {
-        let tx: AssetMintTransaction;
+        let tx: MintAsset;
         let txAssetScheme: AssetScheme;
 
         before(async function() {
             const recipient = await node.createP2PKHAddress();
-            tx = node.sdk.core.createAssetMintTransaction({
+            tx = node.sdk.core.createMintAssetTransaction({
                 scheme: {
                     shardId: 0,
                     metadata: "",
@@ -234,52 +232,45 @@ describe("chain", function() {
             });
             txAssetScheme = tx.getAssetScheme();
 
-            const parcel = node.sdk.core
-                .createAssetTransactionParcel({
-                    transaction: tx
-                })
-                .sign({
-                    secret: faucetSecret,
-                    fee: 10,
-                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                });
+            const signed = tx.sign({
+                secret: faucetSecret,
+                fee: 10,
+                seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+            });
 
-            await node.sdk.rpc.chain.sendSignedParcel(parcel);
+            await node.sdk.rpc.chain.sendSignedTransaction(signed);
         });
 
-        it("getTransaction", async function() {
+        it("getTransactionById", async function() {
             expect(
-                await node.sdk.rpc.chain.getTransaction(tx.hash())
+                ((await node.sdk.rpc.chain.getTransactionById(tx.id())) as any)
+                    .unsigned
             ).to.deep.equal(tx);
-            expect(await node.sdk.rpc.chain.getTransaction(invalidHash)).to.be
+            expect(await node.sdk.rpc.chain.getTransactionById(invalidId)).to.be
                 .null;
         });
 
-        it("getTransactionInvoices", async function() {
-            const invoices = await node.sdk.rpc.chain.getTransactionInvoices(
-                tx.hash()
-            );
+        it("getInvoicesById", async function() {
+            const invoices = await node.sdk.rpc.chain.getInvoicesById(tx.id());
             expect(invoices!.length).to.equal(1);
             expect(invoices[0].success).to.be.true;
         });
 
         it("getAsset", async function() {
-            expect(await node.sdk.rpc.chain.getAsset(invalidHash, 0)).to.be
-                .null;
-            expect(await node.sdk.rpc.chain.getAsset(tx.hash(), 1)).to.be.null;
-            expect(
-                await node.sdk.rpc.chain.getAsset(tx.hash(), 0)
-            ).to.deep.equal(tx.getMintedAsset());
+            expect(await node.sdk.rpc.chain.getAsset(invalidId, 0)).to.be.null;
+            expect(await node.sdk.rpc.chain.getAsset(tx.id(), 1)).to.be.null;
+            expect(await node.sdk.rpc.chain.getAsset(tx.id(), 0)).to.deep.equal(
+                tx.getMintedAsset()
+            );
 
             const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
             expect(
-                await node.sdk.rpc.chain.getAsset(tx.hash(), 0, bestBlockNumber)
+                await node.sdk.rpc.chain.getAsset(tx.id(), 0, bestBlockNumber)
             ).to.deep.equal(tx.getMintedAsset());
-            expect(await node.sdk.rpc.chain.getAsset(tx.hash(), 0, 0)).to.be
-                .null;
+            expect(await node.sdk.rpc.chain.getAsset(tx.id(), 0, 0)).to.be.null;
             expect(
                 await node.sdk.rpc.chain.getAsset(
-                    tx.hash(),
+                    tx.id(),
                     0,
                     bestBlockNumber + 1
                 )
@@ -291,19 +282,19 @@ describe("chain", function() {
             const validShardId = 0;
             expect(
                 await node.sdk.rpc.chain.getAssetSchemeByHash(
-                    invalidHash,
+                    invalidId,
                     validShardId
                 )
             ).to.be.null;
             expect(
                 await node.sdk.rpc.chain.getAssetSchemeByHash(
-                    tx.hash(),
+                    tx.id(),
                     invalidShardId
                 )
             ).to.be.null;
 
             const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByHash(
-                tx.hash(),
+                tx.id(),
                 validShardId
             );
             if (assetScheme == null) {
@@ -315,8 +306,8 @@ describe("chain", function() {
         });
 
         it("getAssetSchemeByType", async function() {
-            expect(await node.sdk.rpc.chain.getAssetSchemeByType(invalidHash))
-                .to.be.null;
+            expect(await node.sdk.rpc.chain.getAssetSchemeByType(invalidId)).to
+                .be.null;
 
             const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByType(
                 tx.getAssetSchemeAddress()
@@ -334,14 +325,14 @@ describe("chain", function() {
         const { asset } = await node.mintAsset({ amount: 10 });
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionHash,
+                asset.outPoint.transactionId,
                 asset.outPoint.index,
                 0
             )
         ).to.be.false;
 
         const recipient = await node.createP2PKHAddress();
-        const tx = node.sdk.core.createAssetTransferTransaction();
+        const tx = node.sdk.core.createTransferAssetTransaction();
         tx.addInputs(asset);
         tx.addOutputs({
             assetType: asset.assetType,
@@ -349,12 +340,12 @@ describe("chain", function() {
             amount: "0xa"
         });
         await node.signTransactionInput(tx, 0);
-        const invoices = await node.sendTransaction(tx);
+        const invoices = await node.sendAssetTransaction(tx);
         expect(invoices!.length).to.equal(1);
         expect(invoices![0].success).to.be.true;
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionHash,
+                asset.outPoint.transactionId,
                 asset.outPoint.index,
                 0
             )
@@ -363,7 +354,7 @@ describe("chain", function() {
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionHash,
+                asset.outPoint.transactionId,
                 asset.outPoint.index,
                 0,
                 bestBlockNumber
@@ -371,7 +362,7 @@ describe("chain", function() {
         ).to.be.true;
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionHash,
+                asset.outPoint.transactionId,
                 asset.outPoint.index,
                 0,
                 bestBlockNumber - 1
@@ -379,7 +370,7 @@ describe("chain", function() {
         ).to.be.false;
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionHash,
+                asset.outPoint.transactionId,
                 asset.outPoint.index,
                 0,
                 0
@@ -393,10 +384,11 @@ describe("chain", function() {
             metadata: "",
             amount: 10000
         });
-        const tx = node.sdk.core.createAssetMintTransaction({
+        const tx = node.sdk.core.createMintAssetTransaction({
             scheme,
             recipient: await node.createP2PKHAddress()
         });
+        tx.setFee(0);
 
         const data = tx.toJSON();
 
