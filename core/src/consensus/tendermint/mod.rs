@@ -163,7 +163,7 @@ impl Tendermint {
     fn view_proposer(&self, bh: &H256, height: Height, view: View) -> Address {
         let proposer_nonce = height + view;
         ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
-        self.validators.get(bh, proposer_nonce)
+        self.validators.get_address(bh, proposer_nonce)
     }
 
     pub fn height(&self) -> Height {
@@ -226,7 +226,7 @@ impl Tendermint {
     }
 
     fn is_authority(&self, prev_hash: &H256, address: &Address) -> bool {
-        self.validators.contains(&prev_hash, address)
+        self.validators.contains_address(&prev_hash, address)
     }
 
     fn check_above_threshold(&self, n: usize) -> Result<(), EngineError> {
@@ -692,7 +692,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
                 Some(a) => a,
                 None => public_to_address(&recover(&precommit.signature, &precommit_hash)?),
             };
-            if !self.validators.contains(header.parent_hash(), &address) {
+            if !self.validators.contains_address(header.parent_hash(), &address) {
                 return Err(EngineError::NotAuthorized(address.to_owned()).into())
             }
 
@@ -1058,7 +1058,7 @@ where
             let signature: Signature = rlp.as_val()?;
             let address = (self.recover)(&signature, &message)?;
 
-            if !self.subchain_validators.contains(header.parent_hash(), &address) {
+            if !self.subchain_validators.contains_address(header.parent_hash(), &address) {
                 return Err(EngineError::NotAuthorized(address.to_owned()).into())
             }
             addresses.insert(address);

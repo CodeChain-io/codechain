@@ -574,12 +574,17 @@ fn verify_input_and_output_consistent_with_order(
         if input_amount_from <= output_amount_from || input_amount_from - output_amount_from != order_tx.spent_amount {
             return Err(Error::InconsistentTransactionInOutWithOrders)
         }
-        if !is_ratio_valid(order.asset_amount_from, order.asset_amount_to, order_tx.spent_amount, output_amount_to) {
+        if !is_ratio_greater_or_equal(
+            order.asset_amount_from,
+            order.asset_amount_to,
+            order_tx.spent_amount,
+            output_amount_to,
+        ) {
             return Err(Error::InconsistentTransactionInOutWithOrders)
         }
         if input_amount_fee < output_amount_fee_remaining
             || input_amount_fee - output_amount_fee_remaining != output_amount_fee_given
-            || !is_ratio_valid(
+            || !is_ratio_equal(
                 order.asset_amount_from,
                 order.asset_amount_fee,
                 order_tx.spent_amount,
@@ -592,9 +597,14 @@ fn verify_input_and_output_consistent_with_order(
     Ok(())
 }
 
-fn is_ratio_valid(a: u64, b: u64, c: u64, d: u64) -> bool {
+fn is_ratio_equal(a: u64, b: u64, c: u64, d: u64) -> bool {
     // a:b = c:d
     u128::from(a) * u128::from(d) == u128::from(b) * u128::from(c)
+}
+
+fn is_ratio_greater_or_equal(a: u64, b: u64, c: u64, d: u64) -> bool {
+    // a:b <= c:d
+    u128::from(a) * u128::from(d) >= u128::from(b) * u128::from(c)
 }
 
 fn apply_bitmask_to_output(

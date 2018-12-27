@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::PlatformAddress;
+use ckey::Public;
 
 use crate::uint::Uint;
 
@@ -23,7 +23,7 @@ use crate::uint::Uint;
 #[serde(rename_all = "camelCase")]
 pub struct SimplePoAParams {
     /// Valid authorities
-    pub validators: Vec<PlatformAddress>,
+    pub validators: Vec<Public>,
     /// Block reward.
     pub block_reward: Option<Uint>,
 }
@@ -38,7 +38,7 @@ pub struct SimplePoA {
 mod tests {
     use std::str::FromStr;
 
-    use ckey::PlatformAddress;
+    use ckey::Public;
     use primitives::U256;
     use serde_json;
 
@@ -49,14 +49,14 @@ mod tests {
     fn basic_authority_deserialization() {
         let s = r#"{
             "params": {
-                "validators" : ["tccq8qlwpt7xcs9lec3c8tyt3kqxlgsus8q4qp3m6ft"],
+                "validators" : ["0x2a8a69439f2396c9a328289fdc3905d9736da9e14eb1a282cfd2c036cc21a17a5d05595160b7924e5ecf3f2628b440e601f3a531e92fa81571a70e6c695b2d08"],
                 "blockReward": "0x0d"
             }
         }"#;
 
         let deserialized: SimplePoA = serde_json::from_str(s).unwrap();
 
-        let vs = vec![PlatformAddress::from_str("tccq8qlwpt7xcs9lec3c8tyt3kqxlgsus8q4qp3m6ft").unwrap()];
+        let vs = vec![Public::from_str("2a8a69439f2396c9a328289fdc3905d9736da9e14eb1a282cfd2c036cc21a17a5d05595160b7924e5ecf3f2628b440e601f3a531e92fa81571a70e6c695b2d08").unwrap()];
         assert_eq!(deserialized.params.validators, vs);
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
     }

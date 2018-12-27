@@ -447,16 +447,11 @@ describe("orders", function() {
                             amount: 1000,
                             assetType: silver.assetType
                         },
-                        {
-                            recipient: bobAddress,
-                            amount: 50,
-                            assetType: gold.assetType
-                        },
                         // Bob gets more gold than he wanted.
                         // If there's a relayer, relayer may take it.
                         {
                             recipient: bobAddress,
-                            amount: 50,
+                            amount: 100,
                             assetType: gold.assetType
                         },
                         {
@@ -475,7 +470,7 @@ describe("orders", function() {
                         order: bobOrder,
                         spentAmount: 1000,
                         inputIndices: [1],
-                        outputIndices: [2, 4]
+                        outputIndices: [2, 3]
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
