@@ -91,12 +91,12 @@ impl ValidatorSet for ValidatorList {
         public_to_address(&self.get(bh, nonce))
     }
 
-    fn count(&self, _bh: &H256) -> usize {
-        self.validators.len()
+    fn get_index(&self, _bh: &H256, public: &Public) -> Option<usize> {
+        self.validators.iter().position(|v| v == public)
     }
 
-    fn get_index(&self, _bh: &H256, address: &Address) -> Option<usize> {
-        self.validators.iter().position(|validator| &public_to_address(validator) == address)
+    fn count(&self, _bh: &H256) -> usize {
+        self.validators.len()
     }
 
     fn is_epoch_end(&self, first: bool, _chain_head: &Header) -> Option<Vec<u8>> {

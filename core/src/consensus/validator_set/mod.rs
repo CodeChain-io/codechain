@@ -49,10 +49,11 @@ pub trait ValidatorSet: Send + Sync {
     /// Draws a validator address from nonce modulo number of validators.
     fn get_address(&self, parent: &H256, nonce: usize) -> Address;
 
+    /// Draws a validator from nonce modulo number of validators.
+    fn get_index(&self, parent: &H256, public: &Public) -> Option<usize>;
+
     /// Returns the current number of validators.
     fn count(&self, parent: &H256) -> usize;
-
-    fn get_index(&self, parent: &H256, address: &Address) -> Option<usize>;
 
     /// Signalling that a new epoch has begun.
     ///
