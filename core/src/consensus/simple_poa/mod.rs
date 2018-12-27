@@ -77,7 +77,7 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
         return Err(EngineError::NotAuthorized(*header.author()).into())
     }
 
-    if validators.contains(header.parent_hash(), &signer) {
+    if validators.contains_address(header.parent_hash(), &signer) {
         Ok(())
     } else {
         Err(BlockError::InvalidSeal.into())
@@ -110,7 +110,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
     fn generate_seal(&self, block: &ExecutedBlock, _parent: &Header) -> Seal {
         let header = block.header();
         let author = header.author();
-        if self.validators.contains(header.parent_hash(), author) {
+        if self.validators.contains_address(header.parent_hash(), author) {
             // account should be permanently unlocked, otherwise sealing will fail
             if let Ok(signature) = self.sign(header.bare_hash()) {
                 return Seal::SimplePoA(signature)

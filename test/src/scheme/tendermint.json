@@ -4,10 +4,10 @@
         "tendermint": {
             "params": {
                 "validators": [
-                    "tccq94guhkrfndnehnca06dlkxcfuq0gdlamvw9ga4f",
-                    "tccq8p9hr53lnxnhzcn0d065lux7etz22azaca786tt",
-                    "tccq8fj6lxn9tchqdqqe93yaga6fzxh5rndzu8k2gdw",
-                    "tccq9y6e0k6af9058qq4h4ffpt9xmat2vkeyue23j8y"
+                    "0x4f1541fc6bdec60bf0ac6380a8e3914a469fe6cd4fa817c890d5823cfdda83932f61dc083e1b6736dadeceb5afd3fcfbac915e5fa2c9c20acf1c30b080114d7f",
+                    "0x1ac8248deb29a58c4bdbfce031fb22c7ba3bcc9384bf6de058a1c8bef5a17422cf8ca26666a5505684db7364eabeed6fc678b02658ae7c1848a4ae6e50244cf2",
+                    "0xdb3a858d2bafd2cb5382fcf366b847a86b58b42ce1fc29fec0cb0315af881a2ad495045adbdbc86ef7a777b541c4e62a0747f25ff6068a5ec3a052c690c4ff8a",
+                    "0x42829b18de338aa3abf5e6d80cd511121bf9d34be9a135bbace32a3226479e7f3bb6af76c11dcc724a1666a22910d756b075d54d8fdd97be11efd7a0ac3bb222"
                 ],
                 "timeoutPropose": 1000,
                 "timeoutPrevote": 1000,
