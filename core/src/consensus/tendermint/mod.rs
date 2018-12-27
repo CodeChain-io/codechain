@@ -369,15 +369,16 @@ impl Tendermint {
             block_hash,
         };
         let vote_info = on.rlp_bytes();
-        match (self.signer.read().address(), self.sign(blake256(&vote_info))) {
-            (Some(validator), Ok(signature)) => {
+        match (self.signer_public(), self.sign(blake256(&vote_info))) {
+            (Some(signer_public), Ok(signature)) => {
                 let message = ConsensusMessage {
                     signature,
+                    signer_public,
                     on,
                 };
                 let message_rlp = message.rlp_bytes().into_vec();
-                self.votes.vote(message.clone(), *validator);
-                cdebug!(ENGINE, "Generated {:?} as {}.", message, validator);
+                self.votes.vote(message.clone());
+                cdebug!(ENGINE, "Generated {:?} as {}({}).", message, signer_public, public_to_address(&signer_public));
                 self.handle_valid_message(&message);
 
                 Some(message_rlp)
@@ -386,8 +387,8 @@ impl Tendermint {
                 ctrace!(ENGINE, "No message, since there is no engine signer.");
                 None
             }
-            (Some(validator), Err(error)) => {
-                ctrace!(ENGINE, "{} could not sign the message {}", validator, error);
+            (Some(signer_public), Err(error)) => {
+                ctrace!(ENGINE, "{} could not sign the message {}", public_to_address(&signer_public), error);
                 None
             }
         }
@@ -529,8 +530,7 @@ impl Tendermint {
     }
 
     fn load_vote_from_backup(&self, vote: &ConsensusMessage, height: Height) -> Option<H256> {
-        let voter = vote.signer().expect("Already checked vote");
-        self.votes.vote(vote.clone(), voter);
+        self.votes.vote(vote.clone());
 
         if vote.on.step.height != height {
             return None
@@ -626,11 +626,9 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let vote_step =
             VoteStep::new(header.number() as Height, consensus_view(&header).expect("I am proposer"), Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
+        let signer_public = self.signer_public().expect("I am proposer");
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-        self.votes.vote(
-            ConsensusMessage::new_proposal(signature, header).expect("I am proposer"),
-            *self.signer.read().address().expect("I am proposer"),
-        );
+        self.votes.vote(ConsensusMessage::new_proposal(signature, signer_public, header).expect("I am proposer"));
 
         *self.proposal.write() = Some(hash);
         cdebug!(
@@ -684,6 +682,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         for rlp in UntrustedRlp::new(precommits_field).iter() {
             let precommit = ConsensusMessage {
                 signature: rlp.as_val()?,
+                signer_public: Public::zero(),
                 on: VoteOn {
                     step,
                     block_hash: Some(*header.parent_hash()),
@@ -767,8 +766,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         header.set_score(new_score);
     }
 
-    /// Equivalent to a timeout: to be used for tests.
-    fn step(&self, token: usize) {
+    fn on_timeout(&self, token: usize) {
         let _guard = self.step_change_lock.lock();
         if token < self.timeout_token_counter.load(AtomicOrdering::SeqCst) {
             return
@@ -856,8 +854,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let rlp = UntrustedRlp::new(rlp);
         let message: ConsensusMessage = rlp.as_val().map_err(fmt_err)?;
         if !self.votes.is_old_or_known(&message) {
-            let msg_hash = blake256(rlp.at(1).map_err(fmt_err)?.as_raw());
-            let sender = public_to_address(&recover(&message.signature, &msg_hash).map_err(fmt_err)?);
+            let sender = public_to_address(&message.signer_public);
             let prev_height = (message.on.step.height - 1) as u64;
             if let Some(prev_block_hash) =
                 self.client().block_header(&BlockId::Number(prev_height)).map(|header| header.parent_hash())
@@ -871,7 +868,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             }
 
             self.broadcast_message(rlp.as_raw().to_vec());
-            if let Some(double) = self.votes.vote(message.clone(), sender) {
+            if let Some(double) = self.votes.vote(message.clone()) {
                 let height = message.on.step.height as BlockNumber;
                 self.validators.report_malicious(&sender, height, height, ::rlp::encode(&double).into_vec());
                 return Err(EngineError::DoubleVote(sender))
@@ -910,10 +907,11 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
         if self.is_signer_proposer(&parent_hash) {
             let vote_info = message_info_rlp(vote_step, Some(hash));
+            let signer_public = self.signer_public().expect("I am proposer");
             let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-            self.extension.broadcast_proposal_block(signature, block.into_inner());
-        } else if let Some(signature) = self.votes.round_signatures(&vote_step, &hash).first() {
-            self.extension.broadcast_proposal_block(*signature, block.into_inner());
+            self.extension.broadcast_proposal_block(signature, signer_public, block.into_inner());
+        } else if let Some((signature, signer_public)) = self.votes.round_signature_and_public(&vote_step, &hash) {
+            self.extension.broadcast_proposal_block(signature, signer_public, block.into_inner());
         } else {
             cwarn!(ENGINE, "There is a proposal but does not have signature {:?}", vote_step);
         }
@@ -1152,8 +1150,8 @@ impl TendermintExtension {
         }
     }
 
-    fn broadcast_proposal_block(&self, signature: Signature, message: Bytes) {
-        let message = TendermintMessage::ProposalBlock(signature, message).rlp_bytes().into_vec();
+    fn broadcast_proposal_block(&self, signature: Signature, signer_public: Public, message: Bytes) {
+        let message = TendermintMessage::ProposalBlock(signature, signer_public, message).rlp_bytes().into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             for token in self.peers.read().iter() {
                 api.send(&token, &message);
@@ -1222,7 +1220,7 @@ impl NetworkExtension for TendermintExtension {
                     }
                 }
             }
-            Ok(TendermintMessage::ProposalBlock(signature, bytes)) => {
+            Ok(TendermintMessage::ProposalBlock(signature, signer_public, bytes)) => {
                 let c = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
                     Some(c) => c,
                     None => return,
@@ -1253,7 +1251,7 @@ impl NetworkExtension for TendermintExtension {
                         return
                     }
 
-                    let message = match ConsensusMessage::new_proposal(signature, &header_view) {
+                    let message = match ConsensusMessage::new_proposal(signature, signer_public, &header_view) {
                         Ok(message) => message,
                         Err(err) => {
                             cdebug!(ENGINE, "Invalid proposal received: {:?}", err);
@@ -1261,19 +1259,25 @@ impl NetworkExtension for TendermintExtension {
                         }
                     };
 
-                    let author_from_signature = match message.signer() {
-                        Ok(address) => address,
+                    match message.verify() {
+                        Ok(false) => {
+                            cdebug!(ENGINE, "Proposal verification failed: signer is different");
+                            return
+                        }
                         Err(err) => {
                             cdebug!(ENGINE, "Proposal verification failed: {:?}", err);
                             return
                         }
-                    };
+                        _ => {}
+                    }
 
-                    if *header_view.author() != author_from_signature {
+                    let author_from_message = message.signer();
+
+                    if *header_view.author() != author_from_message {
                         cdebug!(
                             ENGINE,
                             "Proposal author({}) not matched with header({})",
-                            author_from_signature,
+                            author_from_message,
                             header_view.author()
                         );
                         return
@@ -1284,7 +1288,7 @@ impl NetworkExtension for TendermintExtension {
                         return
                     }
 
-                    t.votes.vote(message, author_from_signature);
+                    t.votes.vote(message);
                 }
 
                 if let Err(e) = c.import_block(bytes) {
@@ -1301,7 +1305,7 @@ impl TimeoutHandler for TendermintExtension {
         debug_assert!(token >= ENGINE_TIMEOUT_TOKEN);
         if let Some(ref weak) = *self.tendermint.read() {
             if let Some(c) = weak.upgrade() {
-                c.step(token);
+                c.on_timeout(token);
             }
         }
     }
