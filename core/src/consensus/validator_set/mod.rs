@@ -16,7 +16,7 @@
 
 use std::sync::Weak;
 
-use ckey::Address;
+use ckey::{Address, Public};
 use ctypes::BlockNumber;
 use primitives::{Bytes, H256};
 
@@ -29,19 +29,25 @@ use crate::header::Header;
 
 pub mod validator_list;
 
-/// Creates a validator set from validator addresses.
-pub fn new_validator_set(validators: Vec<Address>) -> Box<ValidatorSet> {
+/// Creates a validator set from validator public keys.
+pub fn new_validator_set(validators: Vec<Public>) -> Box<ValidatorSet> {
     Box::new(ValidatorList::new(validators))
 }
 
 /// A validator set.
 pub trait ValidatorSet: Send + Sync {
-    /// Checks if a given address is a validator,
+    /// Checks if a given public key is a validator,
     /// using underlying, default call mechanism.
-    fn contains(&self, parent: &H256, address: &Address) -> bool;
+    fn contains(&self, parent: &H256, public: &Public) -> bool;
 
-    /// Draws an validator nonce modulo number of validators.
-    fn get(&self, parent: &H256, nonce: usize) -> Address;
+    /// Checks if a given address is a validator.
+    fn contains_address(&self, parent: &H256, address: &Address) -> bool;
+
+    /// Draws a validator from nonce modulo number of validators.
+    fn get(&self, parent: &H256, nonce: usize) -> Public;
+
+    /// Draws a validator address from nonce modulo number of validators.
+    fn get_address(&self, parent: &H256, nonce: usize) -> Address;
 
     /// Returns the current number of validators.
     fn count(&self, parent: &H256) -> usize;

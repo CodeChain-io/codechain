@@ -15,12 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
-use ckey::{Address, PlatformAddress};
+use ckey::Public;
 
 #[derive(Debug, PartialEq)]
 pub struct SimplePoAParams {
     /// Valid signatories.
-    pub validators: Vec<Address>,
+    pub validators: Vec<Public>,
     /// base reward for a block.
     pub block_reward: u64,
 }
@@ -28,7 +28,7 @@ pub struct SimplePoAParams {
 impl From<cjson::scheme::SimplePoAParams> for SimplePoAParams {
     fn from(p: cjson::scheme::SimplePoAParams) -> Self {
         SimplePoAParams {
-            validators: p.validators.into_iter().map(PlatformAddress::into_address).collect(),
+            validators: p.validators,
             block_reward: p.block_reward.map_or_else(Default::default, Into::into),
         }
     }
