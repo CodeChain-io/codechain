@@ -324,6 +324,11 @@ impl Tendermint {
         *self.last_confirmed_view.write() = (block_hash, view);
     }
 
+    fn last_confirmed_view(&self) -> (H256, View) {
+        let (hash, view) = &*self.last_confirmed_view.read();
+        (*hash, *view)
+    }
+
     fn increment_view(&self, n: View) {
         ctrace!(ENGINE, "increment_view: New view.");
         self.view.fetch_add(n, AtomicOrdering::SeqCst);
@@ -544,7 +549,7 @@ impl Tendermint {
                 view: &self.view(),
                 step: &*self.step.read(),
                 votes: &self.votes.get_all(),
-                last_confirmed_view: &self.last_confirmed_view.read(),
+                last_confirmed_view: &self.last_confirmed_view(),
             },
         );
     }
@@ -660,7 +665,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
         let view = self.view();
 
-        let (last_block_hash, last_block_view) = &*self.last_confirmed_view.read();
+        let (last_block_hash, last_block_view) = &self.last_confirmed_view();
         assert_eq!(last_block_hash, &parent.hash());
         let precommits = self
             .votes
