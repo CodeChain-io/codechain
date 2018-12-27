@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { faucetSecret } from "../helper/constants";
+import { faucetAddress, faucetSecret } from "../helper/constants";
 import { wait } from "../helper/promise";
 import { makeRandomH256 } from "../helper/random";
 import CodeChain from "../helper/spawn";
@@ -29,6 +29,7 @@ import CodeChain from "../helper/spawn";
     });
 
     const parcels = [];
+    const baseSeq = await node.sdk.rpc.chain.getSeq(faucetAddress);
 
     for (let i = 0; i < numParcels; i++) {
         const value = makeRandomH256();
@@ -44,7 +45,7 @@ import CodeChain from "../helper/spawn";
             })
             .sign({
                 secret: faucetSecret,
-                seq: i,
+                seq: baseSeq + i,
                 fee: 10
             });
         parcels.push(parcel);
