@@ -45,7 +45,7 @@ use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
 
 use self::epoch::{EpochVerifier, NoOp, PendingTransition};
-use self::tendermint::types::View;
+use self::tendermint::types::{BitSet, View};
 use crate::account_provider::AccountProvider;
 use crate::block::SealedBlock;
 use crate::codechain_machine::CodeChainMachine;
@@ -64,6 +64,7 @@ pub enum Seal {
         prev_view: View,
         cur_view: View,
         precommits: Vec<SchnorrSignature>,
+        precommit_bitset: BitSet,
     },
     None,
 }
@@ -78,10 +79,12 @@ impl Seal {
                 prev_view,
                 cur_view,
                 precommits,
+                precommit_bitset,
             } => Some(vec![
                 ::rlp::encode(prev_view).into_vec(),
                 ::rlp::encode(cur_view).into_vec(),
                 ::rlp::encode_list(precommits).into_vec(),
+                ::rlp::encode(precommit_bitset).into_vec(),
             ]),
         }
     }
@@ -256,6 +259,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         None
     }
 
+    fn signer_index(&self, _bh: &H256) -> Option<usize> {
+        None
+    }
+
     fn register_network_extension_to_service(&self, _: &NetworkService) {}
 
     fn score_to_target(&self, _score: &U256) -> U256 {
@@ -324,8 +331,19 @@ pub type PendingTransitionStore<'a> = Fn(H256) -> Option<PendingTransition> + 'a
 /// Voting errors.
 #[derive(Debug)]
 pub enum EngineError {
-    /// Signature or author field does not belong to an authority.
-    NotAuthorized(Address),
+    /// Precommit signatures or author field does not belong to an authority.
+    BlockNotAuthorized(Address),
+    /// The signature cannot be verified with the signer of the message.
+    MessageWithInvalidSignature {
+        height: u64,
+        signer_index: usize,
+        address: Address,
+    },
+    /// The validator on the given height and index is from the future or does not exist.
+    ValidatorNotExist {
+        height: u64,
+        index: usize,
+    },
     /// The same author issued different votes at the same step.
     DoubleVote(Address),
     /// The received block is from an incorrect proposer.
@@ -342,7 +360,19 @@ impl fmt::Display for EngineError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::EngineError::*;
         let msg = match self {
-            NotAuthorized(address) => format!("Signer {} is not authorized.", address),
+            BlockNotAuthorized(address) => format!("Signer {} is not authorized.", address),
+            MessageWithInvalidSignature {
+                height,
+                signer_index,
+                address,
+            } => format!("The {}th validator({}) on height {} is not authorized.", signer_index, address, height),
+            ValidatorNotExist {
+                height,
+                index,
+            } => format!(
+                "The {}th validator on height {} does not exist. (out of bound or from the future)",
+                index, height
+            ),
             DoubleVote(address) => format!("Author {} issued too many blocks.", address),
             NotProposer(mis) => format!("Author is not a current proposer: {}", mis),
             UnexpectedMessage => "This Engine should not be fed messages.".into(),
