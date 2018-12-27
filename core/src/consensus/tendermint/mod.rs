@@ -400,11 +400,12 @@ impl Tendermint {
             Some(lock) => *vote_step > lock.on.step,
             None => true,
         };
+        let has_enough_aligned_votes = self.has_enough_aligned_votes(message);
         let lock_change = is_newer_than_lock
             && vote_step.height == self.height()
             && vote_step.step == Step::Prevote
             && message.on.block_hash.is_some()
-            && self.has_enough_aligned_votes(message);
+            && has_enough_aligned_votes;
         if lock_change {
             ctrace!(ENGINE, "handle_valid_message: Lock change.");
             *self.lock_change.write() = Some(message.clone());
@@ -412,11 +413,11 @@ impl Tendermint {
         // Check if it can affect the step transition.
         if self.is_step(message) {
             let next_step = match *self.step.read() {
-                Step::Precommit if message.on.block_hash.is_none() && self.has_enough_aligned_votes(message) => {
+                Step::Precommit if message.on.block_hash.is_none() && has_enough_aligned_votes => {
                     self.increment_view(1);
                     Some(Step::Propose)
                 }
-                Step::Precommit if self.has_enough_aligned_votes(message) => {
+                Step::Precommit if has_enough_aligned_votes => {
                     let bh = message.on.block_hash.expect("previous guard ensures is_some; qed");
                     if self.client().block(&BlockId::Hash(bh)).is_some() {
                         // Commit the block using a complete signature set.
@@ -432,7 +433,7 @@ impl Tendermint {
                 }
                 // Avoid counting votes twice.
                 Step::Prevote if lock_change => Some(Step::Precommit),
-                Step::Prevote if self.has_enough_aligned_votes(message) => Some(Step::Precommit),
+                Step::Prevote if has_enough_aligned_votes => Some(Step::Precommit),
                 _ => None,
             };
 
