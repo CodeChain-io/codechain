@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import {
+    faucetAddress,
     faucetSecret,
     validator0Address,
     validator1Address,
@@ -70,6 +71,7 @@ import CodeChain from "../helper/spawn";
 
     const parcels = [];
     const numParcels = parseInt(process.env.TEST_NUM_PARCELS || "10000", 10);
+    const baseSeq = await nodes[0].sdk.rpc.chain.getSeq(faucetAddress);
 
     for (let i = 0; i < numParcels; i++) {
         const value = makeRandomH256();
@@ -85,7 +87,7 @@ import CodeChain from "../helper/spawn";
             })
             .sign({
                 secret: faucetSecret,
-                seq: i,
+                seq: baseSeq + i,
                 fee: 10
             });
         parcels.push(parcel);
