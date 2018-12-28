@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ckey::{Address, Password, Public, Signature};
+use ckey::{Address, Password, Public, SchnorrSignature};
 use primitives::H256;
 
 use crate::account_provider::{AccountProvider, SignError};
@@ -49,8 +49,8 @@ impl EngineSigner {
     }
 
     /// Sign a consensus message hash.
-    pub fn sign(&self, hash: H256) -> Result<Signature, SignError> {
-        self.account_provider.sign(
+    pub fn sign(&self, hash: H256) -> Result<SchnorrSignature, SignError> {
+        self.account_provider.sign_schnorr(
             self.signer.map(|(address, _public)| address).unwrap_or_else(Default::default),
             self.password.clone(),
             hash,

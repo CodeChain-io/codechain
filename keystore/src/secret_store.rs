@@ -32,7 +32,7 @@
 
 use std::path::PathBuf;
 
-use ckey::{Address, Message, Password, Public, Secret, Signature};
+use ckey::{Address, Message, Password, Public, SchnorrSignature, Secret, Signature};
 
 use crate::json::{OpaqueKeyFile, Uuid};
 use crate::{Error, OpaqueSecret};
@@ -55,6 +55,13 @@ pub trait SimpleSecretStore: Send + Sync {
     fn export_account(&self, account: &Address, password: &Password) -> Result<OpaqueKeyFile, Error>;
     /// Sign a message with given account.
     fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error>;
+    /// Sign a message with given account with Schnorr scheme.
+    fn sign_schnorr(
+        &self,
+        account: &Address,
+        password: &Password,
+        message: &Message,
+    ) -> Result<SchnorrSignature, Error>;
 }
 
 /// Secret Store API
