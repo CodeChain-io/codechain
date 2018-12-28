@@ -26,7 +26,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover, Address, Message, Password, Public, Signature};
+use ckey::{public_to_address, recover_schnorr, Address, Message, Password, Public, SchnorrSignature};
 use cnetwork::{Api, NetworkExtension, NetworkService, NodeId};
 use cstate::ActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
@@ -690,7 +690,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             };
             let address = match self.votes.get(&precommit) {
                 Some(a) => a,
-                None => public_to_address(&recover(&precommit.signature, &precommit_hash)?),
+                None => public_to_address(&recover_schnorr(&precommit.signature, &precommit_hash)?),
             };
             if !self.validators.contains_address(header.parent_hash(), &address) {
                 return Err(EngineError::NotAuthorized(address.to_owned()).into())
@@ -745,8 +745,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             Ok((list, finalize)) => {
                 let verifier = Box::new(EpochVerifier {
                     subchain_validators: list,
-                    recover: |signature: &Signature, message: &Message| {
-                        Ok(public_to_address(&recover(&signature, &message)?))
+                    recover: |signature: &SchnorrSignature, message: &Message| {
+                        Ok(public_to_address(&recover_schnorr(&signature, &message)?))
                     },
                 });
 
@@ -924,7 +924,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         }
     }
 
-    fn sign(&self, hash: H256) -> Result<Signature, Error> {
+    fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
         self.signer.read().sign(hash).map_err(Into::into)
     }
 
@@ -1040,14 +1040,14 @@ impl ChainNotify for TendermintChainNotify {
 
 struct EpochVerifier<F>
 where
-    F: Fn(&Signature, &Message) -> Result<Address, Error> + Send + Sync, {
+    F: Fn(&SchnorrSignature, &Message) -> Result<Address, Error> + Send + Sync, {
     subchain_validators: ValidatorList,
     recover: F,
 }
 
 impl<F> super::EpochVerifier<CodeChainMachine> for EpochVerifier<F>
 where
-    F: Fn(&Signature, &Message) -> Result<Address, Error> + Send + Sync,
+    F: Fn(&SchnorrSignature, &Message) -> Result<Address, Error> + Send + Sync,
 {
     fn verify_light(&self, header: &Header) -> Result<(), Error> {
         let message = header.hash();
@@ -1055,7 +1055,7 @@ where
         let mut addresses = HashSet::new();
         let header_precommits_field = &header.seal().get(2).ok_or(BlockError::InvalidSeal)?;
         for rlp in UntrustedRlp::new(header_precommits_field).iter() {
-            let signature: Signature = rlp.as_val()?;
+            let signature: SchnorrSignature = rlp.as_val()?;
             let address = (self.recover)(&signature, &message)?;
 
             if !self.subchain_validators.contains_address(header.parent_hash(), &address) {
@@ -1150,7 +1150,7 @@ impl TendermintExtension {
         }
     }
 
-    fn broadcast_proposal_block(&self, signature: Signature, signer_public: Public, message: Bytes) {
+    fn broadcast_proposal_block(&self, signature: SchnorrSignature, signer_public: Public, message: Bytes) {
         let message = TendermintMessage::ProposalBlock(signature, signer_public, message).rlp_bytes().into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             for token in self.peers.read().iter() {
@@ -1402,7 +1402,7 @@ mod tests {
         header.set_parent_hash(Default::default());
 
         let vote_info = message_info_rlp(VoteStep::new(3, 0, Step::Precommit), Some(*header.parent_hash()));
-        let signature0 = tap.sign(proposer, None, blake256(&vote_info)).unwrap();
+        let signature0 = tap.sign_schnorr(proposer, None, blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
@@ -1420,9 +1420,9 @@ mod tests {
         }
 
         let voter = insert_and_unlock(&tap, "1");
-        let signature1 = tap.sign(voter, None, blake256(&vote_info)).unwrap();
+        let signature1 = tap.sign_schnorr(voter, None, blake256(&vote_info)).unwrap();
         let voter = insert_and_unlock(&tap, "2");
-        let signature2 = tap.sign(voter, None, blake256(&vote_info)).unwrap();
+        let signature2 = tap.sign_schnorr(voter, None, blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
@@ -1436,7 +1436,7 @@ mod tests {
         assert!(engine.verify_block_external(&header).is_ok());
 
         let bad_voter = insert_and_unlock(&tap, "101");
-        let bad_signature = tap.sign(bad_voter, None, blake256(vote_info)).unwrap();
+        let bad_signature = tap.sign_schnorr(bad_voter, None, blake256(vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,

@@ -37,7 +37,7 @@ pub use self::validator_set::ValidatorSet;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
-use ckey::{Address, Password, Public, Signature};
+use ckey::{Address, Password, Public, SchnorrSignature};
 use cnetwork::NetworkService;
 use cstate::ActionHandler;
 use ctypes::machine::Machine;
@@ -59,11 +59,11 @@ use Client;
 
 pub enum Seal {
     Solo,
-    SimplePoA(Signature),
+    SimplePoA(SchnorrSignature),
     Tendermint {
         prev_view: View,
         cur_view: View,
-        precommits: Vec<Signature>,
+        precommits: Vec<SchnorrSignature>,
     },
     None,
 }
@@ -248,7 +248,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address, _password: Option<Password>) {}
 
     /// Sign using the EngineSigner, to be used for consensus parcel signing.
-    fn sign(&self, _hash: H256) -> Result<Signature, Error> {
+    fn sign(&self, _hash: H256) -> Result<SchnorrSignature, Error> {
         unimplemented!()
     }
 

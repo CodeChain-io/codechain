@@ -18,7 +18,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use ckey::{public_to_address, Address, Public, Signature};
+use ckey::{public_to_address, Address, Public, SchnorrSignature};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp::{Encodable, RlpStream};
@@ -26,7 +26,7 @@ use rlp::{Encodable, RlpStream};
 pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
     type Round: Clone + Copy + PartialEq + Eq + Hash + Default + Debug + Ord;
 
-    fn signature(&self) -> Signature;
+    fn signature(&self) -> SchnorrSignature;
 
     fn signer_public(&self) -> Public;
 
@@ -46,7 +46,7 @@ pub struct VoteCollector<M: Message> {
 #[derive(Debug, Default)]
 struct StepCollector<M: Message> {
     voted: HashMap<Public, M>,
-    block_votes: HashMap<Option<H256>, HashMap<Signature, Public>>,
+    block_votes: HashMap<Option<H256>, HashMap<SchnorrSignature, Public>>,
     messages: HashSet<M>,
 }
 
@@ -141,7 +141,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     }
 
     /// Collects the signatures for a given round and hash.
-    pub fn round_signatures(&self, round: &M::Round, block_hash: &H256) -> Vec<Signature> {
+    pub fn round_signatures(&self, round: &M::Round, block_hash: &H256) -> Vec<SchnorrSignature> {
         let guard = self.votes.read();
         guard
             .get(round)
@@ -151,7 +151,11 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     }
 
     /// Returns the first signature and the public key of its signer for a given round and hash if exists.
-    pub fn round_signature_and_public(&self, round: &M::Round, block_hash: &H256) -> Option<(Signature, Public)> {
+    pub fn round_signature_and_public(
+        &self,
+        round: &M::Round,
+        block_hash: &H256,
+    ) -> Option<(SchnorrSignature, Public)> {
         let guard = self.votes.read();
         guard
             .get(round)

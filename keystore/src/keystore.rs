@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use ccrypto::KEY_ITERATIONS;
-use ckey::{Address, KeyPair, Message, Password, Public, Secret, Signature};
+use ckey::{Address, KeyPair, Message, Password, Public, SchnorrSignature, Secret, Signature};
 use parking_lot::{Mutex, RwLock};
 
 use crate::account::SafeAccount;
@@ -100,6 +100,15 @@ impl SimpleSecretStore for KeyStore {
 
     fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error> {
         self.get(account)?.sign(password, message)
+    }
+
+    fn sign_schnorr(
+        &self,
+        account: &Address,
+        password: &Password,
+        message: &Message,
+    ) -> Result<SchnorrSignature, Error> {
+        self.get(account)?.sign_schnorr(password, message)
     }
 }
 
@@ -383,6 +392,19 @@ impl SimpleSecretStore for KeyMultiStore {
         let accounts = self.get_matching(account, password)?;
         match accounts.first() {
             Some(ref account) => account.sign(password, message),
+            None => Err(Error::InvalidPassword),
+        }
+    }
+
+    fn sign_schnorr(
+        &self,
+        account: &Address,
+        password: &Password,
+        message: &Message,
+    ) -> Result<SchnorrSignature, Error> {
+        let accounts = self.get_matching(account, password)?;
+        match accounts.first() {
+            Some(ref account) => account.sign_schnorr(password, message),
             None => Err(Error::InvalidPassword),
         }
     }

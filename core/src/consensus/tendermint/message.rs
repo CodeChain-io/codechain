@@ -17,7 +17,7 @@
 use std::cmp;
 
 use ccrypto::blake256;
-use ckey::{public_to_address, verify, Address, Public, Signature};
+use ckey::{public_to_address, verify_schnorr, Address, Public, SchnorrSignature};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -82,7 +82,7 @@ const MESSAGE_ID_PROPOSAL_BLOCK: u8 = 0x02;
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
     ConsensusMessage(Bytes),
-    ProposalBlock(Signature, Public, Bytes),
+    ProposalBlock(SchnorrSignature, Public, Bytes),
 }
 
 impl Encodable for TendermintMessage {
@@ -138,7 +138,7 @@ pub struct VoteOn {
 /// Message transmitted between consensus participants.
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Default, RlpDecodable, RlpEncodable)]
 pub struct ConsensusMessage {
-    pub signature: Signature,
+    pub signature: SchnorrSignature,
     pub signer_public: Public,
     pub on: VoteOn,
 }
@@ -146,7 +146,7 @@ pub struct ConsensusMessage {
 impl ConsensusMessage {
     #[cfg(test)]
     fn new(
-        signature: Signature,
+        signature: SchnorrSignature,
         signer_public: Public,
         height: Height,
         view: View,
@@ -164,7 +164,7 @@ impl ConsensusMessage {
     }
 
     pub fn new_proposal(
-        signature: Signature,
+        signature: SchnorrSignature,
         signer_public: Public,
         header: &Header,
     ) -> Result<Self, ::rlp::DecoderError> {
@@ -183,7 +183,7 @@ impl ConsensusMessage {
 
     pub fn verify(&self) -> Result<bool, Error> {
         let vote_info = message_info_rlp(self.on.step, self.on.block_hash);
-        Ok(verify(&self.signer_public, &self.signature, &blake256(vote_info))?)
+        Ok(verify_schnorr(&self.signer_public, &self.signature, &blake256(vote_info))?)
     }
 
     pub fn signer(&self) -> Address {
@@ -205,7 +205,7 @@ pub fn previous_block_view(header: &Header) -> Result<View, ::rlp::DecoderError>
 impl Message for ConsensusMessage {
     type Round = VoteStep;
 
-    fn signature(&self) -> Signature {
+    fn signature(&self) -> SchnorrSignature {
         self.signature
     }
 
@@ -264,7 +264,7 @@ mod tests {
     #[test]
     fn encode_and_decode_tendermint_message_2() {
         rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock(
-            Signature::random(),
+            SchnorrSignature::random(),
             Public::random(),
             vec![1u8, 2u8]
         ));
@@ -279,7 +279,7 @@ mod tests {
     #[test]
     fn encode_and_decode_consensus_message_2() {
         let message = ConsensusMessage::new(
-            Signature::random(),
+            SchnorrSignature::random(),
             Public::random(),
             2usize,
             3usize,
@@ -294,7 +294,7 @@ mod tests {
         let height = 2usize;
         let view = 3usize;
         let step = Step::Commit;
-        let signature = Signature::random();
+        let signature = SchnorrSignature::random();
         let signer = Public::random();
         let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"));
         let consensus_message = ConsensusMessage::new(signature, signer, height, view, step, block_hash);
