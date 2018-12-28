@@ -38,8 +38,12 @@ impl Bytes {
         self.0
     }
 
-    pub fn without_prefix(&self) -> BytesWithoutPrefix {
-        BytesWithoutPrefix(self)
+    pub fn without_prefix(&self) -> WithoutPrefix<&Bytes> {
+        WithoutPrefix(self)
+    }
+
+    pub fn into_without_prefix(self) -> WithoutPrefix<Bytes> {
+        WithoutPrefix(self)
     }
 }
 
@@ -130,14 +134,22 @@ impl Serialize for Bytes {
     }
 }
 
-pub struct BytesWithoutPrefix<'a>(&'a Bytes);
+pub struct WithoutPrefix<T>(T);
 
-impl<'a> Serialize for BytesWithoutPrefix<'a> {
+impl<'a> Serialize for WithoutPrefix<&'a Bytes> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer, {
-        let BytesWithoutPrefix(Bytes(vec)) = self;
+        let WithoutPrefix(Bytes(vec)) = self;
         serializer.serialize_str(vec.to_hex().as_ref())
+    }
+}
+
+impl<'a> Serialize for WithoutPrefix<Bytes> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        WithoutPrefix(&self.0).serialize(serializer)
     }
 }
 
