@@ -380,6 +380,7 @@ impl TopLevelState {
                 let approvers = approvals
                     .iter()
                     .map(|signature| {
+                        ::clogger::metric_logger.increase("state::top_level::recover");
                         let public = recover(&signature, &transaction_hash)?;
                         self.public_to_owner_address(&public)
                     })

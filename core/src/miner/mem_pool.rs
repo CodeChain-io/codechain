@@ -943,6 +943,7 @@ impl MemPool {
             None => vec![],
         };
         for k in all_seqs_from_sender {
+            ::clogger::metric_logger.increase("mem_pool::update_future::all_seqs_from_sender");
             let order = self
                 .future
                 .drop(signer_public, k)

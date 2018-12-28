@@ -235,6 +235,7 @@ impl Miner {
         let results = parcels
             .into_iter()
             .map(|parcel| {
+                ::clogger::metric_logger.increase("miner::add_parcels_to_pool");
                 let hash = parcel.hash();
                 if client.parcel_block(&ParcelId::Hash(hash)).is_some() {
                     cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
@@ -424,6 +425,8 @@ impl Miner {
         let mut parcel_count: usize = 0;
         let parcel_total = parcels.len();
         for parcel in parcels {
+            ::clogger::metric_logger.increase("miner::prepare_block::parcel::push");
+
             let hash = parcel.hash();
             let start = Instant::now();
             // Check whether parcel type is allowed for sender
@@ -472,6 +475,7 @@ impl Miner {
         {
             let mut queue = self.mem_pool.write();
             for hash in invalid_parcels {
+                ::clogger::metric_logger.increase("miner::prepare_block::parcel::remove_invalid");
                 queue.remove(
                     &hash,
                     &fetch_seq,

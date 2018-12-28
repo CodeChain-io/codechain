@@ -116,6 +116,7 @@ impl UnverifiedParcel {
 
     /// Recovers the public key of the signature.
     pub fn recover_public(&self) -> Result<Public, ckey::Error> {
+        ::clogger::metric_logger.increase("parcel::recover_public");
         Ok(recover(&self.signature(), &self.unsigned.hash())?)
     }
 
@@ -239,6 +240,7 @@ impl From<SignedParcel> for UnverifiedParcel {
 impl SignedParcel {
     /// Try to verify parcel and recover public.
     pub fn try_new(parcel: UnverifiedParcel) -> Result<Self, ckey::Error> {
+        ::clogger::metric_logger.increase("parcel::recover_public::from_signed_parcel");
         let public = parcel.recover_public()?;
         Ok(SignedParcel {
             parcel,
@@ -285,6 +287,7 @@ impl LocalizedParcel {
         if let Some(public) = self.cached_signer_public {
             return public
         }
+        ::clogger::metric_logger.increase("parcel::recover_public::from_localized_parcel");
         let public = self.recover_public()
             .expect("LocalizedParcel is always constructed from parcel from blockchain; Blockchain only stores verified parcels; qed");
         self.cached_signer_public = Some(public);

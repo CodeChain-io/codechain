@@ -1145,6 +1145,7 @@ impl TendermintExtension {
         let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             for token in tokens {
+                ::clogger::metric_logger.increase("tendermint::send_message");
                 api.send(&token, &message);
             }
         }

@@ -227,6 +227,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             .subsec_nanos() as usize,
     );
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
+    clogger::metric_logger.start_thread();
 
     let pf = load_password_file(&config.operating.password_path)?;
     let keys_path = match config.operating.keys_path {

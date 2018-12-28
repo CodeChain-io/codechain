@@ -33,6 +33,8 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
+extern crate codechain_logger as clogger;
+
 mod address;
 mod ecdsa;
 mod error;

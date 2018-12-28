@@ -248,6 +248,7 @@ where
                 let tag = Tag::try_new(stack.pop()?.as_ref().to_vec())?;
                 let tx_hash = tx.hash_partially(tag, cur, burn)?;
                 let signature = Signature::from(stack.pop()?.assert_len(SIGNATURE_LENGTH)?.as_ref());
+                ::clogger::metric_logger.increase("vm::checksig");
                 let result = match verify(&pubkey, &signature, &tx_hash) {
                     Ok(true) => 1,
                     _ => 0,

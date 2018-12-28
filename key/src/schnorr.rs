@@ -181,6 +181,7 @@ impl Decodable for SchnorrSignature {
 }
 
 pub fn sign_schnorr(private: &Private, message: &Message) -> Result<SchnorrSignature, Error> {
+    ::clogger::metric_logger.increase("ckey::schnorr::sign");
     let context = &SECP256K1;
     let sec = key::SecretKey::from_slice(context, &private)?;
     let s = context.sign_schnorr(&SecpMessage::from_slice(&message[..])?, &sec)?;
@@ -191,6 +192,8 @@ pub fn sign_schnorr(private: &Private, message: &Message) -> Result<SchnorrSigna
 }
 
 pub fn verify_schnorr(public: &Public, signature: &SchnorrSignature, message: &Message) -> Result<bool, Error> {
+    ::clogger::metric_logger.increase("ckey::schnorr::verify");
+
     let context = &SECP256K1;
     let pdata: [u8; 65] = {
         let mut temp = [4u8; 65];
@@ -218,6 +221,7 @@ pub fn verify_schnorr_address(
 }
 
 pub fn recover_schnorr(signature: &SchnorrSignature, message: &Message) -> Result<Public, Error> {
+    ::clogger::metric_logger.increase("ckey::schnorr::recover");
     let context = &SECP256K1;
 
     let sig = schnorr::Signature::deserialize(&signature.0);

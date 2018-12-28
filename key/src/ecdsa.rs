@@ -227,6 +227,7 @@ impl Decodable for ECDSASignature {
 }
 
 pub fn sign_ecdsa(private: &Private, message: &Message) -> Result<ECDSASignature, Error> {
+    ::clogger::metric_logger.increase("ckey::ecdsa::sign");
     let context = &SECP256K1;
     let sec = key::SecretKey::from_slice(context, &private)?;
     let s = context.sign_recoverable(&SecpMessage::from_slice(&message[..])?, &sec)?;
@@ -240,6 +241,7 @@ pub fn sign_ecdsa(private: &Private, message: &Message) -> Result<ECDSASignature
 }
 
 pub fn verify_ecdsa(public: &Public, signature: &ECDSASignature, message: &Message) -> Result<bool, Error> {
+    ::clogger::metric_logger.increase("ckey::ecdsa::verify");
     let context = &SECP256K1;
     let rsig = RecoverableSignature::from_compact(
         context,
@@ -269,6 +271,7 @@ pub fn verify_ecdsa_address(address: &Address, signature: &ECDSASignature, messa
 }
 
 pub fn recover_ecdsa(signature: &ECDSASignature, message: &Message) -> Result<Public, Error> {
+    ::clogger::metric_logger.increase("ckey::ecdsa::recover");
     let context = &SECP256K1;
     let rsig = RecoverableSignature::from_compact(
         context,
