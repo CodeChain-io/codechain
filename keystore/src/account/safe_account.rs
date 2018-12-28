@@ -15,7 +15,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use ccrypto;
-use ckey::{sign, Address, KeyPair, Message, Password, Public, Signature};
+use ckey::{sign, sign_schnorr, Address, KeyPair, Message, Password, Public, SchnorrSignature, Signature};
 
 use super::crypto::Crypto;
 use crate::account::Version;
@@ -107,6 +107,12 @@ impl SafeAccount {
     pub fn sign(&self, password: &Password, message: &Message) -> Result<Signature, Error> {
         let secret = self.crypto.secret(password)?;
         sign(&secret.into(), message).map_err(From::from)
+    }
+
+    /// Sign a message with Schnorr scheme.
+    pub fn sign_schnorr(&self, password: &Password, message: &Message) -> Result<SchnorrSignature, Error> {
+        let secret = self.crypto.secret(password)?;
+        sign_schnorr(&secret.into(), message).map_err(From::from)
     }
 
     /// Derive public key.

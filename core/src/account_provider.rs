@@ -21,7 +21,7 @@ use std::time::{Duration, Instant};
 
 use ckey::{
     public_to_address, Address, Error as KeyError, Generator, KeyPair, Message, Password, Private, Public, Random,
-    Signature,
+    SchnorrSignature, Signature,
 };
 use ckeystore::accounts_dir::MemoryDirectory;
 use ckeystore::{Error as KeystoreError, KeyStore, SecretStore, SimpleSecretStore};
@@ -133,6 +133,16 @@ impl AccountProvider {
     pub fn sign(&self, address: Address, password: Option<Password>, message: Message) -> Result<Signature, SignError> {
         let password = password.map(Ok).unwrap_or_else(|| self.password(&address))?;
         Ok(self.keystore.read().sign(&address, &password, &message)?)
+    }
+
+    pub fn sign_schnorr(
+        &self,
+        address: Address,
+        password: Option<Password>,
+        message: Message,
+    ) -> Result<SchnorrSignature, SignError> {
+        let password = password.map(Ok).unwrap_or_else(|| self.password(&address))?;
+        Ok(self.keystore.read().sign_schnorr(&address, &password, &message)?)
     }
 
     pub fn public(&self, address: &Address, password: Option<Password>) -> Result<Public, SignError> {
