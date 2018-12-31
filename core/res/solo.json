@@ -3,6 +3,7 @@
   "engine": {
     "solo": {
       "params": {
+        "hit": {}
       }
     }
   },
