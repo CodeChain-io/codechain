@@ -16,6 +16,9 @@
 
 mod params;
 
+use std::sync::Arc;
+
+use cstate::{ActionHandler, HitHandler};
 use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
 
 use self::params::SoloParams;
@@ -27,14 +30,21 @@ use crate::SignedParcel;
 pub struct Solo<M> {
     params: SoloParams,
     machine: M,
+    action_handlers: Vec<Arc<ActionHandler>>,
 }
 
 impl<M> Solo<M> {
     /// Returns new instance of Solo over the given state machine.
     pub fn new(params: SoloParams, machine: M) -> Self {
+        let mut action_handlers: Vec<Arc<ActionHandler>> = Vec::new();
+        if params.enable_hit_handler {
+            action_handlers.push(Arc::new(HitHandler::new()));
+        }
+
         Solo {
             params,
             machine,
+            action_handlers,
         }
     }
 }
@@ -80,6 +90,10 @@ where
 
     fn recommended_confirmation(&self) -> u32 {
         1
+    }
+
+    fn action_handlers(&self) -> &[Arc<ActionHandler>] {
+        &self.action_handlers
     }
 }
 

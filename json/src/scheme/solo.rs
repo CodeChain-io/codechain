@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
+
 use crate::uint::Uint;
 
 /// Solo params deserialization.
@@ -22,6 +24,14 @@ use crate::uint::Uint;
 pub struct SoloParams {
     /// Block reward.
     pub block_reward: Option<Uint>,
+    #[serde(flatten)]
+    pub action_handlers: SoloActionHandlersParams,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SoloActionHandlersParams {
+    pub hit: Option<HashMap<(), ()>>,
 }
 
 /// Solo engine deserialization.
@@ -32,6 +42,8 @@ pub struct Solo {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use primitives::U256;
     use serde_json;
 
@@ -42,11 +54,13 @@ mod tests {
     fn basic_authority_deserialization() {
         let s = r#"{
             "params": {
-                "blockReward": "0x0d"
+                "blockReward": "0x0d",
+                "hit": {}
             }
         }"#;
 
         let deserialized: Solo = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
+        assert_eq!(deserialized.params.action_handlers.hit, Some(HashMap::new()));
     }
 }
