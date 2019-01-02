@@ -598,13 +598,13 @@ impl MemPool {
     ) where
         F: Fn(&Public) -> u64, {
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
-        let parcel = self.by_hash.remove(parcel_hash);
-        if parcel.is_none() {
+        let parcel = if let Some(parcel) = self.by_hash.remove(parcel_hash) {
+            parcel
+        } else {
             // We don't know this parcel
             return
-        }
+        };
 
-        let parcel = parcel.expect("None is tested in early-exit condition above; qed");
         let signer_public = parcel.signer_public();
         let seq = parcel.seq();
         let current_seq = fetch_seq(&signer_public);
@@ -983,11 +983,11 @@ impl MemPool {
     ) {
         let mut update_last_seq_to = None;
         {
-            let by_seq = self.future.by_signer_public.row_mut(&public);
-            if by_seq.is_none() {
+            let by_seq = if let Some(by_seq) = self.future.by_signer_public.row_mut(&public) {
+                by_seq
+            } else {
                 return
-            }
-            let by_seq = by_seq.expect("None is tested in early-exit condition above; qed");
+            };
             while let Some(order) = by_seq.get(&current_seq).cloned() {
                 if Self::should_wait_timelock(&order.timelock, best_block_number, best_block_timestamp) {
                     break
