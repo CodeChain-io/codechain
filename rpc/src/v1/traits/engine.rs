@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cjson::bytes::{Bytes, WithoutPrefix};
 use ckey::PlatformAddress;
 
 use jsonrpc_core::Result;
@@ -32,9 +31,5 @@ build_rpc_trait! {
         /// Gets the recommended minimum confirmations
         # [rpc(name = "engine_getRecommendedConfirmation")]
         fn get_recommended_confirmation(&self) -> Result<u32>;
-
-        /// Gets custom action data for given custom action handler id and rlp encoded key.
-        # [rpc(name = "engine_getCustomActionData")]
-        fn get_custom_action_data(&self, u64, Bytes, Option<u64>) -> Result<Option<WithoutPrefix<Bytes>>>;
     }
 }

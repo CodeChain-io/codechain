@@ -14,15 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ccrypto::blake256;
 use ckey::Address;
 use ctypes::invoice::Invoice;
 use primitives::H256;
 use rlp::{self, Decodable, Encodable, UntrustedRlp};
 
-use super::{ActionDataKeyBuilder, ActionHandler, ActionHandlerResult};
+use super::{ActionHandler, ActionHandlerResult};
 use crate::{TopLevelState, TopState, TopStateView};
 
-const CUSTOM_ACTION_HANDLER_ID: u64 = 1;
+const ACTION_ID: u64 = 1;
 
 #[derive(RlpDecodable)]
 pub struct HitAction {
@@ -38,13 +39,15 @@ impl HitHandler {
     }
 
     fn address(&self) -> H256 {
-        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"metadata hit").into_key()
+        let mut hash: H256 = blake256(&b"metadata hit");
+        hash[0] = b'M';
+        hash
     }
 }
 
 impl ActionHandler for HitHandler {
     fn handler_id(&self) -> u64 {
-        CUSTOM_ACTION_HANDLER_ID
+        ACTION_ID
     }
 
     fn init(&self, state: &mut TopLevelState) -> ActionHandlerResult<()> {
