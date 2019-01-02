@@ -43,6 +43,9 @@ describe("Sealing test", function() {
     });
 
     afterEach(async function() {
+        if (this.currentTest!.state === "failed") {
+            node.testFailed(this.currentTest!.fullTitle());
+        }
         await node.clean();
     });
 });
@@ -71,6 +74,9 @@ describe("Future queue", function() {
     });
 
     afterEach(async function() {
+        if (this.currentTest!.state === "failed") {
+            node.testFailed(this.currentTest!.fullTitle());
+        }
         await node.clean();
     });
 });
