@@ -179,9 +179,9 @@ pub fn account_provider(error: AccountProviderError) -> Error {
                 message: "Wrong Password".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            KeystoreError::AlreadyExists => Error {
+            KeystoreError::AlreadyExists(account) => Error {
                 code: ErrorCode::ServerError(codes::ALREADY_EXISTS),
-                message: "Already Exists".into(),
+                message: format! {"account {} Already Exists", account},
                 data: Some(Value::String(format!("{:?}", error))),
             },
             _ => Error {

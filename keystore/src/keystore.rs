@@ -67,7 +67,7 @@ impl SimpleSecretStore for KeyStore {
     fn insert_account(&self, secret: Secret, password: &Password) -> Result<Address, Error> {
         let keypair = KeyPair::from_private(secret.into()).map_err(|_| Error::CreationFailed)?;
         if self.has_account(&keypair.address())? {
-            Err(Error::AlreadyExists)
+            Err(Error::AlreadyExists(keypair.address()))
         } else {
             self.store.insert_account(secret, password)
         }

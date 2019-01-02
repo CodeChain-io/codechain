@@ -18,7 +18,7 @@ use std::fmt;
 use std::io::Error as IoError;
 
 use ccrypto::{self, Error as CCryptoError};
-use ckey::Error as CKeyError;
+use ckey::{Address, Error as CKeyError};
 
 /// Account-related errors.
 #[derive(Debug)]
@@ -38,7 +38,7 @@ pub enum Error {
     /// Account creation failed.
     CreationFailed,
     /// Account already exists.
-    AlreadyExists,
+    AlreadyExists(Address),
     /// `ckeys` error
     CKey(CKeyError),
     /// `CCrypto` error
@@ -57,7 +57,7 @@ impl fmt::Display for Error {
             Error::InvalidMessage => "Invalid message".into(),
             Error::InvalidKeyFile(ref reason) => format!("Invalid key file: {}", reason),
             Error::CreationFailed => "Account creation failed".into(),
-            Error::AlreadyExists => "Account already exists".into(),
+            Error::AlreadyExists(ref id) => format!("Account already exists: {:?}", id),
             Error::CKey(ref err) => err.to_string(),
             Error::CCrypto(ref err) => err.to_string(),
             Error::Custom(ref s) => s.clone(),
