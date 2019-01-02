@@ -16,21 +16,29 @@
 
 use std::collections::{btree_set, BTreeSet};
 
+use ccrypto::blake256;
 use ckey::Address;
-use cstate::{ActionDataKeyBuilder, TopLevelState, TopState, TopStateView};
+use cstate::{TopLevelState, TopState, TopStateView};
 use ctypes::parcel::Error as ParcelError;
 use primitives::H256;
 use rlp::{RlpStream, UntrustedRlp};
 
-use super::{StakeResult, CUSTOM_ACTION_HANDLER_ID};
+use super::StakeResult;
+
+const ACTION_DATA_KEY_PREFIX: &str = "TendermintStakeAction";
 
 fn get_account_key(address: &Address) -> H256 {
-    ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(address).into_key()
+    let mut rlp = RlpStream::new();
+    rlp.begin_list(2).append(&ACTION_DATA_KEY_PREFIX).append(address);
+    blake256(rlp.drain())
 }
 
 lazy_static! {
-    pub static ref stakeholder_addresses_key: H256 =
-        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"StakeholderAddresses").into_key();
+    pub static ref stakeholder_addresses_key: H256 = {
+        let mut rlp = RlpStream::new();
+        rlp.begin_list(2).append(&ACTION_DATA_KEY_PREFIX).append(&"StakeholderAddresses");
+        blake256(rlp.drain())
+    };
 }
 
 pub type StakeBalance = u64;
@@ -85,7 +93,8 @@ pub struct Stakeholders(BTreeSet<Address>);
 
 impl Stakeholders {
     pub fn load_from_state(state: &TopLevelState) -> StakeResult<Stakeholders> {
-        let action_data = state.action_data(&*stakeholder_addresses_key)?;
+        let key = *stakeholder_addresses_key;
+        let action_data = state.action_data(&key)?;
 
         let mut addresses = BTreeSet::new();
 
@@ -99,12 +108,13 @@ impl Stakeholders {
     }
 
     pub fn save_to_state(&self, state: &mut TopLevelState) -> StakeResult<()> {
+        let key = *stakeholder_addresses_key;
         let mut rlp = RlpStream::new();
         rlp.begin_list(self.0.len());
         for address in self.0.iter() {
             rlp.append(address);
         }
-        state.update_action_data(&*stakeholder_addresses_key, rlp.drain().into_vec())?;
+        state.update_action_data(&key, rlp.drain().into_vec())?;
         Ok(())
     }
 

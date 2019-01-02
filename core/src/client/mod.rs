@@ -34,7 +34,7 @@ use std::sync::Arc;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, Text, TopLevelState, TopStateView};
+use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, Text, TopStateView};
 use ctimer::TimerApi;
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{AssetTransferInput, PartialHashing, Transaction};
@@ -313,13 +313,4 @@ pub trait ExecuteClient: ChainTimeInfo {
         params: &[Vec<Bytes>],
         indices: &[usize],
     ) -> Result<Vec<String>, CoreError>;
-}
-
-pub trait StateInfo {
-    /// Attempt to get a copy of a specific block's final state.
-    ///
-    /// This will not fail if given BlockId::Latest.
-    /// Otherwise, this can fail (but may not) if the DB prunes state or the block
-    /// is unknown.
-    fn state_at(&self, id: BlockId) -> Option<TopLevelState>;
 }

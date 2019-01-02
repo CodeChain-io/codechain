@@ -82,7 +82,7 @@ pub use crate::account_provider::{AccountProvider, SignError as AccountProviderE
 pub use crate::block::Block;
 pub use crate::client::{
     AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
-    EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq, Shard, StateInfo,
+    EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq, Shard,
     TestBlockChainClient, TextClient,
 };
 pub use crate::consensus::EngineType;
