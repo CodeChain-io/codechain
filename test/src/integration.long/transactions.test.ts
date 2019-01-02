@@ -20,11 +20,15 @@ import {
     H256,
     MintAsset,
     PlatformAddress,
+    Script,
     SignedTransaction,
     TransferAsset,
     U64
 } from "codechain-sdk/lib/core/classes";
 import * as _ from "lodash";
+import { Buffer } from "buffer";
+import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
+import { blake160 } from "codechain-sdk/lib/utils";
 
 import CodeChain from "../helper/spawn";
 import { ERROR, errorMatcher } from "../helper/error";
@@ -401,6 +405,131 @@ describe("transactions", function() {
         expect(invoices![0].error!.content.content.reason).to.be.equal(
             "ScriptShouldNotBeBurnt"
         );
+    });
+
+    describe("ScriptError", function() {
+        it("Cannot transfer with invalid unlock script", async function() {
+            const Opcode = Script.Opcode;
+            const { asset } = await node.mintAsset({ amount: 1 });
+            const tx = node.sdk.core
+                .createTransferAssetTransaction()
+                .addInputs(asset)
+                .addOutputs({
+                    amount: 1,
+                    assetType: asset.assetType,
+                    recipient: await node.createP2PKHAddress()
+                });
+            tx.input(0)!.setLockScript(P2PKH.getLockScript());
+            tx.input(0)!.setUnlockScript(Buffer.from([Opcode.NOP])); // Invalid Opcode for unlock_script
+            const invoices = await node.sendAssetTransaction(tx);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.false;
+            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
+            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
+            expect(invoices![0].error!.content.content.reason).to.be.equal(
+                "ScriptError"
+            );
+        });
+
+        it("Cannot transfer trivially fail script", async function() {
+            const triviallyFail = Buffer.from([0x03]); // Opcode.FAIL
+            const { asset } = await node.mintAsset({
+                amount: 1,
+                recipient: AssetTransferAddress.fromTypeAndPayload(
+                    0,
+                    blake160(triviallyFail),
+                    {
+                        networkId: "tc"
+                    }
+                )
+            });
+            const tx = node.sdk.core
+                .createTransferAssetTransaction()
+                .addInputs(asset)
+                .addOutputs({
+                    amount: 1,
+                    assetType: asset.assetType,
+                    recipient: await node.createP2PKHAddress()
+                });
+            tx.input(0)!.setLockScript(triviallyFail);
+            tx.input(0)!.setUnlockScript(Buffer.from([]));
+
+            const invoices = await node.sendAssetTransaction(tx);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.false;
+            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
+            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
+            expect(invoices![0].error!.content.content.reason).to.be.equal(
+                "ScriptError"
+            );
+        });
+
+        it("Can transfer trivially success script", async function() {
+            const Opcode = Script.Opcode;
+            const triviallySuccess = Buffer.from([Opcode.PUSH, 1]);
+            const { asset } = await node.mintAsset({
+                amount: 1,
+                recipient: AssetTransferAddress.fromTypeAndPayload(
+                    0,
+                    blake160(triviallySuccess),
+                    {
+                        networkId: "tc"
+                    }
+                )
+            });
+            const tx = node.sdk.core
+                .createTransferAssetTransaction()
+                .addInputs(asset)
+                .addOutputs({
+                    amount: 1,
+                    assetType: asset.assetType,
+                    recipient: await node.createP2PKHAddress()
+                });
+            tx.input(0)!.setLockScript(triviallySuccess);
+            tx.input(0)!.setUnlockScript(Buffer.from([]));
+
+            const invoices = await node.sendAssetTransaction(tx);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.true;
+        });
+
+        it("Cannot transfer when lock script left multiple values in stack", async function() {
+            const Opcode = Script.Opcode;
+            const leaveMultipleValue = Buffer.from([
+                Opcode.PUSH,
+                1,
+                Opcode.DUP
+            ]);
+            const { asset } = await node.mintAsset({
+                amount: 1,
+                recipient: AssetTransferAddress.fromTypeAndPayload(
+                    0,
+                    blake160(leaveMultipleValue),
+                    {
+                        networkId: "tc"
+                    }
+                )
+            });
+            const tx = node.sdk.core
+                .createTransferAssetTransaction()
+                .addInputs(asset)
+                .addOutputs({
+                    amount: 1,
+                    assetType: asset.assetType,
+                    recipient: await node.createP2PKHAddress()
+                });
+            tx.input(0)!.setLockScript(leaveMultipleValue);
+            tx.input(0)!.setUnlockScript(Buffer.from([]));
+
+            const invoices = await node.sendAssetTransaction(tx);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0].success).to.be.false;
+            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
+            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
+            expect(invoices![0].error!.content.content.reason).to.be.equal(
+                "ScriptError"
+            );
+        });
     });
 
     describe("approver", function() {
