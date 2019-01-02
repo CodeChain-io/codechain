@@ -165,16 +165,6 @@ export const ERROR = {
         code: -32099,
         message: anything,
         data: stringContaining("OrderExpired")
-    },
-    STATE_NOT_EXIST: {
-        code: -32047,
-        message: anything,
-        data: anything
-    },
-    ACTION_DATA_HANDLER_NOT_FOUND: {
-        code: -32048,
-        message: anything,
-        data: anything
     }
 };
 
