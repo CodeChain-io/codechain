@@ -21,12 +21,14 @@ use cjson;
 pub struct SoloParams {
     /// base reward for a block.
     pub block_reward: u64,
+    pub enable_hit_handler: bool,
 }
 
 impl From<cjson::scheme::SoloParams> for SoloParams {
     fn from(p: cjson::scheme::SoloParams) -> Self {
         SoloParams {
             block_reward: p.block_reward.map_or_else(Default::default, Into::into),
+            enable_hit_handler: p.action_handlers.hit.is_some(),
         }
     }
 }
