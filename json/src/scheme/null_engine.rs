@@ -17,7 +17,7 @@
 use crate::uint::Uint;
 
 /// Authority params deserialization.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NullEngineParams {
     /// Block reward.
@@ -25,7 +25,7 @@ pub struct NullEngineParams {
 }
 
 /// Null engine descriptor
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 pub struct NullEngine {
     pub params: NullEngineParams,
 }

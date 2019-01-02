@@ -1322,13 +1322,13 @@ mod tests {
     use super::*;
 
     /// Accounts inserted with "0" and "1" are validators. First proposer is "0".
-    fn setup() -> (Scheme, Arc<AccountProvider>, Arc<EngineClient>) {
+    fn setup() -> (Scheme, Arc<AccountProvider>, Arc<EngineClient>, Arc<Tendermint>) {
         let tap = AccountProvider::transient_provider();
-        let scheme = Scheme::new_test_tendermint();
+        let (scheme, tendermint) = Scheme::new_test_tendermint_with_tendermint();
         let test_client: Arc<EngineClient> =
             Arc::new(TestBlockChainClient::new_with_scheme(Scheme::new_test_tendermint()));
         scheme.engine.register_client(Arc::downgrade(&test_client));
-        (scheme, tap, test_client)
+        (scheme, tap, test_client, tendermint)
     }
 
     fn propose_default(scheme: &Scheme, proposer: Address) -> (ClosedBlock, Vec<Bytes>) {
@@ -1382,7 +1382,7 @@ mod tests {
 
     #[test]
     fn generate_seal() {
-        let (scheme, tap, _c) = setup();
+        let (scheme, tap, _c, _t) = setup();
 
         let proposer = insert_and_register(&tap, scheme.engine.as_ref(), "1");
 
@@ -1392,7 +1392,7 @@ mod tests {
 
     #[test]
     fn seal_signatures_checking() {
-        let (spec, tap, _c) = setup();
+        let (spec, tap, _c, _t) = setup();
         let engine = spec.engine;
 
         let mut header = Header::default();

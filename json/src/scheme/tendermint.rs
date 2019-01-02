@@ -21,7 +21,7 @@ use ckey::{PlatformAddress, Public};
 use crate::uint::Uint;
 
 /// Tendermint params deserialization.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TendermintParams {
     /// Valid validators.
@@ -41,7 +41,7 @@ pub struct TendermintParams {
 }
 
 /// Tendermint engine deserialization.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 pub struct Tendermint {
     pub params: TendermintParams,
 }

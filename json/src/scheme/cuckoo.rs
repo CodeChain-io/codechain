@@ -16,7 +16,7 @@
 
 use crate::uint::Uint;
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CuckooParams {
     /// Block reward.
@@ -29,7 +29,7 @@ pub struct CuckooParams {
     pub recommended_confirmation: Option<Uint>,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 pub struct Cuckoo {
     pub params: CuckooParams,
 }

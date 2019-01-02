@@ -17,7 +17,7 @@
 use super::{BlakePoW, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
 
 /// Engine deserialization.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum Engine {
     /// Null engine.

@@ -295,7 +295,24 @@ impl Scheme {
     pub fn load<R>(reader: R) -> Result<Self, String>
     where
         R: Read, {
-        cjson::scheme::Scheme::load(reader).map_err(fmt_err).and_then(|x| load_from(x).map_err(fmt_err))
+        cjson::scheme::Scheme::load(reader).map_err(fmt_err).and_then(|x| {
+            let engine = Self::engine(x.engine.clone(), CommonParams::from(x.params.clone()));
+            load_from(x, engine).map_err(fmt_err)
+        })
+    }
+
+    pub fn load_tendermint<R>(reader: R) -> Result<(Self, Arc<Tendermint>), String>
+    where
+        R: Read, {
+        cjson::scheme::Scheme::load(reader).map_err(fmt_err).and_then(|x| {
+            let machine = Self::machine(&x.engine, CommonParams::from(x.params.clone()));
+            let tendermint = match x.engine.clone() {
+                cjson::scheme::Engine::Tendermint(tendermint) => Tendermint::new(tendermint.params.into(), machine),
+                _ => return Err("Invalid scheme file".to_string()),
+            };
+
+            load_from(x, tendermint.clone()).map_err(fmt_err).map(|scheme| (scheme, tendermint))
+        })
     }
 
     /// Create a new test Scheme.
@@ -320,6 +337,15 @@ impl Scheme {
     pub fn new_test_tendermint() -> Self {
         load_bundled!("tendermint")
     }
+
+    pub fn new_test_tendermint_with_tendermint() -> (Self, Arc<Tendermint>) {
+        Scheme::load_tendermint(include_bytes!(concat!("../../res/", "tendermint", ".json")) as &[u8]).expect(concat!(
+            "Chain scheme ",
+            "tendermint",
+            " is invalid."
+        ))
+    }
+
 
     /// Create a new Scheme with Cuckoo PoW consensus.
     pub fn new_test_cuckoo() -> Self {
@@ -384,12 +410,9 @@ impl Scheme {
     }
 }
 
-/// Load from JSON object.
-fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
+fn load_from(s: cjson::scheme::Scheme, engine: Arc<CodeChainEngine>) -> Result<Scheme, Error> {
     let g = Genesis::from(s.genesis);
     let GenericSeal(seal_rlp) = g.seal.into();
-    let params = CommonParams::from(s.params);
-    let engine = Scheme::engine(s.engine, params);
 
     let mut s = Scheme {
         name: s.name.clone(),

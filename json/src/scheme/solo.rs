@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use crate::uint::Uint;
 
 /// Solo params deserialization.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SoloParams {
     /// Block reward.
@@ -35,7 +35,7 @@ pub struct SoloActionHandlersParams {
 }
 
 /// Solo engine deserialization.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 pub struct Solo {
     pub params: SoloParams,
 }

@@ -16,7 +16,7 @@
 
 use crate::uint::Uint;
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BlakePoWParams {
     /// Block reward.
@@ -26,7 +26,7 @@ pub struct BlakePoWParams {
     pub recommended_confirmation: Option<Uint>,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 pub struct BlakePoW {
     pub params: BlakePoWParams,
 }

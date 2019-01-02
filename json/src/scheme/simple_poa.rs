@@ -19,7 +19,7 @@ use ckey::Public;
 use crate::uint::Uint;
 
 /// Authority params deserialization.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SimplePoAParams {
     /// Valid authorities
@@ -29,7 +29,7 @@ pub struct SimplePoAParams {
 }
 
 /// Authority engine deserialization.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 pub struct SimplePoA {
     pub params: SimplePoAParams,
 }

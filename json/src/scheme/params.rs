@@ -19,7 +19,7 @@ use ckey::NetworkId;
 use crate::uint::Uint;
 
 /// Scheme params.
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     /// Maximum size of extra data.
