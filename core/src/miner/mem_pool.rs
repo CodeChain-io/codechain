@@ -321,6 +321,37 @@ impl ParcelSet {
         }))
     }
 
+    /// Update the heights of the parcel orders as the given input.
+    ///
+    /// If there are parcels which are older than `base_seq`, the function removes them from the set.
+    fn update_base_seq(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>, signer_public: &Public, base_seq: u64) {
+        let row = match self.by_signer_public.row_mut(signer_public) {
+            Some(row) => row,
+            None => return,
+        };
+
+        for (seq, order) in row.iter_mut() {
+            assert!(
+                self.by_priority.remove(&order),
+                "hash is in `by_signer_public`; all parcels in `by_signer_public` must be in `by_priority`; qed"
+            );
+            if *seq < base_seq {
+                ctrace!(MEM_POOL, "Removing old parcel: {:?} (seq: {} < {})", order.hash, seq, base_seq);
+                assert!(
+                    self.by_fee.remove(&order.fee, &order.hash),
+                    "hash is in `by_signer_public`; all parcels' fee in `by_signer_public` must be in `by_fee`; qed"
+                );
+                by_hash.remove(&order.hash).expect("All parcels in `future` are also in `by_hash`");
+            } else {
+                let new_order = order.update_height(*seq, base_seq);
+                *order = new_order;
+                self.by_priority.insert(new_order);
+            }
+        }
+
+        row.retain(|seq, _| *seq >= base_seq);
+    }
+
     /// Drop parcel from this set (remove from `by_priority` and `by_signer_public`)
     fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<ParcelOrder> {
         if let Some(parcel_order) = self.by_signer_public.remove(signer_public, &seq) {
@@ -937,24 +968,7 @@ impl MemPool {
 
     /// Update height of all parcels in future parcels set.
     fn update_future(&mut self, signer_public: &Public, current_seq: u64) {
-        // We need to drain all parcels for current signer from future and reinsert them with updated height
-        let all_seqs_from_sender = match self.future.by_signer_public.row(signer_public) {
-            Some(row_map) => row_map.keys().cloned().collect::<Vec<_>>(),
-            None => vec![],
-        };
-        for k in all_seqs_from_sender {
-            let order = self
-                .future
-                .drop(signer_public, k)
-                .expect("iterating over a collection that has been retrieved above; qed");
-            if k >= current_seq {
-                self.future.insert(*signer_public, k, order.update_height(k, current_seq));
-            } else {
-                ctrace!(MEM_POOL, "Removing old parcel: {:?} (seq: {} < {})", order.hash, k, current_seq);
-                // Remove the parcel completely
-                self.by_hash.remove(&order.hash).expect("All parcels in `future` are also in `by_hash`");
-            }
-        }
+        self.future.update_base_seq(&mut self.by_hash, signer_public, current_seq);
     }
 
     /// Checks if there are any parcels in `future` that should actually be promoted to `current`
