@@ -95,3 +95,6 @@ export const validator3Address = SDK.Core.classes.PlatformAddress.fromAccountId(
     validator3AccountId,
     { networkId: "tc" }
 ); // tccq9y6e0k6af9058qq4h4ffpt9xmat2vkeyue23j8y
+
+export const hitActionHandlerId = 1;
+export const stakeActionHandlerId = 2;
