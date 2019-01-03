@@ -17,3 +17,36 @@
 export async function wait(duration: number) {
     await new Promise(resolve => setTimeout(() => resolve(), duration));
 }
+
+export class PromiseExpect {
+    public waiting: { [index: string]: number };
+
+    constructor() {
+        this.waiting = {};
+    }
+
+    public async shouldFulfill<T>(key: string, p: Promise<T>): Promise<T> {
+        if (!this.waiting[key]) {
+            this.waiting[key] = 1;
+        } else {
+            this.waiting[key] += 1;
+        }
+
+        const result = await p;
+
+        this.waiting[key] -= 1;
+        if (this.waiting[key] === 0) {
+            delete this.waiting[key];
+        }
+        return result;
+    }
+
+    public checkFulfil() {
+        for (const key in this.waiting) {
+            if (this.waiting.hasOwnProperty(key)) {
+                console.error("Timeout period is expired while waiting " + key);
+            }
+        }
+        this.waiting = {};
+    }
+}
