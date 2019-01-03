@@ -219,9 +219,9 @@ pub struct VoteOn {
 /// Message transmitted between consensus participants.
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Default, RlpDecodable, RlpEncodable)]
 pub struct ConsensusMessage {
+    pub on: VoteOn,
     pub signature: SchnorrSignature,
     pub signer_index: usize,
-    pub on: VoteOn,
 }
 
 impl ConsensusMessage {
