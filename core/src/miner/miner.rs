@@ -619,7 +619,7 @@ impl MinerService for Miner {
         _enacted: &[H256],
         retracted: &[H256],
     ) where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner, {
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ResealTimer, {
         ctrace!(MINER, "chain_new_blocks");
 
         // Then import all transactions...
@@ -649,6 +649,10 @@ impl MinerService for Miner {
             let timestamp = chain.chain_info().best_block_timestamp;
             let mut mem_pool = self.mem_pool.write();
             mem_pool.remove_old(&fetch_account, time, timestamp);
+        }
+
+        if !self.options.no_reseal_timer {
+            chain.set_min_timer();
         }
     }
 
