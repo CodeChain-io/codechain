@@ -45,20 +45,22 @@ A transaction would look something like this:
 The fee of the transaction would determine its priority, meaning, how quickly it gets processed. In addition, there is
 also a minimum fee that can be set. The seq property exists for the purpose of preventing replay attacks.
 
-The following is a brief explanation for different Actions you can use through a transaction:
+The following is a brief explanation for different actions you can use through a transaction:
 
 Mint Asset
 ==============================
-`MintAsset` issues a new asset. It creates an asset scheme and assets. The output becomes the lock script hash and parameters of the new asset. A permissioned asset is an asset that has an approver. These kind of assets need permission from the specifically assigned approver in order to be transferred to other addresses. On the other hand, a centralized asset is an asset that has an administrator. The administrator can change the asset scheme and is allowed to transfer the asset arbitrarily.
+`MintAsset` issues a new asset. When issuing a new asset, the asset has fields that can be designated, such as metadata, approver, and administrator. There are two types of assets that can be issued:
+
+- A permissioned asset is an asset that has an approver. These kind of assets need permission from the specifically assigned approver in order to be transferred to other addresses.
+- A centralized asset is an asset that has an administrator. The administrator can change the asset scheme and is allowed to transfer the asset arbitrarily.
 
 Transfer Asset
 ==============================
-`TransferAsset` transfers assets from one address to another. `TransferAsset` can also be used to communicate with the DEX and make orders.
-
+`TransferAsset` transfers assets from one address to another. `TransferAsset` can also be used to make orders on the DEX.
 
 Change Asset Scheme
 ==============================
-When minting assets as described above, you create an asset scheme. This scheme defines properties of a specific asset, such as the Network Id, and through `ChangeAssetScheme`, the administrator can change an asset's scheme. However, it is important to note that only the administrator has access to `ChangeAssetScheme`.
+When minting assets as described above, you create an asset scheme. This scheme defines properties of a specific asset, such as the metadata, and through `ChangeAssetScheme`, the administrator can change an asset's scheme. However, it is important to note that only the administrator has access to `ChangeAssetScheme`.
 
 Compose Asset
 ==============================
