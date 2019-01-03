@@ -103,7 +103,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
     }
 
     fn engine_type(&self) -> EngineType {
-        EngineType::InternalSealing
+        EngineType::PoA
     }
 
     /// Attempt to seal the block internally.
