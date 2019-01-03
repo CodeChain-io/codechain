@@ -26,8 +26,3 @@ To go directly to CodeChain's Gitter rooms, click `here <https://gitter.im/CodeC
 .. _codechain-sdk-js: https://gitter.im/CodeChain-io/codechain-sdk-js
 
 If you are not sure of which room is suitable for your topic, go to `codechain`_ and make your inquiries there.
-
-Stack Exchange
-=====================
-The `CodeChain Stack Exchange <http://area51.stackexchange.com/proposals/119664/codechain>`_ is where you can ask your questions. This is the best place
-to ask technical questions. The questions here are preserved for future references.
