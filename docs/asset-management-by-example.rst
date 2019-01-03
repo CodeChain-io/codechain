@@ -1,6 +1,6 @@
-#####################
-Asset Management
-#####################
+###########################
+Asset Management by Example
+###########################
 
 Getting Started
 ===============
@@ -19,12 +19,12 @@ Then, check whether your CodeChain RPC server is up and running. You can read ab
 Setup the Test Account
 =====================================
 Before you begin with various examples, you need to setup an account. The given account (cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7) holds 100000 CCC at the genesis block. It's a sufficient
-amount to pay for the parcel fee. You can setup the account by using this:
+amount to pay for the transaction fee. You can setup the account by using this:
 ::
 
     wget https://raw.githubusercontent.com/CodeChain-io/codechain-sdk-js/master/examples/import-test-account.js
 
-If successful, the command line will output the address of the account being used for the parcel fee. In this case, it will output cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7.
+If successful, the command line will output the address of the account being used for the transaction fee. In this case, it will output cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7.
 
 Then run the downloaded .js file with the following command:
 
@@ -229,7 +229,7 @@ Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to
 ::
 
     const firstGold = mintTx.getMintedAsset();
-    const transferTx = sdk.core.createAssetTransferTransaction()
+    const transferTx = sdk.core.createTransferAssetTransaction()
         .addInputs(firstGold)
         .addOutputs({
             recipient: bobAddress,
@@ -248,14 +248,11 @@ By using Alice's signature, the 10000 gold that was first minted can now be tran
     await transferTx.sign(0, { signer: p2pkh });
     transferTx.getTransferredAssets();
 
-The parcel containing the Gold asset is sent to the node. The parcel fee is paid for by the account known as
+The transaction containing the Gold asset is sent to the node. The transaction fee is paid for by the account known as
 ``cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7`` with the passphrase ``satoshi``. 
 ::
 
-    const parcel = sdk.core.createAssetTransactionParcel({
-        transaction: mintTx
-    });
-    await sdk.rpc.chain.sendParcel(parcel, {
+    await sdk.rpc.chain.sendTransaction(transferTransaction, {
         account: "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
         passphrase: "satoshi",
     });

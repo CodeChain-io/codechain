@@ -42,10 +42,6 @@ Byzantine faults.
 
 **P**
 
-**Parcel**
-
-A group of transactions used in CodeChain. The user who signs the parcel pays the fees.
-
 **Proof of Stake (PoS)**
 
 An alternative to PoW, PoS puts dependency on the amount of resources that someone holds.
