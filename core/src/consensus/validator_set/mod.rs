@@ -52,6 +52,8 @@ pub trait ValidatorSet: Send + Sync {
     /// Returns the current number of validators.
     fn count(&self, parent: &H256) -> usize;
 
+    fn get_index(&self, parent: &H256, address: &Address) -> Option<usize>;
+
     /// Signalling that a new epoch has begun.
     ///
     /// The caller provided here may not generate proofs.
