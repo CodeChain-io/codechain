@@ -34,15 +34,15 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - hash: `H256`
  - invoicesRoot: `H256`
  - number: `number`
- - parcels: `Parcel[]`
- - parcelsRoot: `H256`
+ - transactions: `Transaction[]`
+ - transactionsRoot: `H256`
  - parentHash: `H256`
  - score: `number`
  - seal: `string[]`
  - stateRoot: `H256`
  - timestamp: `number`
 
-## Parcel
+## Transaction
 
  - blockHash: `H256`
  - blockNumber: `number`
@@ -50,11 +50,11 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - hash: `H256`
  - networkId: `NetworkID`
  - seq: `number`
- - parcelIndex: `number`
+ - transactionIndex: `number`
  - sig: `Signature`
  - action: `Action`
 
-## UnsignedParcel
+## UnsignedTransaction
 
  - fee: `U64`
  - networkId: `NetworkID`
@@ -63,10 +63,45 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 
 ## Actions
 
-### AssetTransaction Action
+### MintAsset Action
 
- - action: "assetTransaction"
- - transaction: `Transaction`
+ - networkId: `NetworkID`
+ - shardId: `number`
+ - metadata: `string`
+ - output: `AssetMintOutput`
+ - approver: `PlatformAddress` | `null`
+ - approvals: `Signature[]`
+
+### TranferAsset Action
+
+ - networkId: `NetworkID`
+ - burns: `AssetTransferInput[]`
+ - inputs: `AssetTransferInput[]`
+ - outputs: `AssetTransferOutput[]`
+ - orders: `OrderOnTransfer[]`
+ - approvals: `Signature[]`
+
+### ComposeAsset Action
+
+ - networkId: `NetworkID`
+ - shardId: `number`
+ - metadata: `string`
+ - inputs: `AssetTransferInput[]`
+ - output: `AssetMintOutput`
+ - approver: `PlatformAddress` | `null`
+ - approvals: `Signature[]`
+
+### DecomposeAsset Action
+
+ - networkId: `NetworkID`
+ - input: `AssetTransferInput`
+ - outputs: `AssetTransferOutput[]`
+ - approvals: `Signature[]`
+
+### UnwrapCCC Action
+
+ - networkId: `NetworkID`
+ - burn: `AssetTransferInput`
 
 ### Payment Action
 
@@ -109,7 +144,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 ### Remove Action
 
  - action: "remove"
- - hash: `H256` - parcel hash
+ - hash: `H256` - transaction hash
  - signature: `Signature`
 
 ## AssetScheme
@@ -139,42 +174,6 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 
 When `Transaction` is included in any response, there will be an additional field `hash` in the data, which is the hash value of the given transaction. This decreases the time to calculate the transaction hash when it is needed from the response.
 
-### AssetMintData
-
- - networkId: `NetworkID`
- - shardId: `number`
- - metadata: `string`
- - output: `AssetMintOutput`
- - approver: `PlatformAddress` | `null`
-
-### AssetTranferData
-
- - networkId: `NetworkID`
- - burns: `AssetTransferInput[]`
- - inputs: `AssetTransferInput[]`
- - outputs: `AssetTransferOutput[]`
- - orders: `OrderOnTransfer[]`
-
-### AssetComposeData
-
- - networkId: `NetworkID`
- - shardId: `number`
- - metadata: `string`
- - inputs: `AssetTransferInput[]`
- - output: `AssetMintOutput`
- - approver: `PlatformAddress` | `null`
-
-### AssetDecomposeData
-
- - networkId: `NetworkID`
- - input: `AssetTransferInput`
- - outputs: `AssetTransferOutput[]`
-
-### AssetUnwrapCCCData
-
- - networkId: `NetworkID`
- - burn: `AssetTransferInput`
-
 ### AssetMintOutput
 
  - lockScriptHash: `H160`
@@ -195,7 +194,7 @@ When `Transaction` is included in any response, there will be an additional fiel
 
 #### AssetOutPoint
 
- - transactionHash: `H256`
+ - transactionId: `H256`
  - index: `number`
  - assetType: `H256`
  - amount: `U64`
@@ -241,7 +240,7 @@ When `Transaction` is included in any response, there will be an additional fiel
 | -32011 | `KVDB Error`           | Failed to access the state (Internal error of CodeChain)     |
 | -32010 | `Execution Failed`     | Failed to execute the transactions                           |
 | -32030 | `Verification Failed`  | The signature is invalid                                     |
-| -32031 | `Already Imported`     | The same parcel is already imported                          |
+| -32031 | `Already Imported`     | The same transaction is already imported                     |
 | -32032 | `Not Enough Balance`   | The signer's balance is insufficient                         |
 | -32033 | `Too Low Fee`          | The fee is lower than the minimum required                   |
 | -32034 | `Too Cheap to Replace` | The fee is lower than the existing one in the queue          |
@@ -268,11 +267,11 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getBlockHash](#chain_getblockhash)
  * [chain_getBlockByNumber](#chain_getblockbynumber)
  * [chain_getBlockByHash](#chain_getblockbyhash)
- * [chain_sendSignedParcel](#chain_sendsignedparcel)
- * [chain_getParcel](#chain_getparcel)
- * [chain_getParcelInvoice](#chain_getparcelinvoice)
+ * [chain_sendSignedTransaction](#chain_sendsignedtransaction)
  * [chain_getTransaction](#chain_gettransaction)
- * [chain_getTransactionInvoices](#chain_gettransactioninvoices)
+ * [chain_getInvoice](#chain_getinvoice)
+ * [chain_getTransactionById](#chain_gettransactionbyid)
+ * [chain_getInvoicesById](#chain_getinvoicesbyid)
  * [chain_getAssetSchemeByHash](#chain_getassetschemebyhash)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
@@ -285,7 +284,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getGenesisAccounts](#chain_getgenesisaccounts)
  * [chain_getNumberOfShards](#chain_getnumberofshards)
  * [chain_getShardRoot](#chain_getshardroot)
- * [chain_getPendingParcels](#chain_getpendingparcels)
+ * [chain_getPendingTransactions](#chain_getpendingtransactions)
  * [chain_getMiningReward](#chain_getminingreward)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_executeVM](#chain_executevm)
@@ -321,7 +320,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [account_importRaw](#account_importraw)
  * [account_unlock](#account_unlock)
  * [account_sign](#account_sign)
- * [account_sendParcel](#account_sendparcel)
+ * [account_sendTransaction](#account_sendtransaction)
  * [account_changePassword](#account_changepassword)
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
@@ -537,7 +536,7 @@ Errors: `Invalid Params`
     "hash":"0x0e9cbbe0ecc774de3b5d05827ffb5c541bc7b7ff63de253d17272cf0fea1b7af",
     "invoicesRoot":"0x6db236c944eda064237e88be9cddf7766ce877fe0c4414ac5999f4f5429750fd",
     "number":5,
-    "parcels":[
+    "transactions":[
       {
         "action":{
           "action":"payment",
@@ -550,11 +549,11 @@ Errors: `Invalid Params`
         "hash":"0x3ff9b02427ac04c06260928168775bca5a3da96ae6995041e197d42e71ab68b6",
         "networkId":"sc",
         "seq": 4,
-        "parcelIndex":0,
+        "transactionIndex":0,
         "sig":"0x4621da0344d8888c5076cc0a3cc7fd7a7e3a761ba812c95f807c050a4e5ec6b7120fa99fdf502ed088ed61eb6d5fe44f44c280e97c7702d5127640d7a8a6d7e401"
       }
     ],
-    "parcelsRoot":"0xa4a8229a90d91e9a38b17f95c9ac2d01f46b10553e62c68df5bbfe1cc5b3e164",
+    "transactionsRoot":"0xa4a8229a90d91e9a38b17f95c9ac2d01f46b10553e62c68df5bbfe1cc5b3e164",
     "parentHash":"0xbc4f7e7b1dded863c500147243d78436ca297bfae64e1ec2d17396286cf14b6e",
     "score":"0x20000",
     "seal":[
@@ -600,7 +599,7 @@ Errors: `Invalid Params`
     "hash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
     "invoicesRoot":"0x3a14d04383882243a684a6b0e779905f7883b12b5fb3ebf738facfcd2095b77a",
     "number":5,
-    "parcels":[
+    "transactions":[
       {
         "action":{
           "action":"payment",
@@ -613,11 +612,11 @@ Errors: `Invalid Params`
         "hash":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId":"cc",
         "seq": 4,
-        "parcelIndex":0,
+        "transactionIndex":0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
       }
     ],
-    "parcelsRoot":"0x0270d11d2bd21a0ec8e78d1c4e918103d7c4b02fdf734051231cb9eea90ae88e",
+    "transactionsRoot":"0x0270d11d2bd21a0ec8e78d1c4e918103d7c4b02fdf734051231cb9eea90ae88e",
     "parentHash":"0xddf9fece0c6dee067a409e73a299bca21cec2d8300dff45739a5b76c680f378d",
     "score":"0x20000",
     "seal":[
@@ -632,14 +631,14 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_sendSignedParcel
-Sends a signed parcel, returning its hash.
+## chain_sendSignedTransaction
+Sends a signed transaction, returning its hash.
 
 ### Params
- 1. bytes: `hexadecimal string` - RLP encoded hex string of SignedParcel
+ 1. bytes: `hexadecimal string` - RLP encoded hex string of SignedTransaction
 
 ### Returns
-`H256` - parcel hash
+`H256` - transaction hash
 
 Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Seq`, `Invalid Params`, `Invalid NetworkId`
 
@@ -647,7 +646,7 @@ Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Ba
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_sendSignedParcel", "params": ["0xf85e040a11d70294a6594b7196808d161b6fb137e781abbc251385d90ab841291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_sendSignedTransaction", "params": ["0xf85e040a11d70294a6594b7196808d161b6fb137e781abbc251385d90ab841291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"], "id": null}' \
     localhost:8080
 ```
 
@@ -662,14 +661,14 @@ Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Ba
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getParcel
-Gets a parcel with the given hash.
+## chain_getTransaction
+Gets a transaction with the given hash.
 
 ### Params
- 1. parcel hash - `H256`
+ 1. transaction hash - `H256`
 
 ### Returns
-`null` or `Parcel`
+`null` or `Transaction`
 
 Errors: `Invalid Params`
 
@@ -677,7 +676,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getParcel", "params": ["0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTransaction", "params": ["0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6"], "id": null}' \
     localhost:8080
 ```
 
@@ -697,7 +696,7 @@ Errors: `Invalid Params`
         "hash": "0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
         "networkId": "cc",
         "seq": 4,
-        "parcelIndex": 0,
+        "transactionIndex": 0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
     }
     "id": null,
@@ -706,11 +705,11 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getParcelInvoice
-Gets a parcel invoice with the given hash.
+## chain_getInvoice
+Gets a transaction invoice with the given hash.
 
 ### Params
- 1. parcel hash - `H256`
+ 1. transaction hash - `H256`
 
 ### Returns
 `null` | `string[]` - Each string is either "Success" or "Failed"
@@ -721,7 +720,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getParcelInvoice", "params": ["0xad708d48755ac36685280a45ec213941e21c41644c781bf2f487fd6c7e4b2ebb"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getInvoice", "params": ["0xad708d48755ac36685280a45ec213941e21c41644c781bf2f487fd6c7e4b2ebb"], "id": null}' \
     localhost:8080
 ```
 
@@ -738,11 +737,11 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getTransaction
-Gets a transaction with the given hash.
+## chain_getTransactionById
+Gets a transaction with the given transaction id.
 
 ### Params
- 1. transaction hash - `H256`
+ 1. transaction id - `H256`
 
 ### Returns
 `null` | `Transaction`
@@ -753,36 +752,41 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getTransaction", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionById", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
     localhost:8080
 ```
 
 ### Response Example
 ```
 {
-  "jsonrpc":"2.0",
-  "result":{
-    "type":"assetMint",
-    "metadata":"...",
-    "output":{
-      "lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3",
-      "parameters":[],
-      "amount":10000
-    },
-    "approver":null,
-    "nonce":0
-  },
-  "id":null
+    "jsonrpc": "2.0",
+    "result": {
+        "action": {
+          "action":"payment",
+          "amount":"0xa",
+          "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
+          "hash": "0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc",
+        },
+        "blockHash": "0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
+        "blockNumber": 5,
+        "fee": "0xa",
+        "hash": "0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
+        "networkId": "cc",
+        "seq": 4,
+        "transactionIndex": 0,
+        "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
+    }
+    "id": null,
 }
 ```
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getTransactionInvoices
-Gets transaction invoices with the given hash.
+## chain_getInvoicesById
+Gets transaction invoices with the given transaction id.
 
 ### Params
- 1. transaction hash - `H256`
+ 1. transaction id - `H256`
 
 ### Returns
 `string[]` - Each string is either "Success" or "Failed".
@@ -793,7 +797,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionInvoice", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getInvoicesById", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
     localhost:8080
 ```
 
@@ -812,7 +816,7 @@ Errors: `Invalid Params`
 Gets an asset scheme with the given asset type.
 
 ### Params
- 1. transaction hash of AssetMintTransaction - `H256`
+ 1. transaction id of AssetMintTransaction - `H256`
  2. shard id - `number`
  3. block number: `number` | `null`
 
@@ -883,7 +887,7 @@ Errors: `KVDB Error`, `Invalid Params`
 Gets an asset with the given asset type.
 
 ### Params
- 1. transaction hash - `H256`
+ 1. transaction id - `H256`
  2. index - `number`
  3. block number: `number` | `null`
 
@@ -919,10 +923,10 @@ Errors: `KVDB Error`, `Invalid Params`
 [Back to **List of methods**](#list-of-methods)
 
 ## chain_getText
-Gets the text with given parcel hash.
+Gets the text with given transaction hash.
 
 ### Params
- 1. parcel hash - `H256` - Hash of signed parcel
+ 1. transaction hash - `H256` - Hash of signed transaction
  2. block number: `number` | `null`
 
 ### Returns
@@ -954,7 +958,7 @@ Gets the text with given parcel hash.
 Checks whether an asset is spent or not.
 
 ### Params
- 1. transaction hash: `H256`
+ 1. transaction id: `H256`
  2. index: `number`
  3. shard id: `number`
  4. block number: `number` | `null`
@@ -1196,20 +1200,20 @@ Errors: `KVDB Error`, `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getPendingParcels
-Gets parcels in the current parcel queue.
+## chain_getPendingTransactions
+Gets transactions in the current transaction queue.
 
 ### Params
 No parameters
 
 ### Returns
-`Parcel[]`
+`Transaction[]`
 
 ### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getPendingParcels", "params": [], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactions", "params": [], "id": null}' \
     localhost:8080
 ```
 
@@ -1225,7 +1229,7 @@ No parameters
       "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
       "networkId":"cc",
       "seq":"0x0",
-      "parcelIndex":null,
+      "transactionIndex":null,
       "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
       "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
       "transactions":[
@@ -2169,17 +2173,17 @@ curl \
 
 [Back to **List of methods**](#list-of-methods)
 
-## account_sendParcel
-Sends a parcel by signing it with the account’s private key.
+## account_sendTransaction
+Sends a transaction by signing it with the account’s private key.
 It automatically fills the seq if the seq is not given.
 
 ### Params
- 1. parcel: `UnsignedParcel`
+ 1. transction: `UnsignedTransaction`
  2. account: `PlatformAddress`
  3. passphrase: `string` | `null`
 
 ### Returns
-{ hash: `H256`, seq: `number` } - the hash and seq of the parcel
+{ hash: `H256`, seq: `number` } - the hash and seq of the transaction
 
 Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `Invalid Params`, `Invalid NetworkId`
 
@@ -2187,7 +2191,7 @@ Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_sendParcel", "params": [{"action":{ "action":"payment", "amount":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "seq": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_sendTransaction", "params": [{"action":{ "action":"payment", "amount":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "seq": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
     localhost:8080
 ```
 

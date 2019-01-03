@@ -17,20 +17,20 @@
 import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
 import {
-    AssetComposeTransaction,
-    AssetDecomposeTransaction,
     AssetTransferAddress,
     AssetTransferInput,
-    AssetTransferTransaction,
-    AssetUnwrapCCCTransaction,
+    ComposeAsset,
+    DecomposeAsset,
     H256,
     Invoice,
-    Parcel,
     PlatformAddress,
-    SignedParcel,
+    SignedTransaction,
     Transaction,
-    U64
+    TransferAsset,
+    U64,
+    UnwrapCCC
 } from "codechain-sdk/lib/core/classes";
+import { AssetTransaction } from "codechain-sdk/lib/core/Transaction";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
 import { createWriteStream, mkdtempSync, unlinkSync } from "fs";
@@ -365,8 +365,8 @@ export default class CodeChain {
         recipient: string | PlatformAddress,
         amount: U64 | string | number
     ) {
-        const parcel = this.sdk.core
-            .createPayParcel({
+        const tx = this.sdk.core
+            .createPayTransaction({
                 recipient,
                 amount
             })
@@ -375,8 +375,8 @@ export default class CodeChain {
                 seq: await this.sdk.rpc.chain.getSeq(faucetAddress),
                 fee: 10
             });
-        const hash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
-        const invoice = (await this.sdk.rpc.chain.getParcelInvoice(hash, {
+        const hash = await this.sdk.rpc.chain.sendSignedTransaction(tx);
+        const invoice = (await this.sdk.rpc.chain.getInvoice(hash, {
             timeout: 300 * 1000
         })) as Invoice | null;
         if (invoice === null || !invoice.success) {
@@ -386,8 +386,8 @@ export default class CodeChain {
         }
     }
 
-    public async sendParcel(
-        parcel: Parcel,
+    public async sendTransaction(
+        tx: Transaction,
         params: {
             account: string | PlatformAddress;
             fee?: number | string | U64;
@@ -399,17 +399,17 @@ export default class CodeChain {
         );
         const { account, fee = 10 } = params;
         const { seq = await this.sdk.rpc.chain.getSeq(account) } = params;
-        const signedParcel = await this.sdk.key.signParcel(parcel, {
+        const signed = await this.sdk.key.signTransaction(tx, {
             keyStore,
             account,
             fee,
             seq
         });
-        return this.sdk.rpc.chain.sendSignedParcel(signedParcel);
+        return this.sdk.rpc.chain.sendSignedTransaction(signed);
     }
 
-    public async sendTransaction(
-        tx: Transaction,
+    public async sendAssetTransaction(
+        tx: AssetTransaction & Transaction,
         options?: {
             seq?: number;
             fee?: number;
@@ -423,18 +423,14 @@ export default class CodeChain {
             awaitInvoice = true,
             secret = faucetSecret
         } = options || {};
-        const parcel = this.sdk.core
-            .createAssetTransactionParcel({
-                transaction: tx
-            })
-            .sign({
-                secret,
-                fee: fee + this.id,
-                seq
-            });
-        await this.sdk.rpc.chain.sendSignedParcel(parcel);
+        const signed = tx.sign({
+            secret,
+            fee: fee + this.id,
+            seq
+        });
+        await this.sdk.rpc.chain.sendSignedTransaction(signed);
         if (awaitInvoice) {
-            return this.sdk.rpc.chain.getTransactionInvoices(tx.hash(), {
+            return this.sdk.rpc.chain.getInvoicesById(tx.id(), {
                 timeout: 300 * 1000
             });
         }
@@ -456,7 +452,7 @@ export default class CodeChain {
             metadata = "",
             awaitMint = true
         } = params;
-        const tx = this.sdk.core.createAssetMintTransaction({
+        const tx = this.sdk.core.createMintAssetTransaction({
             scheme: {
                 shardId: 0,
                 metadata,
@@ -464,7 +460,7 @@ export default class CodeChain {
             },
             recipient
         });
-        await this.sendTransaction(tx, {
+        await this.sendAssetTransaction(tx, {
             secret,
             seq,
             awaitInvoice: awaitMint
@@ -472,7 +468,7 @@ export default class CodeChain {
         if (!awaitMint) {
             return { asset: tx.getMintedAsset() };
         }
-        const asset = await this.sdk.rpc.chain.getAsset(tx.hash(), 0);
+        const asset = await this.sdk.rpc.chain.getAsset(tx.id(), 0);
         if (asset === null) {
             throw Error(`Failed to mint asset`);
         }
@@ -480,10 +476,7 @@ export default class CodeChain {
     }
 
     public async signTransactionInput(
-        tx:
-            | AssetTransferTransaction
-            | AssetComposeTransaction
-            | AssetDecomposeTransaction,
+        tx: TransferAsset | ComposeAsset | DecomposeAsset,
         index: number
     ) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
@@ -493,7 +486,7 @@ export default class CodeChain {
     }
 
     public async signTransactionBurn(
-        tx: AssetTransferTransaction | AssetUnwrapCCCTransaction,
+        tx: TransferAsset | UnwrapCCC,
         index: number
     ) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
@@ -515,8 +508,8 @@ export default class CodeChain {
             awaitInvoice = true,
             secret = faucetSecret
         } = options || {};
-        const parcel = this.sdk.core
-            .createSetRegularKeyParcel({
+        const tx = this.sdk.core
+            .createSetRegularKeyTransaction({
                 key
             })
             .sign({
@@ -525,22 +518,22 @@ export default class CodeChain {
                 seq
             });
 
-        const hash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
+        const hash = await this.sdk.rpc.chain.sendSignedTransaction(tx);
         if (awaitInvoice) {
-            return (await this.sdk.rpc.chain.getParcelInvoice(hash, {
+            return (await this.sdk.rpc.chain.getInvoice(hash, {
                 timeout: 300 * 1000
             })) as Invoice;
         }
     }
 
-    public async sendSignedParcel(options?: {
+    public async sendPayTx(options?: {
         seq?: number;
         awaitInvoice?: boolean;
         recipient?: PlatformAddress | string;
         amount?: number;
         secret?: any;
         fee?: number;
-    }): Promise<SignedParcel> {
+    }): Promise<SignedTransaction> {
         const {
             seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
             awaitInvoice = true,
@@ -549,8 +542,8 @@ export default class CodeChain {
             secret = faucetSecret,
             fee = 10 + this.id
         } = options || {};
-        const parcel = this.sdk.core
-            .createPayParcel({
+        const tx = this.sdk.core
+            .createPayTransaction({
                 recipient,
                 amount
             })
@@ -559,17 +552,19 @@ export default class CodeChain {
                 fee,
                 seq
             });
-        const hash = await this.sdk.rpc.chain.sendSignedParcel(parcel);
+        const hash = await this.sdk.rpc.chain.sendSignedTransaction(tx);
         if (awaitInvoice) {
-            await this.sdk.rpc.chain.getParcelInvoice(hash, {
+            await this.sdk.rpc.chain.getInvoice(hash, {
                 timeout: 300 * 1000
             });
-            return (await this.sdk.rpc.chain.getParcel(hash)) as SignedParcel;
+            return (await this.sdk.rpc.chain.getTransaction(
+                hash
+            )) as SignedTransaction;
         }
-        return parcel;
+        return tx;
     }
 
-    public sendSignedParcelWithRlpBytes(rlpBytes: Buffer): Promise<H256> {
+    public sendSignedTransactionWithRlpBytes(rlpBytes: Buffer): Promise<H256> {
         return new Promise((resolve, reject) => {
             const bytes = Array.from(rlpBytes)
                 .map(byte =>
@@ -577,14 +572,14 @@ export default class CodeChain {
                 )
                 .join("");
             this.sdk.rpc
-                .sendRpcRequest("chain_sendSignedParcel", [`0x${bytes}`])
+                .sendRpcRequest("chain_sendSignedTransaction", [`0x${bytes}`])
                 .then(result => {
                     try {
                         resolve(new H256(result));
                     } catch (e) {
                         reject(
                             Error(
-                                `Expected sendSignedParcel() to return a value of H256, but an error occurred: ${e.toString()}`
+                                `Expected sendSignedTransaction() to return a value of H256, but an error occurred: ${e.toString()}`
                             )
                         );
                     }

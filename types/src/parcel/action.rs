@@ -83,6 +83,16 @@ impl Action {
         let rlp = self.rlp_bytes();
         Blake::blake(rlp)
     }
+
+    pub fn transaction(&self) -> Option<&Transaction> {
+        match self {
+            Action::AssetTransaction {
+                transaction,
+                ..
+            } => Some(transaction),
+            _ => None,
+        }
+    }
 }
 
 impl HeapSizeOf for Action {

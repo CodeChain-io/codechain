@@ -204,10 +204,6 @@ impl TransactionAddress {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &ParcelAddress> {
-        self.parcel_addresses.iter()
-    }
-
     pub fn is_empty(&self) -> bool {
         self.parcel_addresses.is_empty()
     }

@@ -24,31 +24,31 @@ use primitives::{Bytes as BytesArray, H256};
 
 use jsonrpc_core::Result;
 
-use super::super::types::{Block, BlockNumberAndHash, Parcel, Text, Transaction, TransactionWithHash};
+use super::super::types::{Block, BlockNumberAndHash, Text, Transaction, UnsignedTransaction};
 
 build_rpc_trait! {
     pub trait Chain {
-        /// Sends signed parcel, returning its hash.
-        # [rpc(name = "chain_sendSignedParcel")]
-        fn send_signed_parcel(&self, Bytes) -> Result<H256>;
-
-        /// Gets parcel with given hash.
-        # [rpc(name = "chain_getParcel")]
-        fn get_parcel(&self, H256) -> Result<Option<Parcel>>;
-
-        /// Gets parcel invoices with given hash.
-        # [rpc(name = "chain_getParcelInvoice")]
-        fn get_parcel_invoice(&self, H256) -> Result<Option<Invoice>>;
+        /// Sends signed transaction, returning its hash.
+        # [rpc(name = "chain_sendSignedTransaction")]
+        fn send_signed_transaction(&self, Bytes) -> Result<H256>;
 
         /// Gets transaction with given hash.
         # [rpc(name = "chain_getTransaction")]
-        fn get_transaction(&self, H256) -> Result<Option<TransactionWithHash>>;
+        fn get_transaction(&self, H256) -> Result<Option<Transaction>>;
 
-        /// Gets transaction invoice with given hash.
-        # [rpc(name = "chain_getTransactionInvoices")]
-        fn get_transaction_invoices(&self, H256) -> Result<Vec<Invoice>>;
+        /// Gets transaction invoice with given transaction hash.
+        # [rpc(name = "chain_getInvoice")]
+        fn get_invoice(&self, H256) -> Result<Option<Invoice>>;
 
-        /// Gets asset scheme with given transaction hash.
+        /// Gets transaction with given payload hash.
+        # [rpc(name = "chain_getTransactionById")]
+        fn get_transaction_with_payload_hash(&self, H256) -> Result<Option<Transaction>>;
+
+        /// Gets transaction invoices with given payload hash.
+        # [rpc(name = "chain_getInvoicesById")]
+        fn get_invoices_with_payload_hash(&self, H256) -> Result<Vec<Invoice>>;
+
+        /// Gets asset scheme with given payload hash.
         # [rpc(name = "chain_getAssetSchemeByHash")]
         fn get_asset_scheme_by_hash(&self, H256, ShardId, Option<u64>) -> Result<Option<AssetScheme>>;
 
@@ -56,7 +56,7 @@ build_rpc_trait! {
         # [rpc(name = "chain_getAssetSchemeByType")]
         fn get_asset_scheme_by_type(&self, H256, Option<u64>) -> Result<Option<AssetScheme>>;
 
-        /// Gets text with given parcel hash.
+        /// Gets text with given transaction hash.
         # [rpc(name = "chain_getText")]
         fn get_text(&self, H256, Option<u64>) -> Result<Option<Text>>;
 
@@ -116,9 +116,9 @@ build_rpc_trait! {
         # [rpc(name = "chain_getBlockByHash")]
         fn get_block_by_hash(&self, H256) -> Result<Option<Block>>;
 
-        /// Gets parcels in the current mem pool.
-        # [rpc(name = "chain_getPendingParcels")]
-        fn get_pending_parcels(&self) -> Result<Vec<Parcel>>;
+        /// Gets transactions in the current mem pool.
+        # [rpc(name = "chain_getPendingTransactions")]
+        fn get_pending_transactions(&self) -> Result<Vec<Transaction>>;
 
         /// Gets the mining given block number
         # [rpc(name = "chain_getMiningReward")]
@@ -130,10 +130,10 @@ build_rpc_trait! {
 
         /// Execute Transactions
         # [rpc(name = "chain_executeTransaction")]
-        fn execute_transaction(&self, Transaction, PlatformAddress) -> Result<Invoice>;
+        fn execute_transaction(&self, UnsignedTransaction, PlatformAddress) -> Result<Invoice>;
 
         /// Execute AssetTransfer transaction inputs in VM
         # [rpc(name = "chain_executeVM")]
-        fn execute_vm(&self, Transaction, Vec<Vec<BytesArray>>, Vec<usize>) -> Result<Vec<String>>;
+        fn execute_vm(&self, UnsignedTransaction, Vec<Vec<BytesArray>>, Vec<usize>) -> Result<Vec<String>>;
     }
 }

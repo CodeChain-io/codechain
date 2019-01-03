@@ -60,7 +60,7 @@ describe("orders", function() {
 
             it("Wrong order - originOutputs are wrong (asset type from/to is same)", async function() {
                 const splitTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(gold)
                     .addOutputs(
                         _.times(2, () => ({
@@ -71,12 +71,12 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitInvoices = await node.sendTransaction(splitTx);
+                const splitInvoices = await node.sendAssetTransaction(splitTx);
                 expect(splitInvoices!.length).to.equal(1);
                 expect(splitInvoices![0].success).to.be.true;
 
                 const splitGolds = splitTx.getTransferredAssets();
-                const splitGoldInputs = splitGolds.map(gold =>
+                const splitGoldInputs = splitGolds.map((gold: Asset) =>
                     gold.createTransferInput()
                 );
 
@@ -96,7 +96,7 @@ describe("orders", function() {
                 (order.assetTypeTo as any) = gold.assetType;
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(splitGoldInputs)
                     .addOutputs(
                         {
@@ -119,17 +119,13 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -174,7 +170,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -207,7 +203,7 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const invoices = await node.sendTransaction(transferTx);
+                const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.true;
             });
@@ -215,7 +211,7 @@ describe("orders", function() {
             it("Correct order, correct transfer - Many originOutputs", async function() {
                 // Split minted gold asset to 10 assets
                 const splitTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(gold)
                     .addOutputs(
                         _.times(10, () => ({
@@ -226,7 +222,7 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitInvoices = await node.sendTransaction(splitTx);
+                const splitInvoices = await node.sendAssetTransaction(splitTx);
                 expect(splitInvoices!.length).to.equal(1);
                 expect(splitInvoices![0].success).to.be.true;
 
@@ -248,7 +244,7 @@ describe("orders", function() {
                 });
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(splitGoldInputs)
                     .addInputs(silverInput)
                     .addOutputs(
@@ -280,12 +276,12 @@ describe("orders", function() {
                         outputIndices: [0, 1]
                     });
                 await Promise.all(
-                    _.range(transferTx.inputs.length).map(i =>
-                        node.signTransactionInput(transferTx, i)
+                    _.range((transferTx as any)._transaction.inputs.length).map(
+                        i => node.signTransactionInput(transferTx, i)
                     )
                 );
 
-                const invoices = await node.sendTransaction(transferTx);
+                const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.true;
             }).timeout(10_000);
@@ -305,7 +301,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -333,7 +329,7 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const invoices = await node.sendTransaction(transferTx);
+                const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.true;
             });
@@ -364,7 +360,7 @@ describe("orders", function() {
                 });
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -403,7 +399,7 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const invoices = await node.sendTransaction(transferTx);
+                const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.true;
             });
@@ -434,7 +430,7 @@ describe("orders", function() {
                 });
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -475,7 +471,7 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const invoices = await node.sendTransaction(transferTx);
+                const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.true;
             });
@@ -495,7 +491,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -518,18 +514,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -555,7 +547,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -588,18 +580,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -626,7 +614,7 @@ describe("orders", function() {
                 });
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -657,7 +645,7 @@ describe("orders", function() {
                         outputIndices: [0, 1]
                     });
 
-                (transferTx.orders[0].order
+                (transferTx.orders()[0].order
                     .lockScriptHashFrom as any) = new H160(
                     "0000000000000000000000000000000000000000"
                 );
@@ -665,18 +653,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -700,7 +684,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -731,23 +715,19 @@ describe("orders", function() {
                         outputIndices: [0, 1]
                     });
 
-                (transferTx.orders[0].order.parametersFrom as any) = [];
+                (transferTx.orders()[0].order.parametersFrom as any) = [];
 
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -771,7 +751,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -809,18 +789,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -846,7 +822,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -884,18 +860,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -921,7 +893,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -964,18 +936,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -1003,7 +971,7 @@ describe("orders", function() {
                 (order.originOutputs as any) = [];
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -1036,18 +1004,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -1072,7 +1036,7 @@ describe("orders", function() {
                 });
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -1105,18 +1069,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -1128,7 +1088,7 @@ describe("orders", function() {
             it("Wrong order - originOutputs are wrong (few outputs)", async function() {
                 // Split minted gold asset to 10 assets
                 const splitTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(gold)
                     .addOutputs(
                         _.times(10, () => ({
@@ -1139,7 +1099,7 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitInvoices = await node.sendTransaction(splitTx);
+                const splitInvoices = await node.sendAssetTransaction(splitTx);
                 expect(splitInvoices!.length).to.equal(1);
                 expect(splitInvoices![0].success).to.be.true;
 
@@ -1163,7 +1123,7 @@ describe("orders", function() {
                 });
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(splitGoldInputs)
                     .addInputs(silverInput)
                     .addOutputs(
@@ -1195,12 +1155,12 @@ describe("orders", function() {
                         outputIndices: [0, 1]
                     });
                 await Promise.all(
-                    _.range(transferTx.inputs.length).map(i =>
-                        node.signTransactionInput(transferTx, i)
+                    _.range((transferTx as any)._transaction.inputs.length).map(
+                        i => node.signTransactionInput(transferTx, i)
                     )
                 );
 
-                const invoices = await node.sendTransaction(transferTx);
+                const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.false;
             }).timeout(10_000);
@@ -1208,7 +1168,7 @@ describe("orders", function() {
             it("Wrong order - originOutputs are wrong (many outputs)", async function() {
                 // Split minted gold asset to 10 assets
                 const splitTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(gold)
                     .addOutputs(
                         _.times(10, () => ({
@@ -1219,7 +1179,7 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitInvoices = await node.sendTransaction(splitTx);
+                const splitInvoices = await node.sendAssetTransaction(splitTx);
                 expect(splitInvoices!.length).to.equal(1);
                 expect(splitInvoices![0].success).to.be.true;
 
@@ -1241,7 +1201,7 @@ describe("orders", function() {
                 });
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(splitGoldInputs.slice(0, 9))
                     .addInputs(silverInput)
                     .addOutputs(
@@ -1273,12 +1233,12 @@ describe("orders", function() {
                         outputIndices: [0, 1]
                     });
                 await Promise.all(
-                    _.range(transferTx.inputs.length).map(i =>
-                        node.signTransactionInput(transferTx, i)
+                    _.range((transferTx as any)._transaction.inputs.length).map(
+                        i => node.signTransactionInput(transferTx, i)
                     )
                 );
 
-                const invoices = await node.sendTransaction(transferTx);
+                const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.false;
             }).timeout(10_000);
@@ -1300,7 +1260,7 @@ describe("orders", function() {
                 (order.assetAmountFrom as any) = new U64(0);
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -1333,18 +1293,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -1370,7 +1326,7 @@ describe("orders", function() {
                 (order.assetAmountTo as any) = new U64(0);
 
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -1403,18 +1359,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
@@ -1438,7 +1390,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -1471,18 +1423,14 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: transferTx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
-                    });
+                const signed = transferTx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                });
 
                 try {
-                    await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                    await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(errorMatcher(ERROR.ORDER_EXPIRED));
@@ -1505,7 +1453,7 @@ describe("orders", function() {
                 });
 
                 const transferTx1 = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -1538,13 +1486,13 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx1, 0);
                 await node.signTransactionInput(transferTx1, 1);
 
-                const invoices1 = await node.sendTransaction(transferTx1);
+                const invoices1 = await node.sendAssetTransaction(transferTx1);
                 expect(invoices1!.length).to.equal(1);
                 expect(invoices1![0].success).to.be.true;
 
                 const orderConsumed = order.consume(50);
                 const transferTx2 = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(
                         transferTx1.getTransferredAsset(0),
                         transferTx1.getTransferredAsset(3)
@@ -1580,7 +1528,7 @@ describe("orders", function() {
                 // Sign on input 0 is not needed
                 await node.signTransactionInput(transferTx2, 1);
 
-                const invoices2 = await node.sendTransaction(transferTx2);
+                const invoices2 = await node.sendAssetTransaction(transferTx2);
                 expect(invoices2!.length).to.equal(1);
                 expect(invoices2![0].success).to.be.true;
             }).timeout(10_000);
@@ -1600,7 +1548,7 @@ describe("orders", function() {
                     recipientFrom: aliceAddress
                 });
                 const transferTx1 = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(goldInput, silverInput)
                     .addOutputs(
                         {
@@ -1633,12 +1581,12 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx1, 0);
                 await node.signTransactionInput(transferTx1, 1);
 
-                const invoices1 = await node.sendTransaction(transferTx1);
+                const invoices1 = await node.sendAssetTransaction(transferTx1);
                 expect(invoices1!.length).to.equal(1);
                 expect(invoices1![0].success).to.be.true;
 
                 const transferTx2 = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addInputs(
                         transferTx1.getTransferredAsset(0),
                         transferTx1.getTransferredAsset(3)
@@ -1658,7 +1606,7 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx2, 0);
                 await node.signTransactionInput(transferTx2, 1);
 
-                const invoices2 = await node.sendTransaction(transferTx2);
+                const invoices2 = await node.sendAssetTransaction(transferTx2);
                 expect(invoices2!.length).to.equal(1);
                 expect(invoices2![0].success).to.be.true;
             });
@@ -1685,8 +1633,8 @@ describe("orders", function() {
             it("Multiple orders", async function() {
                 const inputs = assets.map(asset => asset.createTransferInput());
 
-                let transferTx = node.sdk.core
-                    .createAssetTransferTransaction()
+                const transferTx = node.sdk.core
+                    .createTransferAssetTransaction()
                     .addInputs(inputs)
                     .addOutputs([
                         ..._.range(5).map(i => ({
@@ -1720,12 +1668,12 @@ describe("orders", function() {
                 }
 
                 await Promise.all(
-                    _.range(transferTx.inputs.length).map(i =>
-                        node.signTransactionInput(transferTx, i)
+                    _.range((transferTx as any)._transaction.inputs.length).map(
+                        i => node.signTransactionInput(transferTx, i)
                     )
                 );
 
-                const invoices = await node.sendTransaction(transferTx);
+                const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
                 expect(invoices![0].success).to.be.true;
             }).timeout(10_000);
