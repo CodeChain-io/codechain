@@ -16,7 +16,7 @@
 
 use ccrypto::{blake128, blake256_with_key};
 use ckey::{sign, KeyPair, NetworkId, Private};
-use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction};
+use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, ShardTransaction};
 use primitives::{H160, H256};
 use rlp::Encodable;
 
@@ -30,7 +30,7 @@ use super::executor::get_test_client;
 #[test]
 fn valid_pay_to_public_key() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -51,7 +51,7 @@ fn valid_pay_to_public_key() {
     let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -74,7 +74,7 @@ fn valid_pay_to_public_key() {
 #[test]
 fn invalid_pay_to_public_key() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -95,7 +95,7 @@ fn invalid_pay_to_public_key() {
     let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -160,7 +160,7 @@ fn sign_all_input_all_output() {
         asset_type: H256::default(),
         amount: 1,
     };
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: vec![input0.clone(), input1.clone()],
@@ -172,7 +172,7 @@ fn sign_all_input_all_output() {
     let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: vec![input0.clone(), input1],
@@ -236,7 +236,7 @@ fn sign_single_input_all_output() {
         asset_type: H256::default(),
         amount: 1,
     };
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: vec![input0.clone(), input1.clone()],
@@ -248,7 +248,7 @@ fn sign_single_input_all_output() {
     let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: vec![input0.clone()],
@@ -311,7 +311,7 @@ fn sign_all_input_partial_output() {
         asset_type: H256::default(),
         amount: 1,
     };
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: vec![input0.clone(), input1.clone()],
@@ -323,7 +323,7 @@ fn sign_all_input_partial_output() {
     let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: vec![input0.clone(), input1],
@@ -386,7 +386,7 @@ fn sign_single_input_partial_output() {
         asset_type: H256::default(),
         amount: 1,
     };
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: vec![input0.clone(), input1.clone()],
@@ -398,7 +398,7 @@ fn sign_single_input_partial_output() {
     let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: vec![input0.clone()],
@@ -441,7 +441,7 @@ fn distinguish_sign_single_input_with_sign_all() {
         asset_type: H256::default(),
         amount: 0,
     };
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: vec![input0.clone()],
@@ -453,7 +453,7 @@ fn distinguish_sign_single_input_with_sign_all() {
     let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: vec![input0.clone()],
@@ -497,7 +497,7 @@ fn distinguish_sign_single_output_with_sign_all() {
         asset_type: H256::default(),
         amount: 0,
     };
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: vec![input0.clone()],
@@ -509,7 +509,7 @@ fn distinguish_sign_single_output_with_sign_all() {
     let keypair = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey = <&[u8]>::from(keypair.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: vec![input0.clone()],

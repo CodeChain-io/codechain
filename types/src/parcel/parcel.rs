@@ -20,6 +20,7 @@ use heapsize::HeapSizeOf;
 use primitives::H256;
 use rlp::RlpStream;
 
+use super::super::transaction::ShardTransaction;
 use super::Action;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,13 +58,8 @@ impl Parcel {
         blake256(stream.as_raw())
     }
 
-    pub fn asset_transaction_hash(&self) -> Option<H256> {
-        match &self.action {
-            Action::AssetTransaction {
-                transaction,
-                ..
-            } => Some(transaction.hash()),
-            _ => None,
-        }
+    pub fn tracker(&self) -> Option<H256> {
+        let t: Option<ShardTransaction> = self.action.clone().into();
+        t.map(|t| t.tracker())
     }
 }

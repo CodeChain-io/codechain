@@ -19,7 +19,7 @@ use ckey::Address;
 use cstate::{StateError, TopState, TopStateView};
 use ctypes::machine::{Machine, WithBalances};
 use ctypes::parcel::{Action, Error as ParcelError};
-use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
+use ctypes::transaction::{AssetTransferInput, Error as TransactionError, OrderOnTransfer, Timelock};
 
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::client::{BlockInfo, TransactionInfo};
@@ -85,15 +85,16 @@ impl CodeChainMachine {
         client: &C,
         verify_timelock: bool,
     ) -> Result<(), Error> {
-        if let Action::AssetTransaction {
-            transaction,
+        if let Action::TransferAsset {
+            inputs,
+            orders,
             ..
         } = &parcel.action
         {
             if verify_timelock {
-                Self::verify_transaction_timelock(transaction, header, client)?;
+                Self::verify_transfer_timelock(inputs, header, client)?;
             }
-            Self::verify_transaction_order_expired(transaction, header)?;
+            Self::verify_transfer_order_expired(orders, header)?;
         }
         // FIXME: Filter parcels.
         Ok(())
@@ -105,18 +106,11 @@ impl CodeChainMachine {
         header.set_score(*parent.score());
     }
 
-    fn verify_transaction_timelock<C: BlockInfo + TransactionInfo>(
-        transaction: &Transaction,
+    fn verify_transfer_timelock<C: BlockInfo + TransactionInfo>(
+        inputs: &[AssetTransferInput],
         header: &Header,
         client: &C,
     ) -> Result<(), Error> {
-        let inputs = match transaction {
-            Transaction::AssetTransfer {
-                inputs,
-                ..
-            } => inputs,
-            _ => return Ok(()),
-        };
         for input in inputs {
             if let Some(timelock) = input.timelock {
                 match timelock {
@@ -173,14 +167,7 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    fn verify_transaction_order_expired(transaction: &Transaction, header: &Header) -> Result<(), Error> {
-        let orders = match transaction {
-            Transaction::AssetTransfer {
-                orders,
-                ..
-            } => orders,
-            _ => return Ok(()),
-        };
+    fn verify_transfer_order_expired(orders: &[OrderOnTransfer], header: &Header) -> Result<(), Error> {
         for order_tx in orders {
             if order_tx.order.expiration < header.timestamp() {
                 return Err(StateError::Transaction(TransactionError::OrderExpired {
@@ -195,29 +182,24 @@ impl CodeChainMachine {
 
     fn min_cost(&self, action: &Action) -> u64 {
         match action {
-            Action::AssetTransaction {
-                transaction,
+            Action::MintAsset {
                 ..
-            } => match transaction {
-                Transaction::AssetMint {
-                    ..
-                } => self.params.min_asset_mint_cost,
-                Transaction::AssetTransfer {
-                    ..
-                } => self.params.min_asset_transfer_cost,
-                Transaction::AssetSchemeChange {
-                    ..
-                } => self.params.min_asset_scheme_change_cost,
-                Transaction::AssetCompose {
-                    ..
-                } => self.params.min_asset_compose_cost,
-                Transaction::AssetDecompose {
-                    ..
-                } => self.params.min_asset_decompose_cost,
-                Transaction::AssetUnwrapCCC {
-                    ..
-                } => self.params.min_asset_unwrap_ccc_cost,
-            },
+            } => self.params.min_asset_mint_cost,
+            Action::TransferAsset {
+                ..
+            } => self.params.min_asset_transfer_cost,
+            Action::ChangeAssetScheme {
+                ..
+            } => self.params.min_asset_scheme_change_cost,
+            Action::ComposeAsset {
+                ..
+            } => self.params.min_asset_compose_cost,
+            Action::DecomposeAsset {
+                ..
+            } => self.params.min_asset_decompose_cost,
+            Action::UnwrapCCC {
+                ..
+            } => self.params.min_asset_unwrap_ccc_cost,
             Action::Pay {
                 ..
             } => self.params.min_pay_parcel_cost,

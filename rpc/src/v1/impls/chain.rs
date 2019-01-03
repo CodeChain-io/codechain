@@ -26,7 +26,7 @@ use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::Action;
-use ctypes::transaction::Transaction as TransactionType;
+use ctypes::transaction::ShardTransaction as TransactionType;
 use ctypes::{BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H256};
 use rlp::{DecoderError, UntrustedRlp};
@@ -251,7 +251,7 @@ where
     fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Invoice> {
         let sender_address = sender.try_address().map_err(errors::core)?;
         let action = ::std::result::Result::from(tx.action).map_err(errors::core)?;
-        if let Some(transaction) = action.transaction() {
+        if let Some(transaction) = action.asset_transaction() {
             Ok(self.client.execute_transaction(&transaction, sender_address).map_err(errors::core)?)
         } else {
             Err(errors::asset_transaction_only())
@@ -265,13 +265,13 @@ where
         indices: Vec<usize>,
     ) -> Result<Vec<String>> {
         let action = ::std::result::Result::from(tx.action).map_err(errors::core)?;
-        let transaction = action.transaction().ok_or_else(errors::transfer_only)?;
-        if let TransactionType::AssetTransfer {
+        if let Action::TransferAsset {
             inputs,
             ..
-        } = transaction
+        } = &action
         {
-            Ok(self.client.execute_vm(transaction, inputs, &params, &indices).map_err(errors::core)?)
+            let transaction = Option::<TransactionType>::from(action.clone()).unwrap();
+            Ok(self.client.execute_vm(&transaction, inputs, &params, &indices).map_err(errors::core)?)
         } else {
             Err(errors::transfer_only())
         }

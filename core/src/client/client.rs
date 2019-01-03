@@ -28,8 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
-use ctypes::parcel::Action;
-use ctypes::transaction::{AssetTransferInput, PartialHashing, Transaction};
+use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
@@ -350,12 +349,8 @@ impl AssetClient for Client {
         }
 
         let parcel = self.transaction(&transaction_hash).expect("There is a successful transaction");
-        let transaction = if let Action::AssetTransaction {
-            ref transaction,
-            ..
-        } = parcel.action
-        {
-            transaction
+        let transaction = if let Some(tx) = Option::<ShardTransaction>::from(parcel.action.clone()) {
+            tx
         } else {
             return Ok(None)
         };
@@ -380,9 +375,9 @@ impl TextClient for Client {
 }
 
 impl ExecuteClient for Client {
-    fn execute_transaction(&self, transaction: &Transaction, sender: &Address) -> Result<Invoice, Error> {
+    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> Result<Invoice, Error> {
         let mut state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
-        Ok(state.apply_transaction(transaction, sender, &[], self)?)
+        Ok(state.apply_shard_transaction(transaction, sender, &[], self)?)
     }
 
     fn execute_vm(

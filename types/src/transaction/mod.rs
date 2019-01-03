@@ -20,9 +20,8 @@ mod input;
 mod order;
 mod output;
 mod partial_hashing;
+mod shard;
 mod timelock;
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
-mod transaction;
 
 pub use self::asset_out_point::AssetOutPoint;
 pub use self::error::{Error, UnlockFailureReason};
@@ -30,5 +29,5 @@ pub use self::input::AssetTransferInput;
 pub use self::order::{Order, OrderOnTransfer};
 pub use self::output::{AssetMintOutput, AssetTransferOutput};
 pub use self::partial_hashing::{HashingError, PartialHashing};
+pub use self::shard::{AssetWrapCCCOutput, ShardTransaction};
 pub use self::timelock::Timelock;
-pub use self::transaction::{AssetWrapCCCOutput, InnerTransaction, Transaction};
