@@ -17,59 +17,83 @@ the blockchain without the need to go through a gateway, then they must pay thei
 A transaction would look something like this:
 ::
 
-    pub struct Transaction {
-        pub seq: U256,
-        pub fee: U256,
-        pub network_id: NetworkId,
-        pub action: Action,
+    struct Transaction {
+        seq: u64,
+        fee: u64,
+        network_id: NetworkId,
+        action: Action,
     }
 
-    pub enum Action {
-        MintAsset {
-            network_id: NetworkId,
-            shard_id: ShardId,
-            metadata: String,
-            approver: Option<PlatformAddress>,
-            administrator: Option<PlatformAddress>,
-
-            output: AssetMintOutput,
-
-            approvals: Vec<Signature>,
-        },
-        MintAsset {
-            network_id: NetworkId,
-            shard_id: ShardId,
-            metadata: String,
-            approver: Option<PlatformAddress>,
-            administrator: Option<PlatformAddress>,
-
-            output: AssetMintOutput,
-
-            approvals: Vec<Signature>,
-        },
-        // ...
-        Pay {
-            receiver: Address,
-            amount: U256,
-        },
-        SetRegularKey {
-            key: Public,
-        },
+    enum Action {
+        MintAsset { ..., },
+        TransferAsset { ..., },
+        ChangeAssetScheme { ..., },
+        ComposeAsset { ..., },
+        DecomposeAsset { ..., },
+        Pay { ..., },
+        SetRegularKey { ..., },
+        CreateShard,
+        SetShardOwners { ..., },
+        SetShardUsers { ..., },
+        WrapCCC { ..., },
+        UnwrapCCC { ..., },
+        Store { ..., },
+        Remove { ..., },
+        Custom { ..., },
     }
 
 The fee of the transaction would determine its priority, meaning, how quickly it gets processed. In addition, there is
 also a minimum fee that can be set. The seq property exists for the purpose of preventing replay attacks.
 
-Mint Asset Transaction
-==============================
-When assets are newly minted, there are a couple of things you must understand. First, the asset's scheme must be defined, since the asset being created must have some
-sort of definition. Second, there must be an owner to this newly minted asset. Thus, when creating assets in CodeChain, an address of the owner is required. A transaction
-that sends freshly minted assets to a user is called the `Asset Mint Transaction <https://codechain.readthedocs.io/en/latest/asset-management.html#minting-creating-new-assets>`_.
-The address used for Mint Asset Transactions should follow the `Address Format <https://codechain.readthedocs.io/en/latest/asset-management.html#address-format>`_.
+The following is a brief explanation for different actions you can use through a transaction:
 
-Transfer Asset Transaction
+Mint Asset
 ==============================
-Once assets have been successfully minted, these assets can now be sent to other users. For instance, let's say that the initial owner of the newly minted assets
-is Alice. If Alice wants to send some assets to Bob, then a transaction must be created. This transaction of sending assets from one user to another is called
-the Transfer Asset Transaction. By using Alice's signature, assets can be sent to any user, if their `Asset Address <https://codechain.readthedocs.io/en/latest/asset-management.html#asset-transfer-address-format>`_
-is known.
+`MintAsset` issues a new asset. When issuing a new asset, the asset has fields that can be designated, such as metadata, approver, and administrator. There are two types of assets that can be issued:
+
+- A permissioned asset is an asset that has an approver. These kind of assets need permission from the specifically assigned approver in order to be transferred to other addresses.
+- A centralized asset is an asset that has an administrator. The administrator can change the asset scheme and is allowed to transfer the asset arbitrarily.
+
+Transfer Asset
+==============================
+`TransferAsset` transfers assets from one address to another. `TransferAsset` can also be used to make orders on the DEX.
+
+Change Asset Scheme
+==============================
+When minting assets as described above, you create an asset scheme. This scheme defines properties of a specific asset, such as the metadata, and through `ChangeAssetScheme`, the administrator can change an asset's scheme. However, it is important to note that only the administrator has access to `ChangeAssetScheme`.
+
+Compose Asset
+==============================
+`ComposeAsset` combines multiple assets into a single new package. This new package is called a composed asset, and composed assets can be used as a regular asset. Note that composed assets can be decomposed as well.
+
+Decompose Asset
+==============================
+`DecomposeAsset` decomposes any composed asset. The original contents that were used as inputs for `ComposeAsset` will be returned as output of `DecomposeAsset`.
+
+Pay
+==============================
+`Pay` allows a user to make a payment of a certain value of CCC to another user.
+
+Set Regular Key
+==============================
+Regular keys are responsible for taking the place of the master key. Regular keys provide a safe way to verify one's identity and sign transactions, while keeping the original master key safe in cold storage. Regular keys are safe because they can be easily replaced if they are stolen, while allowing you to maintain the original public address of the master key. `SetRegularKey` defines the regular key that will be used by the payer. If one already exists, this transaction will overwrite the existing one with the new regular key.
+
+Wrap CCC
+==============================
+WCCC is a wrapped version of CCC, transforming CCC into an asset. `WrapCCC` converts CCC into WCCC.
+
+Unwrap CCC
+==============================
+`UnwrapCCC` converts WCCC back into CCC.
+
+Store
+==============================
+`Store` is a special type of transaction that allows the addition of text onto the blockchain. This added text can also be certified by someone through that person's signature.
+
+Remove
+==============================
+`Remove` removes the content added by the `Store` transaction.
+
+Custom
+==============================
+`Custom` is a special transaction that may have been added or needed when using a custom consensus engine.
