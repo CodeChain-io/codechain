@@ -108,6 +108,15 @@ impl EngineType {
             EngineType::PoW => false,
         }
     }
+
+    pub fn ignore_reseal_min_period(&self) -> bool {
+        match self {
+            EngineType::PoA => false,
+            EngineType::PBFT => true,
+            EngineType::Solo => false,
+            EngineType::PoW => false,
+        }
+    }
 }
 
 /// A consensus mechanism for the chain.
