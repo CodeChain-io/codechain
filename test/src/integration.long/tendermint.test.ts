@@ -21,6 +21,7 @@ import {
     validator2Address,
     validator3Address
 } from "../helper/constants";
+import { wait, PromiseExpect } from "../helper/promise";
 
 import "mocha";
 import * as chai from "chai";
@@ -33,6 +34,7 @@ const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 describeSkippedInTravis("Tendermint ", function() {
     const BASE = 800;
     let nodes: CodeChain[];
+    let promiseExpect = new PromiseExpect();
 
     beforeEach(async function() {
         this.timeout(60_000);
@@ -62,31 +64,67 @@ describeSkippedInTravis("Tendermint ", function() {
     });
 
     it("Block generation", async function() {
+        await promiseExpect.shouldFulfill(
+            "wait connection",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[0].connect(nodes[2]),
+                nodes[0].connect(nodes[3]),
+                nodes[1].connect(nodes[2]),
+                nodes[1].connect(nodes[3]),
+                nodes[2].connect(nodes[3])
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "wait peers",
+            Promise.all([
+                nodes[0].waitPeers(4 - 1),
+                nodes[1].waitPeers(4 - 1),
+                nodes[2].waitPeers(4 - 1),
+                nodes[3].waitPeers(4 - 1)
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "wait first block generated",
+            Promise.all([
+                nodes[0].waitBlockNumber(1),
+                nodes[1].waitBlockNumber(1),
+                nodes[2].waitBlockNumber(1),
+                nodes[3].waitBlockNumber(1)
+            ])
+        );
+
         await Promise.all([
-            nodes[0].connect(nodes[1]),
-            nodes[0].connect(nodes[2]),
-            nodes[0].connect(nodes[3]),
-            nodes[1].connect(nodes[2]),
-            nodes[1].connect(nodes[3]),
-            nodes[2].connect(nodes[3])
-        ]);
-        await Promise.all([
-            nodes[0].waitPeers(4 - 1),
-            nodes[1].waitPeers(4 - 1),
-            nodes[2].waitPeers(4 - 1),
-            nodes[3].waitPeers(4 - 1)
+            promiseExpect.shouldFulfill(
+                "wait payment 0",
+                nodes[0].sendPayTx({ seq: 0 })
+            ),
+            promiseExpect.shouldFulfill(
+                "wait payment 1",
+                nodes[1].sendPayTx({ seq: 1 })
+            ),
+            promiseExpect.shouldFulfill(
+                "wait payment 2",
+                nodes[2].sendPayTx({ seq: 2 })
+            ),
+            promiseExpect.shouldFulfill(
+                "wait payment 3",
+                nodes[3].sendPayTx({ seq: 3 })
+            )
         ]);
 
-        await nodes[0].waitBlockNumber(2);
-        await nodes[1].waitBlockNumber(2);
-        await nodes[2].waitBlockNumber(2);
-        await nodes[3].waitBlockNumber(2);
         await expect(
-            nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            promiseExpect.shouldFulfill(
+                "get best block number",
+                nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            )
         ).to.eventually.greaterThan(1);
     }).timeout(20_000);
 
     it("Block sync", async function() {
+        console.error("Block sync test started");
         await Promise.all([
             nodes[0].connect(nodes[1]),
             nodes[0].connect(nodes[2]),
@@ -144,6 +182,9 @@ describeSkippedInTravis("Tendermint ", function() {
         if (this.currentTest!.state === "failed") {
             nodes.map(node => node.testFailed(this.currentTest!.fullTitle()));
         }
+        promiseExpect.checkFulfil();
+        console.error("Before cleanup");
         await Promise.all(nodes.map(node => node.clean()));
+        console.error("After cleanup");
     });
 });
