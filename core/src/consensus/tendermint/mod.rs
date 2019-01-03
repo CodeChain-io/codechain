@@ -39,11 +39,10 @@ use primitives::{u256_from_u128, Bytes, H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
-use time::Duration;
 
 use self::backup::{backup, restore, BackupView};
 use self::message::*;
-pub use self::params::{TendermintParams, TendermintTimeouts};
+pub use self::params::{TendermintParams, TimeoutParams};
 use self::types::{BitSet, Height, PeerState, Step, View};
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
@@ -1280,28 +1279,19 @@ fn destructure_proofs(combined: &[u8]) -> Result<(BlockNumber, &[u8], &[u8]), Er
     Ok((rlp.at(0)?.as_val()?, rlp.at(1)?.data()?, rlp.at(2)?.data()?))
 }
 
-/// Timeouts lookup
-pub trait Timeouts<S: Sync + Send + Clone>: Send + Sync {
-    /// Return the first timeout.
-    fn initial(&self) -> Duration;
-
-    /// Get a timeout based on step.
-    fn timeout(&self, step: &S) -> Duration;
-}
-
 struct TendermintExtension {
     tendermint: RwLock<Option<Weak<Tendermint>>>,
     client: RwLock<Option<Weak<EngineClient>>>,
     peers: RwLock<HashMap<NodeId, PeerState>>,
     api: Mutex<Option<Arc<Api>>>,
-    timeouts: TendermintTimeouts,
+    timeouts: TimeoutParams,
 }
 
 const MIN_PEERS_PROPAGATION: usize = 4;
 const MAX_PEERS_PROPAGATION: usize = 128;
 
 impl TendermintExtension {
-    fn new(timeouts: TendermintTimeouts) -> Self {
+    fn new(timeouts: TimeoutParams) -> Self {
         Self {
             tendermint: RwLock::new(None),
             client: RwLock::new(None),
@@ -1444,10 +1434,8 @@ impl TendermintExtension {
 
     fn set_timer_step(&self, step: Step, counter: usize, view: View) {
         if let Some(api) = self.api.lock().as_ref() {
-            let du = Duration::seconds(view as i64);
-
             api.clear_timer(ENGINE_TIMEOUT_TOKEN + counter - 1).expect("Timer clear succeeds");
-            api.set_timer_once(ENGINE_TIMEOUT_TOKEN + counter, self.timeouts.timeout(&step) + du)
+            api.set_timer_once(ENGINE_TIMEOUT_TOKEN + counter, self.timeouts.timeout(step, view))
                 .expect("Timer set succeeds");
         };
     }

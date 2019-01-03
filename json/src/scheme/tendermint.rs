@@ -28,10 +28,16 @@ pub struct TendermintParams {
     pub validators: Vec<Public>,
     /// Propose step timeout in milliseconds.
     pub timeout_propose: Option<Uint>,
+    /// Propose step timeout delta in milliseconds.
+    pub timeout_propose_delta: Option<Uint>,
     /// Prevote step timeout in milliseconds.
     pub timeout_prevote: Option<Uint>,
+    /// Prevote step timeout delta in milliseconds.
+    pub timeout_prevote_delta: Option<Uint>,
     /// Precommit step timeout in milliseconds.
     pub timeout_precommit: Option<Uint>,
+    /// Precommit step timeout delta in milliseconds.
+    pub timeout_precommit_delta: Option<Uint>,
     /// Commit step timeout in milliseconds.
     pub timeout_commit: Option<Uint>,
     /// Reward per block.
