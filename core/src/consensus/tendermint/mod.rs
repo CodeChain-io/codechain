@@ -1352,7 +1352,11 @@ impl TendermintExtension {
 
     fn update_peer_state(&self, token: &NodeId, vote_step: VoteStep, proposal: Option<H256>, messages: BitSet) {
         let mut peers_guard = self.peers.write();
-        let peer_state = peers_guard.get_mut(token).expect("on_node_added should be called before receiving StepState");
+        let peer_state = match peers_guard.get_mut(token) {
+            Some(peer_state) => peer_state,
+            // update_peer_state could be called after the peer is disconnected
+            None => return,
+        };
         peer_state.vote_step = vote_step;
         peer_state.proposal = proposal;
         peer_state.messages = messages;
