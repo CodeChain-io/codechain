@@ -18,13 +18,11 @@ To go directly to CodeChain's Gitter rooms, click `here <https://gitter.im/CodeC
 
 * `codechain`_: CodeChain engine related
 * `codechain-explorer`_: for looking up information, such as accounts or assets that belong in CodeChain.
-* `codechain-gateway`_: used for linking a certain service/server with CodeChain.
 * `codechain-sdk-js`_: JavaScript SDK for CodeChain
 
 
 .. _codechain: https://gitter.im/CodeChain-io/codechain
 .. _codechain-explorer: https://gitter.im/CodeChain-io/codechain-explorer
-.. _codechain-gateway: https://gitter.im/CodeChain-io/codechain-gateway
 .. _codechain-sdk-js: https://gitter.im/CodeChain-io/codechain-sdk-js
 
 If you are not sure of which room is suitable for your topic, go to `codechain`_ and make your inquiries there.
