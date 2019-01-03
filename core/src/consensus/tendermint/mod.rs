@@ -1028,7 +1028,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn engine_type(&self) -> EngineType {
-        EngineType::InternalSealing
+        EngineType::PBFT
     }
 
     /// Attempt to seal generate a proposal seal.
