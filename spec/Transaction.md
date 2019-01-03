@@ -271,7 +271,7 @@ Custom {
 
 ## Store
 
-This is a special kinds of 
+This is a special kind of transaction that allows a user to upload text onto the blockchain.
 
 ```rust
 Store {
