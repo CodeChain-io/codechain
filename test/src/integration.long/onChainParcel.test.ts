@@ -21,7 +21,7 @@ import { faucetSecret } from "../helper/constants";
 import "mocha";
 import { expect } from "chai";
 
-describe("Test onChain parcel communication", function() {
+describe("Test onChain transaction communication", function() {
     let nodeA: CodeChain;
 
     const VALID_FEE = 10;
@@ -35,28 +35,28 @@ describe("Test onChain parcel communication", function() {
     const INVALID_SIG = "0x1221fzcv441";
     const testArray = [
         {
-            testName: "OnChain invalid fee PayParcel propagation test",
+            testName: "OnChain invalid fee Pay propagation test",
             tfee: INVALID_FEE,
             tseq: VALID_SEQ,
             tnetworkId: VALID_NETWORKID,
             tsig: VALID_SIG
         },
         {
-            testName: "OnChain invalid seq PayParcel propagation test",
+            testName: "OnChain invalid seq Pay propagation test",
             tfee: VALID_FEE,
             tseq: INVALID_SEQ,
             tnetworkId: VALID_NETWORKID,
             tsig: VALID_SIG
         },
         {
-            testName: "OnChain invalid networkId PayParcel propagation test",
+            testName: "OnChain invalid networkId Pay propagation test",
             tfee: VALID_FEE,
             tseq: VALID_SEQ,
             tnetworkId: INVALID_NETWORKID,
             tsig: VALID_SIG
         },
         {
-            testName: "OnChain invalid signature PayParcel propagation test",
+            testName: "OnChain invalid signature Pay propagation test",
             tfee: VALID_FEE,
             tseq: VALID_SEQ,
             tnetworkId: VALID_NETWORKID,
@@ -78,32 +78,32 @@ describe("Test onChain parcel communication", function() {
         await nodeA.clean();
     });
 
-    it("OnChain PayParcel propagation test", async function() {
+    it("OnChain Pay propagation test", async function() {
         const TH = new TestHelper("0.0.0.0", nodeA.port);
         await TH.establish();
 
         const sdk = nodeA.sdk;
 
         const ACCOUNT_SECRET = process.env.ACCOUNT_SECRET || faucetSecret;
-        const parcel = sdk.core.createPayParcel({
+        const tx = sdk.core.createPayTransaction({
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             amount: 10000
         });
-        const signedparcel = parcel.sign({
+        const signed = tx.sign({
             secret: ACCOUNT_SECRET,
             fee: 10,
             seq: 0
         });
         await sdk.rpc.devel.stopSealing();
-        await TH.sendEncodedParcel([signedparcel.toEncodeObject()]);
+        await TH.sendEncodedParcel([signed.toEncodeObject()]);
 
-        const parcels = await sdk.rpc.chain.getPendingParcels();
-        expect(parcels.length).to.equal(1);
+        const transactions = await sdk.rpc.chain.getPendingTransactions();
+        expect(transactions.length).to.equal(1);
 
         await TH.end();
     }).timeout(20_000);
 
-    describe("OnChain invalid PayParcel test", async function() {
+    describe("OnChain invalid Pay test", async function() {
         testArray.forEach(function(params: {
             testName: string;
             tfee: number;
@@ -120,24 +120,24 @@ describe("Test onChain parcel communication", function() {
 
                 const ACCOUNT_SECRET =
                     process.env.ACCOUNT_SECRET || faucetSecret;
-                const parcel = sdk.core.createPayParcel({
+                const tx = sdk.core.createPayTransaction({
                     recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
                     amount: 10000
                 });
-                const signedparcel = parcel.sign({
+                const signedTransaction = tx.sign({
                     secret: ACCOUNT_SECRET,
                     fee: tfee,
                     seq: tseq
                 });
                 await sdk.rpc.devel.stopSealing();
 
-                const data = signedparcel.toEncodeObject();
+                const data = signedTransaction.toEncodeObject();
                 data[2] = tnetworkId;
                 data[4] = tsig;
 
                 await TH.sendEncodedParcel([data]);
-                const parcels = await sdk.rpc.chain.getPendingParcels();
-                expect(parcels.length).to.equal(0);
+                const txs = await sdk.rpc.chain.getPendingTransactions();
+                expect(txs.length).to.equal(0);
 
                 await TH.end();
             }).timeout(30_000);

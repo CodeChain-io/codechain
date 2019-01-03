@@ -21,7 +21,7 @@ use ccore::Error as CoreError;
 use ckey::Error as KeyError;
 use ckeystore::Error as KeystoreError;
 use cnetwork::control::Error as NetworkControlError;
-use cstate::{ActionHandlerError, StateError};
+use cstate::StateError;
 use ctypes::parcel::Error as ParcelError;
 use kvdb::Error as KVDBError;
 use rlp::DecoderError;
@@ -52,8 +52,7 @@ mod codes {
     pub const NO_SUCH_ACCOUNT: i64 = -32044;
     pub const NOT_UNLOCKED: i64 = -32045;
     pub const TRANSFER_ONLY_IN_EXECUTE_VM: i64 = -32046;
-    pub const STATE_NOT_EXIST: i64 = -32047;
-    pub const ACTION_DATA_HANDLER_NOT_FOUND: i64 = -32048;
+    pub const ASSET_TRANSACTION_ONLY_IN_EXECUTE_TRANSACITON: i64 = -32047;
     pub const UNKNOWN_ERROR: i64 = -32099;
 }
 
@@ -249,27 +248,11 @@ pub fn transfer_only() -> Error {
     }
 }
 
-pub fn state_not_exist() -> Error {
+pub fn asset_transaction_only() -> Error {
     Error {
-        code: ErrorCode::ServerError(codes::STATE_NOT_EXIST),
-        message: "Cannot find a state for a given block number".into(),
+        code: ErrorCode::ServerError(codes::ASSET_TRANSACTION_ONLY_IN_EXECUTE_TRANSACITON),
+        message: "chain_executeTransaction() only accepts asset transactions.".into(),
         data: None,
-    }
-}
-
-pub fn action_data_handler_not_found() -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::ACTION_DATA_HANDLER_NOT_FOUND),
-        message: "Current consensus engine doesn't have an action handler for a given handler_id".into(),
-        data: None,
-    }
-}
-
-pub fn action_data_handler_error(error: ActionHandlerError) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
-        message: "Error from custom action handler".into(),
-        data: Some(Value::String(format!("{:?}", error))),
     }
 }
 

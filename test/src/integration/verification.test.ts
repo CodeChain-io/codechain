@@ -38,12 +38,12 @@ describe("solo - 1 node", function() {
         await node.start();
     });
 
-    describe("Sending invalid parcels over the limits (general)", function() {
-        let parcelEncoded: any[];
+    describe("Sending invalid transactions over the limits (general)", function() {
+        let encoded: any[];
         beforeEach(async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const parcel = node.sdk.core
-                .createPayParcel({
+            const tx = node.sdk.core
+                .createPayTransaction({
                     recipient,
                     amount: 0
                 })
@@ -52,17 +52,17 @@ describe("solo - 1 node", function() {
                     fee: 10,
                     seq
                 });
-            parcelEncoded = parcel.toEncodeObject();
+            encoded = tx.toEncodeObject();
         });
 
         ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
             seq
         ) {
             it(`seq: ${seq}`, async function() {
-                parcelEncoded[0] = seq;
+                encoded[0] = seq;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -77,10 +77,10 @@ describe("solo - 1 node", function() {
             fee
         ) {
             it(`fee: ${fee}`, async function() {
-                parcelEncoded[1] = fee;
+                encoded[1] = fee;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -93,10 +93,10 @@ describe("solo - 1 node", function() {
 
         ["tcc", "a", "ac"].forEach(function(networkId) {
             it(`networkId: ${networkId}`, async function() {
-                parcelEncoded[2] = networkId;
+                encoded[2] = networkId;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -114,10 +114,10 @@ describe("solo - 1 node", function() {
 
         [0, 10, 100].forEach(function(action) {
             it(`action (invalid type): ${action}`, async function() {
-                parcelEncoded[3] = [action];
+                encoded[3] = [action];
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -145,10 +145,10 @@ describe("solo - 1 node", function() {
         }) {
             const { actionType, actionLength } = params;
             it(`action (type / invalid length): ${actionType}, ${actionLength}`, async function() {
-                parcelEncoded[3] = Array(actionLength).fill(actionType);
+                encoded[3] = Array(actionLength).fill(actionType);
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -166,10 +166,10 @@ describe("solo - 1 node", function() {
             "0x" + "f".repeat(131)
         ].forEach(function(sig) {
             it(`signature: ${sig}`, async function() {
-                parcelEncoded[4] = sig;
+                encoded[4] = sig;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -186,7 +186,7 @@ describe("solo - 1 node", function() {
         });
     });
 
-    describe("Sending invalid parcels over the limits (in action 1: AssetTransaction)", function() {
+    describe("Sending invalid transactions over the limits (in action 1: AssetTransaction)", function() {
         let scheme: AssetScheme;
         let input: AssetTransferInput;
         let output: AssetTransferOutput;
@@ -201,7 +201,7 @@ describe("solo - 1 node", function() {
             });
             input = node.sdk.core.createAssetTransferInput({
                 assetOutPoint: {
-                    transactionHash: "0x" + "0".repeat(64),
+                    transactionId: "0x" + "0".repeat(64),
                     index: 0,
                     assetType: "0x" + "1".repeat(64),
                     amount: 12345
@@ -219,31 +219,27 @@ describe("solo - 1 node", function() {
         });
 
         describe("In assetMintTransction", function() {
-            let parcelEncoded: any[];
+            let encoded: any[];
             beforeEach(async function() {
                 const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const tx = node.sdk.core.createAssetMintTransaction({
+                const tx = node.sdk.core.createMintAssetTransaction({
                     scheme,
                     recipient
                 });
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: tx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq
-                    });
-                parcelEncoded = parcel.toEncodeObject();
+                const signed = tx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq
+                });
+                encoded = signed.toEncodeObject();
             });
 
             [65536, 100000].forEach(function(shardId) {
                 it(`shardId: ${shardId}`, async function() {
-                    parcelEncoded[3][1][2] = shardId;
+                    encoded[3][1][2] = shardId;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -258,10 +254,10 @@ describe("solo - 1 node", function() {
                 amount
             ) {
                 it(`amount: ${amount}`, async function() {
-                    parcelEncoded[3][1][6][0] = amount;
+                    encoded[3][1][6][0] = amount;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -276,10 +272,10 @@ describe("solo - 1 node", function() {
                 lockScriptHash
             ) {
                 it(`lockScriptHash: ${lockScriptHash}`, async function() {
-                    parcelEncoded[3][1][4] = lockScriptHash;
+                    encoded[3][1][4] = lockScriptHash;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -295,25 +291,21 @@ describe("solo - 1 node", function() {
         });
 
         describe("In assetTransferTransaction", function() {
-            let parcelEncoded: any[];
+            let encoded: any[];
             beforeEach(async function() {
                 const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
                 const tx = node.sdk.core
-                    .createAssetTransferTransaction()
+                    .createTransferAssetTransaction()
                     .addBurns(input)
                     .addInputs(input)
                     .addOutputs(output);
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: tx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq
-                    });
-                parcelEncoded = parcel.toEncodeObject();
+                const signed = tx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq
+                });
+                encoded = signed.toEncodeObject();
             });
 
             ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
@@ -321,10 +313,10 @@ describe("solo - 1 node", function() {
             ) {
                 it(`amount: ${amount}`, async function() {
                     // Burn
-                    parcelEncoded[3][1][2][0][0][3] = amount;
+                    encoded[3][1][2][0][0][3] = amount;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -333,10 +325,10 @@ describe("solo - 1 node", function() {
                         );
                     }
                     // Input
-                    parcelEncoded[3][1][3][0][0][3] = amount;
+                    encoded[3][1][3][0][0][3] = amount;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -346,10 +338,10 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    parcelEncoded[3][1][4][0][3] = amount;
+                    encoded[3][1][4][0][3] = amount;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -365,10 +357,10 @@ describe("solo - 1 node", function() {
             ) {
                 it(`transactionHash: ${transactionHash}`, async function() {
                     // Burn
-                    parcelEncoded[3][1][2][0][0][0] = transactionHash;
+                    encoded[3][1][2][0][0][0] = transactionHash;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -377,10 +369,10 @@ describe("solo - 1 node", function() {
                         );
                     }
                     // Input
-                    parcelEncoded[3][1][3][0][0][0] = transactionHash;
+                    encoded[3][1][3][0][0][0] = transactionHash;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -396,10 +388,10 @@ describe("solo - 1 node", function() {
             ) {
                 it(`assetType: ${assetType}`, async function() {
                     // Burn
-                    parcelEncoded[3][1][2][0][0][2] = assetType;
+                    encoded[3][1][2][0][0][2] = assetType;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -408,10 +400,10 @@ describe("solo - 1 node", function() {
                         );
                     }
                     // Input
-                    parcelEncoded[3][1][3][0][0][2] = assetType;
+                    encoded[3][1][3][0][0][2] = assetType;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -421,10 +413,10 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    parcelEncoded[3][1][4][0][2] = assetType;
+                    encoded[3][1][4][0][2] = assetType;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -439,10 +431,10 @@ describe("solo - 1 node", function() {
                 lockScriptHash
             ) {
                 it(`lockScriptHash: ${lockScriptHash}`, async function() {
-                    parcelEncoded[3][1][4][0][0] = lockScriptHash;
+                    encoded[3][1][4][0][0] = lockScriptHash;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -460,32 +452,28 @@ describe("solo - 1 node", function() {
         });
 
         describe("In assetComposeTransaction", function() {
-            let parcelEncoded: any[];
+            let encoded: any[];
             beforeEach(async function() {
                 const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const tx = node.sdk.core.createAssetComposeTransaction({
+                const tx = node.sdk.core.createComposeAssetTransaction({
                     scheme,
                     inputs: [input],
                     recipient
                 });
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: tx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq
-                    });
-                parcelEncoded = parcel.toEncodeObject();
+                const signed = tx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq
+                });
+                encoded = signed.toEncodeObject();
             });
 
             [65536, 100000].forEach(function(shardId) {
                 it(`shardId: ${shardId}`, async function() {
-                    parcelEncoded[3][1][2] = shardId;
+                    encoded[3][1][2] = shardId;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -501,10 +489,10 @@ describe("solo - 1 node", function() {
             ) {
                 it(`amount: ${amount}`, async function() {
                     // Input
-                    parcelEncoded[3][1][6][0][0][3] = amount;
+                    encoded[3][1][6][0][0][3] = amount;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -514,10 +502,10 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    parcelEncoded[3][1][9][0] = amount;
+                    encoded[3][1][9][0] = amount;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -533,10 +521,10 @@ describe("solo - 1 node", function() {
             ) {
                 it(`assetType: ${assetType}`, async function() {
                     // Input
-                    parcelEncoded[3][1][6][0][0][2] = assetType;
+                    encoded[3][1][6][0][0][2] = assetType;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -551,10 +539,10 @@ describe("solo - 1 node", function() {
                 lockScriptHash
             ) {
                 it(`lockScriptHash: ${lockScriptHash}`, async function() {
-                    parcelEncoded[3][1][7] = lockScriptHash;
+                    encoded[3][1][7] = lockScriptHash;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -573,24 +561,20 @@ describe("solo - 1 node", function() {
         });
 
         describe("In assetDecomposeTransaction", function() {
-            let parcelEncoded: any[];
+            let encoded: any[];
             beforeEach(async function() {
                 const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const tx = node.sdk.core.createAssetDecomposeTransaction({
+                const tx = node.sdk.core.createDecomposeAssetTransaction({
                     input,
                     outputs: [output]
                 });
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: tx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq
-                    });
-                parcelEncoded = parcel.toEncodeObject();
+                const signed = tx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq
+                });
+                encoded = signed.toEncodeObject();
             });
 
             ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
@@ -598,10 +582,10 @@ describe("solo - 1 node", function() {
             ) {
                 it(`amount: ${amount}`, async function() {
                     // Input
-                    parcelEncoded[3][1][2][0][3] = amount;
+                    encoded[3][1][2][0][3] = amount;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -611,10 +595,10 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    parcelEncoded[3][1][3][0][3] = amount;
+                    encoded[3][1][3][0][3] = amount;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -630,10 +614,10 @@ describe("solo - 1 node", function() {
             ) {
                 it(`transactionHash: ${transactionHash}`, async function() {
                     // Input
-                    parcelEncoded[3][1][2][0][0] = transactionHash;
+                    encoded[3][1][2][0][0] = transactionHash;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -649,10 +633,10 @@ describe("solo - 1 node", function() {
             ) {
                 it(`assetType: ${assetType}`, async function() {
                     // Input
-                    parcelEncoded[3][1][2][0][2] = assetType;
+                    encoded[3][1][2][0][2] = assetType;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -662,10 +646,10 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    parcelEncoded[3][1][3][0][2] = assetType;
+                    encoded[3][1][3][0][2] = assetType;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -680,10 +664,10 @@ describe("solo - 1 node", function() {
                 lockScriptHash
             ) {
                 it(`lockScriptHash: ${lockScriptHash}`, async function() {
-                    parcelEncoded[3][1][3][0][0] = lockScriptHash;
+                    encoded[3][1][3][0][0] = lockScriptHash;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -701,33 +685,29 @@ describe("solo - 1 node", function() {
         });
 
         describe("In assetUnwrapCCCTransaction", function() {
-            let parcelEncoded: any[];
+            let encoded: any[];
             beforeEach(async function() {
                 const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const tx = node.sdk.core.createAssetUnwrapCCCTransaction({
+                const tx = node.sdk.core.createUnwrapCCCTransaction({
                     burn: input
                 });
 
-                const parcel = node.sdk.core
-                    .createAssetTransactionParcel({
-                        transaction: tx
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        fee: 10,
-                        seq
-                    });
-                parcelEncoded = parcel.toEncodeObject();
+                const signed = tx.sign({
+                    secret: faucetSecret,
+                    fee: 10,
+                    seq
+                });
+                encoded = signed.toEncodeObject();
             });
 
             ["0x01" + "0".repeat(64), "0x" + "f".repeat(128)].forEach(function(
                 amount
             ) {
                 it(`amount: ${amount}`, async function() {
-                    parcelEncoded[3][1][2][0][3] = amount;
+                    encoded[3][1][2][0][3] = amount;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -742,10 +722,10 @@ describe("solo - 1 node", function() {
                 transactionHash
             ) {
                 it(`transactionHash: ${transactionHash}`, async function() {
-                    parcelEncoded[3][1][2][0][0] = transactionHash;
+                    encoded[3][1][2][0][0] = transactionHash;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -760,10 +740,10 @@ describe("solo - 1 node", function() {
                 assetType
             ) {
                 it(`assetType: ${assetType}`, async function() {
-                    parcelEncoded[3][1][2][0][2] = assetType;
+                    encoded[3][1][2][0][2] = assetType;
                     try {
-                        await node.sendSignedParcelWithRlpBytes(
-                            RLP.encode(parcelEncoded)
+                        await node.sendSignedTransactionWithRlpBytes(
+                            RLP.encode(encoded)
                         );
                         expect.fail();
                     } catch (e) {
@@ -781,12 +761,12 @@ describe("solo - 1 node", function() {
         });
     });
 
-    describe("Sending invalid parcels over the limits (in action 2: Pay)", function() {
-        let parcelEncoded: any[];
+    describe("Sending invalid transactions over the limits (in action 2: Pay)", function() {
+        let encoded: any[];
         beforeEach(async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const parcel = node.sdk.core
-                .createPayParcel({
+            const signed = node.sdk.core
+                .createPayTransaction({
                     recipient,
                     amount: 0
                 })
@@ -795,17 +775,17 @@ describe("solo - 1 node", function() {
                     fee: 10,
                     seq
                 });
-            parcelEncoded = parcel.toEncodeObject();
+            encoded = signed.toEncodeObject();
         });
 
         ["0x1" + "0".repeat(40), "0x" + "f".repeat(38)].forEach(function(
             recipient
         ) {
             it(`recipient: ${recipient}`, async function() {
-                parcelEncoded[3][1] = recipient;
+                encoded[3][1] = recipient;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -825,10 +805,10 @@ describe("solo - 1 node", function() {
             amount
         ) {
             it(`amount: ${amount}`, async function() {
-                parcelEncoded[3][2] = amount;
+                encoded[3][2] = amount;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -840,14 +820,14 @@ describe("solo - 1 node", function() {
         });
     });
 
-    describe("Sending invalid parcels over the limits (in action 3: SetRegularKey)", function() {
-        let parcelEncoded: any[];
+    describe("Sending invalid transactions over the limits (in action 3: SetRegularKey)", function() {
+        let encoded: any[];
         beforeEach(async function() {
             const privKey = node.sdk.util.generatePrivateKey();
             const key = node.sdk.util.getPublicFromPrivate(privKey);
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const parcel = node.sdk.core
-                .createSetRegularKeyParcel({
+            const signed = node.sdk.core
+                .createSetRegularKeyTransaction({
                     key
                 })
                 .sign({
@@ -855,17 +835,17 @@ describe("solo - 1 node", function() {
                     fee: 10,
                     seq
                 });
-            parcelEncoded = parcel.toEncodeObject();
+            encoded = signed.toEncodeObject();
         });
 
         ["0x01" + "0".repeat(128), "0x" + "f".repeat(126)].forEach(function(
             key
         ) {
             it(`key: ${key}`, async function() {
-                parcelEncoded[3][1] = key;
+                encoded[3][1] = key;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -882,13 +862,13 @@ describe("solo - 1 node", function() {
         });
     });
 
-    describe("Sending invalid parcels over the limits (in action 5: SetShardOwners)", function() {
-        let parcelEncoded: any[];
+    describe("Sending invalid transactions over the limits (in action 5: SetShardOwners)", function() {
+        let encoded: any[];
         beforeEach(async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const account = await node.createPlatformAddress();
-            const parcel = node.sdk.core
-                .createSetShardOwnersParcel({
+            const signed = node.sdk.core
+                .createSetShardOwnersTransaction({
                     shardId: 0,
                     owners: [account]
                 })
@@ -897,15 +877,15 @@ describe("solo - 1 node", function() {
                     fee: 10,
                     seq
                 });
-            parcelEncoded = parcel.toEncodeObject();
+            encoded = signed.toEncodeObject();
         });
 
         [65536, 100000].forEach(function(shardId) {
             it(`shardId: ${shardId}`, async function() {
-                parcelEncoded[3][1] = shardId;
+                encoded[3][1] = shardId;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -919,13 +899,13 @@ describe("solo - 1 node", function() {
         it("Owners");
     });
 
-    describe("Sending invalid parcels over the limits (in action 6: SetShardUsers)", function() {
-        let parcelEncoded: any[];
+    describe("Sending invalid transactions over the limits (in action 6: SetShardUsers)", function() {
+        let encoded: any[];
         beforeEach(async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const account = await node.createPlatformAddress();
-            const parcel = node.sdk.core
-                .createSetShardUsersParcel({
+            const signed = node.sdk.core
+                .createSetShardUsersTransaction({
                     shardId: 0,
                     users: [account]
                 })
@@ -934,15 +914,15 @@ describe("solo - 1 node", function() {
                     fee: 10,
                     seq
                 });
-            parcelEncoded = parcel.toEncodeObject();
+            encoded = signed.toEncodeObject();
         });
 
         [65536, 100000].forEach(function(shardId) {
             it(`shardId: ${shardId}`, async function() {
-                parcelEncoded[3][1] = shardId;
+                encoded[3][1] = shardId;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -956,14 +936,14 @@ describe("solo - 1 node", function() {
         it("Users");
     });
 
-    describe("Sending invalid parcels over the limits (in action 7: WrapCCC)", function() {
-        let parcelEncoded: any[];
+    describe("Sending invalid transactions over the limits (in action 7: WrapCCC)", function() {
+        let encoded: any[];
         beforeEach(async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const account = await node.createPlatformAddress();
             const recipient = await node.createP2PKHAddress();
-            const parcel = node.sdk.core
-                .createWrapCCCParcel({
+            const signed = node.sdk.core
+                .createWrapCCCTransaction({
                     shardId: 0,
                     recipient,
                     amount: 10
@@ -973,15 +953,15 @@ describe("solo - 1 node", function() {
                     fee: 10,
                     seq
                 });
-            parcelEncoded = parcel.toEncodeObject();
+            encoded = signed.toEncodeObject();
         });
 
         [65536, 100000].forEach(function(shardId) {
             it(`shardId: ${shardId}`, async function() {
-                parcelEncoded[3][1] = shardId;
+                encoded[3][1] = shardId;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -996,10 +976,10 @@ describe("solo - 1 node", function() {
             amount
         ) {
             it(`amount: ${amount}`, async function() {
-                parcelEncoded[3][4] = amount;
+                encoded[3][4] = amount;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -1014,10 +994,10 @@ describe("solo - 1 node", function() {
             lockScriptHash
         ) {
             it(`lockScriptHash: ${lockScriptHash}`, async function() {
-                parcelEncoded[3][2] = lockScriptHash;
+                encoded[3][2] = lockScriptHash;
                 try {
-                    await node.sendSignedParcelWithRlpBytes(
-                        RLP.encode(parcelEncoded)
+                    await node.sendSignedTransactionWithRlpBytes(
+                        RLP.encode(encoded)
                     );
                     expect.fail();
                 } catch (e) {
@@ -1032,10 +1012,10 @@ describe("solo - 1 node", function() {
     });
 
     [0, 9].forEach(function(fee) {
-        it(`Sending invalid parcels (low fee): ${fee}`, async function() {
+        it(`Sending invalid transactions (low fee): ${fee}`, async function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const parcel = node.sdk.core
-                .createPayParcel({
+            const signed = node.sdk.core
+                .createPayTransaction({
                     recipient,
                     amount: 0
                 })
@@ -1045,7 +1025,7 @@ describe("solo - 1 node", function() {
                     seq
                 });
             try {
-                await node.sdk.rpc.chain.sendSignedParcel(parcel);
+                await node.sdk.rpc.chain.sendSignedTransaction(signed);
                 expect.fail();
             } catch (e) {
                 expect(e).to.satisfy(errorMatcher(ERROR.TOO_LOW_FEE));

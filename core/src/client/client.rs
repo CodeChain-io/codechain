@@ -28,6 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
+use ctypes::parcel::Action;
 use ctypes::transaction::{AssetTransferInput, PartialHashing, Transaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
@@ -43,8 +44,8 @@ use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
     Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
-    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, ResealTimer, Seq, Shard, StateInfo,
-    StateOrBlock, TextClient, TransactionInfo,
+    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, ResealTimer, Seq, Shard, StateOrBlock,
+    TextClient, TransactionInfo,
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{
@@ -227,6 +228,30 @@ impl Client {
         }
     }
 
+    /// Get a copy of the best block's state.
+    fn latest_state(&self) -> TopLevelState {
+        let header = self.best_block_header();
+        TopLevelState::from_existing(self.state_db.read().clone(&header.state_root()), header.state_root())
+            .expect("State root of best block header always valid.")
+    }
+
+    /// Attempt to get a copy of a specific block's final state.
+    ///
+    /// This will not fail if given BlockId::Latest.
+    /// Otherwise, this can fail (but may not) if the DB prunes state or the block
+    /// is unknown.
+    fn state_at(&self, id: BlockId) -> Option<TopLevelState> {
+        // fast path for latest state.
+        if BlockId::Latest == id {
+            return Some(self.latest_state())
+        }
+
+        self.block_header(&id).and_then(|header| {
+            let root = header.state_root();
+            TopLevelState::from_existing(self.state_db.read().clone(&root), root).ok()
+        })
+    }
+
     fn state_info(&self, state: StateOrBlock) -> Option<Box<TopStateView>> {
         Some(match state {
             StateOrBlock::State(state) => state,
@@ -348,7 +373,16 @@ impl AssetClient for Client {
             Some(_) => {}
         }
 
-        let transaction = self.transaction(&transaction_hash).expect("There is a successful transaction");
+        let parcel = self.transaction(&transaction_hash).expect("There is a successful transaction");
+        let transaction = if let Action::AssetTransaction {
+            ref transaction,
+            ..
+        } = parcel.action
+        {
+            transaction
+        } else {
+            return Ok(None)
+        };
         if !transaction.is_valid_shard_id_index(index, shard_id) {
             return Ok(None)
         }
@@ -403,15 +437,6 @@ impl ExecuteClient for Client {
             results.push(result);
         }
         Ok(results)
-    }
-}
-
-impl StateInfo for Client {
-    fn state_at(&self, id: BlockId) -> Option<TopLevelState> {
-        self.block_header(&id).and_then(|header| {
-            let root = header.state_root();
-            TopLevelState::from_existing(self.state_db.read().clone(&root), root).ok()
-        })
     }
 }
 
@@ -608,9 +633,10 @@ impl BlockChainClient for Client {
         self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
 
-    fn transaction(&self, hash: &H256) -> Option<Transaction> {
+    fn transaction(&self, hash: &H256) -> Option<LocalizedParcel> {
         let chain = self.block_chain();
-        self.transaction_address(hash).and_then(|address| chain.transaction(&address))
+        let address = self.transaction_address(hash)?;
+        address.into_iter().map(Into::into).map(|address| chain.parcel(&address)).next()?
     }
 
     fn transaction_invoices(&self, hash: &H256) -> Vec<Invoice> {

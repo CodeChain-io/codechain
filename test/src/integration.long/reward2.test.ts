@@ -103,9 +103,9 @@ describe("reward2", function() {
         // nodeA creates 2 blocks
         {
             await nodeA.pay(aliceAddress, 100); // +160 for alice in nodeA
-            await nodeA.sdk.rpc.chain.sendSignedParcel(
+            await nodeA.sdk.rpc.chain.sendSignedTransaction(
                 nodeA.sdk.core
-                    .createPayParcel({
+                    .createPayTransaction({
                         recipient: bobAddress,
                         amount: 5
                     })
@@ -127,9 +127,9 @@ describe("reward2", function() {
         {
             await nodeB.pay(aliceAddress, 200); // +200 for alice, +60 for bob in nodeB
             await nodeB.pay(bobAddress, 300); // +360 for bob in nodeB
-            await nodeB.sdk.rpc.chain.sendSignedParcel(
+            await nodeB.sdk.rpc.chain.sendSignedTransaction(
                 nodeB.sdk.core
-                    .createPayParcel({
+                    .createPayTransaction({
                         recipient: bobAddress,
                         amount: 15
                     })

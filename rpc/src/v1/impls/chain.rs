@@ -35,7 +35,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, Parcel, Text, Transaction, TransactionWithHash};
+use super::super::types::{Block, BlockNumberAndHash, Text, Transaction, UnsignedTransaction};
 
 pub struct ChainClient<C, M>
 where
@@ -79,7 +79,7 @@ where
         + 'static,
     M: MinerService + 'static,
 {
-    fn send_signed_parcel(&self, raw: Bytes) -> Result<H256> {
+    fn send_signed_transaction(&self, raw: Bytes) -> Result<H256> {
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
             .map_err(|e| errors::rlp(&e))
@@ -103,23 +103,23 @@ where
             .map(Into::into)
     }
 
-    fn get_parcel(&self, parcel_hash: H256) -> Result<Option<Parcel>> {
-        match self.client.parcel(&parcel_hash.into()) {
+    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
+        match self.client.parcel(&transaction_hash.into()) {
             Some(parcel) => Ok(Some(parcel.into())),
             None => Ok(None),
         }
     }
 
-    fn get_parcel_invoice(&self, parcel_hash: H256) -> Result<Option<Invoice>> {
-        Ok(self.client.parcel_invoice(&parcel_hash.into()))
+    fn get_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
+        Ok(self.client.parcel_invoice(&transaction_hash.into()))
     }
 
-    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<TransactionWithHash>> {
-        Ok(self.client.transaction(&transaction_hash).map(Into::into))
+    fn get_transaction_with_payload_hash(&self, payload_hash: H256) -> Result<Option<Transaction>> {
+        Ok(self.client.transaction(&payload_hash).map(Into::into))
     }
 
-    fn get_transaction_invoices(&self, transaction_hash: H256) -> Result<Vec<Invoice>> {
-        Ok(self.client.transaction_invoices(&transaction_hash))
+    fn get_invoices_with_payload_hash(&self, payload_hash: H256) -> Result<Vec<Invoice>> {
+        Ok(self.client.transaction_invoices(&payload_hash))
     }
 
     fn get_asset_scheme_by_hash(
@@ -140,11 +140,11 @@ where
         }
     }
 
-    fn get_text(&self, parcel_hash: H256, block_number: Option<u64>) -> Result<Option<Text>> {
+    fn get_text(&self, transaction_hash: H256, block_number: Option<u64>) -> Result<Option<Text>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self
             .client
-            .get_text(parcel_hash, block_id)
+            .get_text(transaction_hash, block_id)
             .map_err(errors::parcel_state)?
             .map(|text| Text::from_core(text, self.client.common_params().network_id)))
     }
@@ -236,7 +236,7 @@ where
             .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 
-    fn get_pending_parcels(&self) -> Result<Vec<Parcel>> {
+    fn get_pending_transactions(&self) -> Result<Vec<Transaction>> {
         Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
     }
 
@@ -248,20 +248,32 @@ where
         Ok(self.client.common_params().network_id)
     }
 
-    fn execute_transaction(&self, transaction: Transaction, sender: PlatformAddress) -> Result<Invoice> {
+    fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Invoice> {
         let sender_address = sender.try_address().map_err(errors::core)?;
-        let transaction_type = ::std::result::Result::from(transaction).map_err(errors::core)?;
-        Ok(self.client.execute_transaction(&transaction_type, sender_address).map_err(errors::core)?)
+        let action = ::std::result::Result::from(tx.action).map_err(errors::core)?;
+        if let Some(transaction) = action.transaction() {
+            Ok(self.client.execute_transaction(&transaction, sender_address).map_err(errors::core)?)
+        } else {
+            Err(errors::asset_transaction_only())
+        }
     }
 
-    fn execute_vm(&self, tx: Transaction, params: Vec<Vec<BytesArray>>, indices: Vec<usize>) -> Result<Vec<String>> {
-        let tx_type = ::std::result::Result::from(tx).map_err(errors::core)?;
-        match &tx_type {
-            TransactionType::AssetTransfer {
-                inputs,
-                ..
-            } => Ok(self.client.execute_vm(&tx_type, inputs, &params, &indices).map_err(errors::core)?),
-            _ => Err(errors::transfer_only()),
+    fn execute_vm(
+        &self,
+        tx: UnsignedTransaction,
+        params: Vec<Vec<BytesArray>>,
+        indices: Vec<usize>,
+    ) -> Result<Vec<String>> {
+        let action = ::std::result::Result::from(tx.action).map_err(errors::core)?;
+        let transaction = action.transaction().ok_or_else(errors::transfer_only)?;
+        if let TransactionType::AssetTransfer {
+            inputs,
+            ..
+        } = transaction
+        {
+            Ok(self.client.execute_vm(transaction, inputs, &params, &indices).map_err(errors::core)?)
+        } else {
+            Err(errors::transfer_only())
         }
     }
 }

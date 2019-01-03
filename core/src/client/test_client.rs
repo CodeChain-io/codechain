@@ -42,7 +42,6 @@ use cstate::{FindActionHandler, StateDB};
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, Parcel};
-use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use journaldb;
@@ -518,7 +517,7 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn transaction(&self, _: &H256) -> Option<Transaction> {
+    fn transaction(&self, _: &H256) -> Option<LocalizedParcel> {
         unimplemented!();
     }
 

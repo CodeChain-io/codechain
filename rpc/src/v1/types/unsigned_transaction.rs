@@ -22,7 +22,7 @@ use super::Action;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UnsignedParcel {
+pub struct UnsignedTransaction {
     pub seq: Option<u64>,
     pub fee: Uint,
     pub network_id: NetworkId,
@@ -30,8 +30,8 @@ pub struct UnsignedParcel {
 }
 
 // FIXME: Use TryFrom.
-impl From<UnsignedParcel> for Result<(IncompleteParcel, Option<u64>), KeyError> {
-    fn from(parcel: UnsignedParcel) -> Self {
+impl From<UnsignedTransaction> for Result<(IncompleteParcel, Option<u64>), KeyError> {
+    fn from(parcel: UnsignedTransaction) -> Self {
         Ok((
             IncompleteParcel {
                 fee: parcel.fee.into(),

@@ -43,8 +43,8 @@ describe("store & remove", function() {
     });
 
     it("successfully", async function() {
-        const storeParcel = node.sdk.core
-            .createStoreParcel({
+        const store = node.sdk.core
+            .createStoreTransaction({
                 content,
                 secret: privKey
             })
@@ -54,10 +54,8 @@ describe("store & remove", function() {
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
 
-        const storeHash = await node.sdk.rpc.chain.sendSignedParcel(
-            storeParcel
-        );
-        const invoice1 = await node.sdk.rpc.chain.getParcelInvoice(storeHash, {
+        const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
+        const invoice1 = await node.sdk.rpc.chain.getInvoice(storeHash, {
             timeout: 300 * 1000
         });
         expect(invoice1).not.to.be.null;
@@ -68,8 +66,8 @@ describe("store & remove", function() {
         expect(text!.content).to.equal(content);
         expect(text!.certifier).to.deep.equal(address);
 
-        const removeParcel = node.sdk.core
-            .createRemoveParcel({
+        const remove = node.sdk.core
+            .createRemoveTransaction({
                 hash: storeHash,
                 secret: privKey
             })
@@ -79,10 +77,10 @@ describe("store & remove", function() {
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
 
-        const removeHash = await node.sdk.rpc.chain.sendSignedParcel(
-            removeParcel
+        const removeHash = await node.sdk.rpc.chain.sendSignedTransaction(
+            remove
         );
-        const invoice2 = await node.sdk.rpc.chain.getParcelInvoice(removeHash, {
+        const invoice2 = await node.sdk.rpc.chain.getInvoice(removeHash, {
             timeout: 300 * 1000
         });
         expect(invoice2).not.to.be.null;
@@ -101,8 +99,8 @@ describe("store & remove", function() {
             "0"
         )}${_.padStart(v.toString(16), 2, "0")}`;
 
-        const storeParcel = node.sdk.core
-            .createStoreParcel({
+        const store = node.sdk.core
+            .createStoreTransaction({
                 content,
                 certifier: address,
                 signature
@@ -113,10 +111,8 @@ describe("store & remove", function() {
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
 
-        const storeHash = await node.sdk.rpc.chain.sendSignedParcel(
-            storeParcel
-        );
-        const invoice = await node.sdk.rpc.chain.getParcelInvoice(storeHash, {
+        const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
+        const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
             timeout: 300 * 1000
         });
         expect(invoice).not.to.be.null;
@@ -128,8 +124,8 @@ describe("store & remove", function() {
     });
 
     it("storing with invalid signature fails", async function() {
-        const storeParcel = node.sdk.core
-            .createStoreParcel({
+        const store = node.sdk.core
+            .createStoreTransaction({
                 content,
                 certifier: address,
                 signature: "a".repeat(130)
@@ -140,10 +136,8 @@ describe("store & remove", function() {
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
 
-        const storeHash = await node.sdk.rpc.chain.sendSignedParcel(
-            storeParcel
-        );
-        const invoice = await node.sdk.rpc.chain.getParcelInvoice(storeHash, {
+        const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
+        const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
             timeout: 300 * 1000
         });
         expect(invoice).not.to.be.null;
@@ -153,8 +147,8 @@ describe("store & remove", function() {
     });
 
     it("removal on nothing fails", async function() {
-        const removeParcel = node.sdk.core
-            .createRemoveParcel({
+        const remove = node.sdk.core
+            .createRemoveTransaction({
                 hash: makeRandomH256(),
                 secret: privKey
             })
@@ -164,10 +158,10 @@ describe("store & remove", function() {
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
 
-        const removeHash = await node.sdk.rpc.chain.sendSignedParcel(
-            removeParcel
+        const removeHash = await node.sdk.rpc.chain.sendSignedTransaction(
+            remove
         );
-        const invoice = await node.sdk.rpc.chain.getParcelInvoice(removeHash, {
+        const invoice = await node.sdk.rpc.chain.getInvoice(removeHash, {
             timeout: 300 * 1000
         });
         expect(invoice).not.to.be.null;

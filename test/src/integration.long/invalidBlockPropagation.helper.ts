@@ -56,7 +56,7 @@ async function setup(base: number): Promise<[Header, Block, Header]> {
         new U256(block0.number),
         block0.author.accountId,
         Buffer.from(block0.extraData),
-        block0.parcelsRoot,
+        block0.transactionsRoot,
         block0.stateRoot,
         block0.invoicesRoot,
         block0.score,
@@ -68,7 +68,7 @@ async function setup(base: number): Promise<[Header, Block, Header]> {
         new U256(block1.number),
         block1.author.accountId,
         Buffer.from(block1.extraData),
-        block1.parcelsRoot,
+        block1.transactionsRoot,
         block1.stateRoot,
         block1.invoicesRoot,
         new U256(2222222222222),
@@ -80,7 +80,7 @@ async function setup(base: number): Promise<[Header, Block, Header]> {
         new U256(block2.number),
         block2.author.accountId,
         Buffer.from(block2.extraData),
-        block2.parcelsRoot,
+        block2.transactionsRoot,
         block2.stateRoot,
         block2.invoicesRoot,
         new U256(33333333333333),
@@ -120,7 +120,7 @@ async function testBody(
         tnumber?: U256;
         tauthor?: H160;
         textraData?: Buffer;
-        tparcelRoot?: H256;
+        ttransactionRoot?: H256;
         tstateRoot?: H256;
         tinvoiceRoot?: H256;
         tscore?: U256;
@@ -133,7 +133,7 @@ async function testBody(
         tscore,
         tparent,
         tauthor,
-        tparcelRoot,
+        ttransactionRoot,
         tstateRoot,
         tinvoiceRoot,
         tseal
@@ -148,7 +148,7 @@ async function testBody(
         new U256(block1.number),
         block1.author.accountId,
         Buffer.from(block1.extraData),
-        block1.parcelsRoot,
+        block1.transactionsRoot,
         block1.stateRoot,
         block1.invoicesRoot,
         new U256(2222222222222),
@@ -167,8 +167,8 @@ async function testBody(
     if (textraData != null) {
         header.setExtraData(textraData);
     }
-    if (tparcelRoot != null) {
-        header.setParcelsRoot(tparcelRoot);
+    if (ttransactionRoot != null) {
+        header.setParcelsRoot(ttransactionRoot);
     }
     if (tstateRoot != null) {
         header.setStateRoot(tstateRoot);

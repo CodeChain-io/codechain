@@ -24,6 +24,6 @@ const INVALID_PARCELROOT = new H256(
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 );
 const params = {
-    tparcelRoot: INVALID_PARCELROOT
+    ttransactionRoot: INVALID_PARCELROOT
 };
 createTestSuite(5, "OnChain invalid parcelRoot block propagation test", params);
