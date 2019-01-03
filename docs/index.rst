@@ -17,7 +17,6 @@ CodeChain is a programmable open source blockchain technology optimal for develo
     basic-usage
     account-management
     consensus-algorithms
-    sharding
     transactions
     gateway
     codechain-coin
