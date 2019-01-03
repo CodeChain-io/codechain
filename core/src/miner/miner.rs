@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
 use cstate::{FindActionHandler, StateError, TopLevelState};
 use ctypes::parcel::{Action, Error as ParcelError, IncompleteParcel};
-use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
+use ctypes::transaction::{Error as TransactionError, Timelock};
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
@@ -296,50 +296,41 @@ impl Miner {
     fn calculate_timelock<C: BlockChain>(&self, parcel: &SignedParcel, client: &C) -> Result<ParcelTimelock, Error> {
         let mut max_block = None;
         let mut max_timestamp = None;
-        if let Action::AssetTransaction {
-            transaction,
+        if let Action::TransferAsset {
+            inputs,
             ..
         } = &parcel.action
         {
-            if let Transaction::AssetTransfer {
-                inputs,
-                ..
-            } = transaction
-            {
-                for input in inputs {
-                    if let Some(timelock) = input.timelock {
-                        let (is_block_number, value) = match timelock {
-                            Timelock::Block(value) => (true, value),
-                            Timelock::BlockAge(value) => (
-                                true,
-                                client.transaction_block_number(&input.prev_out.transaction_hash).ok_or_else(|| {
-                                    Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                        timelock,
-                                        remaining_time: u64::max_value(),
-                                    }))
-                                })? + value,
-                            ),
-                            Timelock::Time(value) => (false, value),
-                            Timelock::TimeAge(value) => (
-                                false,
-                                client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or_else(
-                                    || {
-                                        Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                            timelock,
-                                            remaining_time: u64::max_value(),
-                                        }))
-                                    },
-                                )? + value,
-                            ),
-                        };
-                        if is_block_number {
-                            if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
-                                max_block = Some(value);
-                            }
-                        } else if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value
-                        {
-                            max_timestamp = Some(value);
+            for input in inputs {
+                if let Some(timelock) = input.timelock {
+                    let (is_block_number, value) = match timelock {
+                        Timelock::Block(value) => (true, value),
+                        Timelock::BlockAge(value) => (
+                            true,
+                            client.transaction_block_number(&input.prev_out.transaction_hash).ok_or_else(|| {
+                                Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                    timelock,
+                                    remaining_time: u64::max_value(),
+                                }))
+                            })? + value,
+                        ),
+                        Timelock::Time(value) => (false, value),
+                        Timelock::TimeAge(value) => (
+                            false,
+                            client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or_else(|| {
+                                Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                    timelock,
+                                    remaining_time: u64::max_value(),
+                                }))
+                            })? + value,
+                        ),
+                    };
+                    if is_block_number {
+                        if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
+                            max_block = Some(value);
                         }
+                    } else if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value {
+                        max_timestamp = Some(value);
                     }
                 }
             }

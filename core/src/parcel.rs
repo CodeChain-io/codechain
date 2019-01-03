@@ -18,8 +18,7 @@ use std::ops::Deref;
 
 use ccrypto::blake256;
 use ckey::{self, recover, sign, Private, Public, Signature};
-use ctypes::parcel::{Action, Error as ParcelError, Parcel};
-use ctypes::transaction::Transaction;
+use ctypes::parcel::{Error as ParcelError, Parcel};
 use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use primitives::H256;
@@ -137,70 +136,7 @@ impl UnverifiedParcel {
         if byte_size >= params.max_body_size {
             return Err(ParcelError::ParcelsTooBig)
         }
-        match &self.action {
-            Action::AssetTransaction {
-                transaction,
-                ..
-            } => {
-                transaction.verify()?;
-                if transaction.network_id() != self.network_id {
-                    return Err(ParcelError::InvalidNetworkId(transaction.network_id()))
-                }
-                match &transaction {
-                    Transaction::AssetMint {
-                        metadata,
-                        ..
-                    } => {
-                        if metadata.len() > params.max_metadata_size {
-                            return Err(ParcelError::MetadataTooBig)
-                        }
-                    }
-                    Transaction::AssetTransfer {
-                        ..
-                    } => {}
-                    Transaction::AssetSchemeChange {
-                        metadata,
-                        ..
-                    } => {
-                        if metadata.len() > params.max_metadata_size {
-                            return Err(ParcelError::MetadataTooBig)
-                        }
-                    }
-                    Transaction::AssetCompose {
-                        metadata,
-                        ..
-                    } => {
-                        if metadata.len() > params.max_metadata_size {
-                            return Err(ParcelError::MetadataTooBig)
-                        }
-                    }
-                    Transaction::AssetDecompose {
-                        ..
-                    } => {}
-                    Transaction::AssetUnwrapCCC {
-                        ..
-                    } => {}
-                }
-            }
-            Action::WrapCCC {
-                amount,
-                ..
-            } => {
-                if amount == &0 {
-                    return Err(ParcelError::ZeroAmount)
-                }
-            }
-            Action::Store {
-                content,
-                ..
-            } => {
-                if content.len() > params.max_text_content_size {
-                    return Err(ParcelError::TextContentTooBig)
-                }
-            }
-            _ => {}
-        }
-        Ok(())
+        self.action.verify(params.network_id, params.max_metadata_size, params.max_text_content_size)
     }
 }
 
@@ -309,8 +245,8 @@ impl From<LocalizedParcel> for Parcel {
 #[cfg(test)]
 mod tests {
     use ckey::{Address, Public, Signature};
-    use ctypes::transaction::AssetMintOutput;
-    use primitives::{H160, H256};
+    use ctypes::parcel::Action;
+    use primitives::H256;
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
@@ -328,62 +264,6 @@ mod tests {
             hash: H256::default(),
         }
         .compute_hash());
-    }
-
-    #[test]
-    fn encode_and_decode_asset_mint() {
-        rlp_encode_and_decode_test!(Transaction::AssetMint {
-            network_id: "tc".into(),
-            shard_id: 0xc,
-            metadata: "mint test".to_string(),
-            output: AssetMintOutput {
-                lock_script_hash: H160::random(),
-                parameters: vec![],
-                amount: Some(10000),
-            },
-            approver: None,
-            administrator: None,
-        });
-    }
-
-    #[test]
-    fn encode_and_decode_asset_mint_with_parameters() {
-        rlp_encode_and_decode_test!(Transaction::AssetMint {
-            network_id: "tc".into(),
-            shard_id: 3,
-            metadata: "mint test".to_string(),
-            output: AssetMintOutput {
-                lock_script_hash: H160::random(),
-                parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
-                amount: Some(10000),
-            },
-            approver: None,
-            administrator: None,
-        });
-    }
-
-    #[test]
-    fn encode_and_decode_asset_transfer() {
-        let burns = vec![];
-        let inputs = vec![];
-        let outputs = vec![];
-        let orders = vec![];
-        let network_id = "tc".into();
-        rlp_encode_and_decode_test!(Transaction::AssetTransfer {
-            network_id,
-            burns,
-            inputs,
-            outputs,
-            orders,
-        });
-    }
-
-    #[test]
-    fn encode_and_decode_pay_action() {
-        rlp_encode_and_decode_test!(Action::Pay {
-            receiver: Address::random(),
-            amount: 300,
-        });
     }
 
     #[test]

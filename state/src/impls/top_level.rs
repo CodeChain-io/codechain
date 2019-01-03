@@ -43,7 +43,7 @@ use ckey::{public_to_address, recover, verify_address, Address, NetworkId, Publi
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::invoice::Invoice;
 use ctypes::parcel::{Action, Error as ParcelError, Parcel};
-use ctypes::transaction::{AssetWrapCCCOutput, InnerTransaction, Transaction};
+use ctypes::transaction::{AssetWrapCCCOutput, ShardTransaction};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
@@ -370,21 +370,110 @@ impl TopLevelState {
         client: &C,
     ) -> StateResult<Invoice> {
         match action {
-            Action::AssetTransaction {
-                transaction,
+            Action::MintAsset {
                 approvals,
+                ..
             } => {
+                let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's a mint transaction");
                 debug_assert_eq!(network_id, transaction.network_id());
 
-                let transaction_hash = transaction.hash();
+                let transaction_tracker = transaction.tracker();
                 let approvers = approvals
                     .iter()
                     .map(|signature| {
-                        let public = recover(&signature, &transaction_hash)?;
+                        let public = recover(&signature, &transaction_tracker)?;
                         self.public_to_owner_address(&public)
                     })
                     .collect::<StateResult<Vec<_>>>()?;
-                Ok(self.apply_transaction(transaction, fee_payer, &approvers, client)?)
+                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
+            }
+            Action::TransferAsset {
+                approvals,
+                ..
+            } => {
+                let transaction =
+                    Option::<ShardTransaction>::from(action.clone()).expect("It's a transfer transaction");
+                debug_assert_eq!(network_id, transaction.network_id());
+
+                let transaction_tracker = transaction.tracker();
+                let approvers = approvals
+                    .iter()
+                    .map(|signature| {
+                        let public = recover(&signature, &transaction_tracker)?;
+                        self.public_to_owner_address(&public)
+                    })
+                    .collect::<StateResult<Vec<_>>>()?;
+                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
+            }
+            Action::ChangeAssetScheme {
+                approvals,
+                ..
+            } => {
+                let transaction =
+                    Option::<ShardTransaction>::from(action.clone()).expect("It's a change scheme transaction");
+                debug_assert_eq!(network_id, transaction.network_id());
+
+                let transaction_tracker = transaction.tracker();
+                let approvers = approvals
+                    .iter()
+                    .map(|signature| {
+                        let public = recover(&signature, &transaction_tracker)?;
+                        self.public_to_owner_address(&public)
+                    })
+                    .collect::<StateResult<Vec<_>>>()?;
+                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
+            }
+            Action::ComposeAsset {
+                approvals,
+                ..
+            } => {
+                let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's a compose transaction");
+                debug_assert_eq!(network_id, transaction.network_id());
+
+                let transaction_tracker = transaction.tracker();
+                let approvers = approvals
+                    .iter()
+                    .map(|signature| {
+                        let public = recover(&signature, &transaction_tracker)?;
+                        self.public_to_owner_address(&public)
+                    })
+                    .collect::<StateResult<Vec<_>>>()?;
+                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
+            }
+            Action::DecomposeAsset {
+                approvals,
+                ..
+            } => {
+                let transaction =
+                    Option::<ShardTransaction>::from(action.clone()).expect("It's a decompose transaction");
+                debug_assert_eq!(network_id, transaction.network_id());
+
+                let transaction_tracker = transaction.tracker();
+                let approvers = approvals
+                    .iter()
+                    .map(|signature| {
+                        let public = recover(&signature, &transaction_tracker)?;
+                        self.public_to_owner_address(&public)
+                    })
+                    .collect::<StateResult<Vec<_>>>()?;
+                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
+            }
+            Action::UnwrapCCC {
+                approvals,
+                ..
+            } => {
+                let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's an unwrap transaction");
+                debug_assert_eq!(network_id, transaction.network_id());
+
+                let transaction_tracker = transaction.tracker();
+                let approvers = approvals
+                    .iter()
+                    .map(|signature| {
+                        let public = recover(&signature, &transaction_tracker)?;
+                        self.public_to_owner_address(&public)
+                    })
+                    .collect::<StateResult<Vec<_>>>()?;
+                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
             }
             Action::Pay {
                 receiver,
@@ -481,7 +570,7 @@ impl TopLevelState {
 
         self.sub_balance(sender, amount)?;
 
-        let transaction = InnerTransaction::AssetWrapCCC {
+        let transaction = ShardTransaction::WrapCCC {
             network_id,
             shard_id,
             parcel_hash,
@@ -497,19 +586,20 @@ impl TopLevelState {
         Ok(shard_level_state.apply(&transaction, sender, &shard_users, &[], client)?)
     }
 
-    pub fn apply_transaction<C: ChainTimeInfo>(
+    pub fn apply_shard_transaction<C: ChainTimeInfo>(
         &mut self,
-        transaction: &Transaction,
+        transaction: &ShardTransaction,
         sender: &Address,
         approvers: &[Address],
         client: &C,
     ) -> StateResult<Invoice> {
         let shard_ids = transaction.related_shards();
 
-        let first_invoice = self.apply_transaction_for_shard(transaction, shard_ids[0], sender, approvers, client)?;
+        let first_invoice =
+            self.apply_shard_transaction_to_shard(transaction, shard_ids[0], sender, approvers, client)?;
 
         for shard_id in shard_ids.iter().skip(1) {
-            let invoice = self.apply_transaction_for_shard(transaction, *shard_id, sender, approvers, client)?;
+            let invoice = self.apply_shard_transaction_to_shard(transaction, *shard_id, sender, approvers, client)?;
             if invoice != first_invoice {
                 return Err(ParcelError::InconsistentShardOutcomes.into())
             }
@@ -522,9 +612,9 @@ impl TopLevelState {
         Ok(first_invoice)
     }
 
-    fn apply_transaction_for_shard<C: ChainTimeInfo>(
+    fn apply_shard_transaction_to_shard<C: ChainTimeInfo>(
         &mut self,
-        transaction: &Transaction,
+        transaction: &ShardTransaction,
         shard_id: ShardId,
         sender: &Address,
         approvers: &[Address],
@@ -535,7 +625,7 @@ impl TopLevelState {
 
         let shard_cache = self.shard_caches.entry(shard_id).or_default();
         let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut self.db, shard_root, shard_cache)?;
-        shard_level_state.apply(&transaction.clone().into(), sender, &shard_users, approvers, client)
+        shard_level_state.apply(&transaction.clone(), sender, &shard_users, approvers, client)
     }
 
     fn create_shard_level_state(
@@ -1409,13 +1499,13 @@ mod tests_parcel {
         let (_, regular_public, _) = address();
 
         let shard_id = 0x0;
-        let mint_hash = H256::random();
+        let mint_tracker = H256::random();
         let mut state = get_temp_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_tracker, shard_id);
         let asset_type = H256::from(asset_scheme_address);
 
         set_top_level_state!(state, [
@@ -1424,15 +1514,14 @@ mod tests_parcel {
             (account: sender => balance: 25),
             (regular_key: sender_public => regular_public),
             (scheme: (shard_id, asset_scheme_address) => { amount: amount, metadata: metadata, approver: Some(sender) }),
-            (asset: (shard_id, mint_hash, 0) => { asset_type: asset_type, amount: amount, lock_script_hash: lock_script_hash })
+            (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, amount: amount, lock_script_hash: lock_script_hash })
         ]);
 
-        let transfer = asset_transfer!(
-            inputs: asset_transfer_inputs![(asset_out_point!(mint_hash, 0, asset_type, 30), vec![0x30, 0x01])],
+        let transfer = transfer_asset!(
+            inputs: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
             asset_transfer_outputs![(lock_script_hash, vec![vec![1]], asset_type, 30)]
         );
-        let transfer_parcel =
-            parcel!(seq: 0, fee: 11, Action::AssetTransaction { transaction: transfer, approvals: vec![], });
+        let transfer_parcel = parcel!(seq: 0, fee: 11, transfer);
 
         assert_eq!(
             Ok(Invoice::Success),
@@ -1450,13 +1539,13 @@ mod tests_parcel {
         let (_, regular_public, regular_private) = address();
 
         let shard_id = 0x0;
-        let mint_hash = H256::random();
+        let mint_tracker = H256::random();
         let mut state = get_temp_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_tracker, shard_id);
         let asset_type = H256::from(asset_scheme_address);
 
         set_top_level_state!(state, [
@@ -1465,16 +1554,20 @@ mod tests_parcel {
             (account: sender => balance: 25),
             (regular_key: sender_public => regular_public),
             (scheme: (shard_id, asset_scheme_address) => { amount: amount, metadata: metadata, approver: Some(sender) }),
-            (asset: (shard_id, mint_hash, 0) => { asset_type: asset_type, amount: amount, lock_script_hash: lock_script_hash })
+            (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, amount: amount, lock_script_hash: lock_script_hash })
         ]);
 
-        let transfer = asset_transfer!(
-            inputs: asset_transfer_inputs![(asset_out_point!(mint_hash, 0, asset_type, 30), vec![0x30, 0x01])],
+        let transfer = transfer_asset!(
+            inputs: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
             asset_transfer_outputs![(lock_script_hash, vec![vec![1]], asset_type, 30)]
         );
-        let approval = sign(&regular_private, &transfer.hash()).unwrap();
-        let transfer_parcel =
-            parcel!(seq: 0, fee: 11, Action::AssetTransaction { transaction: transfer, approvals: vec![approval], });
+        let approval = sign(&regular_private, &transfer.tracker().unwrap()).unwrap();
+        let transfer = transfer_asset!(
+            inputs: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
+            asset_transfer_outputs![(lock_script_hash, vec![vec![1]], asset_type, 30)],
+            approvals: vec![approval]
+        );
+        let transfer_parcel = parcel!(seq: 0, fee: 11, transfer);
 
         assert_eq!(
             Ok(Invoice::Success),
@@ -1577,24 +1670,21 @@ mod tests_parcel {
         let parameters = vec![];
         let approver = Address::random();
         let amount = 30;
-        let transaction = asset_mint!(
+        let transaction = mint_asset!(
             asset_mint_output!(lock_script_hash, parameters.clone(), amount),
             metadata.clone(),
             approver: approver
         );
-        let transaction_hash = transaction.hash();
-        let asset_type = H256::from(AssetSchemeAddress::new(transaction_hash, shard_id));
-        let parcel = parcel!(fee: 11, Action::AssetTransaction {
-            transaction,
-            approvals: vec![],
-        });
+        let transaction_tracker = transaction.tracker().unwrap();
+        let asset_type = H256::from(AssetSchemeAddress::new(transaction_tracker, shard_id));
+        let parcel = parcel!(fee: 11, transaction);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &H256::random(), &sender_public, &get_test_client()));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11)),
-            (scheme: (transaction_hash, shard_id) => { metadata: metadata, amount: amount, approver: approver }),
-            (asset: (transaction_hash, 0, shard_id) => { asset_type: asset_type, amount: amount })
+            (scheme: (transaction_tracker, shard_id) => { metadata: metadata, amount: amount, approver: approver }),
+            (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, amount: amount })
         ]);
     }
 
@@ -1615,24 +1705,21 @@ mod tests_parcel {
         let lock_script_hash = H160::random();
         let parameters = vec![];
         let approver = Address::random();
-        let transaction = asset_mint!(
+        let transaction = mint_asset!(
             asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
             metadata.clone(),
             approver: approver
         );
-        let transaction_hash = transaction.hash();
-        let parcel = parcel!(fee: 5, Action::AssetTransaction {
-            transaction,
-            approvals: vec![],
-        });
+        let transaction_tracker = transaction.tracker().unwrap();
+        let parcel = parcel!(fee: 5, transaction);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &H256::random(), &sender_public, &get_test_client()));
 
-        let asset_type = H256::from(AssetSchemeAddress::new(transaction_hash, shard_id));
+        let asset_type = H256::from(AssetSchemeAddress::new(transaction_tracker, shard_id));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 5)),
-            (scheme: (transaction_hash, shard_id) => { metadata: metadata, amount: ::std::u64::MAX, approver: approver }),
-            (asset: (transaction_hash, 0, shard_id) => { asset_type: asset_type, amount: ::std::u64::MAX })
+            (scheme: (transaction_tracker, shard_id) => { metadata: metadata, amount: ::std::u64::MAX, approver: approver }),
+            (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, amount: ::std::u64::MAX })
         ]);
     }
 
@@ -1652,44 +1739,37 @@ mod tests_parcel {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
-        let mint_hash = mint.hash();
-
-        let mint_parcel = parcel!(fee: 20, Action::AssetTransaction {
-            transaction: mint,
-            approvals: vec![],
-        });
+        let mint = mint_asset!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint_tracker = mint.tracker().unwrap();
+        let mint_parcel = parcel!(fee: 20, mint);
 
         assert_eq!(
             Ok(Invoice::Success),
             state.apply(&mint_parcel, &H256::random(), &sender_public, &get_test_client())
         );
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_hash, shard_id);
+        let asset_scheme_address = AssetSchemeAddress::new(mint_tracker, shard_id);
         let asset_type = asset_scheme_address.into();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 120 - 20)),
-            (scheme: (mint_hash, shard_id) => { metadata: metadata.clone(), amount: 30 }),
-            (asset: (mint_hash, 0, shard_id) => { asset_type: asset_type, amount: 30 })
+            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), amount: 30 }),
+            (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, amount: 30 })
         ]);
 
         let random_lock_script_hash = H160::random();
-        let transfer = asset_transfer!(
-            inputs: vec![asset_transfer_input!(asset_out_point!(mint_hash, 0, asset_type, 30), vec![0x30, 0x01])],
+        let transfer = transfer_asset!(
+            inputs: vec![asset_transfer_input!(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
             vec![
                 asset_transfer_output!(lock_script_hash, vec![vec![1]], asset_type, 10),
                 asset_transfer_output!(lock_script_hash, asset_type, 5),
                 asset_transfer_output!(random_lock_script_hash, asset_type, 15),
             ]
         );
-        let transfer_hash = transfer.hash();
+        let transfer_tracker = transfer.tracker().unwrap();
 
         state.shard_root(shard_id).unwrap().unwrap();
 
-        let transfer_parcel = parcel!(seq: 1, fee: 30, Action::AssetTransaction {
-            transaction: transfer,
-            approvals: vec![],
-        });
+        let transfer_parcel = parcel!(seq: 1, fee: 30, transfer);
 
         assert_eq!(
             Ok(Invoice::Success),
@@ -1698,11 +1778,11 @@ mod tests_parcel {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 120 - 20 - 30)),
-            (scheme: (mint_hash, shard_id) => { metadata: metadata.clone(), amount: 30 }),
-            (asset: (mint_hash, 0, shard_id)),
-            (asset: (transfer_hash, 0, shard_id) => { asset_type: asset_type, amount: 10 }),
-            (asset: (transfer_hash, 1, shard_id) => { asset_type: asset_type, amount: 5 }),
-            (asset: (transfer_hash, 2, shard_id) => { asset_type: asset_type, amount: 15 })
+            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), amount: 30 }),
+            (asset: (mint_tracker, 0, shard_id)),
+            (asset: (transfer_tracker, 0, shard_id) => { asset_type: asset_type, amount: 10 }),
+            (asset: (transfer_tracker, 1, shard_id) => { asset_type: asset_type, amount: 5 }),
+            (asset: (transfer_tracker, 2, shard_id) => { asset_type: asset_type, amount: 15 })
         ]);
     }
 
@@ -1724,15 +1804,12 @@ mod tests_parcel {
         let parameters = vec![];
         let approver = Address::random();
         let amount = 30;
-        let transaction = asset_mint!(
+        let transaction = mint_asset!(
             asset_mint_output!(lock_script_hash, parameters.clone(), amount),
             metadata.clone(),
             approver: approver
         );
-        let parcel = parcel!(fee: 11, Action::AssetTransaction {
-            transaction: transaction.clone(),
-            approvals: vec![],
-        });
+        let parcel = parcel!(fee: 11, transaction.clone());
 
         assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &H256::random(), &sender_public, &get_test_client()));
 
@@ -1740,13 +1817,10 @@ mod tests_parcel {
             (account: sender => (seq: 1, balance: 100 - 11))
         ]);
 
-        let transaction_hash = transaction.hash();
-        let parcel = parcel!(seq: 1, fee: 11, Action::AssetTransaction {
-            transaction,
-            approvals: vec![],
-        });
+        let transaction_tracker = transaction.tracker().unwrap();
+        let parcel = parcel!(seq: 1, fee: 11, transaction);
         assert_eq!(
-            Ok(Invoice::Failure(TransactionError::AssetSchemeDuplicated(transaction_hash).into())),
+            Ok(Invoice::Failure(TransactionError::AssetSchemeDuplicated(transaction_tracker).into())),
             state.apply(&parcel, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -1783,11 +1857,8 @@ mod tests_parcel {
         ]);
 
         let unwrap_ccc_tx =
-            asset_unwrap_ccc!(asset_transfer_input!(asset_out_point!(parcel_hash, 0, asset_type, 30), vec![0x01]));
-        let parcel = parcel!(seq: 1, fee: 11, Action::AssetTransaction {
-            transaction: unwrap_ccc_tx,
-            approvals: vec![],
-        });
+            unwrap_ccc!(asset_transfer_input!(asset_out_point!(parcel_hash, 0, asset_type, 30), vec![0x01]));
+        let parcel = parcel!(seq: 1, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &H256::random(), &sender_public, &get_test_client()));
 
@@ -1825,14 +1896,11 @@ mod tests_parcel {
         ]);
 
         let failed_lock_script = vec![0x02];
-        let unwrap_ccc_tx = asset_unwrap_ccc!(asset_transfer_input!(
+        let unwrap_ccc_tx = unwrap_ccc!(asset_transfer_input!(
             asset_out_point!(parcel_hash, 0, asset_type, 30),
             failed_lock_script.clone()
         ));
-        let parcel = parcel!(seq: 1, fee: 11, Action::AssetTransaction {
-            transaction: unwrap_ccc_tx,
-            approvals: vec![],
-        });
+        let parcel = parcel!(seq: 1, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(
             Ok(Invoice::Failure(ParcelError::InvalidTransaction(TransactionError::ScriptHashMismatch(Mismatch {
@@ -1908,7 +1976,7 @@ mod tests_parcel {
 
         let lock_script_hash_burn = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
         let random_lock_script_hash = H160::random();
-        let transfer_tx = asset_transfer!(
+        let transfer_tx = transfer_asset!(
             inputs: asset_transfer_inputs![(asset_out_point!(parcel_hash, 0, asset_type, 30), vec![0x30, 0x01])],
             asset_transfer_outputs![
                 (lock_script_hash, vec![vec![1]], asset_type, 10),
@@ -1916,37 +1984,31 @@ mod tests_parcel {
                 (random_lock_script_hash, asset_type, 15),
             ]
         );
-        let transfer_tx_hash = transfer_tx.hash();
+        let transfer_tx_tracker = transfer_tx.tracker().unwrap();
 
-        let parcel = parcel!(seq: 1, fee: 11, Action::AssetTransaction {
-            transaction: transfer_tx,
-            approvals: vec![],
-        });
+        let parcel = parcel!(seq: 1, fee: 11, transfer_tx);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &H256::random(), &sender_public, &get_test_client()));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 100 - 30 - 11 - 11)),
             (asset: (parcel_hash, 0, 0)),
-            (asset: (transfer_tx_hash, 0, 0) => { asset_type: asset_type, amount: 10 }),
-            (asset: (transfer_tx_hash, 1, 0) => { asset_type: asset_type, amount: 5 }),
-            (asset: (transfer_tx_hash, 2, 0) => { asset_type: asset_type, amount: 15 })
+            (asset: (transfer_tx_tracker, 0, 0) => { asset_type: asset_type, amount: 10 }),
+            (asset: (transfer_tx_tracker, 1, 0) => { asset_type: asset_type, amount: 5 }),
+            (asset: (transfer_tx_tracker, 2, 0) => { asset_type: asset_type, amount: 15 })
         ]);
 
         let unwrap_ccc_tx =
-            asset_unwrap_ccc!(asset_transfer_input!(asset_out_point!(transfer_tx_hash, 1, asset_type, 5), vec![0x01]));
-        let parcel = parcel!(seq: 2, fee: 11, Action::AssetTransaction {
-            transaction: unwrap_ccc_tx,
-            approvals: vec![],
-        });
+            unwrap_ccc!(asset_transfer_input!(asset_out_point!(transfer_tx_tracker, 1, asset_type, 5), vec![0x01]));
+        let parcel = parcel!(seq: 2, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&parcel, &H256::random(), &sender_public, &get_test_client()));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 3, balance: 100 - 30 - 11 - 11 - 11 + 5)),
-            (asset: (transfer_tx_hash, 0, 0) => { asset_type: asset_type, amount: 10 }),
-            (asset: (transfer_tx_hash, 1, 0)),
-            (asset: (transfer_tx_hash, 2, 0) => { asset_type: asset_type, amount: 15 })
+            (asset: (transfer_tx_tracker, 0, 0) => { asset_type: asset_type, amount: 10 }),
+            (asset: (transfer_tx_tracker, 1, 0)),
+            (asset: (transfer_tx_tracker, 2, 0) => { asset_type: asset_type, amount: 15 })
         ]);
     }
 
@@ -2158,15 +2220,12 @@ mod tests_parcel {
         let parameters = vec![];
         let approver = Address::random();
         let amount = 30;
-        let transaction = asset_mint!(
+        let transaction = mint_asset!(
             asset_mint_output!(lock_script_hash, parameters.clone(), amount),
             metadata.clone(),
             approver: approver
         );
-        let parcel = parcel!(fee: 11, Action::AssetTransaction {
-            transaction,
-            approvals: vec![],
-        });
+        let parcel = parcel!(fee: 11, transaction);
 
         assert_eq!(
             Ok(Invoice::Failure(ParcelError::InvalidShardId(0))),
@@ -2190,7 +2249,7 @@ mod tests_parcel {
         let shard_id = 100;
 
         let asset_type = H256::from(AssetSchemeAddress::new(H256::zero(), shard_id));
-        let transfer = asset_transfer!(
+        let transfer = transfer_asset!(
             inputs: asset_transfer_inputs![(asset_out_point!(H256::random(), 0, asset_type, 30), vec![0x30, 0x01])],
             asset_transfer_outputs![
                 (H160::random(), vec![vec![1]], asset_type, 10),
@@ -2199,10 +2258,7 @@ mod tests_parcel {
             ]
         );
 
-        let parcel = parcel!(fee: 30, Action::AssetTransaction {
-            transaction: transfer,
-            approvals: vec![],
-        });
+        let parcel = parcel!(fee: 30, transfer);
 
         assert_eq!(
             Ok(Invoice::Failure(ParcelError::InvalidShardId(100))),
@@ -2364,24 +2420,21 @@ mod tests_parcel {
         let amount = 30;
         let parameters = vec![];
 
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, parameters.clone(), amount), metadata.clone());
-        let mint_hash = mint.hash();
+        let mint = mint_asset!(asset_mint_output!(lock_script_hash, parameters.clone(), amount), metadata.clone());
+        let mint_tracker = mint.tracker().unwrap();
 
-        let parcel = parcel!(fee: 20, Action::AssetTransaction {
-            transaction: mint,
-            approvals: vec![],
-        });
+        let parcel = parcel!(fee: 20, mint);
 
         assert_eq!(
             Invoice::Success,
             state.apply(&parcel, &H256::random(), &sender_public, &get_test_client()).unwrap()
         );
 
-        let asset_type = H256::from(AssetSchemeAddress::new(mint_hash, shard_id));
+        let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, shard_id));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 20)),
-            (scheme: (mint_hash, shard_id) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_hash, 0, shard_id) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), amount: amount }),
+            (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, amount: amount })
         ]);
     }
 

@@ -1228,7 +1228,7 @@ pub mod test {
 
     use ckey::{Generator, Random};
     use ctypes::parcel::Parcel;
-    use ctypes::transaction::{AssetMintOutput, Transaction};
+    use ctypes::transaction::AssetMintOutput;
     use primitives::H160;
 
     use super::*;
@@ -1477,24 +1477,21 @@ pub mod test {
         let shard_id = 0xCCC;
 
         let fee = 100;
-        let transaction = Transaction::AssetMint {
-            network_id: "tc".into(),
-            shard_id,
-            metadata: "Metadata".to_string(),
-            output: AssetMintOutput {
-                lock_script_hash: H160::zero(),
-                parameters: vec![],
-                amount: None,
-            },
-            approver: None,
-            administrator: None,
-        };
         let parcel = Parcel {
             seq: 0,
             fee,
             network_id: "tc".into(),
-            action: Action::AssetTransaction {
-                transaction,
+            action: Action::MintAsset {
+                network_id: "tc".into(),
+                shard_id,
+                metadata: "Metadata".to_string(),
+                output: AssetMintOutput {
+                    lock_script_hash: H160::zero(),
+                    parameters: vec![],
+                    amount: None,
+                },
+                approver: None,
+                administrator: None,
                 approvals: vec![],
             },
         };
@@ -1512,19 +1509,16 @@ pub mod test {
     #[test]
     fn transfer_transaction_does_not_increase_cost() {
         let fee = 100;
-        let transaction = Transaction::AssetTransfer {
-            network_id: "tc".into(),
-            burns: vec![],
-            inputs: vec![],
-            outputs: vec![],
-            orders: vec![],
-        };
         let parcel = Parcel {
             seq: 0,
             fee,
             network_id: "tc".into(),
-            action: Action::AssetTransaction {
-                transaction,
+            action: Action::TransferAsset {
+                network_id: "tc".into(),
+                burns: vec![],
+                inputs: vec![],
+                outputs: vec![],
+                orders: vec![],
                 approvals: vec![],
             },
         };
@@ -1603,25 +1597,22 @@ pub mod test {
     }
 
     fn create_parcel_order(fee: u64, transaction_count: usize) -> ParcelOrder {
-        let transaction = Transaction::AssetMint {
-            network_id: "tc".into(),
-            shard_id: 0,
-            metadata: String::from_utf8(vec![b'a'; transaction_count]).unwrap(),
-            approver: None,
-            administrator: None,
-            output: AssetMintOutput {
-                lock_script_hash: H160::zero(),
-                parameters: vec![],
-                amount: None,
-            },
-        };
         let keypair = Random.generate().unwrap();
         let parcel = Parcel {
             seq: 0,
             fee,
             network_id: "tc".into(),
-            action: Action::AssetTransaction {
-                transaction,
+            action: Action::MintAsset {
+                network_id: "tc".into(),
+                shard_id: 0,
+                metadata: String::from_utf8(vec![b'a'; transaction_count]).unwrap(),
+                approver: None,
+                administrator: None,
+                output: AssetMintOutput {
+                    lock_script_hash: H160::zero(),
+                    parameters: vec![],
+                    amount: None,
+                },
                 approvals: vec![],
             },
         };

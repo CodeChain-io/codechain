@@ -18,7 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::sync::Arc;
 
-use ctypes::parcel::Action;
+use ctypes::transaction::ShardTransaction;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256};
@@ -342,17 +342,15 @@ fn transaction_address_entries(
     block_hash: H256,
     parcel_hashes: impl IntoIterator<Item = UnverifiedParcel>,
 ) -> impl Iterator<Item = TransactionHashAndAddress> {
-    parcel_hashes.into_iter().enumerate().filter_map(move |(parcel_index, parcel)| match &parcel.action {
-        Action::AssetTransaction {
-            transaction,
-            ..
-        } => Some((
-            transaction.hash(),
-            TransactionAddress::new(ParcelAddress {
-                block_hash,
-                index: parcel_index,
-            }),
-        )),
-        _ => None,
+    parcel_hashes.into_iter().enumerate().filter_map(move |(parcel_index, parcel)| {
+        Option::<ShardTransaction>::from(parcel.action.clone()).map(|tx| {
+            (
+                tx.tracker(),
+                TransactionAddress::new(ParcelAddress {
+                    block_hash,
+                    index: parcel_index,
+                }),
+            )
+        })
     })
 }

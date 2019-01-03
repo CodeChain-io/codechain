@@ -16,7 +16,7 @@
 
 use ccrypto::{BLAKE_EMPTY, BLAKE_NULL_RLP};
 use ckey::NetworkId;
-use ctypes::transaction::{AssetOutPoint, AssetTransferInput, Transaction};
+use ctypes::transaction::{AssetOutPoint, AssetTransferInput, ShardTransaction};
 use primitives::{H160, H256};
 
 use crate::executor::{execute, ChainTimeInfo, Config, RuntimeError, ScriptResult};
@@ -78,7 +78,7 @@ pub fn get_test_client() -> TestClient {
 #[test]
 fn simple_success() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -110,7 +110,7 @@ fn simple_success() {
 #[test]
 fn simple_failure() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -141,7 +141,7 @@ fn simple_failure() {
 #[test]
 fn simple_burn() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -168,7 +168,7 @@ fn simple_burn() {
 #[test]
 fn underflow() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -195,7 +195,7 @@ fn underflow() {
 #[test]
 fn out_of_memory() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -234,7 +234,7 @@ fn out_of_memory() {
 #[test]
 fn invalid_unlock_script() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -261,7 +261,7 @@ fn invalid_unlock_script() {
 #[test]
 fn conditional_burn() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -311,7 +311,7 @@ fn conditional_burn() {
 #[test]
 fn _blake256() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -387,7 +387,7 @@ fn _blake256() {
 #[test]
 fn _ripemd160() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -471,7 +471,7 @@ fn _ripemd160() {
 #[test]
 fn _sha256() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -555,7 +555,7 @@ fn _sha256() {
 #[test]
 fn _keccak256() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -637,8 +637,8 @@ fn _keccak256() {
 }
 
 #[cfg(test)]
-fn dummy_tx() -> Transaction {
-    Transaction::AssetTransfer {
+fn dummy_tx() -> ShardTransaction {
+    ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -882,7 +882,7 @@ fn timelock_time_age_success() {
 #[test]
 fn copy_stack_underflow() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
