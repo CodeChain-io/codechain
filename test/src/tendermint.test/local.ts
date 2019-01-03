@@ -81,7 +81,7 @@ import CodeChain from "../helper/spawn";
             { networkId: "tc" }
         );
         const parcel = nodes[0].sdk.core
-            .createPayParcel({
+            .createPayTransaction({
                 recipient,
                 amount: 1
             })
@@ -94,16 +94,16 @@ import CodeChain from "../helper/spawn";
     }
 
     for (let i = numParcels - 1; i > 0; i--) {
-        await nodes[0].sdk.rpc.chain.sendSignedParcel(parcels[i]);
+        await nodes[0].sdk.rpc.chain.sendSignedTransaction(parcels[i]);
     }
     const startTime = new Date();
     console.log(`Start at: ${startTime}`);
-    await nodes[0].sdk.rpc.chain.sendSignedParcel(parcels[0]);
+    await nodes[0].sdk.rpc.chain.sendSignedTransaction(parcels[0]);
 
     while (true) {
         let flag = true;
         for (let i = 0; i < 4; i++) {
-            const invoice = await nodes[i].sdk.rpc.chain.getParcelInvoice(
+            const invoice = await nodes[i].sdk.rpc.chain.getInvoice(
                 parcels[numParcels - 1].hash()
             );
             console.log(`Node ${i} invoice: ${invoice}`);
