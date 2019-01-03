@@ -10,8 +10,11 @@
           "0x8f591aec10af3b141d360011b079d693720722bab92e05ffb46ee5350fb9afea0a6cbf7d7c88bc3114f285404efa061e6ba40a102be8e88604ea683d46edd5fb"
         ],
         "timeoutPropose": 10000,
+        "timeoutProposeDelta": 5000,
         "timeoutPrevote": 10000,
+        "timeoutPrevoteDelta": 5000,
         "timeoutPrecommit": 10000,
+        "timeoutPrecommitDelta": 5000,
         "timeoutCommit": 10000,
         "genesisStakes": {
           "tccq8qlwpt7xcs9lec3c8tyt3kqxlgsus8q4qp3m6ft": 100

@@ -11,8 +11,11 @@
           "0xfde157bdd3c0d36c754d93241578b78f5365135977b6e5178b21e9e2dfd8499b3ecf4a12d892facde76f4caab6cbb05fa9b6b6ff6a2b3e7f1fc94439f0804d35"
         ],
         "timeoutPropose": 10000,
+        "timeoutProposeDelta": 5000,
         "timeoutPrevote": 10000,
+        "timeoutPrevoteDelta": 5000,
         "timeoutPrecommit": 10000,
+        "timeoutPrecommitDelta": 5000,
         "timeoutCommit": 10000
       }
     }
