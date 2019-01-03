@@ -62,7 +62,7 @@ use crate::BlockId;
 use ChainNotify;
 
 /// Timer token representing the consensus step timeouts.
-pub const ENGINE_TIMEOUT_TOKEN: TimerToken = 23;
+pub const ENGINE_TIMEOUT_TOKEN_NONCE_BASE: TimerToken = 23;
 
 pub type BlockHash = H256;
 
@@ -108,8 +108,6 @@ struct TendermintInner {
     chain_notify: Arc<TendermintChainNotify>,
     /// Lock for changing step. We use ReentrantMutex because handle_valid_message called recursively.
     pub step_change_lock: ReentrantMutex<()>,
-    /// The token counter for timeout. If timeout is called with the token which is less than this value, it should be discarded.
-    timeout_token_counter: AtomicUsize,
 }
 
 impl Tendermint {
@@ -157,7 +155,6 @@ impl TendermintInner {
             chain_notify: Arc::new(chain_notify),
             machine,
             step_change_lock: ReentrantMutex::new(()),
-            timeout_token_counter: AtomicUsize::new(0),
             votes_received: RwLock::new(BitSet::new()),
         }
     }
@@ -362,9 +359,7 @@ impl TendermintInner {
     fn to_step(&self, step: Step) {
         let prev_step = self.get_step();
         // Should be protected by step_change_lock
-        let counter = self.timeout_token_counter.load(AtomicOrdering::SeqCst);
-        self.extension.set_timer_step(step, counter + 1, self.view());
-        self.timeout_token_counter.store(counter + 1, AtomicOrdering::SeqCst);
+        self.extension.set_timer_step(step, self.view());
         *self.step.write() = step;
         self.backup();
         let vote_step = VoteStep::new(self.height(), self.view(), step);
@@ -591,9 +586,7 @@ impl TendermintInner {
                 }
             }
 
-            let counter = self.timeout_token_counter.load(AtomicOrdering::SeqCst);
-            self.extension.set_timer_step(backup.step, counter + 1, backup.view);
-            self.timeout_token_counter.store(counter + 1, AtomicOrdering::SeqCst);
+            self.extension.set_timer_step(backup.step, backup.view);
         }
     }
 
@@ -829,7 +822,7 @@ impl TendermintInner {
 
     fn on_timeout(&self, token: usize) {
         let _guard = self.step_change_lock.lock();
-        if token < self.timeout_token_counter.load(AtomicOrdering::SeqCst) {
+        if self.extension.is_expired_timeout_token(token) {
             return
         }
 
@@ -1320,6 +1313,7 @@ struct TendermintExtension {
     peers: RwLock<HashMap<NodeId, PeerState>>,
     api: Mutex<Option<Arc<Api>>>,
     timeouts: TimeoutParams,
+    timeout_token_nonce: AtomicUsize,
 }
 
 const MIN_PEERS_PROPAGATION: usize = 4;
@@ -1333,6 +1327,7 @@ impl TendermintExtension {
             peers: RwLock::new(HashMap::new()),
             api: Mutex::new(None),
             timeouts,
+            timeout_token_nonce: AtomicUsize::new(ENGINE_TIMEOUT_TOKEN_NONCE_BASE),
         }
     }
 
@@ -1471,11 +1466,16 @@ impl TendermintExtension {
         }
     }
 
-    fn set_timer_step(&self, step: Step, counter: usize, view: View) {
+    fn is_expired_timeout_token(&self, nonce: usize) -> bool {
+        nonce < self.timeout_token_nonce.load(AtomicOrdering::SeqCst)
+    }
+
+    fn set_timer_step(&self, step: Step, view: View) {
         if let Some(api) = self.api.lock().as_ref() {
-            api.clear_timer(ENGINE_TIMEOUT_TOKEN + counter - 1).expect("Timer clear succeeds");
-            api.set_timer_once(ENGINE_TIMEOUT_TOKEN + counter, self.timeouts.timeout(step, view))
-                .expect("Timer set succeeds");
+            let expired_token_nonce = self.timeout_token_nonce.fetch_add(1, AtomicOrdering::SeqCst);
+
+            api.clear_timer(expired_token_nonce).expect("Timer clear succeeds");
+            api.set_timer_once(expired_token_nonce + 1, self.timeouts.timeout(step, view)).expect("Timer set succeeds");
         };
     }
 
@@ -1669,7 +1669,7 @@ impl NetworkExtension for TendermintExtension {
     fn on_initialize(&self, api: Arc<Api>) {
         let initial = self.timeouts.initial();
         ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
-        api.set_timer_once(ENGINE_TIMEOUT_TOKEN, initial).expect("Timer set succeeds");
+        api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
         *self.api.lock() = Some(api);
     }
 
@@ -1733,7 +1733,7 @@ impl NetworkExtension for TendermintExtension {
 
 impl TimeoutHandler for TendermintExtension {
     fn on_timeout(&self, token: TimerToken) {
-        debug_assert!(token >= ENGINE_TIMEOUT_TOKEN);
+        debug_assert!(token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE);
         if let Some(ref weak) = *self.tendermint.read() {
             if let Some(c) = weak.upgrade() {
                 c.on_timeout(token);
