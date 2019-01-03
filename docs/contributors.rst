@@ -3,6 +3,15 @@
 ########################################################
 Contributors
 ########################################################
-This documentation was written by:
 
-The `CodeChain team <https://codechain.io/contribute.html>`_.
+- Seulgi Kim
+- Kwang Yul Seo
+- JinGyeong Jeong
+- Joon-Mo Yang
+- Hyunsik Jeong
+- Juhyung Park
+- Seung Woo Kim
+- Geunwoo Kim
+- SeongChan Lee
+- LEE Dongjun
+- Misun Cho
