@@ -88,7 +88,7 @@ struct TendermintInner {
     /// Vote accumulator.
     votes: VoteCollector<ConsensusMessage>,
     /// Used to sign messages and proposals.
-    signer: RwLock<EngineSigner>,
+    signer: EngineSigner,
     /// Message for the last PoLC.
     lock_change: RwLock<Option<ConsensusMessage>>,
     /// Last lock view.
@@ -239,7 +239,7 @@ impl TendermintInner {
     /// Check if current signer is the current proposer.
     fn is_signer_proposer(&self, bh: &H256) -> bool {
         let proposer = self.view_proposer(bh, self.height, self.view);
-        self.signer.read().is_address(&proposer)
+        self.signer.is_address(&proposer)
     }
 
     fn is_view(&self, message: &ConsensusMessage) -> bool {
@@ -972,21 +972,21 @@ impl TendermintInner {
         }
     }
 
-    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
-        self.signer.write().set(ap, address, password);
+    fn set_signer(&mut self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
+        self.signer.set(ap, address, password);
     }
 
     fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
-        self.signer.read().sign(hash).map_err(Into::into)
+        self.signer.sign(hash).map_err(Into::into)
     }
 
     fn signer_public(&self) -> Option<Public> {
-        self.signer.read().public().cloned()
+        self.signer.public().cloned()
     }
 
     fn signer_index(&self, bh: &H256) -> Option<usize> {
         // FIXME: More effecient way to find index
-        self.signer.read().public().and_then(|public| self.validators.get_index(bh, public))
+        self.signer.public().and_then(|public| self.validators.get_index(bh, public))
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
@@ -1027,7 +1027,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn seals_internally(&self) -> Option<bool> {
         let guard = self.inner.lock();
         let tendermint = guard.borrow();
-        let has_signer = tendermint.signer.read().is_some();
+        let has_signer = tendermint.signer.is_some();
         Some(has_signer)
     }
 
@@ -1145,7 +1145,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
         let guard = self.inner.lock();
-        let tendermint = guard.borrow();
+        let mut tendermint = guard.borrow_mut();
         tendermint.set_signer(ap, address, password)
     }
 
