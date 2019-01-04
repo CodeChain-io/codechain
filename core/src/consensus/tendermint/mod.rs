@@ -95,7 +95,7 @@ struct TendermintInner {
     last_lock: View,
     /// hash of the proposed block, used for seal submission.
     proposal: Option<H256>,
-    last_confirmed_view: RwLock<(H256, View)>,
+    last_confirmed_view: (H256, View),
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
@@ -150,7 +150,7 @@ impl TendermintInner {
             lock_change: None,
             last_lock: 0,
             proposal: None,
-            last_confirmed_view: RwLock::new((Default::default(), 0)),
+            last_confirmed_view: (Default::default(), 0),
             validators: our_params.validators,
             block_reward: our_params.block_reward,
             extension: Arc::new(extension),
@@ -304,8 +304,8 @@ impl TendermintInner {
         self.client().update_sealing(true);
     }
 
-    fn save_last_confirmed_view(&self, block_hash: H256, view: View) {
-        *self.last_confirmed_view.write() = (block_hash, view);
+    fn save_last_confirmed_view(&mut self, block_hash: H256, view: View) {
+        self.last_confirmed_view = (block_hash, view);
     }
 
     fn increment_view(&mut self, n: View) {
@@ -523,7 +523,7 @@ impl TendermintInner {
                 view: &self.view,
                 step: &self.step,
                 votes: &self.votes.get_all(),
-                last_confirmed_view: &self.last_confirmed_view.read(),
+                last_confirmed_view: &self.last_confirmed_view,
             },
         );
     }
@@ -535,7 +535,7 @@ impl TendermintInner {
             self.step = backup.step;
             self.height = backup.height;
             self.view = backup.view;
-            *self.last_confirmed_view.write() = backup.last_confirmed_view;
+            self.last_confirmed_view = backup.last_confirmed_view;
             if let Some(proposal) = backup.proposal {
                 if client.block_header(&BlockId::Hash(proposal)).is_some() {
                     self.proposal = Some(proposal);
@@ -613,7 +613,7 @@ impl TendermintInner {
 
         let view = self.view;
 
-        let (last_block_hash, last_block_view) = &*self.last_confirmed_view.read();
+        let (last_block_hash, last_block_view) = &self.last_confirmed_view;
         assert_eq!(last_block_hash, &parent.hash());
         let (precommits, precommit_indices) = self.votes.round_signatures_and_indices(
             &VoteStep::new(height - 1, *last_block_view, Step::Precommit),
@@ -859,7 +859,7 @@ impl TendermintInner {
     fn register_client(&mut self, client: Weak<EngineClient>) {
         if let Some(c) = client.upgrade() {
             self.height = c.chain_info().best_block_number as usize + 1;
-            *self.last_confirmed_view.write() = (c.best_block_header().hash(), 0);
+            self.last_confirmed_view = (c.best_block_header().hash(), 0);
         }
         self.client = Some(Weak::clone(&client));
         self.restore();
@@ -998,7 +998,7 @@ impl TendermintInner {
     }
 
     fn get_block_hash_to_mine_on(&self, _best_block_hash: H256) -> H256 {
-        let (hash, _) = &*self.last_confirmed_view.read();
+        let (hash, _) = &self.last_confirmed_view;
         *hash
     }
 }
