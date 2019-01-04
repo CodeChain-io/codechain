@@ -19,7 +19,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::Iterator;
 
-use ckey::{public_to_address, Address, Public, SchnorrSignature};
+use ckey::SchnorrSignature;
 use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Encodable, RlpStream};
@@ -29,7 +29,7 @@ pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
 
     fn signature(&self) -> SchnorrSignature;
 
-    fn signer_public(&self) -> Public;
+    fn signer_index(&self) -> usize;
 
     fn block_hash(&self) -> Option<H256>;
 
@@ -46,14 +46,14 @@ pub struct VoteCollector<M: Message> {
 
 #[derive(Debug, Default)]
 struct StepCollector<M: Message> {
-    voted: HashMap<Public, M>,
-    block_votes: HashMap<Option<H256>, HashMap<SchnorrSignature, Public>>,
+    voted: HashMap<usize, M>,
+    block_votes: HashMap<Option<H256>, BTreeMap<usize, SchnorrSignature>>,
     messages: HashSet<M>,
 }
 
 #[derive(Debug)]
 pub struct DoubleVote<M: Message> {
-    author: Address,
+    author_index: usize,
     vote_one: M,
     vote_two: M,
 }
@@ -69,18 +69,18 @@ impl<M: Message> StepCollector<M> {
     fn insert(&mut self, message: M) -> Option<DoubleVote<M>> {
         // Do nothing when message was seen.
         if self.messages.insert(message.clone()) {
-            if let Some(previous) = self.voted.insert(message.signer_public(), message.clone()) {
+            if let Some(previous) = self.voted.insert(message.signer_index(), message.clone()) {
                 // Bad validator sent a different message.
                 return Some(DoubleVote {
-                    author: public_to_address(&message.signer_public()),
+                    author_index: message.signer_index(),
                     vote_one: previous,
                     vote_two: message,
                 })
             } else {
                 self.block_votes
                     .entry(message.block_hash())
-                    .or_insert_with(HashMap::new)
-                    .insert(message.signature(), message.signer_public());
+                    .or_default()
+                    .insert(message.signer_index(), message.signature());
             }
         }
         None
@@ -88,12 +88,12 @@ impl<M: Message> StepCollector<M> {
 
     /// Count all votes for the given block hash at this round.
     fn count_block(&self, block_hash: &Option<H256>) -> usize {
-        self.block_votes.get(block_hash).map_or(0, HashMap::len)
+        self.block_votes.get(block_hash).map_or(0, BTreeMap::len)
     }
 
     /// Count all votes collected for the given round.
     fn count(&self) -> usize {
-        self.block_votes.values().map(HashMap::len).sum()
+        self.block_votes.values().map(BTreeMap::len).sum()
     }
 }
 
@@ -141,27 +141,32 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
         *guard = new_collector;
     }
 
-    /// Collects the signatures for a given round and hash.
-    pub fn round_signatures(&self, round: &M::Round, block_hash: &H256) -> Vec<SchnorrSignature> {
-        let guard = self.votes.read();
-        guard
-            .get(round)
-            .and_then(|c| c.block_votes.get(&Some(*block_hash)))
-            .map(|votes| votes.keys().cloned().collect())
-            .unwrap_or_else(Vec::new)
-    }
-
-    /// Returns the first signature and the public key of its signer for a given round and hash if exists.
-    pub fn round_signature_and_public(
+    /// Collects the signatures and the indices for the given round and hash.
+    /// Returning indices is in ascending order, and signature and indices are matched with another.
+    pub fn round_signatures_and_indices(
         &self,
         round: &M::Round,
         block_hash: &H256,
-    ) -> Option<(SchnorrSignature, Public)> {
+    ) -> (Vec<SchnorrSignature>, Vec<usize>) {
         let guard = self.votes.read();
         guard
             .get(round)
             .and_then(|c| c.block_votes.get(&Some(*block_hash)))
-            .and_then(|votes| votes.iter().next().map(|(k, v)| (*k, *v)))
+            .map(|votes| {
+                let (indices, sigs) = votes.iter().unzip();
+                (sigs, indices)
+            })
+            .unwrap_or_default()
+    }
+
+
+    /// Returns the first signature and the index of its signer for a given round and hash if exists.
+    pub fn round_signature_and_index(&self, round: &M::Round, block_hash: &H256) -> Option<(SchnorrSignature, usize)> {
+        let guard = self.votes.read();
+        guard
+            .get(round)
+            .and_then(|c| c.block_votes.get(&Some(*block_hash)))
+            .and_then(|votes| votes.iter().next().map(|(k, v)| (*v, *k)))
     }
 
     /// Count votes which agree with the given message.
@@ -176,15 +181,6 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     /// Count all votes collected for a given round.
     pub fn count_round_votes(&self, vote_round: &M::Round) -> usize {
         self.votes.read().get(vote_round).map_or(0, StepCollector::count)
-    }
-
-    /// Retrieve address from which the message was sent from cache.
-    pub fn get(&self, message: &M) -> Option<Address> {
-        let guard = self.votes.read();
-        guard
-            .get(&message.round())
-            .and_then(|c| c.block_votes.get(&message.block_hash()))
-            .and_then(|origins| origins.get(&message.signature()).map(|public| public_to_address(public)))
     }
 
     pub fn get_block_hashes(&self, round: &M::Round) -> Vec<H256> {
@@ -202,11 +198,8 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
         c.map(|c| c.messages.iter().cloned().collect()).unwrap_or_default()
     }
 
-    pub fn get_all_votes_and_authors_in_round(&self, round: &M::Round) -> Vec<(Address, M)> {
+    pub fn get_all_votes_and_indices_in_round(&self, round: &M::Round) -> Vec<(usize, M)> {
         let guard = self.votes.read();
-        guard
-            .get(round)
-            .map(|c| c.voted.iter().map(|(k, v)| (public_to_address(k), v.clone())).collect())
-            .unwrap_or_default()
+        guard.get(round).map(|c| c.voted.iter().map(|(k, v)| (*k, v.clone())).collect()).unwrap_or_default()
     }
 }

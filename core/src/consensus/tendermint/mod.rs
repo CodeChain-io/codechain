@@ -27,7 +27,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover_schnorr, Address, Message, Password, Public, SchnorrSignature};
+use ckey::{public_to_address, recover_schnorr, verify_schnorr, Address, Message, Password, Public, SchnorrSignature};
 use cnetwork::{Api, NetworkExtension, NetworkService, NodeId};
 use cstate::ActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
@@ -201,7 +201,7 @@ impl TendermintInner {
         *self.proposal.read()
     }
 
-    pub fn proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, Public, Bytes)> {
+    pub fn proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {
         let vote_step = VoteStep {
             height,
             view,
@@ -214,7 +214,7 @@ impl TendermintInner {
         proposal.and_then(|proposal| {
             let block_hash = proposal.on.block_hash.expect("Proposal message always include block hash");
             let bytes = self.client().block(&BlockId::Hash(block_hash)).map(|block| block.into_inner());
-            bytes.map(|bytes| (proposal.signature, proposal.signer_public, bytes))
+            bytes.map(|bytes| (proposal.signature, proposal.signer_index, bytes))
         })
     }
 
@@ -240,19 +240,10 @@ impl TendermintInner {
     }
 
     pub fn get_all_votes_and_authors(&self, vote_step: &VoteStep, requested: &BitSet) -> Vec<ConsensusMessage> {
-        let parent_height = (vote_step.height - 1) as u64;
-        let parent_block_hash = match self.client().block_header(&BlockId::Number(parent_height)) {
-            Some(header) => header.hash(),
-            None => return Vec::new(),
-        };
-
         self.votes
-            .get_all_votes_and_authors_in_round(vote_step)
+            .get_all_votes_and_indices_in_round(vote_step)
             .into_iter()
-            .filter(|(k, _)| {
-                let index = self.validators.get_index(&parent_block_hash, k);
-                index.map(|index| requested.is_set(index)).unwrap_or(false)
-            })
+            .filter(|(index, _)| requested.is_set(*index))
             .map(|(_, v)| v)
             .collect()
     }
@@ -447,16 +438,16 @@ impl TendermintInner {
             block_hash,
         };
         let vote_info = on.rlp_bytes();
-        match (self.signer_public(), self.sign(blake256(&vote_info))) {
-            (Some(signer_public), Ok(signature)) => {
+        match (self.signer_index(&self.prev_block_hash()), self.sign(blake256(&vote_info))) {
+            (Some(signer_index), Ok(signature)) => {
                 let message = ConsensusMessage {
                     signature,
-                    signer_public,
+                    signer_index,
                     on,
                 };
                 let message_rlp = message.rlp_bytes().into_vec();
                 self.votes.vote(message.clone());
-                cdebug!(ENGINE, "Generated {:?} as {}({}).", message, signer_public, public_to_address(&signer_public));
+                cdebug!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
                 self.handle_valid_message(&message);
 
                 Some(message_rlp)
@@ -465,8 +456,8 @@ impl TendermintInner {
                 ctrace!(ENGINE, "No message, since there is no engine signer.");
                 None
             }
-            (Some(signer_public), Err(error)) => {
-                ctrace!(ENGINE, "{} could not sign the message {}", public_to_address(&signer_public), error);
+            (Some(signer_index), Err(error)) => {
+                ctrace!(ENGINE, "{}th validator could not sign the message {}", signer_index, error);
                 None
             }
         }
@@ -645,7 +636,7 @@ impl TendermintInner {
     }
 
     fn seal_fields(&self, _header: &Header) -> usize {
-        3
+        4
     }
 
     fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
@@ -660,14 +651,17 @@ impl TendermintInner {
 
         let (last_block_hash, last_block_view) = &*self.last_confirmed_view.read();
         assert_eq!(last_block_hash, &parent.hash());
-        let precommits = self
-            .votes
-            .round_signatures(&VoteStep::new(height - 1, *last_block_view, Step::Precommit), &last_block_hash);
-        ctrace!(ENGINE, "Collected seal: {:?}", precommits);
+        let (precommits, precommit_indices) = self.votes.round_signatures_and_indices(
+            &VoteStep::new(height - 1, *last_block_view, Step::Precommit),
+            &last_block_hash,
+        );
+        ctrace!(ENGINE, "Collected seal: {:?}({:?})", precommits, precommit_indices);
+        let precommit_bitset = BitSet::new_with_indices(&precommit_indices);
         Seal::Tendermint {
             prev_view: *last_block_view,
             cur_view: view,
             precommits: precommits.clone(),
+            precommit_bitset,
         }
     }
 
@@ -678,9 +672,9 @@ impl TendermintInner {
         let vote_step =
             VoteStep::new(header.number() as Height, consensus_view(&header).expect("I am proposer"), Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
-        let signer_public = self.signer_public().expect("I am proposer");
+        let signer_index = self.signer_index(&self.prev_block_hash()).expect("I am proposer");
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-        self.votes.vote(ConsensusMessage::new_proposal(signature, signer_public, header).expect("I am proposer"));
+        self.votes.vote(ConsensusMessage::new_proposal(signature, signer_index, header).expect("I am proposer"));
 
         *self.proposal.write() = Some(hash);
         cdebug!(
@@ -716,7 +710,7 @@ impl TendermintInner {
         ctrace!(ENGINE, "Verify external at {}-{}, {:?}", height, view, header);
         let proposer = header.author();
         if !self.is_authority(header.parent_hash(), proposer) {
-            return Err(EngineError::NotAuthorized(*proposer).into())
+            return Err(EngineError::BlockNotAuthorized(*proposer).into())
         }
         self.check_view_proposer(header.parent_hash(), header.number() as usize, consensus_view(header)?, &proposer)
             .map_err(Error::from)?;
@@ -726,35 +720,55 @@ impl TendermintInner {
         let precommit_hash = message_hash(step, *header.parent_hash());
         let precommits_field =
             &header.seal().get(2).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
-        let mut origins = HashSet::new();
+        let mut precommit_bitset: BitSet = UntrustedRlp::new(
+            &header.seal().get(3).expect("block went through verify_block_basic; block has .seal_fields() fields; qed"),
+        )
+        .as_val()?;
+        let mut bitset_index = 0;
+        let mut counter = 0;
         for rlp in UntrustedRlp::new(precommits_field).iter() {
-            let precommit = ConsensusMessage {
-                signature: rlp.as_val()?,
-                signer_public: Public::zero(),
-                on: VoteOn {
-                    step,
-                    block_hash: Some(*header.parent_hash()),
-                },
-            };
-            let address = match self.votes.get(&precommit) {
-                Some(a) => a,
-                None => public_to_address(&recover_schnorr(&precommit.signature, &precommit_hash)?),
-            };
-            if !self.validators.contains_address(header.parent_hash(), &address) {
-                return Err(EngineError::NotAuthorized(address.to_owned()).into())
-            }
-
-            if !origins.insert(address) {
-                cwarn!(ENGINE, "verify_block_unordered: Duplicate signature from {} on the seal.", address);
+            let signature = rlp.as_val()?;
+            if precommit_bitset.is_empty() {
+                cwarn!(
+                    ENGINE,
+                    "verify_block_external: Precommit bitset got empty while dealing with validators of block hash {} on the seal.",
+                    header.parent_hash()
+                );
                 return Err(BlockError::InvalidSeal.into())
             }
+            while !precommit_bitset.is_set(bitset_index) {
+                bitset_index += 1;
+            }
+            precommit_bitset.reset(bitset_index);
+
+            if bitset_index >= self.validators.count(header.parent_hash()) {
+                cwarn!(
+                    ENGINE,
+                    "verify_block_external: Signer index {} is out of bound from validators of block hash {}",
+                    bitset_index,
+                    header.parent_hash()
+                );
+                return Err(BlockError::InvalidSeal.into())
+            }
+
+            let public = self.validators.get(header.parent_hash(), bitset_index);
+            if !verify_schnorr(&public, &signature, &precommit_hash)? {
+                let address = public_to_address(&public);
+                return Err(EngineError::BlockNotAuthorized(address.to_owned()).into())
+            }
+            counter += 1;
+        }
+
+        if !precommit_bitset.is_empty() {
+            cwarn!(ENGINE, "verify_block_external: Precommit bitset is not empty after checking precommit signatures.",);
+            return Err(BlockError::InvalidSeal.into())
         }
 
         // Genesisblock does not have signatures
         if header.number() == 1 {
             return Ok(())
         }
-        self.check_above_threshold(origins.len()).map_err(Into::into)
+        self.check_above_threshold(counter).map_err(Into::into)
     }
 
     fn signals_epoch_end(&self, header: &Header) -> EpochChange {
@@ -899,18 +913,34 @@ impl TendermintInner {
         let rlp = UntrustedRlp::new(rlp);
         let message: ConsensusMessage = rlp.as_val().map_err(fmt_err)?;
         if !self.votes.is_old_or_known(&message) {
-            let sender = public_to_address(&message.signer_public);
+            let signer_index = message.signer_index;
             let prev_height = (message.on.step.height - 1) as u64;
-            if let Some(prev_block_hash) =
+            let sender_public = if let Some(prev_block_hash) =
                 self.client().block_header(&BlockId::Number(prev_height)).map(|header| header.parent_hash())
             {
-                if !self.is_authority(&prev_block_hash, &sender) {
-                    return Err(EngineError::NotAuthorized(sender))
+                if signer_index >= self.validators.count(&prev_block_hash) {
+                    return Err(EngineError::ValidatorNotExist {
+                        height: prev_height,
+                        index: signer_index,
+                    })
                 }
+                let signer_public = self.validators.get(&prev_block_hash, signer_index);
+                if !message.verify(&signer_public).map_err(fmt_err)? {
+                    return Err(EngineError::MessageWithInvalidSignature {
+                        height: prev_height,
+                        signer_index,
+                        address: public_to_address(&signer_public),
+                    })
+                }
+                signer_public
             } else {
                 // Because the members of the committee could change in future height, we could not verify future height's message.
-                return Err(EngineError::NotAuthorized(sender))
-            }
+                return Err(EngineError::ValidatorNotExist {
+                    height: prev_height,
+                    index: signer_index,
+                })
+            };
+            let sender = public_to_address(&sender_public);
 
             if message.on.step > self.vote_step() {
                 ctrace!(ENGINE, "Ignore future message {:?} from {}.", message, sender);
@@ -920,7 +950,7 @@ impl TendermintInner {
             if message.on.step.height == self.height() && message.on.step.view == self.view() {
                 let vote_index = self
                     .validators
-                    .get_index(&self.prev_block_hash(), &sender)
+                    .get_index(&self.prev_block_hash(), &sender_public)
                     .expect("is_authority already checked the existence");
                 let mut votes_received_guard = self.votes_received.write();
                 votes_received_guard.set(vote_index);
@@ -966,11 +996,11 @@ impl TendermintInner {
 
         if self.is_signer_proposer(&parent_hash) {
             let vote_info = message_info_rlp(vote_step, Some(hash));
-            let signer_public = self.signer_public().expect("I am proposer");
+            let signer_index = self.signer_index(parent_hash).expect("I am proposer");
             let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-            self.extension.broadcast_proposal_block(signature, signer_public, block.into_inner());
-        } else if let Some((signature, signer_public)) = self.votes.round_signature_and_public(&vote_step, &hash) {
-            self.extension.broadcast_proposal_block(signature, signer_public, block.into_inner());
+            self.extension.broadcast_proposal_block(signature, signer_index, block.into_inner());
+        } else if let Some((signature, signer_index)) = self.votes.round_signature_and_index(&vote_step, &hash) {
+            self.extension.broadcast_proposal_block(signature, signer_index, block.into_inner());
         } else {
             cwarn!(ENGINE, "There is a proposal but does not have signature {:?}", vote_step);
         }
@@ -989,6 +1019,11 @@ impl TendermintInner {
 
     fn signer_public(&self) -> Option<Public> {
         self.signer.read().public().cloned()
+    }
+
+    fn signer_index(&self, bh: &H256) -> Option<usize> {
+        // FIXME: More effecient way to find index
+        self.signer.read().public().and_then(|public| self.validators.get_index(bh, public))
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
@@ -1244,7 +1279,7 @@ where
             let address = (self.recover)(&signature, &message)?;
 
             if !self.subchain_validators.contains_address(header.parent_hash(), &address) {
-                return Err(EngineError::NotAuthorized(address.to_owned()).into())
+                return Err(EngineError::BlockNotAuthorized(address.to_owned()).into())
             }
             addresses.insert(address);
         }
@@ -1369,15 +1404,15 @@ impl TendermintExtension {
         }
     }
 
-    fn send_proposal_block(&self, token: &NodeId, signature: SchnorrSignature, signer_public: Public, message: Bytes) {
-        let message = TendermintMessage::ProposalBlock(signature, signer_public, message).rlp_bytes().into_vec();
+    fn send_proposal_block(&self, token: &NodeId, signature: SchnorrSignature, signer_index: usize, message: Bytes) {
+        let message = TendermintMessage::ProposalBlock(signature, signer_index, message).rlp_bytes().into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             api.send(token, &message);
         };
     }
 
-    fn broadcast_proposal_block(&self, signature: SchnorrSignature, signer_public: Public, message: Bytes) {
-        let message = TendermintMessage::ProposalBlock(signature, signer_public, message).rlp_bytes().into_vec();
+    fn broadcast_proposal_block(&self, signature: SchnorrSignature, signer_index: usize, message: Bytes) {
+        let message = TendermintMessage::ProposalBlock(signature, signer_index, message).rlp_bytes().into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             for token in self.peers.read().keys() {
                 api.send(&token, &message);
@@ -1460,7 +1495,7 @@ impl TendermintExtension {
         &self,
         tendermint: &TendermintInner,
         signature: SchnorrSignature,
-        signer_public: Public,
+        signer_index: usize,
         bytes: Bytes,
     ) {
         let c = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
@@ -1488,7 +1523,7 @@ impl TendermintExtension {
                 return
             }
 
-            let message = match ConsensusMessage::new_proposal(signature, signer_public, &header_view) {
+            let message = match ConsensusMessage::new_proposal(signature, signer_index, &header_view) {
                 Ok(message) => message,
                 Err(err) => {
                     cdebug!(ENGINE, "Invalid proposal received: {:?}", err);
@@ -1508,25 +1543,27 @@ impl TendermintExtension {
                 return
             }
 
-            match message.verify() {
-                Ok(true) => {}
+            if signer_index >= tendermint.validators.count(&parent_hash) {
+                cdebug!(ENGINE, "Proposal verification failed: signer index is bigger than the number of validators");
+                return
+            }
+            let signer_public = tendermint.validators.get(&parent_hash, signer_index);
+            let signer = public_to_address(&signer_public);
+
+            match message.verify(&signer_public) {
                 Ok(false) => {
-                    cdebug!(ENGINE, "Proposal verification failed: incorrect signature");
+                    cdebug!(ENGINE, "Proposal verification failed: signer is different");
                     return
                 }
                 Err(err) => {
                     cdebug!(ENGINE, "Proposal verification failed: {:?}", err);
                     return
                 }
+                _ => {}
             }
 
-            if *header_view.author() != message.signer() {
-                cdebug!(
-                    ENGINE,
-                    "Proposal author({}) not matched with header({})",
-                    message.signer(),
-                    header_view.author()
-                );
+            if *header_view.author() != signer {
+                cdebug!(ENGINE, "Proposal author({}) not matched with header({})", signer, header_view.author());
                 return
             }
 
@@ -1616,9 +1653,9 @@ impl TendermintExtension {
             return
         }
 
-        if let Some((signature, signer_public, block)) = tendermint.proposal_at(request_height, request_view) {
+        if let Some((signature, signer_index, block)) = tendermint.proposal_at(request_height, request_view) {
             ctrace!(ENGINE, "Send proposal {}-{} to {:?}", request_height, request_view, token);
-            self.send_proposal_block(token, signature, signer_public, block);
+            self.send_proposal_block(token, signature, signer_index, block);
         }
     }
 }
@@ -1670,8 +1707,8 @@ impl NetworkExtension for TendermintExtension {
                     }
                 }
             }
-            Ok(TendermintMessage::ProposalBlock(signature, signer_public, bytes)) => {
-                self.on_proposal_message(&t, signature, signer_public, bytes);
+            Ok(TendermintMessage::ProposalBlock(signature, signer_index, bytes)) => {
+                self.on_proposal_message(&t, signature, signer_index, bytes);
             }
             Ok(TendermintMessage::StepState {
                 vote_step,
@@ -1810,6 +1847,7 @@ mod tests {
             prev_view: 0,
             cur_view: 0,
             precommits: vec![signature0],
+            precommit_bitset: BitSet::new_with_indices(&vec![0]),
         }
         .seal_fields()
         .unwrap();
@@ -1830,6 +1868,7 @@ mod tests {
             prev_view: 0,
             cur_view: 0,
             precommits: vec![signature0, signature1, signature2],
+            precommit_bitset: BitSet::new_with_indices(&vec![0, 1, 2]),
         }
         .seal_fields()
         .unwrap();
@@ -1844,6 +1883,7 @@ mod tests {
             prev_view: 0,
             cur_view: 0,
             precommits: vec![signature0, signature1, bad_signature],
+            precommit_bitset: BitSet::new_with_indices(&vec![0, 1, 2]),
         }
         .seal_fields()
         .unwrap();
@@ -1851,7 +1891,7 @@ mod tests {
 
         // Two good and one bad signature.
         match engine.verify_block_external(&header) {
-            Err(Error::Engine(EngineError::NotAuthorized(_))) => {}
+            Err(Error::Engine(EngineError::BlockNotAuthorized(_))) => {}
             _ => panic!(),
         };
         engine.stop();
