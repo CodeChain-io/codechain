@@ -99,7 +99,7 @@ The specification about the tag is [here](Tag-encoding.md)
 * BLAKE160(0x94): Pop one value from stack, and push blake-160 hash of it. Blake-160 here refers to blake2b with 20 byte output.
 
 ## Environment
-* BLKNUM(0xa0): Push block number specified in parcel to stack as integer. If there's no specified block number, machine must fail immediately.
+* BLKNUM(0xa0): Push block number specified in transaction to stack as integer. If there's no specified block number, machine must fail immediately.
 
 ## Timelock
 * CHKTIMELOCK(0xb0)
@@ -109,5 +109,5 @@ The specification about the tag is [here](Tag-encoding.md)
    - 3: Time
    - 4: TimeAge
  2. Pop one more item from stack, the value of timelock. It must be big-endian encoded 64-bit unsigned integer. Script will fail if the length of the item exceeds 8.
- 2. Check the condition given type and value referring block number and timestamp of the best block. See `Timelock` section in [Parcel](Parcel.md) for the details.
+ 2. Check the condition given type and value referring block number and timestamp of the best block. See `Timelock` section in [Transaction](Transaction.md) for the details.
  3. Push true if condition is met, false otherwise.

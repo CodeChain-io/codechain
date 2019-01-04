@@ -10,7 +10,7 @@ In order to run CodeChain, run
 
     ./target/release/codechain
 
-You can create a block by sending a parcel through `JSON-RPC <https://github.com/CodeChain-io/codechain/blob/master/spec/JSON-RPC.md>`_. In order to utilize
+You can create a block by sending a transaction through `JSON-RPC <https://github.com/CodeChain-io/codechain/blob/master/spec/JSON-RPC.md>`_. In order to utilize
 JSON-RPC, you can use Curl or `JavaScript SDK <https://api.codechain.io/>`_.
 
 Blockchain Configuration

@@ -33,8 +33,12 @@ If you want to run the first image file, run the following command:
 
 This should result in CodeChain running.
 
+Building From Source
+====================
+
 Build Dependencies
-==================
+------------------
+::
 
 CodeChain requires Rust version 1.28.0 to build. Using `rustup <https://rustup.rs/>`_ is recommended.
 
@@ -66,8 +70,6 @@ CodeChain requires Rust version 1.28.0 to build. Using `rustup <https://rustup.r
 
 Please make sure that all of the binaries above are included in your ``PATH``. These conditions must be fulfilled before building CodeChain from source.
 
-Building From Source
-====================
 
 Download CodeChain's source code and go into its directory.
 ::
