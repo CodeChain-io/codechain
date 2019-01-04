@@ -78,7 +78,7 @@ pub struct Tendermint {
 struct TendermintInner {
     client: Option<Weak<EngineClient>>,
     /// Blockchain height.
-    height: AtomicUsize,
+    height: Height,
     /// Consensus view.
     view: AtomicUsize,
     /// Consensus step.
@@ -142,7 +142,7 @@ impl TendermintInner {
         let chain_notify = TendermintChainNotify::new();
         TendermintInner {
             client: None,
-            height: AtomicUsize::new(1),
+            height: 1,
             view: AtomicUsize::new(0),
             step: Step::Propose,
             votes: Default::default(),
@@ -167,7 +167,7 @@ impl TendermintInner {
 
     /// Get previous block hash to determine validator set
     fn prev_block_hash(&self) -> H256 {
-        let prev_height = (self.height() - 1) as u64;
+        let prev_height = (self.height - 1) as u64;
         self.client()
             .block_header(&BlockId::Number(prev_height))
             .expect("Height is increased when previous block is imported")
@@ -179,10 +179,6 @@ impl TendermintInner {
         let proposer_nonce = height + view;
         ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
         self.validators.get_address(bh, proposer_nonce)
-    }
-
-    pub fn height(&self) -> Height {
-        self.height.load(AtomicOrdering::SeqCst)
     }
 
     pub fn view(&self) -> View {
@@ -212,7 +208,7 @@ impl TendermintInner {
 
     pub fn vote_step(&self) -> VoteStep {
         VoteStep {
-            height: self.height(),
+            height: self.height,
             view: self.view(),
             step: self.step,
         }
@@ -250,16 +246,16 @@ impl TendermintInner {
 
     /// Check if current signer is the current proposer.
     fn is_signer_proposer(&self, bh: &H256) -> bool {
-        let proposer = self.view_proposer(bh, self.height(), self.view());
+        let proposer = self.view_proposer(bh, self.height, self.view());
         self.signer.read().is_address(&proposer)
     }
 
     fn is_view(&self, message: &ConsensusMessage) -> bool {
-        message.on.step.is_view(self.height(), self.view())
+        message.on.step.is_view(self.height, self.view())
     }
 
     fn is_step(&self, message: &ConsensusMessage) -> bool {
-        message.on.step.is_step(self.height(), self.view(), self.step)
+        message.on.step.is_step(self.height, self.view(), self.step)
     }
 
     fn is_authority(&self, prev_hash: &H256, address: &Address) -> bool {
@@ -280,7 +276,7 @@ impl TendermintInner {
     }
 
     fn has_enough_any_votes(&self) -> bool {
-        let step_votes = self.votes.count_round_votes(&VoteStep::new(self.height(), self.view(), self.step));
+        let step_votes = self.votes.count_round_votes(&VoteStep::new(self.height, self.view(), self.step));
         self.check_above_threshold(step_votes).is_ok()
     }
 
@@ -295,7 +291,7 @@ impl TendermintInner {
     }
 
     fn has_enough_precommit_votes(&self, block_hash: H256) -> bool {
-        let vote_step = VoteStep::new(self.height(), self.view(), Step::Precommit);
+        let vote_step = VoteStep::new(self.height, self.view(), Step::Precommit);
         let count = self.votes.count_block_round_votes(&vote_step, &Some(block_hash));
         self.check_above_threshold(count).is_ok()
     }
@@ -335,12 +331,12 @@ impl TendermintInner {
         self.last_lock.load(AtomicOrdering::SeqCst) < lock_change_view && lock_change_view < self.view()
     }
 
-    fn to_next_height(&self, height: Height) {
-        assert!(height >= self.height(), "{} < {}", height, self.height());
+    fn move_to_next_height(&mut self, height: Height) {
+        assert!(height >= self.height, "{} < {}", height, self.height);
         let new_height = height + 1;
         cdebug!(ENGINE, "Received a Commit, transitioning to height {}.", new_height);
         self.last_lock.store(0, AtomicOrdering::SeqCst);
-        self.height.store(new_height, AtomicOrdering::SeqCst);
+        self.height = new_height;
         self.view.store(0, AtomicOrdering::SeqCst);
         *self.lock_change.write() = None;
         *self.proposal.write() = None;
@@ -352,7 +348,7 @@ impl TendermintInner {
         self.extension.set_timer_step(step, self.view());
         self.step = step;
         self.backup();
-        let vote_step = VoteStep::new(self.height(), self.view(), step);
+        let vote_step = VoteStep::new(self.height, self.view(), step);
 
         // If there are not enough pre-votes or pre-commits,
         // to_step could be called with same step
@@ -414,7 +410,7 @@ impl TendermintInner {
     }
 
     fn generate_message(&mut self, block_hash: Option<BlockHash>) -> Option<Bytes> {
-        let height = self.height();
+        let height = self.height;
         let r = self.view();
         let step = self.step;
         let on = VoteOn {
@@ -455,7 +451,7 @@ impl TendermintInner {
         };
         let has_enough_aligned_votes = self.has_enough_aligned_votes(message);
         let lock_change = is_newer_than_lock
-            && vote_step.height == self.height()
+            && vote_step.height == self.height
             && vote_step.step == Step::Prevote
             && message.on.block_hash.is_some()
             && has_enough_aligned_votes;
@@ -476,7 +472,8 @@ impl TendermintInner {
                         // Commit the block using a complete signature set.
                         // Generate seal and remove old votes.
                         self.save_last_confirmed_view(bh, message.on.step.view);
-                        self.to_next_height(self.height());
+                        let height = self.height;
+                        self.move_to_next_height(height);
                         Some(Step::Commit)
                     } else {
                         cwarn!(ENGINE, "Cannot find a proposal which committed");
@@ -495,7 +492,7 @@ impl TendermintInner {
                 self.move_to_step(step);
             }
         } else if vote_step.step == Step::Precommit
-            && self.height() - 1 == vote_step.height
+            && self.height - 1 == vote_step.height
             && self.step == Step::Commit
             && self.has_all_votes(vote_step)
         {
@@ -515,7 +512,7 @@ impl TendermintInner {
             step: Step::Propose,
         });
 
-        let current_height = self.height();
+        let current_height = self.height;
         let height = proposal.number() as Height;
         let view = consensus_view(proposal).expect("Imported block is already verified");
         if current_height == height && self.view() == view {
@@ -524,7 +521,7 @@ impl TendermintInner {
                 self.move_to_step(Step::Prevote);
             }
         } else if current_height < height {
-            self.to_next_height(height - 1);
+            self.move_to_next_height(height - 1);
             *self.proposal.write() = Some(proposal.hash());
             self.move_to_step(Step::Prevote);
         }
@@ -534,7 +531,7 @@ impl TendermintInner {
         backup(
             self.client().get_kvdb().as_ref(),
             BackupView {
-                height: &self.height(),
+                height: &self.height,
                 view: &self.view(),
                 step: &self.step,
                 votes: &self.votes.get_all(),
@@ -548,7 +545,7 @@ impl TendermintInner {
         let backup = restore(client.get_kvdb().as_ref());
         if let Some(backup) = backup {
             self.step = backup.step;
-            self.height.store(backup.height, AtomicOrdering::SeqCst);
+            self.height = backup.height;
             self.view.store(backup.view, AtomicOrdering::SeqCst);
             *self.last_confirmed_view.write() = backup.last_confirmed_view;
             if let Some(proposal) = backup.proposal {
@@ -566,7 +563,7 @@ impl TendermintInner {
 
             if let Some(committed) = to_next_height {
                 if client.block(&BlockId::Hash(committed)).is_some() {
-                    self.to_next_height(backup.height);
+                    self.move_to_next_height(backup.height);
                     return
                 } else {
                     cwarn!(ENGINE, "Cannot find a proposal which committed");
@@ -622,7 +619,7 @@ impl TendermintInner {
         let header = block.header();
         let height = header.number() as Height;
         // Only proposer can generate seal if None was generated.
-        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.read().is_some() || height < self.height() {
+        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.read().is_some() || height < self.height {
             return Seal::None
         }
 
@@ -660,7 +657,7 @@ impl TendermintInner {
             ENGINE,
             "Submitting proposal {} at height {}-{} view {}-{}.\n{:?}",
             hash,
-            self.height(),
+            self.height,
             header.number(),
             self.view(),
             consensus_view(header).expect("This block is generated by this machine."),
@@ -817,7 +814,7 @@ impl TendermintInner {
                 ctrace!(ENGINE, "Propose timeout.");
                 if self.proposal.read().is_none() {
                     // Report the proposer if no proposal was received.
-                    let height = self.height();
+                    let height = self.height;
                     let current_proposer = self.view_proposer(&self.prev_block_hash(), height, self.view());
                     self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
                 }
@@ -873,7 +870,7 @@ impl TendermintInner {
 
     fn register_client(&mut self, client: Weak<EngineClient>) {
         if let Some(c) = client.upgrade() {
-            self.height.store(c.chain_info().best_block_number as usize + 1, AtomicOrdering::SeqCst);
+            self.height = c.chain_info().best_block_number as usize + 1;
             *self.last_confirmed_view.write() = (c.best_block_header().hash(), 0);
         }
         self.client = Some(Weak::clone(&client));
@@ -925,7 +922,7 @@ impl TendermintInner {
                 return Ok(())
             }
 
-            if message.on.step.height == self.height() && message.on.step.view == self.view() {
+            if message.on.step.height == self.height && message.on.step.view == self.view() {
                 let vote_index = self
                     .validators
                     .get_index(&self.prev_block_hash(), &sender_public)
@@ -948,7 +945,7 @@ impl TendermintInner {
 
     fn is_proposal(&self, header: &Header) -> bool {
         let number = header.number();
-        if self.height() > number as usize {
+        if self.height > number as usize {
             return false
         }
 
@@ -1268,10 +1265,10 @@ impl ChainNotify for TendermintChainNotify {
             let full_header = header.decode();
             if t.is_proposal(&full_header) {
                 t.on_imported_proposal(&full_header);
-            } else if t.height() < header.number() as usize {
+            } else if t.height < header.number() as usize {
                 height_changed = true;
                 ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
-                t.to_next_height((header.number() - 1) as usize);
+                t.move_to_next_height((header.number() - 1) as usize);
             }
         }
         if height_changed {
@@ -1555,12 +1552,12 @@ impl TendermintExtension {
 
             // If the proposal's height is current height + 1 and the proposal has valid precommits,
             // we should import it and increase height
-            if number > (tendermint.height() + 1) as u64 {
+            if number > (tendermint.height + 1) as u64 {
                 ctrace!(ENGINE, "Received future proposal, ignore it");
                 return
             }
 
-            if number == tendermint.height() as u64 && message.on.step.view > tendermint.view() {
+            if number == tendermint.height as u64 && message.on.step.view > tendermint.view() {
                 ctrace!(ENGINE, "Received future proposal, ignore it");
                 return
             }
@@ -1625,18 +1622,18 @@ impl TendermintExtension {
 
         // Since the peer may not have a proposal in its height,
         // we may need to receive votes instead of block.
-        if tendermint.height() + 2 < peer_vote_step.height {
+        if tendermint.height + 2 < peer_vote_step.height {
             // need to get blocks from block sync
             return
         }
 
         let peer_has_proposal = (tendermint.view() == peer_vote_step.view && peer_proposal.is_some())
             || tendermint.view() < peer_vote_step.view
-            || tendermint.height() < peer_vote_step.height;
+            || tendermint.height < peer_vote_step.height;
 
         let need_proposal = tendermint.need_proposal();
         if need_proposal && peer_has_proposal {
-            self.request_proposal(token, tendermint.height(), tendermint.view());
+            self.request_proposal(token, tendermint.height, tendermint.view());
         }
 
         let current_step = tendermint.step;
@@ -1667,11 +1664,11 @@ impl TendermintExtension {
         request_view: View,
     ) {
         ctrace!(ENGINE, "Received RequestProposal for {}-{} from {:?}", request_height, request_view, token);
-        if request_height > tendermint.height() {
+        if request_height > tendermint.height {
             return
         }
 
-        if request_height == tendermint.height() && request_view > tendermint.view() {
+        if request_height == tendermint.height && request_view > tendermint.view() {
             return
         }
 
@@ -1717,7 +1714,7 @@ impl NetworkExtension for TendermintExtension {
             None => return,
         };
         let guard = t.inner.lock();
-        let t = guard.borrow();
+        let t = guard.borrow_mut();
 
         let m = UntrustedRlp::new(data);
         match m.as_val() {
