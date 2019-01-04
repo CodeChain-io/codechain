@@ -84,7 +84,7 @@ struct TendermintInner {
     /// Consensus step.
     step: Step,
     /// Record current round's received votes as bit set
-    votes_received: RwLock<BitSet>,
+    votes_received: BitSet,
     /// Vote accumulator.
     votes: VoteCollector<ConsensusMessage>,
     /// Used to sign messages and proposals.
@@ -156,7 +156,7 @@ impl TendermintInner {
             extension: Arc::new(extension),
             chain_notify: Arc::new(chain_notify),
             machine,
-            votes_received: RwLock::new(BitSet::new()),
+            votes_received: BitSet::new(),
         }
     }
 
@@ -212,10 +212,6 @@ impl TendermintInner {
 
     pub fn need_proposal(&self) -> bool {
         self.proposal().is_none()
-    }
-
-    pub fn get_current_votes(&self) -> BitSet {
-        *self.votes_received.read()
     }
 
     pub fn get_all_votes_and_authors(&self, vote_step: &VoteStep, requested: &BitSet) -> Vec<ConsensusMessage> {
@@ -320,7 +316,7 @@ impl TendermintInner {
         ctrace!(ENGINE, "increment_view: New view.");
         self.view += n;
         *self.proposal.write() = None;
-        *self.votes_received.write() = BitSet::new();
+        self.votes_received = BitSet::new();
     }
 
     fn should_unlock(&self, lock_change_view: View) -> bool {
@@ -336,7 +332,7 @@ impl TendermintInner {
         self.view = 0;
         *self.lock_change.write() = None;
         *self.proposal.write() = None;
-        *self.votes_received.write() = BitSet::new();
+        self.votes_received = BitSet::new();
     }
 
     fn move_to_step(&mut self, step: Step) {
@@ -349,11 +345,11 @@ impl TendermintInner {
         // If there are not enough pre-votes or pre-commits,
         // to_step could be called with same step
         if prev_step != step {
-            *self.votes_received.write() = BitSet::new();
+            self.votes_received = BitSet::new();
         }
 
         // need to reset vote
-        self.broadcast_state(&vote_step, self.proposal(), self.get_current_votes());
+        self.broadcast_state(&vote_step, self.proposal(), self.votes_received);
         match step {
             Step::Propose => {
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
@@ -923,8 +919,7 @@ impl TendermintInner {
                     .validators
                     .get_index(&self.prev_block_hash(), &sender_public)
                     .expect("is_authority already checked the existence");
-                let mut votes_received_guard = self.votes_received.write();
-                votes_received_guard.set(vote_index);
+                self.votes_received.set(vote_index);
             }
 
             if let Some(double) = self.votes.vote(message.clone()) {
@@ -934,7 +929,7 @@ impl TendermintInner {
             }
             ctrace!(ENGINE, "Handling a valid {:?} from {}.", message, sender);
             self.handle_valid_message(&message);
-            self.broadcast_state(&self.vote_step(), self.proposal(), self.get_current_votes());
+            self.broadcast_state(&self.vote_step(), self.proposal(), self.votes_received);
         }
         Ok(())
     }
@@ -1644,7 +1639,7 @@ impl TendermintExtension {
                 BitSet::all_set()
             };
 
-            let current_votes = tendermint.get_current_votes();
+            let current_votes = tendermint.votes_received;
             let difference = &peer_known_votes - &current_votes;
             if !difference.is_empty() {
                 self.request_messages(token, tendermint.vote_step(), difference);
