@@ -18,10 +18,9 @@ jobs:
       before_script:
         - cargo fetch --verbose
       script:
-        - cargo +nightly-2018-12-06 fmt -- --check || TEST_FAILED=true
-        - test $TEST_FAILED || cargo +nightly-2018-12-06 clippy --all-targets --all-features -- -D warnings || TEST_FAILED=true
-        - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
-        - "! test $TEST_FAILED"
+        - cargo +nightly-2018-12-06 fmt -- --check || exit 1
+        - cargo +nightly-2018-12-06 clippy --all-targets --all-features -- -D warnings || exit 1
+        - RUST_BACKTRACE=1 cargo test --verbose --all || exit 1
     - name: int-test-osx
       os: osx
       install:
@@ -31,11 +30,10 @@ jobs:
       before_script:
         - cargo fetch --verbose
       script:
-        - cd test && yarn && yarn lint || TEST_FAILED=true
-        - test $TEST_FAILED || cargo build || TEST_FAILED=true
-        - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start-short || TEST_FAILED=true
-        - test $TEST_FAILED || yarn start-long || TEST_FAILED=true
-        - "! test $TEST_FAILED"
+        - cd test && yarn && yarn lint || exit 1
+        - cargo build || exit 1
+        - INT_TEST_FLAG=true && yarn start-short
+        - yarn start-long
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - name: test-linux
@@ -48,10 +46,9 @@ jobs:
       before_script:
         - cargo fetch --verbose
       script:
-        - cargo +nightly-2018-12-06 fmt -- --check || TEST_FAILED=true
-        - test $TEST_FAILED || cargo +nightly-2018-12-06 clippy --all-targets --all-features -- -D warnings || TEST_FAILED=true
-        - test $TEST_FAILED || RUST_BACKTRACE=1 cargo test --verbose --all || TEST_FAILED=true
-        - "! test $TEST_FAILED"
+        - cargo +nightly-2018-12-06 fmt -- --check || exit 1
+        - cargo +nightly-2018-12-06 clippy --all-targets --all-features -- -D warnings || exit 1
+        - RUST_BACKTRACE=1 cargo test --verbose --all || exit 1
     - name: int-test-linux
       os: linux
       sudo: required
@@ -62,11 +59,10 @@ jobs:
       before_script:
         - cargo fetch --verbose
       script:
-        - cd test && yarn && yarn lint || TEST_FAILED=true
-        - test $TEST_FAILED || cargo build || TEST_FAILED=true
-        - test $TEST_FAILED || INT_TEST_FLAG=true && yarn start-short || TEST_FAILED=true
-        - test $TEST_FAILED || yarn start-long || TEST_FAILED=true
-        - "! test $TEST_FAILED"
+        - cd test && yarn && yarn lint || exit 1
+        - cargo build || exit 1
+        - INT_TEST_FLAG=true && yarn start-short
+        - yarn start-long
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - stage: deploy
