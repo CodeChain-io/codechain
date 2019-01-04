@@ -82,6 +82,14 @@ impl BitSet {
         BitSet([0; BITSET_SIZE])
     }
 
+    pub fn new_with_indices(indices: &[usize]) -> Self {
+        let mut bitset = BitSet::new();
+        for index in indices {
+            bitset.set(*index);
+        }
+        bitset
+    }
+
     pub fn all_set() -> Self {
         let mut bit_set = BitSet::new();
         for i in 0..bit_set.0.len() {
@@ -110,6 +118,13 @@ impl BitSet {
         let bit_index = index % 8;
 
         self.0[array_index] |= 1u8 << bit_index;
+    }
+
+    pub fn reset(&mut self, index: usize) {
+        let array_index = index / 8;
+        let bit_index = index % 8;
+
+        self.0[array_index] &= 0b1111_1111 ^ (1 << bit_index);
     }
 }
 
