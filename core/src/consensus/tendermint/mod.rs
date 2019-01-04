@@ -76,8 +76,7 @@ pub struct Tendermint {
 }
 
 struct TendermintInner {
-    /// We use RwLock to use interior mutability in multi-threads
-    client: RwLock<Option<Weak<EngineClient>>>,
+    client: Option<Weak<EngineClient>>,
     /// Blockchain height.
     height: AtomicUsize,
     /// Consensus view.
@@ -144,7 +143,7 @@ impl TendermintInner {
         let extension = TendermintExtension::new(our_params.timeouts);
         let chain_notify = TendermintChainNotify::new();
         TendermintInner {
-            client: RwLock::new(None),
+            client: None,
             height: AtomicUsize::new(1),
             view: AtomicUsize::new(0),
             step: RwLock::new(Step::Propose),
@@ -166,12 +165,7 @@ impl TendermintInner {
 
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
     fn client(&self) -> Arc<EngineClient> {
-        self.client
-            .read()
-            .as_ref()
-            .expect("Only writes in initialize")
-            .upgrade()
-            .expect("Client lives longer than consensus")
+        self.client.as_ref().expect("Only writes in initialize").upgrade().expect("Client lives longer than consensus")
     }
 
     /// Get previous block hash to determine validator set
@@ -890,12 +884,12 @@ impl TendermintInner {
         Ok(())
     }
 
-    fn register_client(&self, client: Weak<EngineClient>) {
+    fn register_client(&mut self, client: Weak<EngineClient>) {
         if let Some(c) = client.upgrade() {
             self.height.store(c.chain_info().best_block_number as usize + 1, AtomicOrdering::SeqCst);
             *self.last_confirmed_view.write() = (c.best_block_header().hash(), 0);
         }
-        *self.client.write() = Some(Weak::clone(&client));
+        self.client = Some(Weak::clone(&client));
         self.restore();
         self.extension.register_client(Weak::clone(&client));
         self.validators.register_client(Weak::clone(&client));
@@ -1155,7 +1149,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn register_client(&self, client: Weak<EngineClient>) {
         let guard = self.inner.lock();
-        let tendermint = guard.borrow();
+        let mut tendermint = guard.borrow_mut();
         tendermint.register_client(client);
     }
 
