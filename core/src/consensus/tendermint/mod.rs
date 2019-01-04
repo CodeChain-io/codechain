@@ -20,6 +20,7 @@ mod params;
 mod stake;
 pub mod types;
 
+use std::cell::RefCell;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::iter::Iterator;
@@ -68,7 +69,7 @@ pub type BlockHash = H256;
 
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
-    inner: ReentrantMutex<TendermintInner>,
+    inner: ReentrantMutex<RefCell<TendermintInner>>,
     machine: Arc<CodeChainMachine>,
     /// Action handlers for this consensus method
     action_handlers: Vec<Arc<ActionHandler>>,
@@ -120,13 +121,17 @@ impl Tendermint {
         let inner = TendermintInner::new(our_params, machine.clone());
 
         let engine = Arc::new(Tendermint {
-            inner: ReentrantMutex::new(inner),
+            inner: ReentrantMutex::new(RefCell::new(inner)),
             machine,
             action_handlers,
         });
 
-        engine.inner.lock().extension.register_tendermint(Arc::downgrade(&engine));
-        engine.inner.lock().chain_notify.register_tendermint(Arc::downgrade(&engine));
+        {
+            let guard = engine.inner.lock();
+            let inner = guard.borrow();
+            inner.extension.register_tendermint(Arc::downgrade(&engine));
+            inner.chain_notify.register_tendermint(Arc::downgrade(&engine));
+        }
 
         engine
     }
@@ -1047,14 +1052,17 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     /// (consensus view, proposal signature, authority signatures)
     fn seal_fields(&self, header: &Header) -> usize {
-        self.inner.lock().seal_fields(header)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.seal_fields(header)
     }
 
     /// Should this node participate.
     fn seals_internally(&self) -> Option<bool> {
-        let inner_guard = self.inner.lock();
-        let signer_guard = inner_guard.signer.read();
-        Some(signer_guard.is_some())
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        let has_signer = tendermint.signer.read().is_some();
+        Some(has_signer)
     }
 
     fn engine_type(&self) -> EngineType {
@@ -1066,13 +1074,17 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     /// This operation is synchronous and may (quite reasonably) not be available, in which case
     /// `Seal::None` will be returned.
     fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
-        self.inner.lock().generate_seal(block, parent)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.generate_seal(block, parent)
     }
 
     /// Called when the node is the leader and a proposal block is generated from the miner.
     /// This writes the proposal information and go to the prevote step.
     fn proposal_generated(&self, sealed_block: &SealedBlock) {
-        self.inner.lock().proposal_generated(sealed_block);
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.proposal_generated(sealed_block);
     }
 
     fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
@@ -1080,15 +1092,21 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
-        self.inner.lock().verify_block_basic(header)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.verify_block_basic(header)
     }
 
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
-        self.inner.lock().verify_block_external(header)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.verify_block_external(header)
     }
 
     fn signals_epoch_end(&self, header: &Header) -> EpochChange {
-        self.inner.lock().signals_epoch_end(header)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.signals_epoch_end(header)
     }
 
     fn is_epoch_end(
@@ -1097,66 +1115,96 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         chain: &super::Headers<Header>,
         transition_store: &super::PendingTransitionStore,
     ) -> Option<Vec<u8>> {
-        self.inner.lock().is_epoch_end(chain_head, chain, transition_store)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.is_epoch_end(chain_head, chain, transition_store)
     }
 
     fn epoch_verifier<'a>(&self, header: &Header, proof: &'a [u8]) -> ConstructedVerifier<'a, CodeChainMachine> {
-        self.inner.lock().epoch_verifier(header, proof)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.epoch_verifier(header, proof)
     }
 
     fn populate_from_parent(&self, header: &mut Header, parent: &Header) {
-        self.inner.lock().populate_from_parent(header, parent);
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.populate_from_parent(header, parent);
     }
 
     /// Equivalent to a timeout: to be used for tests.
     fn on_timeout(&self, token: usize) {
-        self.inner.lock().on_timeout(token)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.on_timeout(token)
     }
 
     fn stop(&self) {}
 
     fn on_new_block(&self, block: &mut ExecutedBlock, epoch_begin: bool) -> Result<(), Error> {
-        self.inner.lock().on_new_block(block, epoch_begin)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.on_new_block(block, epoch_begin)
     }
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
-        self.inner.lock().on_close_block(block)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.on_close_block(block)
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {
-        self.inner.lock().register_client(client)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.register_client(client);
     }
 
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
-        self.inner.lock().handle_message(rlp)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.handle_message(rlp)
     }
 
     fn is_proposal(&self, header: &Header) -> bool {
-        self.inner.lock().is_proposal(header)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.is_proposal(header)
     }
 
     fn broadcast_proposal_block(&self, block: encoded::Block) {
-        self.inner.lock().broadcast_proposal_block(block)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.broadcast_proposal_block(block)
     }
 
     fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
-        self.inner.lock().set_signer(ap, address, password)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.set_signer(ap, address, password)
     }
 
     fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
-        self.inner.lock().sign(hash)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.sign(hash)
     }
 
     fn signer_public(&self) -> Option<Public> {
-        self.inner.lock().signer_public()
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.signer_public()
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
-        self.inner.lock().register_network_extension_to_service(service)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.register_network_extension_to_service(service)
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {
-        self.inner.lock().block_reward(_block_number)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.block_reward(_block_number)
     }
 
     fn recommended_confirmation(&self) -> u32 {
@@ -1164,11 +1212,15 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn register_chain_notify(&self, client: &Client) {
-        self.inner.lock().register_chain_notify(client);
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.register_chain_notify(client);
     }
 
     fn get_block_hash_to_mine_on(&self, best_block_hash: H256) -> H256 {
-        self.inner.lock().get_block_hash_to_mine_on(best_block_hash)
+        let guard = self.inner.lock();
+        let tendermint = guard.borrow();
+        tendermint.get_block_hash_to_mine_on(best_block_hash)
     }
 
     fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
@@ -1223,7 +1275,8 @@ impl ChainNotify for TendermintChainNotify {
             None => return,
         };
 
-        let t = t.inner.lock();
+        let guard = t.inner.lock();
+        let t = guard.borrow();
 
         let imported_is_empty = imported.is_empty();
         if imported_is_empty {
@@ -1686,7 +1739,8 @@ impl NetworkExtension for TendermintExtension {
             Some(t) => t,
             None => return,
         };
-        let t = t.inner.lock();
+        let guard = t.inner.lock();
+        let t = guard.borrow();
 
         let m = UntrustedRlp::new(data);
         match m.as_val() {
