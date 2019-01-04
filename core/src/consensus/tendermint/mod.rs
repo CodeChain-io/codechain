@@ -90,7 +90,7 @@ struct TendermintInner {
     /// Used to sign messages and proposals.
     signer: EngineSigner,
     /// Message for the last PoLC.
-    lock_change: RwLock<Option<ConsensusMessage>>,
+    lock_change: Option<ConsensusMessage>,
     /// Last lock view.
     last_lock: AtomicUsize,
     /// hash of the proposed block, used for seal submission.
@@ -147,7 +147,7 @@ impl TendermintInner {
             step: Step::Propose,
             votes: Default::default(),
             signer: Default::default(),
-            lock_change: RwLock::new(None),
+            lock_change: None,
             last_lock: AtomicUsize::new(0),
             proposal: RwLock::new(None),
             last_confirmed_view: RwLock::new((Default::default(), 0)),
@@ -330,7 +330,7 @@ impl TendermintInner {
         self.last_lock.store(0, AtomicOrdering::SeqCst);
         self.height = new_height;
         self.view = 0;
-        *self.lock_change.write() = None;
+        self.lock_change = None;
         *self.proposal.write() = None;
         self.votes_received = BitSet::new();
     }
@@ -369,7 +369,7 @@ impl TendermintInner {
             }
             Step::Prevote => {
                 self.request_all_votes(&vote_step);
-                let block_hash = match *self.lock_change.read() {
+                let block_hash = match self.lock_change {
                     Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
                     _ => *self.proposal.read(),
                 };
@@ -378,7 +378,7 @@ impl TendermintInner {
             Step::Precommit => {
                 self.request_all_votes(&vote_step);
                 ctrace!(ENGINE, "to_step: Precommit.");
-                let block_hash = match *self.lock_change.read() {
+                let block_hash = match self.lock_change {
                     Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
                         ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
                         self.last_lock.store(m.on.step.view, AtomicOrdering::SeqCst);
@@ -437,7 +437,7 @@ impl TendermintInner {
 
     fn handle_valid_message(&mut self, message: &ConsensusMessage) {
         let vote_step = &message.on.step;
-        let is_newer_than_lock = match &*self.lock_change.read() {
+        let is_newer_than_lock = match &self.lock_change {
             Some(lock) => *vote_step > lock.on.step,
             None => true,
         };
@@ -449,7 +449,7 @@ impl TendermintInner {
             && has_enough_aligned_votes;
         if lock_change {
             ctrace!(ENGINE, "handle_valid_message: Lock change.");
-            *self.lock_change.write() = Some(message.clone());
+            self.lock_change = Some(message.clone());
         }
         // Check if it can affect the step transition.
         if self.is_step(message) {
@@ -566,7 +566,7 @@ impl TendermintInner {
         }
     }
 
-    fn load_vote_from_backup(&self, vote: &ConsensusMessage, height: Height) -> Option<H256> {
+    fn load_vote_from_backup(&mut self, vote: &ConsensusMessage, height: Height) -> Option<H256> {
         self.votes.vote(vote.clone());
 
         if vote.on.step.height != height {
@@ -576,7 +576,7 @@ impl TendermintInner {
         match vote.on.step.step {
             Step::Prevote => {
                 let vote_step = &vote.on.step;
-                let is_newer_than_lock = match &*self.lock_change.read() {
+                let is_newer_than_lock = match &self.lock_change {
                     Some(lock) => *vote_step > lock.on.step,
                     None => true,
                 };
@@ -584,7 +584,7 @@ impl TendermintInner {
                     is_newer_than_lock && vote.on.block_hash.is_some() && self.has_enough_aligned_votes(vote);
                 if lock_change {
                     ctrace!(ENGINE, "load: Lock change.");
-                    *self.lock_change.write() = Some(vote.clone());
+                    self.lock_change = Some(vote.clone());
                 }
             }
             Step::Precommit => {
