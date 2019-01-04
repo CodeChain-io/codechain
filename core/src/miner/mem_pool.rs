@@ -394,6 +394,103 @@ impl ParcelSet {
     }
 }
 
+struct ParcelPool {
+    /// Priority queue for parcels that can go to block
+    current: ParcelSet,
+    /// Priority queue for parcels that has been received but are not yet valid to go to block
+    future: ParcelSet,
+}
+
+impl ParcelPool {
+    fn with_limits(limit: usize, memory_limit: usize) -> Self {
+        let current = ParcelSet {
+            by_priority: BTreeSet::new(),
+            by_signer_public: Table::new(),
+            by_fee: MultiMap::default(),
+            limit,
+            memory_limit,
+        };
+
+        let future = ParcelSet {
+            by_priority: BTreeSet::new(),
+            by_signer_public: Table::new(),
+            by_fee: MultiMap::default(),
+            limit,
+            memory_limit,
+        };
+
+        Self {
+            current,
+            future,
+        }
+    }
+
+    fn limit(&self) -> usize {
+        self.current.limit
+    }
+
+    fn set_limit(&mut self, limit: usize, by_hash: &mut HashMap<H256, MemPoolItem>, local: &mut LocalParcelsList) {
+        self.current.set_limit(limit);
+        self.future.set_limit(limit);
+        // And ensure the limits
+        self.current.enforce_limit(by_hash, local);
+        self.future.enforce_limit(by_hash, local);
+    }
+
+    fn effective_minimum_fee(&self) -> u64 {
+        self.current.fee_entry_limit()
+    }
+
+    fn status(&self) -> MemPoolStatus {
+        MemPoolStatus {
+            pending: self.current.by_priority.len(),
+            future: self.future.by_priority.len(),
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.future.by_priority.len() + self.current.by_priority.len()
+    }
+
+    fn clear(&mut self) {
+        self.current.clear();
+        self.future.clear();
+    }
+
+    fn top_parcels(&self, size_limit: usize, by_hash: &HashMap<H256, MemPoolItem>) -> Vec<SignedParcel> {
+        let mut current_size: usize = 0;
+        self.current
+            .by_priority
+            .iter()
+            .map(|t| {
+                by_hash.get(&t.hash).expect("All parcels in `current` and `future` are always included in `by_hash`")
+            })
+            .take_while(|t| {
+                let encoded_byte_array: Vec<u8> = rlp::encode(&t.parcel).into_vec();
+                let size_in_byte = encoded_byte_array.len();
+                current_size += size_in_byte;
+                current_size < size_limit
+            })
+            .map(|t| t.parcel.clone())
+            .collect()
+    }
+
+    fn future_parcels(&self, by_hash: &HashMap<H256, MemPoolItem>) -> Vec<SignedParcel> {
+        self.future
+            .by_priority
+            .iter()
+            .map(|t| {
+                by_hash.get(&t.hash).expect("All parcels in `current` and `future` are always included in `by_hash`")
+            })
+            .map(|t| t.parcel.clone())
+            .collect()
+    }
+
+    fn has_local_pending_parcels(&self) -> bool {
+        self.current.by_priority.iter().any(|parcel| parcel.origin == ParcelOrigin::Local)
+    }
+}
+
 pub struct MemPool {
     /// Fee threshold for parcels that can be imported to this pool (defaults to 0)
     minimal_fee: u64,
@@ -401,10 +498,8 @@ pub struct MemPool {
     /// When we reach `max_time_in_pool / 2^3` we re-validate
     /// account balance.
     max_time_in_pool: PoolingInstant,
-    /// Priority queue for parcels that can go to block
-    current: ParcelSet,
-    /// Priority queue for parcels that has been received but are not yet valid to go to block
-    future: ParcelSet,
+    /// Priority queue for parcels
+    parcel_pool: ParcelPool,
     /// All parcels managed by pool indexed by hash
     by_hash: HashMap<H256, MemPoolItem>,
     /// Last seq of parcel in current (to quickly check next expected parcel)
@@ -429,27 +524,10 @@ impl MemPool {
 
     /// Create new instance of this Queue with specified limits
     pub fn with_limits(limit: usize, memory_limit: usize) -> Self {
-        let current = ParcelSet {
-            by_priority: BTreeSet::new(),
-            by_signer_public: Table::new(),
-            by_fee: MultiMap::default(),
-            limit,
-            memory_limit,
-        };
-
-        let future = ParcelSet {
-            by_priority: BTreeSet::new(),
-            by_signer_public: Table::new(),
-            by_fee: MultiMap::default(),
-            limit,
-            memory_limit,
-        };
-
-        MemPool {
+        Self {
             minimal_fee: 0,
             max_time_in_pool: DEFAULT_POOLING_PERIOD,
-            current,
-            future,
+            parcel_pool: ParcelPool::with_limits(limit, memory_limit),
             by_hash: HashMap::new(),
             last_seqs: HashMap::new(),
             local_parcels: LocalParcelsList::default(),
@@ -459,16 +537,12 @@ impl MemPool {
 
     /// Set the new limit for `current` and `future` queue.
     pub fn set_limit(&mut self, limit: usize) {
-        self.current.set_limit(limit);
-        self.future.set_limit(limit);
-        // And ensure the limits
-        self.current.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
-        self.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
+        self.parcel_pool.set_limit(limit, &mut self.by_hash, &mut self.local_parcels);
     }
 
     /// Returns current limit of parcels in the pool.
     pub fn limit(&self) -> usize {
-        self.current.limit
+        self.parcel_pool.limit()
     }
 
     /// Get the minimal fee.
@@ -485,15 +559,12 @@ impl MemPool {
     /// Get one more than the lowest fee in the pool iff the pool is
     /// full, otherwise 0.
     pub fn effective_minimum_fee(&self) -> u64 {
-        self.current.fee_entry_limit()
+        self.parcel_pool.effective_minimum_fee()
     }
 
     /// Returns current status for this pool
     pub fn status(&self) -> MemPoolStatus {
-        MemPoolStatus {
-            pending: self.current.by_priority.len(),
-            future: self.future.by_priority.len(),
-        }
+        self.parcel_pool.status()
     }
 
     /// Add signed parcel to pool to be verified and imported.
@@ -542,10 +613,11 @@ impl MemPool {
     where
         F: Fn(&Public) -> AccountDetails, {
         let signers = self
+            .parcel_pool
             .current
             .by_signer_public
             .keys()
-            .chain(self.future.by_signer_public.keys())
+            .chain(self.parcel_pool.future.by_signer_public.keys())
             .map(|sender| (*sender, fetch_account(sender)))
             .collect::<HashMap<_, _>>();
 
@@ -597,7 +669,7 @@ impl MemPool {
         timestamp: u64,
     ) where
         F: Fn(&Public) -> u64, {
-        assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
+        assert_eq!(self.parcel_pool.len(), self.by_hash.len());
         let parcel = if let Some(parcel) = self.by_hash.remove(parcel_hash) {
             parcel
         } else {
@@ -620,23 +692,23 @@ impl MemPool {
         }
 
         // Remove from future
-        let order = self.future.drop(&signer_public, seq);
+        let order = self.parcel_pool.future.drop(&signer_public, seq);
         if order.is_some() {
             self.update_future(&signer_public, current_seq);
             // And now lets check if there is some chain of parcels in future
             // that should be placed in current
             self.move_matching_future_to_current(signer_public, current_seq, current_seq, current_time, timestamp);
-            assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
+            assert_eq!(self.parcel_pool.len(), self.by_hash.len());
             return
         }
 
         // Remove from current
-        let order = self.current.drop(&signer_public, seq);
+        let order = self.parcel_pool.current.drop(&signer_public, seq);
         if order.is_some() {
             // This will keep consistency in pool
             // Moves all to future and then promotes a batch from current:
             self.cull_internal(signer_public, current_seq, current_time, timestamp);
-            assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
+            assert_eq!(self.parcel_pool.len(), self.by_hash.len());
             return
         }
     }
@@ -645,12 +717,12 @@ impl MemPool {
     /// Client (State) seq = next valid seq for this signer.
     pub fn cull(&mut self, signer_public: Public, client_seq: u64, current_time: PoolingInstant, timestamp: u64) {
         // Check if there is anything in current...
-        let should_check_in_current = self.current.by_signer_public.row(&signer_public)
+        let should_check_in_current = self.parcel_pool.current.by_signer_public.row(&signer_public)
             // If seq == client_seq nothing is changed
             .and_then(|by_seq| by_seq.keys().find(|seq| **seq < client_seq))
             .map(|_| ());
         // ... or future
-        let should_check_in_future = self.future.by_signer_public.row(&signer_public)
+        let should_check_in_future = self.parcel_pool.future.by_signer_public.row(&signer_public)
             // if seq == client_seq we need to promote to current
             .and_then(|by_seq| by_seq.keys().find(|seq| **seq <= client_seq))
             .map(|_| ());
@@ -665,8 +737,7 @@ impl MemPool {
     /// Removes all elements (in any state) from the pool
     #[allow(dead_code)]
     pub fn clear(&mut self) {
-        self.current.clear();
-        self.future.clear();
+        self.parcel_pool.clear();
         self.by_hash.clear();
         self.last_seqs.clear();
     }
@@ -685,42 +756,17 @@ impl MemPool {
 
     /// Returns top parcels from the pool ordered by priority.
     pub fn top_parcels(&self, size_limit: usize) -> Vec<SignedParcel> {
-        let mut current_size: usize = 0;
-        self.current
-            .by_priority
-            .iter()
-            .map(|t| {
-                self.by_hash
-                    .get(&t.hash)
-                    .expect("All parcels in `current` and `future` are always included in `by_hash`")
-            })
-            .take_while(|t| {
-                let encoded_byte_array: Vec<u8> = rlp::encode(&t.parcel).into_vec();
-                let size_in_byte = encoded_byte_array.len();
-                current_size += size_in_byte;
-                current_size < size_limit
-            })
-            .map(|t| t.parcel.clone())
-            .collect()
+        self.parcel_pool.top_parcels(size_limit, &self.by_hash)
     }
 
     /// Return all future parcels.
     pub fn future_parcels(&self) -> Vec<SignedParcel> {
-        self.future
-            .by_priority
-            .iter()
-            .map(|t| {
-                self.by_hash
-                    .get(&t.hash)
-                    .expect("All parcels in `current` and `future` are always included in `by_hash`")
-            })
-            .map(|t| t.parcel.clone())
-            .collect()
+        self.parcel_pool.future_parcels(&self.by_hash)
     }
 
     /// Returns true if there is at least one local parcel pending
     pub fn has_local_pending_parcels(&self) -> bool {
-        self.current.by_priority.iter().any(|parcel| parcel.origin == ParcelOrigin::Local)
+        self.parcel_pool.has_local_pending_parcels()
     }
 
     /// Returns local parcels (some of them might not be part of the pool anymore).
@@ -794,7 +840,7 @@ impl MemPool {
         self.next_parcel_id += 1;
         let vparcel = MemPoolItem::new(parcel, origin, time, id, timelock);
         let r = self.import_parcel(vparcel, client_account.seq, timestamp);
-        assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
+        assert_eq!(self.parcel_pool.len(), self.by_hash.len());
         r
     }
 
@@ -851,12 +897,12 @@ impl MemPool {
             check_too_cheap(Self::replace_parcel(
                 parcel,
                 state_seq,
-                &mut self.future,
+                &mut self.parcel_pool.future,
                 &mut self.by_hash,
                 &mut self.local_parcels,
             ))?;
             // Enforce limit in Future
-            let removed = self.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
+            let removed = self.parcel_pool.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
             // Return an error if this parcel was not imported because of limit.
             check_if_removed(&signer_public, seq, removed)?;
 
@@ -873,7 +919,7 @@ impl MemPool {
             // Check same seq is in current. If it
             // is than move the following current items to future.
             let best_block_number = parcel.insertion_time;
-            let moved_to_future_flag = self.current.by_signer_public.get(&signer_public, &seq).is_some();
+            let moved_to_future_flag = self.parcel_pool.current.by_signer_public.get(&signer_public, &seq).is_some();
             if moved_to_future_flag {
                 self.move_all_to_future(&signer_public, state_seq);
             }
@@ -881,7 +927,7 @@ impl MemPool {
             check_too_cheap(Self::replace_parcel(
                 parcel,
                 state_seq,
-                &mut self.future,
+                &mut self.parcel_pool.future,
                 &mut self.by_hash,
                 &mut self.local_parcels,
             ))?;
@@ -890,7 +936,7 @@ impl MemPool {
                 self.move_matching_future_to_current(signer_public, state_seq, state_seq, best_block_number, timestamp);
             }
 
-            let removed = self.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
+            let removed = self.parcel_pool.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
             check_if_removed(&signer_public, seq, removed)?;
             cdebug!(MEM_POOL, "Imported parcel to future: {:?}", hash);
             cdebug!(MEM_POOL, "status: {:?}", self.status());
@@ -901,7 +947,7 @@ impl MemPool {
         check_too_cheap(Self::replace_parcel(
             parcel,
             state_seq,
-            &mut self.current,
+            &mut self.parcel_pool.current,
             &mut self.by_hash,
             &mut self.local_parcels,
         ))?;
@@ -910,7 +956,7 @@ impl MemPool {
         self.last_seqs.insert(signer_public, new_max);
 
         // Also enforce the limit
-        let removed = self.current.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
+        let removed = self.parcel_pool.current.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
         // If some parcel were removed because of limit we need to update last_seqs also.
         self.update_last_seqs(&removed);
         // Trigger error if the parcel we are importing was removed.
@@ -951,7 +997,7 @@ impl MemPool {
         // And now lets check if there is some batch of parcels in future
         // that should be placed in current. It should also update last_seqs.
         self.move_matching_future_to_current(sender, client_seq, client_seq, current_time, timestamp);
-        assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
+        assert_eq!(self.parcel_pool.len(), self.by_hash.len());
     }
 
     fn update_last_seqs(&mut self, removed_min_seqs: &Option<HashMap<Public, u64>>) {
@@ -968,7 +1014,7 @@ impl MemPool {
 
     /// Update height of all parcels in future parcels set.
     fn update_future(&mut self, signer_public: &Public, current_seq: u64) {
-        self.future.update_base_seq(&mut self.by_hash, signer_public, current_seq);
+        self.parcel_pool.future.update_base_seq(&mut self.by_hash, signer_public, current_seq);
     }
 
     /// Checks if there are any parcels in `future` that should actually be promoted to `current`
@@ -983,7 +1029,8 @@ impl MemPool {
     ) {
         let mut update_last_seq_to = None;
         {
-            let by_seq = if let Some(by_seq) = self.future.by_signer_public.row_mut(&public) {
+            // fn drop(&mut self, signer_public: &Public, seq: u64)
+            let by_seq = if let Some(by_seq) = self.parcel_pool.future.by_signer_public.row_mut(&public) {
                 by_seq
             } else {
                 return
@@ -993,20 +1040,20 @@ impl MemPool {
                     break
                 }
                 let order = by_seq.remove(&current_seq).expect("None is tested in the while condition above.");
-                self.future.by_priority.remove(&order);
-                self.future.by_fee.remove(&order.fee, &order.hash);
+                self.parcel_pool.future.by_priority.remove(&order);
+                self.parcel_pool.future.by_fee.remove(&order.fee, &order.hash);
                 // Put to current
                 let order = order.update_height(current_seq, first_seq);
                 if order.origin.is_local() {
                     self.local_parcels.mark_pending(order.hash);
                 }
-                if let Some(old) = self.current.insert(public, current_seq, order) {
+                if let Some(old) = self.parcel_pool.current.insert(public, current_seq, order) {
                     Self::replace_orders(
                         public,
                         current_seq,
                         old,
                         order,
-                        &mut self.current,
+                        &mut self.parcel_pool.current,
                         &mut self.by_hash,
                         &mut self.local_parcels,
                     );
@@ -1015,7 +1062,7 @@ impl MemPool {
                 current_seq += 1;
             }
         }
-        self.future.by_signer_public.clear_if_empty(&public);
+        self.parcel_pool.future.by_signer_public.clear_if_empty(&public);
         if let Some(x) = update_last_seq_to {
             // Update last inserted seq
             self.last_seqs.insert(public, x);
@@ -1025,7 +1072,7 @@ impl MemPool {
     /// Drop all parcels from given signer from `current`.
     /// Either moves them to `future` or removes them from pool completely.
     fn move_all_to_future(&mut self, signer_public: &Public, current_seq: u64) {
-        let all_seqs_from_sender = match self.current.by_signer_public.row(signer_public) {
+        let all_seqs_from_sender = match self.parcel_pool.current.by_signer_public.row(signer_public) {
             Some(row_map) => row_map.keys().cloned().collect::<Vec<_>>(),
             None => vec![],
         };
@@ -1033,6 +1080,7 @@ impl MemPool {
         for k in all_seqs_from_sender {
             // Goes to future or is removed
             let order = self
+                .parcel_pool
                 .current
                 .drop(signer_public, k)
                 .expect("iterating over a collection that has been retrieved above; qed");
@@ -1041,13 +1089,13 @@ impl MemPool {
                 if order.origin.is_local() {
                     self.local_parcels.mark_future(order.hash);
                 }
-                if let Some(old) = self.future.insert(*signer_public, k, order) {
+                if let Some(old) = self.parcel_pool.future.insert(*signer_public, k, order) {
                     Self::replace_orders(
                         *signer_public,
                         k,
                         old,
                         order,
-                        &mut self.future,
+                        &mut self.parcel_pool.future,
                         &mut self.by_hash,
                         &mut self.local_parcels,
                     );
@@ -1060,7 +1108,7 @@ impl MemPool {
                 }
             }
         }
-        self.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
+        self.parcel_pool.future.enforce_limit(&mut self.by_hash, &mut self.local_parcels);
     }
 
     /// Marks all parcels from particular sender as local parcels
@@ -1094,8 +1142,8 @@ impl MemPool {
         }
 
         let local = &mut self.local_parcels;
-        mark_local(signer, &mut self.current, |hash| local.mark_pending(hash));
-        mark_local(signer, &mut self.future, |hash| local.mark_future(hash));
+        mark_local(signer, &mut self.parcel_pool.current, |hash| local.mark_pending(hash));
+        mark_local(signer, &mut self.parcel_pool.future, |hash| local.mark_future(hash));
     }
 
     /// Replaces parcel in given set (could be `future` or `current`).
