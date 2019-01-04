@@ -65,8 +65,8 @@ impl<'a> HeaderView<'a> {
         self.rlp.val_at(2)
     }
 
-    /// Returns parcels root.
-    pub fn parcels_root(&self) -> H256 {
+    /// Returns transactions root.
+    pub fn transactions_root(&self) -> H256 {
         self.rlp.val_at(3)
     }
 

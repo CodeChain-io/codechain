@@ -18,15 +18,14 @@ use std::sync::Arc;
 
 use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
-    Shard, SignedParcel, TextClient, UnverifiedParcel,
+    Shard, SignedTransaction, TextClient, UnverifiedTransaction,
 };
 use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset};
 use ctypes::invoice::Invoice;
-use ctypes::parcel::Action;
-use ctypes::transaction::ShardTransaction as TransactionType;
+use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H256};
 use rlp::{DecoderError, UntrustedRlp};
@@ -83,31 +82,28 @@ where
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
             .map_err(|e| errors::rlp(&e))
-            .and_then(|parcel: UnverifiedParcel| {
+            .and_then(|tx: UnverifiedTransaction| {
                 if let Action::Custom {
                     handler_id,
                     ..
-                } = &parcel.action
+                } = &tx.action
                 {
                     if self.client.find_action_handler_for(*handler_id).is_none() {
                         return Err(errors::rlp(&DecoderError::Custom("Invalid custom action!")))
                     }
                 }
-                Ok(parcel)
+                Ok(tx)
             })
-            .and_then(|parcel| SignedParcel::try_new(parcel).map_err(errors::parcel_core))
+            .and_then(|tx| SignedTransaction::try_new(tx).map_err(errors::transaction_core))
             .and_then(|signed| {
                 let hash = signed.hash();
-                self.miner.import_own_parcel(&*self.client, signed).map_err(errors::parcel_core).map(|_| hash)
+                self.miner.import_own_transaction(&*self.client, signed).map_err(errors::transaction_core).map(|_| hash)
             })
             .map(Into::into)
     }
 
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
-        match self.client.parcel(&transaction_hash.into()) {
-            Some(parcel) => Ok(Some(parcel.into())),
-            None => Ok(None),
-        }
+        Ok(self.client.parcel(&transaction_hash.into()).map(|tx| tx.into()))
     }
 
     fn get_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
@@ -135,7 +131,7 @@ where
     fn get_asset_scheme_by_type(&self, asset_type: H256, block_number: Option<u64>) -> Result<Option<AssetScheme>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         match AssetSchemeAddress::from_hash(asset_type) {
-            Some(address) => self.client.get_asset_scheme(address, block_id).map_err(errors::parcel_state),
+            Some(address) => self.client.get_asset_scheme(address, block_id).map_err(errors::transaction_state),
             None => Ok(None),
         }
     }
@@ -145,13 +141,13 @@ where
         Ok(self
             .client
             .get_text(transaction_hash, block_id)
-            .map_err(errors::parcel_state)?
+            .map_err(errors::transaction_state)?
             .map(|text| Text::from_core(text, self.client.common_params().network_id)))
     }
 
     fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<OwnedAsset>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        self.client.get_asset(transaction_hash, index, block_id).map_err(errors::parcel_state)
+        self.client.get_asset(transaction_hash, index, block_id).map_err(errors::transaction_state)
     }
 
     fn is_asset_spent(
@@ -162,7 +158,7 @@ where
         block_number: Option<u64>,
     ) -> Result<Option<bool>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::parcel_state)
+        self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::transaction_state)
     }
 
     fn get_seq(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<u64>> {
@@ -237,7 +233,7 @@ where
     }
 
     fn get_pending_transactions(&self) -> Result<Vec<Transaction>> {
-        Ok(self.client.ready_parcels().into_iter().map(|signed| signed.into()).collect())
+        Ok(self.client.ready_transactions().into_iter().map(|signed| signed.into()).collect())
     }
 
     fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {
@@ -270,7 +266,7 @@ where
             ..
         } = &action
         {
-            let transaction = Option::<TransactionType>::from(action.clone()).unwrap();
+            let transaction = Option::<ShardTransactionType>::from(action.clone()).unwrap();
             Ok(self.client.execute_vm(&transaction, inputs, &params, &indices).map_err(errors::core)?)
         } else {
             Err(errors::transfer_only())

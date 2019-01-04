@@ -29,7 +29,7 @@ use super::block_info::BestBlockChanged;
 use super::extras::{ParcelAddress, TransactionAddress};
 use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 use crate::views::BlockView;
-use crate::{encoded, UnverifiedParcel};
+use crate::{encoded, UnverifiedTransaction};
 
 pub struct BodyDB {
     // block cache
@@ -148,7 +148,7 @@ impl BodyDB {
             Some(block) => block,
             None => return HashMap::new(),
         };
-        let parcel_hashes = block.parcel_hashes();
+        let parcel_hashes = block.transaction_hashes();
 
         match best_block_changed {
             BestBlockChanged::CanonChainAppended {
@@ -160,7 +160,7 @@ impl BodyDB {
             } => {
                 let enacted = tree_route.enacted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Enacted block must be in database.");
-                    let enacted_parcel_hashes = body.parcel_hashes();
+                    let enacted_parcel_hashes = body.transaction_hashes();
                     parcel_address_entries(*hash, enacted_parcel_hashes)
                 });
 
@@ -168,7 +168,7 @@ impl BodyDB {
 
                 let retracted = tree_route.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(&hash).expect("Retracted block must be in database.");
-                    let retracted_parcel_hashes = body.parcel_hashes().into_iter();
+                    let retracted_parcel_hashes = body.transaction_hashes().into_iter();
                     retracted_parcel_hashes.map(|hash| (hash, None))
                 });
 
@@ -199,7 +199,10 @@ impl BodyDB {
         ) = match best_block_changed {
             BestBlockChanged::CanonChainAppended {
                 ..
-            } => (Box::new(::std::iter::empty()), Box::new(transaction_address_entries(block_hash, block.parcels()))),
+            } => (
+                Box::new(::std::iter::empty()),
+                Box::new(transaction_address_entries(block_hash, block.transactions())),
+            ),
             BestBlockChanged::BranchBecomingCanonChain {
                 ref tree_route,
                 ..
@@ -209,13 +212,13 @@ impl BodyDB {
                     .iter()
                     .flat_map(|hash| {
                         let body = self.block_body(hash).expect("Enacted block must be in database.");
-                        transaction_address_entries(*hash, body.parcels())
+                        transaction_address_entries(*hash, body.transactions())
                     })
-                    .chain(transaction_address_entries(block_hash, block.parcels()));
+                    .chain(transaction_address_entries(block_hash, block.transactions()));
 
                 let retracted = tree_route.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Retracted block must be in database.");
-                    transaction_address_entries(*hash, body.parcels())
+                    transaction_address_entries(*hash, body.transactions())
                 });
 
                 (Box::new(retracted), Box::new(enacted))
@@ -340,7 +343,7 @@ fn parcel_address_entries(
 
 fn transaction_address_entries(
     block_hash: H256,
-    parcel_hashes: impl IntoIterator<Item = UnverifiedParcel>,
+    parcel_hashes: impl IntoIterator<Item = UnverifiedTransaction>,
 ) -> impl Iterator<Item = TransactionHashAndAddress> {
     parcel_hashes.into_iter().enumerate().filter_map(move |(parcel_index, parcel)| {
         Option::<ShardTransaction>::from(parcel.action.clone()).map(|tx| {

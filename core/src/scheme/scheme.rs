@@ -52,16 +52,16 @@ pub struct CommonParams {
     pub max_text_content_size: usize,
     /// Network id.
     pub network_id: NetworkId,
-    /// Minimum parcel cost.
-    pub min_pay_parcel_cost: u64,
-    pub min_set_regular_key_parcel_cost: u64,
-    pub min_create_shard_parcel_cost: u64,
-    pub min_set_shard_owners_parcel_cost: u64,
-    pub min_set_shard_users_parcel_cost: u64,
-    pub min_wrap_ccc_parcel_cost: u64,
-    pub min_custom_parcel_cost: u64,
-    pub min_store_parcel_cost: u64,
-    pub min_remove_parcel_cost: u64,
+    /// Minimum transaction cost.
+    pub min_pay_transaction_cost: u64,
+    pub min_set_regular_key_tranasction_cost: u64,
+    pub min_create_shard_transaction_cost: u64,
+    pub min_set_shard_owners_transaction_cost: u64,
+    pub min_set_shard_users_transaction_cost: u64,
+    pub min_wrap_ccc_transaction_cost: u64,
+    pub min_custom_transaction_cost: u64,
+    pub min_store_transaction_cost: u64,
+    pub min_remove_transaction_cost: u64,
     pub min_asset_mint_cost: u64,
     pub min_asset_transfer_cost: u64,
     pub min_asset_scheme_change_cost: u64,
@@ -81,15 +81,15 @@ impl From<cjson::scheme::Params> for CommonParams {
             max_metadata_size: p.max_metadata_size.into(),
             max_text_content_size: p.max_text_content_size.into(),
             network_id: p.network_id,
-            min_pay_parcel_cost: p.min_pay_parcel_cost.into(),
-            min_set_regular_key_parcel_cost: p.min_set_regular_key_parcel_cost.into(),
-            min_create_shard_parcel_cost: p.min_create_shard_parcel_cost.into(),
-            min_set_shard_owners_parcel_cost: p.min_set_shard_owners_parcel_cost.into(),
-            min_set_shard_users_parcel_cost: p.min_set_shard_users_parcel_cost.into(),
-            min_wrap_ccc_parcel_cost: p.min_wrap_ccc_parcel_cost.into(),
-            min_custom_parcel_cost: p.min_custom_parcel_cost.into(),
-            min_store_parcel_cost: p.min_store_parcel_cost.into(),
-            min_remove_parcel_cost: p.min_remove_parcel_cost.into(),
+            min_pay_transaction_cost: p.min_pay_parcel_cost.into(),
+            min_set_regular_key_tranasction_cost: p.min_set_regular_key_parcel_cost.into(),
+            min_create_shard_transaction_cost: p.min_create_shard_parcel_cost.into(),
+            min_set_shard_owners_transaction_cost: p.min_set_shard_owners_parcel_cost.into(),
+            min_set_shard_users_transaction_cost: p.min_set_shard_users_parcel_cost.into(),
+            min_wrap_ccc_transaction_cost: p.min_wrap_ccc_parcel_cost.into(),
+            min_custom_transaction_cost: p.min_custom_parcel_cost.into(),
+            min_store_transaction_cost: p.min_store_parcel_cost.into(),
+            min_remove_transaction_cost: p.min_remove_parcel_cost.into(),
             min_asset_mint_cost: p.min_asset_mint_cost.into(),
             min_asset_transfer_cost: p.min_asset_transfer_cost.into(),
             min_asset_scheme_change_cost: p.min_asset_scheme_change_cost.into(),
@@ -123,8 +123,8 @@ pub struct Scheme {
     pub score: U256,
     /// The genesis block's timestamp field.
     pub timestamp: u64,
-    /// Parcel root of the genesis block. Should be BLAKE_NULL_RLP.
-    pub parcels_root: H256,
+    /// Transactions root of the genesis block. Should be BLAKE_NULL_RLP.
+    pub transactions_root: H256,
     /// Invoices root of the genesis block. Should be BLAKE_NULL_RLP.
     pub invoices_root: H256,
     /// The genesis block's extra data field.
@@ -355,7 +355,7 @@ impl Scheme {
         header.set_timestamp(self.timestamp);
         header.set_number(0);
         header.set_author(self.author);
-        header.set_parcels_root(self.parcels_root);
+        header.set_transactions_root(self.transactions_root);
         header.set_extra_data(blake256(&self.params().rlp_bytes()).to_vec());
         header.set_state_root(self.state_root());
         header.set_invoices_root(self.invoices_root);
@@ -397,7 +397,7 @@ fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
         data_dir: s.data_dir.unwrap_or(s.name),
         nodes: s.nodes.unwrap_or_else(Vec::new),
         parent_hash: g.parent_hash,
-        parcels_root: g.parcels_root,
+        transactions_root: g.transactions_root,
         invoices_root: g.invoices_root,
         author: g.author,
         score: g.score,

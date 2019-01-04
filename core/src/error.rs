@@ -82,8 +82,8 @@ pub enum BlockError {
     InvalidSealArity(Mismatch<usize>),
     /// State root header field is invalid.
     InvalidStateRoot(Mismatch<H256>),
-    /// Parcels root header field is invalid.
-    InvalidParcelsRoot(Mismatch<H256>),
+    /// Tranasctions root header field is invalid.
+    InvalidTransactionsRoot(Mismatch<H256>),
     /// Score is out of range; this can be used as an looser error prior to getting a definitive
     /// value for score. This error needs only provide bounds of which it is out.
     ScoreOutOfBounds(OutOfBounds<U256>),
@@ -109,8 +109,8 @@ pub enum BlockError {
     InvalidNumber(Mismatch<BlockNumber>),
     /// Block number isn't sensible.
     RidiculousNumber(OutOfBounds<BlockNumber>),
-    /// Too many parcels from a particular address.
-    TooManyParcels(Address),
+    /// Too many transactions from a particular address.
+    TooManyTransactions(Address),
     /// Parent given is unknown.
     UnknownParent(H256),
     /// Body size limit is exceeded.
@@ -142,7 +142,7 @@ impl fmt::Display for BlockError {
             ExtraDataOutOfBounds(oob) => format!("Extra block data too long. {}", oob),
             InvalidSealArity(mis) => format!("Block seal in incorrect format: {}", mis),
             InvalidStateRoot(mis) => format!("Invalid state root in header: {}", mis),
-            InvalidParcelsRoot(mis) => format!("Invalid parcels root in header: {}", mis),
+            InvalidTransactionsRoot(mis) => format!("Invalid transactions root in header: {}", mis),
             ScoreOutOfBounds(oob) => format!("Invalid block score: {}", oob),
             InvalidScore(oob) => format!("Invalid block score: {}", oob),
             InvalidProofOfWork => "Invalid proof of work.".into(),
@@ -155,7 +155,7 @@ impl fmt::Display for BlockError {
             InvalidNumber(mis) => format!("Invalid number in header: {}", mis),
             RidiculousNumber(oob) => format!("Implausible block number. {}", oob),
             UnknownParent(hash) => format!("Unknown parent: {}", hash),
-            TooManyParcels(address) => format!("Too many parcels from: {}", address),
+            TooManyTransactions(address) => format!("Too many transactions from: {}", address),
             BodySizeIsTooBig => "Block's body size is too big".to_string(),
         };
 

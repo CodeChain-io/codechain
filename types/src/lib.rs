@@ -28,7 +28,6 @@ extern crate serde_derive;
 
 pub mod invoice;
 pub mod machine;
-pub mod parcel;
 pub mod transaction;
 pub mod util;
 

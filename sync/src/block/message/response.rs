@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Header, UnverifiedParcel};
+use ccore::{Header, UnverifiedTransaction};
 use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Debug, PartialEq)]
 pub enum ResponseMessage {
     Headers(Vec<Header>),
-    Bodies(Vec<Vec<UnverifiedParcel>>),
+    Bodies(Vec<Vec<UnverifiedTransaction>>),
     StateHead(Vec<u8>),
     StateChunk(Vec<u8>),
 }

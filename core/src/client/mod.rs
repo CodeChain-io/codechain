@@ -47,9 +47,9 @@ use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::encoded;
 use crate::error::{BlockImportError, Error as CoreError};
-use crate::parcel::{LocalizedParcel, SignedParcel};
 use crate::scheme::CommonParams;
-use crate::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
+use crate::transaction::{LocalizedTransaction, SignedTransaction};
+use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
 pub trait ChainInfo {
@@ -74,10 +74,10 @@ pub trait BlockInfo {
     fn block(&self, id: &BlockId) -> Option<encoded::Block>;
 }
 
-/// Provides various information on a parcel by it's ID
+/// Provides various information on a transaction by it's ID
 pub trait ParcelInfo {
     /// Get the hash of block that contains the parcel, if any.
-    fn parcel_block(&self, id: &ParcelId) -> Option<H256>;
+    fn transaction_block(&self, id: &TransactionId) -> Option<H256>;
 }
 
 pub trait TransactionInfo {
@@ -190,7 +190,7 @@ pub trait Shard {
 pub trait ResealTimer {
     /// Register timer API
     fn register_timer(&self, timer: TimerApi);
-    /// Set reseal min timer as reseal_min_period, for creating blocks with parcels which are pending because of reseal_min_period
+    /// Set reseal min timer as reseal_min_period, for creating blocks with transactions which are pending because of reseal_min_period
     fn set_min_timer(&self);
     /// Set reseal max timer as reseal_max_period, for creating empty blocks every reseal_max_period
     fn set_max_timer(&self);
@@ -217,17 +217,17 @@ pub trait BlockChainClient:
     /// Get block queue information.
     fn queue_info(&self) -> BlockQueueInfo;
 
-    /// Queue parcels for importing.
-    fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: NodeId);
+    /// Queue transactions for importing.
+    fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: NodeId);
 
-    /// List all parcels that are allowed into the next block.
-    fn ready_parcels(&self) -> Vec<SignedParcel>;
+    /// List all transactions that are allowed into the next block.
+    fn ready_transactions(&self) -> Vec<SignedTransaction>;
 
     /// Look up the block number for the given block ID.
     fn block_number(&self, id: &BlockId) -> Option<BlockNumber>;
 
     /// Get raw block body data by block id.
-    /// Block body is an RLP list of one item: parcels.
+    /// Block body is an RLP list of one item: transactions.
     fn block_body(&self, id: &BlockId) -> Option<encoded::Body>;
 
     /// Get block status by block header hash.
@@ -240,13 +240,13 @@ pub trait BlockChainClient:
     fn block_hash(&self, id: &BlockId) -> Option<H256>;
 
     /// Get parcel with given hash.
-    fn parcel(&self, id: &ParcelId) -> Option<LocalizedParcel>;
+    fn parcel(&self, id: &TransactionId) -> Option<LocalizedTransaction>;
 
     /// Get parcel invoice with given hash.
-    fn parcel_invoice(&self, id: &ParcelId) -> Option<Invoice>;
+    fn parcel_invoice(&self, id: &TransactionId) -> Option<Invoice>;
 
     /// Get the transaction with given hash.
-    fn transaction(&self, hash: &H256) -> Option<LocalizedParcel>;
+    fn transaction(&self, hash: &H256) -> Option<LocalizedTransaction>;
 
     fn transaction_invoices(&self, hash: &H256) -> Vec<Invoice>;
 }
@@ -300,7 +300,7 @@ pub trait AssetClient {
 
 /// Provides methods to texts
 pub trait TextClient {
-    fn get_text(&self, parcel_hash: H256, id: BlockId) -> TrieResult<Option<Text>>;
+    fn get_text(&self, tx_hash: H256, id: BlockId) -> TrieResult<Option<Text>>;
 }
 
 pub trait ExecuteClient: ChainTimeInfo {

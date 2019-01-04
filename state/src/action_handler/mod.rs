@@ -23,7 +23,7 @@ use ccrypto::blake256;
 use ckey::Address;
 use cmerkle::TrieError;
 use ctypes::invoice::Invoice;
-use ctypes::parcel::Error as ParcelError;
+use ctypes::transaction::ParcelError;
 use primitives::H256;
 use rlp::{DecoderError, Encodable, RlpStream};
 

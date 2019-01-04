@@ -21,12 +21,12 @@ use std::sync::Arc;
 use ccore::encoded::Header as EncodedHeader;
 use ccore::{
     Block, BlockChainClient, BlockId, BlockImportError, BlockInfo, ChainInfo, ChainNotify, Client, Header, ImportBlock,
-    ImportError, Seal, UnverifiedParcel,
+    ImportError, Seal, UnverifiedTransaction,
 };
 use cnetwork::{Api, NetworkExtension, NodeId};
 use cstate::FindActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
-use ctypes::parcel::Action;
+use ctypes::transaction::Action;
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
 use primitives::{H256, U256};
@@ -451,7 +451,9 @@ impl Extension {
     fn create_bodies_response(&self, hashes: Vec<H256>) -> ResponseMessage {
         let bodies = hashes
             .into_iter()
-            .map(|hash| self.client.block_body(&BlockId::Hash(hash)).map(|body| body.parcels()).unwrap_or_default())
+            .map(|hash| {
+                self.client.block_body(&BlockId::Hash(hash)).map(|body| body.transactions()).unwrap_or_default()
+            })
             .collect();
         ResponseMessage::Bodies(bodies)
     }
@@ -587,7 +589,7 @@ impl Extension {
         }
     }
 
-    fn on_body_response(&self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
+    fn on_body_response(&self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedTransaction>>) {
         {
             let mut body_downloader = self.body_downloader.lock();
             body_downloader.import_bodies(hashes, bodies);
@@ -600,7 +602,7 @@ impl Extension {
                     .decode();
                 let block = Block {
                     header,
-                    parcels,
+                    transactions: parcels,
                 };
                 cdebug!(SYNC, "Body download completed for #{}({})", block.header.number(), hash);
                 match self.client.import_block(block.rlp_bytes(&Seal::With)) {

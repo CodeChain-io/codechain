@@ -25,7 +25,7 @@ use primitives::{H256, H264, U256};
 
 use crate::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
 use crate::db::Key;
-use crate::types::ParcelId;
+use crate::types::TransactionId;
 
 /// Represents index of extra data in database
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
@@ -178,9 +178,9 @@ pub struct ParcelAddress {
     pub index: usize,
 }
 
-impl From<ParcelAddress> for ParcelId {
+impl From<ParcelAddress> for TransactionId {
     fn from(addr: ParcelAddress) -> Self {
-        ParcelId::Location(addr.block_hash.into(), addr.index)
+        TransactionId::Location(addr.block_hash.into(), addr.index)
     }
 }
 

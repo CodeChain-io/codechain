@@ -16,7 +16,7 @@
 
 use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public, Signature};
-use ctypes::parcel::Action as ActionType;
+use ctypes::transaction::Action as ActionType;
 use ctypes::ShardId;
 use primitives::{Bytes, H160, H256};
 

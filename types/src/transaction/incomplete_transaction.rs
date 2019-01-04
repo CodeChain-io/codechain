@@ -14,13 +14,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod action;
-mod error;
-mod incomplete_parcel;
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
-mod parcel;
+use ckey::NetworkId;
 
-pub use self::action::Action;
-pub use self::error::Error;
-pub use self::incomplete_parcel::IncompleteParcel;
-pub use self::parcel::Parcel;
+use super::{Action, Transaction};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IncompleteTransaction {
+    /// Amount of CCC to be paid as a cost for distributing this transaction to the network.
+    pub fee: u64,
+    /// Network Id
+    pub network_id: NetworkId,
+
+    pub action: Action,
+}
+
+impl IncompleteTransaction {
+    pub fn complete(self, seq: u64) -> Transaction {
+        Transaction {
+            seq,
+            fee: self.fee,
+            network_id: self.network_id,
+            action: self.action,
+        }
+    }
+}

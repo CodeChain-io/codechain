@@ -26,37 +26,37 @@ use crate::ShardId;
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 #[serde(tag = "type", content = "content")]
-/// Errors concerning parcel processing.
+/// Errors concerning transaction processing.
 pub enum Error {
-    /// Parcel is already imported to the queue
-    ParcelAlreadyImported,
-    /// Parcel is not valid anymore (state already has higher seq)
+    /// Transaction is already imported to the queue
+    TransactionAlreadyImported,
+    /// Transaction is not valid anymore (state already has higher seq)
     Old,
-    /// Parcel has too low fee
-    /// (there is already a parcel with the same sender-seq but higher gas price)
+    /// Transction has too low fee
+    /// (there is already a transaction with the same sender-seq but higher gas price)
     TooCheapToReplace,
     /// Invalid network ID given.
     InvalidNetworkId(NetworkId),
     /// Max metadata size is exceeded.
     MetadataTooBig,
-    /// Parcel was not imported to the queue because limit has been reached.
+    /// Transaction was not imported to the queue because limit has been reached.
     LimitReached,
-    /// Parcel's fee is below currently set minimal fee requirement.
+    /// Transaction's fee is below currently set minimal fee requirement.
     InsufficientFee {
         /// Minimal expected fee
         minimal: u64,
-        /// Parcel fee
+        /// Transaction fee
         got: u64,
     },
-    /// Sender doesn't have enough funds to pay for this Parcel
+    /// Sender doesn't have enough funds to pay for this Transaction
     InsufficientBalance {
         address: Address,
         /// Senders balance
         balance: u64,
-        /// Parcel cost
+        /// Transaction cost
         cost: u64,
     },
-    /// Returned when parcel seq does not match state seq
+    /// Returned when transaction seq does not match state seq
     InvalidSeq(Mismatch<u64>),
     InvalidShardId(ShardId),
     InvalidShardRoot(Mismatch<H256>),
@@ -64,7 +64,7 @@ pub enum Error {
     /// Signature error
     InvalidSignature(String),
     InconsistentShardOutcomes,
-    ParcelsTooBig,
+    TransactionIsTooBig,
     RegularKeyAlreadyInUse,
     RegularKeyAlreadyInUseAsPlatformAccount,
     InvalidTransferDestination,
@@ -78,7 +78,7 @@ pub enum Error {
     TextContentTooBig,
 }
 
-const ERROR_ID_PARCEL_ALREADY_IMPORTED: u8 = 1u8;
+const ERROR_ID_TX_ALREADY_IMPORTED: u8 = 1u8;
 const ERROR_ID_OLD: u8 = 3u8;
 const ERROR_ID_TOO_CHEAP_TO_REPLACE: u8 = 4u8;
 const ERROR_ID_INVALID_NETWORK_ID: u8 = 5u8;
@@ -91,7 +91,7 @@ const ERROR_ID_INVALID_SHARD_ID: u8 = 11u8;
 const ERROR_ID_INVALID_SHARD_ROOT: u8 = 12u8;
 const ERROR_ID_INVALID_SIGNATURE: u8 = 14u8;
 const ERROR_ID_INCONSISTENT_SHARD_OUTCOMES: u8 = 15u8;
-const ERROR_ID_PARCELS_TOO_BIG: u8 = 16u8;
+const ERROR_ID_TX_IS_TOO_BIG: u8 = 16u8;
 const ERROR_ID_REGULAR_KEY_ALREADY_IN_USE: u8 = 17u8;
 const ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM: u8 = 18u8;
 const ERROR_ID_INVALID_TRANSFER_DESTINATION: u8 = 19u8;
@@ -106,7 +106,7 @@ const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 26u8;
 impl Error {
     fn item_count(&self) -> usize {
         match self {
-            Error::ParcelAlreadyImported => 1,
+            Error::TransactionAlreadyImported => 1,
             Error::Old => 1,
             Error::TooCheapToReplace => 1,
             Error::InvalidNetworkId(_) => 2,
@@ -124,7 +124,7 @@ impl Error {
             Error::ZeroAmount => 1,
             Error::InvalidSignature(_) => 2,
             Error::InconsistentShardOutcomes => 1,
-            Error::ParcelsTooBig => 1,
+            Error::TransactionIsTooBig => 1,
             Error::RegularKeyAlreadyInUse => 1,
             Error::RegularKeyAlreadyInUseAsPlatformAccount => 1,
             Error::InvalidTransferDestination => 1,
@@ -141,7 +141,7 @@ impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(self.item_count());
         match self {
-            Error::ParcelAlreadyImported => s.append(&ERROR_ID_PARCEL_ALREADY_IMPORTED),
+            Error::TransactionAlreadyImported => s.append(&ERROR_ID_TX_ALREADY_IMPORTED),
             Error::Old => s.append(&ERROR_ID_OLD),
             Error::TooCheapToReplace => s.append(&ERROR_ID_TOO_CHEAP_TO_REPLACE),
             Error::InvalidNetworkId(network_id) => s.append(&ERROR_ID_INVALID_NETWORK_ID).append(network_id),
@@ -162,7 +162,7 @@ impl Encodable for Error {
             Error::ZeroAmount => s.append(&ERROR_ID_ZERO_AMOUNT),
             Error::InvalidSignature(err) => s.append(&ERROR_ID_INVALID_SIGNATURE).append(err),
             Error::InconsistentShardOutcomes => s.append(&ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
-            Error::ParcelsTooBig => s.append(&ERROR_ID_PARCELS_TOO_BIG),
+            Error::TransactionIsTooBig => s.append(&ERROR_ID_TX_IS_TOO_BIG),
             Error::RegularKeyAlreadyInUse => s.append(&ERROR_ID_REGULAR_KEY_ALREADY_IN_USE),
             Error::RegularKeyAlreadyInUseAsPlatformAccount => {
                 s.append(&ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM)
@@ -182,7 +182,7 @@ impl Decodable for Error {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at::<u8>(0)?;
         let error = match tag {
-            ERROR_ID_PARCEL_ALREADY_IMPORTED => Error::ParcelAlreadyImported,
+            ERROR_ID_TX_ALREADY_IMPORTED => Error::TransactionAlreadyImported,
             ERROR_ID_OLD => Error::Old,
             ERROR_ID_TOO_CHEAP_TO_REPLACE => Error::TooCheapToReplace,
             ERROR_ID_INVALID_NETWORK_ID => Error::InvalidNetworkId(rlp.val_at(1)?),
@@ -203,7 +203,7 @@ impl Decodable for Error {
             ERROR_ID_ZERO_AMOUNT => Error::ZeroAmount,
             ERROR_ID_INVALID_SIGNATURE => Error::InvalidSignature(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => Error::InconsistentShardOutcomes,
-            ERROR_ID_PARCELS_TOO_BIG => Error::ParcelsTooBig,
+            ERROR_ID_TX_IS_TOO_BIG => Error::TransactionIsTooBig,
             ERROR_ID_REGULAR_KEY_ALREADY_IN_USE => Error::RegularKeyAlreadyInUse,
             ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM => Error::RegularKeyAlreadyInUseAsPlatformAccount,
             ERROR_ID_INVALID_TRANSFER_DESTINATION => Error::InvalidTransferDestination,
@@ -225,12 +225,12 @@ impl Decodable for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         let msg: String = match self {
-            Error::ParcelAlreadyImported => "The parcel is already imported".into(),
+            Error::TransactionAlreadyImported => "The transaction is already imported".into(),
             Error::Old => "No longer valid".into(),
             Error::TooCheapToReplace => "Fee too low to replace".into(),
             Error::InvalidNetworkId(network_id) => format!("{} is an invalid network id", network_id),
             Error::MetadataTooBig => "Metadata size is too big.".into(),
-            Error::LimitReached => "Parcel limit reached".into(),
+            Error::LimitReached => "Transaction limit reached".into(),
             Error::InsufficientFee {
                 minimal,
                 got,
@@ -240,19 +240,19 @@ impl Display for Error {
                 balance,
                 cost,
             } => format!("{} has only {:?} but it must be larger than {:?}", address, balance, cost),
-            Error::InvalidSeq(mismatch) => format!("Invalid parcel seq {}", mismatch),
+            Error::InvalidSeq(mismatch) => format!("Invalid transaction seq {}", mismatch),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
             Error::InvalidShardRoot(mismatch) => format!("Invalid shard root {}", mismatch),
             Error::ZeroAmount => "An amount cannot be 0".to_string(),
-            Error::InvalidSignature(err) => format!("Parcel has invalid signature: {}.", err),
+            Error::InvalidSignature(err) => format!("Transaction has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
-            Error::ParcelsTooBig => "Parcel size exceeded the body size limit".to_string(),
+            Error::TransactionIsTooBig => "Transaction size exceeded the body size limit".to_string(),
             Error::RegularKeyAlreadyInUse => "The regular key is already registered to another account".to_string(),
             Error::RegularKeyAlreadyInUseAsPlatformAccount => {
                 "The regular key is already used as a platform account".to_string()
             }
             Error::InvalidTransferDestination => "Transfer receiver is not valid account".to_string(),
-            Error::InvalidTransaction(err) => format!("Parcel has an invalid transaction: {}", err),
+            Error::InvalidTransaction(err) => format!("Transaction has an invalid transaction: {}", err),
             Error::InsufficientPermission => "Sender doesn't have a permission".to_string(),
             Error::NewOwnersMustContainSender => "New owners must contain the sender".to_string(),
             Error::TextVerificationFail(err) => format!("Text verification has failed: {}", err),

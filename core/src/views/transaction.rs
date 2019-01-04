@@ -18,22 +18,22 @@ use ccrypto::blake256;
 use primitives::{Bytes, H256, U256};
 use rlp::Rlp;
 
-/// View onto parcel rlp.
-pub struct ParcelView<'a> {
+/// View onto transaction rlp.
+pub struct TransactionView<'a> {
     rlp: Rlp<'a>,
 }
 
-impl<'a> ParcelView<'a> {
+impl<'a> TransactionView<'a> {
     /// Creates new view onto block from raw bytes.
-    pub fn new(bytes: &'a [u8]) -> ParcelView<'a> {
-        ParcelView {
+    pub fn new(bytes: &'a [u8]) -> TransactionView<'a> {
+        TransactionView {
             rlp: Rlp::new(bytes),
         }
     }
 
     /// Creates new view onto block from rlp.
-    pub fn new_from_rlp(rlp: Rlp<'a>) -> ParcelView<'a> {
-        ParcelView {
+    pub fn new_from_rlp(rlp: Rlp<'a>) -> TransactionView<'a> {
+        TransactionView {
             rlp,
         }
     }
@@ -43,38 +43,38 @@ impl<'a> ParcelView<'a> {
         &self.rlp
     }
 
-    /// Returns parcel hash.
+    /// Returns transaction hash.
     pub fn hash(&self) -> H256 {
         blake256(self.rlp.as_raw())
     }
 
-    /// Get the seq field of the parcel.
+    /// Get the seq field of the transaction.
     pub fn seq(&self) -> U256 {
         self.rlp.val_at(0)
     }
 
-    /// Get the fee field of the parcel.
+    /// Get the fee field of the transaction.
     pub fn fee(&self) -> U256 {
         self.rlp.val_at(1)
     }
 
-    /// Get the data field of the parcel.
+    /// Get the data field of the transaction.
     pub fn data(&self) -> Bytes {
         self.rlp.val_at(2)
     }
 
-    /// Get the v field of the parcel.
+    /// Get the v field of the transaction.
     pub fn v(&self) -> u8 {
         let r: u16 = self.rlp.val_at(3);
         r as u8
     }
 
-    /// Get the r field of the parcel.
+    /// Get the r field of the transaction.
     pub fn r(&self) -> U256 {
         self.rlp.val_at(4)
     }
 
-    /// Get the s field of the parcel.
+    /// Get the s field of the transaction.
     pub fn s(&self) -> U256 {
         self.rlp.val_at(5)
     }

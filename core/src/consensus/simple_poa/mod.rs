@@ -180,7 +180,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = self.block_reward(block.header().number())
-            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
+            + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));
         self.machine.add_balance(block, &author, total_reward)
     }
 
@@ -241,9 +241,9 @@ mod tests {
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![], false).unwrap();
-        let parent_parcels_root = *genesis_header.parcels_root();
+        let parent_transactions_root = *genesis_header.transactions_root();
         let parent_invoices_root = *genesis_header.invoices_root();
-        let b = b.close_and_lock(parent_parcels_root, parent_invoices_root).unwrap();
+        let b = b.close_and_lock(parent_transactions_root, parent_invoices_root).unwrap();
         if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {
             assert!(b.try_seal(engine, seal).is_ok());
         }

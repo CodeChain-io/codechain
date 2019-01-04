@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{LocalizedParcel, SignedParcel};
+use ccore::{LocalizedTransaction, SignedTransaction};
 use cjson::uint::Uint;
 use ckey::{NetworkId, Signature};
 use primitives::H256;
@@ -35,13 +35,13 @@ pub struct Transaction {
     pub sig: Signature,
 }
 
-impl From<LocalizedParcel> for Transaction {
-    fn from(p: LocalizedParcel) -> Self {
+impl From<LocalizedTransaction> for Transaction {
+    fn from(p: LocalizedTransaction) -> Self {
         let sig = p.signature();
         Self {
             block_number: Some(p.block_number),
             block_hash: Some(p.block_hash),
-            transaction_index: Some(p.parcel_index),
+            transaction_index: Some(p.transaction_index),
             seq: p.seq,
             fee: p.fee.into(),
             network_id: p.network_id,
@@ -52,8 +52,8 @@ impl From<LocalizedParcel> for Transaction {
     }
 }
 
-impl From<SignedParcel> for Transaction {
-    fn from(p: SignedParcel) -> Self {
+impl From<SignedTransaction> for Transaction {
+    fn from(p: SignedTransaction) -> Self {
         let sig = p.signature();
         Self {
             block_number: None,
