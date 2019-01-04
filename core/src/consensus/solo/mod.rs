@@ -19,12 +19,12 @@ mod params;
 use std::sync::Arc;
 
 use cstate::{ActionHandler, HitHandler};
-use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
+use ctypes::machine::{Header, LiveBlock, Transactions, WithBalances};
 
 use self::params::SoloParams;
 use super::{ConsensusEngine, Seal};
 use crate::consensus::EngineType;
-use crate::SignedParcel;
+use crate::SignedTransaction;
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo<M> {
@@ -51,7 +51,7 @@ impl<M> Solo<M> {
 
 impl<M: WithBalances> ConsensusEngine<M> for Solo<M>
 where
-    M::LiveBlock: Parcels<Parcel = SignedParcel>,
+    M::LiveBlock: Transactions<Transaction = SignedTransaction>,
 {
     fn name(&self) -> &str {
         "Solo"
@@ -80,7 +80,7 @@ where
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
         let total_reward = self.block_reward(block.header().number())
-            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
+            + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));
         self.machine.add_balance(block, &author, total_reward)
     }
 
@@ -113,9 +113,9 @@ mod tests {
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![], false).unwrap();
-        let parent_parcels_root = *genesis_header.parcels_root();
+        let parent_transactions_root = *genesis_header.transactions_root();
         let parent_invoices_root = *genesis_header.invoices_root();
-        let b = b.close_and_lock(parent_parcels_root, parent_invoices_root).unwrap();
+        let b = b.close_and_lock(parent_transactions_root, parent_invoices_root).unwrap();
         if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {
             assert!(b.try_seal(engine, seal).is_ok());
         }

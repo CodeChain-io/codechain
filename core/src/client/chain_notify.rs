@@ -46,8 +46,8 @@ pub trait ChainNotify: Send + Sync {
         // does nothing by default
     }
 
-    /// fires when new parcels are received from a peer
-    fn parcels_received(&self, _hashes: Vec<H256>, _peer_id: NodeId) {
+    /// fires when new transactions are received from a peer
+    fn transactions_received(&self, _hashes: Vec<H256>, _peer_id: NodeId) {
         // does nothing by default
     }
 }

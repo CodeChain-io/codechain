@@ -41,7 +41,7 @@ use cnetwork::NodeId;
 use cstate::{FindActionHandler, StateDB};
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
-use ctypes::parcel::{Action, Parcel};
+use ctypes::transaction::{Action, Transaction};
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use journaldb;
@@ -63,10 +63,10 @@ use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
 use crate::error::BlockImportError;
 use crate::header::Header as BlockHeader;
-use crate::miner::{Miner, MinerService, ParcelImportResult};
-use crate::parcel::{LocalizedParcel, SignedParcel};
+use crate::miner::{Miner, MinerService, TransactionImportResult};
 use crate::scheme::Scheme;
-use crate::types::{BlockId, ParcelId, VerificationQueueInfo as QueueInfo};
+use crate::transaction::{LocalizedTransaction, SignedTransaction};
+use crate::types::{BlockId, TransactionId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
 pub struct TestBlockChainClient {
@@ -78,8 +78,8 @@ pub struct TestBlockChainClient {
     pub genesis_hash: H256,
     /// Last block hash.
     pub last_hash: RwLock<H256>,
-    /// Last parcels_root
-    pub last_parcels_root: RwLock<H256>,
+    /// Last transactions_root
+    pub last_transactions_root: RwLock<H256>,
     /// Extra data do set for each block
     pub extra_data: Bytes,
     /// Score.
@@ -130,7 +130,7 @@ impl TestBlockChainClient {
         let genesis_block = scheme.genesis_block();
         let genesis_header = scheme.genesis_header();
         let genesis_hash = genesis_header.hash();
-        let genesis_parcels_root = *genesis_header.parcels_root();
+        let genesis_transactions_root = *genesis_header.transactions_root();
         let genesis_score = *genesis_header.score();
 
         let mut client = TestBlockChainClient {
@@ -139,7 +139,7 @@ impl TestBlockChainClient {
             genesis_hash,
             extra_data,
             last_hash: RwLock::new(genesis_hash),
-            last_parcels_root: RwLock::new(genesis_parcels_root),
+            last_transactions_root: RwLock::new(genesis_transactions_root),
             score: RwLock::new(genesis_score),
             balances: RwLock::new(HashMap::new()),
             seqs: RwLock::new(HashMap::new()),
@@ -183,7 +183,7 @@ impl TestBlockChainClient {
     }
 
     /// Add blocks to test client.
-    pub fn add_blocks(&self, count: usize, parcel_length: usize) {
+    pub fn add_blocks(&self, count: usize, transaction_length: usize) {
         let len = self.numbers.read().len();
         for n in len..(len + count) {
             let mut header = BlockHeader::new();
@@ -191,12 +191,12 @@ impl TestBlockChainClient {
             header.set_parent_hash(*self.last_hash.read());
             header.set_number(n as BlockNumber);
             header.set_extra_data(self.extra_data.clone());
-            let mut parcels = Vec::new();
-            for _ in 0..parcel_length {
+            let mut transactions = Vec::new();
+            for _ in 0..transaction_length {
                 let keypair = Random.generate().unwrap();
                 // Update seqs value
                 self.seqs.write().insert(keypair.address(), 0);
-                let parcel = Parcel {
+                let tx = Transaction {
                     seq: 0,
                     fee: 10,
                     network_id: NetworkId::default(),
@@ -205,16 +205,16 @@ impl TestBlockChainClient {
                         amount: 0,
                     },
                 };
-                let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
-                parcels.push(signed_parcel);
+                let signed = SignedTransaction::new_with_sign(tx, keypair.private());
+                transactions.push(signed);
             }
-            header.set_parcels_root(skewed_merkle_root(
-                *self.last_parcels_root.read(),
-                parcels.iter().map(Encodable::rlp_bytes),
+            header.set_transactions_root(skewed_merkle_root(
+                *self.last_transactions_root.read(),
+                transactions.iter().map(Encodable::rlp_bytes),
             ));
             let mut rlp = RlpStream::new_list(2);
             rlp.append(&header);
-            rlp.append_list(&parcels);
+            rlp.append_list(&transactions);
             self.import_block(rlp.as_raw().to_vec()).unwrap();
         }
     }
@@ -261,10 +261,10 @@ impl TestBlockChainClient {
         }
     }
 
-    /// Inserts a parcel to miners mem pool.
-    pub fn insert_parcel_to_pool(&self) -> H256 {
+    /// Inserts a transaction to miners mem pool.
+    pub fn insert_transaction_to_pool(&self) -> H256 {
         let keypair = Random.generate().unwrap();
-        let parcel = Parcel {
+        let tx = Transaction {
             seq: 0,
             fee: 10,
             network_id: NetworkId::default(),
@@ -273,13 +273,13 @@ impl TestBlockChainClient {
                 amount: 0,
             },
         };
-        let signed_parcel = SignedParcel::new_with_sign(parcel, keypair.private());
-        let sender_address = public_to_address(&signed_parcel.signer_public());
+        let signed = SignedTransaction::new_with_sign(tx, keypair.private());
+        let sender_address = public_to_address(&signed.signer_public());
         self.set_balance(sender_address, 10_000_000_000_000_000_000);
-        let hash = signed_parcel.hash();
-        let res = self.miner.import_external_parcels(self, vec![signed_parcel.into()]);
+        let hash = signed.hash();
+        let res = self.miner.import_external_tranasctions(self, vec![signed.into()]);
         let res = res.into_iter().next().unwrap().expect("Successful import");
-        assert_eq!(res, ParcelImportResult::Current);
+        assert_eq!(res, TransactionImportResult::Current);
         hash
     }
 
@@ -397,7 +397,7 @@ impl BlockInfo for TestBlockChainClient {
 }
 
 impl ParcelInfo for TestBlockChainClient {
-    fn parcel_block(&self, _id: &ParcelId) -> Option<H256> {
+    fn transaction_block(&self, _id: &TransactionId) -> Option<H256> {
         None // Simple default.
     }
 }
@@ -433,7 +433,7 @@ impl ImportBlock for TestBlockChainClient {
                 *score = *score + *header.score();
             }
             mem::replace(&mut *self.last_hash.write(), h);
-            mem::replace(&mut *self.last_parcels_root.write(), h);
+            mem::replace(&mut *self.last_transactions_root.write(), h);
             self.blocks.write().insert(h, b);
             self.numbers.write().insert(number, h);
             let mut parent_hash = *header.parent_hash();
@@ -468,14 +468,15 @@ impl BlockChainClient for TestBlockChainClient {
         }
     }
 
-    fn queue_parcels(&self, parcels: Vec<Bytes>, _peer_id: NodeId) {
+    fn queue_transactions(&self, transactions: Vec<Bytes>, _peer_id: NodeId) {
         // import right here
-        let parcels = parcels.into_iter().filter_map(|bytes| UntrustedRlp::new(&bytes).as_val().ok()).collect();
-        self.miner.import_external_parcels(self, parcels);
+        let transactions =
+            transactions.into_iter().filter_map(|bytes| UntrustedRlp::new(&bytes).as_val().ok()).collect();
+        self.miner.import_external_tranasctions(self, transactions);
     }
 
-    fn ready_parcels(&self) -> Vec<SignedParcel> {
-        self.miner.ready_parcels()
+    fn ready_transactions(&self) -> Vec<SignedTransaction> {
+        self.miner.ready_transactions()
     }
 
     fn block_number(&self, _id: &BlockId) -> Option<BlockNumber> {
@@ -509,15 +510,15 @@ impl BlockChainClient for TestBlockChainClient {
         Self::block_hash(self, id)
     }
 
-    fn parcel(&self, _id: &ParcelId) -> Option<LocalizedParcel> {
+    fn parcel(&self, _id: &TransactionId) -> Option<LocalizedTransaction> {
         unimplemented!();
     }
 
-    fn parcel_invoice(&self, _id: &ParcelId) -> Option<Invoice> {
+    fn parcel_invoice(&self, _id: &TransactionId) -> Option<Invoice> {
         unimplemented!();
     }
 
-    fn transaction(&self, _: &H256) -> Option<LocalizedParcel> {
+    fn transaction(&self, _: &H256) -> Option<LocalizedTransaction> {
         unimplemented!();
     }
 

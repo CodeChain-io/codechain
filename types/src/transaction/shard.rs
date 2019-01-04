@@ -28,7 +28,7 @@ use crate::util::tag::Tag;
 use crate::ShardId;
 
 
-/// Parcel transaction type.
+/// Shard Transaction type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShardTransaction {
     MintAsset {
@@ -75,7 +75,7 @@ pub enum ShardTransaction {
     WrapCCC {
         network_id: NetworkId,
         shard_id: ShardId,
-        parcel_hash: H256,
+        tx_hash: H256,
         output: AssetWrapCCCOutput,
     },
 }
@@ -90,11 +90,11 @@ pub struct AssetWrapCCCOutput {
 impl ShardTransaction {
     pub fn tracker(&self) -> H256 {
         if let ShardTransaction::WrapCCC {
-            parcel_hash,
+            tx_hash,
             ..
         } = self
         {
-            return *parcel_hash
+            return *tx_hash
         }
         blake256(&*self.rlp_bytes())
     }

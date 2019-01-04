@@ -18,7 +18,7 @@ use std::ops::Deref;
 
 use ccrypto::blake256;
 use ckey::{self, recover, sign, Private, Public, Signature};
-use ctypes::parcel::{Error as ParcelError, Parcel};
+use ctypes::transaction::{ParcelError, Transaction};
 use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use primitives::H256;
@@ -26,39 +26,39 @@ use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::scheme::CommonParams;
 
-/// Signed parcel information without verified signature.
+/// Signed transaction information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct UnverifiedParcel {
-    /// Plain Parcel.
-    unsigned: Parcel,
+pub struct UnverifiedTransaction {
+    /// Plain Transaction.
+    unsigned: Transaction,
     /// Signature.
     sig: Signature,
-    /// Hash of the parcel
+    /// Hash of the transaction
     hash: H256,
 }
 
-impl Deref for UnverifiedParcel {
-    type Target = Parcel;
+impl Deref for UnverifiedTransaction {
+    type Target = Transaction;
 
     fn deref(&self) -> &Self::Target {
         &self.unsigned
     }
 }
 
-impl From<UnverifiedParcel> for Parcel {
-    fn from(parcel: UnverifiedParcel) -> Self {
-        parcel.unsigned
+impl From<UnverifiedTransaction> for Transaction {
+    fn from(tx: UnverifiedTransaction) -> Self {
+        tx.unsigned
     }
 }
 
-impl rlp::Decodable for UnverifiedParcel {
+impl rlp::Decodable for UnverifiedTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         if d.item_count()? != 5 {
             return Err(DecoderError::RlpIncorrectListLen)
         }
         let hash = blake256(d.as_raw());
-        Ok(UnverifiedParcel {
-            unsigned: Parcel {
+        Ok(UnverifiedTransaction {
+            unsigned: Transaction {
                 seq: d.val_at(0)?,
                 fee: d.val_at(1)?,
                 network_id: d.val_at(2)?,
@@ -70,31 +70,31 @@ impl rlp::Decodable for UnverifiedParcel {
     }
 }
 
-impl rlp::Encodable for UnverifiedParcel {
+impl rlp::Encodable for UnverifiedTransaction {
     fn rlp_append(&self, s: &mut RlpStream) {
-        self.rlp_append_sealed_parcel(s)
+        self.rlp_append_sealed_transaction(s)
     }
 }
 
-impl UnverifiedParcel {
-    pub fn new(parcel: Parcel, sig: Signature) -> Self {
-        UnverifiedParcel {
-            unsigned: parcel,
+impl UnverifiedTransaction {
+    pub fn new(unsigned: Transaction, sig: Signature) -> Self {
+        UnverifiedTransaction {
+            unsigned,
             sig,
             hash: 0.into(),
         }
         .compute_hash()
     }
 
-    /// Used to compute hash of created parcels
-    fn compute_hash(mut self) -> UnverifiedParcel {
+    /// Used to compute hash of created transactions
+    fn compute_hash(mut self) -> UnverifiedTransaction {
         let hash = blake256(&*self.rlp_bytes());
         self.hash = hash;
         self
     }
 
     /// Append object with a signature into RLP stream
-    fn rlp_append_sealed_parcel(&self, s: &mut RlpStream) {
+    fn rlp_append_sealed_transaction(&self, s: &mut RlpStream) {
         s.begin_list(5);
         s.append(&self.seq);
         s.append(&self.fee);
@@ -134,58 +134,58 @@ impl UnverifiedParcel {
         }
         let byte_size = rlp::encode(self).to_vec().len();
         if byte_size >= params.max_body_size {
-            return Err(ParcelError::ParcelsTooBig)
+            return Err(ParcelError::TransactionIsTooBig)
         }
         self.action.verify(params.network_id, params.max_metadata_size, params.max_text_content_size)
     }
 }
 
-/// A `UnverifiedParcel` with successfully recovered `signer`.
+/// A `UnverifiedTransaction` with successfully recovered `signer`.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SignedParcel {
-    parcel: UnverifiedParcel,
+pub struct SignedTransaction {
+    tx: UnverifiedTransaction,
     signer_public: Public,
 }
 
-impl HeapSizeOf for SignedParcel {
+impl HeapSizeOf for SignedTransaction {
     fn heap_size_of_children(&self) -> usize {
-        self.parcel.unsigned.heap_size_of_children()
+        self.tx.unsigned.heap_size_of_children()
     }
 }
 
-impl rlp::Encodable for SignedParcel {
+impl rlp::Encodable for SignedTransaction {
     fn rlp_append(&self, s: &mut RlpStream) {
-        self.parcel.rlp_append_sealed_parcel(s)
+        self.tx.rlp_append_sealed_transaction(s)
     }
 }
 
-impl Deref for SignedParcel {
-    type Target = UnverifiedParcel;
+impl Deref for SignedTransaction {
+    type Target = UnverifiedTransaction;
     fn deref(&self) -> &Self::Target {
-        &self.parcel
+        &self.tx
     }
 }
 
-impl From<SignedParcel> for UnverifiedParcel {
-    fn from(parcel: SignedParcel) -> Self {
-        parcel.parcel
+impl From<SignedTransaction> for UnverifiedTransaction {
+    fn from(tx: SignedTransaction) -> Self {
+        tx.tx
     }
 }
 
-impl SignedParcel {
-    /// Try to verify parcel and recover public.
-    pub fn try_new(parcel: UnverifiedParcel) -> Result<Self, ckey::Error> {
-        let public = parcel.recover_public()?;
-        Ok(SignedParcel {
-            parcel,
+impl SignedTransaction {
+    /// Try to verify transaction and recover public.
+    pub fn try_new(tx: UnverifiedTransaction) -> Result<Self, ckey::Error> {
+        let public = tx.recover_public()?;
+        Ok(SignedTransaction {
+            tx,
             signer_public: public,
         })
     }
 
-    /// Signs the parcel as coming from `signer`.
-    pub fn new_with_sign(parcel: Parcel, private: &Private) -> SignedParcel {
-        let sig = sign(&private, &parcel.hash()).expect("data is valid and context has signing capabilities; qed");
-        SignedParcel::try_new(UnverifiedParcel::new(parcel, sig)).expect("secret is valid so it's recoverable")
+    /// Signs the transaction as coming from `signer`.
+    pub fn new_with_sign(tx: Transaction, private: &Private) -> SignedTransaction {
+        let sig = sign(&private, &tx.hash()).expect("data is valid and context has signing capabilities; qed");
+        SignedTransaction::try_new(UnverifiedTransaction::new(tx, sig)).expect("secret is valid so it's recoverable")
     }
 
     /// Returns a public key of the signer.
@@ -193,68 +193,68 @@ impl SignedParcel {
         self.signer_public
     }
 
-    /// Deconstructs this parcel back into `UnverifiedParcel`
-    pub fn deconstruct(self) -> (UnverifiedParcel, Public) {
-        (self.parcel, self.signer_public)
+    /// Deconstructs this transaction back into `UnverifiedTransaction`
+    pub fn deconstruct(self) -> (UnverifiedTransaction, Public) {
+        (self.tx, self.signer_public)
     }
 }
 
-/// Signed Parcel that is a part of canon blockchain.
+/// Signed Transaction that is a part of canon blockchain.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LocalizedParcel {
+pub struct LocalizedTransaction {
     /// Signed part.
-    pub signed: UnverifiedParcel,
+    pub signed: UnverifiedTransaction,
     /// Block number.
     pub block_number: BlockNumber,
     /// Block hash.
     pub block_hash: H256,
-    /// Parcel index within block.
-    pub parcel_index: usize,
+    /// Transaction index within block.
+    pub transaction_index: usize,
     /// Cached public
     pub cached_signer_public: Option<Public>,
 }
 
-impl LocalizedParcel {
-    /// Returns parcel signer.
-    /// Panics if `LocalizedParcel` is constructed using invalid `UnverifiedParcel`.
+impl LocalizedTransaction {
+    /// Returns transaction signer.
+    /// Panics if `LocalizedTransaction` is constructed using invalid `UnverifiedTransaction`.
     pub fn signer(&mut self) -> Public {
         if let Some(public) = self.cached_signer_public {
             return public
         }
         let public = self.recover_public()
-            .expect("LocalizedParcel is always constructed from parcel from blockchain; Blockchain only stores verified parcels; qed");
+            .expect("LocalizedTransaction is always constructed from transaction from blockchain; Blockchain only stores verified transactions; qed");
         self.cached_signer_public = Some(public);
         public
     }
 }
 
-impl Deref for LocalizedParcel {
-    type Target = UnverifiedParcel;
+impl Deref for LocalizedTransaction {
+    type Target = UnverifiedTransaction;
 
     fn deref(&self) -> &Self::Target {
         &self.signed
     }
 }
 
-impl From<LocalizedParcel> for Parcel {
-    fn from(parcel: LocalizedParcel) -> Self {
-        parcel.signed.into()
+impl From<LocalizedTransaction> for Transaction {
+    fn from(tx: LocalizedTransaction) -> Self {
+        tx.signed.into()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use ckey::{Address, Public, Signature};
-    use ctypes::parcel::Action;
+    use ctypes::transaction::Action;
     use primitives::H256;
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
 
     #[test]
-    fn unverified_parcel_rlp() {
-        rlp_encode_and_decode_test!(UnverifiedParcel {
-            unsigned: Parcel {
+    fn unverified_transaction_rlp() {
+        rlp_encode_and_decode_test!(UnverifiedTransaction {
+            unsigned: Transaction {
                 seq: 0,
                 fee: 10,
                 action: Action::CreateShard,
@@ -267,9 +267,9 @@ mod tests {
     }
 
     #[test]
-    fn encode_and_decode_pay_parcel() {
-        rlp_encode_and_decode_test!(UnverifiedParcel {
-            unsigned: Parcel {
+    fn encode_and_decode_pay_transaction() {
+        rlp_encode_and_decode_test!(UnverifiedTransaction {
+            unsigned: Transaction {
                 seq: 30,
                 fee: 40,
                 network_id: "tc".into(),
@@ -285,9 +285,9 @@ mod tests {
     }
 
     #[test]
-    fn encode_and_decode_set_regular_key_parcel() {
-        rlp_encode_and_decode_test!(UnverifiedParcel {
-            unsigned: Parcel {
+    fn encode_and_decode_set_regular_key_transaction() {
+        rlp_encode_and_decode_test!(UnverifiedTransaction {
+            unsigned: Transaction {
                 seq: 30,
                 fee: 40,
                 network_id: "tc".into(),
@@ -302,9 +302,9 @@ mod tests {
     }
 
     #[test]
-    fn encode_and_decode_create_shard_parcel() {
-        rlp_encode_and_decode_test!(UnverifiedParcel {
-            unsigned: Parcel {
+    fn encode_and_decode_create_shard_transaction() {
+        rlp_encode_and_decode_test!(UnverifiedTransaction {
+            unsigned: Transaction {
                 seq: 30,
                 fee: 40,
                 network_id: "tc".into(),

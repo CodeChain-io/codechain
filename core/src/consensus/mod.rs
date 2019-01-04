@@ -52,8 +52,8 @@ use crate::codechain_machine::CodeChainMachine;
 use crate::encoded;
 use crate::error::Error;
 use crate::header::Header;
-use crate::parcel::{SignedParcel, UnverifiedParcel};
 use crate::scheme::CommonParams;
+use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::HeaderView;
 use Client;
 
@@ -153,7 +153,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         Ok(())
     }
 
-    /// Phase 2 verification. Perform costly checks such as parcel signatures. Returns either a null `Ok` or a general error detailing the problem with import.
+    /// Phase 2 verification. Perform costly checks such as transaction signatures. Returns either a null `Ok` or a general error detailing the problem with import.
     fn verify_block_unordered(&self, _header: &M::Header) -> Result<(), M::Error> {
         Ok(())
     }
@@ -215,12 +215,12 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Stops any services that the may hold the Engine and makes it safe to drop.
     fn stop(&self) {}
 
-    /// Block transformation functions, before the parcels.
+    /// Block transformation functions, before the transactions.
     fn on_new_block(&self, _block: &mut M::LiveBlock, _epoch_begin: bool) -> Result<(), M::Error> {
         Ok(())
     }
 
-    /// Block transformation functions, after the parcels.
+    /// Block transformation functions, after the transactions.
     fn on_close_block(&self, _block: &mut M::LiveBlock) -> Result<(), M::Error> {
         Ok(())
     }
@@ -250,7 +250,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Register an account which signs consensus messages.
     fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address, _password: Option<Password>) {}
 
-    /// Sign using the EngineSigner, to be used for consensus parcel signing.
+    /// Sign using the EngineSigner, to be used for consensus transaction signing.
     fn sign(&self, _hash: H256) -> Result<SchnorrSignature, Error> {
         unimplemented!()
     }
@@ -271,8 +271,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     fn block_reward(&self, block_number: u64) -> u64;
 
-    fn block_fee(&self, parcels: Box<Iterator<Item = UnverifiedParcel>>) -> u64 {
-        parcels.map(|parcel| parcel.fee).sum()
+    fn block_fee(&self, transactions: Box<Iterator<Item = UnverifiedTransaction>>) -> u64 {
+        transactions.map(|tx| tx.fee).sum()
     }
 
     fn recommended_confirmation(&self) -> u32;
@@ -404,14 +404,18 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
         self.machine().max_text_content_size()
     }
 
-    /// Additional verification for parcels in blocks.
-    fn verify_parcel_basic(&self, p: &UnverifiedParcel, header: &Header) -> Result<(), Error> {
-        self.machine().verify_parcel_basic(p, header)
+    /// Additional verification for transactions in blocks.
+    fn verify_transaction_basic(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+        self.machine().verify_transaction_basic(tx, header)
     }
 
-    /// Verify a particular parcel is valid.
-    fn verify_parcel_unordered(&self, p: UnverifiedParcel, header: &Header) -> Result<SignedParcel, Error> {
-        self.machine().verify_parcel_unordered(p, header)
+    /// Verify a particular transaction is valid.
+    fn verify_transaction_unordered(
+        &self,
+        tx: UnverifiedTransaction,
+        header: &Header,
+    ) -> Result<SignedTransaction, Error> {
+        self.machine().verify_transaction_unordered(tx, header)
     }
 }
 

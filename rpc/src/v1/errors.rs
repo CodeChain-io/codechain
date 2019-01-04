@@ -22,7 +22,7 @@ use ckey::Error as KeyError;
 use ckeystore::Error as KeystoreError;
 use cnetwork::control::Error as NetworkControlError;
 use cstate::{ActionHandlerError, StateError};
-use ctypes::parcel::Error as ParcelError;
+use ctypes::transaction::ParcelError;
 use kvdb::Error as KVDBError;
 use rlp::DecoderError;
 
@@ -67,7 +67,7 @@ pub fn core<T: Into<CoreError>>(error: T) -> Error {
     }
 }
 
-pub fn parcel_state<T: Into<StateError>>(error: T) -> Error {
+pub fn transaction_state<T: Into<StateError>>(error: T) -> Error {
     let error = error.into();
     if let StateError::Parcel(e) = error {
         Error {
@@ -78,17 +78,17 @@ pub fn parcel_state<T: Into<StateError>>(error: T) -> Error {
     } else {
         Error {
             code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
-            message: "Unknown error when sending parcel.".into(),
+            message: "Unknown error when sending transaction.".into(),
             data: Some(Value::String(format!("{:?}", error))),
         }
     }
 }
 
-pub fn parcel_core<T: Into<CoreError>>(error: T) -> Error {
+pub fn transaction_core<T: Into<CoreError>>(error: T) -> Error {
     let error = error.into();
     let unknown_error = Error {
         code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
-        message: "Unknown error when sending parcel.".into(),
+        message: "Unknown error when sending transaction.".into(),
         data: Some(Value::String(format!("{:?}", error))),
     };
     match error {
@@ -116,7 +116,7 @@ pub fn parcel_core<T: Into<CoreError>>(error: T) -> Error {
                 message: "Invalid NetworkId".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            ParcelError::ParcelAlreadyImported => Error {
+            ParcelError::TransactionAlreadyImported => Error {
                 code: ErrorCode::ServerError(codes::ALREADY_IMPORTED),
                 message: "Already Imported".into(),
                 data: Some(Value::String(format!("{:?}", error))),

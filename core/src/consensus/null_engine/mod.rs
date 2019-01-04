@@ -16,12 +16,12 @@
 
 mod params;
 
-use ctypes::machine::{Header, LiveBlock, Parcels, WithBalances};
+use ctypes::machine::{Header, LiveBlock, Transactions, WithBalances};
 
 use self::params::NullEngineParams;
 use super::ConsensusEngine;
 use crate::consensus::EngineType;
-use crate::SignedParcel;
+use crate::SignedTransaction;
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
 pub struct NullEngine<M> {
@@ -47,7 +47,7 @@ impl<M: Default> Default for NullEngine<M> {
 
 impl<M: WithBalances> ConsensusEngine<M> for NullEngine<M>
 where
-    M::LiveBlock: Parcels<Parcel = SignedParcel>,
+    M::LiveBlock: Transactions<Transaction = SignedTransaction>,
 {
     fn name(&self) -> &str {
         "NullEngine"
@@ -68,7 +68,7 @@ where
     fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
         let author = *LiveBlock::header(&*block).author();
         let total_reward = self.block_reward(block.header().number())
-            + self.block_fee(Box::new(block.parcels().to_owned().into_iter().map(Into::into)));
+            + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));
         self.machine.add_balance(block, &author, total_reward)
     }
 

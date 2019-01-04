@@ -20,14 +20,14 @@ use heapsize::HeapSizeOf;
 use primitives::H256;
 use rlp::RlpStream;
 
-use super::super::transaction::ShardTransaction;
 use super::Action;
+use super::ShardTransaction;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Parcel {
+pub struct Transaction {
     /// Seq.
     pub seq: u64,
-    /// Amount of CCC to be paid as a cost for distributing this parcel to the network.
+    /// Amount of CCC to be paid as a cost for distributing this transaction to the network.
     pub fee: u64,
     /// Network Id
     pub network_id: NetworkId,
@@ -35,15 +35,15 @@ pub struct Parcel {
     pub action: Action,
 }
 
-impl HeapSizeOf for Parcel {
+impl HeapSizeOf for Transaction {
     fn heap_size_of_children(&self) -> usize {
         self.action.heap_size_of_children()
     }
 }
 
-impl Parcel {
+impl Transaction {
     /// Append object with a without signature into RLP stream
-    pub fn rlp_append_unsigned_parcel(&self, s: &mut RlpStream) {
+    pub fn rlp_append_unsigned(&self, s: &mut RlpStream) {
         s.begin_list(4);
         s.append(&self.seq);
         s.append(&self.fee);
@@ -51,10 +51,10 @@ impl Parcel {
         s.append(&self.action);
     }
 
-    /// The message hash of the parcel.
+    /// The message hash of the tranasction.
     pub fn hash(&self) -> H256 {
         let mut stream = RlpStream::new();
-        self.rlp_append_unsigned_parcel(&mut stream);
+        self.rlp_append_unsigned(&mut stream);
         blake256(stream.as_raw())
     }
 

@@ -19,12 +19,12 @@ use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
 use super::invoice_result::InvoiceResult;
-use crate::parcel::Error;
+use crate::transaction::ParcelError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Invoice {
     Success,
-    Failure(Error),
+    Failure(ParcelError),
 }
 
 const INVOICE_ID_SINGLE_SUCCESS: u8 = 1u8;
@@ -36,12 +36,12 @@ impl Serialize for Invoice {
         S: Serializer, {
         match self {
             Invoice::Success => {
-                let mut s = serializer.serialize_struct("ParcelInvoice", 1)?;
+                let mut s = serializer.serialize_struct("Invoice", 1)?;
                 s.serialize_field("success", &true)?;
                 s.end()
             }
             Invoice::Failure(ref err) => {
-                let mut s = serializer.serialize_struct("ParcelInvoice", 2)?;
+                let mut s = serializer.serialize_struct("Invoice", 2)?;
                 s.serialize_field("success", &false)?;
                 s.serialize_field("error", err)?;
                 s.end()
@@ -90,7 +90,7 @@ impl Decodable for Invoice {
                 }
                 Ok(Invoice::Failure(rlp.val_at(1)?))
             }
-            _ => Err(DecoderError::Custom("Unknown parcel invoice")),
+            _ => Err(DecoderError::Custom("Unknown invoice")),
         }
     }
 }
@@ -102,12 +102,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn encode_and_decode_single_success_parcel_invoice() {
+    fn encode_and_decode_single_success_tx_invoice() {
         rlp_encode_and_decode_test!(Invoice::Success);
     }
 
     #[test]
-    fn encode_and_decode_single_failed_parcel_invoice() {
-        rlp_encode_and_decode_test!(Invoice::Failure(Error::Old));
+    fn encode_and_decode_single_failed_tx_invoice() {
+        rlp_encode_and_decode_test!(Invoice::Failure(ParcelError::Old));
     }
 }

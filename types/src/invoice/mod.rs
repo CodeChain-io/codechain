@@ -15,9 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod block_invoices;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
+mod invoice;
 mod invoice_result;
-mod parcel_invoice;
 
 pub use self::block_invoices::BlockInvoices;
+pub use self::invoice::Invoice;
 pub use self::invoice_result::InvoiceResult;
-pub use self::parcel_invoice::Invoice;

@@ -21,7 +21,7 @@ use ccore::{
     AccountProvider, AccountProviderError, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq,
 };
 use ckey::{NetworkId, Password, PlatformAddress, Signature};
-use ctypes::parcel::IncompleteParcel;
+use ctypes::transaction::IncompleteTransaction;
 use jsonrpc_core::Result;
 use parking_lot::Mutex;
 use primitives::H256;
@@ -97,15 +97,15 @@ where
             static ref LOCK: Mutex<()> = Mutex::new(());
         }
         let _guard = LOCK.lock();
-        let (parcel, seq): (IncompleteParcel, Option<u64>) =
+        let (tx, seq): (IncompleteTransaction, Option<u64>) =
             ::std::result::Result::from(tx).map_err(AccountProviderError::KeyError).map_err(account_provider)?;
 
         let (hash, seq) = self
             .miner
-            .import_incomplete_parcel(
+            .import_incomplete_transaction(
                 self.client.as_ref(),
                 self.account_provider.as_ref(),
-                parcel,
+                tx,
                 platform_address,
                 passphrase,
                 seq,

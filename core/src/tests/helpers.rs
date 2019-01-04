@@ -19,8 +19,8 @@ use primitives::{Bytes, H256, U256};
 use rlp::{self, RlpStream};
 
 use crate::header::Header;
-use crate::parcel::SignedParcel;
 use crate::scheme::Scheme;
+use crate::transaction::SignedTransaction;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);
@@ -30,11 +30,11 @@ pub fn create_test_block(header: &Header) -> Bytes {
 }
 
 #[allow(dead_code)]
-pub fn create_test_block_with_data(header: &Header, parcels: &[SignedParcel], uncles: &[Header]) -> Bytes {
+pub fn create_test_block_with_data(header: &Header, txs: &[SignedTransaction], uncles: &[Header]) -> Bytes {
     let mut rlp = RlpStream::new_list(3);
     rlp.append(header);
-    rlp.begin_list(parcels.len());
-    for t in parcels {
+    rlp.begin_list(txs.len());
+    for t in txs {
         rlp.append_raw(&rlp::encode(t).into_vec(), 1);
     }
     rlp.append_list(&uncles);

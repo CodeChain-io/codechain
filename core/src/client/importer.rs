@@ -322,7 +322,7 @@ impl Importer {
                 engine,
                 Some(verification::FullFamilyParams {
                     block_bytes: &block.bytes,
-                    parcels: &block.parcels,
+                    transactions: &block.transactions,
                     block_provider: &*chain,
                     client,
                 }),
@@ -352,7 +352,7 @@ impl Importer {
         let db = client.state_db().read().clone(&parent.state_root());
 
         let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
-        let enact_result = enact(&block.header, &block.parcels, engine, client, db, &parent, is_epoch_begin);
+        let enact_result = enact(&block.header, &block.transactions, engine, client, db, &parent, is_epoch_begin);
         let locked_block = enact_result.map_err(|e| {
             cwarn!(CLIENT, "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
         })?;

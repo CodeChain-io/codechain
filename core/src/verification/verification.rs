@@ -28,22 +28,24 @@ use crate::client::{BlockInfo, TransactionInfo};
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error};
 use crate::header::Header;
-use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::BlockView;
 
 /// Preprocessed block data gathered in `verify_block_unordered` call
 pub struct PreverifiedBlock {
     /// Populated block header
     pub header: Header,
-    /// Populated block parcels
-    pub parcels: Vec<SignedParcel>,
+    /// Populated block transactions
+    pub transactions: Vec<SignedTransaction>,
     /// Block bytes
     pub bytes: Bytes,
 }
 
 impl HeapSizeOf for PreverifiedBlock {
     fn heap_size_of_children(&self) -> usize {
-        self.header.heap_size_of_children() + self.parcels.heap_size_of_children() + self.bytes.heap_size_of_children()
+        self.header.heap_size_of_children()
+            + self.transactions.heap_size_of_children()
+            + self.bytes.heap_size_of_children()
     }
 }
 
@@ -57,8 +59,8 @@ pub fn verify_block_basic(header: &Header, bytes: &[u8], engine: &CodeChainEngin
         return Err(BlockError::BodySizeIsTooBig.into())
     }
 
-    for t in body_rlp.iter().map(|rlp| rlp.as_val::<UnverifiedParcel>()) {
-        engine.verify_parcel_basic(&t?, &header)?;
+    for t in body_rlp.iter().map(|rlp| rlp.as_val::<UnverifiedTransaction>()) {
+        engine.verify_transaction_basic(&t?, &header)?;
     }
     Ok(())
 }
@@ -114,23 +116,27 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
     Ok(())
 }
 
-/// Verify block data against header: parcels root
-fn verify_parcels_root(block: &[u8], parcels_root: &H256, parent_parcels_root: H256) -> Result<(), Error> {
+/// Verify block data against header: transactions root
+fn verify_transactions_root(
+    block: &[u8],
+    transactions_root: &H256,
+    parent_transactions_root: H256,
+) -> Result<(), Error> {
     let block = UntrustedRlp::new(block);
-    let parcel = block.at(1)?;
-    let expected_root = skewed_merkle_root(parent_parcels_root, parcel.iter().map(|r| r.as_raw()));
-    if &expected_root != parcels_root {
-        return Err(From::from(BlockError::InvalidParcelsRoot(Mismatch {
+    let transaction = block.at(1)?;
+    let expected_root = skewed_merkle_root(parent_transactions_root, transaction.iter().map(|r| r.as_raw()));
+    if &expected_root != transactions_root {
+        return Err(From::from(BlockError::InvalidTransactionsRoot(Mismatch {
             expected: expected_root,
-            found: *parcels_root,
+            found: *transactions_root,
         })))
     }
     Ok(())
 }
 
-/// Phase 2 verification. Perform costly checks such as parcel signatures and block nonce for ethash.
+/// Phase 2 verification. Perform costly checks such as transaction signatures and block nonce for ethash.
 /// Still operates on a individual block
-/// Returns a `PreverifiedBlock` structure populated with parcels
+/// Returns a `PreverifiedBlock` structure populated with transactions
 pub fn verify_block_unordered(
     header: Header,
     bytes: Bytes,
@@ -140,18 +146,18 @@ pub fn verify_block_unordered(
     if check_seal {
         engine.verify_block_unordered(&header)?;
     }
-    // Verify parcels.
-    let mut parcels = Vec::new();
+    // Verify transactions.
+    let mut transactions = Vec::new();
     {
         let v = BlockView::new(&bytes);
-        for t in v.parcels() {
-            let signed_parcel = engine.verify_parcel_unordered(t, &header)?;
-            parcels.push(signed_parcel);
+        for t in v.transactions() {
+            let signed = engine.verify_transaction_unordered(t, &header)?;
+            transactions.push(signed);
         }
     }
     Ok(PreverifiedBlock {
         header,
-        parcels,
+        transactions,
         bytes,
     })
 }
@@ -161,8 +167,8 @@ pub struct FullFamilyParams<'a, C: BlockInfo + TransactionInfo + 'a> {
     /// Serialized block bytes
     pub block_bytes: &'a [u8],
 
-    /// Signed parcels
-    pub parcels: &'a [SignedParcel],
+    /// Signed transactions
+    pub transactions: &'a [SignedTransaction],
 
     /// Block provider to use during verification
     pub block_provider: &'a BlockProvider,
@@ -181,7 +187,7 @@ pub fn verify_block_family<C: BlockInfo + TransactionInfo>(
 ) -> Result<(), Error> {
     // TODO: verify timestamp
     verify_parent(&header, &parent)?;
-    verify_parcels_root(block, header.parcels_root(), *parent.parcels_root())?;
+    verify_transactions_root(block, header.transactions_root(), *parent.transactions_root())?;
     engine.verify_block_family(&header, &parent)?;
 
     let params = match do_full {
@@ -189,8 +195,8 @@ pub fn verify_block_family<C: BlockInfo + TransactionInfo>(
         None => return Ok(()),
     };
 
-    for parcel in params.parcels {
-        engine.machine().verify_parcel(parcel, header, params.client, true)?;
+    for tx in params.transactions {
+        engine.machine().verify_transaction(tx, header, params.client, true)?;
     }
 
     Ok(())
@@ -230,7 +236,7 @@ fn verify_parent(header: &Header, parent: &Header) -> Result<(), Error> {
     Ok(())
 }
 
-/// Phase 4 verification. Check block information against parcel enactment results,
+/// Phase 4 verification. Check block information against transaction enactment results,
 pub fn verify_block_final(expected: &Header, got: &Header) -> Result<(), Error> {
     if expected.state_root() != got.state_root() {
         return Err(From::from(BlockError::InvalidStateRoot(Mismatch {

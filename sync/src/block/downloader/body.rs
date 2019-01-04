@@ -16,7 +16,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use ccore::{Header, UnverifiedParcel};
+use ccore::{Header, UnverifiedTransaction};
 use primitives::H256;
 
 use super::super::message::RequestMessage;
@@ -32,7 +32,7 @@ struct Target {
 pub struct BodyDownloader {
     targets: Vec<Target>,
     downloading: HashSet<H256>,
-    downloaded: HashMap<H256, Vec<UnverifiedParcel>>,
+    downloaded: HashMap<H256, Vec<UnverifiedTransaction>>,
 }
 
 impl BodyDownloader {
@@ -63,7 +63,7 @@ impl BodyDownloader {
         }
     }
 
-    pub fn import_bodies(&mut self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedParcel>>) {
+    pub fn import_bodies(&mut self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedTransaction>>) {
         for (hash, body) in hashes.into_iter().zip(bodies) {
             if self.downloading.remove(&hash) {
                 if body.is_empty() {
@@ -82,8 +82,8 @@ impl BodyDownloader {
         self.targets.push(Target {
             hash: header.hash(),
             parent_hash: parent.hash(),
-            parcels_root: *header.parcels_root(),
-            parent_root: *parent.parcels_root(),
+            parcels_root: *header.transactions_root(),
+            parent_root: *parent.transactions_root(),
         });
     }
 
@@ -107,7 +107,7 @@ impl BodyDownloader {
         }
     }
 
-    pub fn drain(&mut self) -> Vec<(H256, Vec<UnverifiedParcel>)> {
+    pub fn drain(&mut self) -> Vec<(H256, Vec<UnverifiedTransaction>)> {
         let mut result = Vec::new();
         for t in &self.targets {
             if let Some(body) = self.downloaded.remove(&t.hash) {

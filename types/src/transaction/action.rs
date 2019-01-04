@@ -22,9 +22,8 @@ use heapsize::HeapSizeOf;
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use crate::parcel::Error as ParcelError;
 use crate::transaction::{
-    AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, OrderOnTransfer,
+    AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, OrderOnTransfer, ParcelError,
     ShardTransaction,
 };
 use crate::ShardId;

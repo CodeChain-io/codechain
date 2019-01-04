@@ -172,7 +172,7 @@ impl<'db> ShardLevelState<'db> {
                 ..
             } => self.unwrap_ccc(&transaction, sender, burn, client),
             ShardTransaction::WrapCCC {
-                parcel_hash,
+                tx_hash,
                 output:
                     AssetWrapCCCOutput {
                         lock_script_hash,
@@ -180,7 +180,7 @@ impl<'db> ShardLevelState<'db> {
                         parameters,
                     },
                 ..
-            } => self.wrap_ccc(parcel_hash, lock_script_hash, &parameters, *amount),
+            } => self.wrap_ccc(tx_hash, lock_script_hash, &parameters, *amount),
         }
     }
 
@@ -626,7 +626,7 @@ impl<'db> ShardLevelState<'db> {
 
     fn wrap_ccc(
         &mut self,
-        parcel_hash: &H256,
+        tx_hash: &H256,
         lock_script_hash: &H160,
         parameters: &[Bytes],
         amount: u64,
@@ -651,7 +651,7 @@ impl<'db> ShardLevelState<'db> {
             );
         }
 
-        let asset_address = OwnedAssetAddress::new(*parcel_hash, 0, self.shard_id);
+        let asset_address = OwnedAssetAddress::new(*tx_hash, 0, self.shard_id);
         let asset = self.create_asset(
             &asset_address,
             asset_scheme_address.into(),
@@ -1755,15 +1755,15 @@ mod tests {
         let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
 
         let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
-        let parcel_hash = H256::random();
+        let tx_hash = H256::random();
         let amount = 30;
 
-        let wrap_ccc = asset_wrap_ccc!(parcel_hash, asset_wrap_ccc_output!(lock_script_hash, amount));
+        let wrap_ccc = asset_wrap_ccc!(tx_hash, asset_wrap_ccc_output!(lock_script_hash, amount));
         let wrap_ccc_tracker = wrap_ccc.tracker();
         let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(SHARD_ID);
         let asset_type = H256::from(asset_scheme_address);
 
-        assert_eq!(wrap_ccc_tracker, parcel_hash);
+        assert_eq!(wrap_ccc_tracker, tx_hash);
         assert_eq!(Ok(Invoice::Success), state.apply(&wrap_ccc, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
@@ -1790,13 +1790,13 @@ mod tests {
         let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
 
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let parcel_hash = H256::random();
+        let tx_hash = H256::random();
         let amount = 30;
 
-        let wrap_ccc = asset_wrap_ccc!(parcel_hash, asset_wrap_ccc_output!(lock_script_hash, amount));
+        let wrap_ccc = asset_wrap_ccc!(tx_hash, asset_wrap_ccc_output!(lock_script_hash, amount));
         let wrap_ccc_tracker = wrap_ccc.tracker();
 
-        assert_eq!(wrap_ccc_tracker, parcel_hash);
+        assert_eq!(wrap_ccc_tracker, tx_hash);
         assert_eq!(Ok(Invoice::Success), state.apply(&wrap_ccc, &sender, &[sender], &[], &get_test_client()));
 
         let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(SHARD_ID);

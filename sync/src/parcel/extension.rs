@@ -106,7 +106,7 @@ impl NetworkExtension for Extension {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Parcels(parcels) => {
-                    self.client.queue_parcels(
+                    self.client.queue_transactions(
                         parcels.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
                         *token,
                     );
@@ -150,7 +150,7 @@ impl Extension {
     }
 
     fn random_broadcast(&self) {
-        let parcels = self.client.ready_parcels();
+        let parcels = self.client.ready_transactions();
         if parcels.is_empty() {
             ctrace!(SYNC_PARCEL, "No parcels to propagate");
             return
