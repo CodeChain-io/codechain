@@ -44,8 +44,8 @@ use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
     Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
-    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, ResealTimer, Seq, Shard, StateOrBlock,
-    TextClient, TransactionInfo,
+    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, ResealTimer, Seq, Shard, StateInfo,
+    StateOrBlock, TextClient, TransactionInfo,
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{
@@ -226,30 +226,6 @@ impl Client {
             BlockId::Earliest => Some(0),
             BlockId::Latest => Some(self.block_chain().best_block_detail().number),
         }
-    }
-
-    /// Get a copy of the best block's state.
-    fn latest_state(&self) -> TopLevelState {
-        let header = self.best_block_header();
-        TopLevelState::from_existing(self.state_db.read().clone(&header.state_root()), header.state_root())
-            .expect("State root of best block header always valid.")
-    }
-
-    /// Attempt to get a copy of a specific block's final state.
-    ///
-    /// This will not fail if given BlockId::Latest.
-    /// Otherwise, this can fail (but may not) if the DB prunes state or the block
-    /// is unknown.
-    fn state_at(&self, id: BlockId) -> Option<TopLevelState> {
-        // fast path for latest state.
-        if BlockId::Latest == id {
-            return Some(self.latest_state())
-        }
-
-        self.block_header(&id).and_then(|header| {
-            let root = header.state_root();
-            TopLevelState::from_existing(self.state_db.read().clone(&root), root).ok()
-        })
     }
 
     fn state_info(&self, state: StateOrBlock) -> Option<Box<TopStateView>> {
@@ -437,6 +413,15 @@ impl ExecuteClient for Client {
             results.push(result);
         }
         Ok(results)
+    }
+}
+
+impl StateInfo for Client {
+    fn state_at(&self, id: BlockId) -> Option<TopLevelState> {
+        self.block_header(&id).and_then(|header| {
+            let root = header.state_root();
+            TopLevelState::from_existing(self.state_db.read().clone(&root), root).ok()
+        })
     }
 }
 

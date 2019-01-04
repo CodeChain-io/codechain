@@ -74,7 +74,7 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
     let signer = public_to_address(&recover(&sig, &header.bare_hash())?);
 
     if *header.author() != signer {
-        return Err(EngineError::NotAuthorized(*header.author()).into())
+        return Err(EngineError::BlockNotAuthorized(*header.author()).into())
     }
 
     if validators.contains_address(header.parent_hash(), &signer) {
