@@ -92,7 +92,7 @@ struct TendermintInner {
     /// Message for the last PoLC.
     lock_change: Option<ConsensusMessage>,
     /// Last lock view.
-    last_lock: AtomicUsize,
+    last_lock: View,
     /// hash of the proposed block, used for seal submission.
     proposal: RwLock<Option<H256>>,
     last_confirmed_view: RwLock<(H256, View)>,
@@ -148,7 +148,7 @@ impl TendermintInner {
             votes: Default::default(),
             signer: Default::default(),
             lock_change: None,
-            last_lock: AtomicUsize::new(0),
+            last_lock: 0,
             proposal: RwLock::new(None),
             last_confirmed_view: RwLock::new((Default::default(), 0)),
             validators: our_params.validators,
@@ -320,14 +320,14 @@ impl TendermintInner {
     }
 
     fn should_unlock(&self, lock_change_view: View) -> bool {
-        self.last_lock.load(AtomicOrdering::SeqCst) < lock_change_view && lock_change_view < self.view
+        self.last_lock < lock_change_view && lock_change_view < self.view
     }
 
     fn move_to_next_height(&mut self, height: Height) {
         assert!(height >= self.height, "{} < {}", height, self.height);
         let new_height = height + 1;
         cdebug!(ENGINE, "Received a Commit, transitioning to height {}.", new_height);
-        self.last_lock.store(0, AtomicOrdering::SeqCst);
+        self.last_lock = 0;
         self.height = new_height;
         self.view = 0;
         self.lock_change = None;
@@ -381,7 +381,7 @@ impl TendermintInner {
                 let block_hash = match self.lock_change {
                     Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
                         ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
-                        self.last_lock.store(m.on.step.view, AtomicOrdering::SeqCst);
+                        self.last_lock = m.on.step.view;
                         m.on.block_hash
                     }
                     _ => None,
