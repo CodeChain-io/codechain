@@ -94,7 +94,7 @@ struct TendermintInner {
     /// Last lock view.
     last_lock: View,
     /// hash of the proposed block, used for seal submission.
-    proposal: RwLock<Option<H256>>,
+    proposal: Option<H256>,
     last_confirmed_view: RwLock<(H256, View)>,
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
@@ -149,7 +149,7 @@ impl TendermintInner {
             signer: Default::default(),
             lock_change: None,
             last_lock: 0,
-            proposal: RwLock::new(None),
+            proposal: None,
             last_confirmed_view: RwLock::new((Default::default(), 0)),
             validators: our_params.validators,
             block_reward: our_params.block_reward,
@@ -181,10 +181,6 @@ impl TendermintInner {
         self.validators.get_address(bh, proposer_nonce)
     }
 
-    pub fn proposal(&self) -> Option<H256> {
-        *self.proposal.read()
-    }
-
     pub fn proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {
         let vote_step = VoteStep {
             height,
@@ -211,7 +207,7 @@ impl TendermintInner {
     }
 
     pub fn need_proposal(&self) -> bool {
-        self.proposal().is_none()
+        self.proposal.is_none()
     }
 
     pub fn get_all_votes_and_authors(&self, vote_step: &VoteStep, requested: &BitSet) -> Vec<ConsensusMessage> {
@@ -315,7 +311,7 @@ impl TendermintInner {
     fn increment_view(&mut self, n: View) {
         ctrace!(ENGINE, "increment_view: New view.");
         self.view += n;
-        *self.proposal.write() = None;
+        self.proposal = None;
         self.votes_received = BitSet::new();
     }
 
@@ -331,7 +327,7 @@ impl TendermintInner {
         self.height = new_height;
         self.view = 0;
         self.lock_change = None;
-        *self.proposal.write() = None;
+        self.proposal = None;
         self.votes_received = BitSet::new();
     }
 
@@ -349,12 +345,12 @@ impl TendermintInner {
         }
 
         // need to reset vote
-        self.broadcast_state(&vote_step, self.proposal(), self.votes_received);
+        self.broadcast_state(&vote_step, self.proposal, self.votes_received);
         match step {
             Step::Propose => {
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
                     if self.client().block_header(&BlockId::Hash(*hash)).is_some() {
-                        *self.proposal.write() = Some(*hash);
+                        self.proposal = Some(*hash);
                         self.move_to_step(Step::Prevote);
                     } else {
                         ctrace!(ENGINE, "Proposal is received but not imported");
@@ -371,7 +367,7 @@ impl TendermintInner {
                 self.request_all_votes(&vote_step);
                 let block_hash = match self.lock_change {
                     Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
-                    _ => *self.proposal.read(),
+                    _ => self.proposal,
                 };
                 self.generate_and_broadcast_message(block_hash);
             }
@@ -508,13 +504,13 @@ impl TendermintInner {
         let height = proposal.number() as Height;
         let view = consensus_view(proposal).expect("Imported block is already verified");
         if current_height == height && self.view == view {
-            *self.proposal.write() = Some(proposal.hash());
+            self.proposal = Some(proposal.hash());
             if self.step == Step::Propose {
                 self.move_to_step(Step::Prevote);
             }
         } else if current_height < height {
             self.move_to_next_height(height - 1);
-            *self.proposal.write() = Some(proposal.hash());
+            self.proposal = Some(proposal.hash());
             self.move_to_step(Step::Prevote);
         }
     }
@@ -542,7 +538,7 @@ impl TendermintInner {
             *self.last_confirmed_view.write() = backup.last_confirmed_view;
             if let Some(proposal) = backup.proposal {
                 if client.block_header(&BlockId::Hash(proposal)).is_some() {
-                    *self.proposal.write() = Some(proposal);
+                    self.proposal = Some(proposal);
                 }
             }
 
@@ -611,7 +607,7 @@ impl TendermintInner {
         let header = block.header();
         let height = header.number() as Height;
         // Only proposer can generate seal if None was generated.
-        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.read().is_some() || height < self.height {
+        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.is_some() || height < self.height {
             return Seal::None
         }
 
@@ -644,7 +640,7 @@ impl TendermintInner {
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(ConsensusMessage::new_proposal(signature, signer_index, header).expect("I am proposer"));
 
-        *self.proposal.write() = Some(hash);
+        self.proposal = Some(hash);
         cdebug!(
             ENGINE,
             "Submitting proposal {} at height {}-{} view {}-{}.\n{:?}",
@@ -804,7 +800,7 @@ impl TendermintInner {
         let next_step = match self.step {
             Step::Propose => {
                 ctrace!(ENGINE, "Propose timeout.");
-                if self.proposal.read().is_none() {
+                if self.proposal.is_none() {
                     // Report the proposer if no proposal was received.
                     let height = self.height;
                     let current_proposer = self.view_proposer(&self.prev_block_hash(), height, self.view);
@@ -929,7 +925,7 @@ impl TendermintInner {
             }
             ctrace!(ENGINE, "Handling a valid {:?} from {}.", message, sender);
             self.handle_valid_message(&message);
-            self.broadcast_state(&self.vote_step(), self.proposal(), self.votes_received);
+            self.broadcast_state(&self.vote_step(), self.proposal, self.votes_received);
         }
         Ok(())
     }
