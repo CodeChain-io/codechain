@@ -12,6 +12,6 @@ Transactions
 .. toctree::
     :maxdepth: 2
 
+    transaction
     what-is-utxo
-    asset-transaction
     lock-script

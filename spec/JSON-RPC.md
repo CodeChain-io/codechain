@@ -103,9 +103,9 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - networkId: `NetworkID`
  - burn: `AssetTransferInput`
 
-### Payment Action
+### Pay Action
 
- - action: "payment"
+ - action: "pay"
  - receiver: `PlatformAddress`
  - amount: `U64`
 
@@ -146,6 +146,12 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - action: "remove"
  - hash: `H256` - transaction hash
  - signature: `Signature`
+
+### Custom Action
+
+ - action: "custom"
+ - handlerId: `number`
+ - bytes: `string`
 
 ## AssetScheme
 
@@ -539,7 +545,7 @@ Errors: `Invalid Params`
     "transactions":[
       {
         "action":{
-          "action":"payment",
+          "action":"pay",
           "amount":"0x3b9aca00",
           "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd"
         },
@@ -602,7 +608,7 @@ Errors: `Invalid Params`
     "transactions":[
       {
         "action":{
-          "action":"payment",
+          "action":"pay",
           "amount":"0xa",
           "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
         },
@@ -686,7 +692,7 @@ Errors: `Invalid Params`
     "jsonrpc": "2.0",
     "result": {
         "action": {
-          "action":"payment",
+          "action":"pay",
           "amount":"0xa",
           "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
         },
@@ -762,7 +768,7 @@ Errors: `Invalid Params`
     "jsonrpc": "2.0",
     "result": {
         "action": {
-          "action":"payment",
+          "action":"pay",
           "amount":"0xa",
           "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
           "hash": "0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc",
@@ -1234,7 +1240,7 @@ No parameters
       "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
       "transactions":[
         {
-          "payment":{
+          "pay":{
             "seq": 1,
             "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
             "value":"0x0"
@@ -1455,6 +1461,36 @@ No parameters
 {
   "jsonrpc":"2.0",
   "result": 6,
+  "id":411
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## engine_getCustomActionData
+Gets custom action data for given custom action handler id and rlp encoded key.
+
+### Params
+ 1. handlerId: `number`
+ 2. bytes: `string`
+ 3. blockNumber: `number` | `null`
+
+### Returns
+`string`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "engine_getCustomActionData", "params": [1,"0xcd8c6d6574616461746120686974",null], "id": 411}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0c",
   "id":411
 }
 ```
@@ -2191,7 +2227,7 @@ Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_sendTransaction", "params": [{"action":{ "action":"payment", "amount":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "seq": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_sendTransaction", "params": [{"action":{ "action":"pay", "amount":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "seq": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
     localhost:8080
 ```
 
