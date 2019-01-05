@@ -23,7 +23,7 @@ use primitives::{Bytes, H160, H256};
 use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, OrderOnTransfer};
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "action")]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum Action {
     #[serde(rename_all = "camelCase")]
     MintAsset {
@@ -120,7 +120,7 @@ pub enum Action {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase", tag = "action")]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum ActionWithId {
     #[serde(rename_all = "camelCase")]
     MintAsset {
