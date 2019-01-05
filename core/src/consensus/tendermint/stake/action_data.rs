@@ -18,7 +18,7 @@ use std::collections::{btree_set, BTreeSet};
 
 use ckey::Address;
 use cstate::{ActionDataKeyBuilder, TopLevelState, TopState, TopStateView};
-use ctypes::parcel::Error as ParcelError;
+use ctypes::transaction::ParcelError;
 use primitives::H256;
 use rlp::{RlpStream, UntrustedRlp};
 

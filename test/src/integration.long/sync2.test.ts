@@ -302,7 +302,7 @@ describe("sync 2 nodes", function() {
         });
     });
 
-    describe("with no parcel relay", function() {
+    describe("with no transaction relay", function() {
         const testSize: number = 5;
 
         beforeEach(async function() {
@@ -310,8 +310,8 @@ describe("sync 2 nodes", function() {
             nodeB = new CodeChain({ base: BASE });
 
             await Promise.all([
-                nodeA.start(["--no-parcel-relay"]),
-                nodeB.start(["--no-parcel-relay"])
+                nodeA.start(["--no-tx-relay"]),
+                nodeB.start(["--no-tx-relay"])
             ]);
             await nodeA.connect(nodeB);
 
@@ -321,7 +321,7 @@ describe("sync 2 nodes", function() {
             ]);
         });
 
-        it("parcels must not be propagated", async function() {
+        it("transactions must not be propagated", async function() {
             for (let i = 0; i < testSize; i++) {
                 await nodeA.sendPayTx({
                     seq: i,

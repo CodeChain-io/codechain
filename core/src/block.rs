@@ -21,8 +21,8 @@ use ckey::Address;
 use cmerkle::skewed_merkle_root;
 use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::invoice::Invoice;
-use ctypes::machine::{LiveBlock, Parcels};
-use ctypes::parcel::Error as ParcelError;
+use ctypes::machine::{LiveBlock, Transactions};
+use ctypes::transaction::ParcelError;
 use ctypes::util::unexpected::Mismatch;
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
@@ -31,15 +31,15 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error};
 use crate::header::{Header, Seal};
-use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block {
     /// The header of this block
     pub header: Header,
-    /// The parcels in this block.
-    pub parcels: Vec<UnverifiedParcel>,
+    /// The transactions in this block.
+    pub transactions: Vec<UnverifiedTransaction>,
 }
 
 impl Block {
@@ -47,7 +47,7 @@ impl Block {
     pub fn rlp_bytes(&self, seal: &Seal) -> Bytes {
         let mut block_rlp = RlpStream::new_list(2);
         self.header.stream_rlp(&mut block_rlp, seal);
-        block_rlp.append_list(&self.parcels);
+        block_rlp.append_list(&self.transactions);
         block_rlp.out()
     }
 }
@@ -62,7 +62,7 @@ impl Decodable for Block {
         }
         Ok(Block {
             header: rlp.val_at(0)?,
-            parcels: rlp.list_at(1)?,
+            transactions: rlp.list_at(1)?,
         })
     }
 }
@@ -72,9 +72,9 @@ impl Decodable for Block {
 pub struct ExecutedBlock {
     header: Header,
     state: TopLevelState,
-    parcels: Vec<SignedParcel>,
+    transactions: Vec<SignedTransaction>,
     invoices: Vec<Invoice>,
-    parcels_set: HashSet<H256>,
+    transactions_set: HashSet<H256>,
 }
 
 impl ExecutedBlock {
@@ -82,9 +82,9 @@ impl ExecutedBlock {
         ExecutedBlock {
             header: Default::default(),
             state,
-            parcels: Default::default(),
+            transactions: Default::default(),
             invoices: Default::default(),
-            parcels_set: Default::default(),
+            transactions_set: Default::default(),
         }
     }
 
@@ -94,11 +94,11 @@ impl ExecutedBlock {
     }
 }
 
-impl Parcels for ExecutedBlock {
-    type Parcel = SignedParcel;
+impl Transactions for ExecutedBlock {
+    type Transaction = SignedTransaction;
 
-    fn parcels(&self) -> &[SignedParcel] {
-        &self.parcels
+    fn transactions(&self) -> &[SignedTransaction] {
+        &self.transactions
     }
 }
 
@@ -110,14 +110,14 @@ impl LiveBlock for ExecutedBlock {
     }
 }
 
-/// Block that is ready for parcels to be added.
+/// Block that is ready for transactions to be added.
 pub struct OpenBlock<'x> {
     block: ExecutedBlock,
     engine: &'x CodeChainEngine,
 }
 
 impl<'x> OpenBlock<'x> {
-    /// Create a new `OpenBlock` ready for parcel pushing.
+    /// Create a new `OpenBlock` ready for transaction pushing.
     pub fn try_new(
         engine: &'x CodeChainEngine,
         db: StateDB,
@@ -148,33 +148,33 @@ impl<'x> OpenBlock<'x> {
         Ok(r)
     }
 
-    /// Push a parcel into the block.
-    pub fn push_parcel<C: ChainTimeInfo + FindActionHandler>(
+    /// Push a transaction into the block.
+    pub fn push_transaction<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
-        parcel: SignedParcel,
+        tx: SignedTransaction,
         h: Option<H256>,
         client: &C,
     ) -> Result<(), Error> {
-        if self.block.parcels_set.contains(&parcel.hash()) {
-            return Err(StateError::Parcel(ParcelError::ParcelAlreadyImported).into())
+        if self.block.transactions_set.contains(&tx.hash()) {
+            return Err(StateError::Parcel(ParcelError::TransactionAlreadyImported).into())
         }
 
-        let invoice = self.block.state.apply(&parcel, &parcel.hash(), &parcel.signer_public(), client)?;
+        let invoice = self.block.state.apply(&tx, &tx.hash(), &tx.signer_public(), client)?;
 
-        self.block.parcels_set.insert(h.unwrap_or_else(|| parcel.hash()));
-        self.block.parcels.push(parcel);
+        self.block.transactions_set.insert(h.unwrap_or_else(|| tx.hash()));
+        self.block.transactions.push(tx);
         self.block.invoices.push(invoice);
         Ok(())
     }
 
-    /// Push parcels onto the block.
-    pub fn push_parcels<C: ChainTimeInfo + FindActionHandler>(
+    /// Push transactions onto the block.
+    pub fn push_transactions<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
-        parcels: &[SignedParcel],
+        transactions: &[SignedTransaction],
         client: &C,
     ) -> Result<(), Error> {
-        for parcel in parcels {
-            self.push_parcel(parcel.clone(), None, client)?;
+        for tx in transactions {
+            self.push_transaction(tx.clone(), None, client)?;
         }
         Ok(())
     }
@@ -184,12 +184,12 @@ impl<'x> OpenBlock<'x> {
         self.block.header.set_score(*header.score());
         self.block.header.set_timestamp(header.timestamp());
         self.block.header.set_author(*header.author());
-        self.block.header.set_parcels_root(*header.parcels_root());
+        self.block.header.set_transactions_root(*header.transactions_root());
         self.block.header.set_extra_data(header.extra_data().clone());
     }
 
     /// Turn this into a `ClosedBlock`.
-    pub fn close(mut self, parent_parcels_root: H256, parent_invoices_root: H256) -> Result<ClosedBlock, Error> {
+    pub fn close(mut self, parent_transactions_root: H256, parent_invoices_root: H256) -> Result<ClosedBlock, Error> {
         let unclosed_state = self.block.state.clone();
 
         if let Err(e) = self.engine.on_close_block(&mut self.block) {
@@ -200,9 +200,9 @@ impl<'x> OpenBlock<'x> {
             warn!("Encountered error on state commit: {}", e);
             e
         })?;
-        self.block.header.set_parcels_root(skewed_merkle_root(
-            parent_parcels_root,
-            self.block.parcels.iter().map(|e| e.rlp_bytes()),
+        self.block.header.set_transactions_root(skewed_merkle_root(
+            parent_transactions_root,
+            self.block.transactions.iter().map(|e| e.rlp_bytes()),
         ));
         self.block.header.set_state_root(state_root);
         self.block.header.set_invoices_root(skewed_merkle_root(
@@ -219,7 +219,7 @@ impl<'x> OpenBlock<'x> {
     /// Turn this into a `LockedBlock`.
     pub fn close_and_lock(
         mut self,
-        parent_parcels_root: H256,
+        parent_transactions_root: H256,
         parent_invoices_root: H256,
     ) -> Result<LockedBlock, Error> {
         if let Err(e) = self.engine.on_close_block(&mut self.block) {
@@ -231,15 +231,15 @@ impl<'x> OpenBlock<'x> {
             warn!("Encountered error on state commit: {}", e);
             e
         })?;
-        if self.block.header.parcels_root().is_zero() || self.block.header.parcels_root() == &BLAKE_NULL_RLP {
-            self.block.header.set_parcels_root(skewed_merkle_root(
-                parent_parcels_root,
-                self.block.parcels.iter().map(Encodable::rlp_bytes),
+        if self.block.header.transactions_root().is_zero() || self.block.header.transactions_root() == &BLAKE_NULL_RLP {
+            self.block.header.set_transactions_root(skewed_merkle_root(
+                parent_transactions_root,
+                self.block.transactions.iter().map(Encodable::rlp_bytes),
             ));
         }
         debug_assert_eq!(
-            self.block.header.parcels_root(),
-            &skewed_merkle_root(parent_parcels_root, self.block.parcels.iter().map(Encodable::rlp_bytes),)
+            self.block.header.transactions_root(),
+            &skewed_merkle_root(parent_transactions_root, self.block.transactions.iter().map(Encodable::rlp_bytes),)
         );
         if self.block.header.invoices_root().is_zero() || self.block.header.invoices_root() == &BLAKE_NULL_RLP {
             self.block.header.set_invoices_root(skewed_merkle_root(
@@ -266,7 +266,7 @@ impl<'x> OpenBlock<'x> {
 
 /// Just like `OpenBlock`, except that we've applied `Engine::on_close_block`, finished up the non-seal header fields.
 ///
-/// There is no function available to push a parcel.
+/// There is no function available to push a transaction.
 #[derive(Clone)]
 pub struct ClosedBlock {
     block: ExecutedBlock,
@@ -288,7 +288,7 @@ impl ClosedBlock {
 
     /// Given an engine reference, reopen the `ClosedBlock` into an `OpenBlock`.
     pub fn reopen(self, engine: &CodeChainEngine) -> OpenBlock {
-        // revert rewards (i.e. set state back at last parcel's state).
+        // revert rewards (i.e. set state back at last transaction's state).
         let mut block = self.block;
         block.state = self.unclosed_state;
         OpenBlock {
@@ -349,7 +349,7 @@ impl SealedBlock {
     pub fn rlp_bytes(&self) -> Bytes {
         let mut block_rlp = RlpStream::new_list(2);
         self.block.header.stream_rlp(&mut block_rlp, &Seal::With);
-        block_rlp.append_list(&self.block.parcels);
+        block_rlp.append_list(&self.block.transactions);
         block_rlp.out()
     }
 }
@@ -363,7 +363,7 @@ pub trait IsBlock {
     fn to_base(&self) -> Block {
         Block {
             header: self.header().clone(),
-            parcels: self.parcels().iter().cloned().map(Into::into).collect(),
+            transactions: self.transactions().iter().cloned().map(Into::into).collect(),
         }
     }
 
@@ -372,9 +372,9 @@ pub trait IsBlock {
         &self.block().header
     }
 
-    /// Get all information on parcels in this block.
-    fn parcels(&self) -> &[SignedParcel] {
-        &self.block().parcels
+    /// Get all information on transactions in this block.
+    fn transactions(&self) -> &[SignedTransaction] {
+        &self.block().transactions
     }
 
     /// Get all information on receipts in this block.
@@ -418,10 +418,10 @@ impl IsBlock for SealedBlock {
     }
 }
 
-/// Enact the block given by block header, parcels and uncles
+/// Enact the block given by block header, transactions and uncles
 pub fn enact<C: ChainTimeInfo + FindActionHandler>(
     header: &Header,
-    parcels: &[SignedParcel],
+    transactions: &[SignedTransaction],
     engine: &CodeChainEngine,
     client: &C,
     db: StateDB,
@@ -431,9 +431,9 @@ pub fn enact<C: ChainTimeInfo + FindActionHandler>(
     let mut b = OpenBlock::try_new(engine, db, parent, Address::default(), vec![], is_epoch_begin)?;
 
     b.populate_from(header);
-    b.push_parcels(parcels, client)?;
+    b.push_transactions(transactions, client)?;
 
-    b.close_and_lock(*parent.parcels_root(), *parent.invoices_root())
+    b.close_and_lock(*parent.transactions_root(), *parent.invoices_root())
 }
 
 #[cfg(test)]
@@ -449,9 +449,9 @@ mod tests {
         let genesis_header = scheme.genesis_header();
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, Address::default(), vec![], false).unwrap();
-        let parent_parcels_root = *genesis_header.parcels_root();
+        let parent_transactions_root = *genesis_header.transactions_root();
         let parent_invoices_root = *genesis_header.invoices_root();
-        let b = b.close_and_lock(parent_parcels_root, parent_invoices_root).unwrap();
+        let b = b.close_and_lock(parent_transactions_root, parent_invoices_root).unwrap();
         let _ = b.seal(&*scheme.engine, vec![]);
     }
 }

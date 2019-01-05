@@ -16,7 +16,7 @@
 
 use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId};
-use ctypes::parcel::IncompleteParcel;
+use ctypes::transaction::IncompleteTransaction;
 
 use super::Action;
 
@@ -30,15 +30,15 @@ pub struct UnsignedTransaction {
 }
 
 // FIXME: Use TryFrom.
-impl From<UnsignedTransaction> for Result<(IncompleteParcel, Option<u64>), KeyError> {
-    fn from(parcel: UnsignedTransaction) -> Self {
+impl From<UnsignedTransaction> for Result<(IncompleteTransaction, Option<u64>), KeyError> {
+    fn from(tx: UnsignedTransaction) -> Self {
         Ok((
-            IncompleteParcel {
-                fee: parcel.fee.into(),
-                network_id: parcel.network_id,
-                action: Result::from(parcel.action)?,
+            IncompleteTransaction {
+                fee: tx.fee.into(),
+                network_id: tx.network_id,
+                action: Result::from(tx.action)?,
             },
-            parcel.seq,
+            tx.seq,
         ))
     }
 }

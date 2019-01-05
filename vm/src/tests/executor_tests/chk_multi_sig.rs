@@ -16,7 +16,7 @@
 
 use ccrypto::{blake128, blake256_with_key};
 use ckey::{sign, KeyPair, NetworkId, Private};
-use ctypes::transaction::{AssetOutPoint, AssetTransferInput, Transaction};
+use ctypes::transaction::{AssetOutPoint, AssetTransferInput, ShardTransaction};
 use primitives::H256;
 use rlp::Encodable;
 
@@ -30,7 +30,7 @@ use super::executor::get_test_client;
 #[test]
 fn valid_multi_sig_0_of_2() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -71,7 +71,7 @@ fn valid_multi_sig_0_of_2() {
 #[test]
 fn valid_multi_sig_1_of_2() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -94,7 +94,7 @@ fn valid_multi_sig_1_of_2() {
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -124,7 +124,7 @@ fn valid_multi_sig_1_of_2() {
 #[test]
 fn valid_multi_sig_2_of_2() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -147,7 +147,7 @@ fn valid_multi_sig_2_of_2() {
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -179,7 +179,7 @@ fn valid_multi_sig_2_of_2() {
 #[test]
 fn valid_multi_sig_2_of_3_110() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -204,7 +204,7 @@ fn valid_multi_sig_2_of_3_110() {
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let pubkey3 = <&[u8]>::from(keypair3.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -237,7 +237,7 @@ fn valid_multi_sig_2_of_3_110() {
 #[test]
 fn valid_multi_sig_2_of_3_101() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -262,7 +262,7 @@ fn valid_multi_sig_2_of_3_101() {
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let pubkey3 = <&[u8]>::from(keypair3.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -295,7 +295,7 @@ fn valid_multi_sig_2_of_3_101() {
 #[test]
 fn valid_multi_sig_2_of_3_011() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -320,7 +320,7 @@ fn valid_multi_sig_2_of_3_011() {
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let pubkey3 = <&[u8]>::from(keypair3.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -353,7 +353,7 @@ fn valid_multi_sig_2_of_3_011() {
 #[test]
 fn invalid_multi_sig_1_of_2() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -376,7 +376,7 @@ fn invalid_multi_sig_1_of_2() {
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: "aa".into(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -407,7 +407,7 @@ fn invalid_multi_sig_1_of_2() {
 #[test]
 fn invalid_multi_sig_2_of_2() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -430,7 +430,7 @@ fn invalid_multi_sig_2_of_2() {
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: "aa".into(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -462,7 +462,7 @@ fn invalid_multi_sig_2_of_2() {
 #[test]
 fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -485,7 +485,7 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message1 = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -496,7 +496,7 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
         &blake128(&[0b11 as u8]),
     );
     let message2 = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: "aa".into(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -528,7 +528,7 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
 #[test]
 fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -551,7 +551,7 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -583,7 +583,7 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
 #[test]
 fn invalid_multi_sig_with_less_sig_than_m() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -606,7 +606,7 @@ fn invalid_multi_sig_with_less_sig_than_m() {
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -636,7 +636,7 @@ fn invalid_multi_sig_with_less_sig_than_m() {
 #[test]
 fn invalid_multi_sig_with_more_sig_than_m() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -659,7 +659,7 @@ fn invalid_multi_sig_with_more_sig_than_m() {
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),
@@ -691,7 +691,7 @@ fn invalid_multi_sig_with_more_sig_than_m() {
 #[test]
 fn invalid_multi_sig_with_too_many_arg() {
     let client = get_test_client();
-    let transaction = Transaction::AssetTransfer {
+    let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: Vec::new(),
@@ -712,7 +712,7 @@ fn invalid_multi_sig_with_too_many_arg() {
     let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
     let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
     let message = blake256_with_key(
-        &Transaction::AssetTransfer {
+        &ShardTransaction::TransferAsset {
             network_id: NetworkId::default(),
             burns: Vec::new(),
             inputs: Vec::new(),

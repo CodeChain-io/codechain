@@ -56,7 +56,7 @@ impl Config {
     }
 
     pub fn miner_options(&self) -> Result<MinerOptions, String> {
-        let (reseal_on_own_parcel, reseal_on_external_parcel) =
+        let (reseal_on_own_transaction, reseal_on_external_transaction) =
             match self.mining.reseal_on_txs.as_ref().map(|s| s.as_str()) {
                 Some("all") => (true, true),
                 Some("own") => (true, false),
@@ -79,8 +79,8 @@ impl Config {
             },
             new_work_notify: self.mining.notify_work.clone().unwrap(),
             force_sealing: self.mining.force_sealing.unwrap(),
-            reseal_on_own_parcel,
-            reseal_on_external_parcel,
+            reseal_on_own_transaction,
+            reseal_on_external_transaction,
             reseal_min_period: Duration::from_millis(self.mining.reseal_min_period.unwrap()),
             reseal_max_period: Duration::from_millis(self.mining.reseal_max_period.unwrap()),
             no_reseal_timer: self.mining.no_reseal_timer.unwrap(),
@@ -233,7 +233,7 @@ pub struct Network {
     pub min_peers: Option<usize>,
     pub max_peers: Option<usize>,
     pub sync: Option<bool>,
-    pub parcel_relay: Option<bool>,
+    pub transaction_relay: Option<bool>,
     pub discovery: Option<bool>,
     pub discovery_type: Option<String>,
     pub discovery_refresh: Option<u32>,
@@ -450,8 +450,8 @@ impl Network {
         if other.sync.is_some() {
             self.sync = other.sync;
         }
-        if other.parcel_relay.is_some() {
-            self.parcel_relay = other.parcel_relay;
+        if other.transaction_relay.is_some() {
+            self.transaction_relay = other.transaction_relay;
         }
         if other.discovery.is_some() {
             self.discovery = other.discovery;
@@ -502,8 +502,8 @@ impl Network {
         if matches.is_present("no-sync") {
             self.sync = Some(false);
         }
-        if matches.is_present("no-parcel-relay") {
-            self.parcel_relay = Some(false);
+        if matches.is_present("no-tx-relay") {
+            self.transaction_relay = Some(false);
         }
 
         if matches.is_present("no-discovery") {

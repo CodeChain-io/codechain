@@ -847,8 +847,8 @@ impl TendermintInner {
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
-        let parcels = block.parcels().to_owned().into_iter();
-        let fee = parcels.map(|parcel| parcel.fee).sum();
+        let transactions = block.transactions().to_owned().into_iter();
+        let fee = transactions.map(|tx| tx.fee).sum();
         let stakes = stake::get_stakes(block.state()).expect("Cannot get Stake status");
         for (address, share) in stake::fee_distribute(&author, fee, &stakes) {
             self.machine.add_balance(block, &address, share)?
@@ -1782,7 +1782,7 @@ mod tests {
         let db = scheme.ensure_genesis_state(db).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![], false).unwrap();
-        let b = b.close(*genesis_header.parcels_root(), *genesis_header.invoices_root()).unwrap();
+        let b = b.close(*genesis_header.transactions_root(), *genesis_header.invoices_root()).unwrap();
         if let Some(seal) = scheme.engine.generate_seal(b.block(), &genesis_header).seal_fields() {
             (b, seal)
         } else {

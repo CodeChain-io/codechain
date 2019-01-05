@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod local_parcels;
+mod local_tranasctions;
 mod mem_pool;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod miner;
@@ -24,7 +24,7 @@ mod work_notify;
 
 use ckey::{Address, Password, PlatformAddress};
 use cstate::{FindActionHandler, TopStateView};
-use ctypes::parcel::IncompleteParcel;
+use ctypes::transaction::IncompleteTransaction;
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
 
@@ -38,7 +38,7 @@ use crate::client::{
 };
 use crate::consensus::EngineType;
 use crate::error::Error;
-use crate::parcel::{SignedParcel, UnverifiedParcel};
+use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
 /// Miner client API
 pub trait MinerService: Send + Sync {
@@ -57,19 +57,19 @@ pub trait MinerService: Send + Sync {
     /// Set the extra_data that we will seal blocks with.
     fn set_extra_data(&self, extra_data: Bytes);
 
-    /// Get current minimal fee for parcels accepted to queue.
+    /// Get current minimal fee for tranasctions accepted to queue.
     fn minimal_fee(&self) -> u64;
 
-    /// Set minimal fee of parcel to be accepted for mining.
+    /// Set minimal fee of transactions to be accepted for mining.
     fn set_minimal_fee(&self, min_fee: u64);
 
-    /// Get current parcels limit in queue.
-    fn parcels_limit(&self) -> usize;
+    /// Get current transactions limit in queue.
+    fn transactions_limit(&self) -> usize;
 
-    /// Set maximal number of parcels kept in the queue (both current and future).
-    fn set_parcels_limit(&self, limit: usize);
+    /// Set maximal number of transactions kept in the queue (both current and future).
+    fn set_transactions_limit(&self, limit: usize);
 
-    /// Called when blocks are imported to chain, updates parcels queue.
+    /// Called when blocks are imported to chain, updates transactions queue.
     fn chain_new_blocks<C>(&self, chain: &C, imported: &[H256], invalid: &[H256], enacted: &[H256], retracted: &[H256])
     where
         C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner;
@@ -108,36 +108,36 @@ pub trait MinerService: Send + Sync {
         F: FnOnce(&ClosedBlock) -> T,
         Self: Sized;
 
-    /// Imports parcels to mem pool.
-    fn import_external_parcels<C: MiningBlockChainClient>(
+    /// Imports transactions to mem pool.
+    fn import_external_tranasctions<C: MiningBlockChainClient>(
         &self,
         client: &C,
-        parcels: Vec<UnverifiedParcel>,
-    ) -> Vec<Result<ParcelImportResult, Error>>;
+        transactions: Vec<UnverifiedTransaction>,
+    ) -> Vec<Result<TransactionImportResult, Error>>;
 
-    /// Imports own (node owner) parcel to mem pool.
-    fn import_own_parcel<C: MiningBlockChainClient>(
+    /// Imports own (node owner) transaction to mem pool.
+    fn import_own_transaction<C: MiningBlockChainClient>(
         &self,
         chain: &C,
-        parcel: SignedParcel,
-    ) -> Result<ParcelImportResult, Error>;
+        tx: SignedTransaction,
+    ) -> Result<TransactionImportResult, Error>;
 
-    /// Imports incomplete (node owner) parcel to mem pool.
-    fn import_incomplete_parcel<C: MiningBlockChainClient + RegularKey + RegularKeyOwner>(
+    /// Imports incomplete (node owner) transaction to mem pool.
+    fn import_incomplete_transaction<C: MiningBlockChainClient + RegularKey + RegularKeyOwner>(
         &self,
         chain: &C,
         account_provider: &AccountProvider,
-        parcel: IncompleteParcel,
+        tx: IncompleteTransaction,
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
         seq: Option<u64>,
     ) -> Result<(H256, u64), Error>;
 
-    /// Get a list of all pending parcels in the mem pool.
-    fn ready_parcels(&self) -> Vec<SignedParcel>;
+    /// Get a list of all pending transactions in the mem pool.
+    fn ready_transactions(&self) -> Vec<SignedTransaction>;
 
-    /// Get a list of all future parcels.
-    fn future_parcels(&self) -> Vec<SignedParcel>;
+    /// Get a list of all future transactions.
+    fn future_transactions(&self) -> Vec<SignedTransaction>;
 
     /// Start sealing.
     fn start_sealing<C: MiningBlockChainClient>(&self, client: &C);
@@ -149,19 +149,19 @@ pub trait MinerService: Send + Sync {
 /// Mining status
 #[derive(Debug)]
 pub struct MinerStatus {
-    /// Number of parcels in queue with state `pending` (ready to be included in block)
-    pub parcels_in_pending_queue: usize,
-    /// Number of parcels in queue with state `future` (not yet ready to be included in block)
-    pub parcels_in_future_queue: usize,
-    /// Number of parcels included in currently mined block
-    pub parcels_in_pending_block: usize,
+    /// Number of transactions in queue with state `pending` (ready to be included in block)
+    pub transactions_in_pending_queue: usize,
+    /// Number of transactions in queue with state `future` (not yet ready to be included in block)
+    pub transactions_in_future_queue: usize,
+    /// Number of transactions included in currently mined block
+    pub tranasction_in_pending_block: usize,
 }
 
-/// Represents the result of importing parcel.
+/// Represents the result of importing tranasction.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ParcelImportResult {
-    /// Parcel was imported to current queue.
+pub enum TransactionImportResult {
+    /// Tranasction was imported to current queue.
     Current,
-    /// Parcel was imported to future queue.
+    /// Transaction was imported to future queue.
     Future,
 }

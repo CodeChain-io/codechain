@@ -257,7 +257,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
                 service.register_extension(sync.clone());
                 client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
             }
-            if config.network.parcel_relay.unwrap() {
+            if config.network.transaction_relay.unwrap() {
                 service.register_extension(ParcelSyncExtension::new(client.client()));
             }
 

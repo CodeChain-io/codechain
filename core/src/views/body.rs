@@ -19,8 +19,8 @@ use ctypes::BlockNumber;
 use primitives::H256;
 use rlp::Rlp;
 
-use super::ParcelView;
-use crate::parcel::{LocalizedParcel, UnverifiedParcel};
+use super::TransactionView;
+use crate::transaction::{LocalizedTransaction, UnverifiedTransaction};
 
 /// View onto block rlp.
 pub struct BodyView<'a> {
@@ -47,58 +47,58 @@ impl<'a> BodyView<'a> {
         &self.rlp
     }
 
-    /// Return List of parcels in given block.
-    pub fn parcels(&self) -> Vec<UnverifiedParcel> {
+    /// Return List of transactions in given block.
+    pub fn transactions(&self) -> Vec<UnverifiedTransaction> {
         self.rlp.list_at(0)
     }
 
-    /// Return List of parcels with additional localization info.
-    pub fn localized_parcels(&self, block_hash: &H256, block_number: BlockNumber) -> Vec<LocalizedParcel> {
-        self.parcels()
+    /// Return List of transactions with additional localization info.
+    pub fn localized_transactions(&self, block_hash: &H256, block_number: BlockNumber) -> Vec<LocalizedTransaction> {
+        self.transactions()
             .into_iter()
             .enumerate()
-            .map(|(parcel_index, signed)| LocalizedParcel {
+            .map(|(transaction_index, signed)| LocalizedTransaction {
                 signed,
                 block_hash: *block_hash,
                 block_number,
-                parcel_index,
+                transaction_index,
                 cached_signer_public: None,
             })
             .collect()
     }
 
-    /// Return number of parcels in given block, without deserializing them.
-    pub fn parcels_count(&self) -> usize {
+    /// Return number of transactions in given block, without deserializing them.
+    pub fn transactions_count(&self) -> usize {
         self.rlp.at(0).item_count()
     }
 
-    /// Return List of parcels in given block.
-    pub fn parcel_views(&self) -> Vec<ParcelView<'a>> {
-        self.rlp.at(0).iter().map(ParcelView::new_from_rlp).collect()
+    /// Return List of transactions in given block.
+    pub fn transaction_views(&self) -> Vec<TransactionView<'a>> {
+        self.rlp.at(0).iter().map(TransactionView::new_from_rlp).collect()
     }
 
-    /// Return parcel hashes.
-    pub fn parcel_hashes(&self) -> Vec<H256> {
+    /// Return transaction hashes.
+    pub fn transaction_hashes(&self) -> Vec<H256> {
         self.rlp.at(0).iter().map(|rlp| blake256(rlp.as_raw())).collect()
     }
 
-    /// Returns parcel at given index without deserializing unnecessary data.
-    pub fn parcel_at(&self, index: usize) -> Option<UnverifiedParcel> {
+    /// Returns transaction at given index without deserializing unnecessary data.
+    pub fn transaction_at(&self, index: usize) -> Option<UnverifiedTransaction> {
         self.rlp.at(0).iter().nth(index).map(|rlp| rlp.as_val())
     }
 
-    /// Returns localized parcel at given index.
-    pub fn localized_parcel_at(
+    /// Returns localized transaction at given index.
+    pub fn localized_transaction_at(
         &self,
         block_hash: &H256,
         block_number: BlockNumber,
-        parcel_index: usize,
-    ) -> Option<LocalizedParcel> {
-        self.parcel_at(parcel_index).map(|signed| LocalizedParcel {
+        transaction_index: usize,
+    ) -> Option<LocalizedTransaction> {
+        self.transaction_at(transaction_index).map(|signed| LocalizedTransaction {
             signed,
             block_hash: *block_hash,
             block_number,
-            parcel_index,
+            transaction_index,
             cached_signer_public: None,
         })
     }

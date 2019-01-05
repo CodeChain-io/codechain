@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::UnverifiedParcel;
+use ccore::UnverifiedTransaction;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
-    Parcels(Vec<UnverifiedParcel>),
+    Parcels(Vec<UnverifiedTransaction>),
 }
 
 impl Encodable for Message {

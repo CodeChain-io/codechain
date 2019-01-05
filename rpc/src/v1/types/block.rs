@@ -54,7 +54,7 @@ impl Block {
 
             extra_data: block.header.extra_data().clone(),
 
-            transactions_root: *block.header.parcels_root(),
+            transactions_root: *block.header.transactions_root(),
             state_root: *block.header.state_root(),
             invoices_root: *block.header.invoices_root(),
 
@@ -63,7 +63,7 @@ impl Block {
 
             hash: block.header.hash(),
             transactions: block
-                .parcels
+                .transactions
                 .into_iter()
                 .enumerate()
                 .map(|(i, unverified)| {

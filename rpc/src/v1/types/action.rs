@@ -16,8 +16,7 @@
 
 use cjson::uint::Uint;
 use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public, Signature};
-use ctypes::parcel::Action as ActionType;
-use ctypes::transaction::Transaction as TransactionType;
+use ctypes::transaction::Action as ActionType;
 use ctypes::ShardId;
 use primitives::{Bytes, H160, H256};
 
@@ -233,102 +232,120 @@ pub enum ActionWithId {
 
 impl ActionWithId {
     pub fn from_core(from: ActionType, network_id: NetworkId) -> Self {
+        let tracker = from.tracker();
         match from {
-            ActionType::AssetTransaction {
-                transaction,
+            ActionType::MintAsset {
+                network_id,
+                shard_id,
+                metadata,
+                approver,
+                administrator,
+
+                output,
                 approvals,
             } => {
-                let id = transaction.hash();
-                match transaction {
-                    TransactionType::AssetMint {
-                        network_id,
-                        shard_id,
-                        metadata,
-                        approver,
-                        administrator,
-                        output,
-                    } => ActionWithId::MintAsset {
-                        network_id,
-                        shard_id,
-                        metadata,
-                        approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                        administrator: administrator
-                            .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
-                        output: Box::new(output.into()),
-                        approvals,
-                        id,
-                    },
-                    TransactionType::AssetTransfer {
-                        network_id,
-                        burns,
-                        inputs,
-                        outputs,
-                        orders,
-                    } => ActionWithId::TransferAsset {
-                        network_id,
-                        burns: burns.into_iter().map(From::from).collect(),
-                        inputs: inputs.into_iter().map(From::from).collect(),
-                        outputs: outputs.into_iter().map(From::from).collect(),
-                        orders: orders.into_iter().map(From::from).collect(),
-                        approvals,
-                        id,
-                    },
-                    TransactionType::AssetSchemeChange {
-                        network_id,
-                        asset_type,
-                        metadata,
-                        approver,
-                        administrator,
-                    } => ActionWithId::ChangeAssetScheme {
-                        network_id,
-                        asset_type,
-                        metadata,
-                        approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                        administrator: administrator
-                            .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
-                        approvals,
-                        id,
-                    },
-                    TransactionType::AssetCompose {
-                        network_id,
-                        shard_id,
-                        metadata,
-                        approver,
-                        administrator,
-                        inputs,
-                        output,
-                    } => ActionWithId::ComposeAsset {
-                        network_id,
-                        shard_id,
-                        metadata,
-                        approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                        administrator: administrator
-                            .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
-                        inputs: inputs.into_iter().map(From::from).collect(),
-                        output: Box::new(output.into()),
-                        approvals,
-                        id,
-                    },
-                    TransactionType::AssetDecompose {
-                        network_id,
-                        input,
-                        outputs,
-                    } => ActionWithId::DecomposeAsset {
-                        network_id,
-                        input: Box::new(input.into()),
-                        outputs: outputs.into_iter().map(From::from).collect(),
-                        approvals,
-                        id,
-                    },
-                    TransactionType::AssetUnwrapCCC {
-                        network_id,
-                        burn,
-                    } => ActionWithId::UnwrapCCC {
-                        network_id,
-                        burn: Box::new(burn.into()),
-                        approvals,
-                        id,
-                    },
+                let id = tracker.unwrap();
+                ActionWithId::MintAsset {
+                    network_id,
+                    shard_id,
+                    metadata,
+                    approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                    administrator: administrator
+                        .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                    output: Box::new(output.into()),
+                    approvals,
+                    id,
+                }
+            }
+            ActionType::TransferAsset {
+                network_id,
+                burns,
+                inputs,
+                outputs,
+                orders,
+                approvals,
+            } => {
+                let id = tracker.unwrap();
+                ActionWithId::TransferAsset {
+                    network_id,
+                    burns: burns.into_iter().map(From::from).collect(),
+                    inputs: inputs.into_iter().map(From::from).collect(),
+                    outputs: outputs.into_iter().map(From::from).collect(),
+                    orders: orders.into_iter().map(From::from).collect(),
+                    approvals,
+                    id,
+                }
+            }
+            ActionType::ChangeAssetScheme {
+                network_id,
+                asset_type,
+                metadata,
+                approver,
+                administrator,
+                approvals,
+            } => {
+                let id = tracker.unwrap();
+                ActionWithId::ChangeAssetScheme {
+                    network_id,
+                    asset_type,
+                    metadata,
+                    approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                    administrator: administrator
+                        .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                    approvals,
+                    id,
+                }
+            }
+            ActionType::ComposeAsset {
+                network_id,
+                shard_id,
+                metadata,
+                approver,
+                administrator,
+                inputs,
+                output,
+                approvals,
+            } => {
+                let id = tracker.unwrap();
+                ActionWithId::ComposeAsset {
+                    network_id,
+                    shard_id,
+                    metadata,
+                    approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                    administrator: administrator
+                        .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                    inputs: inputs.into_iter().map(From::from).collect(),
+                    output: Box::new(output.into()),
+                    approvals,
+                    id,
+                }
+            }
+            ActionType::DecomposeAsset {
+                network_id,
+                input,
+                outputs,
+                approvals,
+            } => {
+                let id = tracker.unwrap();
+                ActionWithId::DecomposeAsset {
+                    network_id,
+                    input: Box::new(input.into()),
+                    outputs: outputs.into_iter().map(From::from).collect(),
+                    approvals,
+                    id,
+                }
+            }
+            ActionType::UnwrapCCC {
+                network_id,
+                burn,
+                approvals,
+            } => {
+                let id = tracker.unwrap();
+                ActionWithId::UnwrapCCC {
+                    network_id,
+                    burn: Box::new(burn.into()),
+                    approvals,
+                    id,
                 }
             }
             ActionType::Pay {
@@ -417,15 +434,13 @@ impl From<Action> for Result<ActionType, KeyError> {
                     Some(administrator) => Some(administrator.try_into_address()?),
                     None => None,
                 };
-                ActionType::AssetTransaction {
-                    transaction: TransactionType::AssetMint {
-                        network_id,
-                        shard_id,
-                        metadata,
-                        approver,
-                        administrator,
-                        output: output.into(),
-                    },
+                ActionType::MintAsset {
+                    network_id,
+                    shard_id,
+                    metadata,
+                    approver,
+                    administrator,
+                    output: output.into(),
                     approvals,
                 }
             }
@@ -437,14 +452,12 @@ impl From<Action> for Result<ActionType, KeyError> {
                 orders,
 
                 approvals,
-            } => ActionType::AssetTransaction {
-                transaction: TransactionType::AssetTransfer {
-                    network_id,
-                    burns: burns.into_iter().map(From::from).collect(),
-                    inputs: inputs.into_iter().map(From::from).collect(),
-                    outputs: outputs.into_iter().map(From::from).collect(),
-                    orders: orders.into_iter().map(From::from).collect(),
-                },
+            } => ActionType::TransferAsset {
+                network_id,
+                burns: burns.into_iter().map(From::from).collect(),
+                inputs: inputs.into_iter().map(From::from).collect(),
+                outputs: outputs.into_iter().map(From::from).collect(),
+                orders: orders.into_iter().map(From::from).collect(),
                 approvals,
             },
             Action::ChangeAssetScheme {
@@ -464,14 +477,12 @@ impl From<Action> for Result<ActionType, KeyError> {
                     Some(administrator) => Some(administrator.try_into_address()?),
                     None => None,
                 };
-                ActionType::AssetTransaction {
-                    transaction: TransactionType::AssetSchemeChange {
-                        network_id,
-                        asset_type,
-                        metadata,
-                        approver,
-                        administrator,
-                    },
+                ActionType::ChangeAssetScheme {
+                    network_id,
+                    asset_type,
+                    metadata,
+                    approver,
+                    administrator,
                     approvals,
                 }
             }
@@ -494,16 +505,14 @@ impl From<Action> for Result<ActionType, KeyError> {
                     Some(administrator) => Some(administrator.try_into_address()?),
                     None => None,
                 };
-                ActionType::AssetTransaction {
-                    transaction: TransactionType::AssetCompose {
-                        network_id,
-                        shard_id,
-                        metadata,
-                        approver,
-                        administrator,
-                        inputs: inputs.into_iter().map(|input| input.into()).collect(),
-                        output: (*output).into(),
-                    },
+                ActionType::ComposeAsset {
+                    network_id,
+                    shard_id,
+                    metadata,
+                    approver,
+                    administrator,
+                    inputs: inputs.into_iter().map(|input| input.into()).collect(),
+                    output: (*output).into(),
                     approvals,
                 }
             }
@@ -513,22 +522,18 @@ impl From<Action> for Result<ActionType, KeyError> {
                 outputs,
 
                 approvals,
-            } => ActionType::AssetTransaction {
-                transaction: TransactionType::AssetDecompose {
-                    network_id,
-                    input: (*input).into(),
-                    outputs: outputs.into_iter().map(|output| output.into()).collect(),
-                },
+            } => ActionType::DecomposeAsset {
+                network_id,
+                input: (*input).into(),
+                outputs: outputs.into_iter().map(|output| output.into()).collect(),
                 approvals,
             },
             Action::UnwrapCCC {
                 network_id,
                 burn,
-            } => ActionType::AssetTransaction {
-                transaction: TransactionType::AssetUnwrapCCC {
-                    network_id,
-                    burn: burn.into(),
-                },
+            } => ActionType::UnwrapCCC {
+                network_id,
+                burn: burn.into(),
                 approvals: vec![],
             },
             Action::Pay {

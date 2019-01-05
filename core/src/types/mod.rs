@@ -19,5 +19,5 @@ mod ids;
 mod verification_queue_info;
 
 pub use self::block_status::BlockStatus;
-pub use self::ids::{BlockId, ParcelId};
+pub use self::ids::{BlockId, TransactionId};
 pub use self::verification_queue_info::VerificationQueueInfo;

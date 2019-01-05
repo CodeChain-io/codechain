@@ -18,15 +18,16 @@
 use ckey::Address;
 use cstate::{StateError, TopState, TopStateView};
 use ctypes::machine::{Machine, WithBalances};
-use ctypes::parcel::{Action, Error as ParcelError};
-use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
+use ctypes::transaction::{
+    Action, AssetTransferInput, Error as TransactionError, OrderOnTransfer, ParcelError, Timelock,
+};
 
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::client::{BlockInfo, TransactionInfo};
 use crate::error::Error;
 use crate::header::Header;
-use crate::parcel::{SignedParcel, UnverifiedParcel};
 use crate::scheme::CommonParams;
+use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
 pub struct CodeChainMachine {
     params: CommonParams,
@@ -57,8 +58,8 @@ impl CodeChainMachine {
         self.params().max_text_content_size
     }
 
-    /// Does basic verification of the parcel.
-    pub fn verify_parcel_basic(&self, p: &UnverifiedParcel, _header: &Header) -> Result<(), Error> {
+    /// Does basic verification of the transaction.
+    pub fn verify_transaction_basic(&self, p: &UnverifiedTransaction, _header: &Header) -> Result<(), Error> {
         let min_cost = self.min_cost(&p.action);
         if p.fee < min_cost {
             return Err(StateError::Parcel(ParcelError::InsufficientFee {
@@ -72,30 +73,35 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    /// Verify a particular parcel is valid, regardless of order.
-    pub fn verify_parcel_unordered(&self, p: UnverifiedParcel, _header: &Header) -> Result<SignedParcel, Error> {
-        Ok(SignedParcel::try_new(p)?)
+    /// Verify a particular transaction is valid, regardless of order.
+    pub fn verify_transaction_unordered(
+        &self,
+        p: UnverifiedTransaction,
+        _header: &Header,
+    ) -> Result<SignedTransaction, Error> {
+        Ok(SignedTransaction::try_new(p)?)
     }
 
-    /// Does verification of the parcel against the parent state.
-    pub fn verify_parcel<C: BlockInfo + TransactionInfo>(
+    /// Does verification of the transaction against the parent state.
+    pub fn verify_transaction<C: BlockInfo + TransactionInfo>(
         &self,
-        parcel: &SignedParcel,
+        tx: &SignedTransaction,
         header: &Header,
         client: &C,
         verify_timelock: bool,
     ) -> Result<(), Error> {
-        if let Action::AssetTransaction {
-            transaction,
+        if let Action::TransferAsset {
+            inputs,
+            orders,
             ..
-        } = &parcel.action
+        } = &tx.action
         {
             if verify_timelock {
-                Self::verify_transaction_timelock(transaction, header, client)?;
+                Self::verify_transfer_timelock(inputs, header, client)?;
             }
-            Self::verify_transaction_order_expired(transaction, header)?;
+            Self::verify_transfer_order_expired(orders, header)?;
         }
-        // FIXME: Filter parcels.
+        // FIXME: Filter transactions.
         Ok(())
     }
 
@@ -105,18 +111,11 @@ impl CodeChainMachine {
         header.set_score(*parent.score());
     }
 
-    fn verify_transaction_timelock<C: BlockInfo + TransactionInfo>(
-        transaction: &Transaction,
+    fn verify_transfer_timelock<C: BlockInfo + TransactionInfo>(
+        inputs: &[AssetTransferInput],
         header: &Header,
         client: &C,
     ) -> Result<(), Error> {
-        let inputs = match transaction {
-            Transaction::AssetTransfer {
-                inputs,
-                ..
-            } => inputs,
-            _ => return Ok(()),
-        };
         for input in inputs {
             if let Some(timelock) = input.timelock {
                 match timelock {
@@ -173,14 +172,7 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    fn verify_transaction_order_expired(transaction: &Transaction, header: &Header) -> Result<(), Error> {
-        let orders = match transaction {
-            Transaction::AssetTransfer {
-                orders,
-                ..
-            } => orders,
-            _ => return Ok(()),
-        };
+    fn verify_transfer_order_expired(orders: &[OrderOnTransfer], header: &Header) -> Result<(), Error> {
         for order_tx in orders {
             if order_tx.order.expiration < header.timestamp() {
                 return Err(StateError::Transaction(TransactionError::OrderExpired {
@@ -195,54 +187,49 @@ impl CodeChainMachine {
 
     fn min_cost(&self, action: &Action) -> u64 {
         match action {
-            Action::AssetTransaction {
-                transaction,
+            Action::MintAsset {
                 ..
-            } => match transaction {
-                Transaction::AssetMint {
-                    ..
-                } => self.params.min_asset_mint_cost,
-                Transaction::AssetTransfer {
-                    ..
-                } => self.params.min_asset_transfer_cost,
-                Transaction::AssetSchemeChange {
-                    ..
-                } => self.params.min_asset_scheme_change_cost,
-                Transaction::AssetCompose {
-                    ..
-                } => self.params.min_asset_compose_cost,
-                Transaction::AssetDecompose {
-                    ..
-                } => self.params.min_asset_decompose_cost,
-                Transaction::AssetUnwrapCCC {
-                    ..
-                } => self.params.min_asset_unwrap_ccc_cost,
-            },
+            } => self.params.min_asset_mint_cost,
+            Action::TransferAsset {
+                ..
+            } => self.params.min_asset_transfer_cost,
+            Action::ChangeAssetScheme {
+                ..
+            } => self.params.min_asset_scheme_change_cost,
+            Action::ComposeAsset {
+                ..
+            } => self.params.min_asset_compose_cost,
+            Action::DecomposeAsset {
+                ..
+            } => self.params.min_asset_decompose_cost,
+            Action::UnwrapCCC {
+                ..
+            } => self.params.min_asset_unwrap_ccc_cost,
             Action::Pay {
                 ..
-            } => self.params.min_pay_parcel_cost,
+            } => self.params.min_pay_transaction_cost,
             Action::SetRegularKey {
                 ..
-            } => self.params.min_set_regular_key_parcel_cost,
-            Action::CreateShard => self.params.min_create_shard_parcel_cost,
+            } => self.params.min_set_regular_key_tranasction_cost,
+            Action::CreateShard => self.params.min_create_shard_transaction_cost,
             Action::SetShardOwners {
                 ..
-            } => self.params.min_set_shard_owners_parcel_cost,
+            } => self.params.min_set_shard_owners_transaction_cost,
             Action::SetShardUsers {
                 ..
-            } => self.params.min_set_shard_users_parcel_cost,
+            } => self.params.min_set_shard_users_transaction_cost,
             Action::WrapCCC {
                 ..
-            } => self.params.min_wrap_ccc_parcel_cost,
+            } => self.params.min_wrap_ccc_transaction_cost,
             Action::Custom {
                 ..
-            } => self.params.min_custom_parcel_cost,
+            } => self.params.min_custom_transaction_cost,
             Action::Store {
                 ..
-            } => self.params.min_custom_parcel_cost,
+            } => self.params.min_store_transaction_cost,
             Action::Remove {
                 ..
-            } => self.params.min_custom_parcel_cost,
+            } => self.params.min_remove_transaction_cost,
         }
     }
 }

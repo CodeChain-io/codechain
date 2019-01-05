@@ -21,9 +21,45 @@ use ctypes::ShardId;
 pub const NETWORK_ID: &str = "tc";
 pub const SHARD_ID: ShardId = 0;
 
+macro_rules! mint_asset {
+    ($output:expr, $metadata:expr) => {
+        $crate::ctypes::transaction::Action::MintAsset {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            shard_id: $crate::impls::test_helper::SHARD_ID,
+            metadata: $metadata,
+            output: $output,
+            approver: None,
+            administrator: None,
+            approvals: vec![],
+        }
+    };
+    ($output:expr, $metadata:expr, approver: $approver:expr) => {
+        $crate::ctypes::transaction::Action::MintAsset {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            shard_id: $crate::impls::test_helper::SHARD_ID,
+            metadata: $metadata,
+            output: $output,
+            approver: Some($approver),
+            administrator: None,
+            approvals: vec![],
+        }
+    };
+    ($output:expr, $metadata:expr, administrator: $admin:expr) => {
+        $crate::ctypes::transaction::Action::MintAsset {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            shard_id: $crate::impls::test_helper::SHARD_ID,
+            metadata: $metadata,
+            output: $output,
+            approver: None,
+            administrator: Some($admin),
+            approvals: vec![],
+        }
+    };
+}
+
 macro_rules! asset_mint {
     ($output:expr, $metadata:expr) => {
-        $crate::ctypes::transaction::Transaction::AssetMint {
+        $crate::ctypes::transaction::ShardTransaction::MintAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             shard_id: $crate::impls::test_helper::SHARD_ID,
             metadata: $metadata,
@@ -33,7 +69,7 @@ macro_rules! asset_mint {
         }
     };
     ($output:expr, $metadata:expr, approver: $approver:expr) => {
-        $crate::ctypes::transaction::Transaction::AssetMint {
+        $crate::ctypes::transaction::ShardTransaction::MintAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             shard_id: $crate::impls::test_helper::SHARD_ID,
             metadata: $metadata,
@@ -43,7 +79,7 @@ macro_rules! asset_mint {
         }
     };
     ($output:expr, $metadata:expr, administrator: $admin:expr) => {
-        $crate::ctypes::transaction::Transaction::AssetMint {
+        $crate::ctypes::transaction::ShardTransaction::MintAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             shard_id: $crate::impls::test_helper::SHARD_ID,
             metadata: $metadata,
@@ -75,9 +111,9 @@ macro_rules! asset_mint_output {
 }
 
 macro_rules! asset_out_point {
-    ($hash:expr, $index:expr, $asset_type:expr, $amount:expr) => {
+    ($tracker:expr, $index:expr, $asset_type:expr, $amount:expr) => {
         $crate::ctypes::transaction::AssetOutPoint {
-            transaction_hash: $hash,
+            transaction_hash: $tracker,
             index: $index,
             asset_type: $asset_type,
             amount: $amount,
@@ -136,9 +172,52 @@ macro_rules! asset_transfer_outputs {
     };
 }
 
+macro_rules! transfer_asset {
+    (inputs: $inputs:expr, $outputs:expr) => {
+        $crate::ctypes::transaction::Action::TransferAsset {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            burns: Vec::new(),
+            inputs: $inputs,
+            outputs: $outputs,
+            orders: Vec::new(),
+            approvals: vec![],
+        }
+    };
+    (inputs: $inputs:expr, $outputs:expr, approvals: $approvals:expr) => {
+        $crate::ctypes::transaction::Action::TransferAsset {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            burns: Vec::new(),
+            inputs: $inputs,
+            outputs: $outputs,
+            orders: Vec::new(),
+            approvals: $approvals,
+        }
+    };
+    (inputs: $inputs:expr, $outputs:expr, $orders:expr) => {
+        $crate::ctypes::transaction::Action::TransferAsset {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            burns: Vec::new(),
+            inputs: $inputs,
+            outputs: $outputs,
+            orders: $orders,
+            approvals: vec![],
+        }
+    };
+    (burns: $burns:expr) => {
+        $crate::ctypes::transaction::Action::TransferAsset {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            burns: $burns,
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+            orders: Vec::new(),
+            approvals: vec![],
+        }
+    };
+}
+
 macro_rules! asset_transfer {
     (inputs: $inputs:expr, $outputs:expr) => {
-        $crate::ctypes::transaction::Transaction::AssetTransfer {
+        $crate::ctypes::transaction::ShardTransaction::TransferAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             burns: Vec::new(),
             inputs: $inputs,
@@ -147,7 +226,7 @@ macro_rules! asset_transfer {
         }
     };
     (inputs: $inputs:expr, $outputs:expr, $orders:expr) => {
-        $crate::ctypes::transaction::Transaction::AssetTransfer {
+        $crate::ctypes::transaction::ShardTransaction::TransferAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             burns: Vec::new(),
             inputs: $inputs,
@@ -156,7 +235,7 @@ macro_rules! asset_transfer {
         }
     };
     (burns: $burns:expr) => {
-        $crate::ctypes::transaction::Transaction::AssetTransfer {
+        $crate::ctypes::transaction::ShardTransaction::TransferAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             burns: $burns,
             inputs: Vec::new(),
@@ -198,7 +277,7 @@ macro_rules! order_on_transfer {
 
 macro_rules! asset_compose {
     ($metadata:expr, $inputs:expr, $outputs:expr) => {
-        $crate::ctypes::transaction::Transaction::AssetCompose {
+        $crate::ctypes::transaction::ShardTransaction::ComposeAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             shard_id: $crate::impls::test_helper::SHARD_ID,
             metadata: $metadata,
@@ -212,7 +291,7 @@ macro_rules! asset_compose {
 
 macro_rules! asset_decompose {
     ($input:expr, $outputs:expr) => {
-        $crate::ctypes::transaction::Transaction::AssetDecompose {
+        $crate::ctypes::transaction::ShardTransaction::DecomposeAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             input: $input,
             outputs: $outputs,
@@ -231,19 +310,29 @@ macro_rules! asset_wrap_ccc_output {
 }
 
 macro_rules! asset_wrap_ccc {
-    ($parcel_hash:expr, $output:expr) => {
-        $crate::ctypes::transaction::InnerTransaction::AssetWrapCCC {
+    ($tx_hash:expr, $output:expr) => {
+        $crate::ctypes::transaction::ShardTransaction::WrapCCC {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             shard_id: $crate::impls::test_helper::SHARD_ID,
-            parcel_hash: $parcel_hash,
+            tx_hash: $tx_hash,
             output: $output,
+        }
+    };
+}
+
+macro_rules! unwrap_ccc {
+    ($burn:expr) => {
+        $crate::ctypes::transaction::Action::UnwrapCCC {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            burn: $burn,
+            approvals: vec![],
         }
     };
 }
 
 macro_rules! asset_unwrap_ccc {
     ($burn:expr) => {
-        $crate::ctypes::transaction::Transaction::AssetUnwrapCCC {
+        $crate::ctypes::transaction::ShardTransaction::UnwrapCCC {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             burn: $burn,
         }
@@ -252,7 +341,7 @@ macro_rules! asset_unwrap_ccc {
 
 macro_rules! pay {
     ($receiver:expr, $amount:expr) => {
-        $crate::ctypes::parcel::Action::Pay {
+        $crate::ctypes::transaction::Action::Pay {
             receiver: $receiver,
             amount: $amount,
         }
@@ -261,7 +350,7 @@ macro_rules! pay {
 
 macro_rules! set_regular_key {
     ($key:expr) => {
-        $crate::ctypes::parcel::Action::SetRegularKey {
+        $crate::ctypes::transaction::Action::SetRegularKey {
             key: $key,
         }
     };
@@ -269,7 +358,7 @@ macro_rules! set_regular_key {
 
 macro_rules! wrap_ccc {
     ($lock_script_hash:expr, $amount:expr) => {
-        $crate::ctypes::parcel::Action::WrapCCC {
+        $crate::ctypes::transaction::Action::WrapCCC {
             shard_id: $crate::impls::test_helper::SHARD_ID,
             lock_script_hash: $lock_script_hash,
             parameters: Vec::new(),
@@ -280,7 +369,7 @@ macro_rules! wrap_ccc {
 
 macro_rules! store {
     ($content:expr, $certifier:expr, $signature:expr) => {
-        $crate::ctypes::parcel::Action::Store {
+        $crate::ctypes::transaction::Action::Store {
             content: $content,
             certifier: $certifier,
             signature: $signature,
@@ -290,7 +379,7 @@ macro_rules! store {
 
 macro_rules! remove {
     ($hash:expr, $signature:expr) => {
-        $crate::ctypes::parcel::Action::Remove {
+        $crate::ctypes::transaction::Action::Remove {
             hash: $hash,
             signature: $signature,
         }
@@ -299,13 +388,13 @@ macro_rules! remove {
 
 macro_rules! set_shard_owners {
     (shard_id: $shard_id:expr, $owners:expr) => {
-        $crate::ctypes::parcel::Action::SetShardOwners {
+        $crate::ctypes::transaction::Action::SetShardOwners {
             shard_id: $shard_id,
             owners: $owners,
         }
     };
     ($owners:expr) => {
-        $crate::ctypes::parcel::Action::SetShardOwners {
+        $crate::ctypes::transaction::Action::SetShardOwners {
             shard_id: $crate::impls::test_helper::SHARD_ID,
             owners: $owners,
         }
@@ -314,19 +403,19 @@ macro_rules! set_shard_owners {
 
 macro_rules! set_shard_users {
     ($users:expr) => {
-        $crate::ctypes::parcel::Action::SetShardUsers {
+        $crate::ctypes::transaction::Action::SetShardUsers {
             shard_id: $crate::impls::test_helper::SHARD_ID,
             users: $users,
         }
     };
 }
 
-macro_rules! parcel {
+macro_rules! transaction {
     (fee: $fee:expr, $action:expr) => {
-        parcel!(seq: 0, fee: $fee, $action)
+        transaction!(seq: 0, fee: $fee, $action)
     };
     (seq: $seq:expr, fee: $fee:expr, $action:expr) => {
-        $crate::ctypes::parcel::Parcel {
+        $crate::ctypes::transaction::Transaction {
             seq: $seq,
             fee: $fee,
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
@@ -450,14 +539,14 @@ macro_rules! check_top_level_state {
 
         check_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(text: $parcel_hash:expr) $(,$x:tt)*]) => {
-        assert_eq!(Ok(None), $state.text($parcel_hash));
+    ($state:expr, [(text: $tx_hash:expr) $(,$x:tt)*]) => {
+        assert_eq!(Ok(None), $state.text($tx_hash));
 
         check_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(text: $parcel_hash:expr => { content: $content:expr, certifier: $certifier:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(text: $tx_hash:expr => { content: $content:expr, certifier: $certifier:expr }) $(,$x:tt)*]) => {
         let text = $crate::Text::new($content, $certifier);
-        assert_eq!(Ok(Some(text)), $state.text($parcel_hash));
+        assert_eq!(Ok(Some(text)), $state.text($tx_hash));
 
         check_top_level_state!($state, [$($x),*]);
     };

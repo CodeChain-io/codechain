@@ -35,7 +35,7 @@ use crate::consensus::epoch::{PendingTransition as PendingEpochTransition, Trans
 use crate::consensus::CodeChainEngine;
 use crate::db::{self, Readable, Writable};
 use crate::encoded;
-use crate::parcel::LocalizedParcel;
+use crate::transaction::LocalizedTransaction;
 use crate::views::{BlockView, HeaderView};
 
 const BEST_BLOCK_KEY: &[u8] = b"best-block";
@@ -436,17 +436,18 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
     }
 
     /// Get parcel with given parcel hash.
-    fn parcel(&self, address: &ParcelAddress) -> Option<LocalizedParcel> {
+    fn parcel(&self, address: &ParcelAddress) -> Option<LocalizedTransaction> {
         self.block_body(&address.block_hash).and_then(|body| {
             self.block_number(&address.block_hash)
-                .and_then(|n| body.view().localized_parcel_at(&address.block_hash, n, address.index))
+                .and_then(|n| body.view().localized_transaction_at(&address.block_hash, n, address.index))
         })
     }
 
     /// Get a list of parcels for a given block.
     /// Returns None if block does not exist.
-    fn parcels(&self, hash: &H256) -> Option<Vec<LocalizedParcel>> {
-        self.block_body(hash).and_then(|body| self.block_number(hash).map(|n| body.view().localized_parcels(hash, n)))
+    fn parcels(&self, hash: &H256) -> Option<Vec<LocalizedTransaction>> {
+        self.block_body(hash)
+            .and_then(|body| self.block_number(hash).map(|n| body.view().localized_transactions(hash, n)))
     }
 }
 

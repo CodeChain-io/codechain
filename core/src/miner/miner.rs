@@ -22,17 +22,18 @@ use std::time::{Duration, Instant};
 
 use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
 use cstate::{FindActionHandler, StateError, TopLevelState};
-use ctypes::parcel::{Action, Error as ParcelError, IncompleteParcel};
-use ctypes::transaction::{Error as TransactionError, Timelock, Transaction};
+use ctypes::transaction::ParcelError;
+use ctypes::transaction::{Action, IncompleteTransaction};
+use ctypes::transaction::{Error as TransactionError, Timelock};
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
-use super::mem_pool::{AccountDetails, MemPool, ParcelOrigin, ParcelTimelock, RemovalReason};
+use super::mem_pool::{AccountDetails, MemPool, RemovalReason, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
-use super::{MinerService, MinerStatus, ParcelImportResult};
+use super::{MinerService, MinerStatus, TransactionImportResult};
 use crate::account_provider::{AccountProvider, SignError};
 use crate::block::{Block, ClosedBlock, IsBlock};
 use crate::client::{
@@ -43,9 +44,9 @@ use crate::consensus::{CodeChainEngine, EngineType};
 use crate::encoded;
 use crate::error::Error;
 use crate::header::Header;
-use crate::parcel::{SignedParcel, UnverifiedParcel};
 use crate::scheme::Scheme;
-use crate::types::{BlockId, ParcelId};
+use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::types::{BlockId, TransactionId};
 
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]
@@ -54,11 +55,11 @@ pub struct MinerOptions {
     pub new_work_notify: Vec<String>,
     /// Force the miner to reseal, even when nobody has asked for work.
     pub force_sealing: bool,
-    /// Reseal on receipt of new external parcels.
-    pub reseal_on_external_parcel: bool,
-    /// Reseal on receipt of new local parcels.
-    pub reseal_on_own_parcel: bool,
-    /// Minimum period between parcel-inspired reseals.
+    /// Reseal on receipt of new external transactions.
+    pub reseal_on_external_transaction: bool,
+    /// Reseal on receipt of new local transactions.
+    pub reseal_on_own_transaction: bool,
+    /// Minimum period between transaction-inspired reseals.
     pub reseal_min_period: Duration,
     /// Maximum period between blocks (enables force sealing after that).
     pub reseal_max_period: Duration,
@@ -66,7 +67,7 @@ pub struct MinerOptions {
     pub no_reseal_timer: bool,
     /// Maximum size of the mem pool.
     pub mem_pool_size: usize,
-    /// Maximum memory usage of parcels in the queue (current / future).
+    /// Maximum memory usage of transactions in the queue (current / future).
     pub mem_pool_memory_limit: Option<usize>,
     /// How many historical work packages can we store before running out?
     pub work_queue_size: usize,
@@ -77,8 +78,8 @@ impl Default for MinerOptions {
         MinerOptions {
             new_work_notify: vec![],
             force_sealing: false,
-            reseal_on_external_parcel: true,
-            reseal_on_own_parcel: true,
+            reseal_on_external_transaction: true,
+            reseal_on_own_transaction: true,
             reseal_min_period: Duration::from_secs(2),
             reseal_max_period: Duration::from_secs(120),
             no_reseal_timer: false,
@@ -100,11 +101,11 @@ struct SealingWork {
     enabled: bool,
 }
 
-type ParcelListener = Box<Fn(&[H256]) + Send + Sync>;
+type TransactionListener = Box<Fn(&[H256]) + Send + Sync>;
 
 pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
-    parcel_listener: RwLock<Vec<ParcelListener>>,
+    transaction_listener: RwLock<Vec<TransactionListener>>,
     next_allowed_reseal: Mutex<Instant>,
     next_mandatory_reseal: RwLock<Instant>,
     sealing_block_last_request: Mutex<u64>,
@@ -145,7 +146,7 @@ impl Miner {
 
         Self {
             mem_pool,
-            parcel_listener: RwLock::new(vec![]),
+            transaction_listener: RwLock::new(vec![]),
             next_allowed_reseal: Mutex::new(Instant::now()),
             next_mandatory_reseal: RwLock::new(Instant::now() + options.reseal_max_period),
             params: RwLock::new(AuthoringParams::default()),
@@ -162,9 +163,9 @@ impl Miner {
         }
     }
 
-    /// Set a callback to be notified about imported parcels' hashes.
-    pub fn add_parcels_listener(&self, f: Box<Fn(&[H256]) + Send + Sync>) {
-        self.parcel_listener.write().push(f);
+    /// Set a callback to be notified about imported transactions' hashes.
+    pub fn add_transactions_listener(&self, f: Box<Fn(&[H256]) + Send + Sync>) {
+        self.transaction_listener.write().push(f);
     }
 
     /// Get `Some` `clone()` of the current pending block's state or `None` if we're not sealing.
@@ -188,13 +189,13 @@ impl Miner {
 
     /// Check is reseal is allowed and necessary.
     fn requires_reseal(&self, best_block: BlockNumber) -> bool {
-        let has_local_parcels = self.mem_pool.read().has_local_pending_parcels();
+        let has_local_transactions = self.mem_pool.read().has_local_pending_transactions();
         let mut sealing_work = self.sealing_work.lock();
         if sealing_work.enabled {
             ctrace!(MINER, "requires_reseal: sealing enabled");
             let last_request = *self.sealing_block_last_request.lock();
             let should_disable_sealing = !self.options.force_sealing
-                && !has_local_parcels
+                && !has_local_transactions
                 && self.engine.seals_internally().is_none()
                 && best_block > last_request
                 && best_block - last_request > SEALING_TIMEOUT_IN_BLOCKS;
@@ -221,43 +222,43 @@ impl Miner {
         }
     }
 
-    fn add_parcels_to_pool<C: AccountData + BlockChain + RegularKeyOwner>(
+    fn add_transactions_to_pool<C: AccountData + BlockChain + RegularKeyOwner>(
         &self,
         client: &C,
-        parcels: Vec<UnverifiedParcel>,
-        default_origin: ParcelOrigin,
+        transactions: Vec<UnverifiedTransaction>,
+        default_origin: TxOrigin,
         mem_pool: &mut MemPool,
-    ) -> Vec<Result<ParcelImportResult, Error>> {
+    ) -> Vec<Result<TransactionImportResult, Error>> {
         let best_block_header = client.best_block_header().decode();
         let insertion_time = client.chain_info().best_block_number;
-        let mut inserted = Vec::with_capacity(parcels.len());
+        let mut inserted = Vec::with_capacity(transactions.len());
 
-        let results = parcels
+        let results = transactions
             .into_iter()
-            .map(|parcel| {
-                let hash = parcel.hash();
-                if client.parcel_block(&ParcelId::Hash(hash)).is_some() {
-                    cdebug!(MINER, "Rejected parcel {:?}: already in the blockchain", hash);
-                    return Err(StateError::from(ParcelError::ParcelAlreadyImported).into())
+            .map(|tx| {
+                let hash = tx.hash();
+                if client.transaction_block(&TransactionId::Hash(hash)).is_some() {
+                    cdebug!(MINER, "Rejected transaction {:?}: already in the blockchain", hash);
+                    return Err(StateError::from(ParcelError::TransactionAlreadyImported).into())
                 }
                 match self
                     .engine
-                    .verify_parcel_basic(&parcel, &best_block_header)
-                    .and_then(|_| self.engine.verify_parcel_unordered(parcel, &best_block_header))
+                    .verify_transaction_basic(&tx, &best_block_header)
+                    .and_then(|_| self.engine.verify_transaction_unordered(tx, &best_block_header))
                 {
                     Err(e) => {
-                        cdebug!(MINER, "Rejected parcel {:?} with invalid signature: {:?}", hash, e);
+                        cdebug!(MINER, "Rejected transaction {:?} with invalid signature: {:?}", hash, e);
                         Err(e)
                     }
-                    Ok(parcel) => {
-                        // This check goes here because verify_parcel takes SignedParcel parameter
-                        self.engine.machine().verify_parcel(&parcel, &best_block_header, client, false)?;
+                    Ok(tx) => {
+                        // This check goes here because verify_transaction takes SignedTransaction parameter
+                        self.engine.machine().verify_transaction(&tx, &best_block_header, client, false)?;
 
                         let origin = self
                             .accounts
                             .as_ref()
-                            .and_then(|accounts| match accounts.has_public(&parcel.signer_public()) {
-                                Ok(true) => Some(ParcelOrigin::Local),
+                            .and_then(|accounts| match accounts.has_public(&tx.signer_public()) {
+                                Ok(true) => Some(TxOrigin::Local),
                                 Ok(false) => None,
                                 Err(_) => None,
                             })
@@ -272,11 +273,11 @@ impl Miner {
                             }
                         };
 
-                        let hash = parcel.hash();
+                        let hash = tx.hash();
                         let timestamp = client.chain_info().best_block_timestamp;
-                        let timelock = self.calculate_timelock(&parcel, client)?;
+                        let timelock = self.calculate_timelock(&tx, client)?;
                         let result = mem_pool
-                            .add(parcel, origin, insertion_time, timestamp, timelock, &fetch_account)
+                            .add(tx, origin, insertion_time, timestamp, timelock, &fetch_account)
                             .map_err(StateError::from)?;
 
                         inserted.push(hash);
@@ -286,65 +287,56 @@ impl Miner {
             })
             .collect();
 
-        for listener in &*self.parcel_listener.read() {
+        for listener in &*self.transaction_listener.read() {
             listener(&inserted);
         }
 
         results
     }
 
-    fn calculate_timelock<C: BlockChain>(&self, parcel: &SignedParcel, client: &C) -> Result<ParcelTimelock, Error> {
+    fn calculate_timelock<C: BlockChain>(&self, tx: &SignedTransaction, client: &C) -> Result<TxTimelock, Error> {
         let mut max_block = None;
         let mut max_timestamp = None;
-        if let Action::AssetTransaction {
-            transaction,
+        if let Action::TransferAsset {
+            inputs,
             ..
-        } = &parcel.action
+        } = &tx.action
         {
-            if let Transaction::AssetTransfer {
-                inputs,
-                ..
-            } = transaction
-            {
-                for input in inputs {
-                    if let Some(timelock) = input.timelock {
-                        let (is_block_number, value) = match timelock {
-                            Timelock::Block(value) => (true, value),
-                            Timelock::BlockAge(value) => (
-                                true,
-                                client.transaction_block_number(&input.prev_out.transaction_hash).ok_or_else(|| {
-                                    Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                        timelock,
-                                        remaining_time: u64::max_value(),
-                                    }))
-                                })? + value,
-                            ),
-                            Timelock::Time(value) => (false, value),
-                            Timelock::TimeAge(value) => (
-                                false,
-                                client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or_else(
-                                    || {
-                                        Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                            timelock,
-                                            remaining_time: u64::max_value(),
-                                        }))
-                                    },
-                                )? + value,
-                            ),
-                        };
-                        if is_block_number {
-                            if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
-                                max_block = Some(value);
-                            }
-                        } else if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value
-                        {
-                            max_timestamp = Some(value);
+            for input in inputs {
+                if let Some(timelock) = input.timelock {
+                    let (is_block_number, value) = match timelock {
+                        Timelock::Block(value) => (true, value),
+                        Timelock::BlockAge(value) => (
+                            true,
+                            client.transaction_block_number(&input.prev_out.transaction_hash).ok_or_else(|| {
+                                Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                    timelock,
+                                    remaining_time: u64::max_value(),
+                                }))
+                            })? + value,
+                        ),
+                        Timelock::Time(value) => (false, value),
+                        Timelock::TimeAge(value) => (
+                            false,
+                            client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or_else(|| {
+                                Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                    timelock,
+                                    remaining_time: u64::max_value(),
+                                }))
+                            })? + value,
+                        ),
+                    };
+                    if is_block_number {
+                        if max_block.is_none() || max_block.expect("The previous guard ensures") < value {
+                            max_block = Some(value);
                         }
+                    } else if max_timestamp.is_none() || max_timestamp.expect("The previous guard ensures") < value {
+                        max_timestamp = Some(value);
                     }
                 }
             }
         };
-        Ok(ParcelTimelock {
+        Ok(TxTimelock {
             block: max_block,
             timestamp: max_timestamp,
         })
@@ -398,16 +390,16 @@ impl Miner {
         }
     }
 
-    /// Prepares new block for sealing including top parcels from queue.
+    /// Prepares new block for sealing including top transactions from queue.
     fn prepare_block<
         C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
     >(
         &self,
         chain: &C,
     ) -> Result<(ClosedBlock, Option<H256>), Error> {
-        let (parcels, mut open_block, original_work_hash) = {
+        let (transactions, mut open_block, original_work_hash) = {
             let max_body_size = self.engine.params().max_body_size;
-            let parcels = self.mem_pool.read().top_parcels(max_body_size);
+            let transactions = self.mem_pool.read().top_transactions(max_body_size);
             let mut sealing_work = self.sealing_work.lock();
             let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
 
@@ -415,32 +407,32 @@ impl Miner {
             let params = self.params.read().clone();
             let open_block = chain.prepare_open_block(params.author, params.extra_data);
 
-            (parcels, open_block, last_work_hash)
+            (transactions, open_block, last_work_hash)
         };
 
-        let mut invalid_parcels = HashSet::new();
+        let mut invalid_transactions = HashSet::new();
         let block_number = open_block.block().header().number();
 
-        let mut parcel_count: usize = 0;
-        let parcel_total = parcels.len();
-        for parcel in parcels {
-            let hash = parcel.hash();
+        let mut tx_count: usize = 0;
+        let tx_total = transactions.len();
+        for tx in transactions {
+            let hash = tx.hash();
             let start = Instant::now();
-            // Check whether parcel type is allowed for sender
+            // Check whether transaction type is allowed for sender
             let result = self
                 .engine
                 .machine()
-                .verify_parcel(&parcel, open_block.header(), chain, true)
-                .and_then(|_| open_block.push_parcel(parcel, None, chain));
+                .verify_transaction(&tx, open_block.header(), chain, true)
+                .and_then(|_| open_block.push_transaction(tx, None, chain));
 
             match result {
-                // already have parcel - ignore
-                Err(Error::State(StateError::Parcel(ParcelError::ParcelAlreadyImported))) => {}
+                // already have transaction - ignore
+                Err(Error::State(StateError::Parcel(ParcelError::TransactionAlreadyImported))) => {}
                 Err(e) => {
-                    invalid_parcels.insert(hash);
+                    invalid_transactions.insert(hash);
                     cdebug!(
                         MINER,
-                        "Error adding parcel to block: number={}. parcel_hash={:?}, Error: {:?}",
+                        "Error adding transaction to block: number={}. tx_hash={:?}, Error: {:?}",
                         block_number,
                         hash,
                         e
@@ -448,20 +440,20 @@ impl Miner {
                 }
                 Ok(()) => {
                     let took = start.elapsed();
-                    ctrace!(MINER, "Adding parcel {:?} took {:?}", hash, took);
-                    parcel_count += 1;
+                    ctrace!(MINER, "Adding transaction {:?} took {:?}", hash, took);
+                    tx_count += 1;
                 } // imported ok
             }
         }
-        ctrace!(MINER, "Pushed {}/{} parcels", parcel_count, parcel_total);
+        ctrace!(MINER, "Pushed {}/{} transactions", tx_count, tx_total);
 
-        let (parcels_root, invoices_root) = {
+        let (transactions_root, invoices_root) = {
             let parent_hash = open_block.header().parent_hash();
             let parent_header = chain.block_header(&BlockId::Hash(*parent_hash)).expect("Parent header MUST exist");
             let parent_view = parent_header.view();
-            (parent_view.parcels_root(), parent_view.invoices_root())
+            (parent_view.transactions_root(), parent_view.invoices_root())
         };
-        let block = open_block.close(parcels_root, invoices_root)?;
+        let block = open_block.close(transactions_root, invoices_root)?;
 
         let fetch_seq = |p: &Public| {
             let address = public_to_address(p);
@@ -471,7 +463,7 @@ impl Miner {
 
         {
             let mut queue = self.mem_pool.write();
-            for hash in invalid_parcels {
+            for hash in invalid_transactions {
                 queue.remove(
                     &hash,
                     &fetch_seq,
@@ -488,7 +480,7 @@ impl Miner {
     fn seal_and_import_block_internally<C>(&self, chain: &C, block: ClosedBlock) -> bool
     where
         C: BlockChain + ImportSealedBlock, {
-        if block.parcels().is_empty()
+        if block.transactions().is_empty()
             && !self.options.force_sealing
             && Instant::now() <= *self.next_mandatory_reseal.read()
         {
@@ -538,7 +530,7 @@ impl Miner {
     }
 
     /// Are we allowed to do a non-mandatory reseal?
-    fn parcel_reseal_allowed(&self) -> bool {
+    fn transaction_reseal_allowed(&self) -> bool {
         self.sealing_enabled.load(Ordering::Relaxed) && (Instant::now() > *self.next_allowed_reseal.lock())
     }
 
@@ -565,9 +557,9 @@ impl MinerService for Miner {
         let status = self.mem_pool.read().status();
         let sealing_work = self.sealing_work.lock();
         MinerStatus {
-            parcels_in_pending_queue: status.pending,
-            parcels_in_future_queue: status.future,
-            parcels_in_pending_block: sealing_work.queue.peek_last_ref().map_or(0, |b| b.parcels().len()),
+            transactions_in_pending_queue: status.pending,
+            transactions_in_future_queue: status.future,
+            tranasction_in_pending_block: sealing_work.queue.peek_last_ref().map_or(0, |b| b.transactions().len()),
         }
     }
 
@@ -611,11 +603,11 @@ impl MinerService for Miner {
         self.mem_pool.write().set_minimal_fee(min_fee);
     }
 
-    fn parcels_limit(&self) -> usize {
+    fn transactions_limit(&self) -> usize {
         self.mem_pool.read().limit()
     }
 
-    fn set_parcels_limit(&self, limit: usize) {
+    fn set_transactions_limit(&self, limit: usize) {
         self.mem_pool.write().set_limit(limit)
     }
 
@@ -630,15 +622,15 @@ impl MinerService for Miner {
         C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner, {
         ctrace!(MINER, "chain_new_blocks");
 
-        // Then import all parcels...
+        // Then import all transactions...
         {
             let mut mem_pool = self.mem_pool.write();
             for hash in retracted {
                 let block = chain.block(&(*hash).into()).expect(
                     "Client is sending message after commit to db and inserting to chain; the block is available; qed",
                 );
-                let parcels = block.parcels();
-                let _ = self.add_parcels_to_pool(chain, parcels, ParcelOrigin::RetractedBlock, &mut mem_pool);
+                let transactions = block.transactions();
+                let _ = self.add_transactions_to_pool(chain, transactions, TxOrigin::RetractedBlock, &mut mem_pool);
             }
         }
 
@@ -731,7 +723,7 @@ impl MinerService for Miner {
         if self.requires_reseal(chain.chain_info().best_block_number) {
             let (block, original_work_hash) = match self.prepare_block(chain) {
                 Ok((block, original_work_hash)) => {
-                    if !allow_empty_block && block.block().parcels().is_empty() {
+                    if !allow_empty_block && block.block().transactions().is_empty() {
                         ctrace!(MINER, "update_sealing: block is empty, and allow_empty_block is false");
                         return
                     }
@@ -813,18 +805,18 @@ impl MinerService for Miner {
         ret.map(f)
     }
 
-    fn import_external_parcels<C: MiningBlockChainClient>(
+    fn import_external_tranasctions<C: MiningBlockChainClient>(
         &self,
         client: &C,
-        parcels: Vec<UnverifiedParcel>,
-    ) -> Vec<Result<ParcelImportResult, Error>> {
-        ctrace!(EXTERNAL_PARCEL, "Importing external parcels");
+        transactions: Vec<UnverifiedTransaction>,
+    ) -> Vec<Result<TransactionImportResult, Error>> {
+        ctrace!(EXTERNAL_PARCEL, "Importing external transactions");
         let results = {
             let mut mem_pool = self.mem_pool.write();
-            self.add_parcels_to_pool(client, parcels, ParcelOrigin::External, &mut mem_pool)
+            self.add_transactions_to_pool(client, transactions, TxOrigin::External, &mut mem_pool)
         };
 
-        if !results.is_empty() && self.options.reseal_on_external_parcel && self.parcel_reseal_allowed() {
+        if !results.is_empty() && self.options.reseal_on_external_transaction && self.transaction_reseal_allowed() {
             // ------------------------------------------------------------------
             // | NOTE Code below requires mem_pool and sealing_queue locks.     |
             // | Make sure to release the locks before calling that method.     |
@@ -834,21 +826,21 @@ impl MinerService for Miner {
         results
     }
 
-    fn import_own_parcel<C: MiningBlockChainClient>(
+    fn import_own_transaction<C: MiningBlockChainClient>(
         &self,
         chain: &C,
-        parcel: SignedParcel,
-    ) -> Result<ParcelImportResult, Error> {
-        ctrace!(OWN_PARCEL, "Importing parcel: {:?}", parcel);
+        tx: SignedTransaction,
+    ) -> Result<TransactionImportResult, Error> {
+        ctrace!(OWN_PARCEL, "Importing transaction: {:?}", tx);
 
         let imported = {
             // Be sure to release the lock before we call prepare_work_sealing
             let mut mem_pool = self.mem_pool.write();
-            // We need to re-validate parcels
+            // We need to re-validate transactions
             let import = self
-                .add_parcels_to_pool(chain, vec![parcel.into()], ParcelOrigin::Local, &mut mem_pool)
+                .add_transactions_to_pool(chain, vec![tx.into()], TxOrigin::Local, &mut mem_pool)
                 .pop()
-                .expect("one result returned per added parcel; one added => one result; qed");
+                .expect("one result returned per added transaction; one added => one result; qed");
 
             match import {
                 Ok(_) => {
@@ -856,7 +848,7 @@ impl MinerService for Miner {
                 }
                 Err(ref e) => {
                     ctrace!(OWN_PARCEL, "Status: {:?}", mem_pool.status());
-                    cwarn!(OWN_PARCEL, "Error importing parcel: {:?}", e);
+                    cwarn!(OWN_PARCEL, "Error importing transaction: {:?}", e);
                 }
             }
             import
@@ -866,8 +858,8 @@ impl MinerService for Miner {
         // | NOTE Code below requires mem_pool and sealing_queue locks.     |
         // | Make sure to release the locks before calling that method.     |
         // ------------------------------------------------------------------
-        if imported.is_ok() && self.options.reseal_on_own_parcel && self.parcel_reseal_allowed()
-            // Make sure to do it after parcel is imported and lock is dropped.
+        if imported.is_ok() && self.options.reseal_on_own_transaction && self.transaction_reseal_allowed()
+            // Make sure to do it after transaction is imported and lock is dropped.
             // We need to create pending block and enable sealing.
             && (self.engine.seals_internally().unwrap_or(false) || !self.prepare_work_sealing(chain))
         {
@@ -879,11 +871,11 @@ impl MinerService for Miner {
         imported
     }
 
-    fn import_incomplete_parcel<C: MiningBlockChainClient + RegularKey + RegularKeyOwner>(
+    fn import_incomplete_transaction<C: MiningBlockChainClient + RegularKey + RegularKeyOwner>(
         &self,
         client: &C,
         account_provider: &AccountProvider,
-        parcel: IncompleteParcel,
+        tx: IncompleteTransaction,
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
         seq: Option<u64>,
@@ -897,40 +889,40 @@ impl MinerService for Miner {
                     let regular_key_address = client.latest_regular_key(&address).map(|key| public_to_address(&key));
                     once(address).chain(owner_address.into_iter()).chain(regular_key_address.into_iter()).collect()
                 };
-                get_next_seq(self.future_parcels().into_iter(), &addresses)
+                get_next_seq(self.future_transactions().into_iter(), &addresses)
                     .map(|seq| {
-                        cerror!(RPC, "There are future parcels for {}", platform_address);
+                        cerror!(RPC, "There are future transactions for {}", platform_address);
                         seq
                     })
                     .unwrap_or_else(|| {
-                        get_next_seq(self.ready_parcels().into_iter(), &addresses)
+                        get_next_seq(self.ready_transactions().into_iter(), &addresses)
                             .map(|seq| {
-                                cdebug!(RPC, "There are ready parcels for {}", platform_address);
+                                cdebug!(RPC, "There are ready transactions for {}", platform_address);
                                 seq
                             })
                             .unwrap_or_else(|| client.latest_seq(&address))
                     })
             }
         };
-        let parcel = parcel.complete(seq);
-        let parcel_hash = parcel.hash();
-        let sig = account_provider.sign(address, passphrase, parcel_hash)?;
-        let unverified = UnverifiedParcel::new(parcel, sig);
-        let signed = SignedParcel::try_new(unverified)?;
+        let tx = tx.complete(seq);
+        let tx_hash = tx.hash();
+        let sig = account_provider.sign(address, passphrase, tx_hash)?;
+        let unverified = UnverifiedTransaction::new(tx, sig);
+        let signed = SignedTransaction::try_new(unverified)?;
         let hash = signed.hash();
-        self.import_own_parcel(client, signed)?;
+        self.import_own_transaction(client, signed)?;
 
         Ok((hash, seq))
     }
 
-    fn ready_parcels(&self) -> Vec<SignedParcel> {
+    fn ready_transactions(&self) -> Vec<SignedTransaction> {
         let max_body_size = self.engine.params().max_body_size;
-        self.mem_pool.read().top_parcels(max_body_size)
+        self.mem_pool.read().top_transactions(max_body_size)
     }
 
-    /// Get a list of all future parcels.
-    fn future_parcels(&self) -> Vec<SignedParcel> {
-        self.mem_pool.read().future_parcels()
+    /// Get a list of all future transactions.
+    fn future_transactions(&self) -> Vec<SignedTransaction> {
+        self.mem_pool.read().future_tranasctions()
     }
 
     fn start_sealing<C: MiningBlockChainClient>(&self, client: &C) {
@@ -940,7 +932,7 @@ impl MinerService for Miner {
         // | NOTE Code below requires mem_pool and sealing_queue locks.     |
         // | Make sure to release the locks before calling that method.     |
         // ------------------------------------------------------------------
-        if self.parcel_reseal_allowed() {
+        if self.transaction_reseal_allowed() {
             cdebug!(MINER, "Update sealing");
             self.update_sealing(client, true);
         }
@@ -952,10 +944,10 @@ impl MinerService for Miner {
     }
 }
 
-fn get_next_seq(parcels: impl Iterator<Item = SignedParcel>, addresses: &[Address]) -> Option<u64> {
-    let mut seqs: Vec<_> = parcels
-        .filter(|parcel| addresses.contains(&public_to_address(&parcel.signer_public())))
-        .map(|parcel| parcel.seq)
+fn get_next_seq(transactions: impl Iterator<Item = SignedTransaction>, addresses: &[Address]) -> Option<u64> {
+    let mut seqs: Vec<_> = transactions
+        .filter(|tx| addresses.contains(&public_to_address(&tx.signer_public())))
+        .map(|tx| tx.seq)
         .collect();
     seqs.sort();
     seqs.last().map(|seq| seq + 1)

@@ -28,8 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerToken};
 use ctypes::invoice::Invoice;
-use ctypes::parcel::Action;
-use ctypes::transaction::{AssetTransferInput, PartialHashing, Transaction};
+use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
@@ -55,10 +54,10 @@ use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::{BlockImportError, Error, ImportError, SchemeError};
 use crate::miner::{Miner, MinerService};
-use crate::parcel::{LocalizedParcel, SignedParcel, UnverifiedParcel};
 use crate::scheme::{CommonParams, Scheme};
 use crate::service::ClientIoMessage;
-use crate::types::{BlockId, BlockStatus, ParcelId, VerificationQueueInfo as BlockQueueInfo};
+use crate::transaction::{LocalizedTransaction, SignedTransaction, UnverifiedTransaction};
+use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
 
@@ -78,7 +77,7 @@ pub struct Client {
     notify: RwLock<Vec<Weak<ChainNotify>>>,
 
     /// Count of pending parcels in the queue
-    queue_parcels: AtomicUsize,
+    queue_transactions: AtomicUsize,
 
     genesis_accounts: Vec<Address>,
 
@@ -125,7 +124,7 @@ impl Client {
             db,
             state_db: RwLock::new(state_db),
             notify: RwLock::new(Vec::new()),
-            queue_parcels: AtomicUsize::new(0),
+            queue_transactions: AtomicUsize::new(0),
             genesis_accounts,
             importer,
             reseal_timer: RwLock::new(None),
@@ -179,10 +178,10 @@ impl Client {
         }
     }
 
-    fn parcel_address(&self, id: &ParcelId) -> Option<ParcelAddress> {
+    fn parcel_address(&self, id: &TransactionId) -> Option<ParcelAddress> {
         match id {
-            ParcelId::Hash(hash) => self.block_chain().parcel_address(hash),
-            ParcelId::Location(id, index) => Self::block_hash(&self.block_chain(), id).map(|hash| ParcelAddress {
+            TransactionId::Hash(hash) => self.block_chain().parcel_address(hash),
+            TransactionId::Location(id, index) => Self::block_hash(&self.block_chain(), id).map(|hash| ParcelAddress {
                 block_hash: hash,
                 index: *index,
             }),
@@ -208,14 +207,14 @@ impl Client {
     /// Import parcels from the IO queue
     pub fn import_queued_parcels(&self, parcels: &[Bytes], peer_id: NodeId) -> usize {
         ctrace!(EXTERNAL_PARCEL, "Importing queued");
-        self.queue_parcels.fetch_sub(parcels.len(), AtomicOrdering::SeqCst);
-        let parcels: Vec<UnverifiedParcel> =
+        self.queue_transactions.fetch_sub(parcels.len(), AtomicOrdering::SeqCst);
+        let parcels: Vec<UnverifiedTransaction> =
             parcels.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
         let hashes: Vec<_> = parcels.iter().map(|parcel| parcel.hash()).collect();
         self.notify(|notify| {
-            notify.parcels_received(hashes.clone(), peer_id);
+            notify.transactions_received(hashes.clone(), peer_id);
         });
-        let results = self.importer.miner.import_external_parcels(self, parcels);
+        let results = self.importer.miner.import_external_tranasctions(self, parcels);
         results.len()
     }
 
@@ -262,7 +261,7 @@ impl TimeoutHandler for Client {
             }
             RESEAL_MIN_TIMER_TOKEN => {
                 // Checking self.ready_parcels() for efficiency
-                if !self.ready_parcels().is_empty() {
+                if !self.ready_transactions().is_empty() {
                     self.update_sealing(false);
                 }
             }
@@ -350,12 +349,8 @@ impl AssetClient for Client {
         }
 
         let parcel = self.transaction(&transaction_hash).expect("There is a successful transaction");
-        let transaction = if let Action::AssetTransaction {
-            ref transaction,
-            ..
-        } = parcel.action
-        {
-            transaction
+        let transaction = if let Some(tx) = Option::<ShardTransaction>::from(parcel.action.clone()) {
+            tx
         } else {
             return Ok(None)
         };
@@ -380,9 +375,9 @@ impl TextClient for Client {
 }
 
 impl ExecuteClient for Client {
-    fn execute_transaction(&self, transaction: &Transaction, sender: &Address) -> Result<Invoice, Error> {
+    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> Result<Invoice, Error> {
         let mut state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
-        Ok(state.apply_transaction(transaction, sender, &[], self)?)
+        Ok(state.apply_shard_transaction(transaction, sender, &[], self)?)
     }
 
     fn execute_vm(
@@ -449,7 +444,7 @@ impl EngineInfo for Client {
 
     fn mining_reward(&self, block_number: u64) -> Option<u64> {
         let block = self.block(&block_number.into())?;
-        let block_fee = self.engine().block_fee(Box::new(block.parcels().into_iter()));
+        let block_fee = self.engine().block_fee(Box::new(block.transactions().into_iter()));
         Some(self.engine().block_reward(block_number) + block_fee)
     }
 
@@ -504,7 +499,7 @@ impl BlockInfo for Client {
 }
 
 impl ParcelInfo for Client {
-    fn parcel_block(&self, id: &ParcelId) -> Option<H256> {
+    fn transaction_block(&self, id: &TransactionId) -> Option<H256> {
         self.parcel_address(id).map(|addr| addr.block_hash)
     }
 }
@@ -515,7 +510,7 @@ impl TransactionInfo for Client {
             .and_then(|addr| {
                 addr.into_iter()
                     .find(|addr| {
-                        let invoice = self.parcel_invoice(&ParcelId::from(*addr)).expect("Parcel must exist");
+                        let invoice = self.parcel_invoice(&TransactionId::from(*addr)).expect("Parcel must exist");
                         invoice == Invoice::Success
                     })
                     .map(|hash| hash.block_hash)
@@ -556,26 +551,26 @@ impl BlockChainClient for Client {
         self.importer.block_queue.queue_info()
     }
 
-    fn queue_parcels(&self, parcels: Vec<Bytes>, peer_id: NodeId) {
-        let queue_size = self.queue_parcels.load(AtomicOrdering::Relaxed);
+    fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: NodeId) {
+        let queue_size = self.queue_transactions.load(AtomicOrdering::Relaxed);
         ctrace!(EXTERNAL_PARCEL, "Queue size: {}", queue_size);
         if queue_size > MAX_MEM_POOL_SIZE {
-            debug!("Ignoring {} parcels: queue is full", parcels.len());
+            debug!("Ignoring {} transactions: queue is full", transactions.len());
         } else {
-            let len = parcels.len();
-            match self.io_channel.lock().send(ClientIoMessage::NewParcels(parcels, peer_id)) {
+            let len = transactions.len();
+            match self.io_channel.lock().send(ClientIoMessage::NewParcels(transactions, peer_id)) {
                 Ok(_) => {
-                    self.queue_parcels.fetch_add(len, AtomicOrdering::SeqCst);
+                    self.queue_transactions.fetch_add(len, AtomicOrdering::SeqCst);
                 }
                 Err(e) => {
-                    debug!("Ignoring {} parcels: error queueing: {}", len, e);
+                    debug!("Ignoring {} transactions: error queueing: {}", len, e);
                 }
             }
         }
     }
 
-    fn ready_parcels(&self) -> Vec<SignedParcel> {
-        self.importer.miner.ready_parcels()
+    fn ready_transactions(&self) -> Vec<SignedTransaction> {
+        self.importer.miner.ready_transactions()
     }
 
     fn block_number(&self, id: &BlockId) -> Option<BlockNumber> {
@@ -608,17 +603,17 @@ impl BlockChainClient for Client {
         Self::block_hash(&chain, id)
     }
 
-    fn parcel(&self, id: &ParcelId) -> Option<LocalizedParcel> {
+    fn parcel(&self, id: &TransactionId) -> Option<LocalizedTransaction> {
         let chain = self.block_chain();
         self.parcel_address(id).and_then(|address| chain.parcel(&address))
     }
 
-    fn parcel_invoice(&self, id: &ParcelId) -> Option<Invoice> {
+    fn parcel_invoice(&self, id: &TransactionId) -> Option<Invoice> {
         let chain = self.block_chain();
         self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
 
-    fn transaction(&self, hash: &H256) -> Option<LocalizedParcel> {
+    fn transaction(&self, hash: &H256) -> Option<LocalizedTransaction> {
         let chain = self.block_chain();
         let address = self.transaction_address(hash)?;
         address.into_iter().map(Into::into).map(|address| chain.parcel(&address)).next()?
