@@ -525,12 +525,12 @@ impl PartialHashing for Order {
 }
 
 type TransactionId = u8;
-const ASSET_UNWRAP_CCC_ID: TransactionId = 0x01;
-const ASSET_MINT_ID: TransactionId = 0x03;
-const ASSET_TRANSFER_ID: TransactionId = 0x04;
-const ASSET_SCHEME_CHANGE_ID: TransactionId = 0x05;
-const ASSET_COMPOSE_ID: TransactionId = 0x06;
-const ASSET_DECOMPOSE_ID: TransactionId = 0x07;
+const ASSET_UNWRAP_CCC_ID: TransactionId = 0x11;
+const ASSET_MINT_ID: TransactionId = 0x13;
+const ASSET_TRANSFER_ID: TransactionId = 0x14;
+const ASSET_SCHEME_CHANGE_ID: TransactionId = 0x15;
+const ASSET_COMPOSE_ID: TransactionId = 0x16;
+const ASSET_DECOMPOSE_ID: TransactionId = 0x17;
 
 impl Decodable for ShardTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
