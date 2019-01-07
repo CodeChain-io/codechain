@@ -570,7 +570,7 @@ impl MinerService for Miner {
     fn set_author(&self, address: Address, password: Option<Password>) -> Result<(), SignError> {
         self.params.write().author = address;
 
-        if self.engine_type() == EngineType::InternalSealing && self.engine.seals_internally().is_some() {
+        if self.engine_type().need_signer_key() && self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set author to {:?}", address);
                 // Sign test message
@@ -619,7 +619,7 @@ impl MinerService for Miner {
         _enacted: &[H256],
         retracted: &[H256],
     ) where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner, {
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ResealTimer, {
         ctrace!(MINER, "chain_new_blocks");
 
         // Then import all transactions...
@@ -649,6 +649,10 @@ impl MinerService for Miner {
             let timestamp = chain.chain_info().best_block_timestamp;
             let mut mem_pool = self.mem_pool.write();
             mem_pool.remove_old(&fetch_account, time, timestamp);
+        }
+
+        if !self.options.no_reseal_timer {
+            chain.set_min_timer();
         }
     }
 

@@ -247,7 +247,10 @@ impl Client {
     }
 }
 
+/// When RESEAL_MAX_TIMER invoked, a block is created although the block is empty.
 const RESEAL_MAX_TIMER_TOKEN: TimerToken = 0;
+/// The minimum time between blocks, the miner creates a block when RESEAL_MIN_TIMER is invoked.
+/// Do not create a block before RESEAL_MIN_TIMER event.
 const RESEAL_MIN_TIMER_TOKEN: TimerToken = 1;
 
 impl TimeoutHandler for Client {
@@ -261,7 +264,7 @@ impl TimeoutHandler for Client {
             }
             RESEAL_MIN_TIMER_TOKEN => {
                 // Checking self.ready_transactions() for efficiency
-                if !self.ready_transactions().is_empty() {
+                if !self.engine().engine_type().ignore_reseal_min_period() && !self.ready_transactions().is_empty() {
                     self.update_sealing(false);
                 }
             }
