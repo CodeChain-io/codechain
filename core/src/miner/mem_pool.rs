@@ -268,10 +268,6 @@ trait TransactionSet {
     /// Note the limit is not applied (no transactions are removed) by calling this method.
     fn set_limit(&mut self, limit: usize);
 
-    /// Get the minimum fee that we can accept into this pool that wouldn't cause the transaction to
-    /// immediately be dropped. 0 if the pool isn't at capacity; 1 plus the lowest if it is.
-    fn fee_entry_limit(&self) -> u64;
-
     fn get_signer_public_row(&mut self, signer_public: &Public) -> Option<&HashMap<u64, TransactionOrder>>;
 }
 
@@ -431,7 +427,11 @@ impl TransactionSet for CurrentTxSet {
     fn get_signer_public_row(&mut self, signer_public: &Public) -> Option<&HashMap<u64, TransactionOrder>> {
         self.by_signer_public.row(signer_public)
     }
+}
 
+impl CurrentTxSet {
+    /// Get the minimum fee that we can accept into this pool that wouldn't cause the transaction to
+    /// immediately be dropped. 0 if the pool isn't at capacity; 1 plus the lowest if it is.
     fn fee_entry_limit(&self) -> u64 {
         match self.by_fee.keys().next() {
             Some(k) if self.by_priority.len() >= self.limit => k + 1,
@@ -443,7 +443,6 @@ impl TransactionSet for CurrentTxSet {
 struct FutureTxSet {
     by_priority: BTreeSet<TransactionOrder>,
     by_signer_public: Table<Public, u64, TransactionOrder>,
-    by_fee: BTreeMap<u64, usize>,
     limit: usize,
     memory_limit: usize,
 }
@@ -453,27 +452,14 @@ impl TransactionSet for FutureTxSet {
         if !self.by_priority.insert(order) {
             return Some(order)
         }
-        let order_fee = order.fee;
         let by_signer_public_replaced = self.by_signer_public.insert(signer_public, seq, order);
-        *self.by_fee.entry(order_fee).or_insert(0) += 1;
         if let Some(ref old_order) = by_signer_public_replaced {
             assert!(
                 self.by_priority.remove(old_order),
                 "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
             );
-            let delete_fee_entry = {
-                let counter = self.by_fee.get_mut(&old_order.fee).expect(
-                    "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
-                );
-                *counter -= 1;
-                *counter == 0
-            };
-            if delete_fee_entry {
-                self.by_fee.remove(&old_order.fee);
-            }
         }
         assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-        assert_eq!(self.by_fee.values().sum::<usize>(), self.by_signer_public.len());
         by_signer_public_replaced
     }
 
@@ -537,16 +523,6 @@ impl TransactionSet for FutureTxSet {
             );
             if *seq < base_seq {
                 ctrace!(MEM_POOL, "Removing old tx: {:?} (seq: {} < {})", order.hash, seq, base_seq);
-                let delete_fee_entry = {
-                    let counter = self.by_fee.get_mut(&order.fee).expect(
-                    "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
-                );
-                    *counter -= 1;
-                    *counter == 0
-                };
-                if delete_fee_entry {
-                    self.by_fee.remove(&order.fee);
-                }
                 by_hash.remove(&order.hash).expect("All transactions in `future` are also in `by_hash`");
             } else {
                 let new_order = order.update_height(*seq, base_seq);
@@ -560,26 +536,14 @@ impl TransactionSet for FutureTxSet {
 
     fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<TransactionOrder> {
         if let Some(tx_order) = self.by_signer_public.remove(signer_public, &seq) {
-            let delete_fee_entry = {
-                let counter = self.by_fee.get_mut(&tx_order.fee).expect(
-                    "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
-                );
-                *counter -= 1;
-                *counter == 0
-            };
-            if delete_fee_entry {
-                self.by_fee.remove(&tx_order.fee);
-            }
             assert!(
                 self.by_priority.remove(&tx_order),
                 "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
             );
             assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-            assert_eq!(self.by_fee.values().sum::<usize>(), self.by_signer_public.len());
             return Some(tx_order)
         }
         assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-        assert_eq!(self.by_fee.values().sum::<usize>(), self.by_signer_public.len());
         None
     }
 
@@ -594,13 +558,6 @@ impl TransactionSet for FutureTxSet {
 
     fn get_signer_public_row(&mut self, signer_public: &Public) -> Option<&HashMap<u64, TransactionOrder>> {
         self.by_signer_public.row(signer_public)
-    }
-
-    fn fee_entry_limit(&self) -> u64 {
-        match self.by_fee.keys().next() {
-            Some(k) if self.by_priority.len() >= self.limit => k + 1,
-            _ => 0,
-        }
     }
 }
 
@@ -650,7 +607,6 @@ impl MemPool {
         let future = FutureTxSet {
             by_priority: BTreeSet::new(),
             by_signer_public: Table::new(),
-            by_fee: BTreeMap::default(),
             limit,
             memory_limit,
         };
@@ -1200,16 +1156,6 @@ impl MemPool {
                 }
                 let order = by_seq.remove(&current_seq).expect("None is tested in the while condition above.");
                 self.future.by_priority.remove(&order);
-                let delete_fee_entry = {
-                    let counter = self.future.by_fee.get_mut(&order.fee).expect(
-                        "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
-                    );
-                    *counter -= 1;
-                    *counter == 0
-                };
-                if delete_fee_entry {
-                    self.future.by_fee.remove(&order.fee);
-                }
                 // Put to current
                 let order = order.update_height(current_seq, first_seq);
                 if order.origin.is_local() {
