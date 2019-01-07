@@ -879,9 +879,9 @@ codechain-primitives@^0.4.4:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#rlp-lib":
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#rename-lib":
   version "0.5.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#77cab2bdd28d439b1684bd1b49ca3a4cd3cfbba2"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#0616c8121cbc8f91ada8453da9d0a1988bca721a"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"

@@ -317,9 +317,7 @@ where
                     }
                     TIMELOCK_TYPE_BLOCK_AGE => {
                         stack.push(Item::from(
-                            client
-                                .transaction_block_age(&cur.prev_out.transaction_hash)
-                                .map_or(false, |age| age >= value),
+                            client.transaction_block_age(&cur.prev_out.tracker).map_or(false, |age| age >= value),
                         ))?;
                     }
                     TIMELOCK_TYPE_TIME => {
@@ -327,9 +325,7 @@ where
                     }
                     TIMELOCK_TYPE_TIME_AGE => {
                         stack.push(Item::from(
-                            client
-                                .transaction_time_age(&cur.prev_out.transaction_hash)
-                                .map_or(false, |age| age >= value),
+                            client.transaction_time_age(&cur.prev_out.tracker).map_or(false, |age| age >= value),
                         ))?;
                     }
                     _ => return Err(RuntimeError::InvalidTimelockType),

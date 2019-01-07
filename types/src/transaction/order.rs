@@ -172,7 +172,7 @@ mod tests {
             asset_amount_to: 2,
             asset_amount_fee: 3,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
                 amount: 10,
@@ -193,7 +193,7 @@ mod tests {
             asset_amount_to: 2,
             asset_amount_fee: 0,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
                 amount: 10,
@@ -214,7 +214,7 @@ mod tests {
             asset_amount_to: 0,
             asset_amount_fee: 0,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
                 amount: 10,
@@ -242,7 +242,7 @@ mod tests {
             asset_amount_to: 2,
             asset_amount_fee: 3,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type: H256::random(),
                 amount: 10,
@@ -280,7 +280,7 @@ mod tests {
             asset_amount_to: 0,
             asset_amount_fee: 3,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
                 amount: 10,
@@ -308,7 +308,7 @@ mod tests {
             asset_amount_to: 2,
             asset_amount_fee: 3,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
                 amount: 10,
@@ -336,7 +336,7 @@ mod tests {
             asset_amount_to: 0,
             asset_amount_fee: 3,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
                 amount: 10,
@@ -364,7 +364,7 @@ mod tests {
             asset_amount_to: 2,
             asset_amount_fee: 2,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
                 amount: 10,
@@ -394,7 +394,7 @@ mod tests {
             asset_amount_to: 2,
             asset_amount_fee: 3,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type,
                 amount: 10,
@@ -423,7 +423,7 @@ mod tests {
             asset_amount_to: 2,
             asset_amount_fee: 3,
             origin_outputs: vec![AssetOutPoint {
-                transaction_hash: H256::random(),
+                tracker: H256::random(),
                 index: 0,
                 asset_type,
                 amount: 10,

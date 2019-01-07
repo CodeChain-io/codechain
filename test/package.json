@@ -38,7 +38,7 @@
   "dependencies": {
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "codechain-sdk": "https://github.com/sgkim126/codechain-sdk-js.git#rlp-lib",
+    "codechain-sdk": "https://github.com/sgkim126/codechain-sdk-js.git#rename-lib",
     "codechain-test-helper": "https://github.com/sgkim126/codechain-test-helper-js.git#refac-lib",
     "lodash": "^4.17.11",
     "mkdirp": "^0.5.1",
