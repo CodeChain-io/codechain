@@ -20,7 +20,6 @@ mod params;
 mod stake;
 pub mod types;
 
-use std::cell::RefCell;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::iter::Iterator;
@@ -69,33 +68,34 @@ pub type BlockHash = H256;
 
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
-    inner: ReentrantMutex<RefCell<TendermintInner>>,
+    inner: ReentrantMutex<TendermintInner>,
     machine: Arc<CodeChainMachine>,
     /// Action handlers for this consensus method
     action_handlers: Vec<Arc<ActionHandler>>,
 }
 
 struct TendermintInner {
-    client: Option<Weak<EngineClient>>,
+    /// We use RwLock to use interior mutability in multi-threads
+    client: RwLock<Option<Weak<EngineClient>>>,
     /// Blockchain height.
-    height: Height,
+    height: AtomicUsize,
     /// Consensus view.
-    view: View,
+    view: AtomicUsize,
     /// Consensus step.
-    step: Step,
+    step: RwLock<Step>,
     /// Record current round's received votes as bit set
-    votes_received: BitSet,
+    votes_received: RwLock<BitSet>,
     /// Vote accumulator.
     votes: VoteCollector<ConsensusMessage>,
     /// Used to sign messages and proposals.
-    signer: EngineSigner,
+    signer: RwLock<EngineSigner>,
     /// Message for the last PoLC.
-    lock_change: Option<ConsensusMessage>,
+    lock_change: RwLock<Option<ConsensusMessage>>,
     /// Last lock view.
-    last_lock: View,
+    last_lock: AtomicUsize,
     /// hash of the proposed block, used for seal submission.
-    proposal: Option<H256>,
-    last_confirmed_view: (H256, View),
+    proposal: RwLock<Option<H256>>,
+    last_confirmed_view: RwLock<(H256, View)>,
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
@@ -106,6 +106,8 @@ struct TendermintInner {
     machine: Arc<CodeChainMachine>,
     /// Chain notify
     chain_notify: Arc<TendermintChainNotify>,
+    /// Lock for changing step. We use ReentrantMutex because handle_valid_message called recursively.
+    pub step_change_lock: ReentrantMutex<()>,
 }
 
 impl Tendermint {
@@ -118,17 +120,13 @@ impl Tendermint {
         let inner = TendermintInner::new(our_params, machine.clone());
 
         let engine = Arc::new(Tendermint {
-            inner: ReentrantMutex::new(RefCell::new(inner)),
+            inner: ReentrantMutex::new(inner),
             machine,
             action_handlers,
         });
 
-        {
-            let guard = engine.inner.lock();
-            let inner = guard.borrow();
-            inner.extension.register_tendermint(Arc::downgrade(&engine));
-            inner.chain_notify.register_tendermint(Arc::downgrade(&engine));
-        }
+        engine.inner.lock().extension.register_tendermint(Arc::downgrade(&engine));
+        engine.inner.lock().chain_notify.register_tendermint(Arc::downgrade(&engine));
 
         engine
     }
@@ -141,33 +139,39 @@ impl TendermintInner {
         let extension = TendermintExtension::new(our_params.timeouts);
         let chain_notify = TendermintChainNotify::new();
         TendermintInner {
-            client: None,
-            height: 1,
-            view: 0,
-            step: Step::Propose,
+            client: RwLock::new(None),
+            height: AtomicUsize::new(1),
+            view: AtomicUsize::new(0),
+            step: RwLock::new(Step::Propose),
             votes: Default::default(),
             signer: Default::default(),
-            lock_change: None,
-            last_lock: 0,
-            proposal: None,
-            last_confirmed_view: (Default::default(), 0),
+            lock_change: RwLock::new(None),
+            last_lock: AtomicUsize::new(0),
+            proposal: RwLock::new(None),
+            last_confirmed_view: RwLock::new((Default::default(), 0)),
             validators: our_params.validators,
             block_reward: our_params.block_reward,
             extension: Arc::new(extension),
             chain_notify: Arc::new(chain_notify),
             machine,
-            votes_received: BitSet::new(),
+            step_change_lock: ReentrantMutex::new(()),
+            votes_received: RwLock::new(BitSet::new()),
         }
     }
 
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
     fn client(&self) -> Arc<EngineClient> {
-        self.client.as_ref().expect("Only writes in initialize").upgrade().expect("Client lives longer than consensus")
+        self.client
+            .read()
+            .as_ref()
+            .expect("Only writes in initialize")
+            .upgrade()
+            .expect("Client lives longer than consensus")
     }
 
     /// Get previous block hash to determine validator set
     fn prev_block_hash(&self) -> H256 {
-        let prev_height = (self.height - 1) as u64;
+        let prev_height = (self.height() - 1) as u64;
         self.client()
             .block_header(&BlockId::Number(prev_height))
             .expect("Height is increased when previous block is imported")
@@ -179,6 +183,18 @@ impl TendermintInner {
         let proposer_nonce = height + view;
         ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
         self.validators.get_address(bh, proposer_nonce)
+    }
+
+    pub fn height(&self) -> Height {
+        self.height.load(AtomicOrdering::SeqCst)
+    }
+
+    pub fn view(&self) -> View {
+        self.view.load(AtomicOrdering::SeqCst)
+    }
+
+    pub fn proposal(&self) -> Option<H256> {
+        *self.proposal.read()
     }
 
     pub fn proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {
@@ -198,16 +214,25 @@ impl TendermintInner {
         })
     }
 
+    // FIXME: step() is already used as timeout function name
+    pub fn get_step(&self) -> Step {
+        *self.step.read()
+    }
+
     pub fn vote_step(&self) -> VoteStep {
         VoteStep {
-            height: self.height,
-            view: self.view,
-            step: self.step,
+            height: self.height(),
+            view: self.view(),
+            step: self.get_step(),
         }
     }
 
     pub fn need_proposal(&self) -> bool {
-        self.proposal.is_none()
+        self.proposal().is_none()
+    }
+
+    pub fn get_current_votes(&self) -> BitSet {
+        *self.votes_received.read()
     }
 
     pub fn get_all_votes_and_authors(&self, vote_step: &VoteStep, requested: &BitSet) -> Vec<ConsensusMessage> {
@@ -234,16 +259,16 @@ impl TendermintInner {
 
     /// Check if current signer is the current proposer.
     fn is_signer_proposer(&self, bh: &H256) -> bool {
-        let proposer = self.view_proposer(bh, self.height, self.view);
-        self.signer.is_address(&proposer)
+        let proposer = self.view_proposer(bh, self.height(), self.view());
+        self.signer.read().is_address(&proposer)
     }
 
     fn is_view(&self, message: &ConsensusMessage) -> bool {
-        message.on.step.is_view(self.height, self.view)
+        message.on.step.is_view(self.height(), self.view())
     }
 
     fn is_step(&self, message: &ConsensusMessage) -> bool {
-        message.on.step.is_step(self.height, self.view, self.step)
+        message.on.step.is_step(self.height(), self.view(), *self.step.read())
     }
 
     fn is_authority(&self, prev_hash: &H256, address: &Address) -> bool {
@@ -264,7 +289,7 @@ impl TendermintInner {
     }
 
     fn has_enough_any_votes(&self) -> bool {
-        let step_votes = self.votes.count_round_votes(&VoteStep::new(self.height, self.view, self.step));
+        let step_votes = self.votes.count_round_votes(&VoteStep::new(self.height(), self.view(), *self.step.read()));
         self.check_above_threshold(step_votes).is_ok()
     }
 
@@ -279,7 +304,7 @@ impl TendermintInner {
     }
 
     fn has_enough_precommit_votes(&self, block_hash: H256) -> bool {
-        let vote_step = VoteStep::new(self.height, self.view, Step::Precommit);
+        let vote_step = VoteStep::new(self.height(), self.view(), Step::Precommit);
         let count = self.votes.count_block_round_votes(&vote_step, &Some(block_hash));
         self.check_above_threshold(count).is_ok()
     }
@@ -304,54 +329,55 @@ impl TendermintInner {
         self.client().update_sealing(true);
     }
 
-    fn save_last_confirmed_view(&mut self, block_hash: H256, view: View) {
-        self.last_confirmed_view = (block_hash, view);
+    fn save_last_confirmed_view(&self, block_hash: H256, view: View) {
+        *self.last_confirmed_view.write() = (block_hash, view);
     }
 
-    fn increment_view(&mut self, n: View) {
+    fn increment_view(&self, n: View) {
         ctrace!(ENGINE, "increment_view: New view.");
-        self.view += n;
-        self.proposal = None;
-        self.votes_received = BitSet::new();
+        self.view.fetch_add(n, AtomicOrdering::SeqCst);
+        *self.proposal.write() = None;
+        *self.votes_received.write() = BitSet::new();
     }
 
     fn should_unlock(&self, lock_change_view: View) -> bool {
-        self.last_lock < lock_change_view && lock_change_view < self.view
+        self.last_lock.load(AtomicOrdering::SeqCst) < lock_change_view && lock_change_view < self.view()
     }
 
-    fn move_to_next_height(&mut self, height: Height) {
-        assert!(height >= self.height, "{} < {}", height, self.height);
+    fn to_next_height(&self, height: Height) {
+        assert!(height >= self.height(), "{} < {}", height, self.height());
         let new_height = height + 1;
         cdebug!(ENGINE, "Received a Commit, transitioning to height {}.", new_height);
-        self.last_lock = 0;
-        self.height = new_height;
-        self.view = 0;
-        self.lock_change = None;
-        self.proposal = None;
-        self.votes_received = BitSet::new();
+        self.last_lock.store(0, AtomicOrdering::SeqCst);
+        self.height.store(new_height, AtomicOrdering::SeqCst);
+        self.view.store(0, AtomicOrdering::SeqCst);
+        *self.lock_change.write() = None;
+        *self.proposal.write() = None;
+        *self.votes_received.write() = BitSet::new();
     }
 
-    fn move_to_step(&mut self, step: Step) {
-        let prev_step = self.step;
-        self.extension.set_timer_step(step, self.view);
-        self.step = step;
+    fn to_step(&self, step: Step) {
+        let prev_step = self.get_step();
+        // Should be protected by step_change_lock
+        self.extension.set_timer_step(step, self.view());
+        *self.step.write() = step;
         self.backup();
-        let vote_step = VoteStep::new(self.height, self.view, step);
+        let vote_step = VoteStep::new(self.height(), self.view(), step);
 
         // If there are not enough pre-votes or pre-commits,
         // to_step could be called with same step
         if prev_step != step {
-            self.votes_received = BitSet::new();
+            *self.votes_received.write() = BitSet::new();
         }
 
         // need to reset vote
-        self.broadcast_state(&vote_step, self.proposal, self.votes_received);
+        self.broadcast_state(&vote_step, self.proposal(), self.get_current_votes());
         match step {
             Step::Propose => {
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
                     if self.client().block_header(&BlockId::Hash(*hash)).is_some() {
-                        self.proposal = Some(*hash);
-                        self.move_to_step(Step::Prevote);
+                        *self.proposal.write() = Some(*hash);
+                        self.to_step(Step::Prevote);
                     } else {
                         ctrace!(ENGINE, "Proposal is received but not imported");
                         // Proposal is received but is not verified yet.
@@ -365,19 +391,19 @@ impl TendermintInner {
             }
             Step::Prevote => {
                 self.request_all_votes(&vote_step);
-                let block_hash = match self.lock_change {
+                let block_hash = match *self.lock_change.read() {
                     Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
-                    _ => self.proposal,
+                    _ => *self.proposal.read(),
                 };
                 self.generate_and_broadcast_message(block_hash);
             }
             Step::Precommit => {
                 self.request_all_votes(&vote_step);
                 ctrace!(ENGINE, "to_step: Precommit.");
-                let block_hash = match self.lock_change {
+                let block_hash = match *self.lock_change.read() {
                     Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
                         ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
-                        self.last_lock = m.on.step.view;
+                        self.last_lock.store(m.on.step.view, AtomicOrdering::SeqCst);
                         m.on.block_hash
                     }
                     _ => None,
@@ -390,17 +416,17 @@ impl TendermintInner {
         }
     }
 
-    fn generate_and_broadcast_message(&mut self, block_hash: Option<BlockHash>) {
+    fn generate_and_broadcast_message(&self, block_hash: Option<BlockHash>) {
         if let Some(message) = self.generate_message(block_hash) {
             self.backup();
             self.broadcast_message(message);
         }
     }
 
-    fn generate_message(&mut self, block_hash: Option<BlockHash>) -> Option<Bytes> {
-        let height = self.height;
-        let r = self.view;
-        let step = self.step;
+    fn generate_message(&self, block_hash: Option<BlockHash>) -> Option<Bytes> {
+        let height = self.height();
+        let r = self.view();
+        let step = *self.step.read();
         let on = VoteOn {
             step: VoteStep::new(height, r, step),
             block_hash,
@@ -431,25 +457,26 @@ impl TendermintInner {
         }
     }
 
-    fn handle_valid_message(&mut self, message: &ConsensusMessage) {
+    fn handle_valid_message(&self, message: &ConsensusMessage) {
+        let _guard = self.step_change_lock.lock();
         let vote_step = &message.on.step;
-        let is_newer_than_lock = match &self.lock_change {
+        let is_newer_than_lock = match &*self.lock_change.read() {
             Some(lock) => *vote_step > lock.on.step,
             None => true,
         };
         let has_enough_aligned_votes = self.has_enough_aligned_votes(message);
         let lock_change = is_newer_than_lock
-            && vote_step.height == self.height
+            && vote_step.height == self.height()
             && vote_step.step == Step::Prevote
             && message.on.block_hash.is_some()
             && has_enough_aligned_votes;
         if lock_change {
             ctrace!(ENGINE, "handle_valid_message: Lock change.");
-            self.lock_change = Some(message.clone());
+            *self.lock_change.write() = Some(message.clone());
         }
         // Check if it can affect the step transition.
         if self.is_step(message) {
-            let next_step = match self.step {
+            let next_step = match *self.step.read() {
                 Step::Precommit if message.on.block_hash.is_none() && has_enough_aligned_votes => {
                     self.increment_view(1);
                     Some(Step::Propose)
@@ -460,8 +487,7 @@ impl TendermintInner {
                         // Commit the block using a complete signature set.
                         // Generate seal and remove old votes.
                         self.save_last_confirmed_view(bh, message.on.step.view);
-                        let height = self.height;
-                        self.move_to_next_height(height);
+                        self.to_next_height(self.height());
                         Some(Step::Commit)
                     } else {
                         cwarn!(ENGINE, "Cannot find a proposal which committed");
@@ -477,19 +503,21 @@ impl TendermintInner {
 
             if let Some(step) = next_step {
                 ctrace!(ENGINE, "Transition to {:?} triggered.", step);
-                self.move_to_step(step);
+                self.to_step(step);
             }
         } else if vote_step.step == Step::Precommit
-            && self.height - 1 == vote_step.height
-            && self.step == Step::Commit
+            && self.height() - 1 == vote_step.height
+            && *self.step.read() == Step::Commit
             && self.has_all_votes(vote_step)
         {
             ctrace!(ENGINE, "Transition to Propose because all pre-commits are received");
-            self.move_to_step(Step::Propose);
+            self.to_step(Step::Propose);
         }
     }
 
-    pub fn on_imported_proposal(&mut self, proposal: &Header) {
+    pub fn on_imported_proposal(&self, proposal: &Header) {
+        let _guard = self.step_change_lock.lock();
+
         if proposal.number() < 1 {
             return
         }
@@ -500,18 +528,18 @@ impl TendermintInner {
             step: Step::Propose,
         });
 
-        let current_height = self.height;
+        let current_height = self.height();
         let height = proposal.number() as Height;
         let view = consensus_view(proposal).expect("Imported block is already verified");
-        if current_height == height && self.view == view {
-            self.proposal = Some(proposal.hash());
-            if self.step == Step::Propose {
-                self.move_to_step(Step::Prevote);
+        if current_height == height && self.view() == view {
+            *self.proposal.write() = Some(proposal.hash());
+            if *self.step.read() == Step::Propose {
+                self.to_step(Step::Prevote);
             }
         } else if current_height < height {
-            self.move_to_next_height(height - 1);
-            self.proposal = Some(proposal.hash());
-            self.move_to_step(Step::Prevote);
+            self.to_next_height(height - 1);
+            *self.proposal.write() = Some(proposal.hash());
+            self.to_step(Step::Prevote);
         }
     }
 
@@ -519,26 +547,26 @@ impl TendermintInner {
         backup(
             self.client().get_kvdb().as_ref(),
             BackupView {
-                height: &self.height,
-                view: &self.view,
-                step: &self.step,
+                height: &self.height(),
+                view: &self.view(),
+                step: &*self.step.read(),
                 votes: &self.votes.get_all(),
-                last_confirmed_view: &self.last_confirmed_view,
+                last_confirmed_view: &self.last_confirmed_view.read(),
             },
         );
     }
 
-    fn restore(&mut self) {
+    fn restore(&self) {
         let client = self.client();
         let backup = restore(client.get_kvdb().as_ref());
         if let Some(backup) = backup {
-            self.step = backup.step;
-            self.height = backup.height;
-            self.view = backup.view;
-            self.last_confirmed_view = backup.last_confirmed_view;
+            *self.step.write() = backup.step;
+            self.height.store(backup.height, AtomicOrdering::SeqCst);
+            self.view.store(backup.view, AtomicOrdering::SeqCst);
+            *self.last_confirmed_view.write() = backup.last_confirmed_view;
             if let Some(proposal) = backup.proposal {
                 if client.block_header(&BlockId::Hash(proposal)).is_some() {
-                    self.proposal = Some(proposal);
+                    *self.proposal.write() = Some(proposal);
                 }
             }
 
@@ -551,7 +579,7 @@ impl TendermintInner {
 
             if let Some(committed) = to_next_height {
                 if client.block(&BlockId::Hash(committed)).is_some() {
-                    self.move_to_next_height(backup.height);
+                    self.to_next_height(backup.height);
                     return
                 } else {
                     cwarn!(ENGINE, "Cannot find a proposal which committed");
@@ -562,7 +590,7 @@ impl TendermintInner {
         }
     }
 
-    fn load_vote_from_backup(&mut self, vote: &ConsensusMessage, height: Height) -> Option<H256> {
+    fn load_vote_from_backup(&self, vote: &ConsensusMessage, height: Height) -> Option<H256> {
         self.votes.vote(vote.clone());
 
         if vote.on.step.height != height {
@@ -572,7 +600,7 @@ impl TendermintInner {
         match vote.on.step.step {
             Step::Prevote => {
                 let vote_step = &vote.on.step;
-                let is_newer_than_lock = match &self.lock_change {
+                let is_newer_than_lock = match &*self.lock_change.read() {
                     Some(lock) => *vote_step > lock.on.step,
                     None => true,
                 };
@@ -580,7 +608,7 @@ impl TendermintInner {
                     is_newer_than_lock && vote.on.block_hash.is_some() && self.has_enough_aligned_votes(vote);
                 if lock_change {
                     ctrace!(ENGINE, "load: Lock change.");
-                    self.lock_change = Some(vote.clone());
+                    *self.lock_change.write() = Some(vote.clone());
                 }
             }
             Step::Precommit => {
@@ -607,13 +635,13 @@ impl TendermintInner {
         let header = block.header();
         let height = header.number() as Height;
         // Only proposer can generate seal if None was generated.
-        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.is_some() || height < self.height {
+        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.read().is_some() || height < self.height() {
             return Seal::None
         }
 
-        let view = self.view;
+        let view = self.view();
 
-        let (last_block_hash, last_block_view) = &self.last_confirmed_view;
+        let (last_block_hash, last_block_view) = &*self.last_confirmed_view.read();
         assert_eq!(last_block_hash, &parent.hash());
         let (precommits, precommit_indices) = self.votes.round_signatures_and_indices(
             &VoteStep::new(height - 1, *last_block_view, Step::Precommit),
@@ -629,7 +657,7 @@ impl TendermintInner {
         }
     }
 
-    fn proposal_generated(&mut self, sealed_block: &SealedBlock) {
+    fn proposal_generated(&self, sealed_block: &SealedBlock) {
         let header = sealed_block.header();
         let hash = header.hash();
 
@@ -640,18 +668,18 @@ impl TendermintInner {
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(ConsensusMessage::new_proposal(signature, signer_index, header).expect("I am proposer"));
 
-        self.proposal = Some(hash);
+        *self.proposal.write() = Some(hash);
         cdebug!(
             ENGINE,
             "Submitting proposal {} at height {}-{} view {}-{}.\n{:?}",
             hash,
-            self.height,
+            self.height(),
             header.number(),
-            self.view,
+            self.view(),
             consensus_view(header).expect("This block is generated by this machine."),
             header
         );
-        self.move_to_step(Step::Prevote);
+        self.to_step(Step::Prevote);
     }
 
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
@@ -787,23 +815,24 @@ impl TendermintInner {
 
     fn populate_from_parent(&self, header: &mut Header, _parent: &Header) {
         let height = U256::from(header.number());
-        let new_score = u256_from_u128(std::u128::MAX) * height - self.view.into();
+        let new_score = u256_from_u128(std::u128::MAX) * height - self.view().into();
 
         header.set_score(new_score);
     }
 
-    fn on_timeout(&mut self, token: usize) {
+    fn on_timeout(&self, token: usize) {
+        let _guard = self.step_change_lock.lock();
         if self.extension.is_expired_timeout_token(token) {
             return
         }
 
-        let next_step = match self.step {
+        let next_step = match *self.step.read() {
             Step::Propose => {
                 ctrace!(ENGINE, "Propose timeout.");
-                if self.proposal.is_none() {
+                if self.proposal.read().is_none() {
                     // Report the proposer if no proposal was received.
-                    let height = self.height;
-                    let current_proposer = self.view_proposer(&self.prev_block_hash(), height, self.view);
+                    let height = self.height();
+                    let current_proposer = self.view_proposer(&self.prev_block_hash(), height, self.view());
                     self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
                 }
                 Step::Prevote
@@ -830,7 +859,7 @@ impl TendermintInner {
                 Step::Propose
             }
         };
-        self.move_to_step(next_step);
+        self.to_step(next_step);
     }
 
     fn on_new_block(&self, block: &mut ExecutedBlock, epoch_begin: bool) -> Result<(), Error> {
@@ -856,19 +885,19 @@ impl TendermintInner {
         Ok(())
     }
 
-    fn register_client(&mut self, client: Weak<EngineClient>) {
+    fn register_client(&self, client: Weak<EngineClient>) {
         if let Some(c) = client.upgrade() {
-            self.height = c.chain_info().best_block_number as usize + 1;
-            self.last_confirmed_view = (c.best_block_header().hash(), 0);
+            self.height.store(c.chain_info().best_block_number as usize + 1, AtomicOrdering::SeqCst);
+            *self.last_confirmed_view.write() = (c.best_block_header().hash(), 0);
         }
-        self.client = Some(Weak::clone(&client));
+        *self.client.write() = Some(Weak::clone(&client));
         self.restore();
         self.extension.register_client(Weak::clone(&client));
         self.validators.register_client(Weak::clone(&client));
         self.chain_notify.register_client(client);
     }
 
-    fn handle_message(&mut self, rlp: &[u8]) -> Result<(), EngineError> {
+    fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
         fn fmt_err<T: ::std::fmt::Debug>(x: T) -> EngineError {
             EngineError::MalformedMessage(format!("{:?}", x))
         }
@@ -910,12 +939,13 @@ impl TendermintInner {
                 return Ok(())
             }
 
-            if message.on.step.height == self.height && message.on.step.view == self.view {
+            if message.on.step.height == self.height() && message.on.step.view == self.view() {
                 let vote_index = self
                     .validators
                     .get_index(&self.prev_block_hash(), &sender_public)
                     .expect("is_authority already checked the existence");
-                self.votes_received.set(vote_index);
+                let mut votes_received_guard = self.votes_received.write();
+                votes_received_guard.set(vote_index);
             }
 
             if let Some(double) = self.votes.vote(message.clone()) {
@@ -925,14 +955,14 @@ impl TendermintInner {
             }
             ctrace!(ENGINE, "Handling a valid {:?} from {}.", message, sender);
             self.handle_valid_message(&message);
-            self.broadcast_state(&self.vote_step(), self.proposal, self.votes_received);
+            self.broadcast_state(&self.vote_step(), self.proposal(), self.get_current_votes());
         }
         Ok(())
     }
 
     fn is_proposal(&self, header: &Header) -> bool {
         let number = header.number();
-        if self.height > number as usize {
+        if self.height() > number as usize {
             return false
         }
 
@@ -968,21 +998,24 @@ impl TendermintInner {
         }
     }
 
-    fn set_signer(&mut self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
-        self.signer.set(ap, address, password);
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
+        let _guard = self.step_change_lock.lock();
+        {
+            self.signer.write().set(ap, address, password);
+        }
     }
 
     fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
-        self.signer.sign(hash).map_err(Into::into)
+        self.signer.read().sign(hash).map_err(Into::into)
     }
 
     fn signer_public(&self) -> Option<Public> {
-        self.signer.public().cloned()
+        self.signer.read().public().cloned()
     }
 
     fn signer_index(&self, bh: &H256) -> Option<usize> {
         // FIXME: More effecient way to find index
-        self.signer.public().and_then(|public| self.validators.get_index(bh, public))
+        self.signer.read().public().and_then(|public| self.validators.get_index(bh, public))
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
@@ -998,7 +1031,7 @@ impl TendermintInner {
     }
 
     fn get_block_hash_to_mine_on(&self, _best_block_hash: H256) -> H256 {
-        let (hash, _) = &self.last_confirmed_view;
+        let (hash, _) = &*self.last_confirmed_view.read();
         *hash
     }
 }
@@ -1014,17 +1047,14 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     /// (consensus view, proposal signature, authority signatures)
     fn seal_fields(&self, header: &Header) -> usize {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.seal_fields(header)
+        self.inner.lock().seal_fields(header)
     }
 
     /// Should this node participate.
     fn seals_internally(&self) -> Option<bool> {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        let has_signer = tendermint.signer.is_some();
-        Some(has_signer)
+        let inner_guard = self.inner.lock();
+        let signer_guard = inner_guard.signer.read();
+        Some(signer_guard.is_some())
     }
 
     fn engine_type(&self) -> EngineType {
@@ -1036,17 +1066,13 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     /// This operation is synchronous and may (quite reasonably) not be available, in which case
     /// `Seal::None` will be returned.
     fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.generate_seal(block, parent)
+        self.inner.lock().generate_seal(block, parent)
     }
 
     /// Called when the node is the leader and a proposal block is generated from the miner.
     /// This writes the proposal information and go to the prevote step.
     fn proposal_generated(&self, sealed_block: &SealedBlock) {
-        let guard = self.inner.lock();
-        let mut tendermint = guard.borrow_mut();
-        tendermint.proposal_generated(sealed_block);
+        self.inner.lock().proposal_generated(sealed_block);
     }
 
     fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
@@ -1054,21 +1080,15 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.verify_block_basic(header)
+        self.inner.lock().verify_block_basic(header)
     }
 
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.verify_block_external(header)
+        self.inner.lock().verify_block_external(header)
     }
 
     fn signals_epoch_end(&self, header: &Header) -> EpochChange {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.signals_epoch_end(header)
+        self.inner.lock().signals_epoch_end(header)
     }
 
     fn is_epoch_end(
@@ -1077,96 +1097,66 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         chain: &super::Headers<Header>,
         transition_store: &super::PendingTransitionStore,
     ) -> Option<Vec<u8>> {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.is_epoch_end(chain_head, chain, transition_store)
+        self.inner.lock().is_epoch_end(chain_head, chain, transition_store)
     }
 
     fn epoch_verifier<'a>(&self, header: &Header, proof: &'a [u8]) -> ConstructedVerifier<'a, CodeChainMachine> {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.epoch_verifier(header, proof)
+        self.inner.lock().epoch_verifier(header, proof)
     }
 
     fn populate_from_parent(&self, header: &mut Header, parent: &Header) {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.populate_from_parent(header, parent);
+        self.inner.lock().populate_from_parent(header, parent);
     }
 
     /// Equivalent to a timeout: to be used for tests.
     fn on_timeout(&self, token: usize) {
-        let guard = self.inner.lock();
-        let mut tendermint = guard.borrow_mut();
-        tendermint.on_timeout(token)
+        self.inner.lock().on_timeout(token)
     }
 
     fn stop(&self) {}
 
     fn on_new_block(&self, block: &mut ExecutedBlock, epoch_begin: bool) -> Result<(), Error> {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.on_new_block(block, epoch_begin)
+        self.inner.lock().on_new_block(block, epoch_begin)
     }
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.on_close_block(block)
+        self.inner.lock().on_close_block(block)
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {
-        let guard = self.inner.lock();
-        let mut tendermint = guard.borrow_mut();
-        tendermint.register_client(client);
+        self.inner.lock().register_client(client)
     }
 
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
-        let guard = self.inner.lock();
-        let mut tendermint = guard.borrow_mut();
-        tendermint.handle_message(rlp)
+        self.inner.lock().handle_message(rlp)
     }
 
     fn is_proposal(&self, header: &Header) -> bool {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.is_proposal(header)
+        self.inner.lock().is_proposal(header)
     }
 
     fn broadcast_proposal_block(&self, block: encoded::Block) {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.broadcast_proposal_block(block)
+        self.inner.lock().broadcast_proposal_block(block)
     }
 
     fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
-        let guard = self.inner.lock();
-        let mut tendermint = guard.borrow_mut();
-        tendermint.set_signer(ap, address, password)
+        self.inner.lock().set_signer(ap, address, password)
     }
 
     fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.sign(hash)
+        self.inner.lock().sign(hash)
     }
 
     fn signer_public(&self) -> Option<Public> {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.signer_public()
+        self.inner.lock().signer_public()
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.register_network_extension_to_service(service)
+        self.inner.lock().register_network_extension_to_service(service)
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.block_reward(_block_number)
+        self.inner.lock().block_reward(_block_number)
     }
 
     fn recommended_confirmation(&self) -> u32 {
@@ -1174,15 +1164,11 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn register_chain_notify(&self, client: &Client) {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.register_chain_notify(client);
+        self.inner.lock().register_chain_notify(client);
     }
 
     fn get_block_hash_to_mine_on(&self, best_block_hash: H256) -> H256 {
-        let guard = self.inner.lock();
-        let tendermint = guard.borrow();
-        tendermint.get_block_hash_to_mine_on(best_block_hash)
+        self.inner.lock().get_block_hash_to_mine_on(best_block_hash)
     }
 
     fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
@@ -1237,13 +1223,13 @@ impl ChainNotify for TendermintChainNotify {
             None => return,
         };
 
-        let guard = t.inner.lock();
-        let mut t = guard.borrow_mut();
+        let t = t.inner.lock();
 
         let imported_is_empty = imported.is_empty();
         if imported_is_empty {
             return
         }
+        let _guard = t.step_change_lock.lock();
         let mut height_changed = false;
         for hash in imported {
             // New Commit received, skip to next height.
@@ -1252,14 +1238,14 @@ impl ChainNotify for TendermintChainNotify {
             let full_header = header.decode();
             if t.is_proposal(&full_header) {
                 t.on_imported_proposal(&full_header);
-            } else if t.height < header.number() as usize {
+            } else if t.height() < header.number() as usize {
                 height_changed = true;
                 ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
-                t.move_to_next_height((header.number() - 1) as usize);
+                t.to_next_height((header.number() - 1) as usize);
             }
         }
         if height_changed {
-            t.move_to_step(Step::Commit)
+            t.to_step(Step::Commit)
         }
     }
 }
@@ -1539,12 +1525,12 @@ impl TendermintExtension {
 
             // If the proposal's height is current height + 1 and the proposal has valid precommits,
             // we should import it and increase height
-            if number > (tendermint.height + 1) as u64 {
+            if number > (tendermint.height() + 1) as u64 {
                 ctrace!(ENGINE, "Received future proposal, ignore it");
                 return
             }
 
-            if number == tendermint.height as u64 && message.on.step.view > tendermint.view {
+            if number == tendermint.height() as u64 && message.on.step.view > tendermint.view() {
                 ctrace!(ENGINE, "Received future proposal, ignore it");
                 return
             }
@@ -1609,21 +1595,21 @@ impl TendermintExtension {
 
         // Since the peer may not have a proposal in its height,
         // we may need to receive votes instead of block.
-        if tendermint.height + 2 < peer_vote_step.height {
+        if tendermint.height() + 2 < peer_vote_step.height {
             // need to get blocks from block sync
             return
         }
 
-        let peer_has_proposal = (tendermint.view == peer_vote_step.view && peer_proposal.is_some())
-            || tendermint.view < peer_vote_step.view
-            || tendermint.height < peer_vote_step.height;
+        let peer_has_proposal = (tendermint.view() == peer_vote_step.view && peer_proposal.is_some())
+            || tendermint.view() < peer_vote_step.view
+            || tendermint.height() < peer_vote_step.height;
 
         let need_proposal = tendermint.need_proposal();
         if need_proposal && peer_has_proposal {
-            self.request_proposal(token, tendermint.height, tendermint.view);
+            self.request_proposal(token, tendermint.height(), tendermint.view());
         }
 
-        let current_step = tendermint.step;
+        let current_step = tendermint.get_step();
 
         if current_step == Step::Prevote || current_step == Step::Precommit {
             let peer_known_votes = if current_step == peer_vote_step.step {
@@ -1635,7 +1621,7 @@ impl TendermintExtension {
                 BitSet::all_set()
             };
 
-            let current_votes = tendermint.votes_received;
+            let current_votes = tendermint.get_current_votes();
             let difference = &peer_known_votes - &current_votes;
             if !difference.is_empty() {
                 self.request_messages(token, tendermint.vote_step(), difference);
@@ -1651,11 +1637,11 @@ impl TendermintExtension {
         request_view: View,
     ) {
         ctrace!(ENGINE, "Received RequestProposal for {}-{} from {:?}", request_height, request_view, token);
-        if request_height > tendermint.height {
+        if request_height > tendermint.height() {
             return
         }
 
-        if request_height == tendermint.height && request_view > tendermint.view {
+        if request_height == tendermint.height() && request_view > tendermint.view() {
             return
         }
 
@@ -1700,8 +1686,7 @@ impl NetworkExtension for TendermintExtension {
             Some(t) => t,
             None => return,
         };
-        let guard = t.inner.lock();
-        let t = guard.borrow_mut();
+        let t = t.inner.lock();
 
         let m = UntrustedRlp::new(data);
         match m.as_val() {
