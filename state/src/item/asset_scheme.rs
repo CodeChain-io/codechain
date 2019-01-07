@@ -163,10 +163,10 @@ pub struct AssetSchemeAddress(H256);
 impl_address!(SHARD, AssetSchemeAddress, PREFIX);
 
 impl AssetSchemeAddress {
-    pub fn new(transaction_hash: H256, shard_id: ShardId) -> Self {
+    pub fn new(tracker: H256, shard_id: ShardId) -> Self {
         let index = ::std::u64::MAX;
 
-        Self::from_transaction_hash_with_shard_id(transaction_hash, index, shard_id)
+        Self::from_transaction_hash_with_shard_id(tracker, index, shard_id)
     }
     pub fn new_with_zero_suffix(shard_id: ShardId) -> Self {
         let mut hash = H256::zero();

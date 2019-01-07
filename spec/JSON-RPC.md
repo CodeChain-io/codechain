@@ -276,9 +276,9 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_sendSignedTransaction](#chain_sendsignedtransaction)
  * [chain_getTransaction](#chain_gettransaction)
  * [chain_getInvoice](#chain_getinvoice)
- * [chain_getTransactionById](#chain_gettransactionbyid)
- * [chain_getInvoicesById](#chain_getinvoicesbyid)
- * [chain_getAssetSchemeByHash](#chain_getassetschemebyhash)
+ * [chain_getTransactionByTracker](#chain_gettransactionbytracker)
+ * [chain_getInvoicesByTracker](#chain_getinvoicesbytracker)
+ * [chain_getAssetSchemeByTracker](#chain_getassetschemebytracker)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
  * [chain_getText](#chain_gettext)
@@ -743,11 +743,11 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getTransactionById
-Gets a transaction with the given transaction id.
+## chain_getTransactionByTracker
+Gets a transaction with the given tracker.
 
 ### Params
- 1. transaction id - `H256`
+ 1. tracker - `H256`
 
 ### Returns
 `null` | `Transaction`
@@ -758,7 +758,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionById", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionByTracker", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
     localhost:8080
 ```
 
@@ -788,11 +788,11 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getInvoicesById
-Gets transaction invoices with the given transaction id.
+## chain_getInvoicesByTracker
+Gets transaction invoices with the given tracker.
 
 ### Params
- 1. transaction id - `H256`
+ 1. tracker - `H256`
 
 ### Returns
 `string[]` - Each string is either "Success" or "Failed".
@@ -803,7 +803,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getInvoicesById", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getInvoicesByTracker", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
     localhost:8080
 ```
 
@@ -818,11 +818,11 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getAssetSchemeByHash
-Gets an asset scheme with the given asset type.
+## chain_getAssetSchemeByTracker
+Gets an asset scheme with the tracker of the mint transaction.
 
 ### Params
- 1. transaction id of AssetMintTransaction - `H256`
+ 1. tracker of AssetMintTransaction - `H256`
  2. shard id - `number`
  3. block number: `number` | `null`
 
@@ -835,7 +835,7 @@ Errors: `KVDB Error`, `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByHash", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0, null], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getAssetSchemeByTracker", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", 0, null], "id": null}' \
     localhost:8080
 ```
 

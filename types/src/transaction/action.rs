@@ -881,10 +881,10 @@ fn check_duplication_in_prev_out(
 ) -> Result<(), TransactionError> {
     let mut prev_out_set = HashSet::new();
     for input in inputs.iter().chain(burns) {
-        let prev_out = (input.prev_out.transaction_hash, input.prev_out.index);
+        let prev_out = (input.prev_out.tracker, input.prev_out.index);
         if !prev_out_set.insert(prev_out) {
             return Err(TransactionError::DuplicatedPreviousOutput {
-                transaction_hash: input.prev_out.transaction_hash,
+                transaction_hash: input.prev_out.tracker,
                 index: input.prev_out.index,
             })
         }
@@ -1122,7 +1122,7 @@ mod tests {
         let lock_script_hash = H160::random();
         let parameters = vec![vec![1]];
         let origin_output = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
             amount: 30,
@@ -1154,7 +1154,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
                         amount: 10,
@@ -1199,13 +1199,13 @@ mod tests {
         let parameters2 = vec![vec![2]];
 
         let origin_output_1 = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
             amount: 40,
         };
         let origin_output_2 = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 0,
             asset_type: asset_type_c,
             amount: 30,
@@ -1244,7 +1244,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
                         amount: 10,
@@ -1309,7 +1309,7 @@ mod tests {
 
         // Case 1: ratio is wrong
         let origin_output = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
             amount: 30,
@@ -1341,7 +1341,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
                         amount: 10,
@@ -1380,13 +1380,13 @@ mod tests {
 
         // Case 2: multiple outputs with same order and asset_type
         let origin_output_1 = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
             amount: 40,
         };
         let origin_output_2 = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 0,
             asset_type: asset_type_c,
             amount: 40,
@@ -1425,7 +1425,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
                         amount: 10,
@@ -1505,7 +1505,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
                         amount: 10,
@@ -1585,7 +1585,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
                         amount: 10,
@@ -1654,13 +1654,13 @@ mod tests {
         let lock_script_hash = H160::random();
         let parameters = vec![vec![1]];
         let origin_output_1 = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
             amount: 30,
         };
         let origin_output_2 = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 0,
             asset_type: asset_type_b,
             amount: 10,
@@ -1757,7 +1757,7 @@ mod tests {
             network_id: NetworkId::default(),
             burn: AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::default(),
+                    tracker: Default::default(),
                     index: 0,
                     asset_type: H256::zero(),
                     amount: 0,
@@ -1775,7 +1775,7 @@ mod tests {
             network_id: NetworkId::default(),
             burn: AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::default(),
+                    tracker: Default::default(),
                     index: 0,
                     asset_type: invalid_asset_type,
                     amount: 1,

@@ -23,7 +23,7 @@ use crate::ShardId;
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
 pub struct AssetOutPoint {
-    pub transaction_hash: H256,
+    pub tracker: H256,
     pub index: usize,
     pub asset_type: H256,
     pub amount: u64,
@@ -46,7 +46,7 @@ mod tests {
         asset_type[2..4].clone_from_slice(&[0xBE, 0xEF]);
 
         let p = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 3,
             asset_type,
             amount: 34,
