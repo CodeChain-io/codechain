@@ -188,8 +188,8 @@ impl Client {
         }
     }
 
-    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
-        self.block_chain().transaction_address(hash)
+    fn transaction_address(&self, tracker: &H256) -> Option<TransactionAddress> {
+        self.block_chain().transaction_address(tracker)
     }
 
     fn parcel_address_of_successful_transaction(&self, hash: &H256) -> Option<ParcelAddress> {
@@ -616,14 +616,14 @@ impl BlockChainClient for Client {
         self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
     }
 
-    fn transaction(&self, hash: &H256) -> Option<LocalizedTransaction> {
+    fn transaction(&self, tracker: &H256) -> Option<LocalizedTransaction> {
         let chain = self.block_chain();
-        let address = self.transaction_address(hash)?;
+        let address = self.transaction_address(tracker)?;
         address.into_iter().map(Into::into).map(|address| chain.parcel(&address)).next()?
     }
 
-    fn transaction_invoices(&self, hash: &H256) -> Vec<Invoice> {
-        self.transaction_address(hash)
+    fn transaction_invoices(&self, tracker: &H256) -> Vec<Invoice> {
+        self.transaction_address(tracker)
             .map(|address| {
                 address
                     .into_iter()

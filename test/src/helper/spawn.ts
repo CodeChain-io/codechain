@@ -430,7 +430,7 @@ export default class CodeChain {
         });
         await this.sdk.rpc.chain.sendSignedTransaction(signed);
         if (awaitInvoice) {
-            return this.sdk.rpc.chain.getInvoicesById(tx.id(), {
+            return this.sdk.rpc.chain.getInvoicesByTracker(tx.tracker(), {
                 timeout: 300 * 1000
             });
         }
@@ -468,7 +468,7 @@ export default class CodeChain {
         if (!awaitMint) {
             return { asset: tx.getMintedAsset() };
         }
-        const asset = await this.sdk.rpc.chain.getAsset(tx.id(), 0);
+        const asset = await this.sdk.rpc.chain.getAsset(tx.tracker(), 0);
         if (asset === null) {
             throw Error(`Failed to mint asset`);
         }

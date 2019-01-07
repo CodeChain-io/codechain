@@ -36,7 +36,7 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("chain", function() {
-    const invalidId = new H256("0".repeat(64));
+    const invalidH256 = new H256("0".repeat(64));
 
     let node: CodeChain;
     before(async function() {
@@ -78,7 +78,7 @@ describe("chain", function() {
         expect(
             (await node.sdk.rpc.chain.getBlock(blockHash!))!.number
         ).to.equal(bestBlockNumber);
-        expect(await node.sdk.rpc.chain.getBlock(invalidId)).to.be.null;
+        expect(await node.sdk.rpc.chain.getBlock(invalidH256)).to.be.null;
     });
 
     it("getSeq", async function() {
@@ -241,60 +241,71 @@ describe("chain", function() {
             await node.sdk.rpc.chain.sendSignedTransaction(signed);
         });
 
-        it("getTransactionById", async function() {
+        it("getTransactionByTracker", async function() {
             expect(
-                ((await node.sdk.rpc.chain.getTransactionById(tx.id())) as any)
-                    .unsigned
+                ((await node.sdk.rpc.chain.getTransactionByTracker(
+                    tx.tracker()
+                )) as any).unsigned
             ).to.deep.equal(tx);
-            expect(await node.sdk.rpc.chain.getTransactionById(invalidId)).to.be
-                .null;
+            expect(
+                await node.sdk.rpc.chain.getTransactionByTracker(invalidH256)
+            ).to.be.null;
         });
 
-        it("getInvoicesById", async function() {
-            const invoices = await node.sdk.rpc.chain.getInvoicesById(tx.id());
+        it("getInvoicesByTracker", async function() {
+            const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(
+                tx.tracker()
+            );
             expect(invoices!.length).to.equal(1);
             expect(invoices[0].success).to.be.true;
         });
 
         it("getAsset", async function() {
-            expect(await node.sdk.rpc.chain.getAsset(invalidId, 0)).to.be.null;
-            expect(await node.sdk.rpc.chain.getAsset(tx.id(), 1)).to.be.null;
-            expect(await node.sdk.rpc.chain.getAsset(tx.id(), 0)).to.deep.equal(
-                tx.getMintedAsset()
-            );
+            expect(await node.sdk.rpc.chain.getAsset(invalidH256, 0)).to.be
+                .null;
+            expect(await node.sdk.rpc.chain.getAsset(tx.tracker(), 1)).to.be
+                .null;
+            expect(
+                await node.sdk.rpc.chain.getAsset(tx.tracker(), 0)
+            ).to.deep.equal(tx.getMintedAsset());
 
             const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
             expect(
-                await node.sdk.rpc.chain.getAsset(tx.id(), 0, bestBlockNumber)
+                await node.sdk.rpc.chain.getAsset(
+                    tx.tracker(),
+                    0,
+                    bestBlockNumber
+                )
             ).to.deep.equal(tx.getMintedAsset());
-            expect(await node.sdk.rpc.chain.getAsset(tx.id(), 0, 0)).to.be.null;
+            expect(await node.sdk.rpc.chain.getAsset(tx.tracker(), 0, 0)).to.be
+                .null;
             expect(
                 await node.sdk.rpc.chain.getAsset(
-                    tx.id(),
+                    tx.tracker(),
                     0,
                     bestBlockNumber + 1
                 )
             ).to.be.null;
         });
 
-        it("getAssetSchemeByHash", async function() {
+        it("getAssetSchemeByTracker", async function() {
             const invalidShardId = 1;
             const validShardId = 0;
             expect(
-                await node.sdk.rpc.chain.getAssetSchemeByHash(
-                    invalidId,
+                await node.sdk.rpc.chain.getAssetSchemeByTracker(
+                    invalidH256,
                     validShardId
                 )
             ).to.be.null;
             expect(
-                await node.sdk.rpc.chain.getAssetSchemeByHash(
-                    tx.id(),
+                await node.sdk.rpc.chain.getAssetSchemeByTracker(
+                    tx.tracker(),
                     invalidShardId
                 )
             ).to.be.null;
 
-            const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByHash(
-                tx.id(),
+            const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByTracker(
+                tx.tracker(),
                 validShardId
             );
             if (assetScheme == null) {
@@ -306,8 +317,8 @@ describe("chain", function() {
         });
 
         it("getAssetSchemeByType", async function() {
-            expect(await node.sdk.rpc.chain.getAssetSchemeByType(invalidId)).to
-                .be.null;
+            expect(await node.sdk.rpc.chain.getAssetSchemeByType(invalidH256))
+                .to.be.null;
 
             const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByType(
                 tx.getAssetSchemeAddress()
@@ -325,7 +336,7 @@ describe("chain", function() {
         const { asset } = await node.mintAsset({ amount: 10 });
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionId,
+                asset.outPoint.tracker,
                 asset.outPoint.index,
                 0
             )
@@ -345,7 +356,7 @@ describe("chain", function() {
         expect(invoices![0].success).to.be.true;
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionId,
+                asset.outPoint.tracker,
                 asset.outPoint.index,
                 0
             )
@@ -354,7 +365,7 @@ describe("chain", function() {
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionId,
+                asset.outPoint.tracker,
                 asset.outPoint.index,
                 0,
                 bestBlockNumber
@@ -362,7 +373,7 @@ describe("chain", function() {
         ).to.be.true;
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionId,
+                asset.outPoint.tracker,
                 asset.outPoint.index,
                 0,
                 bestBlockNumber - 1
@@ -370,7 +381,7 @@ describe("chain", function() {
         ).to.be.false;
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
-                asset.outPoint.transactionId,
+                asset.outPoint.tracker,
                 asset.outPoint.index,
                 0,
                 0

@@ -212,7 +212,7 @@ describe("solo - 1 node", function() {
             });
             input = node.sdk.core.createAssetTransferInput({
                 assetOutPoint: {
-                    transactionId: "0x" + "0".repeat(64),
+                    tracker: "0x" + "0".repeat(64),
                     index: 0,
                     assetType: "0x" + "1".repeat(64),
                     amount: 12345
@@ -364,11 +364,11 @@ describe("solo - 1 node", function() {
             });
 
             ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
-                transactionHash
+                tracker
             ) {
-                it(`transactionHash: ${transactionHash}`, async function() {
+                it(`tracker: ${tracker}`, async function() {
                     // Burn
-                    encoded[3][2][0][0][0] = transactionHash;
+                    encoded[3][2][0][0][0] = tracker;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -380,7 +380,7 @@ describe("solo - 1 node", function() {
                         );
                     }
                     // Input
-                    encoded[3][3][0][0][0] = transactionHash;
+                    encoded[3][3][0][0][0] = tracker;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -621,11 +621,11 @@ describe("solo - 1 node", function() {
             });
 
             ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
-                transactionHash
+                tracker
             ) {
-                it(`transactionHash: ${transactionHash}`, async function() {
+                it(`tracker: ${tracker}`, async function() {
                     // Input
-                    encoded[3][2][0][0] = transactionHash;
+                    encoded[3][2][0][0] = tracker;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -730,10 +730,10 @@ describe("solo - 1 node", function() {
             });
 
             ["0x1" + "0".repeat(64), "0x" + "f".repeat(65)].forEach(function(
-                transactionHash
+                tracker
             ) {
-                it(`transactionHash: ${transactionHash}`, async function() {
-                    encoded[3][2][0][0] = transactionHash;
+                it(`tracker: ${tracker}`, async function() {
+                    encoded[3][2][0][0] = tracker;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)

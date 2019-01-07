@@ -21,7 +21,7 @@ use primitives::{Bytes, H256};
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetOutPoint {
-    pub transaction_id: H256,
+    pub tracker: H256,
     pub index: usize,
     pub asset_type: H256,
     pub amount: Uint,
@@ -30,7 +30,7 @@ pub struct AssetOutPoint {
 impl From<AssetOutPointType> for AssetOutPoint {
     fn from(from: AssetOutPointType) -> Self {
         AssetOutPoint {
-            transaction_id: from.transaction_hash,
+            tracker: from.tracker,
             index: from.index,
             asset_type: from.asset_type,
             amount: from.amount.into(),
@@ -41,7 +41,7 @@ impl From<AssetOutPointType> for AssetOutPoint {
 impl From<AssetOutPoint> for AssetOutPointType {
     fn from(from: AssetOutPoint) -> Self {
         AssetOutPointType {
-            transaction_hash: from.transaction_id,
+            tracker: from.tracker,
             index: from.index,
             asset_type: from.asset_type,
             amount: from.amount.into(),

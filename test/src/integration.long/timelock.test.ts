@@ -54,11 +54,11 @@ describe("Timelock", function() {
         });
         await node.signTransactionInput(tx, 0);
         await node.sendAssetTransaction(tx, { awaitInvoice: false });
-        return tx.id();
+        return tx.tracker();
     }
 
-    async function checkTx(txId: H256, shouldBeConfirmed: boolean) {
-        const invoices = await node.sdk.rpc.chain.getInvoicesById(txId);
+    async function checkTx(tracker: H256, shouldBeConfirmed: boolean) {
+        const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(tracker);
         if (shouldBeConfirmed) {
             expect(invoices.length).to.equal(1);
             expect(invoices[0].error).to.be.undefined;
@@ -71,38 +71,38 @@ describe("Timelock", function() {
     describe("Parcel should go into the current queue", async function() {
         [1, 2].forEach(function(target) {
             it(`Minted at block 1, send transfer with Timelock::Block(${target})`, async function() {
-                const txId = await sendTxWithTimelock({
+                const tracker = await sendTxWithTimelock({
                     type: "block",
                     value: target
                 });
-                await checkTx(txId, true);
+                await checkTx(tracker, true);
             });
         });
 
         [0, 1].forEach(function(target) {
             it(`Minted at block 1, send transfer with Timelock::BlockAge(${target})`, async function() {
-                const txId = await sendTxWithTimelock({
+                const tracker = await sendTxWithTimelock({
                     type: "blockAge",
                     value: target
                 });
-                await checkTx(txId, true);
+                await checkTx(tracker, true);
             });
         });
 
         it("send transfer with Timelock::Time(0)", async function() {
-            const txId = await sendTxWithTimelock({
+            const tracker = await sendTxWithTimelock({
                 type: "time",
                 value: 0
             });
-            await checkTx(txId, true);
+            await checkTx(tracker, true);
         });
 
         it("send transfer with Timelock::TimeAge(0)", async function() {
-            const txId = await sendTxWithTimelock({
+            const tracker = await sendTxWithTimelock({
                 type: "timeAge",
                 value: 0
             });
-            await checkTx(txId, true);
+            await checkTx(tracker, true);
         });
     });
 
@@ -143,30 +143,30 @@ describe("Timelock", function() {
             expect(e.data).to.have.string("BlockAge(2)");
             expect(e.data).to.have.string("18446744073709551615");
         }
-        await checkTx(tx.id(), false);
+        await checkTx(tx.tracker(), false);
         await node.sdk.rpc.devel.startSealing();
     });
 
     describe("Parcels should go into the future queue and then move to current", async function() {
         it("Minted at block 1, send transfer with Timelock::Block(3)", async function() {
-            const txId = await sendTxWithTimelock({
+            const tracker = await sendTxWithTimelock({
                 // available from block 3
                 type: "block",
                 value: 3
             });
 
             expect(await node.getBestBlockNumber()).to.equal(1);
-            await checkTx(txId, false);
+            await checkTx(tracker, false);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
 
             expect(await node.getBestBlockNumber()).to.equal(3);
-            await checkTx(txId, true);
+            await checkTx(tracker, true);
         });
 
         it("Minted at block 1, send transfer with Timelock::BlockAge(3)", async function() {
-            const txId = await sendTxWithTimelock({
+            const tracker = await sendTxWithTimelock({
                 // available from block 4, since mintTx is at block 1.
                 type: "blockAge",
                 value: 3
@@ -174,13 +174,13 @@ describe("Timelock", function() {
 
             for (let i = 1; i <= 3; i++) {
                 expect(await node.getBestBlockNumber()).to.equal(i);
-                await checkTx(txId, false);
+                await checkTx(tracker, false);
 
                 await node.sdk.rpc.devel.startSealing();
             }
 
             expect(await node.getBestBlockNumber()).to.equal(4);
-            await checkTx(txId, true);
+            await checkTx(tracker, true);
         });
     });
 
@@ -207,27 +207,27 @@ describe("Timelock", function() {
         await node.signTransactionInput(tx, 0);
         const { fee } = options;
         await node.sendAssetTransaction(tx, { awaitInvoice: false, fee });
-        return tx.id();
+        return tx.tracker();
     }
 
     describe("The future items should move to the current queue", async function() {
         it("Minted at block 1, send transfer with Timelock::Block(10) and then replace it with no timelock", async function() {
             const { asset } = await node.mintAsset({ amount: 1 });
             await node.sdk.rpc.devel.stopSealing();
-            const txId1 = await sendTransferTx(asset, {
+            const tracker1 = await sendTransferTx(asset, {
                 type: "block",
                 value: 10
             });
-            const txId2 = await sendTransferTx(asset, undefined, {
+            const tracker2 = await sendTransferTx(asset, undefined, {
                 fee: 20
             });
-            await checkTx(txId1, false);
-            await checkTx(txId2, false);
+            await checkTx(tracker1, false);
+            await checkTx(tracker2, false);
 
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(2);
-            await checkTx(txId1, false);
-            await checkTx(txId2, true);
+            await checkTx(tracker1, false);
+            await checkTx(tracker2, true);
         });
     });
 
@@ -278,17 +278,17 @@ describe("Timelock", function() {
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
 
             expect(await node.getBestBlockNumber()).to.equal(2);
-            await checkTx(tx.id(), false);
+            await checkTx(tx.tracker(), false);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(4);
-            await checkTx(tx.id(), false);
+            await checkTx(tx.tracker(), false);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(6);
-            await checkTx(tx.id(), true);
+            await checkTx(tx.tracker(), true);
         }).timeout(10_000);
 
         it("2 inputs [Block(6), Block(4)] => Block(4)", async function() {
@@ -315,17 +315,17 @@ describe("Timelock", function() {
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
 
             expect(await node.getBestBlockNumber()).to.equal(2);
-            await checkTx(tx.id(), false);
+            await checkTx(tx.tracker(), false);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(4);
-            await checkTx(tx.id(), false);
+            await checkTx(tx.tracker(), false);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(6);
-            await checkTx(tx.id(), true);
+            await checkTx(tx.tracker(), true);
         }).timeout(10_000);
 
         it("2 inputs [Time(0), Block(4)] => Block(4)", async function() {
@@ -352,12 +352,12 @@ describe("Timelock", function() {
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
 
             expect(await node.getBestBlockNumber()).to.equal(2);
-            await checkTx(tx.id(), false);
+            await checkTx(tx.tracker(), false);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(4);
-            await checkTx(tx.id(), true);
+            await checkTx(tx.tracker(), true);
         }).timeout(10_000);
 
         it("2 inputs [Time(now + 3 seconds), Block(4)] => Time(..)", async function() {
@@ -384,19 +384,19 @@ describe("Timelock", function() {
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
 
             expect(await node.getBestBlockNumber()).to.equal(2);
-            await checkTx(tx.id(), false);
+            await checkTx(tx.tracker(), false);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(4);
-            await checkTx(tx.id(), false);
+            await checkTx(tx.tracker(), false);
 
             await wait(3_000);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
             expect(await node.getBestBlockNumber()).to.equal(6);
-            await checkTx(tx.id(), true);
+            await checkTx(tx.tracker(), true);
         }).timeout(10_000);
     });
 

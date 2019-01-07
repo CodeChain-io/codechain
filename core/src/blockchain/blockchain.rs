@@ -483,8 +483,8 @@ impl BodyProvider for BlockChain {
         self.body_db.parcel_address(hash)
     }
 
-    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
-        self.body_db.transaction_address(hash)
+    fn transaction_address(&self, tracker: &H256) -> Option<TransactionAddress> {
+        self.body_db.transaction_address(tracker)
     }
 
     fn block_body(&self, hash: &H256) -> Option<encoded::Body> {

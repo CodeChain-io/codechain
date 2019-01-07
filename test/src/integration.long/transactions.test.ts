@@ -309,7 +309,7 @@ describe("transactions", function() {
         expect(invoices2!.length).to.equal(1);
         expect(invoices2![0].success).to.be.true;
 
-        expect(await node.sdk.rpc.chain.getAsset(tx2.id(), 0)).to.be.null;
+        expect(await node.sdk.rpc.chain.getAsset(tx2.tracker(), 0)).to.be.null;
     });
 
     it("Burn unsuccessful(ZeroAmount)", async function() {
@@ -336,7 +336,7 @@ describe("transactions", function() {
             node.sdk.core.createAssetTransferInput({
                 assetOutPoint: {
                     assetType,
-                    transactionId: tx1.id(),
+                    tracker: tx1.tracker(),
                     index: 0,
                     lockScriptHash,
                     parameters,
@@ -388,7 +388,8 @@ describe("transactions", function() {
             "ScriptShouldBeBurnt"
         );
 
-        expect(await node.sdk.rpc.chain.getAsset(tx1.id(), 0)).not.to.be.null;
+        expect(await node.sdk.rpc.chain.getAsset(tx1.tracker(), 0)).not.to.be
+            .null;
     });
 
     it("Cannot burn P2PKH asset", async function() {
@@ -555,7 +556,7 @@ describe("transactions", function() {
                 recipient
             });
             await node.sendAssetTransaction(tx);
-            const asset = await node.sdk.rpc.chain.getAsset(tx.id(), 0);
+            const asset = await node.sdk.rpc.chain.getAsset(tx.tracker(), 0);
             if (asset === null) {
                 throw Error(`Failed to mint an asset`);
             }
@@ -1151,7 +1152,7 @@ describe("transactions", function() {
                 expect(invoices1![0].success).to.be.true;
 
                 const asset2 = await node.sdk.rpc.chain.getAsset(
-                    transferTx.id(),
+                    transferTx.tracker(),
                     0
                 );
 
