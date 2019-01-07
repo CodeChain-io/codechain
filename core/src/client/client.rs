@@ -169,6 +169,11 @@ impl Client {
         self.importer.import_verified_blocks(self)
     }
 
+    /// This is triggered by a message coming from a engine when a new block should be created
+    pub fn update_sealing(&self, allow_empty_block: bool) {
+        self.importer.miner.update_sealing(self, allow_empty_block);
+    }
+
     fn block_hash(chain: &BlockChain, id: &BlockId) -> Option<H256> {
         match id {
             BlockId::Hash(hash) => Some(*hash),
@@ -459,7 +464,12 @@ impl EngineInfo for Client {
 impl EngineClient for Client {
     /// Make a new block and seal it.
     fn update_sealing(&self, allow_empty_block: bool) {
-        self.importer.miner.update_sealing(self, allow_empty_block)
+        match self.io_channel.lock().send(ClientIoMessage::NewBlockRequired(allow_empty_block)) {
+            Ok(_) => {}
+            Err(e) => {
+                cdebug!(CLIENT, "Error while triggering block creation: {}", e);
+            }
+        }
     }
 
     /// Submit a seal for a block in the mining queue.
