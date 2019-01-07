@@ -39,7 +39,7 @@ fn valid_pay_to_public_key() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -83,7 +83,7 @@ fn invalid_pay_to_public_key() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -122,7 +122,7 @@ fn sign_all_input_all_output() {
     let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 0,
         asset_type: H256::default(),
         amount: 0,
@@ -135,7 +135,7 @@ fn sign_all_input_all_output() {
     };
     // Make input indexed 1
     let out1 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 1,
         asset_type: H256::default(),
         amount: 1,
@@ -198,7 +198,7 @@ fn sign_single_input_all_output() {
     let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 0,
         asset_type: H256::default(),
         amount: 0,
@@ -211,7 +211,7 @@ fn sign_single_input_all_output() {
     };
     // Make input indexed 1
     let out1 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 1,
         asset_type: H256::default(),
         amount: 1,
@@ -273,7 +273,7 @@ fn sign_all_input_partial_output() {
     let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 0,
         asset_type: H256::default(),
         amount: 0,
@@ -286,7 +286,7 @@ fn sign_all_input_partial_output() {
     };
     // Make input indexed 1
     let out1 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 1,
         asset_type: H256::default(),
         amount: 1,
@@ -348,7 +348,7 @@ fn sign_single_input_partial_output() {
     let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 0,
         asset_type: H256::default(),
         amount: 0,
@@ -361,7 +361,7 @@ fn sign_single_input_partial_output() {
     };
     // Make input indexed 1
     let out1 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 1,
         asset_type: H256::default(),
         amount: 1,
@@ -423,7 +423,7 @@ fn distinguish_sign_single_input_with_sign_all() {
     let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 0,
         asset_type: H256::default(),
         amount: 0,
@@ -479,7 +479,7 @@ fn distinguish_sign_single_output_with_sign_all() {
     let client = get_test_client();
     // Make input indexed 0
     let out0 = AssetOutPoint {
-        transaction_hash: H256::default(),
+        tracker: Default::default(),
         index: 0,
         asset_type: H256::default(),
         amount: 0,

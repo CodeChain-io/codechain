@@ -93,7 +93,7 @@ describe("Timelock", function() {
     });
 
     async function checkTx(txhash: H256, shouldBeConfirmed: boolean) {
-        const invoices = await node.sdk.rpc.chain.getInvoicesById(txhash);
+        const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(txhash);
         if (shouldBeConfirmed) {
             expect(invoices.length).to.equal(1);
             expect(invoices[0].error).to.be.undefined;
@@ -126,7 +126,7 @@ describe("Timelock", function() {
         await node.signTransactionInput(tx, 0);
         const { fee } = options;
         await node.sendAssetTransaction(tx, { awaitInvoice: false, fee });
-        return tx.id();
+        return tx.tracker();
     }
 
     describe("The current items should move to the future queue", async function() {

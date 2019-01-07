@@ -40,17 +40,17 @@ build_rpc_trait! {
         # [rpc(name = "chain_getInvoice")]
         fn get_invoice(&self, H256) -> Result<Option<Invoice>>;
 
-        /// Gets transaction with given payload hash.
-        # [rpc(name = "chain_getTransactionById")]
-        fn get_transaction_with_payload_hash(&self, H256) -> Result<Option<Transaction>>;
+        /// Gets transaction with given transaction tracker.
+        # [rpc(name = "chain_getTransactionByTracker")]
+        fn get_transaction_by_tracker(&self, H256) -> Result<Option<Transaction>>;
 
-        /// Gets transaction invoices with given payload hash.
-        # [rpc(name = "chain_getInvoicesById")]
-        fn get_invoices_with_payload_hash(&self, H256) -> Result<Vec<Invoice>>;
+        /// Gets transaction invoices with given transaction tracker.
+        # [rpc(name = "chain_getInvoicesByTracker")]
+        fn get_invoices_by_tracker(&self, H256) -> Result<Vec<Invoice>>;
 
-        /// Gets asset scheme with given payload hash.
-        # [rpc(name = "chain_getAssetSchemeByHash")]
-        fn get_asset_scheme_by_hash(&self, H256, ShardId, Option<u64>) -> Result<Option<AssetScheme>>;
+        /// Gets asset scheme with given transaction tracker.
+        # [rpc(name = "chain_getAssetSchemeByTracker")]
+        fn get_asset_scheme_by_tracker(&self, H256, ShardId, Option<u64>) -> Result<Option<AssetScheme>>;
 
         /// Gets asset scheme with given asset type.
         # [rpc(name = "chain_getAssetSchemeByType")]

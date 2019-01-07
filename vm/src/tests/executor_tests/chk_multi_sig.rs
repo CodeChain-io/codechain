@@ -39,7 +39,7 @@ fn valid_multi_sig_0_of_2() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -80,7 +80,7 @@ fn valid_multi_sig_1_of_2() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -133,7 +133,7 @@ fn valid_multi_sig_2_of_2() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -188,7 +188,7 @@ fn valid_multi_sig_2_of_3_110() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -246,7 +246,7 @@ fn valid_multi_sig_2_of_3_101() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -304,7 +304,7 @@ fn valid_multi_sig_2_of_3_011() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -362,7 +362,7 @@ fn invalid_multi_sig_1_of_2() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -416,7 +416,7 @@ fn invalid_multi_sig_2_of_2() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -471,7 +471,7 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -537,7 +537,7 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -592,7 +592,7 @@ fn invalid_multi_sig_with_less_sig_than_m() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -645,7 +645,7 @@ fn invalid_multi_sig_with_more_sig_than_m() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -700,7 +700,7 @@ fn invalid_multi_sig_with_too_many_arg() {
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
