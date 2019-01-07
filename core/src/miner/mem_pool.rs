@@ -76,6 +76,10 @@ impl TxOrigin {
     fn is_local(self) -> bool {
         self == TxOrigin::Local
     }
+
+    fn is_local_or_retracted(self) -> bool {
+        self == TxOrigin::Local || self == TxOrigin::RetractedBlock
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -292,9 +296,8 @@ impl TransactionSet {
                     count += 1;
                     mem_usage += order.mem_usage;
 
-                    let is_own_or_retracted = order.origin.is_local() || order.origin == TxOrigin::RetractedBlock;
                     // Own and retracted transactions are allowed to go above all limits.
-                    !is_own_or_retracted && (mem_usage > self.memory_limit || count > self.limit)
+                    !order.origin.is_local_or_retracted() && (mem_usage > self.memory_limit || count > self.limit)
                 })
                 .map(|order| {
                     by_hash.get(&order.hash).expect(
