@@ -129,7 +129,6 @@ describe("solo - 1 node", function() {
         });
 
         [
-            { actionType: 1, actionLength: 4 },
             { actionType: 2, actionLength: 2 },
             { actionType: 2, actionLength: 4 },
             { actionType: 3, actionLength: 1 },
@@ -138,7 +137,19 @@ describe("solo - 1 node", function() {
             { actionType: 5, actionLength: 2 },
             { actionType: 5, actionLength: 4 },
             { actionType: 6, actionLength: 2 },
-            { actionType: 6, actionLength: 4 }
+            { actionType: 6, actionLength: 4 },
+            { actionType: 0x11, actionLength: 3 },
+            { actionType: 0x11, actionLength: 5 },
+            { actionType: 0x13, actionLength: 9 },
+            { actionType: 0x13, actionLength: 11 },
+            { actionType: 0x14, actionLength: 6 },
+            { actionType: 0x14, actionLength: 8 },
+            { actionType: 0x15, actionLength: 6 },
+            { actionType: 0x15, actionLength: 8 },
+            { actionType: 0x16, actionLength: 10 },
+            { actionType: 0x16, actionLength: 12 },
+            { actionType: 0x17, actionLength: 4 },
+            { actionType: 0x17, actionLength: 6 }
         ].forEach(function(params: {
             actionType: number;
             actionLength: number;
@@ -236,7 +247,7 @@ describe("solo - 1 node", function() {
 
             [65536, 100000].forEach(function(shardId) {
                 it(`shardId: ${shardId}`, async function() {
-                    encoded[3][1][2] = shardId;
+                    encoded[3][2] = shardId;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -254,7 +265,7 @@ describe("solo - 1 node", function() {
                 amount
             ) {
                 it(`amount: ${amount}`, async function() {
-                    encoded[3][1][6][0] = amount;
+                    encoded[3][6][0] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -272,7 +283,7 @@ describe("solo - 1 node", function() {
                 lockScriptHash
             ) {
                 it(`lockScriptHash: ${lockScriptHash}`, async function() {
-                    encoded[3][1][4] = lockScriptHash;
+                    encoded[3][4] = lockScriptHash;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -313,7 +324,7 @@ describe("solo - 1 node", function() {
             ) {
                 it(`amount: ${amount}`, async function() {
                     // Burn
-                    encoded[3][1][2][0][0][3] = amount;
+                    encoded[3][2][0][0][3] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -325,7 +336,7 @@ describe("solo - 1 node", function() {
                         );
                     }
                     // Input
-                    encoded[3][1][3][0][0][3] = amount;
+                    encoded[3][3][0][0][3] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -338,7 +349,7 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    encoded[3][1][4][0][3] = amount;
+                    encoded[3][4][0][3] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -357,7 +368,7 @@ describe("solo - 1 node", function() {
             ) {
                 it(`transactionHash: ${transactionHash}`, async function() {
                     // Burn
-                    encoded[3][1][2][0][0][0] = transactionHash;
+                    encoded[3][2][0][0][0] = transactionHash;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -369,7 +380,7 @@ describe("solo - 1 node", function() {
                         );
                     }
                     // Input
-                    encoded[3][1][3][0][0][0] = transactionHash;
+                    encoded[3][3][0][0][0] = transactionHash;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -388,7 +399,7 @@ describe("solo - 1 node", function() {
             ) {
                 it(`assetType: ${assetType}`, async function() {
                     // Burn
-                    encoded[3][1][2][0][0][2] = assetType;
+                    encoded[3][2][0][0][2] = assetType;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -400,7 +411,7 @@ describe("solo - 1 node", function() {
                         );
                     }
                     // Input
-                    encoded[3][1][3][0][0][2] = assetType;
+                    encoded[3][3][0][0][2] = assetType;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -413,7 +424,7 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    encoded[3][1][4][0][2] = assetType;
+                    encoded[3][4][0][2] = assetType;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -431,7 +442,7 @@ describe("solo - 1 node", function() {
                 lockScriptHash
             ) {
                 it(`lockScriptHash: ${lockScriptHash}`, async function() {
-                    encoded[3][1][4][0][0] = lockScriptHash;
+                    encoded[3][4][0][0] = lockScriptHash;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -470,7 +481,7 @@ describe("solo - 1 node", function() {
 
             [65536, 100000].forEach(function(shardId) {
                 it(`shardId: ${shardId}`, async function() {
-                    encoded[3][1][2] = shardId;
+                    encoded[3][2] = shardId;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -489,7 +500,7 @@ describe("solo - 1 node", function() {
             ) {
                 it(`amount: ${amount}`, async function() {
                     // Input
-                    encoded[3][1][6][0][0][3] = amount;
+                    encoded[3][6][0][0][3] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -502,7 +513,7 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    encoded[3][1][9][0] = amount;
+                    encoded[3][9][0] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -521,7 +532,7 @@ describe("solo - 1 node", function() {
             ) {
                 it(`assetType: ${assetType}`, async function() {
                     // Input
-                    encoded[3][1][6][0][0][2] = assetType;
+                    encoded[3][6][0][0][2] = assetType;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -539,7 +550,7 @@ describe("solo - 1 node", function() {
                 lockScriptHash
             ) {
                 it(`lockScriptHash: ${lockScriptHash}`, async function() {
-                    encoded[3][1][7] = lockScriptHash;
+                    encoded[3][7] = lockScriptHash;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -582,7 +593,7 @@ describe("solo - 1 node", function() {
             ) {
                 it(`amount: ${amount}`, async function() {
                     // Input
-                    encoded[3][1][2][0][3] = amount;
+                    encoded[3][2][0][3] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -595,7 +606,7 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    encoded[3][1][3][0][3] = amount;
+                    encoded[3][3][0][3] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -614,7 +625,7 @@ describe("solo - 1 node", function() {
             ) {
                 it(`transactionHash: ${transactionHash}`, async function() {
                     // Input
-                    encoded[3][1][2][0][0] = transactionHash;
+                    encoded[3][2][0][0] = transactionHash;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -633,7 +644,7 @@ describe("solo - 1 node", function() {
             ) {
                 it(`assetType: ${assetType}`, async function() {
                     // Input
-                    encoded[3][1][2][0][2] = assetType;
+                    encoded[3][2][0][2] = assetType;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -646,7 +657,7 @@ describe("solo - 1 node", function() {
                     }
 
                     // Output
-                    encoded[3][1][3][0][2] = assetType;
+                    encoded[3][3][0][2] = assetType;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -664,7 +675,7 @@ describe("solo - 1 node", function() {
                 lockScriptHash
             ) {
                 it(`lockScriptHash: ${lockScriptHash}`, async function() {
-                    encoded[3][1][3][0][0] = lockScriptHash;
+                    encoded[3][3][0][0] = lockScriptHash;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -704,7 +715,7 @@ describe("solo - 1 node", function() {
                 amount
             ) {
                 it(`amount: ${amount}`, async function() {
-                    encoded[3][1][2][0][3] = amount;
+                    encoded[3][2][0][3] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -722,7 +733,7 @@ describe("solo - 1 node", function() {
                 transactionHash
             ) {
                 it(`transactionHash: ${transactionHash}`, async function() {
-                    encoded[3][1][2][0][0] = transactionHash;
+                    encoded[3][2][0][0] = transactionHash;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
@@ -740,7 +751,7 @@ describe("solo - 1 node", function() {
                 assetType
             ) {
                 it(`assetType: ${assetType}`, async function() {
-                    encoded[3][1][2][0][2] = assetType;
+                    encoded[3][2][0][2] = assetType;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
