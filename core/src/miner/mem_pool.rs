@@ -1629,13 +1629,14 @@ pub mod test {
                 network_id: "tc".into(),
                 shard_id,
                 metadata: "Metadata".to_string(),
-                output: AssetMintOutput {
+                output: Box::new(AssetMintOutput {
                     lock_script_hash: H160::zero(),
                     parameters: vec![],
                     amount: None,
-                },
+                }),
                 approver: None,
                 administrator: None,
+                allowed_script_hashes: vec![],
                 approvals: vec![],
             },
         };
@@ -1752,11 +1753,12 @@ pub mod test {
                 metadata: String::from_utf8(vec![b'a'; transaction_count]).unwrap(),
                 approver: None,
                 administrator: None,
-                output: AssetMintOutput {
+                allowed_script_hashes: vec![],
+                output: Box::new(AssetMintOutput {
                     lock_script_hash: H160::zero(),
                     parameters: vec![],
                     amount: None,
-                },
+                }),
                 approvals: vec![],
             },
         };

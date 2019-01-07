@@ -104,6 +104,7 @@ impl<'db> ShardLevelState<'db> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 output:
                     AssetMintOutput {
                         lock_script_hash,
@@ -120,6 +121,7 @@ impl<'db> ShardLevelState<'db> {
                     amount,
                     approver,
                     administrator,
+                    allowed_script_hashes,
                     sender,
                     shard_users,
                     Vec::new(),
@@ -141,12 +143,22 @@ impl<'db> ShardLevelState<'db> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 ..
-            } => self.change_asset_scheme(sender, approvers, asset_type, metadata, approver, administrator),
+            } => self.change_asset_scheme(
+                sender,
+                approvers,
+                asset_type,
+                metadata,
+                approver,
+                administrator,
+                allowed_script_hashes,
+            ),
             ShardTransaction::ComposeAsset {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
                 output,
                 ..
@@ -155,6 +167,7 @@ impl<'db> ShardLevelState<'db> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
                 output,
                 sender,
@@ -195,6 +208,7 @@ impl<'db> ShardLevelState<'db> {
         amount: &Option<u64>,
         approver: &Option<Address>,
         administrator: &Option<Address>,
+        allowed_script_hashes: &[H160],
         sender: &Address,
         shard_users: &[Address],
         pool: Vec<Asset>,
@@ -214,6 +228,7 @@ impl<'db> ShardLevelState<'db> {
             amount,
             *approver,
             *administrator,
+            allowed_script_hashes.to_vec(),
             pool,
         )?;
 
@@ -277,6 +292,8 @@ impl<'db> ShardLevelState<'db> {
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
+            self.check_output_script_hash(output)?;
+
             let asset_address = OwnedAssetAddress::new(transaction.tracker(), index, self.shard_id);
             let _asset = self.create_asset(
                 &asset_address,
@@ -330,6 +347,7 @@ impl<'db> ShardLevelState<'db> {
         metadata: &str,
         approver: &Option<Address>,
         administrator: &Option<Address>,
+        allowed_script_hashes: &[H160],
     ) -> StateResult<()> {
         let asset_scheme_address = AssetSchemeAddress::from_hash(*asset_type)
             .ok_or_else(|| TransactionError::AssetSchemeNotFound(*asset_type))?;
@@ -347,7 +365,12 @@ impl<'db> ShardLevelState<'db> {
             }
         }
         let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
-        asset_scheme.change_data(metadata.to_string(), approver.clone(), administrator.clone());
+        asset_scheme.change_data(
+            metadata.to_string(),
+            approver.clone(),
+            administrator.clone(),
+            allowed_script_hashes.to_vec(),
+        );
 
         Ok(())
     }
@@ -388,6 +411,20 @@ impl<'db> ShardLevelState<'db> {
                 Ok((asset, asset_address))
             }
             None => Err(TransactionError::AssetNotFound(asset_address.into()).into()),
+        }
+    }
+
+    fn check_output_script_hash(&self, output: &AssetTransferOutput) -> StateResult<()> {
+        let asset_scheme = {
+            let asset_scheme_address =
+                AssetSchemeAddress::from_hash(output.asset_type).expect("Asset type must be the valid format");
+            self.asset_scheme(&asset_scheme_address)?.expect("AssetScheme must exist when the asset exist")
+        };
+        let lock_script_hash = output.lock_script_hash;
+        if asset_scheme.is_allowed_script_hash(&lock_script_hash) {
+            Ok(())
+        } else {
+            Err(TransactionError::ScriptNotAllowed(lock_script_hash).into())
         }
     }
 
@@ -487,6 +524,7 @@ impl<'db> ShardLevelState<'db> {
         metadata: &str,
         approver: &Option<Address>,
         administrator: &Option<Address>,
+        allowed_script_hashes: &[H160],
         inputs: &[AssetTransferInput],
         output: &AssetMintOutput,
         sender: &Address,
@@ -528,6 +566,7 @@ impl<'db> ShardLevelState<'db> {
             &output.amount,
             approver,
             administrator,
+            allowed_script_hashes,
             sender,
             shard_users,
             pool,
@@ -639,6 +678,7 @@ impl<'db> ShardLevelState<'db> {
                 None,
                 None,
                 Vec::new(),
+                Vec::new(),
             );
             // FIXME: Wrapped CCC is minted in here, but the metadata is not well-defined.
             ctrace!(
@@ -695,10 +735,11 @@ impl<'db> ShardLevelState<'db> {
         amount: u64,
         approver: Option<Address>,
         administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> cmerkle::Result<AssetScheme> {
         let mut asset_scheme = self.get_asset_scheme_mut(a)?;
-        asset_scheme.init(metadata, amount, approver, administrator, pool);
+        asset_scheme.init(metadata, amount, approver, administrator, allowed_script_hashes, pool);
         Ok(asset_scheme.clone())
     }
 
@@ -2035,6 +2076,7 @@ mod tests {
             metadata: "New metadata".to_string(),
             approver: Some(approver),
             administrator: None,
+            allowed_script_hashes: Vec::new(),
         };
         assert_eq!(
             Ok(Invoice::Success),

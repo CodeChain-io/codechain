@@ -32,8 +32,9 @@ pub enum Action {
         metadata: String,
         approver: Option<PlatformAddress>,
         administrator: Option<PlatformAddress>,
+        allowed_script_hashes: Vec<H160>,
 
-        output: AssetMintOutput,
+        output: Box<AssetMintOutput>,
 
         approvals: Vec<Signature>,
     },
@@ -54,6 +55,7 @@ pub enum Action {
         metadata: String,
         approver: Option<PlatformAddress>,
         administrator: Option<PlatformAddress>,
+        allowed_script_hashes: Vec<H160>,
 
         approvals: Vec<Signature>,
     },
@@ -64,6 +66,7 @@ pub enum Action {
         metadata: String,
         approver: Option<PlatformAddress>,
         administrator: Option<PlatformAddress>,
+        allowed_script_hashes: Vec<H160>,
         inputs: Vec<AssetTransferInput>,
         output: Box<AssetMintOutput>,
 
@@ -129,6 +132,7 @@ pub enum ActionWithId {
         metadata: String,
         approver: Option<PlatformAddress>,
         administrator: Option<PlatformAddress>,
+        allowed_script_hashes: Vec<H160>,
 
         output: Box<AssetMintOutput>,
 
@@ -155,6 +159,7 @@ pub enum ActionWithId {
         metadata: String,
         approver: Option<PlatformAddress>,
         administrator: Option<PlatformAddress>,
+        allowed_script_hashes: Vec<H160>,
 
         approvals: Vec<Signature>,
 
@@ -167,6 +172,7 @@ pub enum ActionWithId {
         metadata: String,
         approver: Option<PlatformAddress>,
         administrator: Option<PlatformAddress>,
+        allowed_script_hashes: Vec<H160>,
         inputs: Vec<AssetTransferInput>,
         output: Box<AssetMintOutput>,
 
@@ -240,6 +246,7 @@ impl ActionWithId {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
 
                 output,
                 approvals,
@@ -252,7 +259,8 @@ impl ActionWithId {
                     approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
                     administrator: administrator
                         .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
-                    output: Box::new(output.into()),
+                    allowed_script_hashes,
+                    output: Box::new((*output).into()),
                     approvals,
                     id,
                 }
@@ -282,6 +290,7 @@ impl ActionWithId {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 approvals,
             } => {
                 let id = tracker.unwrap();
@@ -292,6 +301,7 @@ impl ActionWithId {
                     approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
                     administrator: administrator
                         .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                    allowed_script_hashes,
                     approvals,
                     id,
                 }
@@ -302,6 +312,7 @@ impl ActionWithId {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
                 output,
                 approvals,
@@ -314,8 +325,9 @@ impl ActionWithId {
                     approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
                     administrator: administrator
                         .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                    allowed_script_hashes,
                     inputs: inputs.into_iter().map(From::from).collect(),
-                    output: Box::new(output.into()),
+                    output: Box::new((*output).into()),
                     approvals,
                     id,
                 }
@@ -423,6 +435,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 output,
                 approvals,
             } => {
@@ -440,7 +453,8 @@ impl From<Action> for Result<ActionType, KeyError> {
                     metadata,
                     approver,
                     administrator,
-                    output: output.into(),
+                    allowed_script_hashes,
+                    output: Box::new((*output).into()),
                     approvals,
                 }
             }
@@ -466,6 +480,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
 
                 approvals,
             } => {
@@ -483,6 +498,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                     metadata,
                     approver,
                     administrator,
+                    allowed_script_hashes,
                     approvals,
                 }
             }
@@ -492,6 +508,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
                 output,
 
@@ -511,8 +528,9 @@ impl From<Action> for Result<ActionType, KeyError> {
                     metadata,
                     approver,
                     administrator,
+                    allowed_script_hashes,
                     inputs: inputs.into_iter().map(|input| input.into()).collect(),
-                    output: (*output).into(),
+                    output: Box::new((*output).into()),
                     approvals,
                 }
             }

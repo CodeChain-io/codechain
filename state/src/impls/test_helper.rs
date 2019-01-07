@@ -30,6 +30,7 @@ macro_rules! mint_asset {
             output: $output,
             approver: None,
             administrator: None,
+            allowed_script_hashes: vec![],
             approvals: vec![],
         }
     };
@@ -41,6 +42,7 @@ macro_rules! mint_asset {
             output: $output,
             approver: Some($approver),
             administrator: None,
+            allowed_script_hashes: vec![],
             approvals: vec![],
         }
     };
@@ -52,6 +54,7 @@ macro_rules! mint_asset {
             output: $output,
             approver: None,
             administrator: Some($admin),
+            allowed_script_hashes: vec![],
             approvals: vec![],
         }
     };
@@ -66,6 +69,7 @@ macro_rules! asset_mint {
             output: $output,
             approver: None,
             administrator: None,
+            allowed_script_hashes: vec![],
         }
     };
     ($output:expr, $metadata:expr, approver: $approver:expr) => {
@@ -76,6 +80,7 @@ macro_rules! asset_mint {
             output: $output,
             approver: Some($approver),
             administrator: None,
+            allowed_script_hashes: vec![],
         }
     };
     ($output:expr, $metadata:expr, administrator: $admin:expr) => {
@@ -86,6 +91,7 @@ macro_rules! asset_mint {
             output: $output,
             approver: None,
             administrator: Some($admin),
+            allowed_script_hashes: vec![],
         }
     };
 }
@@ -283,6 +289,7 @@ macro_rules! asset_compose {
             metadata: $metadata,
             approver: None,
             administrator: None,
+            allowed_script_hashes: vec![],
             inputs: $inputs,
             output: $outputs,
         }
@@ -457,7 +464,7 @@ macro_rules! set_top_level_state {
         set_top_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(scheme: ($shard:expr, $addr:expr) => { amount: $amount:expr, metadata: $metadata:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
-        assert_eq!(Ok((true)), $state.create_asset_scheme($shard, &$addr, $metadata, $amount, $approver, None, Vec::new()));
+        assert_eq!(Ok((true)), $state.create_asset_scheme($shard, &$addr, $metadata, $amount, $approver, None, Vec::new(), Vec::new()));
 
         set_top_level_state!($state, [$($x),*]);
     };
