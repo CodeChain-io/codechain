@@ -62,7 +62,6 @@
 
 #[macro_use]
 extern crate codechain_logger as clogger;
-extern crate limited_table;
 extern crate mio;
 #[macro_use]
 extern crate log;
