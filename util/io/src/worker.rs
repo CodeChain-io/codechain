@@ -15,7 +15,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use crossbeam::deque;
-use service::{HandlerId, IoChannel, IoContext};
+use service::{IoChannel, IoContext};
 use std::cell::Cell;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::sync::Arc;
@@ -44,7 +44,6 @@ pub enum WorkType<Message> {
 pub struct Work<Message> {
     pub work_type: WorkType<Message>,
     pub token: usize,
-    pub handler_id: HandlerId,
     pub handler: Arc<IoHandler<Message>>,
 }
 
@@ -120,27 +119,27 @@ impl Worker {
         Message: Send + Sync + Clone + 'static, {
         match work.work_type {
             WorkType::Readable => {
-                if let Err(err) = work.handler.stream_readable(&IoContext::new(channel, work.handler_id), work.token) {
+                if let Err(err) = work.handler.stream_readable(&IoContext::new(channel), work.token) {
                     cwarn!(IO, "Error in stream_readable {:?}", err);
                 }
             }
             WorkType::Writable => {
-                if let Err(err) = work.handler.stream_writable(&IoContext::new(channel, work.handler_id), work.token) {
+                if let Err(err) = work.handler.stream_writable(&IoContext::new(channel), work.token) {
                     cwarn!(IO, "Error in stream_writable {:?}", err);
                 }
             }
             WorkType::Hup => {
-                if let Err(err) = work.handler.stream_hup(&IoContext::new(channel, work.handler_id), work.token) {
+                if let Err(err) = work.handler.stream_hup(&IoContext::new(channel), work.token) {
                     cwarn!(IO, "Error in stream_hup {:?}", err);
                 }
             }
             WorkType::Timeout => {
-                if let Err(err) = work.handler.timeout(&IoContext::new(channel, work.handler_id), work.token) {
+                if let Err(err) = work.handler.timeout(&IoContext::new(channel), work.token) {
                     cwarn!(IO, "Error in timeout {:?}", err);
                 }
             }
             WorkType::Message(message) => {
-                if let Err(err) = work.handler.message(&IoContext::new(channel, work.handler_id), &message) {
+                if let Err(err) = work.handler.message(&IoContext::new(channel), &message) {
                     cwarn!(IO, "Error in message {:?}", err);
                 }
             }
