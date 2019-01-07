@@ -260,7 +260,7 @@ impl TimeoutHandler for Client {
                 }
             }
             RESEAL_MIN_TIMER_TOKEN => {
-                // Checking self.ready_parcels() for efficiency
+                // Checking self.ready_transactions() for efficiency
                 if !self.ready_transactions().is_empty() {
                     self.update_sealing(false);
                 }
