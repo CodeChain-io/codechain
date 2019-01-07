@@ -16,14 +16,13 @@
 
 use std::cmp;
 use std::cmp::Ordering;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use ckey::{public_to_address, Public};
 use ctypes::transaction::{Action, ParcelError};
 use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
 use linked_hash_map::LinkedHashMap;
-use multimap::MultiMap;
 use primitives::H256;
 use rlp;
 use table::Table;
@@ -237,7 +236,7 @@ impl MemPoolItem {
 struct TransactionSet {
     by_priority: BTreeSet<TransactionOrder>,
     by_signer_public: Table<Public, u64, TransactionOrder>,
-    by_fee: MultiMap<u64, H256>,
+    by_fee: BTreeMap<u64, usize>,
     limit: usize,
     memory_limit: usize,
 }
@@ -250,22 +249,27 @@ impl TransactionSet {
         if !self.by_priority.insert(order) {
             return Some(order)
         }
-        let order_hash = order.hash;
         let order_fee = order.fee;
         let by_signer_public_replaced = self.by_signer_public.insert(signer_public, seq, order);
+        *self.by_fee.entry(order_fee).or_insert(0) += 1;
         if let Some(ref old_order) = by_signer_public_replaced {
             assert!(
                 self.by_priority.remove(old_order),
                 "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
             );
-            assert!(
-                self.by_fee.remove(&old_order.fee, &old_order.hash),
-                "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed"
-            );
+            let delete_fee_entry = {
+                let counter = self.by_fee.get_mut(&old_order.fee).expect(
+                    "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
+                );
+                *counter -= 1;
+                *counter == 0
+            };
+            if delete_fee_entry {
+                self.by_fee.remove(&old_order.fee);
+            }
         }
-        self.by_fee.insert(order_fee, order_hash);
         assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-        assert_eq!(self.by_fee.values().map(|v| v.len()).sum::<usize>(), self.by_signer_public.len());
+        assert_eq!(self.by_fee.values().sum::<usize>(), self.by_signer_public.len());
         by_signer_public_replaced
     }
 
@@ -337,10 +341,16 @@ impl TransactionSet {
             );
             if *seq < base_seq {
                 ctrace!(MEM_POOL, "Removing old tx: {:?} (seq: {} < {})", order.hash, seq, base_seq);
-                assert!(
-                    self.by_fee.remove(&order.fee, &order.hash),
-                    "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed"
+                let delete_fee_entry = {
+                    let counter = self.by_fee.get_mut(&order.fee).expect(
+                    "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
                 );
+                    *counter -= 1;
+                    *counter == 0
+                };
+                if delete_fee_entry {
+                    self.by_fee.remove(&order.fee);
+                }
                 by_hash.remove(&order.hash).expect("All transactions in `future` are also in `by_hash`");
             } else {
                 let new_order = order.update_height(*seq, base_seq);
@@ -355,20 +365,26 @@ impl TransactionSet {
     /// Drop transaction from this set (remove from `by_priority` and `by_signer_public`)
     fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<TransactionOrder> {
         if let Some(tx_order) = self.by_signer_public.remove(signer_public, &seq) {
-            assert!(
-                self.by_fee.remove(&tx_order.fee, &tx_order.hash),
-                "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed"
-            );
+            let delete_fee_entry = {
+                let counter = self.by_fee.get_mut(&tx_order.fee).expect(
+                    "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
+                );
+                *counter -= 1;
+                *counter == 0
+            };
+            if delete_fee_entry {
+                self.by_fee.remove(&tx_order.fee);
+            }
             assert!(
                 self.by_priority.remove(&tx_order),
                 "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
             );
             assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-            assert_eq!(self.by_fee.values().map(|v| v.len()).sum::<usize>(), self.by_signer_public.len());
+            assert_eq!(self.by_fee.values().sum::<usize>(), self.by_signer_public.len());
             return Some(tx_order)
         }
         assert_eq!(self.by_priority.len(), self.by_signer_public.len());
-        assert_eq!(self.by_fee.values().map(|v| v.len()).sum::<usize>(), self.by_signer_public.len());
+        assert_eq!(self.by_fee.values().sum::<usize>(), self.by_signer_public.len());
         None
     }
 
@@ -432,7 +448,7 @@ impl MemPool {
         let current = TransactionSet {
             by_priority: BTreeSet::new(),
             by_signer_public: Table::new(),
-            by_fee: MultiMap::default(),
+            by_fee: BTreeMap::default(),
             limit,
             memory_limit,
         };
@@ -440,7 +456,7 @@ impl MemPool {
         let future = TransactionSet {
             by_priority: BTreeSet::new(),
             by_signer_public: Table::new(),
-            by_fee: MultiMap::default(),
+            by_fee: BTreeMap::default(),
             limit,
             memory_limit,
         };
@@ -990,7 +1006,16 @@ impl MemPool {
                 }
                 let order = by_seq.remove(&current_seq).expect("None is tested in the while condition above.");
                 self.future.by_priority.remove(&order);
-                self.future.by_fee.remove(&order.fee, &order.hash);
+                let delete_fee_entry = {
+                    let counter = self.future.by_fee.get_mut(&order.fee).expect(
+                        "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
+                    );
+                    *counter -= 1;
+                    *counter == 0
+                };
+                if delete_fee_entry {
+                    self.future.by_fee.remove(&order.fee);
+                }
                 // Put to current
                 let order = order.update_height(current_seq, first_seq);
                 if order.origin.is_local() {
