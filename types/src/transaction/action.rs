@@ -53,8 +53,8 @@ pub enum Action {
         metadata: String,
         approver: Option<Address>,
         administrator: Option<Address>,
-
-        output: AssetMintOutput,
+        allowed_script_hashes: Vec<H160>,
+        output: Box<AssetMintOutput>,
         approvals: Vec<Signature>,
     },
     TransferAsset {
@@ -71,6 +71,7 @@ pub enum Action {
         metadata: String,
         approver: Option<Address>,
         administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
         approvals: Vec<Signature>,
     },
     ComposeAsset {
@@ -79,8 +80,9 @@ pub enum Action {
         metadata: String,
         approver: Option<Address>,
         administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
         inputs: Vec<AssetTransferInput>,
-        output: AssetMintOutput,
+        output: Box<AssetMintOutput>,
         approvals: Vec<Signature>,
     },
     DecomposeAsset {
@@ -334,6 +336,7 @@ impl From<Action> for Option<ShardTransaction> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 output,
                 ..
             } => Some(ShardTransaction::MintAsset {
@@ -342,7 +345,8 @@ impl From<Action> for Option<ShardTransaction> {
                 metadata,
                 approver,
                 administrator,
-                output,
+                allowed_script_hashes,
+                output: *output,
             }),
             Action::TransferAsset {
                 network_id,
@@ -364,6 +368,7 @@ impl From<Action> for Option<ShardTransaction> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 ..
             } => Some(ShardTransaction::ChangeAssetScheme {
                 network_id,
@@ -371,6 +376,7 @@ impl From<Action> for Option<ShardTransaction> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
             }),
             Action::ComposeAsset {
                 network_id,
@@ -378,6 +384,7 @@ impl From<Action> for Option<ShardTransaction> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
                 output,
                 ..
@@ -387,8 +394,9 @@ impl From<Action> for Option<ShardTransaction> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
-                output,
+                output: *output,
             }),
             Action::DecomposeAsset {
                 network_id,
@@ -420,8 +428,14 @@ impl HeapSizeOf for Action {
                 metadata,
                 output,
                 approvals,
+                allowed_script_hashes,
                 ..
-            } => metadata.heap_size_of_children() + output.heap_size_of_children() + approvals.heap_size_of_children(),
+            } => {
+                metadata.heap_size_of_children()
+                    + output.heap_size_of_children()
+                    + approvals.heap_size_of_children()
+                    + allowed_script_hashes.heap_size_of_children()
+            }
             Action::TransferAsset {
                 burns,
                 inputs,
@@ -439,19 +453,26 @@ impl HeapSizeOf for Action {
             Action::ChangeAssetScheme {
                 metadata,
                 approvals,
+                allowed_script_hashes,
                 ..
-            } => metadata.heap_size_of_children() + approvals.heap_size_of_children(),
+            } => {
+                metadata.heap_size_of_children()
+                    + approvals.heap_size_of_children()
+                    + allowed_script_hashes.heap_size_of_children()
+            }
             Action::ComposeAsset {
                 metadata,
                 inputs,
                 output,
                 approvals,
+                allowed_script_hashes,
                 ..
             } => {
                 metadata.heap_size_of_children()
                     + inputs.heap_size_of_children()
                     + output.heap_size_of_children()
                     + approvals.heap_size_of_children()
+                    + allowed_script_hashes.heap_size_of_children()
             }
             Action::DecomposeAsset {
                 input,
@@ -490,24 +511,21 @@ impl Encodable for Action {
                 metadata,
                 approver,
                 administrator,
-                output:
-                    AssetMintOutput {
-                        lock_script_hash,
-                        parameters,
-                        amount,
-                    },
+                allowed_script_hashes,
+                output,
                 approvals,
             } => {
-                s.begin_list(10)
+                s.begin_list(11)
                     .append(&MINT_ASSET)
                     .append(network_id)
                     .append(shard_id)
                     .append(metadata)
-                    .append(lock_script_hash)
-                    .append(parameters)
-                    .append(amount)
+                    .append(&output.lock_script_hash)
+                    .append(&output.parameters)
+                    .append(&output.amount)
                     .append(approver)
                     .append(administrator)
+                    .append_list(allowed_script_hashes)
                     .append_list(approvals);
             }
             Action::TransferAsset {
@@ -533,15 +551,17 @@ impl Encodable for Action {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 approvals,
             } => {
-                s.begin_list(7)
+                s.begin_list(8)
                     .append(&CHANGE_ASSET_SCHEME)
                     .append(network_id)
                     .append(asset_type)
                     .append(metadata)
                     .append(approver)
                     .append(administrator)
+                    .append_list(allowed_script_hashes)
                     .append_list(approvals);
             }
             Action::ComposeAsset {
@@ -550,26 +570,23 @@ impl Encodable for Action {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
-                output:
-                    AssetMintOutput {
-                        lock_script_hash,
-                        parameters,
-                        amount,
-                    },
+                output,
                 approvals,
             } => {
-                s.begin_list(11)
+                s.begin_list(12)
                     .append(&COMPOSE_ASSET)
                     .append(network_id)
                     .append(shard_id)
                     .append(metadata)
                     .append(approver)
                     .append(administrator)
+                    .append_list(allowed_script_hashes)
                     .append_list(inputs)
-                    .append(lock_script_hash)
-                    .append(parameters)
-                    .append(amount)
+                    .append(&output.lock_script_hash)
+                    .append(&output.parameters)
+                    .append(&output.amount)
                     .append_list(approvals);
             }
             Action::DecomposeAsset {
@@ -680,21 +697,22 @@ impl Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
             MINT_ASSET => {
-                if rlp.item_count()? != 10 {
+                if rlp.item_count()? != 11 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::MintAsset {
                     network_id: rlp.val_at(1)?,
                     shard_id: rlp.val_at(2)?,
                     metadata: rlp.val_at(3)?,
-                    output: AssetMintOutput {
+                    output: Box::new(AssetMintOutput {
                         lock_script_hash: rlp.val_at(4)?,
                         parameters: rlp.val_at(5)?,
                         amount: rlp.val_at(6)?,
-                    },
+                    }),
                     approver: rlp.val_at(7)?,
                     administrator: rlp.val_at(8)?,
-                    approvals: rlp.list_at(9)?,
+                    allowed_script_hashes: rlp.list_at(9)?,
+                    approvals: rlp.list_at(10)?,
                 })
             }
             TRANSFER_ASSET => {
@@ -711,7 +729,7 @@ impl Decodable for Action {
                 })
             }
             CHANGE_ASSET_SCHEME => {
-                if rlp.item_count()? != 7 {
+                if rlp.item_count()? != 8 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::ChangeAssetScheme {
@@ -720,11 +738,12 @@ impl Decodable for Action {
                     metadata: rlp.val_at(3)?,
                     approver: rlp.val_at(4)?,
                     administrator: rlp.val_at(5)?,
-                    approvals: rlp.list_at(6)?,
+                    allowed_script_hashes: rlp.list_at(6)?,
+                    approvals: rlp.list_at(7)?,
                 })
             }
             COMPOSE_ASSET => {
-                if rlp.item_count()? != 11 {
+                if rlp.item_count()? != 12 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::ComposeAsset {
@@ -733,13 +752,14 @@ impl Decodable for Action {
                     metadata: rlp.val_at(3)?,
                     approver: rlp.val_at(4)?,
                     administrator: rlp.val_at(5)?,
-                    inputs: rlp.list_at(6)?,
-                    output: AssetMintOutput {
-                        lock_script_hash: rlp.val_at(7)?,
-                        parameters: rlp.list_at(8)?,
-                        amount: rlp.val_at(9)?,
-                    },
-                    approvals: rlp.list_at(10)?,
+                    allowed_script_hashes: rlp.list_at(6)?,
+                    inputs: rlp.list_at(7)?,
+                    output: Box::new(AssetMintOutput {
+                        lock_script_hash: rlp.val_at(8)?,
+                        parameters: rlp.list_at(9)?,
+                        amount: rlp.val_at(10)?,
+                    }),
+                    approvals: rlp.list_at(11)?,
                 })
             }
             DECOMPOSE_ASSET => {
@@ -1028,13 +1048,14 @@ mod tests {
             network_id: "tc".into(),
             shard_id: 0xc,
             metadata: "mint test".to_string(),
-            output: AssetMintOutput {
+            output: Box::new(AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
                 amount: Some(10000),
-            },
+            }),
             approver: None,
             administrator: None,
+            allowed_script_hashes: vec![],
             approvals: vec![Signature::random(), Signature::random(), Signature::random(), Signature::random()],
         });
     }
@@ -1045,13 +1066,14 @@ mod tests {
             network_id: "tc".into(),
             shard_id: 3,
             metadata: "mint test".to_string(),
-            output: AssetMintOutput {
+            output: Box::new(AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
                 amount: Some(10000),
-            },
+            }),
             approver: None,
             administrator: None,
+            allowed_script_hashes: vec![],
             approvals: vec![Signature::random()],
         });
     }

@@ -37,7 +37,7 @@ pub enum ShardTransaction {
         metadata: String,
         approver: Option<Address>,
         administrator: Option<Address>,
-
+        allowed_script_hashes: Vec<H160>,
         output: AssetMintOutput,
     },
     TransferAsset {
@@ -53,6 +53,7 @@ pub enum ShardTransaction {
         metadata: String,
         approver: Option<Address>,
         administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
     },
     ComposeAsset {
         network_id: NetworkId,
@@ -60,6 +61,7 @@ pub enum ShardTransaction {
         metadata: String,
         approver: Option<Address>,
         administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
     },
@@ -279,8 +281,14 @@ impl HeapSizeOf for ShardTransaction {
                 metadata,
                 approver,
                 output,
+                allowed_script_hashes,
                 ..
-            } => metadata.heap_size_of_children() + approver.heap_size_of_children() + output.heap_size_of_children(),
+            } => {
+                metadata.heap_size_of_children()
+                    + approver.heap_size_of_children()
+                    + output.heap_size_of_children()
+                    + allowed_script_hashes.heap_size_of_children()
+            }
             ShardTransaction::TransferAsset {
                 burns,
                 inputs,
@@ -295,19 +303,22 @@ impl HeapSizeOf for ShardTransaction {
             }
             ShardTransaction::ChangeAssetScheme {
                 metadata,
+                allowed_script_hashes,
                 ..
-            } => metadata.heap_size_of_children(),
+            } => metadata.heap_size_of_children() + allowed_script_hashes.heap_size_of_children(),
             ShardTransaction::ComposeAsset {
                 metadata,
                 approver,
                 inputs,
                 output,
+                allowed_script_hashes,
                 ..
             } => {
                 metadata.heap_size_of_children()
                     + approver.heap_size_of_children()
                     + inputs.heap_size_of_children()
                     + output.heap_size_of_children()
+                    + allowed_script_hashes.heap_size_of_children()
             }
             ShardTransaction::DecomposeAsset {
                 input,
@@ -423,6 +434,7 @@ impl PartialHashing for ShardTransaction {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
                 output,
             } => {
@@ -449,6 +461,7 @@ impl PartialHashing for ShardTransaction {
                         metadata: metadata.to_string(),
                         approver: *approver,
                         administrator: *administrator,
+                        allowed_script_hashes: allowed_script_hashes.to_vec(),
                         inputs: new_inputs,
                         output: new_output,
                     }
@@ -536,7 +549,7 @@ impl Decodable for ShardTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             ASSET_MINT_ID => {
-                if d.item_count()? != 9 {
+                if d.item_count()? != 10 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(ShardTransaction::MintAsset {
@@ -550,6 +563,7 @@ impl Decodable for ShardTransaction {
                     },
                     approver: d.val_at(7)?,
                     administrator: d.val_at(8)?,
+                    allowed_script_hashes: d.list_at(9)?,
                 })
             }
             ASSET_TRANSFER_ID => {
@@ -565,7 +579,7 @@ impl Decodable for ShardTransaction {
                 })
             }
             ASSET_SCHEME_CHANGE_ID => {
-                if d.item_count()? != 6 {
+                if d.item_count()? != 7 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(ShardTransaction::ChangeAssetScheme {
@@ -574,10 +588,11 @@ impl Decodable for ShardTransaction {
                     metadata: d.val_at(3)?,
                     approver: d.val_at(4)?,
                     administrator: d.val_at(5)?,
+                    allowed_script_hashes: d.list_at(6)?,
                 })
             }
             ASSET_COMPOSE_ID => {
-                if d.item_count()? != 10 {
+                if d.item_count()? != 11 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(ShardTransaction::ComposeAsset {
@@ -586,11 +601,12 @@ impl Decodable for ShardTransaction {
                     metadata: d.val_at(3)?,
                     approver: d.val_at(4)?,
                     administrator: d.val_at(5)?,
-                    inputs: d.list_at(6)?,
+                    allowed_script_hashes: d.list_at(6)?,
+                    inputs: d.list_at(7)?,
                     output: AssetMintOutput {
-                        lock_script_hash: d.val_at(7)?,
-                        parameters: d.val_at(8)?,
-                        amount: d.val_at(9)?,
+                        lock_script_hash: d.val_at(8)?,
+                        parameters: d.val_at(9)?,
+                        amount: d.val_at(10)?,
                     },
                 })
             }
@@ -633,8 +649,9 @@ impl Encodable for ShardTransaction {
                     },
                 approver,
                 administrator,
+                allowed_script_hashes,
             } => {
-                s.begin_list(9)
+                s.begin_list(10)
                     .append(&ASSET_MINT_ID)
                     .append(network_id)
                     .append(shard_id)
@@ -643,7 +660,8 @@ impl Encodable for ShardTransaction {
                     .append(parameters)
                     .append(amount)
                     .append(approver)
-                    .append(administrator);
+                    .append(administrator)
+                    .append_list(allowed_script_hashes);
             }
             ShardTransaction::TransferAsset {
                 network_id,
@@ -666,14 +684,16 @@ impl Encodable for ShardTransaction {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
             } => {
-                s.begin_list(6)
+                s.begin_list(7)
                     .append(&ASSET_SCHEME_CHANGE_ID)
                     .append(network_id)
                     .append(asset_type)
                     .append(metadata)
                     .append(approver)
-                    .append(administrator);
+                    .append(administrator)
+                    .append_list(allowed_script_hashes);
             }
             ShardTransaction::ComposeAsset {
                 network_id,
@@ -681,6 +701,7 @@ impl Encodable for ShardTransaction {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
                 output:
                     AssetMintOutput {
@@ -689,13 +710,14 @@ impl Encodable for ShardTransaction {
                         amount,
                     },
             } => {
-                s.begin_list(10)
+                s.begin_list(11)
                     .append(&ASSET_COMPOSE_ID)
                     .append(network_id)
                     .append(shard_id)
                     .append(metadata)
                     .append(approver)
                     .append(administrator)
+                    .append_list(allowed_script_hashes)
                     .append_list(inputs)
                     .append(lock_script_hash)
                     .append(parameters)

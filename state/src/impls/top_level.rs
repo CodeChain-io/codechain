@@ -722,13 +722,14 @@ impl TopLevelState {
         amount: u64,
         approver: Option<Address>,
         administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> TrieResult<bool> {
         match self.shard_root(shard_id)? {
             Some(shard_root) => {
                 let mut shard_cache = self.shard_caches.entry(shard_id).or_default();
                 let state = ShardLevelState::from_existing(shard_id, &mut self.db, shard_root, &mut shard_cache)?;
-                state.create_asset_scheme(a, metadata, amount, approver, administrator, pool)?;
+                state.create_asset_scheme(a, metadata, amount, approver, administrator, allowed_script_hashes, pool)?;
                 Ok(true)
             }
             None => Ok(false),
@@ -1662,7 +1663,7 @@ mod tests_tx {
         let approver = Address::random();
         let amount = 30;
         let transaction = mint_asset!(
-            asset_mint_output!(lock_script_hash, parameters.clone(), amount),
+            Box::new(asset_mint_output!(lock_script_hash, parameters.clone(), amount)),
             metadata.clone(),
             approver: approver
         );
@@ -1697,7 +1698,7 @@ mod tests_tx {
         let parameters = vec![];
         let approver = Address::random();
         let transaction = mint_asset!(
-            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
+            Box::new(asset_mint_output!(lock_script_hash, parameters: parameters.clone())),
             metadata.clone(),
             approver: approver
         );
@@ -1730,7 +1731,7 @@ mod tests_tx {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = mint_asset!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = mint_asset!(Box::new(asset_mint_output!(lock_script_hash, amount: amount)), metadata.clone());
         let mint_tracker = mint.tracker().unwrap();
         let mint_tx = transaction!(fee: 20, mint);
 
@@ -1793,7 +1794,7 @@ mod tests_tx {
         let approver = Address::random();
         let amount = 30;
         let transaction = mint_asset!(
-            asset_mint_output!(lock_script_hash, parameters.clone(), amount),
+            Box::new(asset_mint_output!(lock_script_hash, parameters.clone(), amount)),
             metadata.clone(),
             approver: approver
         );
@@ -2206,7 +2207,7 @@ mod tests_tx {
         let approver = Address::random();
         let amount = 30;
         let transaction = mint_asset!(
-            asset_mint_output!(lock_script_hash, parameters.clone(), amount),
+            Box::new(asset_mint_output!(lock_script_hash, parameters.clone(), amount)),
             metadata.clone(),
             approver: approver
         );
@@ -2405,7 +2406,8 @@ mod tests_tx {
         let amount = 30;
         let parameters = vec![];
 
-        let mint = mint_asset!(asset_mint_output!(lock_script_hash, parameters.clone(), amount), metadata.clone());
+        let mint =
+            mint_asset!(Box::new(asset_mint_output!(lock_script_hash, parameters.clone(), amount)), metadata.clone());
         let mint_tracker = mint.tracker().unwrap();
 
         let tx = transaction!(fee: 20, mint);
