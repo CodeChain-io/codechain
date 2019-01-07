@@ -253,11 +253,6 @@ trait TransactionSet {
         local: &mut LocalTransactionsList,
     ) -> Option<HashMap<Public, u64>>;
 
-    /// Update the heights of the transaction orders as the given input.
-    ///
-    /// If there are transactions which are older than `base_seq`, the function removes them from the set.
-    fn update_base_seq(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>, signer_public: &Public, base_seq: u64);
-
     /// Drop transaction from this set (remove from `by_priority` and `by_signer_public`)
     fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<TransactionOrder>;
 
@@ -354,40 +349,6 @@ impl TransactionSet for CurrentTxSet {
             removed.insert(sender, min);
             removed
         }))
-    }
-
-    fn update_base_seq(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>, signer_public: &Public, base_seq: u64) {
-        let row = match self.by_signer_public.row_mut(signer_public) {
-            Some(row) => row,
-            None => return,
-        };
-
-        for (seq, order) in row.iter_mut() {
-            assert!(
-                self.by_priority.remove(&order),
-                "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
-            );
-            if *seq < base_seq {
-                ctrace!(MEM_POOL, "Removing old tx: {:?} (seq: {} < {})", order.hash, seq, base_seq);
-                let delete_fee_entry = {
-                    let counter = self.by_fee.get_mut(&order.fee).expect(
-                    "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
-                );
-                    *counter -= 1;
-                    *counter == 0
-                };
-                if delete_fee_entry {
-                    self.by_fee.remove(&order.fee);
-                }
-                by_hash.remove(&order.hash).expect("All transactions in `future` are also in `by_hash`");
-            } else {
-                let new_order = order.update_height(*seq, base_seq);
-                *order = new_order;
-                self.by_priority.insert(new_order);
-            }
-        }
-
-        row.retain(|seq, _| *seq >= base_seq);
     }
 
     fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<TransactionOrder> {
@@ -510,30 +471,6 @@ impl TransactionSet for FutureTxSet {
         }))
     }
 
-    fn update_base_seq(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>, signer_public: &Public, base_seq: u64) {
-        let row = match self.by_signer_public.row_mut(signer_public) {
-            Some(row) => row,
-            None => return,
-        };
-
-        for (seq, order) in row.iter_mut() {
-            assert!(
-                self.by_priority.remove(&order),
-                "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
-            );
-            if *seq < base_seq {
-                ctrace!(MEM_POOL, "Removing old tx: {:?} (seq: {} < {})", order.hash, seq, base_seq);
-                by_hash.remove(&order.hash).expect("All transactions in `future` are also in `by_hash`");
-            } else {
-                let new_order = order.update_height(*seq, base_seq);
-                *order = new_order;
-                self.by_priority.insert(new_order);
-            }
-        }
-
-        row.retain(|seq, _| *seq >= base_seq);
-    }
-
     fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<TransactionOrder> {
         if let Some(tx_order) = self.by_signer_public.remove(signer_public, &seq) {
             assert!(
@@ -558,6 +495,35 @@ impl TransactionSet for FutureTxSet {
 
     fn get_signer_public_row(&mut self, signer_public: &Public) -> Option<&HashMap<u64, TransactionOrder>> {
         self.by_signer_public.row(signer_public)
+    }
+}
+
+impl FutureTxSet {
+    /// Update the heights of the transaction orders as the given input.
+    ///
+    /// If there are transactions which are older than `base_seq`, the function removes them from the set.
+    fn update_base_seq(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>, signer_public: &Public, base_seq: u64) {
+        let row = match self.by_signer_public.row_mut(signer_public) {
+            Some(row) => row,
+            None => return,
+        };
+
+        for (seq, order) in row.iter_mut() {
+            assert!(
+                self.by_priority.remove(&order),
+                "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
+            );
+            if *seq < base_seq {
+                ctrace!(MEM_POOL, "Removing old tx: {:?} (seq: {} < {})", order.hash, seq, base_seq);
+                by_hash.remove(&order.hash).expect("All transactions in `future` are also in `by_hash`");
+            } else {
+                let new_order = order.update_height(*seq, base_seq);
+                *order = new_order;
+                self.by_priority.insert(new_order);
+            }
+        }
+
+        row.retain(|seq, _| *seq >= base_seq);
     }
 }
 
