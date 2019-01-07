@@ -299,7 +299,7 @@ impl<'db> ShardLevelState<'db> {
             let mut counter: usize = 0;
             for input_idx in order_tx.input_indices.iter() {
                 let input = &inputs[*input_idx];
-                let transaction_tracker = input.prev_out.transaction_hash;
+                let transaction_tracker = input.prev_out.tracker;
                 let index = input.prev_out.index;
                 let address = OwnedAssetAddress::new(transaction_tracker, index, self.shard_id);
                 let asset = self.asset(&address)?.ok_or_else(|| TransactionError::AssetNotFound(address.into()))?;
@@ -358,8 +358,7 @@ impl<'db> ShardLevelState<'db> {
         sender: &Address,
         approvers: &[Address],
     ) -> StateResult<(OwnedAsset, OwnedAssetAddress)> {
-        let asset_address =
-            OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
+        let asset_address = OwnedAssetAddress::new(input.prev_out.tracker, input.prev_out.index, self.shard_id);
         let asset_scheme_address = AssetSchemeAddress::from_hash(input.prev_out.asset_type)
             .ok_or_else(|| TransactionError::AssetSchemeNotFound(input.prev_out.asset_type))?;
 
@@ -406,7 +405,7 @@ impl<'db> ShardLevelState<'db> {
 
         let (address, asset) = {
             let index = input.prev_out.index;
-            let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
+            let address = OwnedAssetAddress::new(input.prev_out.tracker, index, self.shard_id);
             match self.asset(&address)? {
                 Some(asset) => (address.into(), asset),
                 None => return Err(TransactionError::AssetNotFound(address.into()).into()),
@@ -1387,12 +1386,12 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_output_1.transaction_hash, SHARD_ID) => { metadata: "metadata1".to_string(), amount: 30 }),
-            (scheme: (mint_output_2.transaction_hash, SHARD_ID) => { metadata: "metadata2".to_string(), amount: 30 }),
-            (scheme: (mint_output_3.transaction_hash, SHARD_ID) => { metadata: "metadata3".to_string(), amount: 30 }),
-            (asset: (mint_output_1.transaction_hash, 0, SHARD_ID)),
-            (asset: (mint_output_2.transaction_hash, 0, SHARD_ID)),
-            (asset: (mint_output_3.transaction_hash, 0, SHARD_ID)),
+            (scheme: (mint_output_1.tracker, SHARD_ID) => { metadata: "metadata1".to_string(), amount: 30 }),
+            (scheme: (mint_output_2.tracker, SHARD_ID) => { metadata: "metadata2".to_string(), amount: 30 }),
+            (scheme: (mint_output_3.tracker, SHARD_ID) => { metadata: "metadata3".to_string(), amount: 30 }),
+            (asset: (mint_output_1.tracker, 0, SHARD_ID)),
+            (asset: (mint_output_2.tracker, 0, SHARD_ID)),
+            (asset: (mint_output_3.tracker, 0, SHARD_ID)),
             (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type_1, amount: 10, order: order_consumed_hash }),
             (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type_2, amount: 10, order: order_consumed_hash }),
             (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type_3, amount: 10, order: order_consumed_hash }),

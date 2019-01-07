@@ -127,13 +127,12 @@ impl CodeChainMachine {
                         .into())
                     }
                     Timelock::BlockAge(value) => {
-                        let absolute =
-                            client.transaction_block_number(&input.prev_out.transaction_hash).ok_or_else(|| {
-                                Error::State(StateError::Transaction(TransactionError::Timelocked {
-                                    timelock,
-                                    remaining_time: u64::max_value(),
-                                }))
-                            })? + value;
+                        let absolute = client.transaction_block_number(&input.prev_out.tracker).ok_or_else(|| {
+                            Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                timelock,
+                                remaining_time: u64::max_value(),
+                            }))
+                        })? + value;
                         if absolute > header.number() {
                             return Err(StateError::Transaction(TransactionError::Timelocked {
                                 timelock,
@@ -151,7 +150,7 @@ impl CodeChainMachine {
                     }
                     Timelock::TimeAge(value) => {
                         let absolute =
-                            client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or_else(|| {
+                            client.transaction_block_timestamp(&input.prev_out.tracker).ok_or_else(|| {
                                 Error::State(StateError::Transaction(TransactionError::Timelocked {
                                     timelock,
                                     remaining_time: u64::max_value(),

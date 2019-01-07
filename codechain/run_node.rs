@@ -130,7 +130,7 @@ fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>)
                 }
                 None => return Err("The author is missing. Specify the author using --author option.".to_string()),
             },
-            EngineType::InternalSealing => match &config.mining.engine_signer {
+            EngineType::PBFT | EngineType::PoA => match &config.mining.engine_signer {
                 Some(ref engine_signer) => match miner.set_author((*engine_signer).into_address(), None) {
                     Err(AccountProviderError::NotUnlocked) => {
                         return Err(
