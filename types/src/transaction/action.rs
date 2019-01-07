@@ -28,7 +28,6 @@ use crate::transaction::{
 };
 use crate::ShardId;
 
-const ASSET_TRANSACTION: u8 = 0x01;
 const PAY: u8 = 0x02;
 const SET_REGULAR_KEY: u8 = 0x03;
 const CREATE_SHARD: u8 = 0x04;
@@ -37,13 +36,12 @@ const SET_SHARD_USERS: u8 = 0x06;
 const WRAP_CCC: u8 = 0x07;
 const STORE: u8 = 0x08;
 const REMOVE: u8 = 0x09;
-
-const MINT_ASSET: u8 = 0x03;
-const TRANSFER_ASSET: u8 = 0x04;
-const CHANGE_ASSET_SCHEME: u8 = 0x05;
-const COMPOSE_ASSET: u8 = 0x06;
-const DECOMPOSE_ASSET: u8 = 0x07;
-const UNWRAP_CCC: u8 = 0x01;
+const UNWRAP_CCC: u8 = 0x11;
+const MINT_ASSET: u8 = 0x13;
+const TRANSFER_ASSET: u8 = 0x14;
+const CHANGE_ASSET_SCHEME: u8 = 0x15;
+const COMPOSE_ASSET: u8 = 0x16;
+const DECOMPOSE_ASSET: u8 = 0x17;
 
 const CUSTOM: u8 = 0xFF;
 
@@ -500,9 +498,7 @@ impl Encodable for Action {
                     },
                 approvals,
             } => {
-                s.begin_list(3);
-                s.append(&ASSET_TRANSACTION);
-                s.begin_list(9)
+                s.begin_list(10)
                     .append(&MINT_ASSET)
                     .append(network_id)
                     .append(shard_id)
@@ -511,8 +507,8 @@ impl Encodable for Action {
                     .append(parameters)
                     .append(amount)
                     .append(approver)
-                    .append(administrator);
-                s.append_list(approvals);
+                    .append(administrator)
+                    .append_list(approvals);
             }
             Action::TransferAsset {
                 network_id,
@@ -522,16 +518,14 @@ impl Encodable for Action {
                 orders,
                 approvals,
             } => {
-                s.begin_list(3);
-                s.append(&ASSET_TRANSACTION);
-                s.begin_list(6)
+                s.begin_list(7)
                     .append(&TRANSFER_ASSET)
                     .append(network_id)
                     .append_list(burns)
                     .append_list(inputs)
                     .append_list(outputs)
-                    .append_list(orders);
-                s.append_list(approvals);
+                    .append_list(orders)
+                    .append_list(approvals);
             }
             Action::ChangeAssetScheme {
                 network_id,
@@ -541,16 +535,14 @@ impl Encodable for Action {
                 administrator,
                 approvals,
             } => {
-                s.begin_list(3);
-                s.append(&ASSET_TRANSACTION);
-                s.begin_list(6)
+                s.begin_list(7)
                     .append(&CHANGE_ASSET_SCHEME)
                     .append(network_id)
                     .append(asset_type)
                     .append(metadata)
                     .append(approver)
-                    .append(administrator);
-                s.append_list(approvals);
+                    .append(administrator)
+                    .append_list(approvals);
             }
             Action::ComposeAsset {
                 network_id,
@@ -567,9 +559,7 @@ impl Encodable for Action {
                     },
                 approvals,
             } => {
-                s.begin_list(3);
-                s.append(&ASSET_TRANSACTION);
-                s.begin_list(10)
+                s.begin_list(11)
                     .append(&COMPOSE_ASSET)
                     .append(network_id)
                     .append(shard_id)
@@ -579,8 +569,8 @@ impl Encodable for Action {
                     .append_list(inputs)
                     .append(lock_script_hash)
                     .append(parameters)
-                    .append(amount);
-                s.append_list(approvals);
+                    .append(amount)
+                    .append_list(approvals);
             }
             Action::DecomposeAsset {
                 network_id,
@@ -588,20 +578,19 @@ impl Encodable for Action {
                 outputs,
                 approvals,
             } => {
-                s.begin_list(3);
-                s.append(&ASSET_TRANSACTION);
-                s.begin_list(4).append(&DECOMPOSE_ASSET).append(network_id).append(input).append_list(outputs);
-                s.append_list(approvals);
+                s.begin_list(5)
+                    .append(&DECOMPOSE_ASSET)
+                    .append(network_id)
+                    .append(input)
+                    .append_list(outputs)
+                    .append_list(approvals);
             }
             Action::UnwrapCCC {
                 network_id,
                 burn,
                 approvals,
             } => {
-                s.begin_list(3);
-                s.append(&ASSET_TRANSACTION);
-                s.begin_list(3).append(&UNWRAP_CCC).append(network_id).append(burn);
-                s.append_list(approvals);
+                s.begin_list(4).append(&UNWRAP_CCC).append(network_id).append(burn).append_list(approvals);
             }
             Action::Pay {
                 receiver,
@@ -690,99 +679,89 @@ impl Encodable for Action {
 impl Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
-            ASSET_TRANSACTION => {
-                if rlp.item_count()? != 3 {
+            MINT_ASSET => {
+                if rlp.item_count()? != 10 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
-                let tx = rlp.at(1)?;
-                let approvals = rlp.list_at(2)?;
-                match tx.val_at(0)? {
-                    MINT_ASSET => {
-                        if tx.item_count()? != 9 {
-                            return Err(DecoderError::RlpIncorrectListLen)
-                        }
-                        Ok(Action::MintAsset {
-                            network_id: tx.val_at(1)?,
-                            shard_id: tx.val_at(2)?,
-                            metadata: tx.val_at(3)?,
-                            output: AssetMintOutput {
-                                lock_script_hash: tx.val_at(4)?,
-                                parameters: tx.val_at(5)?,
-                                amount: tx.val_at(6)?,
-                            },
-                            approver: tx.val_at(7)?,
-                            administrator: tx.val_at(8)?,
-                            approvals,
-                        })
-                    }
-                    TRANSFER_ASSET => {
-                        if tx.item_count()? != 6 {
-                            return Err(DecoderError::RlpIncorrectListLen)
-                        }
-                        Ok(Action::TransferAsset {
-                            network_id: tx.val_at(1)?,
-                            burns: tx.list_at(2)?,
-                            inputs: tx.list_at(3)?,
-                            outputs: tx.list_at(4)?,
-                            orders: tx.list_at(5)?,
-                            approvals,
-                        })
-                    }
-                    CHANGE_ASSET_SCHEME => {
-                        if tx.item_count()? != 6 {
-                            return Err(DecoderError::RlpIncorrectListLen)
-                        }
-                        Ok(Action::ChangeAssetScheme {
-                            network_id: tx.val_at(1)?,
-                            asset_type: tx.val_at(2)?,
-                            metadata: tx.val_at(3)?,
-                            approver: tx.val_at(4)?,
-                            administrator: tx.val_at(5)?,
-                            approvals,
-                        })
-                    }
-                    COMPOSE_ASSET => {
-                        if tx.item_count()? != 10 {
-                            return Err(DecoderError::RlpIncorrectListLen)
-                        }
-                        Ok(Action::ComposeAsset {
-                            network_id: tx.val_at(1)?,
-                            shard_id: tx.val_at(2)?,
-                            metadata: tx.val_at(3)?,
-                            approver: tx.val_at(4)?,
-                            administrator: tx.val_at(5)?,
-                            inputs: tx.list_at(6)?,
-                            output: AssetMintOutput {
-                                lock_script_hash: tx.val_at(7)?,
-                                parameters: tx.list_at(8)?,
-                                amount: tx.val_at(9)?,
-                            },
-                            approvals,
-                        })
-                    }
-                    DECOMPOSE_ASSET => {
-                        if tx.item_count()? != 4 {
-                            return Err(DecoderError::RlpIncorrectListLen)
-                        }
-                        Ok(Action::DecomposeAsset {
-                            network_id: tx.val_at(1)?,
-                            input: tx.val_at(2)?,
-                            outputs: tx.list_at(3)?,
-                            approvals,
-                        })
-                    }
-                    UNWRAP_CCC => {
-                        if tx.item_count()? != 3 {
-                            return Err(DecoderError::RlpIncorrectListLen)
-                        }
-                        Ok(Action::UnwrapCCC {
-                            network_id: tx.val_at(1)?,
-                            burn: tx.val_at(2)?,
-                            approvals,
-                        })
-                    }
-                    _ => Err(DecoderError::Custom("Unexpected transaction")),
+                Ok(Action::MintAsset {
+                    network_id: rlp.val_at(1)?,
+                    shard_id: rlp.val_at(2)?,
+                    metadata: rlp.val_at(3)?,
+                    output: AssetMintOutput {
+                        lock_script_hash: rlp.val_at(4)?,
+                        parameters: rlp.val_at(5)?,
+                        amount: rlp.val_at(6)?,
+                    },
+                    approver: rlp.val_at(7)?,
+                    administrator: rlp.val_at(8)?,
+                    approvals: rlp.list_at(9)?,
+                })
+            }
+            TRANSFER_ASSET => {
+                if rlp.item_count()? != 7 {
+                    return Err(DecoderError::RlpIncorrectListLen)
                 }
+                Ok(Action::TransferAsset {
+                    network_id: rlp.val_at(1)?,
+                    burns: rlp.list_at(2)?,
+                    inputs: rlp.list_at(3)?,
+                    outputs: rlp.list_at(4)?,
+                    orders: rlp.list_at(5)?,
+                    approvals: rlp.list_at(6)?,
+                })
+            }
+            CHANGE_ASSET_SCHEME => {
+                if rlp.item_count()? != 7 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::ChangeAssetScheme {
+                    network_id: rlp.val_at(1)?,
+                    asset_type: rlp.val_at(2)?,
+                    metadata: rlp.val_at(3)?,
+                    approver: rlp.val_at(4)?,
+                    administrator: rlp.val_at(5)?,
+                    approvals: rlp.list_at(6)?,
+                })
+            }
+            COMPOSE_ASSET => {
+                if rlp.item_count()? != 11 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::ComposeAsset {
+                    network_id: rlp.val_at(1)?,
+                    shard_id: rlp.val_at(2)?,
+                    metadata: rlp.val_at(3)?,
+                    approver: rlp.val_at(4)?,
+                    administrator: rlp.val_at(5)?,
+                    inputs: rlp.list_at(6)?,
+                    output: AssetMintOutput {
+                        lock_script_hash: rlp.val_at(7)?,
+                        parameters: rlp.list_at(8)?,
+                        amount: rlp.val_at(9)?,
+                    },
+                    approvals: rlp.list_at(10)?,
+                })
+            }
+            DECOMPOSE_ASSET => {
+                if rlp.item_count()? != 5 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::DecomposeAsset {
+                    network_id: rlp.val_at(1)?,
+                    input: rlp.val_at(2)?,
+                    outputs: rlp.list_at(3)?,
+                    approvals: rlp.list_at(4)?,
+                })
+            }
+            UNWRAP_CCC => {
+                if rlp.item_count()? != 4 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::UnwrapCCC {
+                    network_id: rlp.val_at(1)?,
+                    burn: rlp.val_at(2)?,
+                    approvals: rlp.list_at(3)?,
+                })
             }
             PAY => {
                 if rlp.item_count()? != 3 {
