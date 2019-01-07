@@ -82,6 +82,8 @@ pub enum ClientIoMessage {
     HeaderVerified,
     /// New parcel RLPs are ready to be imported
     NewParcels(Vec<Bytes>, NodeId),
+    /// Block generation is required
+    NewBlockRequired(bool),
 }
 
 /// IO interface for the Client handler
@@ -100,6 +102,9 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
             }
             ClientIoMessage::NewParcels(parcels, peer_id) => {
                 self.client.import_queued_parcels(parcels, *peer_id);
+            }
+            ClientIoMessage::NewBlockRequired(allow_empty_block) => {
+                self.client.update_sealing(*allow_empty_block);
             }
         }
         Ok(())
