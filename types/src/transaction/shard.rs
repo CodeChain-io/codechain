@@ -737,7 +737,7 @@ mod tests {
         asset_type[2..4].clone_from_slice(&[0xBE, 0xEF]);
 
         let prev_out = AssetOutPoint {
-            transaction_hash: H256::random(),
+            tracker: H256::random(),
             index: 3,
             asset_type,
             amount: 34,
@@ -761,7 +761,7 @@ mod tests {
         assert!(is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::random(),
+                    tracker: H256::random(),
                     index: 0,
                     asset_type,
                     amount,
@@ -796,7 +796,7 @@ mod tests {
             &[
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
                         amount: amount1,
@@ -807,7 +807,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
                         amount: amount2,
@@ -851,7 +851,7 @@ mod tests {
             &[
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
                         amount: amount1,
@@ -862,7 +862,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
                         amount: amount2,
@@ -917,7 +917,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::random(),
+                    tracker: H256::random(),
                     index: 0,
                     asset_type,
                     amount: input_amount,
@@ -939,7 +939,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::random(),
+                    tracker: H256::random(),
                     index: 0,
                     asset_type,
                     amount: input_amount,
@@ -966,7 +966,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::random(),
+                    tracker: H256::random(),
                     index: 0,
                     asset_type,
                     amount: input_amount,
@@ -991,7 +991,7 @@ mod tests {
             network_id: NetworkId::default(),
             input: AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::default(),
+                    tracker: Default::default(),
                     index: 0,
                     asset_type: H256::default(),
                     amount: 30,
@@ -1011,7 +1011,7 @@ mod tests {
             network_id: NetworkId::default(),
             burn: AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::default(),
+                    tracker: Default::default(),
                     index: 0,
                     asset_type: H256::zero(),
                     amount: 30,
@@ -1031,7 +1031,7 @@ mod tests {
             burns: vec![],
             inputs: vec![AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::random(),
+                    tracker: H256::random(),
                     index: 0,
                     asset_type: H256::random(),
                     amount: 30,
@@ -1055,7 +1055,7 @@ mod tests {
                     asset_amount_to: 10,
                     asset_amount_fee: 0,
                     origin_outputs: vec![AssetOutPoint {
-                        transaction_hash: H256::random(),
+                        tracker: H256::random(),
                         index: 0,
                         asset_type: H256::random(),
                         amount: 30,
@@ -1078,7 +1078,7 @@ mod tests {
     fn apply_long_filter() {
         let input = AssetTransferInput {
             prev_out: AssetOutPoint {
-                transaction_hash: H256::default(),
+                tracker: Default::default(),
                 index: 0,
                 asset_type: H256::default(),
                 amount: 0,
@@ -1090,7 +1090,7 @@ mod tests {
         let inputs: Vec<AssetTransferInput> = (0..100)
             .map(|_| AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    transaction_hash: H256::default(),
+                    tracker: Default::default(),
                     index: 0,
                     asset_type: H256::default(),
                     amount: 0,

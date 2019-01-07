@@ -93,9 +93,30 @@ impl Seal {
 /// Engine type.
 #[derive(Debug, PartialEq, Eq)]
 pub enum EngineType {
-    InternalSealing,
+    PoA,
+    PBFT,
     PoW,
     Solo,
+}
+
+impl EngineType {
+    pub fn need_signer_key(&self) -> bool {
+        match self {
+            EngineType::PoA => true,
+            EngineType::PBFT => true,
+            EngineType::Solo => false,
+            EngineType::PoW => false,
+        }
+    }
+
+    pub fn ignore_reseal_min_period(&self) -> bool {
+        match self {
+            EngineType::PoA => false,
+            EngineType::PBFT => true,
+            EngineType::Solo => false,
+            EngineType::PoW => false,
+        }
+    }
 }
 
 /// A consensus mechanism for the chain.

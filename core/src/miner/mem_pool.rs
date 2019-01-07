@@ -76,6 +76,10 @@ impl TxOrigin {
     fn is_local(self) -> bool {
         self == TxOrigin::Local
     }
+
+    fn is_local_or_retracted(self) -> bool {
+        self == TxOrigin::Local || self == TxOrigin::RetractedBlock
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -233,7 +237,36 @@ impl MemPoolItem {
 }
 
 /// Holds transactions accessible by (signer_public, seq) and by priority
-struct TransactionSet {
+trait TransactionSet {
+    /// Inserts `TransactionOrder` to this set. Transaction does not need to be unique -
+    /// the same transaction may be validly inserted twice. Any previous transaction that
+    /// it replaces (i.e. with the same `signer_public` and `seq`) should be returned.
+    fn insert(&mut self, signer_public: Public, seq: u64, order: TransactionOrder) -> Option<TransactionOrder>;
+
+    /// Remove low priority transactions if there is more than specified by given `limit`.
+    ///
+    /// It drops parecls from this set but also removes associated `VerifiedTransaction`.
+    /// Returns public keys and lowest seqs of transactions removed because of limit.
+    fn enforce_limit(
+        &mut self,
+        by_hash: &mut HashMap<H256, MemPoolItem>,
+        local: &mut LocalTransactionsList,
+    ) -> Option<HashMap<Public, u64>>;
+
+    /// Drop transaction from this set (remove from `by_priority` and `by_signer_public`)
+    fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<TransactionOrder>;
+
+    /// Drop all transactions.
+    fn clear(&mut self);
+
+    /// Sets new limit for number of transactions in this `TransactionSet`.
+    /// Note the limit is not applied (no transactions are removed) by calling this method.
+    fn set_limit(&mut self, limit: usize);
+
+    fn get_signer_public_row(&mut self, signer_public: &Public) -> Option<&HashMap<u64, TransactionOrder>>;
+}
+
+struct CurrentTxSet {
     by_priority: BTreeSet<TransactionOrder>,
     by_signer_public: Table<Public, u64, TransactionOrder>,
     by_fee: BTreeMap<u64, usize>,
@@ -241,10 +274,7 @@ struct TransactionSet {
     memory_limit: usize,
 }
 
-impl TransactionSet {
-    /// Inserts `TransactionOrder` to this set. Transaction does not need to be unique -
-    /// the same transaction may be validly inserted twice. Any previous transaction that
-    /// it replaces (i.e. with the same `signer_public` and `seq`) should be returned.
+impl TransactionSet for CurrentTxSet {
     fn insert(&mut self, signer_public: Public, seq: u64, order: TransactionOrder) -> Option<TransactionOrder> {
         if !self.by_priority.insert(order) {
             return Some(order)
@@ -273,10 +303,6 @@ impl TransactionSet {
         by_signer_public_replaced
     }
 
-    /// Remove low priority transactions if there is more than specified by given `limit`.
-    ///
-    /// It drops parecls from this set but also removes associated `VerifiedTransaction`.
-    /// Returns public keys and lowest seqs of transactions removed because of limit.
     fn enforce_limit(
         &mut self,
         by_hash: &mut HashMap<H256, MemPoolItem>,
@@ -325,44 +351,6 @@ impl TransactionSet {
         }))
     }
 
-    /// Update the heights of the transaction orders as the given input.
-    ///
-    /// If there are transactions which are older than `base_seq`, the function removes them from the set.
-    fn update_base_seq(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>, signer_public: &Public, base_seq: u64) {
-        let row = match self.by_signer_public.row_mut(signer_public) {
-            Some(row) => row,
-            None => return,
-        };
-
-        for (seq, order) in row.iter_mut() {
-            assert!(
-                self.by_priority.remove(&order),
-                "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
-            );
-            if *seq < base_seq {
-                ctrace!(MEM_POOL, "Removing old tx: {:?} (seq: {} < {})", order.hash, seq, base_seq);
-                let delete_fee_entry = {
-                    let counter = self.by_fee.get_mut(&order.fee).expect(
-                    "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
-                );
-                    *counter -= 1;
-                    *counter == 0
-                };
-                if delete_fee_entry {
-                    self.by_fee.remove(&order.fee);
-                }
-                by_hash.remove(&order.hash).expect("All transactions in `future` are also in `by_hash`");
-            } else {
-                let new_order = order.update_height(*seq, base_seq);
-                *order = new_order;
-                self.by_priority.insert(new_order);
-            }
-        }
-
-        row.retain(|seq, _| *seq >= base_seq);
-    }
-
-    /// Drop transaction from this set (remove from `by_priority` and `by_signer_public`)
     fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<TransactionOrder> {
         if let Some(tx_order) = self.by_signer_public.remove(signer_public, &seq) {
             let delete_fee_entry = {
@@ -388,18 +376,21 @@ impl TransactionSet {
         None
     }
 
-    /// Drop all transactions.
     fn clear(&mut self) {
         self.by_priority.clear();
         self.by_signer_public.clear();
     }
 
-    /// Sets new limit for number of transactions in this `TransactionSet`.
-    /// Note the limit is not applied (no transactions are removed) by calling this method.
     fn set_limit(&mut self, limit: usize) {
         self.limit = limit;
     }
 
+    fn get_signer_public_row(&mut self, signer_public: &Public) -> Option<&HashMap<u64, TransactionOrder>> {
+        self.by_signer_public.row(signer_public)
+    }
+}
+
+impl CurrentTxSet {
     /// Get the minimum fee that we can accept into this pool that wouldn't cause the transaction to
     /// immediately be dropped. 0 if the pool isn't at capacity; 1 plus the lowest if it is.
     fn fee_entry_limit(&self) -> u64 {
@@ -407,6 +398,132 @@ impl TransactionSet {
             Some(k) if self.by_priority.len() >= self.limit => k + 1,
             _ => 0,
         }
+    }
+}
+
+struct FutureTxSet {
+    by_priority: BTreeSet<TransactionOrder>,
+    by_signer_public: Table<Public, u64, TransactionOrder>,
+    limit: usize,
+    memory_limit: usize,
+}
+
+impl TransactionSet for FutureTxSet {
+    fn insert(&mut self, signer_public: Public, seq: u64, order: TransactionOrder) -> Option<TransactionOrder> {
+        if !self.by_priority.insert(order) {
+            return Some(order)
+        }
+        let by_signer_public_replaced = self.by_signer_public.insert(signer_public, seq, order);
+        if let Some(ref old_order) = by_signer_public_replaced {
+            assert!(
+                self.by_priority.remove(old_order),
+                "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
+            );
+        }
+        assert_eq!(self.by_priority.len(), self.by_signer_public.len());
+        by_signer_public_replaced
+    }
+
+    fn enforce_limit(
+        &mut self,
+        by_hash: &mut HashMap<H256, MemPoolItem>,
+        local: &mut LocalTransactionsList,
+    ) -> Option<HashMap<Public, u64>> {
+        let mut count = 0;
+        let mut mem_usage = 0;
+        let to_drop: Vec<(Public, u64)> = {
+            self.by_priority
+                .iter()
+                .filter(|order| {
+                    // update transaction count and mem usage
+                    count += 1;
+                    mem_usage += order.mem_usage;
+
+                    // Own and retracted transactions are allowed to go above all limits.
+                    !order.origin.is_local_or_retracted() && (mem_usage > self.memory_limit || count > self.limit)
+                })
+                .map(|order| {
+                    by_hash.get(&order.hash).expect(
+                        "All transactions in `self.by_priority` and `self.by_signer_public` are kept in sync with `by_hash`.",
+                    )
+                })
+                .map(|tx| (tx.signer_public(), tx.seq()))
+                .collect()
+        };
+
+        Some(to_drop.into_iter().fold(HashMap::new(), |mut removed, (sender, seq)| {
+            let order = self
+                .drop(&sender, seq)
+                .expect("Transaction has just been found in `by_priority`; so it is in `by_signer_public` also.");
+            ctrace!(MEM_POOL, "Dropped out of limit transaction: {:?}", order.hash);
+
+            let order = by_hash
+                .remove(&order.hash)
+                .expect("hash is in `by_priorty`; all hashes in `by_priority` must be in `by_hash`; qed");
+
+            if order.origin.is_local() {
+                local.mark_dropped(order.tx);
+            }
+
+            let min = removed.get(&sender).map_or(seq, |val| cmp::min(*val, seq));
+            removed.insert(sender, min);
+            removed
+        }))
+    }
+
+    fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<TransactionOrder> {
+        if let Some(tx_order) = self.by_signer_public.remove(signer_public, &seq) {
+            assert!(
+                self.by_priority.remove(&tx_order),
+                "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
+            );
+            assert_eq!(self.by_priority.len(), self.by_signer_public.len());
+            return Some(tx_order)
+        }
+        assert_eq!(self.by_priority.len(), self.by_signer_public.len());
+        None
+    }
+
+    fn clear(&mut self) {
+        self.by_priority.clear();
+        self.by_signer_public.clear();
+    }
+
+    fn set_limit(&mut self, limit: usize) {
+        self.limit = limit;
+    }
+
+    fn get_signer_public_row(&mut self, signer_public: &Public) -> Option<&HashMap<u64, TransactionOrder>> {
+        self.by_signer_public.row(signer_public)
+    }
+}
+
+impl FutureTxSet {
+    /// Update the heights of the transaction orders as the given input.
+    ///
+    /// If there are transactions which are older than `base_seq`, the function removes them from the set.
+    fn update_base_seq(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>, signer_public: &Public, base_seq: u64) {
+        let row = match self.by_signer_public.row_mut(signer_public) {
+            Some(row) => row,
+            None => return,
+        };
+
+        for (seq, order) in row.iter_mut() {
+            assert!(
+                self.by_priority.remove(&order),
+                "hash is in `by_signer_public`; all transactions in `by_signer_public` must be in `by_priority`; qed"
+            );
+            if *seq < base_seq {
+                ctrace!(MEM_POOL, "Removing old tx: {:?} (seq: {} < {})", order.hash, seq, base_seq);
+                by_hash.remove(&order.hash).expect("All transactions in `future` are also in `by_hash`");
+            } else {
+                let new_order = order.update_height(*seq, base_seq);
+                *order = new_order;
+                self.by_priority.insert(new_order);
+            }
+        }
+
+        row.retain(|seq, _| *seq >= base_seq);
     }
 }
 
@@ -418,9 +535,9 @@ pub struct MemPool {
     /// account balance.
     max_time_in_pool: PoolingInstant,
     /// Priority queue for transactions that can go to block
-    current: TransactionSet,
+    current: CurrentTxSet,
     /// Priority queue for transactions that has been received but are not yet valid to go to block
-    future: TransactionSet,
+    future: FutureTxSet,
     /// All transactions managed by pool indexed by hash
     by_hash: HashMap<H256, MemPoolItem>,
     /// Last seq of transaction in current (to quickly check next expected transaction)
@@ -445,7 +562,7 @@ impl MemPool {
 
     /// Create new instance of this Queue with specified limits
     pub fn with_limits(limit: usize, memory_limit: usize) -> Self {
-        let current = TransactionSet {
+        let current = CurrentTxSet {
             by_priority: BTreeSet::new(),
             by_signer_public: Table::new(),
             by_fee: BTreeMap::default(),
@@ -453,10 +570,9 @@ impl MemPool {
             memory_limit,
         };
 
-        let future = TransactionSet {
+        let future = FutureTxSet {
             by_priority: BTreeSet::new(),
             by_signer_public: Table::new(),
-            by_fee: BTreeMap::default(),
             limit,
             memory_limit,
         };
@@ -1006,16 +1122,6 @@ impl MemPool {
                 }
                 let order = by_seq.remove(&current_seq).expect("None is tested in the while condition above.");
                 self.future.by_priority.remove(&order);
-                let delete_fee_entry = {
-                    let counter = self.future.by_fee.get_mut(&order.fee).expect(
-                        "hash is in `by_signer_public`; all transactions' fee in `by_signer_public` must be in `by_fee`; qed",
-                    );
-                    *counter -= 1;
-                    *counter == 0
-                };
-                if delete_fee_entry {
-                    self.future.by_fee.remove(&order.fee);
-                }
                 // Put to current
                 let order = order.update_height(current_seq, first_seq);
                 if order.origin.is_local() {
@@ -1089,8 +1195,7 @@ impl MemPool {
         fn mark_local<F: FnMut(H256)>(signer_public: &Public, set: &mut TransactionSet, mut mark: F) {
             // Mark all transactions from this signer as local
             let seqs_from_sender = set
-                .by_signer_public
-                .row(signer_public)
+                .get_signer_public_row(signer_public)
                 .map(|row_map| {
                     row_map
                         .iter()

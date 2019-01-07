@@ -110,21 +110,21 @@ where
         Ok(self.client.parcel_invoice(&transaction_hash.into()))
     }
 
-    fn get_transaction_with_payload_hash(&self, payload_hash: H256) -> Result<Option<Transaction>> {
-        Ok(self.client.transaction(&payload_hash).map(Into::into))
+    fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
+        Ok(self.client.transaction(&tracker).map(Into::into))
     }
 
-    fn get_invoices_with_payload_hash(&self, payload_hash: H256) -> Result<Vec<Invoice>> {
-        Ok(self.client.transaction_invoices(&payload_hash))
+    fn get_invoices_by_tracker(&self, tracker: H256) -> Result<Vec<Invoice>> {
+        Ok(self.client.transaction_invoices(&tracker))
     }
 
-    fn get_asset_scheme_by_hash(
+    fn get_asset_scheme_by_tracker(
         &self,
-        transaction_hash: H256,
+        tracker: H256,
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<AssetScheme>> {
-        let address = AssetSchemeAddress::new(transaction_hash, shard_id);
+        let address = AssetSchemeAddress::new(tracker, shard_id);
         self.get_asset_scheme_by_type(address.into(), block_number)
     }
 

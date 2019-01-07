@@ -87,7 +87,7 @@ fn simple_success() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -119,7 +119,7 @@ fn simple_failure() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -150,7 +150,7 @@ fn simple_burn() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -177,7 +177,7 @@ fn underflow() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -204,7 +204,7 @@ fn out_of_memory() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -243,7 +243,7 @@ fn invalid_unlock_script() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -270,7 +270,7 @@ fn conditional_burn() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -320,7 +320,7 @@ fn _blake256() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -396,7 +396,7 @@ fn _ripemd160() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -480,7 +480,7 @@ fn _sha256() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -564,7 +564,7 @@ fn _keccak256() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -651,7 +651,7 @@ fn dummy_tx() -> ShardTransaction {
 fn dummy_input() -> AssetTransferInput {
     AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,
@@ -891,7 +891,7 @@ fn copy_stack_underflow() {
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
-            transaction_hash: H256::default(),
+            tracker: Default::default(),
             index: 0,
             asset_type: H256::default(),
             amount: 0,

@@ -113,7 +113,7 @@ macro_rules! asset_mint_output {
 macro_rules! asset_out_point {
     ($tracker:expr, $index:expr, $asset_type:expr, $amount:expr) => {
         $crate::ctypes::transaction::AssetOutPoint {
-            transaction_hash: $tracker,
+            tracker: $tracker,
             index: $index,
             asset_type: $asset_type,
             amount: $amount,
