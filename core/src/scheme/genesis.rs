@@ -51,7 +51,7 @@ impl From<cjson::scheme::Genesis> for Genesis {
             author: g.author.map_or_else(Address::default, PlatformAddress::into_address),
             timestamp: g.timestamp.map_or(0, Into::into),
             parent_hash: g.parent_hash.map_or_else(H256::zero, Into::into),
-            transactions_root: g.parcels_root.map_or_else(|| BLAKE_NULL_RLP, Into::into),
+            transactions_root: g.transactions_root.map_or_else(|| BLAKE_NULL_RLP, Into::into),
             invoices_root: g.invoices_root.map_or_else(|| BLAKE_NULL_RLP, Into::into),
             state_root: g.state_root.map(Into::into),
             extra_data: g.extra_data.map_or_else(Vec::new, Into::into),

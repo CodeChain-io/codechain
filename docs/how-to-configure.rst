@@ -33,7 +33,7 @@ The following represents the default configuration values of ``config.dev.toml``
     min_peers = 10
     bootstrap_addresses = []
     sync = true
-    parcel_relay = true
+    transaction_relay = true
     discovery = true
     discovery_type = "unstructured"
     discovery_refresh = 60000
@@ -97,8 +97,8 @@ CLI Options for CodeChain client
     ``--no-sync``
         Do not run block sync extension.
 
-    ``--no-parcel-relay``
-        Do not relay parcels.
+    ``--no-tx-relay``
+        Do not relay transactions.
 
     ``--jsonrpc-interface=[INTERFACE]``
         Specify the interface address for rpc connections
@@ -127,7 +127,7 @@ CLI Options for CodeChain client
         Maximum amount of memory that can be used by the mem pool. Setting this parameter to 0 disables limiting.
 
     ``--mem-pool-size=[LIMIT]``
-        Maximum amount of parcels in the queue (waiting to be included in next block).
+        Maximum amount of transactions in the queue (waiting to be included in next block).
 
     ``--notify-work=[URLS]``
         URLs to which work package notifications are pushed.
@@ -136,7 +136,7 @@ CLI Options for CodeChain client
         Force the node to author new blocks as if it were always sealing/mining.
 
     ``--reseal-min-period=[MS]``
-        Specify the minimum time between reseals from incoming parcels. MS is time measured in milliseconds.
+        Specify the minimum time between reseals from incoming transactions. MS is time measured in milliseconds.
 
     ``--reseal-max-period=[MS]``
         Specify the maximum time since last block to enable force-sealing. MS is time measured in milliseconds.
