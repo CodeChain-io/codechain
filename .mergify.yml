@@ -9,6 +9,7 @@ pull_request_rules:
       - status-success=clahub
       - base=master
       - label!=do-not-merge
+      - "- title~=\\b(wip|WIP)\\b"
     actions:
       merge:
         method: rebase
