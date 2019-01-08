@@ -19,7 +19,7 @@ use std::collections::binary_heap::BinaryHeap;
 use std::collections::hash_map::{Entry, HashMap};
 use std::collections::VecDeque;
 use std::string::ToString;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -33,11 +33,12 @@ pub trait TimeoutHandler: Send + Sync {
     fn on_timeout(&self, _token: TimerToken) {}
 }
 
-type TimeoutHandlerMap = HashMap<TimerName, Arc<TimeoutHandler>>;
+type TimeoutHandlerMap = HashMap<TimerId, Arc<TimeoutHandler>>;
 
 #[derive(Clone)]
 pub struct TimerLoop {
     timers: Arc<RwLock<TimeoutHandlerMap>>,
+    timer_id_nonce: Arc<AtomicUsize>,
     scheduler: Arc<Scheduler>,
 }
 
@@ -58,6 +59,7 @@ impl TimerLoop {
 
         TimerLoop {
             timers,
+            timer_id_nonce: Arc::new(AtomicUsize::new(0)),
             scheduler,
         }
     }
@@ -66,11 +68,13 @@ impl TimerLoop {
     where
         T: 'static + TimeoutHandler, {
         let mut timers = self.timers.write();
-        match timers.entry(name) {
+        let timer_id = self.timer_id_nonce.fetch_add(1, Ordering::SeqCst);
+        match timers.entry(timer_id) {
             Entry::Occupied(_) => unreachable!("Timer name was already occupied: {}", name),
             Entry::Vacant(entry) => {
                 entry.insert(handler);
                 TimerApi {
+                    timer_id,
                     timer_name: name,
                     scheduler: Arc::downgrade(&self.scheduler),
                 }
@@ -79,7 +83,10 @@ impl TimerLoop {
     }
 }
 
+type TimerId = usize;
+
 pub struct TimerApi {
+    timer_id: TimerId,
     timer_name: TimerName,
     scheduler: Weak<Scheduler>,
 }
@@ -93,17 +100,17 @@ pub enum ScheduleError {
 impl TimerApi {
     pub fn schedule_once(&self, after: Duration, timer_token: TimerToken) -> Result<(), ScheduleError> {
         let scheduler = self.scheduler.upgrade().ok_or(ScheduleError::TimerLoopDropped)?;
-        scheduler.schedule(TimerId(self.timer_name, timer_token), after, None)
+        scheduler.schedule(ScheduleId(self.timer_id, timer_token), after, None)
     }
 
     pub fn schedule_repeat(&self, after: Duration, timer_token: TimerToken) -> Result<(), ScheduleError> {
         let scheduler = self.scheduler.upgrade().ok_or(ScheduleError::TimerLoopDropped)?;
-        scheduler.schedule(TimerId(self.timer_name, timer_token), after, Some(after))
+        scheduler.schedule(ScheduleId(self.timer_id, timer_token), after, Some(after))
     }
 
     pub fn cancel(&self, timer_token: TimerToken) -> Result<bool, ScheduleError> {
         let scheduler = self.scheduler.upgrade().ok_or(ScheduleError::TimerLoopDropped)?;
-        let result = scheduler.cancel(TimerId(self.timer_name, timer_token));
+        let result = scheduler.cancel(ScheduleId(self.timer_id, timer_token));
         Ok(result)
     }
 }
@@ -121,16 +128,21 @@ impl Scheduler {
         }
     }
 
-    fn schedule(&self, timer_id: TimerId, after: Duration, repeat: Option<Duration>) -> Result<(), ScheduleError> {
+    fn schedule(
+        &self,
+        schedule_id: ScheduleId,
+        after: Duration,
+        repeat: Option<Duration>,
+    ) -> Result<(), ScheduleError> {
         let mut scheduler = self.inner.lock();
-        scheduler.schedule(timer_id, after, repeat)?;
+        scheduler.schedule(schedule_id, after, repeat)?;
         self.condvar.notify_one();
         Ok(())
     }
 
-    fn cancel(&self, timer_id: TimerId) -> bool {
+    fn cancel(&self, schedule_id: ScheduleId) -> bool {
         let mut scheduler = self.inner.lock();
-        let result = scheduler.cancel(timer_id);
+        let result = scheduler.cancel(schedule_id);
         self.condvar.notify_all();
         result
     }
@@ -157,7 +169,7 @@ impl Scheduler {
 /// Rule 1. All detached 'state_control' is in 'Cancelled' state.
 ///     A detached one has no way to 'cancel' it. so it should be in 'Cancelled' state.
 /// Rule 2. All 'state_control' in 'self.states' are unique.
-///     Otherwise, it leads to two different TimerId shares same 'state_control'.
+///     Otherwise, it leads to two different ScheduleId shares same 'state_control'.
 /// Rule 3. All 'state_control' in 'Wait | WaitRepeating' state that contained in 'self.heap' are unique.
 ///     Otherwise, cancelling a 'state_control' makes two different schedules being cancelled.
 ///
@@ -165,8 +177,8 @@ impl Scheduler {
 ///     Attached', 'Detached', 'Garbage'
 /// Lemma 2. All 'state_control' in 'Wait | WaitRepeating' state in 'ScheduleInner' is either an attached one or a garbage.
 ///     A detached ones are all in 'Cancelled' state (Rule 1) so it is in either 'Attached' or 'Garbage' state.
-/// Lemma 3. We can find all 'state_control' for a 'schedule' that are in 'Wait | WaitRepeating' using a TimerId.
-///     We can find a 'state_control' for a TimerId (Rule 2), and all 'state_control' that
+/// Lemma 3. We can find all 'state_control' for a 'schedule' that are in 'Wait | WaitRepeating' using a ScheduleId.
+///     We can find a 'state_control' for a ScheduleId (Rule 2), and all 'state_control' that
 ///     'Wait | WaitRepeating' is either an attached one or a garbage (Lemma 2),
 ///     but a garbage is not in 'self.heap' (Def 2).
 ///
@@ -180,7 +192,7 @@ impl Scheduler {
 /// Note 2. Timeout, Cancelled states never revive. (to ease the complexity)
 
 struct SchedulerInner {
-    states: HashMap<TimerId, Arc<ScheduleStateControl>>,
+    states: HashMap<ScheduleId, Arc<ScheduleStateControl>>,
     heap: BinaryHeap<Reverse<TimeOrdered<Schedule>>>,
     stop: bool,
 }
@@ -193,8 +205,13 @@ impl SchedulerInner {
         }
     }
 
-    fn schedule(&mut self, timer_id: TimerId, after: Duration, repeat: Option<Duration>) -> Result<(), ScheduleError> {
-        let state_control = match self.states.entry(timer_id) {
+    fn schedule(
+        &mut self,
+        schedule_id: ScheduleId,
+        after: Duration,
+        repeat: Option<Duration>,
+    ) -> Result<(), ScheduleError> {
+        let state_control = match self.states.entry(schedule_id) {
             Entry::Vacant(entry) => {
                 // unique one(Rule 2). it is going to be attached.
                 let state_control = Arc::new(ScheduleStateControl::new_auto(repeat));
@@ -216,7 +233,7 @@ impl SchedulerInner {
 
         let schedule = Schedule {
             at: Instant::now() + after,
-            timer_id,
+            schedule_id,
             repeat,
             state_control,
         };
@@ -227,7 +244,7 @@ impl SchedulerInner {
 
     fn try_reschedule(&mut self, mut schedule: Schedule) {
         schedule.at = Instant::now() + schedule.repeat.expect("Schedule should have repeat interval");
-        match self.states.entry(schedule.timer_id) {
+        match self.states.entry(schedule.schedule_id) {
             Entry::Vacant(_) => {
                 // 'schedule.state_control' was detached one (Def 1).
                 // Don't reschedule since it is Cancelled (Rule 1)
@@ -251,9 +268,9 @@ impl SchedulerInner {
         };
     }
 
-    fn cancel(&mut self, timer_id: TimerId) -> bool {
+    fn cancel(&mut self, schedule_id: ScheduleId) -> bool {
         // See Corollary 2.
-        match self.states.entry(timer_id) {
+        match self.states.entry(schedule_id) {
             Entry::Vacant(_) => false,
             Entry::Occupied(entry) => {
                 // Detach and cancel it (Rule 1)
@@ -278,7 +295,7 @@ impl SchedulerInner {
                 self.try_reschedule(timed_out.clone());
                 worker_queue.enqueue(timed_out);
             } else {
-                let enqueue = match self.states.entry(timed_out.timer_id) {
+                let enqueue = match self.states.entry(timed_out.schedule_id) {
                     Entry::Occupied(entry) => {
                         if Arc::ptr_eq(entry.get(), &timed_out.state_control) {
                             // 'timed_out.state_control' was attached one. (Def 1)
@@ -304,7 +321,7 @@ impl SchedulerInner {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-struct TimerId(TimerName, TimerToken);
+struct ScheduleId(TimerId, TimerToken);
 
 /*
   valid state transition:
@@ -383,7 +400,7 @@ impl ScheduleStateControl {
 #[derive(Clone)]
 struct Schedule {
     at: Instant,
-    timer_id: TimerId,
+    schedule_id: ScheduleId,
     repeat: Option<Duration>,
     state_control: Arc<ScheduleStateControl>,
 }
@@ -427,8 +444,8 @@ fn spawn_workers(size: usize, timers: &Arc<RwLock<TimeoutHandlerMap>>, queue: &A
 fn worker_loop(timers: &Arc<RwLock<TimeoutHandlerMap>>, queue: &Arc<WorkerQueue>) {
     while let Some(schedule) = queue.dequeue() {
         let timers = timers.read();
-        let TimerId(timer_name, timer_token) = schedule.timer_id;
-        if let Some(timer) = timers.get(timer_name) {
+        let ScheduleId(timer_id, timer_token) = schedule.schedule_id;
+        if let Some(timer) = timers.get(&timer_id) {
             schedule.state_control.within_lock(|state| {
                 debug_assert_ne!(*state, ScheduleState::Timeout);
                 if *state != ScheduleState::Cancelled {
