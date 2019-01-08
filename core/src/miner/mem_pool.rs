@@ -245,7 +245,7 @@ trait TransactionSet {
 
     /// Remove low priority transactions if there is more than specified by given `limit`.
     ///
-    /// It drops parecls from this set but also removes associated `VerifiedTransaction`.
+    /// It drops transactions from this set but also removes associated `VerifiedTransaction`.
     /// Returns public keys and lowest seqs of transactions removed because of limit.
     fn enforce_limit(
         &mut self,
