@@ -23,6 +23,7 @@ pub mod types;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::iter::Iterator;
+use std::mem;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
@@ -43,7 +44,7 @@ use rlp::{Encodable, UntrustedRlp};
 use self::backup::{backup, restore, BackupView};
 use self::message::*;
 pub use self::params::{TendermintParams, TimeoutParams};
-use self::types::{BitSet, Height, PeerState, Step, View};
+use self::types::{BitSet, Height, PeerState, Step, TendermintState, View};
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
@@ -81,7 +82,7 @@ struct TendermintInner {
     /// Consensus view.
     view: View,
     /// Consensus step.
-    step: Step,
+    step: TendermintState,
     /// Record current round's received votes as bit set
     votes_received: BitSet,
     /// Vote accumulator.
@@ -142,7 +143,7 @@ impl TendermintInner {
             client: None,
             height: 1,
             view: 0,
-            step: Step::Propose,
+            step: TendermintState::Propose,
             votes: Default::default(),
             signer: Default::default(),
             lock_change: None,
@@ -200,7 +201,7 @@ impl TendermintInner {
         VoteStep {
             height: self.height,
             view: self.view,
-            step: self.step,
+            step: self.step.to_step(),
         }
     }
 
@@ -241,7 +242,7 @@ impl TendermintInner {
     }
 
     fn is_step(&self, message: &ConsensusMessage) -> bool {
-        message.on.step.is_step(self.height, self.view, self.step)
+        message.on.step.is_step(self.height, self.view, self.step.to_step())
     }
 
     fn is_authority(&self, prev_hash: &H256, address: &Address) -> bool {
@@ -262,7 +263,7 @@ impl TendermintInner {
     }
 
     fn has_enough_any_votes(&self) -> bool {
-        let step_votes = self.votes.count_round_votes(&VoteStep::new(self.height, self.view, self.step));
+        let step_votes = self.votes.count_round_votes(&VoteStep::new(self.height, self.view, self.step.to_step()));
         self.check_above_threshold(step_votes).is_ok()
     }
 
@@ -330,15 +331,14 @@ impl TendermintInner {
     }
 
     fn move_to_step(&mut self, step: Step) {
-        let prev_step = self.step;
+        let prev_step = mem::replace(&mut self.step, step.into());
         self.extension.set_timer_step(step, self.view);
-        self.step = step;
         self.backup();
         let vote_step = VoteStep::new(self.height, self.view, step);
 
         // If there are not enough pre-votes or pre-commits,
         // to_step could be called with same step
-        if prev_step != step {
+        if prev_step != step.into() {
             self.votes_received = BitSet::new();
         }
 
@@ -358,8 +358,15 @@ impl TendermintInner {
                     }
                 } else {
                     let (parent_block_hash, _) = &self.last_confirmed_view;
-                    self.request_proposal(vote_step.height, vote_step.view);
-                    self.update_sealing(*parent_block_hash)
+                    if self.is_signer_proposer(parent_block_hash) {
+                        ctrace!(ENGINE, "I am a proposer, I'll create a block");
+                        self.update_sealing(*parent_block_hash);
+                        self.step = TendermintState::ProposeWaitBlockGeneration {
+                            parent_hash: *parent_block_hash,
+                        };
+                    } else {
+                        self.request_proposal(vote_step.height, vote_step.view);
+                    }
                 }
             }
             Step::Prevote => {
@@ -399,9 +406,8 @@ impl TendermintInner {
     fn generate_message(&mut self, block_hash: Option<BlockHash>) -> Option<Bytes> {
         let height = self.height;
         let r = self.view;
-        let step = self.step;
         let on = VoteOn {
-            step: VoteStep::new(height, r, step),
+            step: VoteStep::new(height, r, self.step.to_step()),
             block_hash,
         };
         let vote_info = on.rlp_bytes();
@@ -449,11 +455,11 @@ impl TendermintInner {
         // Check if it can affect the step transition.
         if self.is_step(message) {
             let next_step = match self.step {
-                Step::Precommit if message.on.block_hash.is_none() && has_enough_aligned_votes => {
+                TendermintState::Precommit if message.on.block_hash.is_none() && has_enough_aligned_votes => {
                     self.increment_view(1);
                     Some(Step::Propose)
                 }
-                Step::Precommit if has_enough_aligned_votes => {
+                TendermintState::Precommit if has_enough_aligned_votes => {
                     let bh = message.on.block_hash.expect("previous guard ensures is_some; qed");
                     if self.client().block(&BlockId::Hash(bh)).is_some() {
                         // Commit the block using a complete signature set.
@@ -469,8 +475,8 @@ impl TendermintInner {
                     }
                 }
                 // Avoid counting votes twice.
-                Step::Prevote if lock_change => Some(Step::Precommit),
-                Step::Prevote if has_enough_aligned_votes => Some(Step::Precommit),
+                TendermintState::Prevote if lock_change => Some(Step::Precommit),
+                TendermintState::Prevote if has_enough_aligned_votes => Some(Step::Precommit),
                 _ => None,
             };
 
@@ -480,7 +486,7 @@ impl TendermintInner {
             }
         } else if vote_step.step == Step::Precommit
             && self.height - 1 == vote_step.height
-            && self.step == Step::Commit
+            && self.step == TendermintState::Commit
             && self.has_all_votes(vote_step)
         {
             ctrace!(ENGINE, "Transition to Propose because all pre-commits are received");
@@ -504,7 +510,7 @@ impl TendermintInner {
         let view = consensus_view(proposal).expect("Imported block is already verified");
         if current_height == height && self.view == view {
             self.proposal = Some(proposal.hash());
-            if self.step == Step::Propose {
+            if self.step == TendermintState::Propose {
                 self.move_to_step(Step::Prevote);
             }
         } else if current_height < height {
@@ -520,7 +526,7 @@ impl TendermintInner {
             BackupView {
                 height: &self.height,
                 view: &self.view,
-                step: &self.step,
+                step: &self.step.to_step(),
                 votes: &self.votes.get_all(),
                 last_confirmed_view: &self.last_confirmed_view,
             },
@@ -531,7 +537,7 @@ impl TendermintInner {
         let client = self.client();
         let backup = restore(client.get_kvdb().as_ref());
         if let Some(backup) = backup {
-            self.step = backup.step;
+            self.step = backup.step.into();
             self.height = backup.height;
             self.view = backup.view;
             self.last_confirmed_view = backup.last_confirmed_view;
@@ -605,10 +611,15 @@ impl TendermintInner {
     fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
         let header = block.header();
         let height = header.number() as Height;
-        // Only proposer can generate seal if None was generated.
-        if !self.is_signer_proposer(header.parent_hash()) || self.proposal.is_some() || height < self.height {
+
+        // Block is received from other nodes while creating a block
+        if height < self.height {
             return Seal::None
         }
+
+        assert_eq!(true, self.is_signer_proposer(&parent.hash()));
+        assert_eq!(true, self.proposal.is_none());
+        assert_eq!(true, height == self.height);
 
         let view = self.view;
 
@@ -631,6 +642,21 @@ impl TendermintInner {
     fn proposal_generated(&mut self, sealed_block: &SealedBlock) {
         let header = sealed_block.header();
         let hash = header.hash();
+
+        if let TendermintState::ProposeWaitBlockGeneration {
+            parent_hash: expected_parent_hash,
+        } = self.step
+        {
+            assert_eq!(
+                *header.parent_hash(),
+                expected_parent_hash,
+                "Generated hash({:?}) is different from expected({:?})",
+                *header.parent_hash(),
+                expected_parent_hash
+            );
+        } else {
+            panic!("Block is generated at unexpected step {:?}", self.step);
+        }
 
         let vote_step =
             VoteStep::new(header.number() as Height, consensus_view(&header).expect("I am proposer"), Step::Propose);
@@ -797,7 +823,7 @@ impl TendermintInner {
         }
 
         let next_step = match self.step {
-            Step::Propose => {
+            TendermintState::Propose => {
                 ctrace!(ENGINE, "Propose timeout.");
                 if self.proposal.is_none() {
                     // Report the proposer if no proposal was received.
@@ -805,31 +831,40 @@ impl TendermintInner {
                     let current_proposer = self.view_proposer(&self.prev_block_hash(), height, self.view);
                     self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
                 }
-                Step::Prevote
+                Some(Step::Prevote)
             }
-            Step::Prevote if self.has_enough_any_votes() => {
+            TendermintState::ProposeWaitBlockGeneration {
+                ..
+            } => {
+                cwarn!(ENGINE, "Propose timed out but block is not generated yet");
+                None
+            }
+            TendermintState::Prevote if self.has_enough_any_votes() => {
                 ctrace!(ENGINE, "Prevote timeout.");
-                Step::Precommit
+                Some(Step::Precommit)
             }
-            Step::Prevote => {
+            TendermintState::Prevote => {
                 ctrace!(ENGINE, "Prevote timeout without enough votes.");
-                Step::Prevote
+                Some(Step::Prevote)
             }
-            Step::Precommit if self.has_enough_any_votes() => {
+            TendermintState::Precommit if self.has_enough_any_votes() => {
                 ctrace!(ENGINE, "Precommit timeout.");
                 self.increment_view(1);
-                Step::Propose
+                Some(Step::Propose)
             }
-            Step::Precommit => {
+            TendermintState::Precommit => {
                 ctrace!(ENGINE, "Precommit timeout without enough votes.");
-                Step::Precommit
+                Some(Step::Precommit)
             }
-            Step::Commit => {
+            TendermintState::Commit => {
                 ctrace!(ENGINE, "Commit timeout.");
-                Step::Propose
+                Some(Step::Propose)
             }
         };
-        self.move_to_step(next_step);
+
+        if let Some(next_step) = next_step {
+            self.move_to_step(next_step);
+        }
     }
 
     fn on_new_block(&self, block: &mut ExecutedBlock, epoch_begin: bool) -> Result<(), Error> {
@@ -1588,7 +1623,7 @@ impl TendermintExtension {
             self.request_proposal(token, tendermint.height, tendermint.view);
         }
 
-        let current_step = tendermint.step;
+        let current_step = tendermint.step.to_step();
 
         if current_step == Step::Prevote || current_step == Step::Precommit {
             let peer_known_votes = if current_step == peer_vote_step.step {
