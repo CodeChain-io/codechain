@@ -155,7 +155,7 @@ impl Header {
     }
     /// Set the timestamp field of the header to the current time.
     pub fn set_timestamp_now(&mut self, but_later_than: u64) {
-        self.timestamp = cmp::max(get_time().sec as u64, but_later_than + 1);
+        self.timestamp = cmp::max(get_time().sec as u64, but_later_than);
         self.note_dirty();
     }
     /// Set the number field of the header.

@@ -1074,7 +1074,7 @@ impl MemPool {
             }
         }
         if let Some(timestamp) = timelock.timestamp {
-            if timestamp > cmp::max(get_time().sec as u64, best_block_timestamp + 1) {
+            if timestamp > cmp::max(get_time().sec as u64, best_block_timestamp) {
                 return true
             }
         }
