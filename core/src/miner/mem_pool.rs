@@ -245,7 +245,7 @@ trait TransactionSet {
 
     /// Remove low priority transactions if there is more than specified by given `limit`.
     ///
-    /// It drops parecls from this set but also removes associated `VerifiedTransaction`.
+    /// It drops transactions from this set but also removes associated `VerifiedTransaction`.
     /// Returns public keys and lowest seqs of transactions removed because of limit.
     fn enforce_limit(
         &mut self,
@@ -861,18 +861,13 @@ impl MemPool {
         self.local_transactions.all_transactions()
     }
 
-    /// Adds signed transaction to the pool.
-    fn add_internal<F>(
-        &mut self,
-        tx: SignedTransaction,
+    /// Verify signed transaction about its fee, balance of its fee payer, and its signature.
+    fn verify_transaction(
+        &self,
+        tx: &SignedTransaction,
         origin: TxOrigin,
-        time: PoolingInstant,
-        timestamp: u64,
-        timelock: TxTimelock,
-        fetch_account: &F,
-    ) -> Result<TransactionImportResult, ParcelError>
-    where
-        F: Fn(&Public) -> AccountDetails, {
+        client_account: &AccountDetails,
+    ) -> Result<(), ParcelError> {
         if origin != TxOrigin::Local && tx.fee < self.minimal_fee {
             ctrace!(
                 MEM_POOL,
@@ -904,7 +899,6 @@ impl MemPool {
             })
         }
 
-        let client_account = fetch_account(&tx.signer_public());
         if client_account.balance < tx.fee {
             ctrace!(
                 MEM_POOL,
@@ -920,14 +914,34 @@ impl MemPool {
                 balance: client_account.balance,
             })
         }
+
         tx.check_low_s()?;
+
+        Ok(())
+    }
+
+    /// Adds signed transaction to the pool.
+    fn add_internal<F>(
+        &mut self,
+        tx: SignedTransaction,
+        origin: TxOrigin,
+        time: PoolingInstant,
+        timestamp: u64,
+        timelock: TxTimelock,
+        fetch_account: &F,
+    ) -> Result<TransactionImportResult, ParcelError>
+    where
+        F: Fn(&Public) -> AccountDetails, {
+        let client_account = fetch_account(&tx.signer_public());
+        self.verify_transaction(&tx, origin, &client_account)?;
+
         // No invalid transactions beyond this point.
         let id = self.next_transaction_id;
         self.next_transaction_id += 1;
-        let vtx = MemPoolItem::new(tx, origin, time, id, timelock);
-        let r = self.import_transaction(vtx, client_account.seq, timestamp);
+        let item = MemPoolItem::new(tx, origin, time, id, timelock);
+        let result = self.import_transaction(item, client_account.seq, timestamp);
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
-        r
+        result
     }
 
     /// Adds VerifiedTransaction to this pool.
