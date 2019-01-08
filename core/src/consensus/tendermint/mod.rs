@@ -1701,17 +1701,13 @@ impl NetworkExtension for TendermintExtension {
             None => return,
         };
         let guard = t.inner.lock();
-        let t = guard.borrow_mut();
+        let mut t = guard.borrow_mut();
 
         let m = UntrustedRlp::new(data);
         match m.as_val() {
             Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {
-                if let Some(ref weak) = *self.tendermint.read() {
-                    if let Some(c) = weak.upgrade() {
-                        if let Err(e) = c.handle_message(bytes) {
-                            cinfo!(ENGINE, "Failed to handle message {:?}", e);
-                        }
-                    }
+                if let Err(e) = t.handle_message(bytes) {
+                    cinfo!(ENGINE, "Failed to handle message {:?}", e);
                 }
             }
             Ok(TendermintMessage::ProposalBlock(signature, signer_index, bytes)) => {
