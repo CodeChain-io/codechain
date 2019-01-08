@@ -304,13 +304,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         header.hash()
     }
 
-    /// Some consensus(like Tendermint) could not mine on the client's best block,
-    /// because the client's best block could be different from the consensus engine's.
-    /// So ask to the consensus engine which block to mine on.
-    fn get_block_hash_to_mine_on(&self, best_block_hash: H256) -> H256 {
-        best_block_hash
-    }
-
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
         &[]
     }

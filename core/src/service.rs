@@ -26,6 +26,7 @@ use crate::client::{Client, ClientConfig};
 use crate::error::Error;
 use crate::miner::Miner;
 use crate::scheme::Scheme;
+use crate::BlockId;
 
 /// Client service setup.
 pub struct ClientService {
@@ -83,7 +84,10 @@ pub enum ClientIoMessage {
     /// New parcel RLPs are ready to be imported
     NewParcels(Vec<Bytes>, NodeId),
     /// Block generation is required
-    NewBlockRequired(bool),
+    NewBlockRequired {
+        parent_block: BlockId,
+        allow_empty_block: bool,
+    },
 }
 
 /// IO interface for the Client handler
@@ -103,8 +107,11 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
             ClientIoMessage::NewParcels(parcels, peer_id) => {
                 self.client.import_queued_parcels(parcels, *peer_id);
             }
-            ClientIoMessage::NewBlockRequired(allow_empty_block) => {
-                self.client.update_sealing(*allow_empty_block);
+            ClientIoMessage::NewBlockRequired {
+                parent_block,
+                allow_empty_block,
+            } => {
+                self.client.update_sealing(*parent_block, *allow_empty_block);
             }
         }
         Ok(())
