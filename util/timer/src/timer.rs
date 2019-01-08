@@ -51,7 +51,7 @@ impl TimerLoop {
         {
             let scheduler = Arc::clone(&scheduler);
             thread::Builder::new()
-                .name("Timer scheduler".to_string())
+                .name("timer.scheduler".to_string())
                 .spawn(move || scheduler.run(&worker_queue))
                 .unwrap();
         }
@@ -420,10 +420,7 @@ fn spawn_workers(size: usize, timers: &Arc<RwLock<TimeoutHandlerMap>>, queue: &A
     for i in 0..size {
         let queue = Arc::clone(queue);
         let timers = Arc::clone(timers);
-        thread::Builder::new()
-            .name(format!("Timer worker #{}", i))
-            .spawn(move || worker_loop(&timers, &queue))
-            .unwrap();
+        thread::Builder::new().name(format!("timer.worker.{}", i)).spawn(move || worker_loop(&timers, &queue)).unwrap();
     }
 }
 
