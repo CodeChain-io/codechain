@@ -33,23 +33,21 @@ pub trait TimeoutHandler: Send + Sync {
     fn on_timeout(&self, _token: TimerToken) {}
 }
 
-type TimeoutHandlerMap = HashMap<TimerId, Arc<TimeoutHandler>>;
-
 #[derive(Clone)]
 pub struct TimerLoop {
-    timers: Arc<RwLock<TimeoutHandlerMap>>,
     timer_id_nonce: Arc<AtomicUsize>,
     scheduler: Arc<Scheduler>,
 }
 
 impl TimerLoop {
     pub fn new(worker_size: usize) -> TimerLoop {
-        let timers = Arc::new(RwLock::new(HashMap::new()));
         let scheduler = Arc::new(Scheduler::new());
 
         let worker_queue = Arc::new(WorkerQueue::new());
-        spawn_workers(worker_size, &timers, &worker_queue);
+
+        spawn_workers(worker_size, &worker_queue);
         {
+            let worker_queue = Arc::clone(&worker_queue);
             let scheduler = Arc::clone(&scheduler);
             thread::Builder::new()
                 .name("timer.scheduler".to_string())
@@ -58,7 +56,6 @@ impl TimerLoop {
         }
 
         TimerLoop {
-            timers,
             timer_id_nonce: Arc::new(AtomicUsize::new(0)),
             scheduler,
         }
@@ -67,18 +64,12 @@ impl TimerLoop {
     pub fn new_timer<T>(&self, name: TimerName, handler: Arc<T>) -> TimerApi
     where
         T: 'static + TimeoutHandler, {
-        let mut timers = self.timers.write();
         let timer_id = self.timer_id_nonce.fetch_add(1, Ordering::SeqCst);
-        match timers.entry(timer_id) {
-            Entry::Occupied(_) => unreachable!("Timer name was already occupied: {}", name),
-            Entry::Vacant(entry) => {
-                entry.insert(handler);
-                TimerApi {
-                    timer_id,
-                    timer_name: name,
-                    scheduler: Arc::downgrade(&self.scheduler),
-                }
-            }
+        TimerApi {
+            timer_id,
+            handler,
+            timer_name: name,
+            scheduler: Arc::downgrade(&self.scheduler),
         }
     }
 }
@@ -88,6 +79,7 @@ type TimerId = usize;
 pub struct TimerApi {
     timer_id: TimerId,
     timer_name: TimerName,
+    handler: Arc<TimeoutHandler>,
     scheduler: Weak<Scheduler>,
 }
 
@@ -100,17 +92,17 @@ pub enum ScheduleError {
 impl TimerApi {
     pub fn schedule_once(&self, after: Duration, timer_token: TimerToken) -> Result<(), ScheduleError> {
         let scheduler = self.scheduler.upgrade().ok_or(ScheduleError::TimerLoopDropped)?;
-        scheduler.schedule(ScheduleId(self.timer_id, timer_token), after, None)
+        scheduler.schedule(self, timer_token, after, None)
     }
 
     pub fn schedule_repeat(&self, after: Duration, timer_token: TimerToken) -> Result<(), ScheduleError> {
         let scheduler = self.scheduler.upgrade().ok_or(ScheduleError::TimerLoopDropped)?;
-        scheduler.schedule(ScheduleId(self.timer_id, timer_token), after, Some(after))
+        scheduler.schedule(self, timer_token, after, Some(after))
     }
 
     pub fn cancel(&self, timer_token: TimerToken) -> Result<bool, ScheduleError> {
         let scheduler = self.scheduler.upgrade().ok_or(ScheduleError::TimerLoopDropped)?;
-        let result = scheduler.cancel(ScheduleId(self.timer_id, timer_token));
+        let result = scheduler.cancel(self, timer_token);
         Ok(result)
     }
 }
@@ -130,19 +122,20 @@ impl Scheduler {
 
     fn schedule(
         &self,
-        schedule_id: ScheduleId,
+        requested_timer: &TimerApi,
+        timer_token: TimerToken,
         after: Duration,
         repeat: Option<Duration>,
     ) -> Result<(), ScheduleError> {
         let mut scheduler = self.inner.lock();
-        scheduler.schedule(schedule_id, after, repeat)?;
+        scheduler.schedule(requested_timer, timer_token, after, repeat)?;
         self.condvar.notify_one();
         Ok(())
     }
 
-    fn cancel(&self, schedule_id: ScheduleId) -> bool {
+    fn cancel(&self, requested_timer: &TimerApi, timer_token: TimerToken) -> bool {
         let mut scheduler = self.inner.lock();
-        let result = scheduler.cancel(schedule_id);
+        let result = scheduler.cancel(requested_timer, timer_token);
         self.condvar.notify_all();
         result
     }
@@ -207,10 +200,12 @@ impl SchedulerInner {
 
     fn schedule(
         &mut self,
-        schedule_id: ScheduleId,
+        requested_timer: &TimerApi,
+        timer_token: TimerToken,
         after: Duration,
         repeat: Option<Duration>,
     ) -> Result<(), ScheduleError> {
+        let schedule_id = ScheduleId(requested_timer.timer_id, timer_token);
         let state_control = match self.states.entry(schedule_id) {
             Entry::Vacant(entry) => {
                 // unique one(Rule 2). it is going to be attached.
@@ -236,6 +231,7 @@ impl SchedulerInner {
             schedule_id,
             repeat,
             state_control,
+            handler: Arc::clone(&requested_timer.handler),
         };
         // state_control become an attached one (Def 1)
         self.heap.push(Reverse(TimeOrdered(schedule)));
@@ -268,7 +264,8 @@ impl SchedulerInner {
         };
     }
 
-    fn cancel(&mut self, schedule_id: ScheduleId) -> bool {
+    fn cancel(&mut self, requested_timer: &TimerApi, timer_token: TimerToken) -> bool {
+        let schedule_id = ScheduleId(requested_timer.timer_id, timer_token);
         // See Corollary 2.
         match self.states.entry(schedule_id) {
             Entry::Vacant(_) => false,
@@ -403,6 +400,7 @@ struct Schedule {
     schedule_id: ScheduleId,
     repeat: Option<Duration>,
     state_control: Arc<ScheduleStateControl>,
+    handler: Arc<TimeoutHandler>,
 }
 
 struct TimeOrdered<T>(T);
@@ -433,31 +431,27 @@ impl std::cmp::PartialOrd for TimeOrdered<Schedule> {
     }
 }
 
-fn spawn_workers(size: usize, timers: &Arc<RwLock<TimeoutHandlerMap>>, queue: &Arc<WorkerQueue>) {
+fn spawn_workers(size: usize, queue: &Arc<WorkerQueue>) {
     for i in 0..size {
         let queue = Arc::clone(queue);
-        let timers = Arc::clone(timers);
-        thread::Builder::new().name(format!("timer.worker.{}", i)).spawn(move || worker_loop(&timers, &queue)).unwrap();
+        thread::Builder::new().name(format!("timer.worker.{}", i)).spawn(move || worker_loop(&queue)).unwrap();
     }
 }
 
-fn worker_loop(timers: &Arc<RwLock<TimeoutHandlerMap>>, queue: &Arc<WorkerQueue>) {
+fn worker_loop(queue: &Arc<WorkerQueue>) {
     while let Some(schedule) = queue.dequeue() {
-        let timers = timers.read();
-        let ScheduleId(timer_id, timer_token) = schedule.schedule_id;
-        if let Some(timer) = timers.get(&timer_id) {
-            schedule.state_control.within_lock(|state| {
-                debug_assert_ne!(*state, ScheduleState::Timeout);
-                if *state != ScheduleState::Cancelled {
-                    timer.on_timeout(timer_token);
-                    let is_oneshot = schedule.repeat.is_none();
-                    debug_assert_eq!(is_oneshot, *state == ScheduleState::Wait);
-                    if is_oneshot {
-                        ScheduleStateControl::set_timeout(state);
-                    }
+        let ScheduleId(_, timer_token) = schedule.schedule_id;
+        schedule.state_control.within_lock(|state| {
+            debug_assert_ne!(*state, ScheduleState::Timeout);
+            if *state != ScheduleState::Cancelled {
+                schedule.handler.on_timeout(timer_token);
+                let is_oneshot = schedule.repeat.is_none();
+                debug_assert_eq!(is_oneshot, *state == ScheduleState::Wait);
+                if is_oneshot {
+                    ScheduleStateControl::set_timeout(state);
                 }
-            });
-        }
+            }
+        });
     }
 }
 
