@@ -210,10 +210,10 @@ fn verify_parent(header: &Header, parent: &Header) -> Result<(), Error> {
             found: *header.parent_hash(),
         })))
     }
-    if header.timestamp() <= parent.timestamp() {
+    if header.timestamp() < parent.timestamp() {
         return Err(From::from(BlockError::InvalidTimestamp(OutOfBounds {
             max: None,
-            min: Some(parent.timestamp() + 1),
+            min: Some(parent.timestamp()),
             found: header.timestamp(),
         })))
     }
