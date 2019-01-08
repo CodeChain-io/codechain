@@ -395,6 +395,7 @@ impl Miner {
         C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
     >(
         &self,
+        parent_block_id: BlockId,
         chain: &C,
     ) -> Result<(ClosedBlock, Option<H256>), Error> {
         let (transactions, mut open_block, original_work_hash) = {
@@ -405,7 +406,7 @@ impl Miner {
 
             ctrace!(MINER, "prepare_block: No existing work - making new block");
             let params = self.params.read().clone();
-            let open_block = chain.prepare_open_block(params.author, params.extra_data);
+            let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
 
             (transactions, open_block, last_work_hash)
         };
@@ -687,7 +688,7 @@ impl MinerService for Miner {
             // | NOTE Code below requires transaction_queue and sealing_work locks.     |
             // | Make sure to release the locks before calling that method.             |
             // --------------------------------------------------------------------------
-            match self.prepare_block(client) {
+            match self.prepare_block(BlockId::Latest, client) {
                 Ok((block, original_work_hash)) => {
                     self.prepare_work(block, original_work_hash);
                 }
@@ -712,7 +713,7 @@ impl MinerService for Miner {
         prepare_new
     }
 
-    fn update_sealing<C>(&self, chain: &C, allow_empty_block: bool)
+    fn update_sealing<C>(&self, chain: &C, parent_block: BlockId, allow_empty_block: bool)
     where
         C: AccountData
             + BlockChain
@@ -724,8 +725,9 @@ impl MinerService for Miner {
             + FindActionHandler, {
         ctrace!(MINER, "update_sealing: preparing a block");
 
-        if self.requires_reseal(chain.chain_info().best_block_number) {
-            let (block, original_work_hash) = match self.prepare_block(chain) {
+        let parent_block_number = chain.block_header(&parent_block).expect("Parent is always exist").number();
+        if self.requires_reseal(parent_block_number) {
+            let (block, original_work_hash) = match self.prepare_block(parent_block, chain) {
                 Ok((block, original_work_hash)) => {
                     if !allow_empty_block && block.block().transactions().is_empty() {
                         ctrace!(MINER, "update_sealing: block is empty, and allow_empty_block is false");
@@ -825,7 +827,7 @@ impl MinerService for Miner {
             // | NOTE Code below requires mem_pool and sealing_queue locks.     |
             // | Make sure to release the locks before calling that method.     |
             // ------------------------------------------------------------------
-            self.update_sealing(client, false);
+            self.update_sealing(client, BlockId::Latest, false);
         }
         results
     }
@@ -870,7 +872,7 @@ impl MinerService for Miner {
             // If new block has not been prepared (means we already had one)
             // or Engine might be able to seal internally,
             // we need to update sealing.
-            self.update_sealing(chain, false);
+            self.update_sealing(chain, BlockId::Latest, false);
         }
         imported
     }
@@ -938,7 +940,7 @@ impl MinerService for Miner {
         // ------------------------------------------------------------------
         if self.transaction_reseal_allowed() {
             cdebug!(MINER, "Update sealing");
-            self.update_sealing(client, true);
+            self.update_sealing(client, BlockId::Latest, true);
         }
     }
 

@@ -170,8 +170,8 @@ impl Client {
     }
 
     /// This is triggered by a message coming from a engine when a new block should be created
-    pub fn update_sealing(&self, allow_empty_block: bool) {
-        self.importer.miner.update_sealing(self, allow_empty_block);
+    pub fn update_sealing(&self, parent_block: BlockId, allow_empty_block: bool) {
+        self.importer.miner.update_sealing(self, parent_block, allow_empty_block);
     }
 
     fn block_hash(chain: &BlockChain, id: &BlockId) -> Option<H256> {
@@ -264,13 +264,13 @@ impl TimeoutHandler for Client {
             RESEAL_MAX_TIMER_TOKEN => {
                 // Working in PoW only
                 if self.engine().seals_internally().is_none() && !self.importer.miner.prepare_work_sealing(self) {
-                    self.update_sealing(true);
+                    self.update_sealing(BlockId::Latest, true);
                 }
             }
             RESEAL_MIN_TIMER_TOKEN => {
                 // Checking self.ready_transactions() for efficiency
                 if !self.engine().engine_type().ignore_reseal_min_period() && !self.ready_transactions().is_empty() {
-                    self.update_sealing(false);
+                    self.update_sealing(BlockId::Latest, false);
                 }
             }
             _ => unreachable!(),
@@ -463,8 +463,11 @@ impl EngineInfo for Client {
 
 impl EngineClient for Client {
     /// Make a new block and seal it.
-    fn update_sealing(&self, allow_empty_block: bool) {
-        match self.io_channel.lock().send(ClientIoMessage::NewBlockRequired(allow_empty_block)) {
+    fn update_sealing(&self, parent_block: BlockId, allow_empty_block: bool) {
+        match self.io_channel.lock().send(ClientIoMessage::NewBlockRequired {
+            parent_block,
+            allow_empty_block,
+        }) {
             Ok(_) => {}
             Err(e) => {
                 cdebug!(CLIENT, "Error while triggering block creation: {}", e);
@@ -694,17 +697,17 @@ impl ReopenBlock for Client {
 }
 
 impl PrepareOpenBlock for Client {
-    fn prepare_open_block(&self, author: Address, extra_data: Bytes) -> OpenBlock {
+    fn prepare_open_block(&self, parent_block_id: BlockId, author: Address, extra_data: Bytes) -> OpenBlock {
         let engine = &*self.engine;
         let chain = self.block_chain();
-        let h = engine.get_block_hash_to_mine_on(chain.best_block_hash());
-        let latest_header = &chain.block_header(&h).expect("h is best block hash: so its header must exist: qed");
+        let parent_hash = self.block_hash(&parent_block_id).expect("parent exist always");
+        let parent_header = chain.block_header(&parent_hash).expect("parent exist always");
 
-        let is_epoch_begin = chain.epoch_transition(latest_header.number(), h).is_some();
+        let is_epoch_begin = chain.epoch_transition(parent_header.number(), parent_hash).is_some();
         OpenBlock::try_new(
             engine,
-            self.state_db.read().clone(&latest_header.state_root()),
-            latest_header,
+            self.state_db.read().clone(&parent_header.state_root()),
+            &parent_header,
             author,
             extra_data,
             is_epoch_begin,

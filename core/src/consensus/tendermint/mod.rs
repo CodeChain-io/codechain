@@ -298,8 +298,8 @@ impl TendermintInner {
         self.extension.request_proposal_to_any(height, view);
     }
 
-    fn update_sealing(&self) {
-        self.client().update_sealing(true);
+    fn update_sealing(&self, parent_block_hash: H256) {
+        self.client().update_sealing(BlockId::Hash(parent_block_hash), true);
     }
 
     fn save_last_confirmed_view(&mut self, block_hash: H256, view: View) {
@@ -357,8 +357,9 @@ impl TendermintInner {
                         return
                     }
                 } else {
+                    let (parent_block_hash, _) = &self.last_confirmed_view;
                     self.request_proposal(vote_step.height, vote_step.view);
-                    self.update_sealing()
+                    self.update_sealing(*parent_block_hash)
                 }
             }
             Step::Prevote => {
@@ -994,11 +995,6 @@ impl TendermintInner {
     fn register_chain_notify(&self, client: &Client) {
         client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<ChainNotify>);
     }
-
-    fn get_block_hash_to_mine_on(&self, _best_block_hash: H256) -> H256 {
-        let (hash, _) = &self.last_confirmed_view;
-        *hash
-    }
 }
 
 impl ConsensusEngine<CodeChainMachine> for Tendermint {
@@ -1152,11 +1148,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn register_chain_notify(&self, client: &Client) {
         let guard = self.inner.lock();
         guard.register_chain_notify(client);
-    }
-
-    fn get_block_hash_to_mine_on(&self, best_block_hash: H256) -> H256 {
-        let guard = self.inner.lock();
-        guard.get_block_hash_to_mine_on(best_block_hash)
     }
 
     fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
