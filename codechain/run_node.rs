@@ -96,11 +96,10 @@ fn client_start(
     let db_path = cfg.db_path.as_ref().map(|s| s.as_str()).unwrap();
     let client_path = Path::new(db_path);
     let client_config = Default::default();
-    let service = ClientService::start(&client_config, &scheme, &client_path, miner)
+    let reseal_timer = timer_loop.new_timer("Client reseal timer");
+    let service = ClientService::start(&client_config, &scheme, &client_path, miner, reseal_timer.clone())
         .map_err(|e| format!("Client service error: {}", e))?;
-
-    let reseal_timer = timer_loop.new_timer("Client reseal timer", service.client());
-    service.client().register_reseal_timer(reseal_timer);
+    reseal_timer.set_handler(&service.client());
 
     Ok(service)
 }

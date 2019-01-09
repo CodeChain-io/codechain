@@ -61,13 +61,11 @@ impl TimerLoop {
         }
     }
 
-    pub fn new_timer<T>(&self, name: TimerName, handler: Arc<T>) -> TimerApi
-    where
-        T: 'static + TimeoutHandler, {
+    pub fn new_timer(&self, name: TimerName) -> TimerApi {
         let timer_id = self.timer_id_nonce.fetch_add(1, Ordering::SeqCst);
         TimerApi {
             timer_id,
-            handler,
+            handler: Arc::new(RwLock::new(None)),
             timer_name: name,
             scheduler: Arc::downgrade(&self.scheduler),
         }
@@ -76,10 +74,11 @@ impl TimerLoop {
 
 type TimerId = usize;
 
+#[derive(Clone)]
 pub struct TimerApi {
     timer_id: TimerId,
     timer_name: TimerName,
-    handler: Arc<TimeoutHandler>,
+    handler: Arc<RwLock<Option<Weak<TimeoutHandler>>>>,
     scheduler: Weak<Scheduler>,
 }
 
@@ -90,6 +89,14 @@ pub enum ScheduleError {
 }
 
 impl TimerApi {
+    pub fn set_handler<T>(&self, handler: &Arc<T>)
+    where
+        T: 'static + TimeoutHandler, {
+        let mut handler_guard = self.handler.write();
+        assert!(handler_guard.is_none(), "Timer handler cannot be changed once it is set");
+        *handler_guard = Some(Arc::downgrade(handler) as Weak<TimeoutHandler>);
+    }
+
     pub fn schedule_once(&self, after: Duration, timer_token: TimerToken) -> Result<(), ScheduleError> {
         let scheduler = self.scheduler.upgrade().ok_or(ScheduleError::TimerLoopDropped)?;
         scheduler.schedule(self, timer_token, after, None)
@@ -206,6 +213,12 @@ impl SchedulerInner {
         repeat: Option<Duration>,
     ) -> Result<(), ScheduleError> {
         let schedule_id = ScheduleId(requested_timer.timer_id, timer_token);
+        let handler = {
+            let guard = requested_timer.handler.read();
+            let handler = guard.as_ref().expect("TimeoutHandler must be set");
+            Weak::clone(handler)
+        };
+
         let state_control = match self.states.entry(schedule_id) {
             Entry::Vacant(entry) => {
                 // unique one(Rule 2). it is going to be attached.
@@ -231,7 +244,7 @@ impl SchedulerInner {
             schedule_id,
             repeat,
             state_control,
-            handler: Arc::clone(&requested_timer.handler),
+            handler,
         };
         // state_control become an attached one (Def 1)
         self.heap.push(Reverse(TimeOrdered(schedule)));
@@ -288,9 +301,11 @@ impl SchedulerInner {
             let Reverse(TimeOrdered(timed_out)) = self.heap.pop().expect("It always have an item");
 
             if timed_out.repeat.is_some() {
-                // timed_out.state_control is re-pushed only after it is popped (Rule 3)
-                self.try_reschedule(timed_out.clone());
-                worker_queue.enqueue(timed_out);
+                if let Some(callback) = Callback::from_schedule(&timed_out) {
+                    // timed_out.state_control is re-pushed only after it is popped (Rule 3)
+                    self.try_reschedule(timed_out.clone());
+                    worker_queue.enqueue(callback);
+                }
             } else {
                 let enqueue = match self.states.entry(timed_out.schedule_id) {
                     Entry::Occupied(entry) => {
@@ -306,7 +321,9 @@ impl SchedulerInner {
                 };
                 // timed_out is anyway removed.
                 if enqueue {
-                    worker_queue.enqueue(timed_out);
+                    if let Some(callback) = Callback::from_schedule(&timed_out) {
+                        worker_queue.enqueue(callback);
+                    }
                 } else {
                     // 'timed_out.state_control' was detached one. (Def 1)
                     // It already be cancelled (Rule 1)
@@ -400,7 +417,7 @@ struct Schedule {
     schedule_id: ScheduleId,
     repeat: Option<Duration>,
     state_control: Arc<ScheduleStateControl>,
-    handler: Arc<TimeoutHandler>,
+    handler: Weak<TimeoutHandler>,
 }
 
 struct TimeOrdered<T>(T);
@@ -431,6 +448,28 @@ impl std::cmp::PartialOrd for TimeOrdered<Schedule> {
     }
 }
 
+struct Callback {
+    schedule_id: ScheduleId,
+    from_oneshot_schedule: bool,
+    state_control: Arc<ScheduleStateControl>,
+    handler: Arc<TimeoutHandler>,
+}
+
+impl Callback {
+    fn from_schedule(schedule: &Schedule) -> Option<Callback> {
+        if let Some(handler) = schedule.handler.upgrade() {
+            Some(Callback {
+                schedule_id: schedule.schedule_id,
+                from_oneshot_schedule: schedule.repeat.is_none(),
+                state_control: Arc::clone(&schedule.state_control),
+                handler,
+            })
+        } else {
+            None
+        }
+    }
+}
+
 fn spawn_workers(size: usize, queue: &Arc<WorkerQueue>) {
     for i in 0..size {
         let queue = Arc::clone(queue);
@@ -439,15 +478,14 @@ fn spawn_workers(size: usize, queue: &Arc<WorkerQueue>) {
 }
 
 fn worker_loop(queue: &Arc<WorkerQueue>) {
-    while let Some(schedule) = queue.dequeue() {
-        let ScheduleId(_, timer_token) = schedule.schedule_id;
-        schedule.state_control.within_lock(|state| {
+    while let Some(callback) = queue.dequeue() {
+        let ScheduleId(_, timer_token) = callback.schedule_id;
+        callback.state_control.within_lock(|state| {
             debug_assert_ne!(*state, ScheduleState::Timeout);
             if *state != ScheduleState::Cancelled {
-                schedule.handler.on_timeout(timer_token);
-                let is_oneshot = schedule.repeat.is_none();
-                debug_assert_eq!(is_oneshot, *state == ScheduleState::Wait);
-                if is_oneshot {
+                callback.handler.on_timeout(timer_token);
+                debug_assert_eq!(callback.from_oneshot_schedule, *state == ScheduleState::Wait);
+                if callback.from_oneshot_schedule {
                     ScheduleStateControl::set_timeout(state);
                 }
             }
@@ -456,7 +494,7 @@ fn worker_loop(queue: &Arc<WorkerQueue>) {
 }
 
 struct WorkerQueue {
-    queue: Mutex<VecDeque<Schedule>>,
+    queue: Mutex<VecDeque<Callback>>,
     condvar: Condvar,
     stop: AtomicBool,
 }
@@ -470,16 +508,16 @@ impl WorkerQueue {
         }
     }
 
-    fn enqueue(&self, schedule: Schedule) {
+    fn enqueue(&self, callback: Callback) {
         let mut queue = self.queue.lock();
         if self.stop.load(Ordering::SeqCst) {
             return
         }
-        queue.push_back(schedule);
+        queue.push_back(callback);
         self.condvar.notify_one();
     }
 
-    fn dequeue(&self) -> Option<Schedule> {
+    fn dequeue(&self) -> Option<Callback> {
         let mut queue = self.queue.lock();
         while queue.is_empty() {
             if self.stop.load(Ordering::SeqCst) {
@@ -493,6 +531,8 @@ impl WorkerQueue {
 
 #[cfg(test)]
 mod tests {
+    use std::panic;
+
     use super::*;
     use parking_lot::Mutex;
 
@@ -528,6 +568,14 @@ mod tests {
         diff < tick_epsilon()
     }
 
+    fn new_timer<T>(timer_loop: &TimerLoop, name: TimerName, handler: &Arc<T>) -> TimerApi
+    where
+        T: 'static + Sized + TimeoutHandler, {
+        let timer = timer_loop.new_timer(name);
+        timer.set_handler(handler);
+        timer
+    }
+
     #[test]
     fn test_timeout() {
         let timer_token = 100;
@@ -542,7 +590,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = timer_loop.new_timer("test", Arc::clone(&handler));
+        let timer = new_timer(&timer_loop, "test", &handler);
 
         let begin = Instant::now();
         timer.schedule_once(tick(), timer_token).unwrap();
@@ -570,10 +618,45 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = timer_loop.new_timer("test", Arc::clone(&handler));
+        let timer = new_timer(&timer_loop, "test", &handler);
 
         assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
         assert_eq!(timer.cancel(timer_token), Ok(true));
+
+        let (ref condvar, ref mutex) = *pair;
+        let mut value = mutex.lock();
+        condvar.wait_for(&mut value, long_tick());
+        assert!(value.is_none());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_timer_set_hander_twice() {
+        let timer_loop = TimerLoop::new(1);
+        let handler = Arc::new(CallbackHandler(|_| {}));
+        let timer = timer_loop.new_timer("test");
+        timer.set_handler(&handler);
+        timer.set_handler(&handler);
+    }
+
+    #[test]
+    fn test_handler_drop() {
+        let timer_token = 100;
+        let timer_loop = TimerLoop::new(1);
+        let pair = Arc::new((Condvar::new(), Mutex::new(None)));
+        let handler = {
+            let pair = Arc::clone(&pair);
+            Arc::new(CallbackHandler(move |_| {
+                let (ref condvar, ref mutex) = *pair;
+                let mut value = mutex.lock();
+                *value = Some(());
+                condvar.notify_all();
+            }))
+        };
+        let timer = new_timer(&timer_loop, "test", &handler);
+
+        assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
+        drop(handler);
 
         let (ref condvar, ref mutex) = *pair;
         let mut value = mutex.lock();
@@ -586,7 +669,7 @@ mod tests {
         let timer_token = 100;
         let timer_loop = TimerLoop::new(1);
         let handler = Arc::new(CallbackHandler(|_| {}));
-        let timer = timer_loop.new_timer("test", Arc::clone(&handler));
+        let timer = new_timer(&timer_loop, "test", &handler);
 
         assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
         assert_eq!(timer.schedule_once(tick(), timer_token), Err(ScheduleError::TokenAlreadyScheduled));
@@ -598,7 +681,7 @@ mod tests {
         let timer_token_2 = 200;
         let timer_loop = TimerLoop::new(1);
         let handler = Arc::new(CallbackHandler(|_| {}));
-        let timer = timer_loop.new_timer("test", Arc::clone(&handler));
+        let timer = new_timer(&timer_loop, "test", &handler);
 
         assert_eq!(timer.schedule_once(tick(), timer_token_1), Ok(()));
         assert_eq!(timer.schedule_once(tick(), timer_token_2), Ok(()));
@@ -618,7 +701,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = timer_loop.new_timer("test", Arc::clone(&handler));
+        let timer = new_timer(&timer_loop, "test", &handler);
 
         assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
         thread::sleep(long_tick());
@@ -649,7 +732,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = timer_loop.new_timer("test", Arc::clone(&handler));
+        let timer = new_timer(&timer_loop, "test", &handler);
 
         let begin = Instant::now();
         assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
@@ -681,7 +764,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = timer_loop.new_timer("test", Arc::clone(&handler));
+        let timer = new_timer(&timer_loop, "test", &handler);
 
         let begin = Instant::now();
         timer.schedule_repeat(tick(), timer_token).unwrap();
