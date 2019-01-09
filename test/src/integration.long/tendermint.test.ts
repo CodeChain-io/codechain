@@ -92,6 +92,35 @@ describeSkippedInTravis("Tendermint ", function() {
         ).to.eventually.greaterThan(1);
     }).timeout(20_000);
 
+    it("Block generation with transaction", async function() {
+        await Promise.all([
+            nodes[0].connect(nodes[1]),
+            nodes[0].connect(nodes[2]),
+            nodes[0].connect(nodes[3]),
+            nodes[1].connect(nodes[2]),
+            nodes[1].connect(nodes[3]),
+            nodes[2].connect(nodes[3])
+        ]);
+        await Promise.all([
+            nodes[0].waitPeers(4 - 1),
+            nodes[1].waitPeers(4 - 1),
+            nodes[2].waitPeers(4 - 1),
+            nodes[3].waitPeers(4 - 1)
+        ]);
+
+        await nodes[0].sendPayTx({ seq: 0 });
+        await nodes[0].sendPayTx({ seq: 1 });
+        await nodes[0].sendPayTx({ seq: 2 });
+
+        await nodes[0].waitBlockNumber(2);
+        await nodes[1].waitBlockNumber(2);
+        await nodes[2].waitBlockNumber(2);
+        await nodes[3].waitBlockNumber(2);
+        await expect(
+            nodes[0].sdk.rpc.chain.getBestBlockNumber()
+        ).to.eventually.greaterThan(1);
+    }).timeout(20_000);
+
     it("Block sync", async function() {
         await Promise.all([
             nodes[0].connect(nodes[1]),
