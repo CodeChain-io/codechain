@@ -822,7 +822,11 @@ impl MinerService for Miner {
             self.add_transactions_to_pool(client, transactions, TxOrigin::External, &mut mem_pool)
         };
 
-        if !results.is_empty() && self.options.reseal_on_external_transaction && self.transaction_reseal_allowed() {
+        if !results.is_empty()
+            && self.options.reseal_on_external_transaction
+            && self.transaction_reseal_allowed()
+            && !self.engine_type().ignore_reseal_on_transaction()
+        {
             // ------------------------------------------------------------------
             // | NOTE Code below requires mem_pool and sealing_queue locks.     |
             // | Make sure to release the locks before calling that method.     |
@@ -864,7 +868,7 @@ impl MinerService for Miner {
         // | NOTE Code below requires mem_pool and sealing_queue locks.     |
         // | Make sure to release the locks before calling that method.     |
         // ------------------------------------------------------------------
-        if imported.is_ok() && self.options.reseal_on_own_transaction && self.transaction_reseal_allowed()
+        if imported.is_ok() && self.options.reseal_on_own_transaction && self.transaction_reseal_allowed() && !self.engine_type().ignore_reseal_on_transaction()
             // Make sure to do it after transaction is imported and lock is dropped.
             // We need to create pending block and enable sealing.
             && (self.engine.seals_internally().unwrap_or(false) || !self.prepare_work_sealing(chain))
