@@ -94,6 +94,17 @@ macro_rules! asset_mint {
             allowed_script_hashes: vec![],
         }
     };
+    ($output:expr, $metadata:expr, allowed_script_hashes: $allowed:expr) => {
+        $crate::ctypes::transaction::ShardTransaction::MintAsset {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            shard_id: $crate::impls::test_helper::SHARD_ID,
+            metadata: $metadata,
+            output: $output,
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: $allowed,
+        }
+    };
 }
 
 macro_rules! asset_mint_output {
@@ -572,6 +583,15 @@ macro_rules! check_shard_level_state {
         let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
         assert_eq!(&$metadata, scheme.metadata());
         assert_eq!($amount, scheme.amount());
+
+        check_shard_level_state!($state, [$($x),*]);
+    };
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr, allowed_script_hashes: $allowed:expr}) $(,$x:tt)*]) => {
+        let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
+        let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
+        assert_eq!(&$metadata, scheme.metadata());
+        assert_eq!($amount, scheme.amount());
+        assert_eq!($allowed, scheme.allowed_script_hashes());
 
         check_shard_level_state!($state, [$($x),*]);
     };

@@ -1058,6 +1058,101 @@ mod tests {
     }
 
     #[test]
+    fn mint_and_transfer_allowed() {
+        let sender = address();
+        let mut state_db = RefCell::new(get_temp_state_db());
+        let mut shard_cache = ShardCache::default();
+        let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
+        let random_lock_script_hash = H160::random();
+        let allowed_script_hashes = vec![lock_script_hash, random_lock_script_hash];
+
+        let amount = 30;
+        let mint = asset_mint!(
+            asset_mint_output!(lock_script_hash, amount: amount),
+            metadata.clone(),
+            allowed_script_hashes: allowed_script_hashes.clone()
+        );
+        let mint_tracker = mint.tracker();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
+
+        let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
+
+        check_shard_level_state!(state, [
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+        ]);
+
+        let transfer = asset_transfer!(
+            inputs: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
+            asset_transfer_outputs![
+                (lock_script_hash, vec![vec![1]], asset_type, 10),
+                (lock_script_hash, asset_type, 5),
+                (random_lock_script_hash, asset_type, 15),
+            ]
+        );
+        let transfer_tracker = transfer.tracker();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client()));
+
+        check_shard_level_state!(state, [
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID)),
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10, lock_script_hash: lock_script_hash }),
+            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, amount: 5, lock_script_hash: lock_script_hash }),
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15, lock_script_hash: random_lock_script_hash })
+        ]);
+    }
+
+    #[test]
+    fn mint_and_transfer_not_allowed() {
+        let sender = address();
+        let mut state_db = RefCell::new(get_temp_state_db());
+        let mut shard_cache = ShardCache::default();
+        let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
+        let amount = 30;
+        let allowed_lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let allowed_script_hashes = vec![allowed_lock_script_hash];
+        let mint = asset_mint!(
+            asset_mint_output!(lock_script_hash, amount: amount),
+            metadata.clone(),
+            allowed_script_hashes: allowed_script_hashes.clone()
+        );
+        let mint_tracker = mint.tracker();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
+
+        let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
+        check_shard_level_state!(state, [
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+        ]);
+
+        let transfer = asset_transfer!(
+            inputs: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
+            asset_transfer_outputs![(lock_script_hash, asset_type, 30)]
+        );
+        let transfer_tracker = transfer.tracker();
+
+        assert_eq!(
+            Ok(Invoice::Failure(TransactionError::ScriptNotAllowed(lock_script_hash).into())),
+            state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client())
+        );
+
+        check_shard_level_state!(state, [
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount }),
+            (asset: (transfer_tracker, 0, SHARD_ID))
+        ]);
+    }
+
+    #[test]
     fn mint_and_burn() {
         let sender = address();
         let mut state_db = RefCell::new(get_temp_state_db());
