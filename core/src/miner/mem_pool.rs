@@ -858,8 +858,6 @@ impl MemPool {
             })
         }
 
-        tx.check_low_s()?;
-
         Ok(())
     }
 
