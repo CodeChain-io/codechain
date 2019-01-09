@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
 use cnetwork::NodeId;
+use ctimer::TimerApi;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use primitives::Bytes;
 
@@ -40,6 +41,7 @@ impl ClientService {
         scheme: &Scheme,
         client_path: &Path,
         miner: Arc<Miner>,
+        reseal_timer: TimerApi,
     ) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start("Client")?;
 
@@ -54,7 +56,7 @@ impl ClientService {
                 .map_err(::client::Error::Database)?,
         );
 
-        let client = Client::try_new(config, &scheme, db, miner, io_service.channel())?;
+        let client = Client::try_new(config, &scheme, db, miner, io_service.channel(), reseal_timer)?;
 
         let client_io = Arc::new(ClientIoHandler {
             client: client.clone(),
