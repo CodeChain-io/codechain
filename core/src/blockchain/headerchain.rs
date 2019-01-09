@@ -349,7 +349,11 @@ impl HeaderProvider for HeaderChain {
 
     /// Get block header data
     fn block_header_data(&self, hash: &H256) -> Option<encoded::Header> {
-        block_header_data(hash, &self.header_cache, &*self.db).map(encoded::Header::new)
+        let result = block_header_data(hash, &self.header_cache, &*self.db).map(encoded::Header::new);
+        if let Some(header) = &result {
+            debug_assert_eq!(*hash, header.hash());
+        }
+        result
     }
 }
 
