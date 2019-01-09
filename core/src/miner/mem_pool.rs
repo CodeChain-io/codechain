@@ -672,7 +672,7 @@ impl MemPool {
         let fetch_seq =
             |a: &Public| signers.get(a).expect("We fetch details for all signers from both current and future").seq;
         for hash in invalid {
-            self.remove(&hash, &fetch_seq, RemovalReason::Invalid, current_time, timestamp);
+            self.remove(&hash, &fetch_seq, current_time, timestamp);
         }
     }
 
@@ -681,14 +681,8 @@ impl MemPool {
     /// so transactions left in pool are processed according to client seq.
     ///
     /// If gap is introduced marks subsequent transactions as future
-    pub fn remove<F>(
-        &mut self,
-        tx_hash: &H256,
-        fetch_seq: &F,
-        _reason: RemovalReason,
-        current_time: PoolingInstant,
-        timestamp: u64,
-    ) where
+    pub fn remove<F>(&mut self, tx_hash: &H256, fetch_seq: &F, current_time: PoolingInstant, timestamp: u64)
+    where
         F: Fn(&Public) -> u64, {
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
         let tx = if let Some(tx) = self.by_hash.remove(tx_hash) {
@@ -1203,16 +1197,6 @@ pub struct AccountDetails {
     pub seq: u64,
     /// Current account balance
     pub balance: u64,
-}
-
-/// Reason to remove single transaction from the pool.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum RemovalReason {
-    /// Transaction is invalid
-    Invalid,
-    /// Transaction was canceled
-    #[allow(dead_code)]
-    Canceled,
 }
 
 fn check_too_cheap(is_in: bool) -> Result<(), ParcelError> {
