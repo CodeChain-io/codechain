@@ -23,13 +23,11 @@ use ckey::{public_to_address, Public};
 use ctypes::transaction::{Action, ParcelError};
 use ctypes::BlockNumber;
 use heapsize::HeapSizeOf;
-use linked_hash_map::LinkedHashMap;
 use primitives::H256;
 use rlp;
 use table::Table;
 use time::get_time;
 
-use super::local_tranasctions::{LocalTransactionsList, Status as LocalTxStatus};
 use super::TransactionImportResult;
 use crate::transaction::SignedTransaction;
 
@@ -249,11 +247,7 @@ trait TransactionSet {
     ///
     /// It drops transactions from this set but also removes associated `VerifiedTransaction`.
     /// Returns public keys and lowest seqs of transactions removed because of limit.
-    fn enforce_limit(
-        &mut self,
-        by_hash: &mut HashMap<H256, MemPoolItem>,
-        local: &mut LocalTransactionsList,
-    ) -> Option<HashMap<Public, u64>>;
+    fn enforce_limit(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>) -> Option<HashMap<Public, u64>>;
 
     /// Drop transaction from this set (remove from `by_priority` and `by_signer_public`)
     fn drop(&mut self, signer_public: &Public, seq: u64) -> Option<TransactionOrder>;
@@ -305,11 +299,7 @@ impl TransactionSet for CurrentTxSet {
         by_signer_public_replaced
     }
 
-    fn enforce_limit(
-        &mut self,
-        by_hash: &mut HashMap<H256, MemPoolItem>,
-        local: &mut LocalTransactionsList,
-    ) -> Option<HashMap<Public, u64>> {
+    fn enforce_limit(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>) -> Option<HashMap<Public, u64>> {
         let mut count = 0;
         let mut mem_usage = 0;
         let to_drop: Vec<(Public, u64)> = {
@@ -339,13 +329,9 @@ impl TransactionSet for CurrentTxSet {
                 .expect("Transaction has just been found in `by_priority`; so it is in `by_signer_public` also.");
             ctrace!(MEM_POOL, "Dropped out of limit transaction: {:?}", order.hash);
 
-            let order = by_hash
+            by_hash
                 .remove(&order.hash)
                 .expect("hash is in `by_priorty`; all hashes in `by_priority` must be in `by_hash`; qed");
-
-            if order.origin.is_local() {
-                local.mark_dropped(order.tx);
-            }
 
             let min = removed.get(&sender).map_or(seq, |val| cmp::min(*val, seq));
             removed.insert(sender, min);
@@ -426,11 +412,7 @@ impl TransactionSet for FutureTxSet {
         by_signer_public_replaced
     }
 
-    fn enforce_limit(
-        &mut self,
-        by_hash: &mut HashMap<H256, MemPoolItem>,
-        local: &mut LocalTransactionsList,
-    ) -> Option<HashMap<Public, u64>> {
+    fn enforce_limit(&mut self, by_hash: &mut HashMap<H256, MemPoolItem>) -> Option<HashMap<Public, u64>> {
         let mut count = 0;
         let mut mem_usage = 0;
         let to_drop: Vec<(Public, u64)> = {
@@ -459,13 +441,9 @@ impl TransactionSet for FutureTxSet {
                 .expect("Transaction has just been found in `by_priority`; so it is in `by_signer_public` also.");
             ctrace!(MEM_POOL, "Dropped out of limit transaction: {:?}", order.hash);
 
-            let order = by_hash
+            by_hash
                 .remove(&order.hash)
                 .expect("hash is in `by_priorty`; all hashes in `by_priority` must be in `by_hash`; qed");
-
-            if order.origin.is_local() {
-                local.mark_dropped(order.tx);
-            }
 
             let min = removed.get(&sender).map_or(seq, |val| cmp::min(*val, seq));
             removed.insert(sender, min);
@@ -544,8 +522,6 @@ pub struct MemPool {
     by_hash: HashMap<H256, MemPoolItem>,
     /// Last seq of transaction in current (to quickly check next expected transaction)
     last_seqs: HashMap<Public, u64>,
-    /// List of local transactions and their statuses.
-    local_transactions: LocalTransactionsList,
     /// Next id that should be assigned to a transaction imported to the pool.
     next_transaction_id: u64,
 }
@@ -586,7 +562,6 @@ impl MemPool {
             future,
             by_hash: HashMap::new(),
             last_seqs: HashMap::new(),
-            local_transactions: LocalTransactionsList::default(),
             next_transaction_id: 0,
         }
     }
@@ -596,8 +571,8 @@ impl MemPool {
         self.current.set_limit(limit);
         self.future.set_limit(limit);
         // And ensure the limits
-        self.current.enforce_limit(&mut self.by_hash, &mut self.local_transactions);
-        self.future.enforce_limit(&mut self.by_hash, &mut self.local_transactions);
+        self.current.enforce_limit(&mut self.by_hash);
+        self.future.enforce_limit(&mut self.by_hash);
     }
 
     /// Returns current limit of transactions in the pool.
@@ -645,30 +620,16 @@ impl MemPool {
     ) -> Result<TransactionImportResult, ParcelError>
     where
         F: Fn(&Public) -> AccountDetails, {
-        if origin == TxOrigin::Local {
-            let hash = tx.hash();
-            let closed_tx = tx.clone();
+        let client_account = fetch_account(&tx.signer_public());
+        self.verify_transaction(&tx, origin, &client_account)?;
 
-            let result = self.add_internal(tx, origin, time, timestamp, timelock, fetch_account);
-            match result {
-                Ok(TransactionImportResult::Current) => {
-                    self.local_transactions.mark_pending(hash);
-                }
-                Ok(TransactionImportResult::Future) => {
-                    self.local_transactions.mark_future(hash);
-                }
-                Err(ref err) => {
-                    // Sometimes transactions are re-imported, so
-                    // don't overwrite transactions if they are already on the list
-                    if !self.local_transactions.contains(&hash) {
-                        self.local_transactions.mark_rejected(closed_tx, err.clone());
-                    }
-                }
-            }
-            result
-        } else {
-            self.add_internal(tx, origin, time, timestamp, timelock, fetch_account)
-        }
+        // No invalid transactions beyond this point.
+        let id = self.next_transaction_id;
+        self.next_transaction_id += 1;
+        let item = MemPoolItem::new(tx, origin, time, id, timelock);
+        let result = self.import_transaction(item, client_account.seq, timestamp);
+        assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
+        result
     }
 
     /// Checks the current seq for all transactions' senders in the pool and removes the old transactions.
@@ -713,7 +674,7 @@ impl MemPool {
         let fetch_seq =
             |a: &Public| signers.get(a).expect("We fetch details for all signers from both current and future").seq;
         for hash in invalid {
-            self.remove(&hash, &fetch_seq, RemovalReason::Invalid, current_time, timestamp);
+            self.remove(&hash, &fetch_seq, current_time, timestamp);
         }
     }
 
@@ -722,14 +683,8 @@ impl MemPool {
     /// so transactions left in pool are processed according to client seq.
     ///
     /// If gap is introduced marks subsequent transactions as future
-    pub fn remove<F>(
-        &mut self,
-        tx_hash: &H256,
-        fetch_seq: &F,
-        reason: RemovalReason,
-        current_time: PoolingInstant,
-        timestamp: u64,
-    ) where
+    pub fn remove<F>(&mut self, tx_hash: &H256, fetch_seq: &F, current_time: PoolingInstant, timestamp: u64)
+    where
         F: Fn(&Public) -> u64, {
         assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
         let tx = if let Some(tx) = self.by_hash.remove(tx_hash) {
@@ -744,14 +699,6 @@ impl MemPool {
         let current_seq = fetch_seq(&signer_public);
 
         ctrace!(MEM_POOL, "Removing invalid transaction: {:?}", tx.hash());
-
-        // Mark in locals
-        if self.local_transactions.contains(tx_hash) {
-            match reason {
-                RemovalReason::Invalid => self.local_transactions.mark_invalid(tx.tx),
-                RemovalReason::Canceled => self.local_transactions.mark_canceled(tx.tx),
-            }
-        }
 
         // Remove from future
         let order = self.future.drop(&signer_public, seq);
@@ -857,12 +804,6 @@ impl MemPool {
         self.current.by_priority.iter().any(|tx| tx.origin == TxOrigin::Local)
     }
 
-    /// Returns local transactions (some of them might not be part of the pool anymore).
-    #[allow(dead_code)]
-    pub fn local_transactions(&self) -> &LinkedHashMap<H256, LocalTxStatus> {
-        self.local_transactions.all_transactions()
-    }
-
     /// Verify signed transaction about its fee, balance of its fee payer, and its signature.
     fn verify_transaction(
         &self,
@@ -922,30 +863,6 @@ impl MemPool {
         Ok(())
     }
 
-    /// Adds signed transaction to the pool.
-    fn add_internal<F>(
-        &mut self,
-        tx: SignedTransaction,
-        origin: TxOrigin,
-        time: PoolingInstant,
-        timestamp: u64,
-        timelock: TxTimelock,
-        fetch_account: &F,
-    ) -> Result<TransactionImportResult, ParcelError>
-    where
-        F: Fn(&Public) -> AccountDetails, {
-        let client_account = fetch_account(&tx.signer_public());
-        self.verify_transaction(&tx, origin, &client_account)?;
-
-        // No invalid transactions beyond this point.
-        let id = self.next_transaction_id;
-        self.next_transaction_id += 1;
-        let item = MemPoolItem::new(tx, origin, time, id, timelock);
-        let result = self.import_transaction(item, client_account.seq, timestamp);
-        assert_eq!(self.future.by_priority.len() + self.current.by_priority.len(), self.by_hash.len());
-        result
-    }
-
     /// Adds VerifiedTransaction to this pool.
     ///
     /// Determines if it should be placed in current or future. When transaction is
@@ -996,15 +913,9 @@ impl MemPool {
         if seq > next_seq {
             // We have a gap - put to future.
             // Insert transaction (or replace old one with lower fee)
-            check_too_cheap(Self::replace_transaction(
-                tx,
-                state_seq,
-                &mut self.future,
-                &mut self.by_hash,
-                &mut self.local_transactions,
-            ))?;
+            check_too_cheap(Self::replace_transaction(tx, state_seq, &mut self.future, &mut self.by_hash))?;
             // Enforce limit in Future
-            let removed = self.future.enforce_limit(&mut self.by_hash, &mut self.local_transactions);
+            let removed = self.future.enforce_limit(&mut self.by_hash);
             // Return an error if this transaction was not imported because of limit.
             check_if_removed(&signer_public, seq, removed)?;
 
@@ -1026,19 +937,13 @@ impl MemPool {
                 self.move_all_to_future(&signer_public, state_seq);
             }
 
-            check_too_cheap(Self::replace_transaction(
-                tx,
-                state_seq,
-                &mut self.future,
-                &mut self.by_hash,
-                &mut self.local_transactions,
-            ))?;
+            check_too_cheap(Self::replace_transaction(tx, state_seq, &mut self.future, &mut self.by_hash))?;
 
             if moved_to_future_flag {
                 self.move_matching_future_to_current(signer_public, state_seq, state_seq, best_block_number, timestamp);
             }
 
-            let removed = self.future.enforce_limit(&mut self.by_hash, &mut self.local_transactions);
+            let removed = self.future.enforce_limit(&mut self.by_hash);
             check_if_removed(&signer_public, seq, removed)?;
             cdebug!(MEM_POOL, "Imported transaction to future: {:?}", hash);
             cdebug!(MEM_POOL, "status: {:?}", self.status());
@@ -1046,19 +951,13 @@ impl MemPool {
         }
 
         // Replace transaction if any
-        check_too_cheap(Self::replace_transaction(
-            tx,
-            state_seq,
-            &mut self.current,
-            &mut self.by_hash,
-            &mut self.local_transactions,
-        ))?;
+        check_too_cheap(Self::replace_transaction(tx, state_seq, &mut self.current, &mut self.by_hash))?;
         // Keep track of highest seq stored in current
         let new_max = self.last_seqs.get(&signer_public).map_or(seq, |n| cmp::max(seq, *n));
         self.last_seqs.insert(signer_public, new_max);
 
         // Also enforce the limit
-        let removed = self.current.enforce_limit(&mut self.by_hash, &mut self.local_transactions);
+        let removed = self.current.enforce_limit(&mut self.by_hash);
         // If some transaction were removed because of limit we need to update last_seqs also.
         self.update_last_seqs(&removed);
         // Trigger error if the transaction we are importing was removed.
@@ -1140,19 +1039,8 @@ impl MemPool {
                 self.future.by_priority.remove(&order);
                 // Put to current
                 let order = order.update_height(current_seq, first_seq);
-                if order.origin.is_local() {
-                    self.local_transactions.mark_pending(order.hash);
-                }
                 if let Some(old) = self.current.insert(public, current_seq, order) {
-                    Self::replace_orders(
-                        public,
-                        current_seq,
-                        old,
-                        order,
-                        &mut self.current,
-                        &mut self.by_hash,
-                        &mut self.local_transactions,
-                    );
+                    Self::replace_orders(public, current_seq, old, order, &mut self.current, &mut self.by_hash);
                 }
                 update_last_seq_to = Some(current_seq);
                 current_seq += 1;
@@ -1181,34 +1069,20 @@ impl MemPool {
                 .expect("iterating over a collection that has been retrieved above; qed");
             if k >= current_seq {
                 let order = order.update_height(k, current_seq);
-                if order.origin.is_local() {
-                    self.local_transactions.mark_future(order.hash);
-                }
                 if let Some(old) = self.future.insert(*signer_public, k, order) {
-                    Self::replace_orders(
-                        *signer_public,
-                        k,
-                        old,
-                        order,
-                        &mut self.future,
-                        &mut self.by_hash,
-                        &mut self.local_transactions,
-                    );
+                    Self::replace_orders(*signer_public, k, old, order, &mut self.future, &mut self.by_hash);
                 }
             } else {
                 ctrace!(MEM_POOL, "Removing old transaction: {:?} (seq: {} < {})", order.hash, k, current_seq);
-                let tx = self.by_hash.remove(&order.hash).expect("All transactions in `future` are also in `by_hash`");
-                if tx.origin.is_local() {
-                    self.local_transactions.mark_mined(tx.tx);
-                }
+                self.by_hash.remove(&order.hash).expect("All transactions in `future` are also in `by_hash`");
             }
         }
-        self.future.enforce_limit(&mut self.by_hash, &mut self.local_transactions);
+        self.future.enforce_limit(&mut self.by_hash);
     }
 
     /// Marks all transactions from particular sender as local transactions
     fn mark_transactions_local(&mut self, signer: &Public) {
-        fn mark_local<F: FnMut(H256)>(signer_public: &Public, set: &mut TransactionSet, mut mark: F) {
+        fn mark_local(signer_public: &Public, set: &mut TransactionSet) {
             // Mark all transactions from this signer as local
             let seqs_from_sender = set
                 .get_signer_public_row(signer_public)
@@ -1230,14 +1104,12 @@ impl MemPool {
                 let mut order =
                     set.drop(signer_public, k).expect("transaction known to be in self.current/self.future; qed");
                 order.origin = TxOrigin::Local;
-                mark(order.hash);
                 set.insert(*signer_public, k, order);
             }
         }
 
-        let local = &mut self.local_transactions;
-        mark_local(signer, &mut self.current, |hash| local.mark_pending(hash));
-        mark_local(signer, &mut self.future, |hash| local.mark_future(hash));
+        mark_local(signer, &mut self.current);
+        mark_local(signer, &mut self.future);
     }
 
     /// Replaces transaction in given set (could be `future` or `current`).
@@ -1252,7 +1124,6 @@ impl MemPool {
         base_seq: u64,
         set: &mut TransactionSet,
         by_hash: &mut HashMap<H256, MemPoolItem>,
-        local: &mut LocalTransactionsList,
     ) -> bool {
         let order = TransactionOrder::for_transaction(&tx, base_seq);
         let hash = tx.hash();
@@ -1265,7 +1136,7 @@ impl MemPool {
         ctrace!(MEM_POOL, "Inserting: {:?}", order);
 
         if let Some(old) = set.insert(signer_public, seq, order) {
-            Self::replace_orders(signer_public, seq, old, order, set, by_hash, local)
+            Self::replace_orders(signer_public, seq, old, order, set, by_hash)
         } else {
             true
         }
@@ -1278,12 +1149,8 @@ impl MemPool {
         order: TransactionOrder,
         set: &mut TransactionSet,
         by_hash: &mut HashMap<H256, MemPoolItem>,
-        local: &mut LocalTransactionsList,
     ) -> bool {
         // There was already transaction in pool. Let's check which one should stay
-        let old_hash = old.hash;
-        let new_hash = order.hash;
-
         let old_fee = old.fee;
         let new_fee = order.fee;
         let min_required_fee = old_fee + (old_fee >> FEE_BUMP_SHIFT);
@@ -1298,12 +1165,9 @@ impl MemPool {
             // Put back old transaction since it has greater priority (higher fee)
             set.insert(signer_public, seq, old);
             // and remove new one
-            let order = by_hash
+            by_hash
                 .remove(&order.hash)
                 .expect("The hash has been just inserted and no other line is altering `by_hash`.");
-            if order.origin.is_local() {
-                local.mark_replaced(order.tx, old_fee, old_hash);
-            }
             false
         } else {
             ctrace!(
@@ -1313,11 +1177,7 @@ impl MemPool {
                 order.hash
             );
             // Make sure we remove old transaction entirely
-            let old =
-                by_hash.remove(&old.hash).expect("The hash is coming from `future` so it has to be in `by_hash`.");
-            if old.origin.is_local() {
-                local.mark_replaced(old.tx, new_fee, new_hash);
-            }
+            by_hash.remove(&old.hash).expect("The hash is coming from `future` so it has to be in `by_hash`.");
             true
         }
     }
@@ -1339,16 +1199,6 @@ pub struct AccountDetails {
     pub seq: u64,
     /// Current account balance
     pub balance: u64,
-}
-
-/// Reason to remove single transaction from the pool.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum RemovalReason {
-    /// Transaction is invalid
-    Invalid,
-    /// Transaction was canceled
-    #[allow(dead_code)]
-    Canceled,
 }
 
 fn check_too_cheap(is_in: bool) -> Result<(), ParcelError> {
