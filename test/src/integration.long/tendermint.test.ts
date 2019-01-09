@@ -25,6 +25,7 @@ import {
     faucetSecret
 } from "../helper/constants";
 import { toHex } from "codechain-sdk/lib/utils";
+import { PromiseExpect } from "../helper/promise";
 
 import "mocha";
 import * as chai from "chai";
@@ -37,6 +38,7 @@ const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 const RLP = require("rlp");
 
 describeSkippedInTravis("Tendermint ", function() {
+    const promiseExpect = new PromiseExpect();
     const BASE = 800;
     let nodes: CodeChain[];
 
@@ -68,110 +70,184 @@ describeSkippedInTravis("Tendermint ", function() {
     });
 
     it("Block generation", async function() {
-        await Promise.all([
-            nodes[0].connect(nodes[1]),
-            nodes[0].connect(nodes[2]),
-            nodes[0].connect(nodes[3]),
-            nodes[1].connect(nodes[2]),
-            nodes[1].connect(nodes[3]),
-            nodes[2].connect(nodes[3])
-        ]);
-        await Promise.all([
-            nodes[0].waitPeers(4 - 1),
-            nodes[1].waitPeers(4 - 1),
-            nodes[2].waitPeers(4 - 1),
-            nodes[3].waitPeers(4 - 1)
-        ]);
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[0].connect(nodes[2]),
+                nodes[0].connect(nodes[3]),
+                nodes[1].connect(nodes[2]),
+                nodes[1].connect(nodes[3]),
+                nodes[2].connect(nodes[3])
+            ])
+        );
+        await promiseExpect.shouldFulfill(
+            "wait peers",
+            Promise.all([
+                nodes[0].waitPeers(4 - 1),
+                nodes[1].waitPeers(4 - 1),
+                nodes[2].waitPeers(4 - 1),
+                nodes[3].waitPeers(4 - 1)
+            ])
+        );
 
-        await nodes[0].waitBlockNumber(2);
-        await nodes[1].waitBlockNumber(2);
-        await nodes[2].waitBlockNumber(2);
-        await nodes[3].waitBlockNumber(2);
+        await promiseExpect.shouldFulfill(
+            "block generation",
+            Promise.all([
+                nodes[0].waitBlockNumber(2),
+                nodes[1].waitBlockNumber(2),
+                nodes[2].waitBlockNumber(2),
+                nodes[3].waitBlockNumber(2)
+            ])
+        );
+
         await expect(
-            nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            promiseExpect.shouldFulfill(
+                "best blocknumber",
+                nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            )
         ).to.eventually.greaterThan(1);
     }).timeout(20_000);
 
     it("Block generation with transaction", async function() {
-        await Promise.all([
-            nodes[0].connect(nodes[1]),
-            nodes[0].connect(nodes[2]),
-            nodes[0].connect(nodes[3]),
-            nodes[1].connect(nodes[2]),
-            nodes[1].connect(nodes[3]),
-            nodes[2].connect(nodes[3])
-        ]);
-        await Promise.all([
-            nodes[0].waitPeers(4 - 1),
-            nodes[1].waitPeers(4 - 1),
-            nodes[2].waitPeers(4 - 1),
-            nodes[3].waitPeers(4 - 1)
-        ]);
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[0].connect(nodes[2]),
+                nodes[0].connect(nodes[3]),
+                nodes[1].connect(nodes[2]),
+                nodes[1].connect(nodes[3]),
+                nodes[2].connect(nodes[3])
+            ])
+        );
+        await promiseExpect.shouldFulfill(
+            "wait peers",
+            Promise.all([
+                nodes[0].waitPeers(4 - 1),
+                nodes[1].waitPeers(4 - 1),
+                nodes[2].waitPeers(4 - 1),
+                nodes[3].waitPeers(4 - 1)
+            ])
+        );
 
-        await nodes[0].sendPayTx({ seq: 0 });
-        await nodes[0].sendPayTx({ seq: 1 });
-        await nodes[0].sendPayTx({ seq: 2 });
+        await promiseExpect.shouldFulfill(
+            "payTx",
+            Promise.all([
+                nodes[0].sendPayTx({ seq: 0 }),
+                nodes[0].sendPayTx({ seq: 1 }),
+                nodes[0].sendPayTx({ seq: 2 })
+            ])
+        );
 
-        await nodes[0].waitBlockNumber(2);
-        await nodes[1].waitBlockNumber(2);
-        await nodes[2].waitBlockNumber(2);
-        await nodes[3].waitBlockNumber(2);
+        await promiseExpect.shouldFulfill(
+            "block generation",
+            Promise.all([
+                nodes[0].waitBlockNumber(2),
+                nodes[1].waitBlockNumber(2),
+                nodes[2].waitBlockNumber(2),
+                nodes[3].waitBlockNumber(2)
+            ])
+        );
+
         await expect(
-            nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            promiseExpect.shouldFulfill(
+                "best blocknumber",
+                nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            )
         ).to.eventually.greaterThan(1);
     }).timeout(20_000);
 
     it("Block sync", async function() {
-        await Promise.all([
-            nodes[0].connect(nodes[1]),
-            nodes[0].connect(nodes[2]),
-            nodes[1].connect(nodes[2])
-        ]);
-        await Promise.all([
-            nodes[0].waitPeers(3 - 1),
-            nodes[1].waitPeers(3 - 1),
-            nodes[2].waitPeers(3 - 1)
-        ]);
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[0].connect(nodes[2]),
+                nodes[1].connect(nodes[2])
+            ])
+        );
+        await promiseExpect.shouldFulfill(
+            "wait peers",
+            Promise.all([
+                nodes[0].waitPeers(3 - 1),
+                nodes[1].waitPeers(3 - 1),
+                nodes[2].waitPeers(3 - 1)
+            ])
+        );
 
-        await nodes[0].waitBlockNumber(2);
-        await nodes[1].waitBlockNumber(2);
-        await nodes[2].waitBlockNumber(2);
+        await promiseExpect.shouldFulfill(
+            "wait blocknumber",
+            Promise.all([
+                nodes[0].waitBlockNumber(2),
+                nodes[1].waitBlockNumber(2),
+                nodes[2].waitBlockNumber(2)
+            ])
+        );
 
-        await Promise.all([
-            nodes[0].disconnect(nodes[1]),
-            nodes[0].disconnect(nodes[2])
-        ]);
+        await promiseExpect.shouldFulfill(
+            "disconnect",
+            Promise.all([
+                nodes[0].disconnect(nodes[1]),
+                nodes[0].disconnect(nodes[2])
+            ])
+        );
 
         // Now create blocks without nodes[0]. To create new blocks, the
         // nodes[4] should sync all message and participate in the network.
 
-        await Promise.all([
-            nodes[3].connect(nodes[1]),
-            nodes[3].connect(nodes[2])
-        ]);
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[3].connect(nodes[1]),
+                nodes[3].connect(nodes[2])
+            ])
+        );
 
-        const best_number = await nodes[1].getBestBlockNumber();
-        await nodes[1].waitBlockNumber(best_number + 1);
-        await nodes[2].waitBlockNumber(best_number + 1);
-        await nodes[3].waitBlockNumber(best_number + 1);
+        const best_number = await promiseExpect.shouldFulfill(
+            "best blocknumber",
+            nodes[1].getBestBlockNumber()
+        );
+        await promiseExpect.shouldFulfill(
+            "best blocknumber",
+            Promise.all([
+                nodes[1].waitBlockNumber(best_number + 1),
+                nodes[2].waitBlockNumber(best_number + 1),
+                nodes[3].waitBlockNumber(best_number + 1)
+            ])
+        );
         await expect(
-            nodes[3].sdk.rpc.chain.getBestBlockNumber()
+            promiseExpect.shouldFulfill(
+                "best blocknumber",
+                nodes[3].sdk.rpc.chain.getBestBlockNumber()
+            )
         ).to.eventually.greaterThan(best_number);
     }).timeout(30_000);
 
     it("Gossip", async function() {
-        await Promise.all([
-            nodes[0].connect(nodes[1]),
-            nodes[1].connect(nodes[2]),
-            nodes[2].connect(nodes[3])
-        ]);
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[1].connect(nodes[2]),
+                nodes[2].connect(nodes[3])
+            ])
+        );
 
-        await nodes[0].waitBlockNumber(3);
-        await nodes[1].waitBlockNumber(3);
-        await nodes[2].waitBlockNumber(3);
-        await nodes[3].waitBlockNumber(3);
+        await promiseExpect.shouldFulfill(
+            "wait blocknumber",
+            Promise.all([
+                nodes[0].waitBlockNumber(3),
+                nodes[1].waitBlockNumber(3),
+                nodes[2].waitBlockNumber(3),
+                nodes[3].waitBlockNumber(3)
+            ])
+        );
         await expect(
-            nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            promiseExpect.shouldFulfill(
+                "best blocknumber",
+                nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            )
         ).to.eventually.greaterThan(1);
     }).timeout(20_000);
 
@@ -184,17 +260,23 @@ describeSkippedInTravis("Tendermint ", function() {
                 validator2Address,
                 validator3Address
             ];
-            const amounts = await Promise.all(
-                validatorAddresses.map(addr =>
-                    nodes[0].sdk.rpc.engine.getCustomActionData(
-                        stakeActionHandlerId,
-                        [addr.accountId.toEncodeObject()]
+            const amounts = await promiseExpect.shouldFulfill(
+                "get customActionData",
+                Promise.all(
+                    validatorAddresses.map(addr =>
+                        nodes[0].sdk.rpc.engine.getCustomActionData(
+                            stakeActionHandlerId,
+                            [addr.accountId.toEncodeObject()]
+                        )
                     )
                 )
             );
-            const stakeholders = await nodes[0].sdk.rpc.engine.getCustomActionData(
-                stakeActionHandlerId,
-                ["StakeholderAddresses"]
+            const stakeholders = await promiseExpect.shouldFulfill(
+                "get customActionData",
+                nodes[0].sdk.rpc.engine.getCustomActionData(
+                    stakeActionHandlerId,
+                    ["StakeholderAddresses"]
+                )
             );
             return { amounts, stakeholders };
         }
@@ -215,43 +297,57 @@ describeSkippedInTravis("Tendermint ", function() {
         });
 
         it("should send stake tokens", async function() {
-            await Promise.all([
-                nodes[0].connect(nodes[1]),
-                nodes[0].connect(nodes[2]),
-                nodes[0].connect(nodes[3]),
-                nodes[1].connect(nodes[2]),
-                nodes[1].connect(nodes[3]),
-                nodes[2].connect(nodes[3])
-            ]);
-            await Promise.all([
-                nodes[0].waitPeers(4 - 1),
-                nodes[1].waitPeers(4 - 1),
-                nodes[2].waitPeers(4 - 1),
-                nodes[3].waitPeers(4 - 1)
-            ]);
-
-            const hash = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
-                nodes[0].sdk.core
-                    .createCustomTransaction({
-                        handlerId: stakeActionHandlerId,
-                        bytes: Buffer.from(
-                            RLP.encode([
-                                1,
-                                validator0Address.accountId.toEncodeObject(),
-                                100
-                            ])
-                        )
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        seq: await nodes[0].sdk.rpc.chain.getSeq(faucetAddress),
-                        fee: 10
-                    })
+            await promiseExpect.shouldFulfill(
+                "connect",
+                Promise.all([
+                    nodes[0].connect(nodes[1]),
+                    nodes[0].connect(nodes[2]),
+                    nodes[0].connect(nodes[3]),
+                    nodes[1].connect(nodes[2]),
+                    nodes[1].connect(nodes[3]),
+                    nodes[2].connect(nodes[3])
+                ])
+            );
+            await promiseExpect.shouldFulfill(
+                "wait peers",
+                Promise.all([
+                    nodes[0].waitPeers(4 - 1),
+                    nodes[1].waitPeers(4 - 1),
+                    nodes[2].waitPeers(4 - 1),
+                    nodes[3].waitPeers(4 - 1)
+                ])
             );
 
-            const invoice = (await nodes[0].sdk.rpc.chain.getInvoice(hash, {
-                timeout: 120 * 1000
-            }))!;
+            const hash = await promiseExpect.shouldFulfill(
+                "sendSignTransaction",
+                nodes[0].sdk.rpc.chain.sendSignedTransaction(
+                    nodes[0].sdk.core
+                        .createCustomTransaction({
+                            handlerId: stakeActionHandlerId,
+                            bytes: Buffer.from(
+                                RLP.encode([
+                                    1,
+                                    validator0Address.accountId.toEncodeObject(),
+                                    100
+                                ])
+                            )
+                        })
+                        .sign({
+                            secret: faucetSecret,
+                            seq: await nodes[0].sdk.rpc.chain.getSeq(
+                                faucetAddress
+                            ),
+                            fee: 10
+                        })
+                )
+            );
+
+            const invoice = (await promiseExpect.shouldFulfill(
+                "getInvoice",
+                nodes[0].sdk.rpc.chain.getInvoice(hash, {
+                    timeout: 120 * 1000
+                })
+            ))!;
 
             expect(invoice.error).to.be.undefined;
             expect(invoice.success).to.be.true;
@@ -284,5 +380,6 @@ describeSkippedInTravis("Tendermint ", function() {
             nodes.map(node => node.testFailed(this.currentTest!.fullTitle()));
         }
         await Promise.all(nodes.map(node => node.clean()));
+        promiseExpect.checkFulfilled();
     });
 });
