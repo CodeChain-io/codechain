@@ -38,6 +38,7 @@ use crate::client::{
 use crate::consensus::EngineType;
 use crate::error::Error;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::BlockId;
 
 /// Miner client API
 pub trait MinerService: Send + Sync {
@@ -85,7 +86,7 @@ pub trait MinerService: Send + Sync {
         C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler;
 
     /// New chain head event. Restart mining operation.
-    fn update_sealing<C>(&self, chain: &C, allow_empty_block: bool)
+    fn update_sealing<C>(&self, chain: &C, parent_block: BlockId, allow_empty_block: bool)
     where
         C: AccountData
             + BlockChain
