@@ -17,6 +17,7 @@
 use std::cmp;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::mem::size_of_val;
 
 use ckey::{public_to_address, Public};
 use ctypes::transaction::{Action, ParcelError};
@@ -113,11 +114,12 @@ impl TransactionOrder {
     fn for_transaction(item: &MemPoolItem, seq_seq: u64) -> Self {
         let rlp_bytes_len = rlp::encode(&item.tx).to_vec().len();
         let fee = item.tx.fee;
-        ctrace!(MEM_POOL, "New tx with size {}", item.tx.heap_size_of_children());
+        let mem_usage = size_of_val(&item.tx) + item.tx.heap_size_of_children();
+        ctrace!(MEM_POOL, "New tx with size {}", mem_usage);
         Self {
             seq_height: item.seq() - seq_seq,
             fee,
-            mem_usage: item.tx.heap_size_of_children(),
+            mem_usage,
             fee_per_byte: fee / rlp_bytes_len as u64,
             hash: item.hash(),
             insertion_id: item.insertion_id,
@@ -855,8 +857,6 @@ impl MemPool {
                 balance: client_account.balance,
             })
         }
-
-        tx.check_low_s()?;
 
         Ok(())
     }

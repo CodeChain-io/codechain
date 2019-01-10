@@ -26,7 +26,7 @@ use cstate::{
     ActionHandler, AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, OwnedAssetAddress, StateDB, Text,
     TopLevelState, TopStateView,
 };
-use ctimer::{TimeoutHandler, TimerApi, TimerToken};
+use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
@@ -286,18 +286,30 @@ impl ResealTimer for Client {
     fn set_max_timer(&self) {
         if let Some(reseal_timer) = self.reseal_timer.read().as_ref() {
             reseal_timer.cancel(RESEAL_MAX_TIMER_TOKEN).expect("Reseal max timer clear succeeds");
-            reseal_timer
+            match reseal_timer
                 .schedule_once(self.importer.miner.get_options().reseal_max_period, RESEAL_MAX_TIMER_TOKEN)
-                .expect("Reseal max timer set succeeds");
+            {
+                Ok(_) => {}
+                Err(TimerScheduleError::TokenAlreadyScheduled) => {
+                    // Since set_max_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
+                }
+                Err(err) => unreachable!("Reseal max timer should not fail but failed with {:?}", err),
+            }
         };
     }
 
     fn set_min_timer(&self) {
         if let Some(reseal_timer) = self.reseal_timer.read().as_ref() {
             reseal_timer.cancel(RESEAL_MIN_TIMER_TOKEN).expect("Reseal min timer clear succeeds");
-            reseal_timer
+            match reseal_timer
                 .schedule_once(self.importer.miner.get_options().reseal_min_period, RESEAL_MIN_TIMER_TOKEN)
-                .expect("Reseal min timer set succeeds");
+            {
+                Ok(_) => {}
+                Err(TimerScheduleError::TokenAlreadyScheduled) => {
+                    // Since set_min_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
+                }
+                Err(err) => unreachable!("Reseal min timer should not fail but failed with {:?}", err),
+            }
         };
     }
 }
