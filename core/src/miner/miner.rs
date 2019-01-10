@@ -30,7 +30,7 @@ use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
-use super::mem_pool::{AccountDetails, MemPool, RemovalReason, TxOrigin, TxTimelock};
+use super::mem_pool::{AccountDetails, MemPool, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, TransactionImportResult};
@@ -468,7 +468,6 @@ impl Miner {
                 queue.remove(
                     &hash,
                     &fetch_seq,
-                    RemovalReason::Invalid,
                     chain.chain_info().best_block_number,
                     chain.chain_info().best_block_timestamp,
                 );
