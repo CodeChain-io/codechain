@@ -38,11 +38,12 @@
   "dependencies": {
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "codechain-sdk": "https://github.com/sgkim126/codechain-sdk-js.git#la-lib",
+    "codechain-sdk": "https://github.com/HoOngEe/codechain-sdk-js.git#lib-included",
     "codechain-test-helper": "https://github.com/sgkim126/codechain-test-helper-js.git#refac-lib",
     "lodash": "^4.17.11",
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
+    "request": "^2.88.0",
     "rlp": "^2.1.0",
     "seedrandom": "^2.4.4",
     "ts-node": "^7.0.1",

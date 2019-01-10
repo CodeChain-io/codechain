@@ -17,9 +17,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use ccore::{
-    AccountProvider, AccountProviderError, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq,
-};
+use ccore::{AccountProvider, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq};
 use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use ctypes::transaction::IncompleteTransaction;
 use jsonrpc_core::Result;
@@ -97,8 +95,7 @@ where
             static ref LOCK: Mutex<()> = Mutex::new(());
         }
         let _guard = LOCK.lock();
-        let (tx, seq): (IncompleteTransaction, Option<u64>) =
-            ::std::result::Result::from(tx).map_err(AccountProviderError::KeyError).map_err(account_provider)?;
+        let (tx, seq): (IncompleteTransaction, Option<u64>) = ::std::result::Result::from(tx)?;
 
         let (hash, seq) = self
             .miner
