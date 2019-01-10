@@ -13,16 +13,20 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+extern crate rustc_serialize;
+
+use std::iter::FromIterator;
 
 use cjson::uint::Uint;
 use ctypes::transaction::{AssetMintOutput as AssetMintOutputType, AssetTransferOutput as AssetTransferOutputType};
-use primitives::{Bytes, H160, H256};
+use primitives::{H160, H256};
+use rustc_serialize::hex::{FromHex, FromHexError, ToHex};
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetTransferOutput {
     pub lock_script_hash: H160,
-    pub parameters: Vec<Bytes>,
+    pub parameters: Vec<String>,
     pub asset_type: H256,
     pub amount: Uint,
 }
@@ -31,21 +35,21 @@ impl From<AssetTransferOutputType> for AssetTransferOutput {
     fn from(from: AssetTransferOutputType) -> Self {
         AssetTransferOutput {
             lock_script_hash: from.lock_script_hash,
-            parameters: from.parameters,
+            parameters: from.parameters.iter().map(|bytes| bytes.to_hex()).collect(),
             asset_type: from.asset_type,
             amount: from.amount.into(),
         }
     }
 }
 
-impl From<AssetTransferOutput> for AssetTransferOutputType {
+impl From<AssetTransferOutput> for Result<AssetTransferOutputType, FromHexError> {
     fn from(from: AssetTransferOutput) -> Self {
-        AssetTransferOutputType {
+        Ok(AssetTransferOutputType {
             lock_script_hash: from.lock_script_hash,
-            parameters: from.parameters,
+            parameters: Result::from_iter(from.parameters.iter().map(|hexstr| hexstr.from_hex()))?,
             asset_type: from.asset_type,
             amount: from.amount.into(),
-        }
+        })
     }
 }
 
@@ -53,7 +57,7 @@ impl From<AssetTransferOutput> for AssetTransferOutputType {
 #[serde(rename_all = "camelCase")]
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
-    pub parameters: Vec<Bytes>,
+    pub parameters: Vec<String>,
     pub amount: Option<Uint>,
 }
 
@@ -61,18 +65,18 @@ impl From<AssetMintOutputType> for AssetMintOutput {
     fn from(from: AssetMintOutputType) -> Self {
         AssetMintOutput {
             lock_script_hash: from.lock_script_hash,
-            parameters: from.parameters,
+            parameters: from.parameters.iter().map(|bytes| bytes.to_hex()).collect(),
             amount: from.amount.map(|amount| amount.into()),
         }
     }
 }
 
-impl From<AssetMintOutput> for AssetMintOutputType {
+impl From<AssetMintOutput> for Result<AssetMintOutputType, FromHexError> {
     fn from(from: AssetMintOutput) -> Self {
-        AssetMintOutputType {
+        Ok(AssetMintOutputType {
             lock_script_hash: from.lock_script_hash,
-            parameters: from.parameters,
+            parameters: Result::from_iter(from.parameters.iter().map(|hexstr| hexstr.from_hex()))?,
             amount: from.amount.map(|amount| amount.into()),
-        }
+        })
     }
 }

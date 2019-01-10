@@ -15,9 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson::uint::Uint;
-use ckey::{Error as KeyError, NetworkId};
+use ckey::NetworkId;
 use ctypes::transaction::IncompleteTransaction;
+use jsonrpc_core::Error;
 
+use super::super::errors;
 use super::Action;
 
 #[derive(Debug, Deserialize)]
@@ -30,13 +32,13 @@ pub struct UnsignedTransaction {
 }
 
 // FIXME: Use TryFrom.
-impl From<UnsignedTransaction> for Result<(IncompleteTransaction, Option<u64>), KeyError> {
+impl From<UnsignedTransaction> for Result<(IncompleteTransaction, Option<u64>), Error> {
     fn from(tx: UnsignedTransaction) -> Self {
         Ok((
             IncompleteTransaction {
                 fee: tx.fee.into(),
                 network_id: tx.network_id,
-                action: Result::from(tx.action)?,
+                action: Result::from(tx.action).map_err(errors::conversion)?,
             },
             tx.seq,
         ))

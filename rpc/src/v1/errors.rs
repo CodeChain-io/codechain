@@ -25,12 +25,31 @@ use cstate::{ActionHandlerError, StateError};
 use ctypes::transaction::ParcelError;
 use kvdb::Error as KVDBError;
 use rlp::DecoderError;
+use rustc_serialize::hex::FromHexError as HexError;
 
 use jsonrpc_core::{Error, ErrorCode, Value};
+
+pub enum ConversionError {
+    Key(KeyError),
+    Hex(HexError),
+}
+
+impl From<KeyError> for ConversionError {
+    fn from(err: KeyError) -> ConversionError {
+        ConversionError::Key(err)
+    }
+}
+
+impl From<HexError> for ConversionError {
+    fn from(err: HexError) -> ConversionError {
+        ConversionError::Hex(err)
+    }
+}
 
 mod codes {
     pub const NO_AUTHOR: i64 = -32002;
     pub const NO_WORK_REQUIRED: i64 = -32004;
+    pub const HEX_ERROR: i64 = -32007;
     pub const RLP_ERROR: i64 = -32009;
     pub const CORE_ERROR: i64 = -32010;
     pub const KVDB_ERROR: i64 = -32011;
@@ -64,6 +83,18 @@ pub fn core<T: Into<CoreError>>(error: T) -> Error {
         code: ErrorCode::ServerError(codes::CORE_ERROR),
         message: format!("{}", error),
         data: Some(Value::String(format!("{:?}", error))),
+    }
+}
+
+pub fn conversion<T: Into<ConversionError>>(error: T) -> Error {
+    let error = error.into();
+    match error {
+        ConversionError::Key(error) => transaction_core(CoreError::Key(error)),
+        ConversionError::Hex(error) => Error {
+            code: ErrorCode::ServerError(codes::HEX_ERROR),
+            message: error.to_string(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
     }
 }
 

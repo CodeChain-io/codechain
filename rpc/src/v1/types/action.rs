@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::iter::FromIterator;
+
 use cjson::uint::Uint;
-use ckey::{Error as KeyError, NetworkId, PlatformAddress, Public, Signature};
-use ctypes::transaction::Action as ActionType;
+use ckey::{NetworkId, PlatformAddress, Public, Signature};
+use ctypes::transaction::{Action as ActionType, AssetMintOutput as AssetMintOutputType};
 use ctypes::ShardId;
 use primitives::{Bytes, H160, H256};
+use rustc_serialize::hex::FromHexError;
 
+use super::super::errors::ConversionError;
 use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, OrderOnTransfer};
 
 #[derive(Debug, Deserialize)]
@@ -434,7 +438,7 @@ impl ActionWithId {
 }
 
 // FIXME: Use TryFrom.
-impl From<Action> for Result<ActionType, KeyError> {
+impl From<Action> for Result<ActionType, ConversionError> {
     fn from(from: Action) -> Self {
         Ok(match from {
             Action::MintAsset {
@@ -455,6 +459,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                     Some(administrator) => Some(administrator.try_into_address()?),
                     None => None,
                 };
+                let output_content = Result::<AssetMintOutputType, FromHexError>::from(*output)?;
                 ActionType::MintAsset {
                     network_id,
                     shard_id,
@@ -462,7 +467,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                     approver,
                     administrator,
                     allowed_script_hashes,
-                    output: Box::new((*output).into()),
+                    output: Box::new(output_content),
                     approvals,
                 }
             }
@@ -474,14 +479,17 @@ impl From<Action> for Result<ActionType, KeyError> {
                 orders,
 
                 approvals,
-            } => ActionType::TransferAsset {
-                network_id,
-                burns: burns.into_iter().map(From::from).collect(),
-                inputs: inputs.into_iter().map(From::from).collect(),
-                outputs: outputs.into_iter().map(From::from).collect(),
-                orders: orders.into_iter().map(From::from).collect(),
-                approvals,
-            },
+            } => {
+                let iter_outputs = outputs.into_iter().map(From::from);
+                ActionType::TransferAsset {
+                    network_id,
+                    burns: burns.into_iter().map(From::from).collect(),
+                    inputs: inputs.into_iter().map(From::from).collect(),
+                    outputs: Result::from_iter(iter_outputs)?,
+                    orders: orders.into_iter().map(From::from).collect(),
+                    approvals,
+                }
+            }
             Action::ChangeAssetScheme {
                 network_id,
                 asset_type,
@@ -530,6 +538,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                     Some(administrator) => Some(administrator.try_into_address()?),
                     None => None,
                 };
+                let output_content = Result::<AssetMintOutputType, FromHexError>::from(*output)?;
                 ActionType::ComposeAsset {
                     network_id,
                     shard_id,
@@ -538,7 +547,7 @@ impl From<Action> for Result<ActionType, KeyError> {
                     administrator,
                     allowed_script_hashes,
                     inputs: inputs.into_iter().map(|input| input.into()).collect(),
-                    output: Box::new((*output).into()),
+                    output: Box::new(output_content),
                     approvals,
                 }
             }
@@ -548,12 +557,15 @@ impl From<Action> for Result<ActionType, KeyError> {
                 outputs,
 
                 approvals,
-            } => ActionType::DecomposeAsset {
-                network_id,
-                input: (*input).into(),
-                outputs: outputs.into_iter().map(|output| output.into()).collect(),
-                approvals,
-            },
+            } => {
+                let iter_outputs = outputs.into_iter().map(From::from);
+                ActionType::DecomposeAsset {
+                    network_id,
+                    input: (*input).into(),
+                    outputs: Result::from_iter(iter_outputs)?,
+                    approvals,
+                }
+            }
             Action::UnwrapCCC {
                 network_id,
                 burn,
