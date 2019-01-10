@@ -8,6 +8,7 @@ chain = "solo"
 disable = false
 mem_pool_mem_limit = 4 # MB
 mem_pool_size = 8192
+mem_pool_fee_bump_shift = 3 # 12.5%
 notify_work = []
 force_sealing = false
 reseal_on_txs = "all"

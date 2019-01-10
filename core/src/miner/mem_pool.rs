@@ -31,10 +31,6 @@ use time::get_time;
 use super::TransactionImportResult;
 use crate::transaction::SignedTransaction;
 
-/// Transaction with the same (sender, seq) can be replaced only if
-/// `new_fee > old_fee + old_fee >> SHIFT`
-const FEE_BUMP_SHIFT: usize = 3; // 2 = 25%, 3 = 12.5%, 4 = 6.25%
-
 /// Point in time when transaction was inserted.
 pub type PoolingInstant = BlockNumber;
 const DEFAULT_POOLING_PERIOD: BlockNumber = 128;
@@ -386,6 +382,11 @@ impl FutureQueue {
 pub struct MemPool {
     /// Fee threshold for transactions that can be imported to this pool (defaults to 0)
     minimal_fee: u64,
+    /// A value which is used to check whether a new transaciton can replace a transaction in the memory pool with the same signer and seq.
+    /// If the fee of the new transaction is `new_fee` and the fee of the transaction in the memory pool is `old_fee`,
+    /// then `new_fee > old_fee + old_fee >> mem_pool_fee_bump_shift` should be satisfied to replace.
+    /// Local transactions ignore this option.
+    fee_bump_shift: usize,
     /// Maximal time transaction may occupy the pool.
     /// When we reach `max_time_in_pool / 2^3` we re-validate
     /// account balance.
@@ -423,13 +424,14 @@ impl Default for MemPool {
 impl MemPool {
     /// Creates new instance of this Queue
     pub fn new() -> Self {
-        Self::with_limits(8192, usize::max_value())
+        Self::with_limits(8192, usize::max_value(), 3)
     }
 
     /// Create new instance of this Queue with specified limits
-    pub fn with_limits(limit: usize, memory_limit: usize) -> Self {
+    pub fn with_limits(limit: usize, memory_limit: usize, fee_bump_shift: usize) -> Self {
         MemPool {
             minimal_fee: 0,
+            fee_bump_shift,
             max_time_in_pool: DEFAULT_POOLING_PERIOD,
             current: CurrentQueue::new(),
             future: FutureQueue::new(),
@@ -1023,7 +1025,7 @@ impl MemPool {
             {
                 let old_fee = order.fee;
                 let new_fee = tx.fee;
-                let min_required_fee = old_fee + (old_fee >> FEE_BUMP_SHIFT);
+                let min_required_fee = old_fee + (old_fee >> self.fee_bump_shift);
 
                 if new_fee < min_required_fee {
                     ctrace!(

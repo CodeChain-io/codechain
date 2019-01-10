@@ -68,6 +68,11 @@ pub struct MinerOptions {
     pub mem_pool_size: usize,
     /// Maximum memory usage of transactions in the queue (current / future).
     pub mem_pool_memory_limit: Option<usize>,
+    /// A value which is used to check whether a new transaciton can replace a transaction in the memory pool with the same signer and seq.
+    /// If the fee of the new transaction is `new_fee` and the fee of the transaction in the memory pool is `old_fee`,
+    /// then `new_fee > old_fee + old_fee >> mem_pool_fee_bump_shift` should be satisfied to replace.
+    /// Local transactions ignore this option.
+    pub mem_pool_fee_bump_shift: usize,
     /// How many historical work packages can we store before running out?
     pub work_queue_size: usize,
 }
@@ -84,6 +89,7 @@ impl Default for MinerOptions {
             no_reseal_timer: false,
             mem_pool_size: 8192,
             mem_pool_memory_limit: Some(2 * 1024 * 1024),
+            mem_pool_fee_bump_shift: 3,
             work_queue_size: 20,
         }
     }
@@ -136,7 +142,11 @@ impl Miner {
 
     fn new_raw(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
-        let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(options.mem_pool_size, mem_limit)));
+        let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(
+            options.mem_pool_size,
+            mem_limit,
+            options.mem_pool_fee_bump_shift,
+        )));
         let notifiers: Vec<Box<NotifyWork>> = if options.new_work_notify.is_empty() {
             Vec::new()
         } else {

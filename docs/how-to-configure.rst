@@ -123,6 +123,11 @@ CLI Options for CodeChain client
         Specify the address which should be used to sign consensus messages and
         issue blocks.
 
+    ``--mem-pool-fee-bump-shift=[INTEGER]``
+        A value which is used to check whether a new transaciton can replace a transaction in the memory pool with the same signer and seq.
+        If the fee of the new transaction is `new_fee` and the fee of the transaction in the memory pool is `old_fee`, then `new_fee > old_fee + old_fee >> mem_pool_fee_bump_shift` should be satisfied to replace.
+        Local transactions ignore this option.
+
     ``--mem-pool-mem-limit=[MB]``
         Maximum amount of memory that can be used by the mem pool. Setting this parameter to 0 disables limiting.
 
