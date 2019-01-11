@@ -4,7 +4,7 @@ CCC is the name of the currency used within CodeChain. It is used to pay for tra
 
 # Denomination
 
-The smallest denomination of CCC is called Quark. 
+The smallest denomination of CCC is called a Quark. 
 
 | Unit | Quark Value | Quark          |
 |----- | ------------| -------------- |
