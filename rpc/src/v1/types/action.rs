@@ -93,14 +93,17 @@ pub enum Action {
         key: Public,
     },
     CreateShard,
+    #[serde(rename_all = "camelCase")]
     SetShardOwners {
         shard_id: ShardId,
         owners: Vec<PlatformAddress>,
     },
+    #[serde(rename_all = "camelCase")]
     SetShardUsers {
         shard_id: ShardId,
         users: Vec<PlatformAddress>,
     },
+    #[serde(rename_all = "camelCase")]
     WrapCCC {
         shard_id: ShardId,
         lock_script_hash: H160,
@@ -116,6 +119,7 @@ pub enum Action {
         hash: H256,
         signature: Signature,
     },
+    #[serde(rename_all = "camelCase")]
     Custom {
         handler_id: u64,
         bytes: Bytes,
@@ -207,14 +211,17 @@ pub enum ActionWithId {
         key: Public,
     },
     CreateShard,
+    #[serde(rename_all = "camelCase")]
     SetShardOwners {
         shard_id: ShardId,
         owners: Vec<PlatformAddress>,
     },
+    #[serde(rename_all = "camelCase")]
     SetShardUsers {
         shard_id: ShardId,
         users: Vec<PlatformAddress>,
     },
+    #[serde(rename_all = "camelCase")]
     WrapCCC {
         shard_id: ShardId,
         lock_script_hash: H160,
@@ -230,6 +237,7 @@ pub enum ActionWithId {
         hash: H256,
         signature: Signature,
     },
+    #[serde(rename_all = "camelCase")]
     Custom {
         handler_id: u64,
         bytes: Bytes,
