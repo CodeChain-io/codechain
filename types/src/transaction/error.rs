@@ -27,7 +27,7 @@ use crate::ShardId;
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]
 pub enum Error {
-    InvalidAssetAmount {
+    InvalidAssetQuantity {
         address: H256,
         expected: u64,
         got: u64,
@@ -58,8 +58,8 @@ pub enum Error {
     InsufficientPermission,
     EmptyShardOwners(ShardId),
     NotApproved(Address),
-    /// Returned when the amount of either input or output is 0.
-    ZeroAmount,
+    /// Returned when the quantity of either input or output is 0.
+    ZeroQuantity,
     TooManyOutputs(usize),
     /// AssetCompose requires at least 1 input.
     EmptyInput,
@@ -95,8 +95,8 @@ pub enum Error {
         to: H256,
         fee: H256,
     },
-    /// invalid asset_amount_from, asset_amount_to because of ratio
-    InvalidOrderAssetAmounts {
+    /// invalid asset_quantity_from, asset_quantity_to because of ratio
+    InvalidOrderAssetQuantities {
         from: u64,
         to: u64,
         fee: u64,
@@ -114,7 +114,7 @@ pub enum Error {
 
 const ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET: u8 = 2u8;
 const ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET: u8 = 3u8;
-const ERROR_ID_INVALID_ASSET_AMOUNT: u8 = 4u8;
+const ERROR_ID_INVALID_ASSET_QUANTITY: u8 = 4u8;
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 5u8;
 const ERROR_ID_ASSET_SCHEME_NOT_FOUND: u8 = 6u8;
 const ERROR_ID_INVALID_ASSET_TYPE: u8 = 7u8;
@@ -126,7 +126,7 @@ const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 12u8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 13u8;
 const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 16u8;
 const ERROR_ID_NOT_APPROVED: u8 = 17u8;
-const ERROR_ID_ZERO_AMOUNT: u8 = 18u8;
+const ERROR_ID_ZERO_QUANTITY: u8 = 18u8;
 const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 19u8;
 const ERROR_ID_ASSET_SCHEME_DUPLICATED: u8 = 20u8;
 const ERROR_ID_EMPTY_INPUT: u8 = 21u8;
@@ -139,7 +139,7 @@ const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 27u8;
 const ERROR_ID_INVALID_ORDER_IN_OUT_INDICES: u8 = 28u8;
 const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS: u8 = 29u8;
 const ERROR_ID_INVALID_ORDER_ASSET_TYPES: u8 = 30u8;
-const ERROR_ID_INVALID_ORDER_ASSET_AMOUNTS: u8 = 31u8;
+const ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES: u8 = 31u8;
 const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 32u8;
 const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 33u8;
 const ERROR_ID_ORDER_RECIPIENTS_ARE_SAME: u8 = 34u8;
@@ -149,11 +149,11 @@ const ERROR_ID_SCRIPT_NOT_ALLOWED: u8 = 36u8;
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Error::InvalidAssetAmount {
+            Error::InvalidAssetQuantity {
                 address,
                 expected,
                 got,
-            } => s.begin_list(4).append(&ERROR_ID_INVALID_ASSET_AMOUNT).append(address).append(expected).append(got),
+            } => s.begin_list(4).append(&ERROR_ID_INVALID_ASSET_QUANTITY).append(address).append(expected).append(got),
             Error::AssetNotFound(addr) => s.begin_list(2).append(&ERROR_ID_ASSET_NOT_FOUND).append(addr),
             Error::AssetSchemeNotFound(addr) => s.begin_list(2).append(&ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(addr),
             Error::AssetSchemeDuplicated(addr) => {
@@ -177,7 +177,7 @@ impl Encodable for Error {
             Error::InsufficientPermission => s.begin_list(1).append(&ERROR_ID_INSUFFICIENT_PERMISSION),
             Error::EmptyShardOwners(shard_id) => s.begin_list(2).append(&ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id),
             Error::NotApproved(address) => s.begin_list(2).append(&ERROR_ID_NOT_APPROVED).append(address),
-            Error::ZeroAmount => s.begin_list(1).append(&ERROR_ID_ZERO_AMOUNT),
+            Error::ZeroQuantity => s.begin_list(1).append(&ERROR_ID_ZERO_QUANTITY),
             Error::TooManyOutputs(num) => s.begin_list(2).append(&ERROR_ID_TOO_MANY_OUTPUTS).append(num),
             Error::EmptyInput => s.begin_list(1).append(&ERROR_ID_EMPTY_INPUT),
             Error::CannotBurnCentralizedAsset => s.begin_list(1).append(&ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET),
@@ -213,11 +213,11 @@ impl Encodable for Error {
                 to,
                 fee,
             } => s.begin_list(4).append(&ERROR_ID_INVALID_ORDER_ASSET_TYPES).append(from).append(to).append(fee),
-            Error::InvalidOrderAssetAmounts {
+            Error::InvalidOrderAssetQuantities {
                 from,
                 to,
                 fee,
-            } => s.begin_list(4).append(&ERROR_ID_INVALID_ORDER_ASSET_AMOUNTS).append(from).append(to).append(fee),
+            } => s.begin_list(4).append(&ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES).append(from).append(to).append(fee),
             Error::InvalidOrderLockScriptHash(lock_script_hash) => {
                 s.begin_list(2).append(&ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH).append(lock_script_hash)
             }
@@ -237,11 +237,11 @@ impl Decodable for Error {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at::<u8>(0)?;
         Ok(match tag {
-            ERROR_ID_INVALID_ASSET_AMOUNT => {
+            ERROR_ID_INVALID_ASSET_QUANTITY => {
                 if rlp.item_count()? != 4 {
                     return Err(DecoderError::RlpInvalidLength)
                 }
-                Error::InvalidAssetAmount {
+                Error::InvalidAssetQuantity {
                     address: rlp.val_at(1)?,
                     expected: rlp.val_at(2)?,
                     got: rlp.val_at(3)?,
@@ -331,11 +331,11 @@ impl Decodable for Error {
                 }
                 Error::NotApproved(rlp.val_at(1)?)
             }
-            ERROR_ID_ZERO_AMOUNT => {
+            ERROR_ID_ZERO_QUANTITY => {
                 if rlp.item_count()? != 1 {
                     return Err(DecoderError::RlpInvalidLength)
                 }
-                Error::ZeroAmount
+                Error::ZeroQuantity
             }
             ERROR_ID_TOO_MANY_OUTPUTS => {
                 if rlp.item_count()? != 2 {
@@ -426,11 +426,11 @@ impl Decodable for Error {
                     fee: rlp.val_at(3)?,
                 }
             }
-            ERROR_ID_INVALID_ORDER_ASSET_AMOUNTS => {
+            ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => {
                 if rlp.item_count()? != 4 {
                     return Err(DecoderError::RlpInvalidLength)
                 }
-                Error::InvalidOrderAssetAmounts {
+                Error::InvalidOrderAssetQuantities {
                     from: rlp.val_at(1)?,
                     to: rlp.val_at(2)?,
                     fee: rlp.val_at(3)?,
@@ -471,13 +471,13 @@ impl Decodable for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         match self {
-            Error::InvalidAssetAmount {
+            Error::InvalidAssetQuantity {
                 address,
                 expected,
                 got,
             } => write!(
                 f,
-                "AssetTransfer must consume input asset completely. The amount of asset({}) must be {}, but {}.",
+                "AssetTransfer must consume input asset completely. The quantity of asset({}) must be {}, but {}.",
                 address, expected, got
             ),
             Error::AssetNotFound(addr) => write!(f, "Asset not found: {}", addr),
@@ -505,7 +505,7 @@ impl Display for Error {
             Error::InsufficientPermission => write!(f, "The current sender doesn't have the permission"),
             Error::EmptyShardOwners(shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
             Error::NotApproved(address) => write!(f, "{} should approve it.", address),
-            Error::ZeroAmount => write!(f, "An amount cannot be 0"),
+            Error::ZeroQuantity => write!(f, "An quantity cannot be 0"),
             Error::TooManyOutputs(num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
             Error::EmptyInput => write!(f, "The input is empty"),
             Error::CannotBurnCentralizedAsset => write!(f, "Cannot burn the centralized asset"),
@@ -513,17 +513,17 @@ impl Display for Error {
             Error::InvalidDecomposedInput {
                 address,
                 got,
-            } => write!(f, "The inputs are not valid. The amount of asset({}) input must be 1, but {}.", address, got),
+            } => write!(f, "The inputs are not valid. The quantity of asset({}) input must be 1, but {}.", address, got),
             Error::InvalidComposedOutput {
                 got,
-            } => write!(f, "The composed output is note valid. The amount must be 1, but {}.", got),
+            } => write!(f, "The composed output is note valid. The supply must be 1, but {}.", got),
             Error::InvalidDecomposedOutput {
                 address,
                 expected,
                 got,
             } => write!(
                 f,
-                "The decomposed output is not balid. The amount of asset({}) must be {}, but {}.",
+                "The decomposed output is not balid. The quantity of asset({}) must be {}, but {}.",
                 address, expected, got
             ),
             Error::EmptyOutput => writeln!(f, "The output is empty"),
@@ -549,7 +549,7 @@ impl Display for Error {
                 to,
                 fee,
             } => write!(f, "There are asset types in the order which are same: from:{}, to:{}, fee:{}", from, to, fee),
-            Error::InvalidOrderAssetAmounts {
+            Error::InvalidOrderAssetQuantities {
                 from,
                 to,
                 fee,

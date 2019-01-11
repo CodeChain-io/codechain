@@ -91,7 +91,7 @@ pub enum Action {
     },
     Pay {
         receiver: PlatformAddress,
-        amount: Uint,
+        quantity: Uint,
     },
     SetRegularKey {
         key: Public,
@@ -112,7 +112,7 @@ pub enum Action {
         shard_id: ShardId,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
-        amount: Uint,
+        quantity: Uint,
     },
     Store {
         content: String,
@@ -209,7 +209,7 @@ pub enum ActionWithId {
     },
     Pay {
         receiver: PlatformAddress,
-        amount: Uint,
+        quantity: Uint,
     },
     SetRegularKey {
         key: Public,
@@ -230,7 +230,7 @@ pub enum ActionWithId {
         shard_id: ShardId,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
-        amount: Uint,
+        quantity: Uint,
     },
     Store {
         content: String,
@@ -374,10 +374,10 @@ impl ActionWithId {
             }
             ActionType::Pay {
                 receiver,
-                amount,
+                quantity,
             } => ActionWithId::Pay {
                 receiver: PlatformAddress::new_v1(network_id, receiver),
-                amount: amount.into(),
+                quantity: quantity.into(),
             },
             ActionType::SetRegularKey {
                 key,
@@ -403,12 +403,12 @@ impl ActionWithId {
                 shard_id,
                 lock_script_hash,
                 parameters,
-                amount,
+                quantity,
             } => ActionWithId::WrapCCC {
                 shard_id,
                 lock_script_hash,
                 parameters,
-                amount: amount.into(),
+                quantity: quantity.into(),
             },
             ActionType::Store {
                 content,
@@ -576,10 +576,10 @@ impl From<Action> for Result<ActionType, ConversionError> {
             },
             Action::Pay {
                 receiver,
-                amount,
+                quantity,
             } => ActionType::Pay {
                 receiver: receiver.try_into_address()?,
-                amount: amount.into(),
+                quantity: quantity.into(),
             },
             Action::SetRegularKey {
                 key,
@@ -611,12 +611,12 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 shard_id,
                 lock_script_hash,
                 parameters,
-                amount,
+                quantity,
             } => ActionType::WrapCCC {
                 shard_id,
                 lock_script_hash,
                 parameters,
-                amount: amount.into(),
+                quantity: quantity.into(),
             },
             Action::Store {
                 content,

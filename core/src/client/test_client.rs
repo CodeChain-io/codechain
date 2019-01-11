@@ -202,7 +202,7 @@ impl TestBlockChainClient {
                     network_id: NetworkId::default(),
                     action: Action::Pay {
                         receiver: Address::random(),
-                        amount: 0,
+                        quantity: 0,
                     },
                 };
                 let signed = SignedTransaction::new_with_sign(tx, keypair.private());
@@ -270,7 +270,7 @@ impl TestBlockChainClient {
             network_id: NetworkId::default(),
             action: Action::Pay {
                 receiver: Address::random(),
-                amount: 0,
+                quantity: 0,
             },
         };
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());

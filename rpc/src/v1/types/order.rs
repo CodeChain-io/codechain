@@ -26,9 +26,9 @@ pub struct Order {
     pub asset_type_from: H256,
     pub asset_type_to: H256,
     pub asset_type_fee: H256,
-    pub asset_amount_from: Uint,
-    pub asset_amount_to: Uint,
-    pub asset_amount_fee: Uint,
+    pub asset_quantity_from: Uint,
+    pub asset_quantity_to: Uint,
+    pub asset_quantity_fee: Uint,
     pub origin_outputs: Vec<AssetOutPoint>,
     pub expiration: u64,
     pub lock_script_hash_from: H160,
@@ -43,9 +43,9 @@ impl From<OrderType> for Order {
             asset_type_from: from.asset_type_from,
             asset_type_to: from.asset_type_to,
             asset_type_fee: from.asset_type_fee,
-            asset_amount_from: from.asset_amount_from.into(),
-            asset_amount_to: from.asset_amount_to.into(),
-            asset_amount_fee: from.asset_amount_fee.into(),
+            asset_quantity_from: from.asset_quantity_from.into(),
+            asset_quantity_to: from.asset_quantity_to.into(),
+            asset_quantity_fee: from.asset_quantity_fee.into(),
             origin_outputs: from.origin_outputs.into_iter().map(From::from).collect(),
             expiration: from.expiration,
             lock_script_hash_from: from.lock_script_hash_from,
@@ -62,9 +62,9 @@ impl From<Order> for OrderType {
             asset_type_from: from.asset_type_from,
             asset_type_to: from.asset_type_to,
             asset_type_fee: from.asset_type_fee,
-            asset_amount_from: from.asset_amount_from.into(),
-            asset_amount_to: from.asset_amount_to.into(),
-            asset_amount_fee: from.asset_amount_fee.into(),
+            asset_quantity_from: from.asset_quantity_from.into(),
+            asset_quantity_to: from.asset_quantity_to.into(),
+            asset_quantity_fee: from.asset_quantity_fee.into(),
             origin_outputs: from.origin_outputs.into_iter().map(From::from).collect(),
             expiration: from.expiration,
             lock_script_hash_from: from.lock_script_hash_from,
@@ -79,7 +79,7 @@ impl From<Order> for OrderType {
 #[serde(rename_all = "camelCase")]
 pub struct OrderOnTransfer {
     pub order: Order,
-    pub spent_amount: Uint,
+    pub spent_quantity: Uint,
     pub input_indices: Vec<usize>,
     pub output_indices: Vec<usize>,
 }
@@ -88,7 +88,7 @@ impl From<OrderOnTransferType> for OrderOnTransfer {
     fn from(from: OrderOnTransferType) -> Self {
         OrderOnTransfer {
             order: from.order.into(),
-            spent_amount: from.spent_amount.into(),
+            spent_quantity: from.spent_quantity.into(),
             input_indices: from.input_indices,
             output_indices: from.output_indices,
         }
@@ -99,7 +99,7 @@ impl From<OrderOnTransfer> for OrderOnTransferType {
     fn from(from: OrderOnTransfer) -> Self {
         OrderOnTransferType {
             order: from.order.into(),
-            spent_amount: from.spent_amount.into(),
+            spent_quantity: from.spent_quantity.into(),
             input_indices: from.input_indices,
             output_indices: from.output_indices,
         }

@@ -87,7 +87,7 @@ describe("Test onChain transaction communication", function() {
         const ACCOUNT_SECRET = process.env.ACCOUNT_SECRET || faucetSecret;
         const tx = sdk.core.createPayTransaction({
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
-            amount: 10000
+            quantity: 10000
         });
         const signed = tx.sign({
             secret: ACCOUNT_SECRET,
@@ -122,7 +122,7 @@ describe("Test onChain transaction communication", function() {
                     process.env.ACCOUNT_SECRET || faucetSecret;
                 const tx = sdk.core.createPayTransaction({
                     recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
-                    amount: 10000
+                    quantity: 10000
                 });
                 const signedTransaction = tx.sign({
                     secret: ACCOUNT_SECRET,

@@ -156,8 +156,8 @@ describe("sync 2 nodes", function() {
             describe("Both transaction success", function() {
                 beforeEach(async function() {
                     const recipient = await nodeA.createP2PKHAddress();
-                    await nodeA.mintAsset({ amount: 10, recipient });
-                    await nodeB.mintAsset({ amount: 10, recipient });
+                    await nodeA.mintAsset({ supply: 10, recipient });
+                    await nodeB.mintAsset({ supply: 10, recipient });
                     expect(await nodeA.getBestBlockNumber()).to.equal(
                         await nodeB.getBestBlockNumber()
                     );
@@ -191,11 +191,11 @@ describe("sync 2 nodes", function() {
                     const recipient1 = await nodeA.createP2PKHAddress();
                     const recipient2 = await nodeA.createP2PKHAddress();
                     const { asset: assetA } = await nodeA.mintAsset({
-                        amount: 100,
+                        supply: 100,
                         recipient: recipient1
                     });
                     const { asset: assetB } = await nodeB.mintAsset({
-                        amount: 100,
+                        supply: 100,
                         recipient: recipient1
                     });
 
@@ -208,12 +208,12 @@ describe("sync 2 nodes", function() {
                         {
                             assetType: asset.assetType,
                             recipient: recipient2,
-                            amount: 10
+                            quantity: 10
                         },
                         {
                             assetType: asset.assetType,
                             recipient: recipient1,
-                            amount: 90
+                            quantity: 90
                         }
                     );
 
@@ -227,7 +227,7 @@ describe("sync 2 nodes", function() {
                     tx2.addOutputs({
                         assetType: asset.assetType,
                         recipient: recipient2,
-                        amount: 100
+                        quantity: 100
                     });
 
                     await nodeA.signTransactionInput(tx2, 0);

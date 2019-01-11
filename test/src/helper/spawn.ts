@@ -363,12 +363,12 @@ export default class CodeChain {
 
     public async pay(
         recipient: string | PlatformAddress,
-        amount: U64 | string | number
+        quantity: U64 | string | number
     ) {
         const tx = this.sdk.core
             .createPayTransaction({
                 recipient,
-                amount
+                quantity
             })
             .sign({
                 secret: faucetSecret,
@@ -437,7 +437,7 @@ export default class CodeChain {
     }
 
     public async mintAsset(params: {
-        amount: number;
+        supply: number;
         recipient?: string | AssetTransferAddress;
         secret?: string;
         seq?: number;
@@ -445,7 +445,7 @@ export default class CodeChain {
         awaitMint?: boolean;
     }) {
         const {
-            amount,
+            supply,
             seq,
             recipient = await this.createP2PKHAddress(),
             secret,
@@ -456,7 +456,7 @@ export default class CodeChain {
             scheme: {
                 shardId: 0,
                 metadata,
-                amount
+                supply
             },
             recipient
         });
@@ -530,7 +530,7 @@ export default class CodeChain {
         seq?: number;
         awaitInvoice?: boolean;
         recipient?: PlatformAddress | string;
-        amount?: number;
+        quantity?: number;
         secret?: any;
         fee?: number;
     }): Promise<SignedTransaction> {
@@ -538,14 +538,14 @@ export default class CodeChain {
             seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
             awaitInvoice = true,
             recipient = "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
-            amount = 0,
+            quantity = 0,
             secret = faucetSecret,
             fee = 10 + this.id
         } = options || {};
         const tx = this.sdk.core
             .createPayTransaction({
                 recipient,
-                amount
+                quantity
             })
             .sign({
                 secret,

@@ -23,7 +23,7 @@ const ACTION_TAG_TRANSFER_CCS: u8 = 1;
 pub enum Action {
     TransferCCS {
         address: Address,
-        amount: u64,
+        quantity: u64,
     },
 }
 
@@ -32,8 +32,8 @@ impl Encodable for Action {
         match self {
             Action::TransferCCS {
                 address,
-                amount,
-            } => s.begin_list(3).append(&ACTION_TAG_TRANSFER_CCS).append(address).append(amount),
+                quantity,
+            } => s.begin_list(3).append(&ACTION_TAG_TRANSFER_CCS).append(address).append(quantity),
         };
     }
 }
@@ -48,7 +48,7 @@ impl Decodable for Action {
                 }
                 Ok(Action::TransferCCS {
                     address: rlp.val_at(1)?,
-                    amount: rlp.val_at(2)?,
+                    quantity: rlp.val_at(2)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected Tendermint Stake Action Type")),

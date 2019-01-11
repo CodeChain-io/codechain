@@ -86,7 +86,7 @@ describe("Reward = 50, 1 miner", function() {
         const tx = await node.sdk.core
             .createPayTransaction({
                 recipient: faucetAddress,
-                amount: 50
+                quantity: 50
             })
             .sign({ secret: aliceSecret, seq: 0, fee: 10 }); // -60
         await node.sdk.rpc.chain.sendSignedTransaction(tx); // +60

@@ -107,7 +107,7 @@ describe("reward2", function() {
                 nodeA.sdk.core
                     .createPayTransaction({
                         recipient: bobAddress,
-                        amount: 5
+                        quantity: 5
                     })
                     .sign({
                         secret: aliceSecret,
@@ -131,7 +131,7 @@ describe("reward2", function() {
                 nodeB.sdk.core
                     .createPayTransaction({
                         recipient: bobAddress,
-                        amount: 15
+                        quantity: 15
                     })
                     .sign({
                         secret: aliceSecret,

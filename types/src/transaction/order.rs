@@ -26,9 +26,9 @@ pub struct Order {
     pub asset_type_from: H256,
     pub asset_type_to: H256,
     pub asset_type_fee: H256,
-    pub asset_amount_from: u64,
-    pub asset_amount_to: u64,
-    pub asset_amount_fee: u64,
+    pub asset_quantity_from: u64,
+    pub asset_quantity_to: u64,
+    pub asset_quantity_fee: u64,
     /// previous outputs that order is started
     pub origin_outputs: Vec<AssetOutPoint>,
     /// expiration time by second
@@ -42,8 +42,8 @@ pub struct Order {
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
 pub struct OrderOnTransfer {
     pub order: Order,
-    /// Spent amount of asset_type_from
-    pub spent_amount: u64,
+    /// Spent quantity of asset_type_from
+    pub spent_quantity: u64,
     /// Indices of transfer inputs which are moved as order
     pub input_indices: Vec<usize>,
     /// Indices of transfer outputs which are moved as order
@@ -55,9 +55,9 @@ impl Order {
     // https://rust-lang.github.io/rust-clippy/v0.0.212/#nonminimal_bool
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::nonminimal_bool))]
     pub fn verify(&self) -> Result<(), Error> {
-        // If asset_amount_fee is zero, it means there's no fee to pay.
+        // If asset_quantity_fee is zero, it means there's no fee to pay.
         if self.asset_type_from == self.asset_type_to
-            || self.asset_amount_fee != 0
+            || self.asset_quantity_fee != 0
                 && (self.asset_type_from == self.asset_type_fee || self.asset_type_to == self.asset_type_fee)
         {
             return Err(Error::InvalidOrderAssetTypes {
@@ -66,23 +66,23 @@ impl Order {
                 fee: self.asset_type_fee,
             })
         }
-        if (self.asset_amount_from == 0) ^ (self.asset_amount_to == 0) {
-            return Err(Error::InvalidOrderAssetAmounts {
-                from: self.asset_amount_from,
-                to: self.asset_amount_to,
-                fee: self.asset_amount_fee,
+        if (self.asset_quantity_from == 0) ^ (self.asset_quantity_to == 0) {
+            return Err(Error::InvalidOrderAssetQuantities {
+                from: self.asset_quantity_from,
+                to: self.asset_quantity_to,
+                fee: self.asset_quantity_fee,
             })
         }
-        if self.asset_amount_from == 0 && self.asset_amount_fee != 0
-            || self.asset_amount_from != 0 && self.asset_amount_fee % self.asset_amount_from != 0
+        if self.asset_quantity_from == 0 && self.asset_quantity_fee != 0
+            || self.asset_quantity_from != 0 && self.asset_quantity_fee % self.asset_quantity_from != 0
         {
-            return Err(Error::InvalidOrderAssetAmounts {
-                from: self.asset_amount_from,
-                to: self.asset_amount_to,
-                fee: self.asset_amount_fee,
+            return Err(Error::InvalidOrderAssetQuantities {
+                from: self.asset_quantity_from,
+                to: self.asset_quantity_to,
+                fee: self.asset_quantity_fee,
             })
         }
-        if self.asset_amount_fee != 0
+        if self.asset_quantity_fee != 0
             && self.lock_script_hash_fee == self.lock_script_hash_from
             && self.parameters_fee == self.parameters_from
         {
@@ -100,7 +100,7 @@ impl Order {
     }
 
     pub fn check_transfer_output(&self, output: &AssetTransferOutput) -> Result<bool, Error> {
-        if self.asset_amount_fee != 0
+        if self.asset_quantity_fee != 0
             && self.asset_type_fee == output.asset_type
             && self.lock_script_hash_fee == output.lock_script_hash
             && self.parameters_fee == output.parameters
@@ -119,16 +119,18 @@ impl Order {
         Ok(true)
     }
 
-    pub fn consume(&self, amount: u64) -> Order {
+    pub fn consume(&self, quantity: u64) -> Order {
         Order {
             asset_type_from: self.asset_type_from,
             asset_type_to: self.asset_type_to,
             asset_type_fee: self.asset_type_fee,
-            asset_amount_from: self.asset_amount_from - amount,
-            asset_amount_to: self.asset_amount_to
-                - (u128::from(amount) * u128::from(self.asset_amount_to) / u128::from(self.asset_amount_from)) as u64,
-            asset_amount_fee: self.asset_amount_fee
-                - (u128::from(amount) * u128::from(self.asset_amount_fee) / u128::from(self.asset_amount_from)) as u64,
+            asset_quantity_from: self.asset_quantity_from - quantity,
+            asset_quantity_to: self.asset_quantity_to
+                - (u128::from(quantity) * u128::from(self.asset_quantity_to) / u128::from(self.asset_quantity_from))
+                    as u64,
+            asset_quantity_fee: self.asset_quantity_fee
+                - (u128::from(quantity) * u128::from(self.asset_quantity_fee) / u128::from(self.asset_quantity_from))
+                    as u64,
             origin_outputs: self.origin_outputs.clone(),
             expiration: self.expiration,
             lock_script_hash_from: self.lock_script_hash_from,
@@ -168,14 +170,14 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
+            asset_quantity_from: 3,
+            asset_quantity_to: 2,
+            asset_quantity_fee: 3,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -189,14 +191,14 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 0,
+            asset_quantity_from: 3,
+            asset_quantity_to: 2,
+            asset_quantity_fee: 0,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -210,14 +212,14 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
-            asset_amount_from: 0,
-            asset_amount_to: 0,
-            asset_amount_fee: 0,
+            asset_quantity_from: 0,
+            asset_quantity_to: 0,
+            asset_quantity_fee: 0,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -238,14 +240,14 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
+            asset_quantity_from: 3,
+            asset_quantity_to: 2,
+            asset_quantity_fee: 3,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: H256::random(),
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -259,9 +261,9 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
+            asset_quantity_from: 3,
+            asset_quantity_to: 2,
+            asset_quantity_fee: 3,
             origin_outputs: vec![],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -271,19 +273,19 @@ mod tests {
         };
         assert_eq!(order.verify(), Err(Error::InvalidOriginOutputs(order.hash())));
 
-        // 2. asset amounts are invalid
+        // 2. asset quantitys are invalid
         let order = Order {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 0,
-            asset_amount_fee: 3,
+            asset_quantity_from: 3,
+            asset_quantity_to: 0,
+            asset_quantity_fee: 3,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -293,7 +295,7 @@ mod tests {
         };
         assert_eq!(
             order.verify(),
-            Err(Error::InvalidOrderAssetAmounts {
+            Err(Error::InvalidOrderAssetQuantities {
                 from: 3,
                 to: 0,
                 fee: 3,
@@ -304,14 +306,14 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
-            asset_amount_from: 0,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
+            asset_quantity_from: 0,
+            asset_quantity_to: 2,
+            asset_quantity_fee: 3,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -321,7 +323,7 @@ mod tests {
         };
         assert_eq!(
             order.verify(),
-            Err(Error::InvalidOrderAssetAmounts {
+            Err(Error::InvalidOrderAssetQuantities {
                 from: 0,
                 to: 2,
                 fee: 3,
@@ -332,14 +334,14 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
-            asset_amount_from: 0,
-            asset_amount_to: 0,
-            asset_amount_fee: 3,
+            asset_quantity_from: 0,
+            asset_quantity_to: 0,
+            asset_quantity_fee: 3,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -349,7 +351,7 @@ mod tests {
         };
         assert_eq!(
             order.verify(),
-            Err(Error::InvalidOrderAssetAmounts {
+            Err(Error::InvalidOrderAssetQuantities {
                 from: 0,
                 to: 0,
                 fee: 3,
@@ -360,14 +362,14 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 2,
+            asset_quantity_from: 3,
+            asset_quantity_to: 2,
+            asset_quantity_fee: 2,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -377,7 +379,7 @@ mod tests {
         };
         assert_eq!(
             order.verify(),
-            Err(Error::InvalidOrderAssetAmounts {
+            Err(Error::InvalidOrderAssetQuantities {
                 from: 3,
                 to: 2,
                 fee: 2,
@@ -390,14 +392,14 @@ mod tests {
             asset_type_from: asset_type,
             asset_type_to: asset_type,
             asset_type_fee,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
+            asset_quantity_from: 3,
+            asset_quantity_to: 2,
+            asset_quantity_fee: 3,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type,
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),
@@ -419,14 +421,14 @@ mod tests {
             asset_type_from: asset_type,
             asset_type_to,
             asset_type_fee: asset_type,
-            asset_amount_from: 3,
-            asset_amount_to: 2,
-            asset_amount_fee: 3,
+            asset_quantity_from: 3,
+            asset_quantity_to: 2,
+            asset_quantity_fee: 3,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
                 asset_type,
-                amount: 10,
+                quantity: 10,
             }],
             expiration: 10,
             lock_script_hash_from: H160::random(),

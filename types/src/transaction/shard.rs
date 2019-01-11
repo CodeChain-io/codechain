@@ -86,7 +86,7 @@ pub enum ShardTransaction {
 pub struct AssetWrapCCCOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
-    pub amount: u64,
+    pub quantity: u64,
 }
 
 impl ShardTransaction {
@@ -189,12 +189,12 @@ impl ShardTransaction {
         }
     }
 
-    pub fn unwrapped_amount(&self) -> u64 {
+    pub fn unwrapped_quantity(&self) -> u64 {
         match self {
             ShardTransaction::UnwrapCCC {
                 burn,
                 ..
-            } => burn.prev_out.amount,
+            } => burn.prev_out.quantity,
             _ => 0,
         }
     }
@@ -270,7 +270,7 @@ impl HeapSizeOf for AssetOutPoint {
 
 impl HeapSizeOf for AssetMintOutput {
     fn heap_size_of_children(&self) -> usize {
-        self.parameters.heap_size_of_children() + self.amount.heap_size_of_children()
+        self.parameters.heap_size_of_children() + self.supply.heap_size_of_children()
     }
 }
 
@@ -450,7 +450,7 @@ impl PartialHashing for ShardTransaction {
                     AssetMintOutput {
                         lock_script_hash: H160::default(),
                         parameters: Vec::new(),
-                        amount: None,
+                        supply: None,
                     }
                 };
 
@@ -559,7 +559,7 @@ impl Decodable for ShardTransaction {
                     output: AssetMintOutput {
                         lock_script_hash: d.val_at(4)?,
                         parameters: d.val_at(5)?,
-                        amount: d.val_at(6)?,
+                        supply: d.val_at(6)?,
                     },
                     approver: d.val_at(7)?,
                     administrator: d.val_at(8)?,
@@ -606,7 +606,7 @@ impl Decodable for ShardTransaction {
                     output: AssetMintOutput {
                         lock_script_hash: d.val_at(8)?,
                         parameters: d.val_at(9)?,
-                        amount: d.val_at(10)?,
+                        supply: d.val_at(10)?,
                     },
                 })
             }
@@ -645,7 +645,7 @@ impl Encodable for ShardTransaction {
                     AssetMintOutput {
                         lock_script_hash,
                         parameters,
-                        amount,
+                        supply,
                     },
                 approver,
                 administrator,
@@ -658,7 +658,7 @@ impl Encodable for ShardTransaction {
                     .append(metadata)
                     .append(lock_script_hash)
                     .append(parameters)
-                    .append(amount)
+                    .append(supply)
                     .append(approver)
                     .append(administrator)
                     .append_list(allowed_script_hashes);
@@ -707,7 +707,7 @@ impl Encodable for ShardTransaction {
                     AssetMintOutput {
                         lock_script_hash,
                         parameters,
-                        amount,
+                        supply,
                     },
             } => {
                 s.begin_list(11)
@@ -721,7 +721,7 @@ impl Encodable for ShardTransaction {
                     .append_list(inputs)
                     .append(lock_script_hash)
                     .append(parameters)
-                    .append(amount);
+                    .append(supply);
             }
             ShardTransaction::DecomposeAsset {
                 network_id,
@@ -762,7 +762,7 @@ mod tests {
             tracker: H256::random(),
             index: 3,
             asset_type,
-            amount: 34,
+            quantity: 34,
         };
 
         let input = AssetTransferInput {
@@ -778,7 +778,7 @@ mod tests {
     #[test]
     fn _is_input_and_output_consistent() {
         let asset_type = H256::random();
-        let amount = 100;
+        let quantity = 100;
 
         assert!(is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -786,7 +786,7 @@ mod tests {
                     tracker: H256::random(),
                     index: 0,
                     asset_type,
-                    amount,
+                    quantity,
                 },
                 timelock: None,
                 lock_script: vec![],
@@ -796,7 +796,7 @@ mod tests {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
-                amount,
+                quantity,
             }]
         ));
     }
@@ -811,8 +811,8 @@ mod tests {
             }
             asset_type
         };
-        let amount1 = 100;
-        let amount2 = 200;
+        let quantity1 = 100;
+        let quantity2 = 200;
 
         assert!(is_input_and_output_consistent(
             &[
@@ -821,7 +821,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
-                        amount: amount1,
+                        quantity: quantity1,
                     },
                     timelock: None,
                     lock_script: vec![],
@@ -832,7 +832,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
-                        amount: amount2,
+                        quantity: quantity2,
                     },
                     timelock: None,
                     lock_script: vec![],
@@ -844,13 +844,13 @@ mod tests {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
-                    amount: amount1,
+                    quantity: quantity1,
                 },
                 AssetTransferOutput {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
-                    amount: amount2,
+                    quantity: quantity2,
                 },
             ]
         ));
@@ -866,8 +866,8 @@ mod tests {
             }
             asset_type
         };
-        let amount1 = 100;
-        let amount2 = 200;
+        let quantity1 = 100;
+        let quantity2 = 200;
 
         assert!(is_input_and_output_consistent(
             &[
@@ -876,7 +876,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
-                        amount: amount1,
+                        quantity: quantity1,
                     },
                     timelock: None,
                     lock_script: vec![],
@@ -887,7 +887,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
-                        amount: amount2,
+                        quantity: quantity2,
                     },
                     timelock: None,
                     lock_script: vec![],
@@ -899,13 +899,13 @@ mod tests {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
-                    amount: amount2,
+                    quantity: quantity2,
                 },
                 AssetTransferOutput {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
-                    amount: amount1,
+                    quantity: quantity1,
                 },
             ]
         ));
@@ -919,14 +919,14 @@ mod tests {
     #[test]
     fn fail_if_output_has_more_asset() {
         let asset_type = H256::random();
-        let output_amount = 100;
+        let output_quantity = 100;
         assert!(!is_input_and_output_consistent(
             &[],
             &[AssetTransferOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
-                amount: output_amount,
+                quantity: output_quantity,
             }]
         ));
     }
@@ -934,7 +934,7 @@ mod tests {
     #[test]
     fn fail_if_input_has_more_asset() {
         let asset_type = H256::random();
-        let input_amount = 100;
+        let input_quantity = 100;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -942,7 +942,7 @@ mod tests {
                     tracker: H256::random(),
                     index: 0,
                     asset_type,
-                    amount: input_amount,
+                    quantity: input_quantity,
                 },
                 timelock: None,
                 lock_script: vec![],
@@ -955,8 +955,8 @@ mod tests {
     #[test]
     fn fail_if_input_is_larger_than_output() {
         let asset_type = H256::random();
-        let input_amount = 100;
-        let output_amount = 80;
+        let input_quantity = 100;
+        let output_quantity = 80;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -964,7 +964,7 @@ mod tests {
                     tracker: H256::random(),
                     index: 0,
                     asset_type,
-                    amount: input_amount,
+                    quantity: input_quantity,
                 },
                 timelock: None,
                 lock_script: vec![],
@@ -974,7 +974,7 @@ mod tests {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
-                amount: output_amount,
+                quantity: output_quantity,
             }]
         ));
     }
@@ -982,8 +982,8 @@ mod tests {
     #[test]
     fn fail_if_input_is_smaller_than_output() {
         let asset_type = H256::random();
-        let input_amount = 80;
-        let output_amount = 100;
+        let input_quantity = 80;
+        let output_quantity = 100;
 
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
@@ -991,7 +991,7 @@ mod tests {
                     tracker: H256::random(),
                     index: 0,
                     asset_type,
-                    amount: input_amount,
+                    quantity: input_quantity,
                 },
                 timelock: None,
                 lock_script: vec![],
@@ -1001,7 +1001,7 @@ mod tests {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
-                amount: output_amount,
+                quantity: output_quantity,
             }]
         ));
     }
@@ -1016,7 +1016,7 @@ mod tests {
                     tracker: Default::default(),
                     index: 0,
                     asset_type: H256::default(),
-                    amount: 30,
+                    quantity: 30,
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1036,7 +1036,7 @@ mod tests {
                     tracker: Default::default(),
                     index: 0,
                     asset_type: H256::zero(),
-                    amount: 30,
+                    quantity: 30,
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1056,7 +1056,7 @@ mod tests {
                     tracker: H256::random(),
                     index: 0,
                     asset_type: H256::random(),
-                    amount: 30,
+                    quantity: 30,
                 },
                 timelock: None,
                 lock_script: vec![0x30, 0x01],
@@ -1066,21 +1066,21 @@ mod tests {
                 lock_script_hash: H160::random(),
                 parameters: vec![vec![1]],
                 asset_type: H256::random(),
-                amount: 30,
+                quantity: 30,
             }],
             orders: vec![OrderOnTransfer {
                 order: Order {
                     asset_type_from: H256::random(),
                     asset_type_to: H256::random(),
                     asset_type_fee: H256::random(),
-                    asset_amount_from: 10,
-                    asset_amount_to: 10,
-                    asset_amount_fee: 0,
+                    asset_quantity_from: 10,
+                    asset_quantity_to: 10,
+                    asset_quantity_fee: 0,
                     origin_outputs: vec![AssetOutPoint {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: H256::random(),
-                        amount: 30,
+                        quantity: 30,
                     }],
                     expiration: 10,
                     lock_script_hash_from: H160::random(),
@@ -1088,7 +1088,7 @@ mod tests {
                     lock_script_hash_fee: H160::random(),
                     parameters_fee: vec![vec![1]],
                 },
-                spent_amount: 10,
+                spent_quantity: 10,
                 input_indices: vec![0],
                 output_indices: vec![0],
             }],
@@ -1103,7 +1103,7 @@ mod tests {
                 tracker: Default::default(),
                 index: 0,
                 asset_type: H256::default(),
-                amount: 0,
+                quantity: 0,
             },
             timelock: None,
             lock_script: Vec::new(),
@@ -1115,7 +1115,7 @@ mod tests {
                     tracker: Default::default(),
                     index: 0,
                     asset_type: H256::default(),
-                    amount: 0,
+                    quantity: 0,
                 },
                 timelock: None,
                 lock_script: Vec::new(),
@@ -1127,7 +1127,7 @@ mod tests {
                 lock_script_hash: H160::default(),
                 parameters: Vec::new(),
                 asset_type: H256::default(),
-                amount: 0,
+                quantity: 0,
             })
             .collect();
 
@@ -1193,22 +1193,22 @@ mod tests {
 
         for input in inputs {
             let asset_type = input.prev_out.asset_type;
-            let amount = u128::from(input.prev_out.amount);
-            let current_amount = sum.get(&asset_type).cloned().unwrap_or_default();
-            sum.insert(asset_type, current_amount + amount);
+            let quantity = u128::from(input.prev_out.quantity);
+            let current_quantity = sum.get(&asset_type).cloned().unwrap_or_default();
+            sum.insert(asset_type, current_quantity + quantity);
         }
         for output in outputs {
             let asset_type = output.asset_type;
-            let amount = u128::from(output.amount);
-            let current_amount = if let Some(current_amount) = sum.get(&asset_type) {
-                if *current_amount < amount {
+            let quantity = u128::from(output.quantity);
+            let current_quantity = if let Some(current_quantity) = sum.get(&asset_type) {
+                if *current_quantity < quantity {
                     return false
                 }
-                *current_amount
+                *current_quantity
             } else {
                 return false
             };
-            let t = sum.insert(asset_type, current_amount - amount);
+            let t = sum.insert(asset_type, current_quantity - quantity);
             debug_assert!(t.is_some());
         }
 

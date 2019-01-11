@@ -40,7 +40,7 @@ describe("Timelock", function() {
     });
 
     async function sendTxWithTimelock(timelock: Timelock): Promise<H256> {
-        const { asset } = await node.mintAsset({ amount: 1 });
+        const { asset } = await node.mintAsset({ supply: 1 });
         const tx = node.sdk.core.createTransferAssetTransaction();
         tx.addInputs(
             asset.createTransferInput({
@@ -48,7 +48,7 @@ describe("Timelock", function() {
             })
         );
         tx.addOutputs({
-            amount: 1,
+            quantity: 1,
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
@@ -107,11 +107,11 @@ describe("Timelock", function() {
     });
 
     it("A relative timelock for failed transaction's output", async function() {
-        const { asset } = await node.mintAsset({ amount: 1 });
+        const { asset } = await node.mintAsset({ supply: 1 });
         const failedTx = node.sdk.core.createTransferAssetTransaction();
         failedTx.addInputs(asset);
         failedTx.addOutputs({
-            amount: 1,
+            quantity: 1,
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
@@ -130,7 +130,7 @@ describe("Timelock", function() {
             })
         );
         tx.addOutputs({
-            amount: 1,
+            quantity: 1,
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
@@ -200,7 +200,7 @@ describe("Timelock", function() {
                 : asset.createTransferInput()
         );
         tx.addOutputs({
-            amount: 1,
+            quantity: 1,
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
@@ -212,7 +212,7 @@ describe("Timelock", function() {
 
     describe("The future items should move to the current queue", async function() {
         it("Minted at block 1, send transfer with Timelock::Block(10) and then replace it with no timelock", async function() {
-            const { asset } = await node.mintAsset({ amount: 1 });
+            const { asset } = await node.mintAsset({ supply: 1 });
             await node.sdk.rpc.devel.stopSealing();
             const tracker1 = await sendTransferTx(asset, {
                 type: "block",
@@ -239,13 +239,13 @@ describe("Timelock", function() {
         });
 
         async function createUTXOs(count: number): Promise<Asset[]> {
-            const { asset } = await node.mintAsset({ amount: count });
+            const { asset } = await node.mintAsset({ supply: count });
             const transferTx = node.sdk.core.createTransferAssetTransaction();
             transferTx.addInputs(asset);
             transferTx.addOutputs(
                 Array.from(Array(count)).map(_ => ({
                     assetType: asset.assetType,
-                    amount: 1,
+                    quantity: 1,
                     recipient
                 }))
             );
@@ -272,7 +272,7 @@ describe("Timelock", function() {
                     }
                 })
             ]);
-            tx.addOutputs({ amount: 2, recipient, assetType });
+            tx.addOutputs({ quantity: 2, recipient, assetType });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
@@ -309,7 +309,7 @@ describe("Timelock", function() {
                     }
                 })
             ]);
-            tx.addOutputs({ amount: 2, recipient, assetType });
+            tx.addOutputs({ quantity: 2, recipient, assetType });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
@@ -346,7 +346,7 @@ describe("Timelock", function() {
                     }
                 })
             ]);
-            tx.addOutputs({ amount: 2, recipient, assetType });
+            tx.addOutputs({ quantity: 2, recipient, assetType });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
@@ -378,7 +378,7 @@ describe("Timelock", function() {
                     }
                 })
             ]);
-            tx.addOutputs({ amount: 2, recipient, assetType });
+            tx.addOutputs({ quantity: 2, recipient, assetType });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
