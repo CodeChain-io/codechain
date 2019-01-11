@@ -19,7 +19,7 @@ use std::mem::size_of;
 use byteorder::{BigEndian, WriteBytesExt};
 use ckey::Address;
 use ctypes::ShardId;
-use primitives::H256;
+use primitives::{H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::asset::Asset;
@@ -32,16 +32,24 @@ pub struct AssetScheme {
     amount: u64,
     approver: Option<Address>,
     administrator: Option<Address>,
+    allowed_script_hashes: Vec<H160>,
     pool: Vec<Asset>,
 }
 
 impl AssetScheme {
-    pub fn new(metadata: String, amount: u64, approver: Option<Address>, administrator: Option<Address>) -> Self {
+    pub fn new(
+        metadata: String,
+        amount: u64,
+        approver: Option<Address>,
+        administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
+    ) -> Self {
         Self {
             metadata,
             amount,
             approver,
             administrator,
+            allowed_script_hashes,
             pool: Vec::new(),
         }
     }
@@ -51,6 +59,7 @@ impl AssetScheme {
         amount: u64,
         approver: Option<Address>,
         administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> Self {
         Self {
@@ -58,6 +67,7 @@ impl AssetScheme {
             amount,
             approver,
             administrator,
+            allowed_script_hashes,
             pool,
         }
     }
@@ -78,6 +88,10 @@ impl AssetScheme {
         &self.administrator
     }
 
+    pub fn allowed_script_hashes(&self) -> &[H160] {
+        &self.allowed_script_hashes
+    }
+
     pub fn is_permissioned(&self) -> bool {
         self.approver.is_some()
     }
@@ -86,12 +100,18 @@ impl AssetScheme {
         self.administrator.is_some()
     }
 
+    pub fn is_allowed_script_hash(&self, lock_script_hash: &H160) -> bool {
+        let allowed_hashes = self.allowed_script_hashes();
+        allowed_hashes.is_empty() || allowed_hashes.contains(lock_script_hash)
+    }
+
     pub fn init(
         &mut self,
         metadata: String,
         amount: u64,
         approver: Option<Address>,
         administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) {
         assert_eq!("", &self.metadata);
@@ -102,6 +122,7 @@ impl AssetScheme {
         self.amount = amount;
         self.approver = approver;
         self.administrator = administrator;
+        self.allowed_script_hashes = allowed_script_hashes;
         self.pool = pool;
     }
 
@@ -109,10 +130,17 @@ impl AssetScheme {
         &self.pool
     }
 
-    pub fn change_data(&mut self, metadata: String, approver: Option<Address>, administrator: Option<Address>) {
+    pub fn change_data(
+        &mut self,
+        metadata: String,
+        approver: Option<Address>,
+        administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
+    ) {
         self.metadata = metadata;
         self.approver = approver;
         self.administrator = administrator;
+        self.allowed_script_hashes = allowed_script_hashes;
     }
 }
 
@@ -120,25 +148,26 @@ const PREFIX: u8 = super::ASSET_SCHEME_PREFIX;
 
 impl Default for AssetScheme {
     fn default() -> Self {
-        Self::new("".to_string(), 0, None, None)
+        Self::new("".to_string(), 0, None, None, Vec::new())
     }
 }
 
 impl Encodable for AssetScheme {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(6)
+        s.begin_list(7)
             .append(&PREFIX)
             .append(&self.metadata)
             .append(&self.amount)
             .append(&self.approver)
             .append(&self.administrator)
+            .append_list(&self.allowed_script_hashes)
             .append_list(&self.pool);
     }
 }
 
 impl Decodable for AssetScheme {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 6 {
+        if rlp.item_count()? != 7 {
             return Err(DecoderError::RlpInvalidLength)
         }
 
@@ -152,7 +181,8 @@ impl Decodable for AssetScheme {
             amount: rlp.val_at(2)?,
             approver: rlp.val_at(3)?,
             administrator: rlp.val_at(4)?,
-            pool: rlp.list_at(5)?,
+            allowed_script_hashes: rlp.list_at(5)?,
+            pool: rlp.list_at(6)?,
         })
     }
 }
@@ -163,10 +193,10 @@ pub struct AssetSchemeAddress(H256);
 impl_address!(SHARD, AssetSchemeAddress, PREFIX);
 
 impl AssetSchemeAddress {
-    pub fn new(transaction_hash: H256, shard_id: ShardId) -> Self {
+    pub fn new(tracker: H256, shard_id: ShardId) -> Self {
         let index = ::std::u64::MAX;
 
-        Self::from_transaction_hash_with_shard_id(transaction_hash, index, shard_id)
+        Self::from_transaction_hash_with_shard_id(tracker, index, shard_id)
     }
     pub fn new_with_zero_suffix(shard_id: ShardId) -> Self {
         let mut hash = H256::zero();

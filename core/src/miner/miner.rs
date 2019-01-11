@@ -30,7 +30,7 @@ use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
-use super::mem_pool::{AccountDetails, MemPool, RemovalReason, TxOrigin, TxTimelock};
+use super::mem_pool::{AccountDetails, MemPool, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, TransactionImportResult};
@@ -308,7 +308,7 @@ impl Miner {
                         Timelock::Block(value) => (true, value),
                         Timelock::BlockAge(value) => (
                             true,
-                            client.transaction_block_number(&input.prev_out.transaction_hash).ok_or_else(|| {
+                            client.transaction_block_number(&input.prev_out.tracker).ok_or_else(|| {
                                 Error::State(StateError::Transaction(TransactionError::Timelocked {
                                     timelock,
                                     remaining_time: u64::max_value(),
@@ -318,7 +318,7 @@ impl Miner {
                         Timelock::Time(value) => (false, value),
                         Timelock::TimeAge(value) => (
                             false,
-                            client.transaction_block_timestamp(&input.prev_out.transaction_hash).ok_or_else(|| {
+                            client.transaction_block_timestamp(&input.prev_out.tracker).ok_or_else(|| {
                                 Error::State(StateError::Transaction(TransactionError::Timelocked {
                                     timelock,
                                     remaining_time: u64::max_value(),
@@ -395,6 +395,7 @@ impl Miner {
         C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
     >(
         &self,
+        parent_block_id: BlockId,
         chain: &C,
     ) -> Result<(ClosedBlock, Option<H256>), Error> {
         let (transactions, mut open_block, original_work_hash) = {
@@ -405,7 +406,7 @@ impl Miner {
 
             ctrace!(MINER, "prepare_block: No existing work - making new block");
             let params = self.params.read().clone();
-            let open_block = chain.prepare_open_block(params.author, params.extra_data);
+            let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
 
             (transactions, open_block, last_work_hash)
         };
@@ -467,7 +468,6 @@ impl Miner {
                 queue.remove(
                     &hash,
                     &fetch_seq,
-                    RemovalReason::Invalid,
                     chain.chain_info().best_block_number,
                     chain.chain_info().best_block_timestamp,
                 );
@@ -570,7 +570,7 @@ impl MinerService for Miner {
     fn set_author(&self, address: Address, password: Option<Password>) -> Result<(), SignError> {
         self.params.write().author = address;
 
-        if self.engine_type() == EngineType::InternalSealing && self.engine.seals_internally().is_some() {
+        if self.engine_type().need_signer_key() && self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set author to {:?}", address);
                 // Sign test message
@@ -619,7 +619,7 @@ impl MinerService for Miner {
         _enacted: &[H256],
         retracted: &[H256],
     ) where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner, {
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ResealTimer, {
         ctrace!(MINER, "chain_new_blocks");
 
         // Then import all transactions...
@@ -649,6 +649,10 @@ impl MinerService for Miner {
             let timestamp = chain.chain_info().best_block_timestamp;
             let mut mem_pool = self.mem_pool.write();
             mem_pool.remove_old(&fetch_account, time, timestamp);
+        }
+
+        if !self.options.no_reseal_timer {
+            chain.set_min_timer();
         }
     }
 
@@ -683,7 +687,7 @@ impl MinerService for Miner {
             // | NOTE Code below requires transaction_queue and sealing_work locks.     |
             // | Make sure to release the locks before calling that method.             |
             // --------------------------------------------------------------------------
-            match self.prepare_block(client) {
+            match self.prepare_block(BlockId::Latest, client) {
                 Ok((block, original_work_hash)) => {
                     self.prepare_work(block, original_work_hash);
                 }
@@ -708,7 +712,7 @@ impl MinerService for Miner {
         prepare_new
     }
 
-    fn update_sealing<C>(&self, chain: &C, allow_empty_block: bool)
+    fn update_sealing<C>(&self, chain: &C, parent_block: BlockId, allow_empty_block: bool)
     where
         C: AccountData
             + BlockChain
@@ -720,8 +724,9 @@ impl MinerService for Miner {
             + FindActionHandler, {
         ctrace!(MINER, "update_sealing: preparing a block");
 
-        if self.requires_reseal(chain.chain_info().best_block_number) {
-            let (block, original_work_hash) = match self.prepare_block(chain) {
+        let parent_block_number = chain.block_header(&parent_block).expect("Parent is always exist").number();
+        if self.requires_reseal(parent_block_number) {
+            let (block, original_work_hash) = match self.prepare_block(parent_block, chain) {
                 Ok((block, original_work_hash)) => {
                     if !allow_empty_block && block.block().transactions().is_empty() {
                         ctrace!(MINER, "update_sealing: block is empty, and allow_empty_block is false");
@@ -816,12 +821,16 @@ impl MinerService for Miner {
             self.add_transactions_to_pool(client, transactions, TxOrigin::External, &mut mem_pool)
         };
 
-        if !results.is_empty() && self.options.reseal_on_external_transaction && self.transaction_reseal_allowed() {
+        if !results.is_empty()
+            && self.options.reseal_on_external_transaction
+            && self.transaction_reseal_allowed()
+            && !self.engine_type().ignore_reseal_on_transaction()
+        {
             // ------------------------------------------------------------------
             // | NOTE Code below requires mem_pool and sealing_queue locks.     |
             // | Make sure to release the locks before calling that method.     |
             // ------------------------------------------------------------------
-            self.update_sealing(client, false);
+            self.update_sealing(client, BlockId::Latest, false);
         }
         results
     }
@@ -858,7 +867,7 @@ impl MinerService for Miner {
         // | NOTE Code below requires mem_pool and sealing_queue locks.     |
         // | Make sure to release the locks before calling that method.     |
         // ------------------------------------------------------------------
-        if imported.is_ok() && self.options.reseal_on_own_transaction && self.transaction_reseal_allowed()
+        if imported.is_ok() && self.options.reseal_on_own_transaction && self.transaction_reseal_allowed() && !self.engine_type().ignore_reseal_on_transaction()
             // Make sure to do it after transaction is imported and lock is dropped.
             // We need to create pending block and enable sealing.
             && (self.engine.seals_internally().unwrap_or(false) || !self.prepare_work_sealing(chain))
@@ -866,7 +875,7 @@ impl MinerService for Miner {
             // If new block has not been prepared (means we already had one)
             // or Engine might be able to seal internally,
             // we need to update sealing.
-            self.update_sealing(chain, false);
+            self.update_sealing(chain, BlockId::Latest, false);
         }
         imported
     }
@@ -934,7 +943,7 @@ impl MinerService for Miner {
         // ------------------------------------------------------------------
         if self.transaction_reseal_allowed() {
             cdebug!(MINER, "Update sealing");
-            self.update_sealing(client, true);
+            self.update_sealing(client, BlockId::Latest, true);
         }
     }
 

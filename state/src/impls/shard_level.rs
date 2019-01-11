@@ -104,6 +104,7 @@ impl<'db> ShardLevelState<'db> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 output:
                     AssetMintOutput {
                         lock_script_hash,
@@ -120,6 +121,7 @@ impl<'db> ShardLevelState<'db> {
                     amount,
                     approver,
                     administrator,
+                    allowed_script_hashes,
                     sender,
                     shard_users,
                     Vec::new(),
@@ -141,12 +143,22 @@ impl<'db> ShardLevelState<'db> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 ..
-            } => self.change_asset_scheme(sender, approvers, asset_type, metadata, approver, administrator),
+            } => self.change_asset_scheme(
+                sender,
+                approvers,
+                asset_type,
+                metadata,
+                approver,
+                administrator,
+                allowed_script_hashes,
+            ),
             ShardTransaction::ComposeAsset {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
                 output,
                 ..
@@ -155,6 +167,7 @@ impl<'db> ShardLevelState<'db> {
                 metadata,
                 approver,
                 administrator,
+                allowed_script_hashes,
                 inputs,
                 output,
                 sender,
@@ -195,6 +208,7 @@ impl<'db> ShardLevelState<'db> {
         amount: &Option<u64>,
         approver: &Option<Address>,
         administrator: &Option<Address>,
+        allowed_script_hashes: &[H160],
         sender: &Address,
         shard_users: &[Address],
         pool: Vec<Asset>,
@@ -214,6 +228,7 @@ impl<'db> ShardLevelState<'db> {
             amount,
             *approver,
             *administrator,
+            allowed_script_hashes.to_vec(),
             pool,
         )?;
 
@@ -277,6 +292,8 @@ impl<'db> ShardLevelState<'db> {
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
+            self.check_output_script_hash(output)?;
+
             let asset_address = OwnedAssetAddress::new(transaction.tracker(), index, self.shard_id);
             let _asset = self.create_asset(
                 &asset_address,
@@ -299,7 +316,7 @@ impl<'db> ShardLevelState<'db> {
             let mut counter: usize = 0;
             for input_idx in order_tx.input_indices.iter() {
                 let input = &inputs[*input_idx];
-                let transaction_tracker = input.prev_out.transaction_hash;
+                let transaction_tracker = input.prev_out.tracker;
                 let index = input.prev_out.index;
                 let address = OwnedAssetAddress::new(transaction_tracker, index, self.shard_id);
                 let asset = self.asset(&address)?.ok_or_else(|| TransactionError::AssetNotFound(address.into()))?;
@@ -330,6 +347,7 @@ impl<'db> ShardLevelState<'db> {
         metadata: &str,
         approver: &Option<Address>,
         administrator: &Option<Address>,
+        allowed_script_hashes: &[H160],
     ) -> StateResult<()> {
         let asset_scheme_address = AssetSchemeAddress::from_hash(*asset_type)
             .ok_or_else(|| TransactionError::AssetSchemeNotFound(*asset_type))?;
@@ -347,7 +365,12 @@ impl<'db> ShardLevelState<'db> {
             }
         }
         let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
-        asset_scheme.change_data(metadata.to_string(), approver.clone(), administrator.clone());
+        asset_scheme.change_data(
+            metadata.to_string(),
+            approver.clone(),
+            administrator.clone(),
+            allowed_script_hashes.to_vec(),
+        );
 
         Ok(())
     }
@@ -358,8 +381,7 @@ impl<'db> ShardLevelState<'db> {
         sender: &Address,
         approvers: &[Address],
     ) -> StateResult<(OwnedAsset, OwnedAssetAddress)> {
-        let asset_address =
-            OwnedAssetAddress::new(input.prev_out.transaction_hash, input.prev_out.index, self.shard_id);
+        let asset_address = OwnedAssetAddress::new(input.prev_out.tracker, input.prev_out.index, self.shard_id);
         let asset_scheme_address = AssetSchemeAddress::from_hash(input.prev_out.asset_type)
             .ok_or_else(|| TransactionError::AssetSchemeNotFound(input.prev_out.asset_type))?;
 
@@ -392,6 +414,20 @@ impl<'db> ShardLevelState<'db> {
         }
     }
 
+    fn check_output_script_hash(&self, output: &AssetTransferOutput) -> StateResult<()> {
+        let asset_scheme = {
+            let asset_scheme_address =
+                AssetSchemeAddress::from_hash(output.asset_type).expect("Asset type must be the valid format");
+            self.asset_scheme(&asset_scheme_address)?.expect("AssetScheme must exist when the asset exist")
+        };
+        let lock_script_hash = output.lock_script_hash;
+        if asset_scheme.is_allowed_script_hash(&lock_script_hash) {
+            Ok(())
+        } else {
+            Err(TransactionError::ScriptNotAllowed(lock_script_hash).into())
+        }
+    }
+
     fn check_and_run_input_script<C: ChainTimeInfo>(
         &self,
         input: &AssetTransferInput,
@@ -406,7 +442,7 @@ impl<'db> ShardLevelState<'db> {
 
         let (address, asset) = {
             let index = input.prev_out.index;
-            let address = OwnedAssetAddress::new(input.prev_out.transaction_hash, index, self.shard_id);
+            let address = OwnedAssetAddress::new(input.prev_out.tracker, index, self.shard_id);
             match self.asset(&address)? {
                 Some(asset) => (address.into(), asset),
                 None => return Err(TransactionError::AssetNotFound(address.into()).into()),
@@ -488,6 +524,7 @@ impl<'db> ShardLevelState<'db> {
         metadata: &str,
         approver: &Option<Address>,
         administrator: &Option<Address>,
+        allowed_script_hashes: &[H160],
         inputs: &[AssetTransferInput],
         output: &AssetMintOutput,
         sender: &Address,
@@ -529,6 +566,7 @@ impl<'db> ShardLevelState<'db> {
             &output.amount,
             approver,
             administrator,
+            allowed_script_hashes,
             sender,
             shard_users,
             pool,
@@ -640,6 +678,7 @@ impl<'db> ShardLevelState<'db> {
                 None,
                 None,
                 Vec::new(),
+                Vec::new(),
             );
             // FIXME: Wrapped CCC is minted in here, but the metadata is not well-defined.
             ctrace!(
@@ -696,10 +735,11 @@ impl<'db> ShardLevelState<'db> {
         amount: u64,
         approver: Option<Address>,
         administrator: Option<Address>,
+        allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> cmerkle::Result<AssetScheme> {
         let mut asset_scheme = self.get_asset_scheme_mut(a)?;
-        asset_scheme.init(metadata, amount, approver, administrator, pool);
+        asset_scheme.init(metadata, amount, approver, administrator, allowed_script_hashes, pool);
         Ok(asset_scheme.clone())
     }
 
@@ -1014,6 +1054,101 @@ mod tests {
             (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10, lock_script_hash: lock_script_hash }),
             (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, amount: 5, lock_script_hash: lock_script_hash }),
             (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15, lock_script_hash: random_lock_script_hash })
+        ]);
+    }
+
+    #[test]
+    fn mint_and_transfer_allowed() {
+        let sender = address();
+        let mut state_db = RefCell::new(get_temp_state_db());
+        let mut shard_cache = ShardCache::default();
+        let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
+        let random_lock_script_hash = H160::random();
+        let allowed_script_hashes = vec![lock_script_hash, random_lock_script_hash];
+
+        let amount = 30;
+        let mint = asset_mint!(
+            asset_mint_output!(lock_script_hash, amount: amount),
+            metadata.clone(),
+            allowed_script_hashes: allowed_script_hashes.clone()
+        );
+        let mint_tracker = mint.tracker();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
+
+        let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
+
+        check_shard_level_state!(state, [
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+        ]);
+
+        let transfer = asset_transfer!(
+            inputs: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
+            asset_transfer_outputs![
+                (lock_script_hash, vec![vec![1]], asset_type, 10),
+                (lock_script_hash, asset_type, 5),
+                (random_lock_script_hash, asset_type, 15),
+            ]
+        );
+        let transfer_tracker = transfer.tracker();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client()));
+
+        check_shard_level_state!(state, [
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID)),
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10, lock_script_hash: lock_script_hash }),
+            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, amount: 5, lock_script_hash: lock_script_hash }),
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15, lock_script_hash: random_lock_script_hash })
+        ]);
+    }
+
+    #[test]
+    fn mint_and_transfer_not_allowed() {
+        let sender = address();
+        let mut state_db = RefCell::new(get_temp_state_db());
+        let mut shard_cache = ShardCache::default();
+        let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
+        let amount = 30;
+        let allowed_lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
+        let allowed_script_hashes = vec![allowed_lock_script_hash];
+        let mint = asset_mint!(
+            asset_mint_output!(lock_script_hash, amount: amount),
+            metadata.clone(),
+            allowed_script_hashes: allowed_script_hashes.clone()
+        );
+        let mint_tracker = mint.tracker();
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
+
+        let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
+        check_shard_level_state!(state, [
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+        ]);
+
+        let transfer = asset_transfer!(
+            inputs: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
+            asset_transfer_outputs![(lock_script_hash, asset_type, 30)]
+        );
+        let transfer_tracker = transfer.tracker();
+
+        assert_eq!(
+            Ok(Invoice::Failure(TransactionError::ScriptNotAllowed(lock_script_hash).into())),
+            state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client())
+        );
+
+        check_shard_level_state!(state, [
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount }),
+            (asset: (transfer_tracker, 0, SHARD_ID))
         ]);
     }
 
@@ -1387,12 +1522,12 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_output_1.transaction_hash, SHARD_ID) => { metadata: "metadata1".to_string(), amount: 30 }),
-            (scheme: (mint_output_2.transaction_hash, SHARD_ID) => { metadata: "metadata2".to_string(), amount: 30 }),
-            (scheme: (mint_output_3.transaction_hash, SHARD_ID) => { metadata: "metadata3".to_string(), amount: 30 }),
-            (asset: (mint_output_1.transaction_hash, 0, SHARD_ID)),
-            (asset: (mint_output_2.transaction_hash, 0, SHARD_ID)),
-            (asset: (mint_output_3.transaction_hash, 0, SHARD_ID)),
+            (scheme: (mint_output_1.tracker, SHARD_ID) => { metadata: "metadata1".to_string(), amount: 30 }),
+            (scheme: (mint_output_2.tracker, SHARD_ID) => { metadata: "metadata2".to_string(), amount: 30 }),
+            (scheme: (mint_output_3.tracker, SHARD_ID) => { metadata: "metadata3".to_string(), amount: 30 }),
+            (asset: (mint_output_1.tracker, 0, SHARD_ID)),
+            (asset: (mint_output_2.tracker, 0, SHARD_ID)),
+            (asset: (mint_output_3.tracker, 0, SHARD_ID)),
             (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type_1, amount: 10, order: order_consumed_hash }),
             (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type_2, amount: 10, order: order_consumed_hash }),
             (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type_3, amount: 10, order: order_consumed_hash }),
@@ -2036,6 +2171,7 @@ mod tests {
             metadata: "New metadata".to_string(),
             approver: Some(approver),
             administrator: None,
+            allowed_script_hashes: Vec::new(),
         };
         assert_eq!(
             Ok(Invoice::Success),

@@ -40,6 +40,7 @@ pub enum Error {
     InvalidAssetType(H256),
     /// Script hash does not match with provided lock script
     ScriptHashMismatch(Mismatch<H160>),
+    ScriptNotAllowed(H160),
     /// Failed to decode script
     InvalidScript,
     /// Script execution result is `Fail`
@@ -143,6 +144,7 @@ const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 32u8;
 const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 33u8;
 const ERROR_ID_ORDER_RECIPIENTS_ARE_SAME: u8 = 34u8;
 const ERROR_ID_ORDER_EXPIRED: u8 = 35u8;
+const ERROR_ID_SCRIPT_NOT_ALLOWED: u8 = 36u8;
 
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -161,6 +163,7 @@ impl Encodable for Error {
             Error::ScriptHashMismatch(mismatch) => {
                 s.begin_list(2).append(&ERROR_ID_SCRIPT_HASH_MISMATCH).append(mismatch)
             }
+            Error::ScriptNotAllowed(hash) => s.begin_list(2).append(&ERROR_ID_SCRIPT_NOT_ALLOWED).append(hash),
             Error::InvalidScript => s.begin_list(1).append(&ERROR_ID_INVALID_SCRIPT),
             Error::FailedToUnlock {
                 address,
@@ -273,6 +276,12 @@ impl Decodable for Error {
                     return Err(DecoderError::RlpInvalidLength)
                 }
                 Error::ScriptHashMismatch(rlp.val_at(1)?)
+            }
+            ERROR_ID_SCRIPT_NOT_ALLOWED => {
+                if rlp.item_count()? != 2 {
+                    return Err(DecoderError::RlpInvalidLength)
+                }
+                Error::ScriptNotAllowed(rlp.val_at(1)?)
             }
             ERROR_ID_INVALID_SCRIPT => {
                 if rlp.item_count()? != 1 {
@@ -477,6 +486,9 @@ impl Display for Error {
             Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
             Error::ScriptHashMismatch(mismatch) => {
                 write!(f, "Expected script with hash {}, but got {}", mismatch.expected, mismatch.found)
+            }
+            Error::ScriptNotAllowed(hash) => {
+                write!(f, "Output lock script hash is not allowed : {}", hash)
             }
             Error::InvalidScript => write!(f, "Failed to decode script"),
             Error::FailedToUnlock {

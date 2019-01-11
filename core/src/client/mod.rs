@@ -102,7 +102,7 @@ pub trait EngineInfo: Send + Sync {
 /// Client facilities used by internally sealing Engines.
 pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock + BlockInfo {
     /// Make a new block and seal it.
-    fn update_sealing(&self, allow_empty_block: bool);
+    fn update_sealing(&self, parent_block: BlockId, allow_empty_block: bool);
 
     /// Submit a seal for a block in the mining queue.
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>);
@@ -245,10 +245,10 @@ pub trait BlockChainClient:
     /// Get parcel invoice with given hash.
     fn parcel_invoice(&self, id: &TransactionId) -> Option<Invoice>;
 
-    /// Get the transaction with given hash.
-    fn transaction(&self, hash: &H256) -> Option<LocalizedTransaction>;
+    /// Get the transaction with given tracker.
+    fn transaction(&self, tracker: &H256) -> Option<LocalizedTransaction>;
 
-    fn transaction_invoices(&self, hash: &H256) -> Vec<Invoice>;
+    fn transaction_invoices(&self, tracker: &H256) -> Vec<Invoice>;
 }
 
 /// Result of import block operation.
@@ -269,7 +269,7 @@ pub trait ReopenBlock {
 /// Provides `prepare_open_block` method
 pub trait PrepareOpenBlock {
     /// Returns OpenBlock prepared for closing.
-    fn prepare_open_block(&self, author: Address, extra_data: Bytes) -> OpenBlock;
+    fn prepare_open_block(&self, parent_block: BlockId, author: Address, extra_data: Bytes) -> OpenBlock;
 }
 
 /// Provides methods used for sealing new state

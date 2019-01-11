@@ -26,6 +26,42 @@ use super::message::VoteStep;
 pub type Height = usize;
 pub type View = usize;
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum TendermintState {
+    Propose,
+    ProposeWaitBlockGeneration {
+        parent_hash: H256,
+    },
+    Prevote,
+    Precommit,
+    Commit,
+}
+
+impl TendermintState {
+    pub fn to_step(&self) -> Step {
+        match self {
+            TendermintState::Propose => Step::Propose,
+            TendermintState::ProposeWaitBlockGeneration {
+                ..
+            } => Step::Propose,
+            TendermintState::Prevote => Step::Prevote,
+            TendermintState::Precommit => Step::Precommit,
+            TendermintState::Commit => Step::Commit,
+        }
+    }
+}
+
+impl From<Step> for TendermintState {
+    fn from(s: Step) -> Self {
+        match s {
+            Step::Propose => TendermintState::Propose,
+            Step::Prevote => TendermintState::Prevote,
+            Step::Precommit => TendermintState::Precommit,
+            Step::Commit => TendermintState::Commit,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Step {
     Propose,

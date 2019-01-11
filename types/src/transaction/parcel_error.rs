@@ -17,7 +17,6 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::{Address, Error as KeyError, NetworkId};
-use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::transaction::Error as TransactionError;
@@ -59,7 +58,6 @@ pub enum Error {
     /// Returned when transaction seq does not match state seq
     InvalidSeq(Mismatch<u64>),
     InvalidShardId(ShardId),
-    InvalidShardRoot(Mismatch<H256>),
     ZeroAmount,
     /// Signature error
     InvalidSignature(String),
@@ -88,7 +86,6 @@ const ERROR_ID_INSUFFICIENT_FEE: u8 = 8u8;
 const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 9u8;
 const ERROR_ID_INVALID_SEQ: u8 = 10u8;
 const ERROR_ID_INVALID_SHARD_ID: u8 = 11u8;
-const ERROR_ID_INVALID_SHARD_ROOT: u8 = 12u8;
 const ERROR_ID_INVALID_SIGNATURE: u8 = 14u8;
 const ERROR_ID_INCONSISTENT_SHARD_OUTCOMES: u8 = 15u8;
 const ERROR_ID_TX_IS_TOO_BIG: u8 = 16u8;
@@ -120,7 +117,6 @@ impl Error {
             } => 4,
             Error::InvalidSeq(_) => 2,
             Error::InvalidShardId(_) => 2,
-            Error::InvalidShardRoot(_) => 2,
             Error::ZeroAmount => 1,
             Error::InvalidSignature(_) => 2,
             Error::InconsistentShardOutcomes => 1,
@@ -158,7 +154,6 @@ impl Encodable for Error {
             } => s.append(&ERROR_ID_INSUFFICIENT_BALANCE).append(address).append(balance).append(cost),
             Error::InvalidSeq(mismatch) => s.append(&ERROR_ID_INVALID_SEQ).append(mismatch),
             Error::InvalidShardId(shard_id) => s.append(&ERROR_ID_INVALID_SHARD_ID).append(shard_id),
-            Error::InvalidShardRoot(mismatch) => s.append(&ERROR_ID_INVALID_SHARD_ROOT).append(mismatch),
             Error::ZeroAmount => s.append(&ERROR_ID_ZERO_AMOUNT),
             Error::InvalidSignature(err) => s.append(&ERROR_ID_INVALID_SIGNATURE).append(err),
             Error::InconsistentShardOutcomes => s.append(&ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
@@ -199,7 +194,6 @@ impl Decodable for Error {
             },
             ERROR_ID_INVALID_SEQ => Error::InvalidSeq(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
-            ERROR_ID_INVALID_SHARD_ROOT => Error::InvalidShardRoot(rlp.val_at(1)?),
             ERROR_ID_ZERO_AMOUNT => Error::ZeroAmount,
             ERROR_ID_INVALID_SIGNATURE => Error::InvalidSignature(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => Error::InconsistentShardOutcomes,
@@ -242,7 +236,6 @@ impl Display for Error {
             } => format!("{} has only {:?} but it must be larger than {:?}", address, balance, cost),
             Error::InvalidSeq(mismatch) => format!("Invalid transaction seq {}", mismatch),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
-            Error::InvalidShardRoot(mismatch) => format!("Invalid shard root {}", mismatch),
             Error::ZeroAmount => "An amount cannot be 0".to_string(),
             Error::InvalidSignature(err) => format!("Transaction has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),

@@ -432,7 +432,9 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
         let body_rlp = body.rlp();
         block.append_raw(header.rlp().as_raw(), 1);
         block.append_raw(body_rlp.at(0).as_raw(), 1);
-        Some(encoded::Block::new(block.out()))
+        let encoded_block = encoded::Block::new(block.out());
+        debug_assert_eq!(*hash, encoded_block.hash());
+        Some(encoded_block)
     }
 
     /// Get parcel with given parcel hash.
@@ -483,8 +485,8 @@ impl BodyProvider for BlockChain {
         self.body_db.parcel_address(hash)
     }
 
-    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
-        self.body_db.transaction_address(hash)
+    fn transaction_address(&self, tracker: &H256) -> Option<TransactionAddress> {
+        self.body_db.transaction_address(tracker)
     }
 
     fn block_body(&self, hash: &H256) -> Option<encoded::Body> {

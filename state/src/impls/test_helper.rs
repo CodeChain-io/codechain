@@ -30,6 +30,7 @@ macro_rules! mint_asset {
             output: $output,
             approver: None,
             administrator: None,
+            allowed_script_hashes: vec![],
             approvals: vec![],
         }
     };
@@ -41,6 +42,7 @@ macro_rules! mint_asset {
             output: $output,
             approver: Some($approver),
             administrator: None,
+            allowed_script_hashes: vec![],
             approvals: vec![],
         }
     };
@@ -52,6 +54,7 @@ macro_rules! mint_asset {
             output: $output,
             approver: None,
             administrator: Some($admin),
+            allowed_script_hashes: vec![],
             approvals: vec![],
         }
     };
@@ -66,6 +69,7 @@ macro_rules! asset_mint {
             output: $output,
             approver: None,
             administrator: None,
+            allowed_script_hashes: vec![],
         }
     };
     ($output:expr, $metadata:expr, approver: $approver:expr) => {
@@ -76,6 +80,7 @@ macro_rules! asset_mint {
             output: $output,
             approver: Some($approver),
             administrator: None,
+            allowed_script_hashes: vec![],
         }
     };
     ($output:expr, $metadata:expr, administrator: $admin:expr) => {
@@ -86,6 +91,18 @@ macro_rules! asset_mint {
             output: $output,
             approver: None,
             administrator: Some($admin),
+            allowed_script_hashes: vec![],
+        }
+    };
+    ($output:expr, $metadata:expr, allowed_script_hashes: $allowed:expr) => {
+        $crate::ctypes::transaction::ShardTransaction::MintAsset {
+            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
+            shard_id: $crate::impls::test_helper::SHARD_ID,
+            metadata: $metadata,
+            output: $output,
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: $allowed,
         }
     };
 }
@@ -113,7 +130,7 @@ macro_rules! asset_mint_output {
 macro_rules! asset_out_point {
     ($tracker:expr, $index:expr, $asset_type:expr, $amount:expr) => {
         $crate::ctypes::transaction::AssetOutPoint {
-            transaction_hash: $tracker,
+            tracker: $tracker,
             index: $index,
             asset_type: $asset_type,
             amount: $amount,
@@ -283,6 +300,7 @@ macro_rules! asset_compose {
             metadata: $metadata,
             approver: None,
             administrator: None,
+            allowed_script_hashes: vec![],
             inputs: $inputs,
             output: $outputs,
         }
@@ -457,7 +475,7 @@ macro_rules! set_top_level_state {
         set_top_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(scheme: ($shard:expr, $addr:expr) => { amount: $amount:expr, metadata: $metadata:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
-        assert_eq!(Ok((true)), $state.create_asset_scheme($shard, &$addr, $metadata, $amount, $approver, None, Vec::new()));
+        assert_eq!(Ok((true)), $state.create_asset_scheme($shard, &$addr, $metadata, $amount, $approver, None, Vec::new(), Vec::new()));
 
         set_top_level_state!($state, [$($x),*]);
     };
@@ -565,6 +583,15 @@ macro_rules! check_shard_level_state {
         let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
         assert_eq!(&$metadata, scheme.metadata());
         assert_eq!($amount, scheme.amount());
+
+        check_shard_level_state!($state, [$($x),*]);
+    };
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr, allowed_script_hashes: $allowed:expr}) $(,$x:tt)*]) => {
+        let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
+        let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
+        assert_eq!(&$metadata, scheme.metadata());
+        assert_eq!($amount, scheme.amount());
+        assert_eq!($allowed, scheme.allowed_script_hashes());
 
         check_shard_level_state!($state, [$($x),*]);
     };

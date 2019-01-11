@@ -93,9 +93,39 @@ impl Seal {
 /// Engine type.
 #[derive(Debug, PartialEq, Eq)]
 pub enum EngineType {
-    InternalSealing,
+    PoA,
+    PBFT,
     PoW,
     Solo,
+}
+
+impl EngineType {
+    pub fn need_signer_key(&self) -> bool {
+        match self {
+            EngineType::PoA => true,
+            EngineType::PBFT => true,
+            EngineType::Solo => false,
+            EngineType::PoW => false,
+        }
+    }
+
+    pub fn ignore_reseal_min_period(&self) -> bool {
+        match self {
+            EngineType::PoA => false,
+            EngineType::PBFT => true,
+            EngineType::Solo => false,
+            EngineType::PoW => false,
+        }
+    }
+
+    pub fn ignore_reseal_on_transaction(&self) -> bool {
+        match self {
+            EngineType::PoA => false,
+            EngineType::PBFT => true,
+            EngineType::Solo => false,
+            EngineType::PoW => false,
+        }
+    }
 }
 
 /// A consensus mechanism for the chain.
@@ -281,13 +311,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
         header.hash()
-    }
-
-    /// Some consensus(like Tendermint) could not mine on the client's best block,
-    /// because the client's best block could be different from the consensus engine's.
-    /// So ask to the consensus engine which block to mine on.
-    fn get_block_hash_to_mine_on(&self, best_block_hash: H256) -> H256 {
-        best_block_hash
     }
 
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {

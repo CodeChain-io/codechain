@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod local_tranasctions;
 mod mem_pool;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod miner;
@@ -39,6 +38,7 @@ use crate::client::{
 use crate::consensus::EngineType;
 use crate::error::Error;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::BlockId;
 
 /// Miner client API
 pub trait MinerService: Send + Sync {
@@ -72,7 +72,7 @@ pub trait MinerService: Send + Sync {
     /// Called when blocks are imported to chain, updates transactions queue.
     fn chain_new_blocks<C>(&self, chain: &C, imported: &[H256], invalid: &[H256], enacted: &[H256], retracted: &[H256])
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner;
+        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ResealTimer;
 
     /// PoW chain - can produce work package
     fn can_produce_work_package(&self) -> bool;
@@ -86,7 +86,7 @@ pub trait MinerService: Send + Sync {
         C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler;
 
     /// New chain head event. Restart mining operation.
-    fn update_sealing<C>(&self, chain: &C, allow_empty_block: bool)
+    fn update_sealing<C>(&self, chain: &C, parent_block: BlockId, allow_empty_block: bool)
     where
         C: AccountData
             + BlockChain

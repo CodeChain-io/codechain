@@ -302,7 +302,7 @@ impl ReopenBlock for TestBlockChainClient {
 }
 
 impl PrepareOpenBlock for TestBlockChainClient {
-    fn prepare_open_block(&self, author: Address, extra_data: Bytes) -> OpenBlock {
+    fn prepare_open_block(&self, _parent_block: BlockId, author: Address, extra_data: Bytes) -> OpenBlock {
         let engine = &*self.scheme.engine;
         let genesis_header = self.scheme.genesis_header();
         let db = get_temp_state_db();
@@ -560,8 +560,8 @@ impl ChainTimeInfo for TestBlockChainClient {
 impl FindActionHandler for TestBlockChainClient {}
 
 impl super::EngineClient for TestBlockChainClient {
-    fn update_sealing(&self, allow_empty_block: bool) {
-        self.miner.update_sealing(self, allow_empty_block)
+    fn update_sealing(&self, parent_block: BlockId, allow_empty_block: bool) {
+        self.miner.update_sealing(self, parent_block, allow_empty_block)
     }
 
     fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {

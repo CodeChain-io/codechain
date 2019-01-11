@@ -255,14 +255,14 @@ describe("sync 2 nodes", function() {
                         expect(await nodeA.getBestBlockHash()).to.deep.equal(
                             await nodeB.getBestBlockHash()
                         );
-                        const invoicesA = await nodeA.sdk.rpc.chain.getInvoicesById(
-                            tx2.id()
+                        const invoicesA = await nodeA.sdk.rpc.chain.getInvoicesByTracker(
+                            tx2.tracker()
                         );
                         expect(invoicesA!.length).to.equal(1);
                         expect(invoicesA![0].success).to.be.false;
 
-                        const invoicesB = await nodeB.sdk.rpc.chain.getInvoicesById(
-                            tx2.id()
+                        const invoicesB = await nodeB.sdk.rpc.chain.getInvoicesByTracker(
+                            tx2.tracker()
                         );
                         expect(invoicesB!.length).to.equal(1);
                         expect(invoicesB![0].success).to.be.false;
@@ -285,14 +285,14 @@ describe("sync 2 nodes", function() {
                             await nodeB.getBestBlockHash()
                         );
 
-                        const invoicesA = await nodeA.sdk.rpc.chain.getInvoicesById(
-                            tx2.id()
+                        const invoicesA = await nodeA.sdk.rpc.chain.getInvoicesByTracker(
+                            tx2.tracker()
                         );
                         expect(invoicesA!.length).to.equal(1);
                         expect(invoicesA![0].success).to.be.true;
 
-                        const invoicesB = await nodeB.sdk.rpc.chain.getInvoicesById(
-                            tx2.id()
+                        const invoicesB = await nodeB.sdk.rpc.chain.getInvoicesByTracker(
+                            tx2.tracker()
                         );
                         expect(invoicesB!.length).to.equal(1);
                         expect(invoicesB![0].success).to.be.true;
