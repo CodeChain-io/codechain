@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+RESULT_FILE=$1
+
+echo "Event type ${TRAVIS_EVENT_TYPE}"
+echo "Branch: ${TRAVIS_EVENT_TYPE}"
+echo "Commit: ${TRAVIS_COMMIT}"
+echo "Range: ${TRAVIS_COMMIT_RANGE}"
+
+case ${TRAVIS_EVENT_TYPE} in
+push)
+    if [[ "${TRAVIS_BRANCH}" = master ]]
+    then
+        CHANGES=$(git diff --name-only ${TRAVIS_COMMIT_RANGE})
+        RESULT=$?
+        if [[ ( -z "$CHANGES" ) && ( $RESULT -ne 0 ) ]]
+        then
+            # A--B
+            #  \__C
+            # When you push force B to C, Travis set $TRAVIS_COMMIT_RANGE to "B...C"
+            # B doesn't exist anymore, so we cannot fetch, find merge-base.
+            # We can tell whether B doesn't exists or not using git-diff.
+            # It'll exit by non-zero with empty output.
+            # Since we cannot find common ancestor(A), we should do full check.
+            echo "Don't skip for force push"
+            echo "noskip" > $RESULT_FILE
+            exit
+        else
+            # A--B--C
+            # Branch was forwarded A to B, or B to C. $TRAVIS_COMMIT_RANGE will be A...B or B...C
+            # NOTE:
+            #   When job for A->B contains non-doc changes, and didn't finished yet,
+            #   a job B->C which only contains doc changes will automatically cancel A->B
+            #   and can report B->C to success.
+            #   TODO: disable auto cancel on master
+            echo "Forward push"
+            COMMIT_RANGE=${TRAVIS_COMMIT_RANGE}
+        fi
+    else
+        # Whether it was force push or forward push,
+        # we can find common ancestor of master and the branch.
+        echo "Branch push"
+        git fetch origin master:master;
+        BASE=`git merge-base master ${TRAVIS_COMMIT}`
+        COMMIT_RANGE="${BASE}...${TRAVIS_COMMIT}"
+    fi
+    ;;
+pull_request)
+    # $TRAVIS_COMMIT_RANGE will "MERGE_BASE...BRANCH"
+    echo "Pull request"
+    COMMIT_RANGE=${TRAVIS_COMMIT_RANGE}
+    ;;
+*)
+    echo "Don't skip for api, cron event"
+    echo "noskip" > $RESULT_FILE
+    exit
+    ;;
+esac
+
+git log --oneline --decorate --all --graph | head -n 10;
+echo "Check doc change for: ${COMMIT_RANGE}"
+if ! git diff --name-only ${COMMIT_RANGE} | grep -qvE '^(docs|spec)/'
+then
+  echo "Only docs were updated, or there's no change, not running the CI."
+  echo "skip" > $RESULT_FILE
+  exit
+fi
