@@ -14,7 +14,7 @@ Script language in CodeChain uses [CodeChain Virtual Machine](CodeChain-Virtual-
 
 ## Overall process
 
-Overall execution process is similar to P2SH in Bitcoin. Detailed execution process is as follows:
+The overall execution process is similar to P2SH in Bitcoin. Detailed execution process is as follows:
 
 1. Check if an asset’s script hash is equal to the hash of provided lock script.
 1. Decode the lock script and unlock script into a list of instructions.
@@ -26,13 +26,13 @@ If an exception occurs during the procedure described above, the transaction wil
 
 ## Execution result
 
-Result is **SUCCESS** when **all** of the following conditions are met:
+The result is **SUCCESS** when **all** of the following conditions are met:
 
 * There are no more instructions to execute
-* Stack has only one item
-* Stack’s topmost value is not zero when converted into an integer
+* The stack only has one item
+* The stack’s topmost value is not zero when converted into an integer
 
-Result is **BURNT** when one of the following conditions are met:
+The result is **BURNT** when one of the following conditions are met:
 * Self-burning instruction was executed
 
-Result is **FAIL** for all other cases
+The result is **FAIL** for all other cases
