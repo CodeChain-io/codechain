@@ -116,11 +116,12 @@ where
     /// When using `#row_mut` it may happen that all values from some row are drained.
     /// Table however will not be aware that row is empty.
     /// You can use this method to explicitly remove row entry from the Table.
-    pub fn clear_if_empty(&mut self, row: &Row) {
+    pub fn clear_if_empty(&mut self, row: &Row) -> bool {
         let is_empty = self.map.get(row).map_or(false, |m| m.is_empty());
         if is_empty {
             self.map.remove(row);
         }
+        is_empty
     }
 
     /// Inserts new value to specified cell
@@ -261,7 +262,7 @@ mod test {
             row.remove(&2);
         }
         assert!(table.has_row(&1));
-        table.clear_if_empty(&1);
+        assert!(table.clear_if_empty(&1));
 
         // then
         assert!(!table.has_row(&1));

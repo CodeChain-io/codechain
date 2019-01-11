@@ -16,7 +16,7 @@
 
 use std::cmp;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::mem::size_of_val;
 
 use ckey::{public_to_address, Public};
@@ -75,6 +75,10 @@ impl TxOrigin {
     fn is_local_or_retracted(self) -> bool {
         self == TxOrigin::Local || self == TxOrigin::RetractedBlock
     }
+
+    fn is_external(self) -> bool {
+        self == TxOrigin::External
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -126,6 +130,11 @@ impl TransactionOrder {
 
     fn update_height(mut self, seq: u64, base_seq: u64) -> Self {
         self.seq_height = seq - base_seq;
+        self
+    }
+
+    fn change_origin(mut self, origin: TxOrigin) -> Self {
+        self.origin = origin;
         self
     }
 }
@@ -407,6 +416,8 @@ pub struct MemPool {
     first_seqs: HashMap<Public, u64>,
     /// Next seq of transaction in current (to quickly check next expected transaction)
     next_seqs: HashMap<Public, u64>,
+    /// Check if there's any local transaction from specific account
+    is_local_account: HashSet<Public>,
     /// The time when the pool is finally used
     last_time: PoolingInstant,
     /// The timestamp when the pool is finally used
@@ -441,6 +452,7 @@ impl MemPool {
             by_hash: HashMap::new(),
             first_seqs: HashMap::new(),
             next_seqs: HashMap::new(),
+            is_local_account: HashSet::new(),
             last_time: 0,
             last_timestamp: 0,
             next_transaction_id: 0,
@@ -496,7 +508,9 @@ impl MemPool {
             self.by_signer_public
                 .remove(&signer_public, &seq)
                 .expect("`by_hash` and `by_signer_public` should be synced");
-            self.by_signer_public.clear_if_empty(&signer_public);
+            if self.by_signer_public.clear_if_empty(&signer_public) {
+                self.is_local_account.remove(&signer_public);
+            }
             if is_current {
                 self.current.remove(order);
             } else {
@@ -555,14 +569,24 @@ impl MemPool {
         ctrace!(MEM_POOL, "add() called, time: {}, timestamp: {}", current_time, current_timestamp);
         let mut insert_results = Vec::new();
         let mut to_insert: HashMap<Public, Vec<u64>> = HashMap::new();
+        let mut new_local_accounts = HashSet::new();
 
         for input in inputs {
             let tx = input.transaction;
             let signer_public = tx.signer_public();
             let seq = tx.seq;
             let hash = tx.hash();
-            let origin = input.origin;
             let timelock = input.timelock;
+
+            let origin = if input.origin.is_local() && !self.is_local_account.contains(&signer_public) {
+                self.is_local_account.insert(signer_public);
+                new_local_accounts.insert(signer_public);
+                TxOrigin::Local
+            } else if input.origin.is_external() && self.is_local_account.contains(&signer_public) {
+                TxOrigin::Local
+            } else {
+                input.origin
+            };
 
             let client_account = fetch_account(&signer_public);
             if let Err(e) = self.verify_transaction(&tx, origin, &client_account) {
@@ -617,9 +641,10 @@ impl MemPool {
                     .unwrap_or_else(|| self.check_transactions(public, next_seq, current_time, current_timestamp))
             };
 
-            // Need to update the height
-            if current_seq != first_seq {
-                self.update_seq(public, current_seq, new_next_seq);
+            let is_this_account_local = new_local_accounts.contains(&public);
+            // Need to update transactions because of height/origin change
+            if current_seq != first_seq || is_this_account_local {
+                self.update_orders(public, current_seq, new_next_seq, is_this_account_local);
                 self.first_seqs.insert(public, current_seq);
                 first_seq = current_seq;
             }
@@ -641,7 +666,9 @@ impl MemPool {
                 self.add_new_orders_to_queue(public, seq_list, new_next_seq);
             }
 
-            self.by_signer_public.clear_if_empty(&public);
+            if self.by_signer_public.clear_if_empty(&public) {
+                self.is_local_account.remove(&public);
+            }
         }
 
         self.enforce_limit();
@@ -770,7 +797,7 @@ impl MemPool {
 
             // Need to update the height
             if current_seq != first_seq {
-                self.update_seq(public, current_seq, new_next_seq);
+                self.update_orders(public, current_seq, new_next_seq, false);
                 self.first_seqs.insert(public, current_seq);
                 first_seq = current_seq;
             }
@@ -788,7 +815,9 @@ impl MemPool {
                 self.next_seqs.insert(public, new_next_seq);
             }
 
-            self.by_signer_public.clear_if_empty(&public);
+            if self.by_signer_public.clear_if_empty(&public) {
+                self.is_local_account.remove(&public);
+            }
         }
 
         assert_eq!(self.current.len() + self.future.len(), self.by_hash.len());
@@ -915,7 +944,7 @@ impl MemPool {
 
     /// Updates the seq height of the orders in the queues and self.by_signer_public.
     /// Also, drops old transactions.
-    fn update_seq(&mut self, public: Public, current_seq: u64, new_next_seq: u64) {
+    fn update_orders(&mut self, public: Public, current_seq: u64, new_next_seq: u64, to_local: bool) {
         let row = self
             .by_signer_public
             .row_mut(&public)
@@ -937,16 +966,22 @@ impl MemPool {
 
             if seq < current_seq {
                 self.by_hash.remove(&old_order.hash);
-            } else if seq < new_next_seq {
-                let new_order = old_order.update_height(seq, current_seq);
-                let new_order_with_tag = TransactionOrderWithTag::new(new_order, QueueTag::Current);
-                self.current.insert(new_order);
-                row.insert(seq, new_order_with_tag);
             } else {
                 let new_order = old_order.update_height(seq, current_seq);
-                let new_order_with_tag = TransactionOrderWithTag::new(new_order, QueueTag::Future);
-                self.future.insert(new_order);
-                row.insert(seq, new_order_with_tag);
+                let new_order = if to_local {
+                    new_order.change_origin(TxOrigin::Local)
+                } else {
+                    new_order
+                };
+                if seq < new_next_seq {
+                    let new_order_with_tag = TransactionOrderWithTag::new(new_order, QueueTag::Current);
+                    self.current.insert(new_order);
+                    row.insert(seq, new_order_with_tag);
+                } else {
+                    let new_order_with_tag = TransactionOrderWithTag::new(new_order, QueueTag::Future);
+                    self.future.insert(new_order);
+                    row.insert(seq, new_order_with_tag);
+                }
             }
         }
     }
