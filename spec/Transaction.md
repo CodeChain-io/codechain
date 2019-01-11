@@ -37,15 +37,14 @@ enum Action {
 
 ## MintAsset
 
-`MintAsset` issues new asset.
-It creates an asset scheme and assets.
+`MintAsset` issues a new asset and an asset scheme that goes along with it.
 The output becomes the lock script hash and parameters of the new asset.
 
-The permissioned asset is an asset that has an approver.
-This kinds of asset need permission to transfer.
+A permissioned asset is an asset that has an approver.
+This kind of asset needs permission to be transferred.
 
-The centralized asset is an asset who has an administrator.
-The administrator can change the asset scheme and transfers the asset arbitrary.
+A centralized asset is an asset that has an administrator.
+The administrator can change the asset scheme and transfer the asset arbitrarily.
 
 ```rust
 MintAsset {
@@ -105,16 +104,16 @@ struct AssetTransferOutput {
 
 ### Timelock
 
-Transaction fails if any `timelock` condition isn't met.
-There are 4 types for `timelock`.
+A transaction fails if any `timelock` condition isn't met.
+There are 4 types of `timelock`.
 Basically, they keep the transaction from being executed until the specific point in time.
 `Block` and `Time` types indicate the absolute time.
 `BlockAge` and `TimeAge` types indicate relative time based on how long has the asset been created.
 
-- `Block(u64)`: The given value must be equal or less then the current block's number.
-- `BlockAge(u64)`: The given value must be equal or less then the value `X`, where `X` = `current block number` - `the block number that the asset of the AssetOutPoint was created at`.
-- `Time(u64)`: The given value must be equal or less then the current block's timestamp.
-- `TimeAge(u64)`: The given value must be equal or less then the value `X`, where `X` = `current block timestamp` - `the block timestamp that the asset of the AssetOutPoint was created at`.
+- `Block(u64)`: The given value must be less than or equal to the current block's number.
+- `BlockAge(u64)`: The given value must be less than or equal to the value `X`, where `X` = `current block number` - `the block number that the asset of the AssetOutPoint was created at`.
+- `Time(u64)`: The given value must be less than or equal to the current block's timestamp.
+- `TimeAge(u64)`: The given value must be less than or equal to the value `X`, where `X` = `current block timestamp` - `the block timestamp that the asset of the AssetOutPoint was created at`.
 
 ```rust
 enum Timelock {
@@ -127,7 +126,7 @@ enum Timelock {
 
 ### Order
 
-Order is used for DEX.
+Order is used for the DEX.
 Please see [this page](./Asset-Exchange-Protocol.md) for more information.
 
 ## ChangeAssetScheme
@@ -150,7 +149,7 @@ ChangeAssetScheme {
 ## ComposeAsset
 
 It creates a new asset that holds the input assets.
-The composed asset can be used as a regular asset, but it can be decomposed.
+The composed asset can be used as a regular asset, but it can be decomposed as well.
 
 ```rust
 ComposeAsset {
@@ -204,7 +203,7 @@ SetRegularKey {
 
 ## Create Shard
 
-It creates a new Shard.
+It creates a new shard.
 The payer becomes the owner of the shard.
 
 ```rust
@@ -213,7 +212,7 @@ CreateShard
 
 ## SetShardOwners
 
-It changes the owners of the shard.
+It changes the owner of the shard.
 Only the shard owner can send this transaction.
 The payer must be one of the new owners.
 
@@ -239,8 +238,7 @@ SetShardUsers {
 ## WrapCCC
 
 `WrapCCC` converts CCC to WCCC.
-The payer must owns enough CCC to convert.
-
+The payer must own enough CCC to convert.
 ```rust
 WrapCCC {
     shard_id: ShardId,
@@ -295,4 +293,4 @@ Remove {
 ## Custom
 
 `Custom` is a special transaction.
-Which kinds of transactions exist depends on the consensus engine.
+The types of transactions that may exist depends on the consensus engine.
