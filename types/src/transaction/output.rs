@@ -27,7 +27,7 @@ pub struct AssetTransferOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
     pub asset_type: H256,
-    pub amount: u64,
+    pub quantity: u64,
 }
 
 impl HeapSizeOf for AssetTransferOutput {
@@ -47,5 +47,5 @@ impl AssetTransferOutput {
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
-    pub amount: Option<u64>,
+    pub supply: Option<u64>,
 }

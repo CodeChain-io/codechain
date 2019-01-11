@@ -229,13 +229,13 @@ impl MemPoolItem {
     fn cost(&self) -> u64 {
         match &self.tx.action {
             Action::Pay {
-                amount,
+                quantity,
                 ..
-            } => self.tx.fee + *amount,
+            } => self.tx.fee + *quantity,
             Action::WrapCCC {
-                amount,
+                quantity,
                 ..
-            } => self.tx.fee + *amount,
+            } => self.tx.fee + *quantity,
             _ => self.tx.fee,
         }
     }
@@ -1430,7 +1430,7 @@ pub mod test {
                 output: Box::new(AssetMintOutput {
                     lock_script_hash: H160::zero(),
                     parameters: vec![],
-                    amount: None,
+                    supply: None,
                 }),
                 approver: None,
                 administrator: None,
@@ -1479,7 +1479,7 @@ pub mod test {
     #[test]
     fn pay_transaction_increases_cost() {
         let fee = 100;
-        let amount = 100_000;
+        let quantity = 100_000;
         let receiver = 1u64.into();
         let keypair = Random.generate().unwrap();
         let tx = Transaction {
@@ -1488,7 +1488,7 @@ pub mod test {
             network_id: "tc".into(),
             action: Action::Pay {
                 receiver,
-                amount,
+                quantity,
             },
         };
         let timelock = TxTimelock {
@@ -1498,7 +1498,7 @@ pub mod test {
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());
         let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, timelock);
 
-        assert_eq!(fee + amount, item.cost());
+        assert_eq!(fee + quantity, item.cost());
     }
 
     #[test]
@@ -1555,7 +1555,7 @@ pub mod test {
                 output: Box::new(AssetMintOutput {
                     lock_script_hash: H160::zero(),
                     parameters: vec![],
-                    amount: None,
+                    supply: None,
                 }),
                 approvals: vec![],
             },

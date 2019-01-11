@@ -28,7 +28,7 @@ pub struct AssetTransferOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<String>,
     pub asset_type: H256,
-    pub amount: Uint,
+    pub quantity: Uint,
 }
 
 impl From<AssetTransferOutputType> for AssetTransferOutput {
@@ -37,7 +37,7 @@ impl From<AssetTransferOutputType> for AssetTransferOutput {
             lock_script_hash: from.lock_script_hash,
             parameters: from.parameters.iter().map(|bytes| bytes.to_hex()).collect(),
             asset_type: from.asset_type,
-            amount: from.amount.into(),
+            quantity: from.quantity.into(),
         }
     }
 }
@@ -48,7 +48,7 @@ impl From<AssetTransferOutput> for Result<AssetTransferOutputType, FromHexError>
             lock_script_hash: from.lock_script_hash,
             parameters: Result::from_iter(from.parameters.iter().map(|hexstr| hexstr.from_hex()))?,
             asset_type: from.asset_type,
-            amount: from.amount.into(),
+            quantity: from.quantity.into(),
         })
     }
 }
@@ -58,7 +58,7 @@ impl From<AssetTransferOutput> for Result<AssetTransferOutputType, FromHexError>
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<String>,
-    pub amount: Option<Uint>,
+    pub supply: Option<Uint>,
 }
 
 impl From<AssetMintOutputType> for AssetMintOutput {
@@ -66,7 +66,7 @@ impl From<AssetMintOutputType> for AssetMintOutput {
         AssetMintOutput {
             lock_script_hash: from.lock_script_hash,
             parameters: from.parameters.iter().map(|bytes| bytes.to_hex()).collect(),
-            amount: from.amount.map(|amount| amount.into()),
+            supply: from.supply.map(|supply| supply.into()),
         }
     }
 }
@@ -76,7 +76,7 @@ impl From<AssetMintOutput> for Result<AssetMintOutputType, FromHexError> {
         Ok(AssetMintOutputType {
             lock_script_hash: from.lock_script_hash,
             parameters: Result::from_iter(from.parameters.iter().map(|hexstr| hexstr.from_hex()))?,
-            amount: from.amount.map(|amount| amount.into()),
+            supply: from.supply.map(|supply| supply.into()),
         })
     }
 }

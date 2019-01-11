@@ -41,7 +41,7 @@ import CodeChain from "../helper/spawn";
         const parcel = node.sdk.core
             .createPayTransaction({
                 recipient,
-                amount: 1
+                quantity: 1
             })
             .sign({
                 secret: faucetSecret,

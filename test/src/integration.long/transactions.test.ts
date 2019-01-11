@@ -49,13 +49,13 @@ describe("transactions", function() {
     });
 
     describe("AssetMint", async function() {
-        [1, 100, U64.MAX_VALUE].forEach(function(amount) {
-            it(`Mint successful - amount ${amount}`, async function() {
+        [1, 100, U64.MAX_VALUE].forEach(function(supply) {
+            it(`Mint successful - supply ${supply}`, async function() {
                 const recipient = await node.createP2PKHAddress();
                 const scheme = node.sdk.core.createAssetScheme({
                     shardId: 0,
                     metadata: "",
-                    amount
+                    supply
                 });
                 const tx = node.sdk.core.createMintAssetTransaction({
                     scheme,
@@ -67,11 +67,11 @@ describe("transactions", function() {
             });
         });
 
-        it("Mint unsuccessful - mint amount 0", async function() {
+        it("Mint unsuccessful - mint supply 0", async function() {
             const scheme = node.sdk.core.createAssetScheme({
                 shardId: 0,
                 metadata: "",
-                amount: 0
+                supply: 0
             });
             const tx = node.sdk.core.createMintAssetTransaction({
                 scheme,
@@ -83,18 +83,18 @@ describe("transactions", function() {
                 expect.fail();
             } catch (e) {
                 expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_ZERO_AMOUNT)
+                    errorMatcher(ERROR.INVALID_TX_ZERO_QUANTITY)
                 );
             }
         });
 
-        it("Mint unsuccessful - mint amount U64.MAX_VALUE + 1", async function() {
+        it("Mint unsuccessful - mint supply U64.MAX_VALUE + 1", async function() {
             const scheme = node.sdk.core.createAssetScheme({
                 shardId: 0,
                 metadata: "",
-                amount: 0
+                supply: 0
             });
-            (scheme.amount.value as any) = U64.MAX_VALUE.value.plus(1);
+            (scheme.supply.value as any) = U64.MAX_VALUE.value.plus(1);
 
             const tx = node.sdk.core.createMintAssetTransaction({
                 scheme,
@@ -115,12 +115,12 @@ describe("transactions", function() {
         });
     });
 
-    describe("AssetTransfer - 1 input (100 amount)", async function() {
+    describe("AssetTransfer - 1 input (100 quantity)", async function() {
         let input: Asset;
         const amount = 100;
 
         beforeEach(async function() {
-            const { asset } = await node.mintAsset({ amount });
+            const { asset } = await node.mintAsset({ supply: amount });
             input = asset;
         });
 
@@ -135,7 +135,7 @@ describe("transactions", function() {
                     amounts.map(amount => ({
                         assetType: input.assetType,
                         recipient,
-                        amount
+                        quantity: amount
                     }))
                 );
                 await node.signTransactionInput(tx, 0);
@@ -154,7 +154,7 @@ describe("transactions", function() {
                     amounts.map(amount => ({
                         assetType: input.assetType,
                         recipient,
-                        amount
+                        quantity: amount
                     }))
                 );
                 await node.signTransactionInput(tx, 0);
@@ -178,7 +178,7 @@ describe("transactions", function() {
                 amounts.map(amount => ({
                     assetType: input.assetType,
                     recipient,
-                    amount
+                    quantity: amount
                 }))
             );
             await node.signTransactionInput(tx, 0);
@@ -187,7 +187,7 @@ describe("transactions", function() {
                 expect.fail();
             } catch (e) {
                 expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_ZERO_AMOUNT)
+                    errorMatcher(ERROR.INVALID_TX_ZERO_QUANTITY)
                 );
             }
         });
@@ -200,7 +200,7 @@ describe("transactions", function() {
                 assetType:
                     "0x0000000000000000000000000000000000000000000000000000000000000000",
                 recipient,
-                amount
+                quantity: amount
             });
             await node.signTransactionInput(tx, 0);
             try {
@@ -220,7 +220,7 @@ describe("transactions", function() {
             tx.addOutputs({
                 assetType: input.assetType,
                 recipient,
-                amount: amount * 2
+                quantity: amount * 2
             });
             await node.signTransactionInput(tx, 0);
             try {
@@ -241,9 +241,9 @@ describe("transactions", function() {
         const amount2 = 20;
 
         beforeEach(async function() {
-            let { asset } = await node.mintAsset({ amount: amount1 });
+            let { asset } = await node.mintAsset({ supply: amount1 });
             input1 = asset;
-            ({ asset } = await node.mintAsset({ amount: amount2 }));
+            ({ asset } = await node.mintAsset({ supply: amount2 }));
             input2 = asset;
         });
 
@@ -269,12 +269,12 @@ describe("transactions", function() {
                         ...input1Amounts.map(amount => ({
                             assetType: input1.assetType,
                             recipient,
-                            amount
+                            quantity: amount
                         })),
                         ...input2Amounts.map(amount => ({
                             assetType: input2.assetType,
                             recipient,
-                            amount
+                            quantity: amount
                         }))
                     ])
                 );
@@ -288,13 +288,13 @@ describe("transactions", function() {
     });
 
     it("Burn successful", async function() {
-        const { asset } = await node.mintAsset({ amount: 1 });
+        const { asset } = await node.mintAsset({ supply: 1 });
         const tx1 = node.sdk.core.createTransferAssetTransaction();
         tx1.addInputs(asset);
         tx1.addOutputs({
             assetType: asset.assetType,
             recipient: await node.createP2PKHBurnAddress(),
-            amount: 1
+            quantity: 1
         });
         await node.signTransactionInput(tx1, 0);
         const invoices1 = await node.sendAssetTransaction(tx1);
@@ -312,14 +312,14 @@ describe("transactions", function() {
         expect(await node.sdk.rpc.chain.getAsset(tx2.tracker(), 0)).to.be.null;
     });
 
-    it("Burn unsuccessful(ZeroAmount)", async function() {
-        const { asset } = await node.mintAsset({ amount: 1 });
+    it("Burn unsuccessful(ZeroQuantity)", async function() {
+        const { asset } = await node.mintAsset({ supply: 1 });
         const tx1 = node.sdk.core.createTransferAssetTransaction();
         tx1.addInputs(asset);
         tx1.addOutputs({
             assetType: asset.assetType,
             recipient: await node.createP2PKHBurnAddress(),
-            amount: 1
+            quantity: 1
         });
         await node.signTransactionInput(tx1, 0);
         const invoices = await node.sendAssetTransaction(tx1);
@@ -340,7 +340,7 @@ describe("transactions", function() {
                     index: 0,
                     lockScriptHash,
                     parameters,
-                    amount: 0
+                    quantity: 0
                 }
             })
         );
@@ -349,18 +349,18 @@ describe("transactions", function() {
             await node.sendAssetTransaction(tx2);
             expect.fail();
         } catch (e) {
-            expect(e).to.satisfy(errorMatcher(ERROR.INVALID_TX_ZERO_AMOUNT));
+            expect(e).to.satisfy(errorMatcher(ERROR.INVALID_TX_ZERO_QUANTITY));
         }
     });
 
     it("Cannot transfer P2PKHBurn asset", async function() {
-        const { asset } = await node.mintAsset({ amount: 1 });
+        const { asset } = await node.mintAsset({ supply: 1 });
         const tx1 = node.sdk.core.createTransferAssetTransaction();
         tx1.addInputs(asset);
         tx1.addOutputs({
             assetType: asset.assetType,
             recipient: await node.createP2PKHBurnAddress(),
-            amount: 1
+            quantity: 1
         });
         await node.signTransactionInput(tx1, 0);
         const invoices1 = await node.sendAssetTransaction(tx1);
@@ -373,7 +373,7 @@ describe("transactions", function() {
         tx2.addOutputs({
             assetType: transferredAsset.assetType,
             recipient: await node.createP2PKHBurnAddress(),
-            amount: 1
+            quantity: 1
         });
         await node.signTransactionP2PKHBurn(
             tx2.input(0)!,
@@ -393,7 +393,7 @@ describe("transactions", function() {
     });
 
     it("Cannot burn P2PKH asset", async function() {
-        const { asset } = await node.mintAsset({ amount: 1 });
+        const { asset } = await node.mintAsset({ supply: 1 });
         const tx = node.sdk.core.createTransferAssetTransaction();
         tx.addBurns(asset);
         await node.signTransactionP2PKH(tx.burn(0)!, tx.hashWithoutScript());
@@ -411,12 +411,12 @@ describe("transactions", function() {
     describe("ScriptError", function() {
         it("Cannot transfer with invalid unlock script", async function() {
             const Opcode = Script.Opcode;
-            const { asset } = await node.mintAsset({ amount: 1 });
+            const { asset } = await node.mintAsset({ supply: 1 });
             const tx = node.sdk.core
                 .createTransferAssetTransaction()
                 .addInputs(asset)
                 .addOutputs({
-                    amount: 1,
+                    quantity: 1,
                     assetType: asset.assetType,
                     recipient: await node.createP2PKHAddress()
                 });
@@ -435,7 +435,7 @@ describe("transactions", function() {
         it("Cannot transfer trivially fail script", async function() {
             const triviallyFail = Buffer.from([0x03]); // Opcode.FAIL
             const { asset } = await node.mintAsset({
-                amount: 1,
+                supply: 1,
                 recipient: AssetTransferAddress.fromTypeAndPayload(
                     0,
                     blake160(triviallyFail),
@@ -448,7 +448,7 @@ describe("transactions", function() {
                 .createTransferAssetTransaction()
                 .addInputs(asset)
                 .addOutputs({
-                    amount: 1,
+                    quantity: 1,
                     assetType: asset.assetType,
                     recipient: await node.createP2PKHAddress()
                 });
@@ -469,7 +469,7 @@ describe("transactions", function() {
             const Opcode = Script.Opcode;
             const triviallySuccess = Buffer.from([Opcode.PUSH, 1]);
             const { asset } = await node.mintAsset({
-                amount: 1,
+                supply: 1,
                 recipient: AssetTransferAddress.fromTypeAndPayload(
                     0,
                     blake160(triviallySuccess),
@@ -482,7 +482,7 @@ describe("transactions", function() {
                 .createTransferAssetTransaction()
                 .addInputs(asset)
                 .addOutputs({
-                    amount: 1,
+                    quantity: 1,
                     assetType: asset.assetType,
                     recipient: await node.createP2PKHAddress()
                 });
@@ -502,7 +502,7 @@ describe("transactions", function() {
                 Opcode.DUP
             ]);
             const { asset } = await node.mintAsset({
-                amount: 1,
+                supply: 1,
                 recipient: AssetTransferAddress.fromTypeAndPayload(
                     0,
                     blake160(leaveMultipleValue),
@@ -515,7 +515,7 @@ describe("transactions", function() {
                 .createTransferAssetTransaction()
                 .addInputs(asset)
                 .addOutputs({
-                    amount: 1,
+                    quantity: 1,
                     assetType: asset.assetType,
                     recipient: await node.createP2PKHAddress()
                 });
@@ -550,7 +550,7 @@ describe("transactions", function() {
                 scheme: {
                     shardId: 0,
                     metadata: "",
-                    amount: 10000,
+                    supply: 10000,
                     approver
                 },
                 recipient
@@ -564,7 +564,7 @@ describe("transactions", function() {
             transferTx.addInputs(asset);
             transferTx.addOutputs({
                 assetType: asset.assetType,
-                amount: 10000,
+                quantity: 10000,
                 recipient: await node.createP2PKHAddress()
             });
             await node.signTransactionInput(transferTx, 0);
@@ -629,7 +629,7 @@ describe("transactions", function() {
                 scheme: {
                     shardId: 0,
                     metadata: "",
-                    amount: 4000
+                    supply: 4000
                 },
                 recipient: address1
             });
@@ -641,22 +641,22 @@ describe("transactions", function() {
                 .addOutputs(
                     {
                         assetType,
-                        amount: 1000,
+                        quantity: 1000,
                         recipient: address1
                     },
                     {
                         assetType,
-                        amount: 1000,
+                        quantity: 1000,
                         recipient: address2
                     },
                     {
                         assetType,
-                        amount: 1000,
+                        quantity: 1000,
                         recipient: burnAddress1
                     },
                     {
                         assetType,
-                        amount: 1000,
+                        quantity: 1000,
                         recipient: burnAddress2
                     }
                 );
@@ -672,7 +672,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
-                    amount: 1000,
+                    quantity: 1000,
                     recipient: address1
                 });
             await node.sdk.key.signTransactionInput(tx, 0);
@@ -694,7 +694,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
-                    amount: 1000,
+                    quantity: 1000,
                     recipient: address1
                 });
             await node.sdk.key.signTransactionInput(tx, 0, {
@@ -714,7 +714,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
-                    amount: 2000,
+                    quantity: 2000,
                     recipient: address1
                 });
             await node.sdk.key.signTransactionInput(tx, 0);
@@ -736,7 +736,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
-                    amount: 2000,
+                    quantity: 2000,
                     recipient: address1
                 });
             await node.sdk.key.signTransactionInput(tx, 0, {
@@ -755,11 +755,11 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
-                    amount: 500,
+                    quantity: 500,
                     recipient: address1
                 });
             await node.sdk.key.signTransactionInput(tx, 0);
-            tx.addOutputs({ assetType, amount: 500, recipient: address2 });
+            tx.addOutputs({ assetType, quantity: 500, recipient: address2 });
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
             expect(invoices![0].success).to.be.false;
@@ -776,7 +776,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
-                    amount: 500,
+                    quantity: 500,
                     recipient: address1
                 });
             await node.sdk.key.signTransactionInput(tx, 0, {
@@ -785,7 +785,7 @@ describe("transactions", function() {
                     output: [0]
                 }
             });
-            tx.addOutputs({ assetType, amount: 500, recipient: address2 });
+            tx.addOutputs({ assetType, quantity: 500, recipient: address2 });
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
             expect(invoices![0].success).to.be.true;
@@ -798,12 +798,12 @@ describe("transactions", function() {
                 .addOutputs(
                     {
                         assetType,
-                        amount: 500,
+                        quantity: 500,
                         recipient: address1
                     },
                     {
                         assetType,
-                        amount: 500,
+                        quantity: 500,
                         recipient: address2
                     }
                 );
@@ -851,7 +851,7 @@ describe("transactions", function() {
                         .addOutputs(
                             _.times(length, () => ({
                                 assetType,
-                                amount: 1,
+                                quantity: 1,
                                 recipient: address1
                             }))
                         );
@@ -864,7 +864,7 @@ describe("transactions", function() {
                     });
                     tx.addOutputs({
                         assetType,
-                        amount: 1000 - length,
+                        quantity: 1000 - length,
                         recipient: address1
                     });
                     const invoices = await node.sendAssetTransaction(tx);
@@ -885,7 +885,7 @@ describe("transactions", function() {
                 metadata: JSON.stringify({
                     name: "An example asset"
                 }),
-                amount: 10
+                supply: 10
             });
             const mintTx = node.sdk.core.createMintAssetTransaction({
                 scheme: assetScheme,
@@ -896,7 +896,7 @@ describe("transactions", function() {
                 scheme: {
                     shardId: 0,
                     metadata: JSON.stringify({ name: "An unique asset" }),
-                    amount: 1
+                    supply: 1
                 },
                 inputs: [firstAsset.createTransferInput()],
                 recipient: aliceAddress
@@ -944,7 +944,7 @@ describe("transactions", function() {
                 metadata: JSON.stringify({
                     name: "An example asset"
                 }),
-                amount: 10
+                supply: 10
             });
             const mintTx = node.sdk.core.createMintAssetTransaction({
                 scheme: assetScheme,
@@ -955,7 +955,7 @@ describe("transactions", function() {
                 scheme: {
                     shardId: 0,
                     metadata: JSON.stringify({ name: "An unique asset" }),
-                    amount: 1
+                    supply: 1
                 },
                 inputs: [firstAsset.createTransferInput()],
                 recipient: aliceAddress
@@ -966,7 +966,7 @@ describe("transactions", function() {
                 input: composeTx.getComposedAsset().createTransferInput()
             });
             decomposeTx.addOutputs({
-                amount: 10,
+                quantity: 10,
                 assetType: firstAsset.assetType,
                 recipient: aliceAddress
             });
@@ -1020,13 +1020,13 @@ describe("transactions", function() {
 
     describe("Wrap CCC", function() {
         [1, 100].forEach(function(amount) {
-            it(`Wrap successful - amount {amount}`, async function() {
+            it(`Wrap successful - quantity {amount}`, async function() {
                 const recipient = await node.createP2PKHAddress();
                 const parcel = node.sdk.core
                     .createWrapCCCTransaction({
                         shardId: 0,
                         recipient,
-                        amount
+                        quantity: amount
                     })
                     .sign({
                         secret: faucetSecret,
@@ -1044,13 +1044,13 @@ describe("transactions", function() {
             });
         });
 
-        it("Wrap unsuccessful - amount 0", async function() {
+        it("Wrap unsuccessful - quantity 0", async function() {
             const recipient = await node.createP2PKHAddress();
             const parcel = node.sdk.core
                 .createWrapCCCTransaction({
                     shardId: 0,
                     recipient,
-                    amount: 0
+                    quantity: 0
                 })
                 .sign({
                     secret: faucetSecret,
@@ -1063,7 +1063,7 @@ describe("transactions", function() {
                 expect.fail();
             } catch (e) {
                 expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_PARCEL_ZERO_AMOUNT)
+                    errorMatcher(ERROR.INVALID_PARCEL_ZERO_QUANTITY)
                 );
             }
         });
@@ -1073,14 +1073,14 @@ describe("transactions", function() {
         describe("Wrap CCC with P2PKHBurnAddress", function() {
             let recipient: AssetTransferAddress;
             let wrapTransaction: SignedTransaction;
-            let amount: number = 100;
+            let quantity: number = 100;
             beforeEach(async function() {
                 recipient = await node.createP2PKHBurnAddress();
                 wrapTransaction = node.sdk.core
                     .createWrapCCCTransaction({
                         shardId: 0,
                         recipient,
-                        amount
+                        quantity
                     })
                     .sign({
                         secret: faucetSecret,
@@ -1111,14 +1111,14 @@ describe("transactions", function() {
         describe("Wrap CCC with P2PKHAddress", function() {
             let recipient: AssetTransferAddress;
             let wrapTransaction: SignedTransaction;
-            let amount: number = 100;
+            let quantity: number = 100;
             beforeEach(async function() {
                 recipient = await node.createP2PKHAddress();
                 wrapTransaction = node.sdk.core
                     .createWrapCCCTransaction({
                         shardId: 0,
                         recipient,
-                        amount
+                        quantity
                     })
                     .sign({
                         secret: faucetSecret,
@@ -1144,7 +1144,7 @@ describe("transactions", function() {
                 transferTx.addOutputs({
                     assetType: asset1.assetType,
                     recipient: recipientBurn,
-                    amount
+                    quantity
                 });
                 await node.signTransactionInput(transferTx, 0);
                 const invoices1 = await node.sendAssetTransaction(transferTx);
@@ -1169,13 +1169,13 @@ describe("transactions", function() {
         describe("With minted asset (not wrapped CCC)", function() {
             let recipient: AssetTransferAddress;
             let mintTx: MintAsset;
-            const amount: number = 100;
+            const supply: number = 100;
             beforeEach(async function() {
                 recipient = await node.createP2PKHBurnAddress();
                 const scheme = node.sdk.core.createAssetScheme({
                     shardId: 0,
                     metadata: "",
-                    amount
+                    supply
                 });
                 mintTx = node.sdk.core.createMintAssetTransaction({
                     scheme,

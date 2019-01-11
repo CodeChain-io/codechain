@@ -119,7 +119,7 @@ describe("Timelock", function() {
                 : asset.createTransferInput()
         );
         tx.addOutputs({
-            amount: 1,
+            quantity: 1,
             assetType: asset.assetType,
             recipient: await node.createP2PKHAddress()
         });
@@ -131,7 +131,7 @@ describe("Timelock", function() {
 
     describe("The current items should move to the future queue", async function() {
         it("Minted at block 1, send transfer without timelock and then replace it with Timelock::Block(3)", async function() {
-            const { asset } = await node.mintAsset({ amount: 1 });
+            const { asset } = await node.mintAsset({ supply: 1 });
             await node.sdk.rpc.devel.stopSealing();
             const txhash1 = await sendTransferTx(asset, undefined);
             const txhash2 = await sendTransferTx(

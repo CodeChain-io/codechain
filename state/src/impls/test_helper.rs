@@ -108,32 +108,32 @@ macro_rules! asset_mint {
 }
 
 macro_rules! asset_mint_output {
-    ($lock_script_hash:expr, amount: $amount:expr) => {
-        asset_mint_output!($lock_script_hash, Default::default(), $amount)
+    ($lock_script_hash:expr, supply: $supply:expr) => {
+        asset_mint_output!($lock_script_hash, Default::default(), $supply)
     };
     ($lock_script_hash:expr, parameters: $params:expr) => {
         $crate::ctypes::transaction::AssetMintOutput {
             lock_script_hash: $lock_script_hash,
             parameters: $params,
-            amount: None,
+            supply: None,
         }
     };
-    ($lock_script_hash:expr, $params:expr, $amount:expr) => {
+    ($lock_script_hash:expr, $params:expr, $supply:expr) => {
         $crate::ctypes::transaction::AssetMintOutput {
             lock_script_hash: $lock_script_hash,
             parameters: $params,
-            amount: Some($amount),
+            supply: Some($supply),
         }
     };
 }
 
 macro_rules! asset_out_point {
-    ($tracker:expr, $index:expr, $asset_type:expr, $amount:expr) => {
+    ($tracker:expr, $index:expr, $asset_type:expr, $quantity:expr) => {
         $crate::ctypes::transaction::AssetOutPoint {
             tracker: $tracker,
             index: $index,
             asset_type: $asset_type,
-            amount: $amount,
+            quantity: $quantity,
         }
     };
 }
@@ -162,20 +162,20 @@ macro_rules! asset_transfer_inputs {
 }
 
 macro_rules! asset_transfer_output {
-    ($lock_script_hash:expr, $asset_type:expr, $amount:expr) => {
+    ($lock_script_hash:expr, $asset_type:expr, $quantity:expr) => {
         $crate::ctypes::transaction::AssetTransferOutput {
             lock_script_hash: $lock_script_hash,
             parameters: Vec::new(),
             asset_type: $asset_type,
-            amount: $amount,
+            quantity: $quantity,
         }
     };
-    ($lock_script_hash:expr, $parameters:expr, $asset_type:expr, $amount:expr) => {
+    ($lock_script_hash:expr, $parameters:expr, $asset_type:expr, $quantity:expr) => {
         $crate::ctypes::transaction::AssetTransferOutput {
             lock_script_hash: $lock_script_hash,
             parameters: $parameters,
             asset_type: $asset_type,
-            amount: $amount,
+            quantity: $quantity,
         }
     };
 }
@@ -263,14 +263,14 @@ macro_rules! asset_transfer {
 }
 
 macro_rules! order {
-    (from: ($from:expr, $from_amount:expr), to: ($to:expr, $to_amount:expr), fee: ($fee:expr, $fee_amount:expr), [$($output:expr),*], $expiration:expr, $lock_script_hash:expr) => {
+    (from: ($from:expr, $from_quantity:expr), to: ($to:expr, $to_quantity:expr), fee: ($fee:expr, $fee_quantity:expr), [$($output:expr),*], $expiration:expr, $lock_script_hash:expr) => {
         $crate::ctypes::transaction::Order {
             asset_type_from: $from,
             asset_type_to: $to,
             asset_type_fee: $fee,
-            asset_amount_from: $from_amount,
-            asset_amount_to: $to_amount,
-            asset_amount_fee: $fee_amount,
+            asset_quantity_from: $from_quantity,
+            asset_quantity_to: $to_quantity,
+            asset_quantity_fee: $fee_quantity,
             origin_outputs: vec![$($output,)*],
             expiration: $expiration,
             lock_script_hash_from: $lock_script_hash,
@@ -282,10 +282,10 @@ macro_rules! order {
 }
 
 macro_rules! order_on_transfer {
-    ($order:expr, $spent_amount:expr, input_indices: [$($input:expr),*], output_indices: [$($output:expr),*]) => {
+    ($order:expr, $spent_quantity:expr, input_indices: [$($input:expr),*], output_indices: [$($output:expr),*]) => {
         $crate::ctypes::transaction::OrderOnTransfer {
             order: $order,
-            spent_amount: $spent_amount,
+            spent_quantity: $spent_quantity,
             input_indices: vec![$($input,)*],
             output_indices: vec![$($output,)*],
         }
@@ -318,11 +318,11 @@ macro_rules! asset_decompose {
 }
 
 macro_rules! asset_wrap_ccc_output {
-    ($lock_script_hash:expr, $amount:expr) => {
+    ($lock_script_hash:expr, $quantity:expr) => {
         $crate::ctypes::transaction::AssetWrapCCCOutput {
             lock_script_hash: $lock_script_hash,
             parameters: Vec::new(),
-            amount: $amount,
+            quantity: $quantity,
         }
     };
 }
@@ -358,10 +358,10 @@ macro_rules! asset_unwrap_ccc {
 }
 
 macro_rules! pay {
-    ($receiver:expr, $amount:expr) => {
+    ($receiver:expr, $quantity:expr) => {
         $crate::ctypes::transaction::Action::Pay {
             receiver: $receiver,
-            amount: $amount,
+            quantity: $quantity,
         }
     };
 }
@@ -375,12 +375,12 @@ macro_rules! set_regular_key {
 }
 
 macro_rules! wrap_ccc {
-    ($lock_script_hash:expr, $amount:expr) => {
+    ($lock_script_hash:expr, $quantity:expr) => {
         $crate::ctypes::transaction::Action::WrapCCC {
             shard_id: $crate::impls::test_helper::SHARD_ID,
             lock_script_hash: $lock_script_hash,
             parameters: Vec::new(),
-            amount: $amount,
+            quantity: $quantity,
         }
     };
 }
@@ -450,8 +450,8 @@ macro_rules! set_top_level_state {
 
         set_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(account: $addr:expr => balance: $amount:expr) $(,$x:tt)*]) => {
-        assert_eq!(Ok(()), $state.set_balance(&$addr, $amount));
+    ($state:expr, [(account: $addr:expr => balance: $quantity:expr) $(,$x:tt)*]) => {
+        assert_eq!(Ok(()), $state.set_balance(&$addr, $quantity));
 
         set_top_level_state!($state, [$($x),*]);
     };
@@ -474,13 +474,13 @@ macro_rules! set_top_level_state {
 
         set_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($shard:expr, $addr:expr) => { amount: $amount:expr, metadata: $metadata:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
-        assert_eq!(Ok((true)), $state.create_asset_scheme($shard, &$addr, $metadata, $amount, $approver, None, Vec::new(), Vec::new()));
+    ($state:expr, [(scheme: ($shard:expr, $addr:expr) => { supply: $supply:expr, metadata: $metadata:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
+        assert_eq!(Ok((true)), $state.create_asset_scheme($shard, &$addr, $metadata, $supply, $approver, None, Vec::new(), Vec::new()));
 
         set_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($shard:expr, $tx_hash:expr, $index:expr) => { asset_type: $asset_type: expr, amount: $amount:expr, lock_script_hash: $lock_script_hash:expr }) $(,$x:tt)*]) => {
-        assert_eq!(Ok((true)), $state.create_asset($shard, $tx_hash, $index, $asset_type, $lock_script_hash, Vec::new(), $amount, None));
+    ($state:expr, [(asset: ($shard:expr, $tx_hash:expr, $index:expr) => { asset_type: $asset_type: expr, quantity: $quantity:expr, lock_script_hash: $lock_script_hash:expr }) $(,$x:tt)*]) => {
+        assert_eq!(Ok((true)), $state.create_asset($shard, $tx_hash, $index, $asset_type, $lock_script_hash, Vec::new(), $quantity, None));
 
         set_top_level_state!($state, [$($x),*]);
     };
@@ -520,19 +520,19 @@ macro_rules! check_top_level_state {
 
         check_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr }) $(,$x:tt)*]) => {
         let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
         let scheme = $state.asset_scheme($shard_id, &asset_scheme_address).unwrap().unwrap();
         assert_eq!(&$metadata, scheme.metadata());
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
 
         check_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
         let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
         let scheme = $state.asset_scheme($shard_id, &asset_scheme_address).unwrap().unwrap();
         assert_eq!(&$metadata, scheme.metadata());
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
         assert_eq!(Some(&$approver), scheme.approver().as_ref());
 
         check_top_level_state!($state, [$($x),*]);
@@ -549,11 +549,11 @@ macro_rules! check_top_level_state {
 
         check_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, amount: $amount:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
         let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
         let asset = $state.asset($shard_id, &asset_address).unwrap().unwrap();
         assert_eq!(&$asset_type, asset.asset_type());
-        assert_eq!($amount, asset.amount());
+        assert_eq!($quantity, asset.quantity());
 
         check_top_level_state!($state, [$($x),*]);
     };
@@ -572,72 +572,72 @@ macro_rules! check_top_level_state {
 
 macro_rules! check_shard_level_state {
     ($state: expr, []) => { };
-    ($state:expr, [(scheme: ($addr:expr) => { amount: $amount:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($addr:expr) => { supply: $supply:expr }) $(,$x:tt)*]) => {
         let scheme = $state.asset_scheme(&$addr).unwrap().expect("scheme must exist");
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr }) $(,$x:tt)*]) => {
         let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
         let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
         assert_eq!(&$metadata, scheme.metadata());
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr, allowed_script_hashes: $allowed:expr}) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr, allowed_script_hashes: $allowed:expr}) $(,$x:tt)*]) => {
         let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
         let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
         assert_eq!(&$metadata, scheme.metadata());
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
         assert_eq!($allowed, scheme.allowed_script_hashes());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr, pool: $pool:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr, pool: $pool:expr }) $(,$x:tt)*]) => {
         let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
         let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
         assert_eq!(&$metadata, scheme.metadata());
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
         assert_eq!($pool, scheme.pool());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
         let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
         let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
         assert_eq!(&$metadata, scheme.metadata());
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
         assert_eq!(Some(&$approver), scheme.approver().as_ref());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr, approver: $approver:expr, administrator }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver: $approver:expr, administrator }) $(,$x:tt)*]) => {
         let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
         let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
         assert_eq!(&$metadata, scheme.metadata());
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
         assert_eq!(Some(&$approver), scheme.approver().as_ref());
         assert_eq!(&None, scheme.administrator());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr, approver, administrator: $administrator:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver, administrator: $administrator:expr }) $(,$x:tt)*]) => {
         let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
         let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
         assert_eq!(&$metadata, scheme.metadata());
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
         assert_eq!(&None, scheme.approver());
         assert_eq!(Some(&$administrator), scheme.administrator().as_ref());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, amount: $amount:expr, administrator: $administrator:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr, administrator: $administrator:expr }) $(,$x:tt)*]) => {
         let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
         let scheme = $state.asset_scheme(&asset_scheme_address).unwrap().expect("scheme must exist");
         assert_eq!(&$metadata, scheme.metadata());
-        assert_eq!($amount, scheme.amount());
+        assert_eq!($supply, scheme.supply());
         assert_eq!(Some(&$administrator), scheme.administrator().as_ref());
 
         check_shard_level_state!($state, [$($x),*]);
@@ -648,37 +648,37 @@ macro_rules! check_shard_level_state {
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, amount: $amount:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
         let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
         let asset = $state.asset(&asset_address).unwrap().expect("asset must exist");
         assert_eq!(&$asset_type, asset.asset_type());
-        assert_eq!($amount, asset.amount());
+        assert_eq!($quantity, asset.quantity());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, amount: $amount:expr, order: $order:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, order: $order:expr }) $(,$x:tt)*]) => {
         let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
         let asset = $state.asset(&asset_address).unwrap().expect("asset must exist");
         assert_eq!(&$asset_type, asset.asset_type());
-        assert_eq!($amount, asset.amount());
+        assert_eq!($quantity, asset.quantity());
         assert_eq!(Some(&$order), asset.order_hash().as_ref());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, amount: $amount:expr, order }) $(,$x:tt)*]) => {
+    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, order }) $(,$x:tt)*]) => {
         let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
         let asset = $state.asset(&asset_address).unwrap().expect("asset must exist");
         assert_eq!(&$asset_type, asset.asset_type());
-        assert_eq!($amount, asset.amount());
+        assert_eq!($quantity, asset.quantity());
         assert_eq!(&None, asset.order_hash());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, amount: $amount:expr, lock_script_hash: $lock_script_hash:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, lock_script_hash: $lock_script_hash:expr }) $(,$x:tt)*]) => {
         let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
         let asset = $state.asset(&asset_address).unwrap().expect("asset must exist");
         assert_eq!(&$asset_type, asset.asset_type());
-        assert_eq!($amount, asset.amount());
+        assert_eq!($quantity, asset.quantity());
         assert_eq!(&$lock_script_hash, asset.lock_script_hash());
 
         check_shard_level_state!($state, [$($x),*]);

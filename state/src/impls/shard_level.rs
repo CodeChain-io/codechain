@@ -108,7 +108,7 @@ impl<'db> ShardLevelState<'db> {
                 output:
                     AssetMintOutput {
                         lock_script_hash,
-                        amount,
+                        supply,
                         parameters,
                     },
                 ..
@@ -118,7 +118,7 @@ impl<'db> ShardLevelState<'db> {
                     metadata,
                     lock_script_hash,
                     &parameters,
-                    amount,
+                    supply,
                     approver,
                     administrator,
                     allowed_script_hashes,
@@ -189,11 +189,11 @@ impl<'db> ShardLevelState<'db> {
                 output:
                     AssetWrapCCCOutput {
                         lock_script_hash,
-                        amount,
+                        quantity,
                         parameters,
                     },
                 ..
-            } => self.wrap_ccc(tx_hash, lock_script_hash, &parameters, *amount),
+            } => self.wrap_ccc(tx_hash, lock_script_hash, &parameters, *quantity),
         }
     }
 
@@ -205,7 +205,7 @@ impl<'db> ShardLevelState<'db> {
         metadata: &str,
         lock_script_hash: &H160,
         parameters: &[Bytes],
-        amount: &Option<u64>,
+        supply: &Option<u64>,
         approver: &Option<Address>,
         administrator: &Option<Address>,
         allowed_script_hashes: &[H160],
@@ -221,11 +221,11 @@ impl<'db> ShardLevelState<'db> {
         if self.asset_scheme(&asset_scheme_address)?.is_some() {
             return Err(TransactionError::AssetSchemeDuplicated(transaction_tracker).into())
         }
-        let amount = amount.unwrap_or(::std::u64::MAX);
+        let supply = supply.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.create_asset_scheme(
             &asset_scheme_address,
             metadata.to_string(),
-            amount,
+            supply,
             *approver,
             *administrator,
             allowed_script_hashes.to_vec(),
@@ -240,7 +240,7 @@ impl<'db> ShardLevelState<'db> {
             asset_scheme_address.into(),
             *lock_script_hash,
             parameters.to_vec(),
-            amount,
+            supply,
             None,
         )?;
         ctrace!(TX, "{:?} is generated on {:?}", asset, asset_address);
@@ -280,7 +280,7 @@ impl<'db> ShardLevelState<'db> {
         for order_tx in orders {
             let order = &order_tx.order;
             for output_idx in order_tx.output_indices.iter() {
-                output_order_hashes[*output_idx] = Some(order.consume(order_tx.spent_amount).hash());
+                output_order_hashes[*output_idx] = Some(order.consume(order_tx.spent_quantity).hash());
             }
         }
 
@@ -288,7 +288,7 @@ impl<'db> ShardLevelState<'db> {
         for input in inputs.iter().chain(burns) {
             let (_, asset_address) = self.check_input_asset(input, sender, approvers)?;
             self.kill_asset(&asset_address);
-            deleted_asset.push((asset_address, input.prev_out.amount));
+            deleted_asset.push((asset_address, input.prev_out.quantity));
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
@@ -300,10 +300,10 @@ impl<'db> ShardLevelState<'db> {
                 output.asset_type,
                 output.lock_script_hash,
                 output.parameters.clone(),
-                output.amount,
+                output.quantity,
                 output_order_hashes[index],
             )?;
-            created_asset.push((asset_address, output.amount));
+            created_asset.push((asset_address, output.quantity));
         }
         ctrace!(TX, "Deleted assets {:?}", deleted_asset);
         ctrace!(TX, "Created assets {:?}", created_asset);
@@ -397,11 +397,11 @@ impl<'db> ShardLevelState<'db> {
 
         match self.asset(&asset_address)? {
             Some(asset) => {
-                if asset.amount() != input.prev_out.amount {
-                    return Err(TransactionError::InvalidAssetAmount {
+                if asset.quantity() != input.prev_out.quantity {
+                    return Err(TransactionError::InvalidAssetQuantity {
                         address: asset_address.into(),
-                        expected: asset.amount(),
-                        got: input.prev_out.amount,
+                        expected: asset.quantity(),
+                        got: input.prev_out.quantity,
                     }
                     .into())
                 }
@@ -549,21 +549,21 @@ impl<'db> ShardLevelState<'db> {
             }
 
             self.kill_asset(&asset_address);
-            deleted_assets.push((asset_address.into(), input.prev_out.amount));
+            deleted_assets.push((asset_address.into(), input.prev_out.quantity));
 
-            let current_amount = sum.get(&asset_type).cloned().unwrap_or_default();
-            sum.insert(asset_type, current_amount + input.prev_out.amount);
+            let current_quantity = sum.get(&asset_type).cloned().unwrap_or_default();
+            sum.insert(asset_type, current_quantity + input.prev_out.quantity);
         }
         ctrace!(TX, "Deleted assets {:?}", deleted_assets);
 
-        let pool = sum.into_iter().map(|(asset_type, amount)| Asset::new(asset_type, amount)).collect();
+        let pool = sum.into_iter().map(|(asset_type, quantity)| Asset::new(asset_type, quantity)).collect();
 
         self.mint_asset(
             transaction.tracker(),
             metadata,
             &output.lock_script_hash,
             &output.parameters,
-            &output.amount,
+            &output.supply,
             approver,
             administrator,
             allowed_script_hashes,
@@ -601,24 +601,24 @@ impl<'db> ShardLevelState<'db> {
         let mut sum: HashMap<H256, u64> = HashMap::new();
         for output in outputs {
             let output_type = output.asset_type;
-            let current_amount = sum.get(&output_type).cloned().unwrap_or_default();
-            sum.insert(output_type, current_amount + output.amount);
+            let current_quantity = sum.get(&output_type).cloned().unwrap_or_default();
+            sum.insert(output_type, current_quantity + output.quantity);
         }
         for asset in asset_scheme.pool() {
             match sum.remove(asset.asset_type()) {
                 None => {
                     return Err(TransactionError::InvalidDecomposedOutput {
                         address: *asset.asset_type(),
-                        expected: asset.amount(),
+                        expected: asset.quantity(),
                         got: 0,
                     }
                     .into())
                 }
                 Some(value) => {
-                    if value != asset.amount() {
+                    if value != asset.quantity() {
                         return Err(TransactionError::InvalidDecomposedOutput {
                             address: *asset.asset_type(),
-                            expected: asset.amount(),
+                            expected: asset.quantity(),
                             got: value,
                         }
                         .into())
@@ -628,12 +628,12 @@ impl<'db> ShardLevelState<'db> {
         }
         if !sum.is_empty() {
             let mut invalid_assets: Vec<Asset> =
-                sum.into_iter().map(|(asset_type, amount)| Asset::new(asset_type, amount)).collect();
+                sum.into_iter().map(|(asset_type, quantity)| Asset::new(asset_type, quantity)).collect();
             let invalid_asset = invalid_assets.pop().unwrap();
             return Err(TransactionError::InvalidDecomposedOutput {
                 address: *invalid_asset.asset_type(),
                 expected: 0,
-                got: invalid_asset.amount(),
+                got: invalid_asset.quantity(),
             }
             .into())
         }
@@ -644,7 +644,7 @@ impl<'db> ShardLevelState<'db> {
         self.kill_asset(&asset_address);
         self.kill_asset_scheme(&asset_scheme_address);
 
-        ctrace!(TX, "Deleted assets {:?} {:?}", asset_type, input.prev_out.amount);
+        ctrace!(TX, "Deleted assets {:?} {:?}", asset_type, input.prev_out.quantity);
 
         // Put asset into DB
         for (index, output) in outputs.iter().enumerate() {
@@ -654,7 +654,7 @@ impl<'db> ShardLevelState<'db> {
                 output.asset_type,
                 output.lock_script_hash,
                 output.parameters.clone(),
-                output.amount,
+                output.quantity,
                 None,
             )?;
         }
@@ -667,7 +667,7 @@ impl<'db> ShardLevelState<'db> {
         tx_hash: &H256,
         lock_script_hash: &H160,
         parameters: &[Bytes],
-        amount: u64,
+        quantity: u64,
     ) -> StateResult<()> {
         let asset_scheme_address = AssetSchemeAddress::new_with_zero_suffix(self.shard_id);
         if self.asset_scheme(&asset_scheme_address)?.is_none() {
@@ -696,7 +696,7 @@ impl<'db> ShardLevelState<'db> {
             asset_scheme_address.into(),
             *lock_script_hash,
             parameters.to_vec(),
-            amount,
+            quantity,
             None,
         )?;
         ctrace!(TX, "Created Wrapped CCC {:?} on {:?}", asset, asset_address);
@@ -716,7 +716,7 @@ impl<'db> ShardLevelState<'db> {
 
         let (_, asset_address) = self.check_input_asset(burn, sender, &approvers)?;
         self.kill_asset(&asset_address);
-        ctrace!(TX, "Removed Wrapped CCC asset {:?}, amount {:?}", asset_address, burn.prev_out.amount);
+        ctrace!(TX, "Removed Wrapped CCC asset {:?}, quantity {:?}", asset_address, burn.prev_out.quantity);
         Ok(())
     }
 
@@ -732,14 +732,14 @@ impl<'db> ShardLevelState<'db> {
         &self,
         a: &AssetSchemeAddress,
         metadata: String,
-        amount: u64,
+        supply: u64,
         approver: Option<Address>,
         administrator: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> cmerkle::Result<AssetScheme> {
         let mut asset_scheme = self.get_asset_scheme_mut(a)?;
-        asset_scheme.init(metadata, amount, approver, administrator, allowed_script_hashes, pool);
+        asset_scheme.init(metadata, supply, approver, administrator, allowed_script_hashes, pool);
         Ok(asset_scheme.clone())
     }
 
@@ -761,11 +761,11 @@ impl<'db> ShardLevelState<'db> {
         asset_type: H256,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
-        amount: u64,
+        quantity: u64,
         order_hash: Option<H256>,
     ) -> cmerkle::Result<OwnedAsset> {
         let mut asset = self.get_asset_mut(a)?;
-        asset.init(asset_type, lock_script_hash, parameters, amount, order_hash);
+        asset.init(asset_type, lock_script_hash, parameters, quantity, order_hash);
         Ok(asset.clone())
     }
 }
@@ -905,8 +905,8 @@ mod tests {
 
         let asset_type = H256::from(AssetSchemeAddress::new(transaction_tracker, SHARD_ID));
         check_shard_level_state!(state, [
-            (scheme: (transaction_tracker, SHARD_ID) => { metadata: metadata, amount: amount, approver: approver }),
-            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (transaction_tracker, SHARD_ID) => { metadata: metadata, supply: amount, approver: approver }),
+            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
     }
 
@@ -932,8 +932,8 @@ mod tests {
 
         let asset_type = H256::from(AssetSchemeAddress::new(transaction_tracker, SHARD_ID));
         check_shard_level_state!(state, [
-            (scheme: (transaction_tracker, SHARD_ID) => { metadata: metadata, amount: ::std::u64::MAX, approver: approver }),
-            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: ::std::u64::MAX })
+            (scheme: (transaction_tracker, SHARD_ID) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
+            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
 
@@ -967,8 +967,8 @@ mod tests {
 
         let asset_type = H256::from(AssetSchemeAddress::new(transaction_tracker, SHARD_ID));
         check_shard_level_state!(state, [
-            (scheme: (transaction_tracker, SHARD_ID) => { metadata: metadata, amount: ::std::u64::MAX, approver: approver }),
-            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: ::std::u64::MAX })
+            (scheme: (transaction_tracker, SHARD_ID) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
+            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
 
@@ -984,15 +984,15 @@ mod tests {
         let approver = Address::random();
         let amount = 30;
         let mint =
-            asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone(), approver: approver);
+            asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone(), approver: approver);
         let mint_tracker = mint.tracker();
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
 
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, approver: approver }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, approver: approver }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let transfer = asset_transfer!(
@@ -1007,8 +1007,8 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, approver: approver }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, approver: approver }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount }),
             (asset: (transfer_tracker, 0, SHARD_ID))
         ]);
     }
@@ -1023,7 +1023,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
@@ -1031,8 +1031,8 @@ mod tests {
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let random_lock_script_hash = H160::random();
@@ -1049,11 +1049,11 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10, lock_script_hash: lock_script_hash }),
-            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, amount: 5, lock_script_hash: lock_script_hash }),
-            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15, lock_script_hash: random_lock_script_hash })
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10, lock_script_hash: lock_script_hash }),
+            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, quantity: 5, lock_script_hash: lock_script_hash }),
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15, lock_script_hash: random_lock_script_hash })
         ]);
     }
 
@@ -1071,7 +1071,7 @@ mod tests {
 
         let amount = 30;
         let mint = asset_mint!(
-            asset_mint_output!(lock_script_hash, amount: amount),
+            asset_mint_output!(lock_script_hash, supply: amount),
             metadata.clone(),
             allowed_script_hashes: allowed_script_hashes.clone()
         );
@@ -1082,8 +1082,8 @@ mod tests {
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let transfer = asset_transfer!(
@@ -1099,11 +1099,11 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, allowed_script_hashes: allowed_script_hashes}),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10, lock_script_hash: lock_script_hash }),
-            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, amount: 5, lock_script_hash: lock_script_hash }),
-            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15, lock_script_hash: random_lock_script_hash })
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10, lock_script_hash: lock_script_hash }),
+            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, quantity: 5, lock_script_hash: lock_script_hash }),
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15, lock_script_hash: random_lock_script_hash })
         ]);
     }
 
@@ -1120,7 +1120,7 @@ mod tests {
         let allowed_lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
         let allowed_script_hashes = vec![allowed_lock_script_hash];
         let mint = asset_mint!(
-            asset_mint_output!(lock_script_hash, amount: amount),
+            asset_mint_output!(lock_script_hash, supply: amount),
             metadata.clone(),
             allowed_script_hashes: allowed_script_hashes.clone()
         );
@@ -1130,8 +1130,8 @@ mod tests {
 
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let transfer = asset_transfer!(
@@ -1146,8 +1146,8 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, allowed_script_hashes: allowed_script_hashes}),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, allowed_script_hashes: allowed_script_hashes}),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount }),
             (asset: (transfer_tracker, 0, SHARD_ID))
         ]);
     }
@@ -1162,7 +1162,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
@@ -1170,8 +1170,8 @@ mod tests {
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let burn = asset_transfer!(
@@ -1183,7 +1183,7 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&burn.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
             (asset: (burn_tracker, 0, SHARD_ID))
         ]);
@@ -1199,15 +1199,15 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
 
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let lock_script_hash_burn = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
@@ -1226,11 +1226,11 @@ mod tests {
 
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10 }),
-            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, amount: 5 }),
-            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15 })
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
+            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, quantity: 5 }),
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15 })
         ]);
 
         let burn = asset_transfer!(
@@ -1241,11 +1241,11 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&burn.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10 }),
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1, SHARD_ID)),
-            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15 }),
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15 }),
             (asset: (burn_tracker, 0, SHARD_ID))
         ]);
     }
@@ -1263,7 +1263,7 @@ mod tests {
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
         let mint = asset_mint!(
-            asset_mint_output!(lock_script_hash, amount: amount),
+            asset_mint_output!(lock_script_hash, supply: amount),
             metadata.clone(),
             administrator: administrator
         );
@@ -1274,8 +1274,8 @@ mod tests {
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, administrator: administrator }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, administrator: administrator }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let lock_script_hash1 = H160::random();
@@ -1296,11 +1296,11 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, administrator: administrator }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, administrator: administrator }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10 }),
-            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, amount: 5 }),
-            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15 })
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
+            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, quantity: 5 }),
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15 })
         ]);
     }
 
@@ -1317,7 +1317,7 @@ mod tests {
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
         let mint = asset_mint!(
-            asset_mint_output!(lock_script_hash, amount: amount),
+            asset_mint_output!(lock_script_hash, supply: amount),
             metadata.clone(),
             administrator: administrator
         );
@@ -1328,8 +1328,8 @@ mod tests {
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, administrator: administrator }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, administrator: administrator }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let burn = asset_transfer!(burns: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30))]);
@@ -1338,7 +1338,7 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&burn.into(), &administrator, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount, administrator: administrator }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount, administrator: administrator }),
             (asset: (mint_tracker, 0, SHARD_ID)),
             (asset: (burn_tracker, 0, SHARD_ID))
         ]);
@@ -1354,7 +1354,7 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
@@ -1362,8 +1362,8 @@ mod tests {
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let transfer = asset_transfer!(
@@ -1376,7 +1376,7 @@ mod tests {
 
         assert_eq!(
             Ok(Invoice::Failure(
-                TransactionError::InvalidAssetAmount {
+                TransactionError::InvalidAssetQuantity {
                     address: asset_address,
                     expected: 30,
                     got: 20
@@ -1387,8 +1387,8 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata, supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount }),
             (asset: (transfer_tracker, 0, SHARD_ID))
         ]);
     }
@@ -1404,30 +1404,30 @@ mod tests {
         let amount = 30;
 
         let metadata1 = "metadata".to_string();
-        let mint1 = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata1.clone());
+        let mint1 = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata1.clone());
         let mint_tracker1 = mint1.tracker();
         let asset_type1 = H256::from(AssetSchemeAddress::new(mint_tracker1, SHARD_ID));
 
         let metadata2 = "metadata2".to_string();
-        let mint2 = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata2.clone());
+        let mint2 = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata2.clone());
         let mint_tracker2 = mint2.tracker();
         let asset_type2 = H256::from(AssetSchemeAddress::new(mint_tracker2, SHARD_ID));
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint1.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker1, SHARD_ID) => { metadata: metadata1, amount: amount }),
+            (scheme: (mint_tracker1, SHARD_ID) => { metadata: metadata1, supply: amount }),
             (scheme: (mint_tracker2, SHARD_ID)),
-            (asset: (mint_tracker1, 0, SHARD_ID) => { asset_type: asset_type1, amount: amount })
+            (asset: (mint_tracker1, 0, SHARD_ID) => { asset_type: asset_type1, quantity: amount })
         ]);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint2.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker1, SHARD_ID) => { metadata: metadata1, amount: amount }),
-            (scheme: (mint_tracker2, SHARD_ID) => { metadata: metadata2, amount: amount }),
-            (asset: (mint_tracker1, 0, SHARD_ID) => { asset_type: asset_type1, amount: amount }),
-            (asset: (mint_tracker2, 0, SHARD_ID) => { asset_type: asset_type2, amount: amount })
+            (scheme: (mint_tracker1, SHARD_ID) => { metadata: metadata1, supply: amount }),
+            (scheme: (mint_tracker2, SHARD_ID) => { metadata: metadata2, supply: amount }),
+            (asset: (mint_tracker1, 0, SHARD_ID) => { asset_type: asset_type1, quantity: amount }),
+            (asset: (mint_tracker2, 0, SHARD_ID) => { asset_type: asset_type2, quantity: amount })
         ]);
 
         let transfer = asset_transfer!(
@@ -1442,10 +1442,10 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker1, SHARD_ID) => { metadata: metadata1, amount: amount }),
-            (scheme: (mint_tracker2, SHARD_ID) => { metadata: metadata2, amount: amount }),
-            (asset: (mint_tracker1, 0, SHARD_ID) => { asset_type: asset_type1, amount: amount }),
-            (asset: (mint_tracker2, 0, SHARD_ID) => { asset_type: asset_type2, amount: amount }),
+            (scheme: (mint_tracker1, SHARD_ID) => { metadata: metadata1, supply: amount }),
+            (scheme: (mint_tracker2, SHARD_ID) => { metadata: metadata2, supply: amount }),
+            (asset: (mint_tracker1, 0, SHARD_ID) => { asset_type: asset_type1, quantity: amount }),
+            (asset: (mint_tracker2, 0, SHARD_ID) => { asset_type: asset_type2, quantity: amount }),
             (asset: (transfer_tracker, 0, SHARD_ID))
         ]);
     }
@@ -1458,15 +1458,15 @@ mod tests {
         amount: u64,
     ) -> AssetOutPoint {
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
 
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, shard_id));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         asset_out_point!(mint_tracker, 0, asset_type, amount)
@@ -1522,18 +1522,18 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_output_1.tracker, SHARD_ID) => { metadata: "metadata1".to_string(), amount: 30 }),
-            (scheme: (mint_output_2.tracker, SHARD_ID) => { metadata: "metadata2".to_string(), amount: 30 }),
-            (scheme: (mint_output_3.tracker, SHARD_ID) => { metadata: "metadata3".to_string(), amount: 30 }),
+            (scheme: (mint_output_1.tracker, SHARD_ID) => { metadata: "metadata1".to_string(), supply: 30 }),
+            (scheme: (mint_output_2.tracker, SHARD_ID) => { metadata: "metadata2".to_string(), supply: 30 }),
+            (scheme: (mint_output_3.tracker, SHARD_ID) => { metadata: "metadata3".to_string(), supply: 30 }),
             (asset: (mint_output_1.tracker, 0, SHARD_ID)),
             (asset: (mint_output_2.tracker, 0, SHARD_ID)),
             (asset: (mint_output_3.tracker, 0, SHARD_ID)),
-            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type_1, amount: 10, order: order_consumed_hash }),
-            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type_2, amount: 10, order: order_consumed_hash }),
-            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type_3, amount: 10, order: order_consumed_hash }),
-            (asset: (transfer_tracker, 3, SHARD_ID) => { asset_type: asset_type_1, amount: 20, order }),
-            (asset: (transfer_tracker, 4, SHARD_ID) => { asset_type: asset_type_2, amount: 20, order }),
-            (asset: (transfer_tracker, 5, SHARD_ID) => { asset_type: asset_type_3, amount: 20, order: order_consumed_hash })
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type_1, quantity: 10, order: order_consumed_hash }),
+            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type_2, quantity: 10, order: order_consumed_hash }),
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type_3, quantity: 10, order: order_consumed_hash }),
+            (asset: (transfer_tracker, 3, SHARD_ID) => { asset_type: asset_type_1, quantity: 20, order }),
+            (asset: (transfer_tracker, 4, SHARD_ID) => { asset_type: asset_type_2, quantity: 20, order }),
+            (asset: (transfer_tracker, 5, SHARD_ID) => { asset_type: asset_type_3, quantity: 20, order: order_consumed_hash })
         ]);
     }
 
@@ -1547,21 +1547,21 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let random_lock_script_hash = H160::random();
         let compose = asset_compose!(
             "composed".to_string(),
             asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
-            asset_mint_output!(random_lock_script_hash, amount: 1)
+            asset_mint_output!(random_lock_script_hash, supply: 1)
         );
         let compose_tracker = compose.tracker();
         let composed_asset_type = H256::from(AssetSchemeAddress::new(compose_tracker, SHARD_ID));
@@ -1569,10 +1569,10 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&compose.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), amount: 1, pool: [Asset::new(asset_type, amount)] }),
-            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, amount: 1 })
+            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), supply: 1, pool: [Asset::new(asset_type, amount)] }),
+            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, quantity: 1 })
         ]);
     }
 
@@ -1586,20 +1586,20 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let compose = asset_compose!(
             "composed".to_string(),
             asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, amount), vec![0x30, 0x01])],
-            asset_mint_output!(lock_script_hash, amount: 1)
+            asset_mint_output!(lock_script_hash, supply: 1)
         );
         let compose_tracker = compose.tracker();
         let composed_asset_type = H256::from(AssetSchemeAddress::new(compose_tracker, SHARD_ID));
@@ -1607,10 +1607,10 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&compose.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), amount: 1, pool: [Asset::new(asset_type, amount)] }),
-            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, amount: 1 })
+            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), supply: 1, pool: [Asset::new(asset_type, amount)] }),
+            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, quantity: 1 })
         ]);
 
         let random_lock_script_hash = H160::random();
@@ -1623,11 +1623,11 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&decompose.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
             (scheme: (compose_tracker, SHARD_ID)),
             (asset: (compose_tracker, 0, SHARD_ID)),
-            (asset: (decompose_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (asset: (decompose_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
     }
 
@@ -1641,34 +1641,34 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
-        let mint2 = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), "invalid_asset".to_string());
+        let mint2 = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), "invalid_asset".to_string());
         let mint2_tracker = mint2.tracker();
         let asset_type2 = H256::from(AssetSchemeAddress::new(mint2_tracker, SHARD_ID));
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint2.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount }),
-            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), amount: amount }),
-            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount }),
+            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), supply: amount }),
+            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, quantity: amount })
         ]);
 
         let compose = asset_compose!(
             "composed".to_string(),
             asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, amount), vec![0x30, 0x01])],
-            asset_mint_output!(lock_script_hash, amount: 1)
+            asset_mint_output!(lock_script_hash, supply: 1)
         );
         let compose_tracker = compose.tracker();
         let composed_asset_type = H256::from(AssetSchemeAddress::new(compose_tracker, SHARD_ID));
@@ -1676,12 +1676,12 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&compose.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), amount: amount }),
-            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, amount: amount }),
-            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), amount: 1, pool: [Asset::new(asset_type, amount)] }),
-            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, amount: 1 })
+            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), supply: amount }),
+            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, quantity: amount }),
+            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), supply: 1, pool: [Asset::new(asset_type, amount)] }),
+            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, quantity: 1 })
         ]);
 
         let random_lock_script_hash = H160::random();
@@ -1702,12 +1702,12 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID) ),
-            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), amount: amount }),
-            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, amount: amount }),
-            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), amount: 1, pool: [Asset::new(asset_type, amount)] }),
-            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, amount: 1 })
+            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), supply: amount }),
+            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, quantity: amount }),
+            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), supply: 1, pool: [Asset::new(asset_type, amount)] }),
+            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, quantity: 1 })
         ]);
     }
 
@@ -1721,28 +1721,28 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
-        let mint2 = asset_mint!(asset_mint_output!(lock_script_hash, amount: 1), "invalid_asset".to_string());
+        let mint2 = asset_mint!(asset_mint_output!(lock_script_hash, supply: 1), "invalid_asset".to_string());
         let mint2_tracker = mint2.tracker();
         let asset_type2 = H256::from(AssetSchemeAddress::new(mint2_tracker, SHARD_ID));
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint2.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount }),
-            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), amount: 1 }),
-            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, amount: 1 })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount }),
+            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), supply: 1 }),
+            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, quantity: 1 })
         ]);
 
         let compose = asset_compose!(
@@ -1751,7 +1751,7 @@ mod tests {
                 (asset_out_point!(mint_tracker, 0, asset_type, amount), vec![0x30, 0x01]),
                 (asset_out_point!(mint2_tracker, 0, asset_type2, 1), vec![0x30, 0x01]),
             ],
-            asset_mint_output!(lock_script_hash, amount: 1)
+            asset_mint_output!(lock_script_hash, supply: 1)
         );
         let compose_tracker = compose.tracker();
         let composed_asset_type = H256::from(AssetSchemeAddress::new(compose_tracker, SHARD_ID));
@@ -1759,12 +1759,12 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&compose.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), amount: 1 }),
+            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), supply: 1 }),
             (asset: (mint2_tracker, 0, SHARD_ID)),
-            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), amount: 1 }),
-            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, amount: 1 })
+            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), supply: 1 }),
+            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, quantity: 1 })
         ]);
 
         let random_lock_script_hash = H160::random();
@@ -1786,12 +1786,12 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), amount: 1 }),
+            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), supply: 1 }),
             (asset: (mint2_tracker, 0, SHARD_ID)),
-            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), amount: 1 }),
-            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, amount: 1 })
+            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), supply: 1 }),
+            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, quantity: 1 })
         ]);
     }
 
@@ -1806,27 +1806,27 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
-        let mint2 = asset_mint!(asset_mint_output!(lock_script_hash, amount: 1), "invalid_asset".to_string());
+        let mint2 = asset_mint!(asset_mint_output!(lock_script_hash, supply: 1), "invalid_asset".to_string());
         let mint2_tracker = mint2.tracker();
         let asset_type2 = H256::from(AssetSchemeAddress::new(mint2_tracker, SHARD_ID));
         assert_eq!(Ok(Invoice::Success), state.apply(&mint2.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount }),
-            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), amount: 1 }),
-            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, amount: 1 })
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount }),
+            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), supply: 1 }),
+            (asset: (mint2_tracker, 0, SHARD_ID) => { asset_type: asset_type2, quantity: 1 })
         ]);
 
         let compose = asset_compose!(
@@ -1835,7 +1835,7 @@ mod tests {
                 (asset_out_point!(mint_tracker, 0, asset_type, amount), vec![0x30, 0x01]),
                 (asset_out_point!(mint2_tracker, 0, asset_type2, 1), vec![0x30, 0x01]),
             ],
-            asset_mint_output!(lock_script_hash, amount: 1)
+            asset_mint_output!(lock_script_hash, supply: 1)
         );
         let compose_tracker = compose.tracker();
         let composed_asset_type = H256::from(AssetSchemeAddress::new(compose_tracker, SHARD_ID));
@@ -1843,12 +1843,12 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&compose.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), amount: 1 }),
+            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), supply: 1 }),
             (asset: (mint2_tracker, 0, SHARD_ID)),
-            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), amount: 1 }),
-            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, amount: 1 })
+            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), supply: 1 }),
+            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, quantity: 1 })
         ]);
 
         let random_lock_script_hash = H160::random();
@@ -1873,12 +1873,12 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), amount: 1 }),
+            (scheme: (mint2_tracker, SHARD_ID) => { metadata: "invalid_asset".to_string(), supply: 1 }),
             (asset: (mint2_tracker, 0, SHARD_ID)),
-            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), amount: 1 }),
-            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, amount: 1 })
+            (scheme: (compose_tracker, SHARD_ID) => { metadata: "composed".to_string(), supply: 1 }),
+            (asset: (compose_tracker, 0, SHARD_ID) => { asset_type: composed_asset_type, quantity: 1 })
         ]);
     }
 
@@ -1902,8 +1902,8 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&wrap_ccc, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_scheme_address) => { amount: std::u64::MAX }),
-            (asset: (wrap_ccc_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (asset_scheme_address) => { supply: std::u64::MAX }),
+            (asset: (wrap_ccc_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let unwrap_ccc =
@@ -1912,7 +1912,7 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&unwrap_ccc.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_scheme_address) => { amount: std::u64::MAX }),
+            (scheme: (asset_scheme_address) => { supply: std::u64::MAX }),
             (asset: (wrap_ccc_tracker, 0, SHARD_ID))
         ]);
     }
@@ -1938,8 +1938,8 @@ mod tests {
         let asset_type = asset_scheme_address.into();
 
         check_shard_level_state!(state, [
-            (scheme: (asset_scheme_address) => { amount: std::u64::MAX }),
-            (asset: (wrap_ccc_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (asset_scheme_address) => { supply: std::u64::MAX }),
+            (asset: (wrap_ccc_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let lock_script_hash_burn = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
@@ -1957,11 +1957,11 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_scheme_address) => { amount: std::u64::MAX }),
+            (scheme: (asset_scheme_address) => { supply: std::u64::MAX }),
             (asset: (wrap_ccc_tracker, 0, SHARD_ID)),
-            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10 }),
-            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, amount: 5 }),
-            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15 })
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
+            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, quantity: 5 }),
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15 })
         ]);
 
         let unwrap_ccc =
@@ -1970,11 +1970,11 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&unwrap_ccc.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_scheme_address) => { amount: std::u64::MAX }),
+            (scheme: (asset_scheme_address) => { supply: std::u64::MAX }),
             (asset: (wrap_ccc_tracker, 0, SHARD_ID)),
-            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10 }),
+            (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1, SHARD_ID)),
-            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15 })
+            (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15 })
         ]);
     }
 
@@ -1988,15 +1988,15 @@ mod tests {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, amount: amount), metadata.clone());
+        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
         let mint_tracker = mint.tracker();
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, SHARD_ID));
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, 0) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, 0) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let failed_lock_script = vec![0x30];
@@ -2020,8 +2020,8 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, 0) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount }),
+            (scheme: (mint_tracker, 0) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount }),
             (asset: (failed_transfer_tracker, 0, SHARD_ID))
         ]);
 
@@ -2042,12 +2042,12 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, 0) => { metadata: metadata.clone(), amount: amount }),
+            (scheme: (mint_tracker, 0) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
             (asset: (failed_transfer_tracker, 0, SHARD_ID)),
-            (asset: (successful_transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: 10 }),
-            (asset: (successful_transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, amount: 5 }),
-            (asset: (successful_transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, amount: 15 })
+            (asset: (successful_transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
+            (asset: (successful_transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, quantity: 5 }),
+            (asset: (successful_transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15 })
         ]);
     }
 
@@ -2073,8 +2073,8 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transaction.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (transaction_tracker, 0) => { metadata: metadata.clone(), amount: ::std::u64::MAX }),
-            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: ::std::u64::MAX })
+            (scheme: (transaction_tracker, 0) => { metadata: metadata.clone(), supply: ::std::u64::MAX }),
+            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
 
@@ -2131,8 +2131,8 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transaction.into(), &sender, &[], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (transaction_tracker, 0) => { metadata: metadata.clone(), amount: ::std::u64::MAX, approver: approver }),
-            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: ::std::u64::MAX })
+            (scheme: (transaction_tracker, 0) => { metadata: metadata.clone(), supply: ::std::u64::MAX, approver: approver }),
+            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
 
@@ -2160,8 +2160,8 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&mint.into(), &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, 0) => { metadata: metadata.clone(), amount: amount, approver, administrator: administrator }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, 0) => { metadata: metadata.clone(), supply: amount, approver, administrator: administrator }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
         let approver = Address::random();
@@ -2179,8 +2179,8 @@ mod tests {
         );
 
         check_shard_level_state!(state, [
-            (scheme: (mint_tracker, 0) => { metadata: "New metadata".to_string(), amount: amount, approver: approver, administrator }),
-            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, 0) => { metadata: "New metadata".to_string(), supply: amount, approver: approver, administrator }),
+            (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
     }
 }

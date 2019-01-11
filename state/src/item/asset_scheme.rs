@@ -29,7 +29,7 @@ use crate::CacheableItem;
 #[serde(rename_all = "camelCase")]
 pub struct AssetScheme {
     metadata: String,
-    amount: u64,
+    supply: u64,
     approver: Option<Address>,
     administrator: Option<Address>,
     allowed_script_hashes: Vec<H160>,
@@ -39,14 +39,14 @@ pub struct AssetScheme {
 impl AssetScheme {
     pub fn new(
         metadata: String,
-        amount: u64,
+        supply: u64,
         approver: Option<Address>,
         administrator: Option<Address>,
         allowed_script_hashes: Vec<H160>,
     ) -> Self {
         Self {
             metadata,
-            amount,
+            supply,
             approver,
             administrator,
             allowed_script_hashes,
@@ -56,7 +56,7 @@ impl AssetScheme {
 
     pub fn new_with_pool(
         metadata: String,
-        amount: u64,
+        supply: u64,
         approver: Option<Address>,
         administrator: Option<Address>,
         allowed_script_hashes: Vec<H160>,
@@ -64,7 +64,7 @@ impl AssetScheme {
     ) -> Self {
         Self {
             metadata,
-            amount,
+            supply,
             approver,
             administrator,
             allowed_script_hashes,
@@ -76,8 +76,8 @@ impl AssetScheme {
         &self.metadata
     }
 
-    pub fn amount(&self) -> u64 {
-        self.amount
+    pub fn supply(&self) -> u64 {
+        self.supply
     }
 
     pub fn approver(&self) -> &Option<Address> {
@@ -108,18 +108,18 @@ impl AssetScheme {
     pub fn init(
         &mut self,
         metadata: String,
-        amount: u64,
+        supply: u64,
         approver: Option<Address>,
         administrator: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) {
         assert_eq!("", &self.metadata);
-        assert_eq!(0, self.amount);
+        assert_eq!(0, self.supply);
         assert_eq!(None, self.approver);
         assert_eq!(None, self.administrator);
         self.metadata = metadata;
-        self.amount = amount;
+        self.supply = supply;
         self.approver = approver;
         self.administrator = administrator;
         self.allowed_script_hashes = allowed_script_hashes;
@@ -157,7 +157,7 @@ impl Encodable for AssetScheme {
         s.begin_list(7)
             .append(&PREFIX)
             .append(&self.metadata)
-            .append(&self.amount)
+            .append(&self.supply)
             .append(&self.approver)
             .append(&self.administrator)
             .append_list(&self.allowed_script_hashes)
@@ -178,7 +178,7 @@ impl Decodable for AssetScheme {
         }
         Ok(Self {
             metadata: rlp.val_at(1)?,
-            amount: rlp.val_at(2)?,
+            supply: rlp.val_at(2)?,
             approver: rlp.val_at(3)?,
             administrator: rlp.val_at(4)?,
             allowed_script_hashes: rlp.list_at(5)?,
@@ -216,7 +216,7 @@ impl CacheableItem for AssetScheme {
     type Address = AssetSchemeAddress;
 
     fn is_null(&self) -> bool {
-        self.amount == 0
+        self.supply == 0
     }
 }
 

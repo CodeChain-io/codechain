@@ -71,19 +71,24 @@ impl ActionHandler for Stake {
         match action {
             Action::TransferCCS {
                 address,
-                amount,
-            } => transfer_ccs(state, sender, &address, amount),
+                quantity,
+            } => transfer_ccs(state, sender, &address, quantity),
         }
     }
 }
 
-fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address, amount: u64) -> StakeResult<Invoice> {
+fn transfer_ccs(
+    state: &mut TopLevelState,
+    sender: &Address,
+    receiver: &Address,
+    quantity: u64,
+) -> StakeResult<Invoice> {
     let mut stakeholders = Stakeholders::load_from_state(state)?;
     let mut sender_account = StakeAccount::load_from_state(state, sender)?;
     let mut receiver_account = StakeAccount::load_from_state(state, receiver)?;
 
-    sender_account.subtract_balance(amount)?;
-    receiver_account.add_balance(amount)?;
+    sender_account.subtract_balance(quantity)?;
+    receiver_account.add_balance(quantity)?;
 
     stakeholders.update(&sender_account);
     stakeholders.update(&receiver_account);

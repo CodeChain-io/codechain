@@ -27,7 +27,7 @@ use super::ShardTransaction;
 pub struct Transaction {
     /// Seq.
     pub seq: u64,
-    /// Amount of CCC to be paid as a cost for distributing this transaction to the network.
+    /// Quantity of CCC to be paid as a cost for distributing this transaction to the network.
     pub fee: u64,
     /// Network Id
     pub network_id: NetworkId,

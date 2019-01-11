@@ -53,7 +53,7 @@ describe("orders", function() {
             beforeEach(async function() {
                 aliceAddress = await node.createP2PKHAddress();
                 gold = (await node.mintAsset({
-                    amount: 10000,
+                    supply: 10000,
                     recipient: aliceAddress
                 })).asset;
             });
@@ -65,7 +65,7 @@ describe("orders", function() {
                     .addOutputs(
                         _.times(2, () => ({
                             recipient: aliceAddress,
-                            amount: 5000,
+                            quantity: 5000,
                             assetType: gold.assetType
                         }))
                     );
@@ -86,8 +86,8 @@ describe("orders", function() {
                     assetTypeTo: new H256(
                         "0000000000000000000000000000000000000000000000000000000000000000"
                     ), // Fake asset type
-                    assetAmountFrom: 5000,
-                    assetAmountTo: 5000,
+                    assetQuantityFrom: 5000,
+                    assetQuantityTo: 5000,
                     expiration,
                     originOutputs: [splitGoldInputs[0].prevOut],
                     recipientFrom: aliceAddress
@@ -101,18 +101,18 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 5000,
+                            quantity: 5000,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 5000,
+                            quantity: 5000,
                             assetType: gold.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 5000,
+                        spentQuantity: 5000,
                         inputIndices: [0],
                         outputIndices: [0]
                     });
@@ -146,11 +146,11 @@ describe("orders", function() {
                 aliceAddress = await node.createP2PKHAddress();
                 bobAddress = await node.createP2PKHAddress();
                 gold = (await node.mintAsset({
-                    amount: 10000,
+                    supply: 10000,
                     recipient: aliceAddress
                 })).asset;
                 silver = (await node.mintAsset({
-                    amount: 10000,
+                    supply: 10000,
                     recipient: bobAddress
                 })).asset;
             });
@@ -163,8 +163,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -175,28 +175,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -216,7 +216,7 @@ describe("orders", function() {
                     .addOutputs(
                         _.times(10, () => ({
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: gold.assetType
                         }))
                     );
@@ -236,8 +236,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: splitGoldInputs.map(input => input.prevOut),
                     recipientFrom: aliceAddress
@@ -250,28 +250,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: _.range(10),
                         outputIndices: [0, 1]
                     });
@@ -294,8 +294,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 10000,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 10000,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -306,23 +306,23 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 10000,
+                            quantity: 10000,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 10000,
+                        spentQuantity: 10000,
                         inputIndices: [0],
                         outputIndices: [0]
                     });
@@ -342,8 +342,8 @@ describe("orders", function() {
                 const aliceOrder = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -352,8 +352,8 @@ describe("orders", function() {
                 const bobOrder = node.sdk.core.createOrder({
                     assetTypeFrom: silver.assetType,
                     assetTypeTo: gold.assetType,
-                    assetAmountFrom: 1000,
-                    assetAmountTo: 100,
+                    assetQuantityFrom: 1000,
+                    assetQuantityTo: 100,
                     expiration,
                     originOutputs: [silverInput.prevOut],
                     recipientFrom: bobAddress
@@ -365,34 +365,34 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order: aliceOrder,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     })
                     .addOrder({
                         order: bobOrder,
-                        spentAmount: 1000,
+                        spentQuantity: 1000,
                         inputIndices: [1],
                         outputIndices: [2, 3]
                     });
@@ -412,8 +412,8 @@ describe("orders", function() {
                 const aliceOrder = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -422,8 +422,8 @@ describe("orders", function() {
                 const bobOrder = node.sdk.core.createOrder({
                     assetTypeFrom: silver.assetType,
                     assetTypeTo: gold.assetType,
-                    assetAmountFrom: 1000,
-                    assetAmountTo: 50,
+                    assetQuantityFrom: 1000,
+                    assetQuantityTo: 50,
                     expiration,
                     originOutputs: [silverInput.prevOut],
                     recipientFrom: bobAddress
@@ -435,36 +435,36 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         // Bob gets more gold than he wanted.
                         // If there's a relayer, relayer may take it.
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order: aliceOrder,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     })
                     .addOrder({
                         order: bobOrder,
-                        spentAmount: 1000,
+                        spentQuantity: 1000,
                         inputIndices: [1],
                         outputIndices: [2, 3]
                     });
@@ -484,8 +484,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 10000,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 10000,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -496,18 +496,18 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 10000,
+                            quantity: 10000,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 10000,
+                            quantity: 10000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 0,
+                        spentQuantity: 0,
                         inputIndices: [0],
                         outputIndices: [0]
                     });
@@ -540,8 +540,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -552,28 +552,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000 - 10,
+                            quantity: 1000 - 10,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000 + 10,
+                            quantity: 9000 + 10,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -606,8 +606,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -619,28 +619,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -677,8 +677,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -689,28 +689,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -744,8 +744,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -756,33 +756,33 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900 - 100,
+                            quantity: 9900 - 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1, 2]
                     });
@@ -815,8 +815,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -827,33 +827,33 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000 - 100,
+                            quantity: 1000 - 100,
                             assetType: silver.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1, 2]
                     });
@@ -886,8 +886,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -898,38 +898,38 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900 - 100,
+                            quantity: 9900 - 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000 - 100,
+                            quantity: 1000 - 100,
                             assetType: silver.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1, 2, 3]
                     });
@@ -962,8 +962,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -976,28 +976,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -1028,8 +1028,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [silverInput.prevOut],
                     recipientFrom: aliceAddress
@@ -1041,28 +1041,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -1093,7 +1093,7 @@ describe("orders", function() {
                     .addOutputs(
                         _.times(10, () => ({
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: gold.assetType
                         }))
                     );
@@ -1113,8 +1113,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: splitGoldInputs
                         .slice(0, 9)
@@ -1129,28 +1129,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: _.range(10),
                         outputIndices: [0, 1]
                     });
@@ -1173,7 +1173,7 @@ describe("orders", function() {
                     .addOutputs(
                         _.times(10, () => ({
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: gold.assetType
                         }))
                     );
@@ -1193,8 +1193,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: splitGoldInputs.map(input => input.prevOut),
                     recipientFrom: aliceAddress
@@ -1207,28 +1207,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 8900,
+                            quantity: 8900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: _.range(9),
                         outputIndices: [0, 1]
                     });
@@ -1251,13 +1251,13 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
                 });
-                (order.assetAmountFrom as any) = new U64(0);
+                (order.assetQuantityFrom as any) = new U64(0);
 
                 const transferTx = node.sdk.core
                     .createTransferAssetTransaction()
@@ -1265,28 +1265,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -1304,7 +1304,7 @@ describe("orders", function() {
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_ORDER_ASSET_AMOUNTS)
+                        errorMatcher(ERROR.INVALID_ORDER_ASSET_QUANTITIES)
                     );
                 }
             });
@@ -1317,13 +1317,13 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
                 });
-                (order.assetAmountTo as any) = new U64(0);
+                (order.assetQuantityTo as any) = new U64(0);
 
                 const transferTx = node.sdk.core
                     .createTransferAssetTransaction()
@@ -1331,28 +1331,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -1370,7 +1370,7 @@ describe("orders", function() {
                     expect.fail();
                 } catch (e) {
                     expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_ORDER_ASSET_AMOUNTS)
+                        errorMatcher(ERROR.INVALID_ORDER_ASSET_QUANTITIES)
                     );
                 }
             });
@@ -1383,8 +1383,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -1395,28 +1395,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 1000,
+                            quantity: 1000,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 100,
+                            quantity: 100,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 100,
+                        spentQuantity: 100,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -1445,8 +1445,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -1458,28 +1458,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9950,
+                            quantity: 9950,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 500,
+                            quantity: 500,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 50,
+                            quantity: 50,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9500,
+                            quantity: 9500,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 50,
+                        spentQuantity: 50,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -1500,28 +1500,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9900,
+                            quantity: 9900,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 500,
+                            quantity: 500,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 50,
+                            quantity: 50,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9000,
+                            quantity: 9000,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order: orderConsumed,
-                        spentAmount: 50,
+                        spentQuantity: 50,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -1541,8 +1541,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
-                    assetAmountFrom: 100,
-                    assetAmountTo: 1000,
+                    assetQuantityFrom: 100,
+                    assetQuantityTo: 1000,
                     expiration,
                     originOutputs: [goldInput.prevOut],
                     recipientFrom: aliceAddress
@@ -1553,28 +1553,28 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9950,
+                            quantity: 9950,
                             assetType: gold.assetType
                         },
                         {
                             recipient: aliceAddress,
-                            amount: 500,
+                            quantity: 500,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 50,
+                            quantity: 50,
                             assetType: gold.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9500,
+                            quantity: 9500,
                             assetType: silver.assetType
                         }
                     )
                     .addOrder({
                         order,
-                        spentAmount: 50,
+                        spentQuantity: 50,
                         inputIndices: [0],
                         outputIndices: [0, 1]
                     });
@@ -1594,12 +1594,12 @@ describe("orders", function() {
                     .addOutputs(
                         {
                             recipient: aliceAddress,
-                            amount: 9500,
+                            quantity: 9500,
                             assetType: silver.assetType
                         },
                         {
                             recipient: bobAddress,
-                            amount: 9950,
+                            quantity: 9950,
                             assetType: gold.assetType
                         }
                     );
@@ -1622,7 +1622,7 @@ describe("orders", function() {
                 for (let i = 0; i < 5; i++) {
                     const address = await node.createP2PKHAddress();
                     const { asset } = await node.mintAsset({
-                        amount: 10000,
+                        supply: 10000,
                         recipient: address
                     });
                     addresses.push(address);
@@ -1639,12 +1639,12 @@ describe("orders", function() {
                     .addOutputs([
                         ..._.range(5).map(i => ({
                             recipient: addresses[i],
-                            amount: 50,
+                            quantity: 50,
                             assetType: assets[(i + 1) % 5].assetType
                         })),
                         ..._.range(5).map(i => ({
                             recipient: addresses[i],
-                            amount: 9950,
+                            quantity: 9950,
                             assetType: assets[i].assetType
                         }))
                     ]);
@@ -1653,15 +1653,15 @@ describe("orders", function() {
                     const order = node.sdk.core.createOrder({
                         assetTypeFrom: assets[i].assetType,
                         assetTypeTo: assets[(i + 1) % 5].assetType,
-                        assetAmountFrom: 100,
-                        assetAmountTo: 100,
+                        assetQuantityFrom: 100,
+                        assetQuantityTo: 100,
                         expiration: U64.MAX_VALUE,
                         originOutputs: [inputs[i].prevOut],
                         recipientFrom: addresses[i]
                     });
                     transferTx.addOrder({
                         order,
-                        spentAmount: 50,
+                        spentQuantity: 50,
                         inputIndices: [i],
                         outputIndices: [i, i + 5]
                     });

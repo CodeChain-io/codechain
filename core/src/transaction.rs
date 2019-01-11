@@ -275,7 +275,7 @@ mod tests {
                 network_id: "tc".into(),
                 action: Action::Pay {
                     receiver: Address::random(),
-                    amount: 300,
+                    quantity: 300,
                 },
             },
             sig: Signature::default(),

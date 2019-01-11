@@ -26,7 +26,7 @@ pub struct AssetOutPoint {
     pub tracker: H256,
     pub index: usize,
     pub asset_type: H256,
-    pub amount: u64,
+    pub quantity: u64,
 }
 
 impl AssetOutPoint {
@@ -49,7 +49,7 @@ mod tests {
             tracker: H256::random(),
             index: 3,
             asset_type,
-            amount: 34,
+            quantity: 34,
         };
 
         assert_eq!(0xBEEF, p.related_shard());

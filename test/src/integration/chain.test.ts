@@ -142,7 +142,7 @@ describe("chain", function() {
     it("sendPayTx, getInvoice, getTransaction", async function() {
         const tx = node.sdk.core.createPayTransaction({
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
-            amount: 0
+            quantity: 0
         });
         const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
         const hash = await node.sdk.rpc.chain.sendSignedTransaction(
@@ -226,7 +226,7 @@ describe("chain", function() {
                 scheme: {
                     shardId: 0,
                     metadata: "",
-                    amount: "0xa"
+                    supply: "0xa"
                 },
                 recipient
             });
@@ -311,7 +311,7 @@ describe("chain", function() {
             if (assetScheme == null) {
                 throw Error("Cannot get asset scheme");
             }
-            expect(assetScheme.amount).to.deep.equal(txAssetScheme.amount);
+            expect(assetScheme.supply).to.deep.equal(txAssetScheme.supply);
             expect(assetScheme.metadata).to.equal(txAssetScheme.metadata);
             expect(assetScheme.approver).to.deep.equal(txAssetScheme.approver);
         });
@@ -326,14 +326,14 @@ describe("chain", function() {
             if (assetScheme == null) {
                 throw Error("Cannot get asset scheme");
             }
-            expect(assetScheme.amount).to.deep.equal(txAssetScheme.amount);
+            expect(assetScheme.supply).to.deep.equal(txAssetScheme.supply);
             expect(assetScheme.metadata).to.equal(txAssetScheme.metadata);
             expect(assetScheme.approver).to.deep.equal(txAssetScheme.approver);
         });
     });
 
     it("isAssetSpent", async function() {
-        const { asset } = await node.mintAsset({ amount: 10 });
+        const { asset } = await node.mintAsset({ supply: 10 });
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.tracker,
@@ -348,7 +348,7 @@ describe("chain", function() {
         tx.addOutputs({
             assetType: asset.assetType,
             recipient,
-            amount: "0xa"
+            quantity: "0xa"
         });
         await node.signTransactionInput(tx, 0);
         const invoices = await node.sendAssetTransaction(tx);
@@ -393,7 +393,7 @@ describe("chain", function() {
         const scheme = node.sdk.core.createAssetScheme({
             shardId: 0,
             metadata: "",
-            amount: 10000
+            supply: 10000
         });
         const tx = node.sdk.core.createMintAssetTransaction({
             scheme,

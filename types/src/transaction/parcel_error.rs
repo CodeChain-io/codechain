@@ -58,7 +58,7 @@ pub enum Error {
     /// Returned when transaction seq does not match state seq
     InvalidSeq(Mismatch<u64>),
     InvalidShardId(ShardId),
-    ZeroAmount,
+    ZeroQuantity,
     /// Signature error
     InvalidSignature(String),
     InconsistentShardOutcomes,
@@ -95,7 +95,7 @@ const ERROR_ID_INVALID_TRANSFER_DESTINATION: u8 = 19u8;
 const ERROR_ID_INVALID_TRANSACTION: u8 = 20u8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 21u8;
 const ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER: u8 = 22u8;
-const ERROR_ID_ZERO_AMOUNT: u8 = 23u8;
+const ERROR_ID_ZERO_QUANTITY: u8 = 23u8;
 const ERROR_ID_TEXT_VERIFICATION_FAIL: u8 = 24u8;
 const ERROR_ID_TEXT_NOT_EXIST: u8 = 25u8;
 const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 26u8;
@@ -117,7 +117,7 @@ impl Error {
             } => 4,
             Error::InvalidSeq(_) => 2,
             Error::InvalidShardId(_) => 2,
-            Error::ZeroAmount => 1,
+            Error::ZeroQuantity => 1,
             Error::InvalidSignature(_) => 2,
             Error::InconsistentShardOutcomes => 1,
             Error::TransactionIsTooBig => 1,
@@ -154,7 +154,7 @@ impl Encodable for Error {
             } => s.append(&ERROR_ID_INSUFFICIENT_BALANCE).append(address).append(balance).append(cost),
             Error::InvalidSeq(mismatch) => s.append(&ERROR_ID_INVALID_SEQ).append(mismatch),
             Error::InvalidShardId(shard_id) => s.append(&ERROR_ID_INVALID_SHARD_ID).append(shard_id),
-            Error::ZeroAmount => s.append(&ERROR_ID_ZERO_AMOUNT),
+            Error::ZeroQuantity => s.append(&ERROR_ID_ZERO_QUANTITY),
             Error::InvalidSignature(err) => s.append(&ERROR_ID_INVALID_SIGNATURE).append(err),
             Error::InconsistentShardOutcomes => s.append(&ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
             Error::TransactionIsTooBig => s.append(&ERROR_ID_TX_IS_TOO_BIG),
@@ -194,7 +194,7 @@ impl Decodable for Error {
             },
             ERROR_ID_INVALID_SEQ => Error::InvalidSeq(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
-            ERROR_ID_ZERO_AMOUNT => Error::ZeroAmount,
+            ERROR_ID_ZERO_QUANTITY => Error::ZeroQuantity,
             ERROR_ID_INVALID_SIGNATURE => Error::InvalidSignature(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => Error::InconsistentShardOutcomes,
             ERROR_ID_TX_IS_TOO_BIG => Error::TransactionIsTooBig,
@@ -236,7 +236,7 @@ impl Display for Error {
             } => format!("{} has only {:?} but it must be larger than {:?}", address, balance, cost),
             Error::InvalidSeq(mismatch) => format!("Invalid transaction seq {}", mismatch),
             Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
-            Error::ZeroAmount => "An amount cannot be 0".to_string(),
+            Error::ZeroQuantity => "A quantity cannot be 0".to_string(),
             Error::InvalidSignature(err) => format!("Transaction has invalid signature: {}.", err),
             Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
             Error::TransactionIsTooBig => "Transaction size exceeded the body size limit".to_string(),

@@ -88,7 +88,7 @@ describe("solo - 1 node", function() {
             { networkId: "tc" }
         ).toString();
 
-        await node.sendPayTx({ amount: 5, recipient: address });
+        await node.sendPayTx({ quantity: 5, recipient: address });
         const invoice = (await node.setRegularKey(pubKey))!;
         expect(invoice.error!.type).to.equal(
             INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT.error.type
@@ -106,7 +106,7 @@ describe("solo - 1 node", function() {
             { networkId: "tc" }
         ).toString();
 
-        await node.sendPayTx({ amount: 100, recipient: address });
+        await node.sendPayTx({ quantity: 100, recipient: address });
         const seq = await node.sdk.rpc.chain.getSeq(address);
         let invoice = (await node.setRegularKey(pubKey, {
             seq,

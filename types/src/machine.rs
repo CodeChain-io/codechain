@@ -84,5 +84,5 @@ pub trait WithBalances: Machine {
     fn balance(&self, live: &Self::LiveBlock, address: &Address) -> Result<u64, Self::Error>;
 
     /// Increment the balance of an account in the state of the live block.
-    fn add_balance(&self, live: &mut Self::LiveBlock, address: &Address, amount: u64) -> Result<(), Self::Error>;
+    fn add_balance(&self, live: &mut Self::LiveBlock, address: &Address, quantity: u64) -> Result<(), Self::Error>;
 }

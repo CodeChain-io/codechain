@@ -24,7 +24,7 @@ pub struct AssetOutPoint {
     pub tracker: H256,
     pub index: usize,
     pub asset_type: H256,
-    pub amount: Uint,
+    pub quantity: Uint,
 }
 
 impl From<AssetOutPointType> for AssetOutPoint {
@@ -33,7 +33,7 @@ impl From<AssetOutPointType> for AssetOutPoint {
             tracker: from.tracker,
             index: from.index,
             asset_type: from.asset_type,
-            amount: from.amount.into(),
+            quantity: from.quantity.into(),
         }
     }
 }
@@ -44,7 +44,7 @@ impl From<AssetOutPoint> for AssetOutPointType {
             tracker: from.tracker,
             index: from.index,
             asset_type: from.asset_type,
-            amount: from.amount.into(),
+            quantity: from.quantity.into(),
         }
     }
 }

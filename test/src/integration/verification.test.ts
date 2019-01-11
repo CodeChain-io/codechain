@@ -45,7 +45,7 @@ describe("solo - 1 node", function() {
             const tx = node.sdk.core
                 .createPayTransaction({
                     recipient,
-                    amount: 0
+                    quantity: 0
                 })
                 .sign({
                     secret: faucetSecret,
@@ -208,14 +208,14 @@ describe("solo - 1 node", function() {
             scheme = node.sdk.core.createAssetScheme({
                 shardId: 0,
                 metadata: "Valid metadata",
-                amount: 10
+                supply: 10
             });
             input = node.sdk.core.createAssetTransferInput({
                 assetOutPoint: {
                     tracker: "0x" + "0".repeat(64),
                     index: 0,
                     assetType: "0x" + "1".repeat(64),
-                    amount: 12345
+                    quantity: 12345
                 },
                 timelock: {
                     type: "block",
@@ -224,7 +224,7 @@ describe("solo - 1 node", function() {
             });
             output = node.sdk.core.createAssetTransferOutput({
                 assetType: "0x" + "0".repeat(64),
-                amount: 12345,
+                quantity: 12345,
                 recipient
             });
         });
@@ -779,7 +779,7 @@ describe("solo - 1 node", function() {
             const signed = node.sdk.core
                 .createPayTransaction({
                     recipient,
-                    amount: 0
+                    quantity: 0
                 })
                 .sign({
                     secret: faucetSecret,
@@ -957,7 +957,7 @@ describe("solo - 1 node", function() {
                 .createWrapCCCTransaction({
                     shardId: 0,
                     recipient,
-                    amount: 10
+                    quantity: 10
                 })
                 .sign({
                     secret: faucetSecret,
@@ -1028,7 +1028,7 @@ describe("solo - 1 node", function() {
             const signed = node.sdk.core
                 .createPayTransaction({
                     recipient,
-                    amount: 0
+                    quantity: 0
                 })
                 .sign({
                     secret: faucetSecret,

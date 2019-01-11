@@ -24,14 +24,14 @@ use crate::CacheableItem;
 #[serde(rename_all = "camelCase")]
 pub struct Asset {
     asset_type: H256,
-    amount: u64,
+    quantity: u64,
 }
 
 impl Asset {
-    pub fn new(asset_type: H256, amount: u64) -> Self {
+    pub fn new(asset_type: H256, quantity: u64) -> Self {
         Self {
             asset_type,
-            amount,
+            quantity,
         }
     }
 
@@ -39,8 +39,8 @@ impl Asset {
         &self.asset_type
     }
 
-    pub fn amount(&self) -> u64 {
-        self.amount
+    pub fn quantity(&self) -> u64 {
+        self.quantity
     }
 }
 
@@ -59,13 +59,13 @@ impl OwnedAsset {
         asset_type: H256,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
-        amount: u64,
+        quantity: u64,
         order_hash: Option<H256>,
     ) -> Self {
         Self {
             asset: Asset {
                 asset_type,
-                amount,
+                quantity,
             },
             lock_script_hash,
             parameters,
@@ -85,8 +85,8 @@ impl OwnedAsset {
         &self.parameters
     }
 
-    pub fn amount(&self) -> u64 {
-        self.asset.amount()
+    pub fn quantity(&self) -> u64 {
+        self.asset.quantity()
     }
 
     pub fn order_hash(&self) -> &Option<H256> {
@@ -98,13 +98,13 @@ impl OwnedAsset {
         asset_type: H256,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
-        amount: u64,
+        quantity: u64,
         order_hash: Option<H256>,
     ) {
         assert_eq!(
             Asset {
                 asset_type: H256::zero(),
-                amount: 0
+                quantity: 0
             },
             self.asset
         );
@@ -112,7 +112,7 @@ impl OwnedAsset {
         assert_eq!(0, self.parameters.len());
         self.asset = Asset {
             asset_type,
-            amount,
+            quantity,
         };
         self.lock_script_hash = lock_script_hash;
         self.parameters = parameters;
@@ -125,7 +125,7 @@ impl Default for OwnedAsset {
         Self {
             asset: Asset {
                 asset_type: H256::zero(),
-                amount: 0,
+                quantity: 0,
             },
             lock_script_hash: H160::zero(),
             parameters: vec![],
@@ -138,7 +138,7 @@ impl CacheableItem for OwnedAsset {
     type Address = OwnedAssetAddress;
 
     fn is_null(&self) -> bool {
-        self.asset.amount() == 0
+        self.asset.quantity() == 0
     }
 }
 
@@ -149,7 +149,7 @@ impl Encodable for OwnedAsset {
         s.begin_list(6)
             .append(&PREFIX)
             .append(self.asset.asset_type())
-            .append(&self.asset.amount())
+            .append(&self.asset.quantity())
             .append(&self.lock_script_hash)
             .append(&self.parameters)
             .append(&self.order_hash);
@@ -170,7 +170,7 @@ impl Decodable for OwnedAsset {
         Ok(Self {
             asset: Asset {
                 asset_type: rlp.val_at(1)?,
-                amount: rlp.val_at(2)?,
+                quantity: rlp.val_at(2)?,
             },
             lock_script_hash: rlp.val_at(3)?,
             parameters: rlp.val_at(4)?,
@@ -286,7 +286,7 @@ mod tests {
     fn encode_and_decode_asset() {
         rlp_encode_and_decode_test!(Asset {
             asset_type: H256::random(),
-            amount: 0,
+            quantity: 0,
         });
     }
 

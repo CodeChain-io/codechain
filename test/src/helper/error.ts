@@ -94,14 +94,14 @@ export const ERROR = {
         data: anything,
         message: anything
     },
-    INVALID_TX_ZERO_AMOUNT: {
+    INVALID_TX_ZERO_QUANTITY: {
         code: -32099,
-        data: stringContaining("InvalidTransaction(ZeroAmount)"),
+        data: stringContaining("InvalidTransaction(ZeroQuantity)"),
         message: anything
     },
-    INVALID_PARCEL_ZERO_AMOUNT: {
+    INVALID_PARCEL_ZERO_QUANTITY: {
         code: -32099,
-        data: stringContaining("Parcel(ZeroAmount)"),
+        data: stringContaining("Parcel(ZeroQuantity)"),
         message: anything
     },
     INVALID_TX_INCONSISTENT_IN_OUT: {
@@ -136,10 +136,10 @@ export const ERROR = {
         message: anything,
         data: stringContaining("InvalidOriginOutputs")
     },
-    INVALID_ORDER_ASSET_AMOUNTS: {
+    INVALID_ORDER_ASSET_QUANTITIES: {
         code: -32099,
         message: anything,
-        data: stringContaining("InvalidOrderAssetAmounts")
+        data: stringContaining("InvalidOrderAssetQuantities")
     },
     INVALID_ORDER_ASSET_TYPES: {
         code: -32099,

@@ -112,7 +112,7 @@ describe("Memory pool memory limit test", function() {
 
     it("To self", async function() {
         for (let i = 0; i < sizeLimit; i++) {
-            await nodeA.mintAsset({ amount: 1, seq: i, awaitMint: false });
+            await nodeA.mintAsset({ supply: 1, seq: i, awaitMint: false });
         }
         const pendingTransactions = await nodeA.sdk.rpc.chain.getPendingTransactions();
         expect(pendingTransactions.length).to.equal(sizeLimit);
@@ -145,7 +145,7 @@ describe("Memory pool memory limit test", function() {
             for (let i = 0; i < sizeLimit; i++) {
                 minting.push(
                     nodeA.mintAsset({
-                        amount: mintSize,
+                        supply: mintSize,
                         seq: i,
                         metadata,
                         awaitMint: false

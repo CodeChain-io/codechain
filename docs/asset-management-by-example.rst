@@ -19,7 +19,7 @@ Then, check whether your CodeChain RPC server is up and running. You can read ab
 Setup the Test Account
 =====================================
 Before you begin with various examples, you need to setup an account. The given account (cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7) holds 100000 CCC at the genesis block. It's a sufficient
-amount to pay for the transaction fee. You can setup the account by using this:
+quantity to pay for the transaction fee. You can setup the account by using this:
 ::
 
     wget https://raw.githubusercontent.com/CodeChain-io/codechain-sdk-js/master/examples/import-test-account.js
@@ -88,7 +88,7 @@ This should give you the following result:
             152,
             159,
             14 ] ],
-        amount: 3000,
+        quantity: 3000,
         outPoint:
         AssetOutPoint {
             transactionHash:
@@ -98,7 +98,7 @@ This should give you the following result:
             assetType:
             H256 {
                 value: '5300000000000000179399be5182ae43b92acbb9de935000f5e33c23e6d4ceba' },
-            amount: 3000,
+            quantity: 3000,
             lockScriptHash:
             H256 {
                 value: 'f42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3' },
@@ -143,7 +143,7 @@ This should give you the following result:
             115,
             84,
             88 ] ],
-        amount: 7000,
+        quantity: 7000,
         outPoint:
         AssetOutPoint {
             transactionHash:
@@ -153,7 +153,7 @@ This should give you the following result:
             assetType:
             H256 {
                 value: '5300000000000000179399be5182ae43b92acbb9de935000f5e33c23e6d4ceba' },
-            amount: 7000,
+            quantity: 7000,
             lockScriptHash:
             H256 {
                 value: 'f42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3' },
@@ -203,7 +203,7 @@ In order to create new assets, you must create a new instance of AssetScheme. In
             description: "An asset example",
             icon_url: "https://gold.image/",
         }),
-        amount: 10000,
+        supply: 10000,
         approver: null,
     });
 
@@ -213,7 +213,7 @@ In order to create new assets, you must create a new instance of AssetScheme. In
     that was minted had a approver, then every time any of those 10000 gold is involved in a transaction, the set approver would have to
     sign off and approve for the transaction to be successful.
 
-After Gold has been defined in the scheme, the amount that is minted but belong to someone initially. In this example, we create 10000 gold for Alice.
+After Gold has been defined in the scheme, the supply that is minted but belong to someone initially. In this example, we create 10000 gold for Alice.
 ::
 
     const mintTx = sdk.core.createAssetMintTransaction({
@@ -233,11 +233,11 @@ Next, we create an output which gives 3000 gold to Bob, and returns 7000 gold to
         .addInputs(firstGold)
         .addOutputs({
             recipient: bobAddress,
-            amount: 3000,
+            quantity: 3000,
             assetType: firstGold.assetType
         }, {
             recipient: aliceAddress,
-            amount: 7000,
+            quantity: 7000,
             assetType: firstGold.assetType
         });
 

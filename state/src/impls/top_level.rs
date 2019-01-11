@@ -468,9 +468,9 @@ impl TopLevelState {
             }
             Action::Pay {
                 receiver,
-                amount,
+                quantity,
             } => {
-                self.transfer_balance(fee_payer, receiver, *amount)?;
+                self.transfer_balance(fee_payer, receiver, *quantity)?;
                 Ok(Invoice::Success)
             }
             Action::SetRegularKey {
@@ -507,14 +507,14 @@ impl TopLevelState {
                 shard_id,
                 lock_script_hash,
                 parameters,
-                amount,
+                quantity,
             } => Ok(self.apply_wrap_ccc(
                 network_id,
                 *shard_id,
                 *tx_hash,
                 *lock_script_hash,
                 parameters.clone(),
-                *amount,
+                *quantity,
                 fee_payer,
                 client,
             )?),
@@ -552,14 +552,14 @@ impl TopLevelState {
         tx_hash: H256,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
-        amount: u64,
+        quantity: u64,
         sender: &Address,
         client: &C,
     ) -> StateResult<Invoice> {
         let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
-        self.sub_balance(sender, amount)?;
+        self.sub_balance(sender, quantity)?;
 
         let transaction = ShardTransaction::WrapCCC {
             network_id,
@@ -568,7 +568,7 @@ impl TopLevelState {
             output: AssetWrapCCCOutput {
                 lock_script_hash,
                 parameters,
-                amount,
+                quantity,
             },
         };
 
@@ -597,8 +597,8 @@ impl TopLevelState {
         }
 
         if first_invoice == Invoice::Success {
-            let unwrapped_amount = transaction.unwrapped_amount();
-            self.add_balance(sender, unwrapped_amount)?;
+            let unwrapped_quantity = transaction.unwrapped_quantity();
+            self.add_balance(sender, unwrapped_quantity)?;
         }
         Ok(first_invoice)
     }
@@ -1505,8 +1505,8 @@ mod tests_tx {
             (metadata: shards: 1),
             (account: sender => balance: 25),
             (regular_key: sender_public => regular_public),
-            (scheme: (shard_id, asset_scheme_address) => { amount: amount, metadata: metadata, approver: Some(sender) }),
-            (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, amount: amount, lock_script_hash: lock_script_hash })
+            (scheme: (shard_id, asset_scheme_address) => { supply: amount, metadata: metadata, approver: Some(sender) }),
+            (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, quantity: amount, lock_script_hash: lock_script_hash })
         ]);
 
         let transfer = transfer_asset!(
@@ -1545,8 +1545,8 @@ mod tests_tx {
             (metadata: shards: 1),
             (account: sender => balance: 25),
             (regular_key: sender_public => regular_public),
-            (scheme: (shard_id, asset_scheme_address) => { amount: amount, metadata: metadata, approver: Some(sender) }),
-            (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, amount: amount, lock_script_hash: lock_script_hash })
+            (scheme: (shard_id, asset_scheme_address) => { supply: amount, metadata: metadata, approver: Some(sender) }),
+            (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, quantity: amount, lock_script_hash: lock_script_hash })
         ]);
 
         let transfer = transfer_asset!(
@@ -1675,8 +1675,8 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11)),
-            (scheme: (transaction_tracker, shard_id) => { metadata: metadata, amount: amount, approver: approver }),
-            (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, amount: amount })
+            (scheme: (transaction_tracker, shard_id) => { metadata: metadata, supply: amount, approver: approver }),
+            (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, quantity: amount })
         ]);
     }
 
@@ -1710,8 +1710,8 @@ mod tests_tx {
         let asset_type = H256::from(AssetSchemeAddress::new(transaction_tracker, shard_id));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 5)),
-            (scheme: (transaction_tracker, shard_id) => { metadata: metadata, amount: ::std::u64::MAX, approver: approver }),
-            (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, amount: ::std::u64::MAX })
+            (scheme: (transaction_tracker, shard_id) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
+            (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
 
@@ -1731,7 +1731,7 @@ mod tests_tx {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = mint_asset!(Box::new(asset_mint_output!(lock_script_hash, amount: amount)), metadata.clone());
+        let mint = mint_asset!(Box::new(asset_mint_output!(lock_script_hash, supply: amount)), metadata.clone());
         let mint_tracker = mint.tracker().unwrap();
         let mint_tx = transaction!(fee: 20, mint);
 
@@ -1741,8 +1741,8 @@ mod tests_tx {
         let asset_type = asset_scheme_address.into();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 120 - 20)),
-            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), amount: 30 }),
-            (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, amount: 30 })
+            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), supply: 30 }),
+            (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, quantity: 30 })
         ]);
 
         let random_lock_script_hash = H160::random();
@@ -1767,11 +1767,11 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 120 - 20 - 30)),
-            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), amount: 30 }),
+            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), supply: 30 }),
             (asset: (mint_tracker, 0, shard_id)),
-            (asset: (transfer_tracker, 0, shard_id) => { asset_type: asset_type, amount: 10 }),
-            (asset: (transfer_tracker, 1, shard_id) => { asset_type: asset_type, amount: 5 }),
-            (asset: (transfer_tracker, 2, shard_id) => { asset_type: asset_type, amount: 15 })
+            (asset: (transfer_tracker, 0, shard_id) => { asset_type: asset_type, quantity: 10 }),
+            (asset: (transfer_tracker, 1, shard_id) => { asset_type: asset_type, quantity: 5 }),
+            (asset: (transfer_tracker, 2, shard_id) => { asset_type: asset_type, quantity: 15 })
         ]);
     }
 
@@ -1832,9 +1832,9 @@ mod tests_tx {
         ]);
 
         let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
-        let amount = 30;
+        let quantity = 30;
 
-        let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, amount));
+        let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, quantity));
         let tx_hash = tx.hash();
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
@@ -1842,7 +1842,7 @@ mod tests_tx {
         let asset_type = H256::from(AssetSchemeAddress::new_with_zero_suffix(shard_id));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
-            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, amount: amount })
+            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
         let unwrap_ccc_tx =
@@ -1871,9 +1871,9 @@ mod tests_tx {
         ]);
 
         let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
-        let amount = 30;
+        let quantity = 30;
 
-        let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, amount));
+        let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, quantity));
         let tx_hash = tx.hash();
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
@@ -1881,7 +1881,7 @@ mod tests_tx {
         let asset_type = H256::from(AssetSchemeAddress::new_with_zero_suffix(shard_id));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
-            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, amount: amount })
+            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
         let failed_lock_script = vec![0x02];
@@ -1901,7 +1901,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 100 - 11 - 30 - 11)),
-            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, amount: amount })
+            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
     }
 
@@ -1918,9 +1918,9 @@ mod tests_tx {
         ]);
 
         let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
-        let amount = 30;
+        let quantity = 30;
 
-        let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, amount));
+        let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, quantity));
 
         assert_eq!(
             Ok(Invoice::Failure(ParcelError::InsufficientBalance {
@@ -1950,9 +1950,9 @@ mod tests_tx {
         ]);
 
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let amount = 30;
+        let quantity = 30;
 
-        let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, amount));
+        let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, quantity));
         let tx_hash = tx.hash();
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
@@ -1960,7 +1960,7 @@ mod tests_tx {
         let asset_type = H256::from(AssetSchemeAddress::new_with_zero_suffix(shard_id));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 30 - 11)),
-            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, amount: amount })
+            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
         let lock_script_hash_burn = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
@@ -1982,9 +1982,9 @@ mod tests_tx {
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 100 - 30 - 11 - 11)),
             (asset: (tx_hash, 0, 0)),
-            (asset: (transfer_tx_tracker, 0, 0) => { asset_type: asset_type, amount: 10 }),
-            (asset: (transfer_tx_tracker, 1, 0) => { asset_type: asset_type, amount: 5 }),
-            (asset: (transfer_tx_tracker, 2, 0) => { asset_type: asset_type, amount: 15 })
+            (asset: (transfer_tx_tracker, 0, 0) => { asset_type: asset_type, quantity: 10 }),
+            (asset: (transfer_tx_tracker, 1, 0) => { asset_type: asset_type, quantity: 5 }),
+            (asset: (transfer_tx_tracker, 2, 0) => { asset_type: asset_type, quantity: 15 })
         ]);
 
         let unwrap_ccc_tx =
@@ -1995,9 +1995,9 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 3, balance: 100 - 30 - 11 - 11 - 11 + 5)),
-            (asset: (transfer_tx_tracker, 0, 0) => { asset_type: asset_type, amount: 10 }),
+            (asset: (transfer_tx_tracker, 0, 0) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tx_tracker, 1, 0)),
-            (asset: (transfer_tx_tracker, 2, 0) => { asset_type: asset_type, amount: 15 })
+            (asset: (transfer_tx_tracker, 2, 0) => { asset_type: asset_type, quantity: 15 })
         ]);
     }
 
@@ -2417,8 +2417,8 @@ mod tests_tx {
         let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, shard_id));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 20)),
-            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), amount: amount }),
-            (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, amount: amount })
+            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), supply: amount }),
+            (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, quantity: amount })
         ]);
     }
 
