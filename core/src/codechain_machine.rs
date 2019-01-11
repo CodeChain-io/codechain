@@ -79,6 +79,7 @@ impl CodeChainMachine {
         p: UnverifiedTransaction,
         _header: &Header,
     ) -> Result<SignedTransaction, Error> {
+        p.check_low_s()?;
         Ok(SignedTransaction::try_new(p)?)
     }
 
