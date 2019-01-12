@@ -85,6 +85,9 @@ macro_rules! log_target {
     (TEST_SCRIPT) => {
         "test_script"
     };
+    (TIMER) => {
+        "timer"
+    };
     (TRIE) => {
         "trie"
     };

@@ -15,6 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate parking_lot;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate codechain_logger as clogger;
 
 mod timer;
 
