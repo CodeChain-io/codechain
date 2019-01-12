@@ -239,12 +239,22 @@ impl SchedulerInner {
             }
         };
 
+        ctrace!(
+            TIMER,
+            "schedule(TimerName({}), {:?}, after: {:?}, repeat: {:?})",
+            requested_timer.timer_name,
+            schedule_id,
+            after,
+            repeat,
+        );
+
         let schedule = Schedule {
             at: Instant::now() + after,
             schedule_id,
             repeat,
             state_control,
             handler,
+            timer_name: requested_timer.timer_name,
         };
         // state_control become an attached one (Def 1)
         self.heap.push(Reverse(TimeOrdered(schedule)));
@@ -287,6 +297,7 @@ impl SchedulerInner {
             Entry::Vacant(_) => false,
             Entry::Occupied(entry) => {
                 // Detach and cancel it (Rule 1)
+                ctrace!(TIMER, "cancel(TimerName({}), {:?})", requested_timer.timer_name, schedule_id);
                 let state_control = entry.remove();
                 state_control.cancel()
             }
@@ -303,12 +314,35 @@ impl SchedulerInner {
             }
             let Reverse(TimeOrdered(timed_out)) = self.heap.pop().expect("It always have an item");
 
+            let timer_name = timed_out.timer_name;
+            let schedule_id = timed_out.schedule_id;
+
             if timed_out.repeat.is_some() {
                 if let Some(callback) = Callback::from_schedule(&timed_out) {
                     // timed_out.state_control is re-pushed only after it is popped (Rule 3)
                     if self.try_reschedule(timed_out.clone()) {
+                        ctrace!(
+                            TIMER,
+                            "handle_timeout(TimerName({}), {:?}, repeat): Enqueue to worker queue",
+                            timer_name,
+                            schedule_id
+                        );
                         worker_queue.enqueue(callback);
+                    } else {
+                        ctrace!(
+                            TIMER,
+                            "handle_timeout(TimerName({}), {:?}, repeat): Cancelled schedule",
+                            timer_name,
+                            schedule_id
+                        );
                     }
+                } else {
+                    ctrace!(
+                        TIMER,
+                        "handle_timeout(TimerName({}), {:?}, repeat): Dropped TimeoutHandler",
+                        timer_name,
+                        schedule_id
+                    );
                 }
             } else {
                 let enqueue = match self.states.entry(timed_out.schedule_id) {
@@ -324,21 +358,41 @@ impl SchedulerInner {
                     _ => false, // also detached.
                 };
                 // timed_out is anyway removed.
-                if enqueue {
-                    if let Some(callback) = Callback::from_schedule(&timed_out) {
+
+                if let Some(callback) = Callback::from_schedule(&timed_out) {
+                    if enqueue {
+                        ctrace!(
+                            TIMER,
+                            "handle_timeout(TimerName({}), {:?}, once): Enqueue to worker queue",
+                            timer_name,
+                            schedule_id
+                        );
                         worker_queue.enqueue(callback);
+                    } else {
+                        // 'timed_out.state_control' was detached one. (Def 1)
+                        // It already be cancelled (Rule 1)
+                        debug_assert!(timed_out.state_control.is_cancelled());
+                        ctrace!(
+                            TIMER,
+                            "handle_timeout(TimerName({}), {:?}, once): Cancelled schedule",
+                            timer_name,
+                            schedule_id
+                        );
                     }
                 } else {
-                    // 'timed_out.state_control' was detached one. (Def 1)
-                    // It already be cancelled (Rule 1)
-                    debug_assert!(timed_out.state_control.is_cancelled());
+                    ctrace!(
+                        TIMER,
+                        "handle_timeout(TimerName({}), {:?}, once): Dropped TimeoutHandler",
+                        timer_name,
+                        schedule_id
+                    );
                 }
             }
         }
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 struct ScheduleId(TimerId, TimerToken);
 
 /*
@@ -422,6 +476,7 @@ struct Schedule {
     repeat: Option<Duration>,
     state_control: Arc<ScheduleStateControl>,
     handler: Weak<TimeoutHandler>,
+    timer_name: TimerName,
 }
 
 struct TimeOrdered<T>(T);
@@ -457,6 +512,7 @@ struct Callback {
     from_oneshot_schedule: bool,
     state_control: Arc<ScheduleStateControl>,
     handler: Arc<TimeoutHandler>,
+    timer_name: TimerName,
 }
 
 impl Callback {
@@ -467,6 +523,7 @@ impl Callback {
                 from_oneshot_schedule: schedule.repeat.is_none(),
                 state_control: Arc::clone(&schedule.state_control),
                 handler,
+                timer_name: schedule.timer_name,
             })
         } else {
             None
@@ -487,11 +544,24 @@ fn worker_loop(queue: &Arc<WorkerQueue>) {
         callback.state_control.within_lock(|state| {
             debug_assert_ne!(*state, ScheduleState::Timeout);
             if *state != ScheduleState::Cancelled {
+                ctrace!(
+                    TIMER,
+                    "worker_loop(TimerName({}), {:?}): Call on_timeout",
+                    callback.timer_name,
+                    callback.schedule_id
+                );
                 callback.handler.on_timeout(timer_token);
                 debug_assert_eq!(callback.from_oneshot_schedule, *state == ScheduleState::Wait);
                 if callback.from_oneshot_schedule {
                     ScheduleStateControl::set_timeout(state);
                 }
+            } else {
+                ctrace!(
+                    TIMER,
+                    "worker_loop(TimerName({}), {:?}): Cancelled callback",
+                    callback.timer_name,
+                    callback.schedule_id
+                );
             }
         });
     }
