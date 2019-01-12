@@ -1,12 +1,12 @@
 CodeChain P2P Protocol works on TCP (Transmission Control Protocol). There are three kinds of messages; `Handshake`, `Negotiation` and `Extension`.
 
-All messages have a signature on the tail. This is the BLAKE2b hash of `Head` and `Body` with session-key.
+All messages have a signature on the tail. This is the BLAKE2b hash of `Head` and `Body` with a session-key.
 
-The initiator of the P2P protocol connection must send a `Syn` message. The response of the `Syn` message is called an `Ack` message. Initiator and recipient must check if the signature on the tail is correct. If the signature is invalid, the node must close the connection.
+The initiator of the P2P protocol connection must send a `Syn` message. The response of the `Syn` message is called an `Ack` message. The initiator and the recipient must check if the signature on the tail is correct. If the signature is invalid, the node must close the connection.
 
-Extension messages can be sent after the negotiation is finished. Extension messages which are not approved by the negotiation must be rejected.
+Extension messages can be sent after the negotiation is finished. Extension messages that are not approved by the negotiation must be rejected.
 
-Application messages can be optionally encrypted. For authentication, all messages have a BLAKE2b signature with the shared key. An encrypted message provides more secrecy than an unencrypted one by encrypting the whole body. Each application decides whether to use encryption.
+Application messages can be optionally encrypted. For authentication, all messages have a BLAKE2b signature with the shared key. An encrypted message provides more secrecy than an unencrypted one by encrypting the whole body. Each application decides whether to use encryption or not.
 
 # Handshake Message Layout
 
