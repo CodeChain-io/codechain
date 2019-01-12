@@ -251,30 +251,33 @@ impl SchedulerInner {
         Ok(())
     }
 
-    fn try_reschedule(&mut self, mut schedule: Schedule) {
+    fn try_reschedule(&mut self, mut schedule: Schedule) -> bool {
         schedule.at = Instant::now() + schedule.repeat.expect("Schedule should have repeat interval");
         match self.states.entry(schedule.schedule_id) {
             Entry::Vacant(_) => {
                 // 'schedule.state_control' was detached one (Def 1).
                 // Don't reschedule since it is Cancelled (Rule 1)
                 // schedule is going to be removed
+                false
             }
             Entry::Occupied(entry) => {
                 if Arc::ptr_eq(entry.get(), &schedule.state_control) {
                     // schedule.state_control was attached one, (Def 1)
                     // just re-push to heap.
                     self.heap.push(Reverse(TimeOrdered(schedule)));
+                    true
                 } else if entry.get().is_cancelled() {
                     // Detach the entry (Corollary 1) before it become garbage (Note 1),
                     entry.remove();
-                // 'schedule.state_control' was detached one (Def 1).
-                // Don't reschedule since it is Cancelled (Rule 1)
-                // schedule is going to be removed
+                    // 'schedule.state_control' was detached one (Def 1).
+                    // Don't reschedule since it is Cancelled (Rule 1)
+                    // schedule is going to be removed
+                    false
                 } else {
                     unreachable!("Rule 1 was violated");
                 }
             }
-        };
+        }
     }
 
     fn cancel(&mut self, requested_timer: &TimerApi, timer_token: TimerToken) -> bool {
@@ -303,8 +306,9 @@ impl SchedulerInner {
             if timed_out.repeat.is_some() {
                 if let Some(callback) = Callback::from_schedule(&timed_out) {
                     // timed_out.state_control is re-pushed only after it is popped (Rule 3)
-                    self.try_reschedule(timed_out.clone());
-                    worker_queue.enqueue(callback);
+                    if self.try_reschedule(timed_out.clone()) {
+                        worker_queue.enqueue(callback);
+                    }
                 }
             } else {
                 let enqueue = match self.states.entry(timed_out.schedule_id) {
