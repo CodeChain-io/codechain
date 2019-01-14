@@ -1,5 +1,5 @@
-CodeChain uses Merkle Trie to hold the states with authentication.
-It's a [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree), so the nodes have [cryptographic hash](https://en.wikipedia.org/wiki/Cryptographic_hash_function) to check the integrity. The hash of the root is used to label the tree.
+CodeChain uses a Merkle Trie to hold the states with authentication.
+It's a [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree), so the nodes have [cryptographic hashes](https://en.wikipedia.org/wiki/Cryptographic_hash_function) to check the integrity. The hash of the root is used to label the tree.
 
 ## Interface
 ### insert(key, value)
@@ -34,5 +34,5 @@ A Leaf node is a node that doesn't have children but has value. It is represente
 CodeChain's Merkle Trie is valid when:
 1. All of the prefix of partial paths are `0b00000000` or `0b0001`
 1. All of the lengths of a full path to the leaf node is K.
-1. There is no branch node does not have a child.
+1. There is no branch node that does not have a child.
 1. There is no branch node that has only one child.
