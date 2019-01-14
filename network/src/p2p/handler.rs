@@ -288,13 +288,6 @@ impl Handler {
                             return Err("Negotiation::Allowed message received from non requested seq".into())
                         }
                     }
-                    NegotiationBody::Denied => {
-                        let seq = msg.seq();
-                        if self.connections.remove_requested_negotiation(stream, seq).is_none() {
-                            return Err("Negotiation::Denied message received from non requested seq".into())
-                        }
-                        self.connections.node_id(stream).ok_or_else(|| Error::InvalidStream(stream))?;
-                    }
                 };
                 true
             }

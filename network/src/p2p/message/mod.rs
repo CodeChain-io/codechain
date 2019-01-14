@@ -39,7 +39,6 @@ pub const SYNC_ID: ProtocolId = 0x00;
 pub const ACK_ID: ProtocolId = 0x01;
 pub const REQUEST_ID: ProtocolId = 0x02;
 pub const ALLOWED_ID: ProtocolId = 0x03;
-pub const DENIED_ID: ProtocolId = 0x04;
 pub const ENCRYPTED_ID: ProtocolId = 0x05;
 pub const UNENCRYPTED_ID: ProtocolId = 0x06;
 
@@ -47,7 +46,6 @@ pub const UNENCRYPTED_ID: ProtocolId = 0x06;
 mod tests {
     use super::ACK_ID;
     use super::ALLOWED_ID;
-    use super::DENIED_ID;
     use super::ENCRYPTED_ID;
     use super::REQUEST_ID;
     use super::SYNC_ID;
@@ -58,7 +56,6 @@ mod tests {
         assert_ne!(SYNC_ID, ACK_ID);
         assert_ne!(SYNC_ID, REQUEST_ID);
         assert_ne!(SYNC_ID, ALLOWED_ID);
-        assert_ne!(SYNC_ID, DENIED_ID);
         assert_ne!(SYNC_ID, ENCRYPTED_ID);
         assert_ne!(SYNC_ID, UNENCRYPTED_ID);
     }
@@ -68,7 +65,6 @@ mod tests {
         assert_ne!(ACK_ID, SYNC_ID);
         assert_ne!(ACK_ID, REQUEST_ID);
         assert_ne!(ACK_ID, ALLOWED_ID);
-        assert_ne!(ACK_ID, DENIED_ID);
         assert_ne!(ACK_ID, ENCRYPTED_ID);
         assert_ne!(ACK_ID, UNENCRYPTED_ID);
     }
@@ -78,7 +74,6 @@ mod tests {
         assert_ne!(REQUEST_ID, SYNC_ID);
         assert_ne!(REQUEST_ID, ACK_ID);
         assert_ne!(REQUEST_ID, ALLOWED_ID);
-        assert_ne!(REQUEST_ID, DENIED_ID);
         assert_ne!(REQUEST_ID, ENCRYPTED_ID);
         assert_ne!(REQUEST_ID, UNENCRYPTED_ID);
     }
@@ -88,19 +83,8 @@ mod tests {
         assert_ne!(ALLOWED_ID, SYNC_ID);
         assert_ne!(ALLOWED_ID, ACK_ID);
         assert_ne!(ALLOWED_ID, REQUEST_ID);
-        assert_ne!(ALLOWED_ID, DENIED_ID);
         assert_ne!(ALLOWED_ID, ENCRYPTED_ID);
         assert_ne!(ALLOWED_ID, UNENCRYPTED_ID);
-    }
-
-    #[test]
-    fn denied_id_is_a_unique() {
-        assert_ne!(DENIED_ID, SYNC_ID);
-        assert_ne!(DENIED_ID, ACK_ID);
-        assert_ne!(DENIED_ID, REQUEST_ID);
-        assert_ne!(DENIED_ID, ALLOWED_ID);
-        assert_ne!(DENIED_ID, ENCRYPTED_ID);
-        assert_ne!(DENIED_ID, UNENCRYPTED_ID);
     }
 
     #[test]
@@ -109,7 +93,6 @@ mod tests {
         assert_ne!(ENCRYPTED_ID, ACK_ID);
         assert_ne!(ENCRYPTED_ID, REQUEST_ID);
         assert_ne!(ENCRYPTED_ID, ALLOWED_ID);
-        assert_ne!(ENCRYPTED_ID, DENIED_ID);
         assert_ne!(ENCRYPTED_ID, UNENCRYPTED_ID);
     }
 
@@ -119,7 +102,6 @@ mod tests {
         assert_ne!(UNENCRYPTED_ID, ACK_ID);
         assert_ne!(UNENCRYPTED_ID, REQUEST_ID);
         assert_ne!(UNENCRYPTED_ID, ALLOWED_ID);
-        assert_ne!(UNENCRYPTED_ID, DENIED_ID);
         assert_ne!(UNENCRYPTED_ID, ENCRYPTED_ID);
     }
 }

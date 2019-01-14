@@ -21,7 +21,6 @@ use super::Seq;
 use super::Version;
 
 use super::ALLOWED_ID;
-use super::DENIED_ID;
 use super::REQUEST_ID;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -38,7 +37,6 @@ pub enum Body {
         extension_versions: Vec<Version>,
     },
     Allowed(Version),
-    Denied,
 }
 
 const COMMON: usize = 3;
@@ -63,15 +61,6 @@ impl Message {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn denied(seq: Seq) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::Denied,
-        }
-    }
-
     pub fn version(&self) -> Version {
         self.version
     }
@@ -86,7 +75,6 @@ impl Message {
                 ..
             } => REQUEST_ID,
             Body::Allowed(_) => ALLOWED_ID,
-            Body::Denied => DENIED_ID,
         }
     }
 
@@ -96,7 +84,6 @@ impl Message {
                 ..
             } => COMMON + 2,
             Body::Allowed(_) => COMMON + 1,
-            Body::Denied => COMMON,
         }
     }
 
@@ -121,7 +108,6 @@ impl Encodable for Message {
             Body::Allowed(version) => {
                 s.append(version);
             }
-            Body::Denied => {}
         }
     }
 }
@@ -149,11 +135,6 @@ impl Decodable for Message {
                 seq,
                 body: Body::Allowed(rlp.val_at(COMMON)?),
             },
-            DENIED_ID => Message {
-                version,
-                seq,
-                body: Body::Denied,
-            },
             _ => return Err(DecoderError::Custom("invalid protocol id")),
         };
         if rlp.item_count()? != message.item_count() {
@@ -180,11 +161,6 @@ mod tests {
     }
 
     #[test]
-    fn protocol_id_of_denied_is_4() {
-        assert_eq!(0x04, Message::denied(Default::default()).protocol_id());
-    }
-
-    #[test]
     fn encode_and_decode_request() {
         const SEQ: Seq = 0x5432;
         let extension_name = "some-extension".to_string();
@@ -196,11 +172,5 @@ mod tests {
         const SEQ: Seq = 0x0071_6216_a8b1;
         const VERSION: Version = 2;
         rlp_encode_and_decode_test!(Message::allowed(SEQ, VERSION));
-    }
-
-    #[test]
-    fn encode_and_decode_denied() {
-        const SEQ: Seq = 0x3712;
-        rlp_encode_and_decode_test!(Message::denied(SEQ));
     }
 }

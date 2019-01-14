@@ -29,7 +29,6 @@ pub enum Message {
 
 use super::ACK_ID;
 use super::ALLOWED_ID;
-use super::DENIED_ID;
 use super::ENCRYPTED_ID;
 use super::REQUEST_ID;
 use super::SYNC_ID;
@@ -53,7 +52,6 @@ impl Decodable for Message {
             ACK_ID => Ok(Message::Handshake(HandshakeMessage::decode(rlp)?)),
             REQUEST_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
             ALLOWED_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
-            DENIED_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
             ENCRYPTED_ID => Ok(Message::Extension(ExtensionMessage::decode(rlp)?)),
             UNENCRYPTED_ID => Ok(Message::Extension(ExtensionMessage::decode(rlp)?)),
             _ => Err(DecoderError::Custom("unexpected protocol id")),
