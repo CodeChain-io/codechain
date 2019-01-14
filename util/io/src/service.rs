@@ -39,10 +39,9 @@ pub type HandlerId = usize;
 pub const TOKENS_PER_HANDLER: usize = 16384;
 
 /// Messages used to communicate with the event loop from other threads.
-#[derive(Clone)]
 pub enum IoMessage<Message>
 where
-    Message: Send + Clone + Sized, {
+    Message: Send + Sized, {
     /// Shutdown the event loop
     Shutdown,
     AddTimer {
@@ -69,13 +68,13 @@ where
 /// IO access point. This is passed to IO handler and provides an interface to the IO subsystem.
 pub struct IoContext<Message>
 where
-    Message: Send + Clone + Sync + 'static, {
+    Message: Send + Sync + 'static, {
     channel: IoChannel<Message>,
 }
 
 impl<Message> IoContext<Message>
 where
-    Message: Send + Clone + Sync + 'static,
+    Message: Send + Sync + 'static,
 {
     /// Create a new IO access point. Takes references to all the data that can be updated within the IO handler.
     pub fn new(channel: IoChannel<Message>) -> IoContext<Message> {
@@ -165,7 +164,7 @@ type HandlerType<M> = RwLock<Option<Arc<IoHandler<M>>>>;
 /// Root IO handler. Manages user handler, messages and IO timers.
 pub struct IoManager<Message>
 where
-    Message: Clone + Send + Sync, {
+    Message: Send + Sync, {
     timers: Arc<RwLock<HashMap<HandlerId, UserTimer>>>,
     handler: Arc<HandlerType<Message>>,
     workers: Vec<Worker>,
@@ -175,7 +174,7 @@ where
 
 impl<Message> IoManager<Message>
 where
-    Message: Send + Sync + Clone + 'static,
+    Message: Send + Sync + 'static,
 {
     /// Creates a new instance and registers it with the event loop.
     pub fn start(
@@ -215,7 +214,7 @@ where
 
 impl<Message> Handler for IoManager<Message>
 where
-    Message: Send + Clone + Sync + 'static,
+    Message: Send + Sync + 'static,
 {
     type Timeout = Token;
     type Message = IoMessage<Message>;
@@ -337,7 +336,7 @@ where
                 if let Some(h) = &*self.handler.read() {
                     let handler = Arc::clone(&h);
                     self.worker_channel.push(Work {
-                        work_type: WorkType::Message(data.clone()),
+                        work_type: WorkType::Message(data),
                         token: 0,
                         handler,
                     });
@@ -352,14 +351,14 @@ where
 /// in the `message` callback.
 pub struct IoChannel<Message>
 where
-    Message: Send + Clone, {
+    Message: Send, {
     channel: Option<Sender<IoMessage<Message>>>,
     handler: Weak<HandlerType<Message>>,
 }
 
 impl<Message> Clone for IoChannel<Message>
 where
-    Message: Send + Clone + Sync + 'static,
+    Message: Send + Sync + 'static,
 {
     fn clone(&self) -> IoChannel<Message> {
         IoChannel {
@@ -371,7 +370,7 @@ where
 
 impl<Message> IoChannel<Message>
 where
-    Message: Send + Clone + Sync + 'static,
+    Message: Send + Sync + 'static,
 {
     /// Send a message through the channel
     pub fn send(&self, message: Message) -> Result<(), IoError> {
@@ -422,7 +421,7 @@ where
 /// 'Message' is a notification message type
 pub struct IoService<Message>
 where
-    Message: Send + Sync + Clone + 'static, {
+    Message: Send + Sync + 'static, {
     thread: Mutex<Option<JoinHandle<()>>>,
     host_channel: Mutex<Sender<IoMessage<Message>>>,
     handler: Arc<HandlerType<Message>>,
@@ -431,7 +430,7 @@ where
 
 impl<Message> IoService<Message>
 where
-    Message: Send + Sync + Clone + 'static,
+    Message: Send + Sync + 'static,
 {
     /// Starts IO event loop
     pub fn start(name: &'static str) -> Result<IoService<Message>, IoError> {
@@ -492,7 +491,7 @@ where
 
 impl<Message> Drop for IoService<Message>
 where
-    Message: Send + Sync + Clone,
+    Message: Send + Sync,
 {
     fn drop(&mut self) {
         self.stop()
