@@ -391,6 +391,10 @@ impl BlockInfo for TestBlockChainClient {
         unimplemented!()
     }
 
+    fn highest_header(&self) -> encoded::Header {
+        unimplemented!()
+    }
+
     fn block(&self, id: &BlockId) -> Option<encoded::Block> {
         self.block_hash(id).and_then(|hash| self.blocks.read().get(&hash).cloned()).map(encoded::Block::new)
     }
