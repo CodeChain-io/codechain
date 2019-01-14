@@ -440,8 +440,23 @@ impl Extension {
     }
 
     fn create_headers_response(&self, start_number: BlockNumber, max_count: u64) -> ResponseMessage {
+        let highest_header = self.client.highest_header();
         let headers = (0..max_count)
-            .map(|number| self.client.block(&BlockId::Number(start_number + number)))
+            .map(|number| {
+                let height = start_number + number;
+                let block_id = if highest_header.number() == height {
+                    // If Engine != Tendermint
+                    //    Best block == Highest block
+                    //    We could get the highest block either by the block hash or the block number.
+                    // If Engine == Tendermint
+                    //    Highest block's parent == Best block
+                    //    We should get the highest block only by the block hash.
+                    BlockId::Hash(highest_header.hash())
+                } else {
+                    BlockId::Number(height)
+                };
+                self.client.block(&block_id)
+            })
             .take_while(|block| block.is_some())
             .map(|block| block.expect("take_while guarantees existance of item").header().decode())
             .collect();
