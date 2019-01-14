@@ -86,7 +86,11 @@ const MESSAGE_ID_REQUEST_PROPOSAL: u8 = 0x05;
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
     ConsensusMessage(Bytes),
-    ProposalBlock(SchnorrSignature, usize, Bytes),
+    ProposalBlock {
+        signature: SchnorrSignature,
+        signer_index: usize,
+        message: Bytes,
+    },
     StepState {
         vote_step: VoteStep,
         proposal: Option<H256>,
@@ -110,12 +114,16 @@ impl Encodable for TendermintMessage {
                 s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
                 s.append(message);
             }
-            TendermintMessage::ProposalBlock(signature, signer_index, bytes) => {
+            TendermintMessage::ProposalBlock {
+                signature,
+                signer_index,
+                message,
+            } => {
                 s.begin_list(4);
                 s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
                 s.append(signature);
                 s.append(signer_index);
-                s.append(bytes);
+                s.append(message);
             }
             TendermintMessage::StepState {
                 vote_step,
@@ -167,8 +175,12 @@ impl Decodable for TendermintMessage {
                 }
                 let signature = rlp.at(1)?;
                 let signer_index = rlp.at(2)?;
-                let bytes = rlp.at(3)?;
-                TendermintMessage::ProposalBlock(signature.as_val()?, signer_index.as_val()?, bytes.as_val()?)
+                let message = rlp.at(3)?;
+                TendermintMessage::ProposalBlock {
+                    signature: signature.as_val()?,
+                    signer_index: signer_index.as_val()?,
+                    message: message.as_val()?,
+                }
             }
             MESSAGE_ID_STEP_STATE => {
                 if rlp.item_count()? != 4 {
@@ -340,11 +352,11 @@ mod tests {
 
     #[test]
     fn encode_and_decode_tendermint_message_2() {
-        rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock(
-            SchnorrSignature::random(),
-            0x1234,
-            vec![1u8, 2u8]
-        ));
+        rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock {
+            signature: SchnorrSignature::random(),
+            signer_index: 0x1234,
+            message: vec![1u8, 2u8]
+        });
     }
 
     #[test]
