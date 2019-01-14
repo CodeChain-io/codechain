@@ -1,4 +1,4 @@
-CodeChain uses the [BLAKE2](https://blake2.net/) hash function.
+CodeChain uses [BLAKE2](https://blake2.net/).
 
 SHA256, used in Bitcoin, has a number of technical shortcomings due to its Merkle-Damgård construction. These vulnerabilities led to the SHA3 competition for a new hash function based on a different fundamental construction.
 
