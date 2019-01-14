@@ -21,7 +21,7 @@ use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
 use cnetwork::NodeId;
 use ctimer::TimerApi;
 use kvdb_rocksdb::{Database, DatabaseConfig};
-use primitives::Bytes;
+use primitives::{Bytes, H256};
 
 use crate::client::{Client, ClientConfig};
 use crate::error::Error;
@@ -90,6 +90,9 @@ pub enum ClientIoMessage {
         parent_block: BlockId,
         allow_empty_block: bool,
     },
+    /// Update the best block by the given hash
+    /// Only used in Tendermint
+    UpdateBestAsCommitted(H256),
 }
 
 /// IO interface for the Client handler
@@ -114,6 +117,9 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
                 allow_empty_block,
             } => {
                 self.client.update_sealing(*parent_block, *allow_empty_block);
+            }
+            ClientIoMessage::UpdateBestAsCommitted(block_hash) => {
+                self.client.update_best_as_committed(*block_hash);
             }
         }
         Ok(())
