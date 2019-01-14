@@ -19,7 +19,6 @@ use std::ops::{self, Add, AddAssign, Deref, Sub, SubAssign};
 
 use ctypes::invoice::BlockInvoices;
 use ctypes::BlockNumber;
-use heapsize::HeapSizeOf;
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 use primitives::{H256, H264, U256};
 
@@ -159,14 +158,6 @@ pub struct BlockDetails {
     pub total_score: U256,
     /// Parent block hash
     pub parent: H256,
-    /// List of children block hashes
-    pub children: Vec<H256>,
-}
-
-impl HeapSizeOf for BlockDetails {
-    fn heap_size_of_children(&self) -> usize {
-        self.children.heap_size_of_children()
-    }
 }
 
 /// Represents address of certain parcel within block
