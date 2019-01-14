@@ -366,6 +366,10 @@ impl HeaderProvider for HeaderChain {
 
     /// Get the hash of given block's number.
     fn block_hash(&self, index: BlockNumber) -> Option<H256> {
+        // Highest block should not be accessed by block number.
+        if self.best_header().number() < index {
+            return None
+        }
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.hash_cache, &index)?;
         Some(result)
     }
