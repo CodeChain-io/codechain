@@ -661,9 +661,9 @@ impl TendermintInner {
         let vote_step =
             VoteStep::new(header.number() as Height, consensus_view(&header).expect("I am proposer"), Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
-        let signer_index = self.signer_index(&self.prev_block_hash()).expect("I am proposer");
+        let num_validators = self.validators.count(&self.prev_block_hash());
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-        self.votes.vote(ConsensusMessage::new_proposal(signature, signer_index, header).expect("I am proposer"));
+        self.votes.vote(ConsensusMessage::new_proposal(signature, num_validators, header).expect("I am proposer"));
 
         self.proposal = Some(hash);
         cdebug!(
