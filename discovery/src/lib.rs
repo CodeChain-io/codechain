@@ -31,8 +31,13 @@ extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
 extern crate codechain_timer as ctimer;
 
-mod kademlia;
-mod unstructured;
+mod config;
+mod extension;
+mod message;
+mod node_id;
 
-pub use crate::kademlia::{Config as KademliaConfig, Extension as KademliaExtension};
-pub use crate::unstructured::{Config as UnstructuredConfig, Extension as UnstructuredExtension};
+const K: u8 = 16;
+const T_REFRESH: u32 = 60_000;
+
+pub use crate::config::Config;
+pub use crate::extension::Extension as Discovery;

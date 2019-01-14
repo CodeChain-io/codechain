@@ -21,8 +21,6 @@ use ccrypto::Blake;
 use cnetwork::{IntoSocketAddr, NodeId, SocketAddr};
 use primitives::H256;
 
-use super::B;
-
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct KademliaId {
     distance: usize,
@@ -70,6 +68,7 @@ fn log2_distance(addr: &SocketAddr, datum: &H256) -> usize {
     let hash = address_to_hash(addr);
 
     let distance = hash ^ *datum;
+    const B: usize = 32 * 8;
     const BYTES_SIZE: usize = B / 8;
     debug_assert_eq!(B % 8, 0);
     let mut distance_as_bytes: [u8; BYTES_SIZE] = [0; BYTES_SIZE];
