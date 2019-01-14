@@ -161,12 +161,12 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
 
 
     /// Returns the first signature and the index of its signer for a given round and hash if exists.
-    pub fn round_signature_and_index(&self, round: &M::Round, block_hash: &H256) -> Option<(SchnorrSignature, usize)> {
+    pub fn round_signature(&self, round: &M::Round, block_hash: &H256) -> Option<SchnorrSignature> {
         let guard = self.votes.read();
         guard
             .get(round)
             .and_then(|c| c.block_votes.get(&Some(*block_hash)))
-            .and_then(|votes| votes.iter().next().map(|(k, v)| (*v, *k)))
+            .and_then(|votes| votes.values().next().cloned())
     }
 
     /// Count votes which agree with the given message.
