@@ -67,7 +67,7 @@ impl Worker {
         name: &str,
     ) -> Worker
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         let deleting = Arc::new(AtomicBool::new(false));
         let mut worker = Worker {
             thread: None,
@@ -95,7 +95,7 @@ impl Worker {
         wait_mutex: &SMutex<()>,
         deleting: &AtomicBool,
     ) where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         loop {
             {
                 let lock = wait_mutex.lock().expect("Poisoned work_loop mutex");
@@ -116,7 +116,7 @@ impl Worker {
 
     fn do_work<Message>(work: Work<Message>, channel: IoChannel<Message>)
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         match work.work_type {
             WorkType::Readable => {
                 if let Err(err) = work.handler.stream_readable(&IoContext::new(channel), work.token) {
