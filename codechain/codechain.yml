@@ -143,6 +143,11 @@ args:
         long: password-path
         help: Specify the password file path.
         takes_value: true
+    - mem-pool-fee-bump-shift:
+        long: mem-pool-fee-bump-shift
+        value_name: INTEGER
+        help: A value which is used to check whether a new transaciton can replace a transaction in the memory pool with the same signer and seq. If the fee of the new transaction is `new_fee` and the fee of the transaction in the memory pool is `old_fee`, then `new_fee > old_fee + old_fee >> mem_pool_fee_bump_shift` should be satisfied to replace.
+        takes_value: true
     - mem-pool-mem-limit:
         long: mem-pool-mem-limit
         value_name: MB

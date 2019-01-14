@@ -86,7 +86,10 @@ const MESSAGE_ID_REQUEST_PROPOSAL: u8 = 0x05;
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
     ConsensusMessage(Bytes),
-    ProposalBlock(SchnorrSignature, usize, Bytes),
+    ProposalBlock {
+        signature: SchnorrSignature,
+        message: Bytes,
+    },
     StepState {
         vote_step: VoteStep,
         proposal: Option<H256>,
@@ -110,12 +113,14 @@ impl Encodable for TendermintMessage {
                 s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
                 s.append(message);
             }
-            TendermintMessage::ProposalBlock(signature, signer_index, bytes) => {
-                s.begin_list(4);
+            TendermintMessage::ProposalBlock {
+                signature,
+                message,
+            } => {
+                s.begin_list(3);
                 s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
                 s.append(signature);
-                s.append(signer_index);
-                s.append(bytes);
+                s.append(message);
             }
             TendermintMessage::StepState {
                 vote_step,
@@ -162,13 +167,15 @@ impl Decodable for TendermintMessage {
                 TendermintMessage::ConsensusMessage(bytes.as_val()?)
             }
             MESSAGE_ID_PROPOSAL_BLOCK => {
-                if rlp.item_count()? != 4 {
+                if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 let signature = rlp.at(1)?;
-                let signer_index = rlp.at(2)?;
-                let bytes = rlp.at(3)?;
-                TendermintMessage::ProposalBlock(signature.as_val()?, signer_index.as_val()?, bytes.as_val()?)
+                let message = rlp.at(2)?;
+                TendermintMessage::ProposalBlock {
+                    signature: signature.as_val()?,
+                    message: message.as_val()?,
+                }
             }
             MESSAGE_ID_STEP_STATE => {
                 if rlp.item_count()? != 4 {
@@ -246,17 +253,18 @@ impl ConsensusMessage {
 
     pub fn new_proposal(
         signature: SchnorrSignature,
-        signer_index: usize,
+        num_validators: usize,
         header: &Header,
     ) -> Result<Self, ::rlp::DecoderError> {
-        let height = header.number();
+        let height = header.number() as Height;
         let view = consensus_view(header)?;
+        let signer_index = (height + view) % num_validators;
 
         Ok(ConsensusMessage {
             signature,
             signer_index,
             on: VoteOn {
-                step: VoteStep::new(height as Height, view, Step::Propose),
+                step: VoteStep::new(height, view, Step::Propose),
                 block_hash: Some(header.hash()),
             },
         })
@@ -340,11 +348,10 @@ mod tests {
 
     #[test]
     fn encode_and_decode_tendermint_message_2() {
-        rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock(
-            SchnorrSignature::random(),
-            0x1234,
-            vec![1u8, 2u8]
-        ));
+        rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock {
+            signature: SchnorrSignature::random(),
+            message: vec![1u8, 2u8]
+        });
     }
 
     #[test]
