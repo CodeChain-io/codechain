@@ -395,7 +395,7 @@ where
     }
 
     /// Send low level io message
-    pub fn send_io(&self, message: IoMessage<Message>) -> Result<(), IoError> {
+    fn send_io(&self, message: IoMessage<Message>) -> Result<(), IoError> {
         if let Some(ref channel) = self.channel {
             channel.send(message)?
         }
