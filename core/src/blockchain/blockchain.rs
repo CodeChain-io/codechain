@@ -45,7 +45,10 @@ const HIGHEST_BLOCK_KEY: &[u8] = b"highest-block";
 ///
 /// **Does not do input data verification.**
 pub struct BlockChain {
+    /// The hash of the best block of the canonical chain.
     best_block_hash: RwLock<H256>,
+    /// The hash of the block which has the highest score among the blocks
+    /// that is/can be the best block of the canonical chain.
     highest_block_hash: RwLock<H256>,
 
     headerchain: HeaderChain,
@@ -210,6 +213,57 @@ impl BlockChain {
         } else {
             BestBlockChanged::None
         }
+    }
+
+    /// Update the best block as the given block hash from the commit state
+    /// in Tendermint.
+    ///
+    /// The new best block should be a child of the current best block.
+    /// This will not change the highest block chain. This means it is possible
+    /// to have the best block and the highest block in different branches.
+    pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: H256) -> ImportRoute {
+        // FIXME: If it is possible, double check with the consensus engine.
+
+        assert!(self.pending_best_block_hash.read().is_none());
+        let block_detail = self.block_details(&block_hash).expect("The given hash should exist");
+        let prev_best_block_detail = self.best_block_detail();
+        let parent_hash = block_detail.parent;
+        let prev_best_hash = self.best_block_hash();
+
+        if parent_hash != prev_best_hash {
+            assert!(block_detail.number <= prev_best_block_detail.number);
+            cwarn!(
+                BLOCKCHAIN,
+                "Tried to update the best block but blocks are inserted: Input - {}({}), Current best - {}({})",
+                block_detail.number,
+                block_hash,
+                prev_best_block_detail.number,
+                prev_best_hash
+            );
+            return ImportRoute::none()
+        }
+
+        assert_eq!(block_detail.number, prev_best_block_detail.number + 1);
+
+        let best_block =
+            self.block(&block_hash).expect("Best block is already imported as a branch").rlp().as_raw().to_vec();
+
+        let best_block_changed = BestBlockChanged::CanonChainAppended {
+            best_block,
+        };
+
+        self.headerchain.update_best_as_committed(batch, block_hash);
+        self.body_db.update_best_block(batch, &best_block_changed);
+
+        let mut pending_best_block_hash = self.pending_best_block_hash.write();
+        batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &block_hash);
+        *pending_best_block_hash = Some(block_hash);
+
+        let mut pending_highest_block_hash = self.pending_highest_block_hash.write();
+        batch.put(db::COL_EXTRA, HIGHEST_BLOCK_KEY, &*block_hash);
+        *pending_highest_block_hash = Some(block_hash);
+
+        ImportRoute::new(block_hash, &best_block_changed)
     }
 
     /// Returns general blockchain information

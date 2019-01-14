@@ -220,6 +220,42 @@ impl Client {
         results.len()
     }
 
+    /// This is triggered by a message coming from the Tendermint engine when a block is committed.
+    /// See EngineClient::update_best_as_committed() for details.
+    pub fn update_best_as_committed(&self, block_hash: H256) {
+        ctrace!(CLIENT, "Update the best block to the hash({}), as requested", block_hash);
+        let start = Instant::now();
+        let route = {
+            let _import_lock = self.importer.import_lock.lock();
+
+            let chain = self.block_chain();
+            let mut batch = DBTransaction::new();
+
+            let route = chain.update_best_as_committed(&mut batch, block_hash);
+            self.db().write(batch).expect("DB flush failed.");
+            chain.commit();
+
+            // Clear the state DB cache
+            let mut state_db = self.state_db().write();
+            state_db.clear_cache();
+
+            route
+        };
+
+        if route.is_none() {
+            return
+        }
+
+        let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
+        self.importer.miner.chain_new_blocks(self, &[], &[], &enacted, &retracted);
+        self.notify(|notify| {
+            notify.new_blocks(vec![], vec![], enacted.clone(), retracted.clone(), vec![], {
+                let elapsed = start.elapsed();
+                elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
+            });
+        });
+    }
+
     fn block_number_ref(&self, id: &BlockId) -> Option<BlockNumber> {
         match id {
             BlockId::Number(number) => Some(*number),
@@ -488,6 +524,19 @@ impl EngineClient for Client {
     /// Convert PoW difficulty to target.
     fn score_to_target(&self, score: &U256) -> U256 {
         self.engine.score_to_target(score)
+    }
+
+    /// Update the best block as the given block hash.
+    ///
+    /// Used in Tendermint, when going to the commit step.
+    fn update_best_as_committed(&self, block_hash: H256) {
+        ctrace!(ENGINE, "Requesting a best block update (block hash: {})", block_hash);
+        match self.io_channel.lock().send(ClientIoMessage::UpdateBestAsCommitted(block_hash)) {
+            Ok(_) => {}
+            Err(e) => {
+                cdebug!(CLIENT, "Error while triggering the best block update: {}", e);
+            }
+        }
     }
 
     fn get_kvdb(&self) -> Arc<KeyValueDB> {

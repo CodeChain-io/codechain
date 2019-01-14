@@ -122,6 +122,10 @@ impl StateDB {
             current_hash,
         }
     }
+
+    pub fn clear_cache(&mut self) {
+        self.cache.clear();
+    }
 }
 
 impl AsHashDB for StateDB {

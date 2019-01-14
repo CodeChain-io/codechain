@@ -151,7 +151,7 @@ impl GlobalCache {
         }
     }
 
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.account.clear();
         self.regular_account.clear();
         self.metadata.clear();

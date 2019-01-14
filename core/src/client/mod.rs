@@ -109,6 +109,11 @@ pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock + BlockInfo {
     /// Convert PoW difficulty to target.
     fn score_to_target(&self, score: &U256) -> U256;
 
+    /// Update the best block as the given block hash
+    ///
+    /// Used in Tendermint, when going to the commit step.
+    fn update_best_as_committed(&self, block_hash: H256);
+
     fn get_kvdb(&self) -> Arc<KeyValueDB>;
 }
 
