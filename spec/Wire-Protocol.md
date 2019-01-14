@@ -10,7 +10,7 @@ CodeChain Wire Protocol uses RLP to encode and decode data. Since RLP doesn’t 
 * Datetime
 * Array
 
-When specifying encoding types, both the field name and type information themselves are not included. Therefore, the encoder and decoder MUST agree on the meaning and the type of each field.
+When encoding types, both the field name and type information themselves are not included. Therefore, the encoder and decoder MUST agree on the meaning and the type of each field.
 
 ## Unsigned Integer
 
