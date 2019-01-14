@@ -19,7 +19,7 @@ use std::{fmt, ptr};
 
 use never::Never;
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Password(String);
 
 impl fmt::Debug for Password {
@@ -66,11 +66,5 @@ impl From<String> for Password {
 impl<'a> From<&'a str> for Password {
     fn from(s: &'a str) -> Self {
         s.parse().unwrap()
-    }
-}
-
-impl Default for Password {
-    fn default() -> Self {
-        Password(String::default())
     }
 }
