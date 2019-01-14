@@ -166,11 +166,8 @@ impl TendermintInner {
 
     /// Get previous block hash to determine validator set
     fn prev_block_hash(&self) -> H256 {
-        let prev_height = (self.height - 1) as u64;
-        self.client()
-            .block_header(&BlockId::Number(prev_height))
-            .expect("Height is increased when previous block is imported")
-            .hash()
+        let (block_hash, _) = &self.last_confirmed_view;
+        *block_hash
     }
 
     /// Find the designated for the given view.
@@ -914,31 +911,42 @@ impl TendermintInner {
         if !self.votes.is_old_or_known(&message) {
             let signer_index = message.signer_index;
             let prev_height = (message.on.step.height - 1) as u64;
-            let sender_public = if let Some(prev_block_hash) =
-                self.client().block_header(&BlockId::Number(prev_height)).map(|header| header.parent_hash())
-            {
-                if signer_index >= self.validators.count(&prev_block_hash) {
-                    return Err(EngineError::ValidatorNotExist {
-                        height: prev_height,
-                        index: signer_index,
-                    })
-                }
-                let signer_public = self.validators.get(&prev_block_hash, signer_index);
-                if !message.verify(&signer_public).map_err(fmt_err)? {
-                    return Err(EngineError::MessageWithInvalidSignature {
-                        height: prev_height,
-                        signer_index,
-                        address: public_to_address(&signer_public),
-                    })
-                }
-                signer_public
-            } else {
+            if message.on.step.height > self.height {
                 // Because the members of the committee could change in future height, we could not verify future height's message.
                 return Err(EngineError::ValidatorNotExist {
                     height: prev_height,
                     index: signer_index,
                 })
+            }
+
+            let prev_block_hash = if message.on.step.height == self.height {
+                self.last_confirmed_view.0
+            } else {
+                // message.on.step.height < self.height
+                let parent_header = self
+                    .client()
+                    .block_header(&BlockId::Number((message.on.step.height as u64) - 1))
+                    .expect("(self.height - 2) <= best block number");
+                parent_header.hash()
             };
+
+            if signer_index >= self.validators.count(&prev_block_hash) {
+                return Err(EngineError::ValidatorNotExist {
+                    height: prev_height,
+                    index: signer_index,
+                })
+            }
+
+            let sender_public = self.validators.get(&prev_block_hash, signer_index);
+
+            if !message.verify(&sender_public).map_err(fmt_err)? {
+                return Err(EngineError::MessageWithInvalidSignature {
+                    height: prev_height,
+                    signer_index,
+                    address: public_to_address(&sender_public),
+                })
+            }
+
             let sender = public_to_address(&sender_public);
 
             if message.on.step > self.vote_step() {
