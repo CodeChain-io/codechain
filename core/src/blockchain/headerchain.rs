@@ -75,7 +75,6 @@ impl HeaderChain {
                     number: genesis.number(),
                     total_score: genesis.score(),
                     parent: genesis.parent_hash(),
-                    children: vec![],
                 };
 
                 let mut batch = DBTransaction::new();
@@ -217,21 +216,17 @@ impl HeaderChain {
     /// Uses the given parent details or attempts to load them from the database.
     fn new_detail_entries(&self, header: &HeaderView) -> HashMap<H256, BlockDetails> {
         let parent_hash = header.parent_hash();
-        // update parent
-        let mut parent_details = self.block_details(&parent_hash).expect("Invalid parent hash");
-        parent_details.children.push(header.hash());
+        let parent_details = self.block_details(&parent_hash).expect("Invalid parent hash");
 
         // create current block details.
         let details = BlockDetails {
             number: header.number(),
             total_score: parent_details.total_score + header.score(),
             parent: parent_hash,
-            children: vec![],
         };
 
         // write to batch
         let mut block_details = HashMap::new();
-        block_details.insert(parent_hash, parent_details);
         block_details.insert(header.hash(), details);
         block_details
     }
