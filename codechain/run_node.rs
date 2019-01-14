@@ -24,7 +24,7 @@ use ccore::{
     AccountProvider, AccountProviderError, ChainNotify, Client, ClientService, EngineType, Miner, MinerService, Scheme,
     Stratum, StratumConfig, StratumError,
 };
-use cdiscovery::{KademliaConfig, KademliaExtension, UnstructuredConfig, UnstructuredExtension};
+use cdiscovery::{Config, Discovery};
 use ckey::Address;
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
@@ -59,29 +59,25 @@ fn network_start(timer_loop: TimerLoop, cfg: &NetworkConfig) -> Result<Arc<Netwo
 }
 
 fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<(), String> {
-    match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
+    let config = Config {
+        bucket_size: cfg.discovery_bucket_size.unwrap(),
+        t_refresh: cfg.discovery_refresh.unwrap(),
+    };
+    let discovery = match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
         Some("unstructured") => {
-            let config = UnstructuredConfig {
-                bucket_size: cfg.discovery_bucket_size.unwrap(),
-                t_refresh: cfg.discovery_refresh.unwrap(),
-            };
-            let unstructured = UnstructuredExtension::new(config);
-            service.set_routing_table(&*unstructured);
-            service.register_extension(unstructured);
             cinfo!(DISCOVERY, "Node runs with unstructured discovery");
+            Some(Discovery::unstructured(config))
         }
         Some("kademlia") => {
-            let config = KademliaConfig {
-                bucket_size: cfg.discovery_bucket_size.unwrap(),
-                t_refresh: cfg.discovery_refresh.unwrap(),
-            };
-            let kademlia = KademliaExtension::new(config);
-            service.set_routing_table(&*kademlia);
-            service.register_extension(kademlia);
             cinfo!(DISCOVERY, "Node runs with kademlia discovery");
+            Some(Discovery::kademlia(config))
         }
         Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
-        None => {}
+        None => None,
+    };
+    if let Some(discovery) = discovery {
+        service.set_routing_table(&*discovery);
+        service.register_extension(discovery);
     }
     Ok(())
 }
