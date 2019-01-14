@@ -1407,14 +1407,26 @@ impl TendermintExtension {
     }
 
     fn send_proposal_block(&self, token: &NodeId, signature: SchnorrSignature, signer_index: usize, message: Bytes) {
-        let message = TendermintMessage::ProposalBlock(signature, signer_index, message).rlp_bytes().into_vec();
+        let message = TendermintMessage::ProposalBlock {
+            signature,
+            signer_index,
+            message,
+        }
+        .rlp_bytes()
+        .into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             api.send(token, &message);
         };
     }
 
     fn broadcast_proposal_block(&self, signature: SchnorrSignature, signer_index: usize, message: Bytes) {
-        let message = TendermintMessage::ProposalBlock(signature, signer_index, message).rlp_bytes().into_vec();
+        let message = TendermintMessage::ProposalBlock {
+            signature,
+            signer_index,
+            message,
+        }
+        .rlp_bytes()
+        .into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             for token in self.peers.read().keys() {
                 api.send(&token, &message);
@@ -1709,8 +1721,12 @@ impl NetworkExtension for TendermintExtension {
                     cinfo!(ENGINE, "Failed to handle message {:?}", e);
                 }
             }
-            Ok(TendermintMessage::ProposalBlock(signature, signer_index, bytes)) => {
-                self.on_proposal_message(t, signature, signer_index, bytes);
+            Ok(TendermintMessage::ProposalBlock {
+                signature,
+                signer_index,
+                message,
+            }) => {
+                self.on_proposal_message(t, signature, signer_index, message);
             }
             Ok(TendermintMessage::StepState {
                 vote_step,
