@@ -468,7 +468,7 @@ where
         ctrace!(SHUTDOWN, "[IoService] Closed.");
     }
 
-    /// Regiter an IO handler with the event loop.
+    /// Register an IO handler with the event loop.
     pub fn register_handler(&self, handler: Arc<IoHandler<Message> + Send>) -> Result<(), IoError> {
         let h = Arc::clone(&handler);
         assert!(self.handler.read().is_none());
