@@ -1,14 +1,14 @@
-When transfer CCC or assets, the sender must know the recipient's lock script hash and parameters. An address is a converted form of lock script hash and parameters, and it has some benefits.
+When transferring CCC or assets, the sender must know the recipient's lock script hash and parameters. An address is a converted form of the lock script hash and parameters, and it has some benefits.
 
- * Address includes a checksum. It's a high probability that a mistyped address is invalid.
- * Address is case-insensitive alphanumeric which is easy to speak aloud or type on the mobile phone. It also efficient to generate QR code.
+ * An address includes a checksum. There is a high probability that a mistyped address is invalid.
+ * An address is case-insensitive alphanumeric, which is easy to speak aloud or type on the mobile phone. It also makes it efficient to generate QR codes.
 
 ## Bech32
 
-CodeChain adopted [Bitcoin's Bech32 Specification](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#bech32). The differences from Bitcoin are the followings:
+CodeChain adopted [Bitcoin's Bech32 Specification](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#bech32). The differences from Bitcoin are the following:
 
- * CodeChain has no separator
- * CodeChain has 2 types of address. One is for CCC and the other is for assets. They are distinguished by HRP(Human Readable Part)
+ * CodeChain has no separator.
+ * CodeChain has 2 types of address. One is for CCCs and the other is for assets. They are distinguished by HRP(Human Readable Part)
 
 Address formats are not a core part.
 

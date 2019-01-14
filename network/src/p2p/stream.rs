@@ -63,120 +63,144 @@ pub type Result<T> = ::std::result::Result<T, Error>;
 #[derive(Debug, PartialEq)]
 enum ReadRetry {
     ReadBytes {
-        total_length: usize,
         result: Vec<u8>,
     },
     ReadLenOfLen {
         bytes: Vec<u8>,
+        read_size: usize,
     },
 }
 
-struct TryStream {
-    stream: TcpStream,
+struct TryStream<Stream: TryRead + TryWrite + PeerAddr + Shutdown> {
+    stream: Stream,
     read: Option<ReadRetry>,
     write: VecDeque<Vec<u8>>,
 }
 
-impl TryStream {
-    fn read_len_of_len(&mut self, mut bytes: Vec<u8>) -> io::Result<(usize, Vec<u8>)> {
-        debug_assert_eq!(None, self.read);
-        debug_assert_eq!(1, bytes.len());
-        debug_assert!(bytes[0] > 0xf7);
-        let len_of_len = (bytes[0] - 0xf7) as usize;
-        debug_assert!(len_of_len <= 8);
-        bytes.resize(1 + len_of_len, 0);
+fn parse_len_of_len(bytes: &[u8]) -> usize {
+    debug_assert!(bytes[0] > 0xf7);
+    let len_of_len = (bytes[0] - 0xf7) as usize;
+    debug_assert!(len_of_len <= 8, "Length of length must be less than 8 but {}({})", len_of_len, bytes[0]);
 
-        if let Some(read_size) = self.stream.try_read(&mut bytes[1..=len_of_len])? {
-            debug_assert_eq!(len_of_len, read_size);
-            let mut total_length: usize = 0;
-            for i in &bytes[1..=len_of_len] {
-                total_length <<= 8;
-                total_length |= *i as usize;
-            }
-            Ok((total_length, bytes))
-        } else {
-            self.read = Some(ReadRetry::ReadLenOfLen {
-                bytes,
-            });
-            match self.peer_addr() {
-                Ok(from_socket) => {
-                    cdebug!(NETWORK, "Cannot read length from socket({}).", from_socket);
-                }
-                Err(err) => {
-                    ctrace!(NETWORK, "Cannot read length: {:?}", err);
-                }
-            }
-            Ok((0, vec![]))
+    len_of_len
+}
+
+fn parse_len(bytes: &[u8]) -> (usize, usize) {
+    if 0xf8 <= bytes[0] {
+        let len_of_len = (bytes[0] - 0xf7) as usize;
+        parse_long_len(&bytes, len_of_len)
+    } else if 0xc0 <= bytes[0] {
+        parse_short_len(&bytes)
+    } else {
+        unreachable!()
+    }
+}
+
+fn parse_short_len(bytes: &[u8]) -> (usize, usize) {
+    (bytes[0] as usize - 0xc0, 1)
+}
+
+fn parse_long_len(bytes: &[u8], len_of_len: usize) -> (usize, usize) {
+    let mut total_length: usize = 0;
+    for i in &bytes[1..=len_of_len] {
+        total_length <<= 8;
+        total_length |= *i as usize;
+    }
+    (total_length, 1 + len_of_len)
+}
+
+impl<Stream: TryRead + TryWrite + PeerAddr + Shutdown> TryStream<Stream> {
+    fn read_len_of_len(&mut self, mut bytes: Vec<u8>, mut read_size: usize) -> io::Result<Option<Vec<u8>>> {
+        debug_assert_eq!(None, self.read);
+
+        let len_of_len = parse_len_of_len(&bytes);
+        assert!(read_size < len_of_len, "{} should be less than {}", read_size, len_of_len);
+
+        if let Some(new_read_size) = self.stream.try_read(&mut bytes[(1 + read_size)..=len_of_len])? {
+            read_size += new_read_size;
+        };
+        if len_of_len == read_size {
+            return Ok(Some(bytes))
         }
+
+        self.read = Some(ReadRetry::ReadLenOfLen {
+            bytes,
+            read_size,
+        });
+        Ok(None)
     }
 
-    fn read_len(&mut self) -> Result<(usize, Vec<u8>)> {
+    fn read_len(&mut self) -> Result<Option<(Vec<u8>)>> {
         debug_assert_eq!(None, self.read);
         let mut bytes: Vec<u8> = vec![0];
 
         if let Some(read_size) = self.stream.try_read(&mut bytes)? {
             if read_size == 0 {
-                return Ok((0, vec![]))
+                return Ok(None)
             }
             debug_assert_eq!(1, read_size);
-            if bytes[0] >= 0xf8 {
-                return Ok(self.read_len_of_len(bytes)?)
+            if 0xf8 <= bytes[0] {
+                let len_of_len = (bytes[0] - 0xf7) as usize;
+                bytes.resize(1 + len_of_len, 0);
+                return Ok(self.read_len_of_len(bytes, 0)?)
             }
-            if bytes[0] >= 0xc0 {
-                return Ok(((bytes[0] - 0xc0) as usize, bytes))
+            if 0xc0 <= bytes[0] {
+                return Ok(Some(bytes))
             }
             let from_socket = self.peer_addr()?;
             cerror!(NETWORK, "Invalid messages({:?}) from {}", bytes, from_socket);
             self.shutdown()?;
-            Ok((0, vec![]))
+            Ok(None)
         } else {
-            Ok((0, vec![]))
+            Ok(None)
         }
     }
 
     fn read_bytes(&mut self) -> Result<Option<Vec<u8>>> {
         let from_socket = self.peer_addr()?;
 
-        let (mut total_length, mut result) = {
-            let mut retry_job = None;
-            ::std::mem::swap(&mut retry_job, &mut self.read);
-            match retry_job {
-                None => self.read_len()?,
-                Some(ReadRetry::ReadBytes {
-                    total_length,
-                    result,
-                }) => {
-                    cdebug!(NETWORK, "Retry the previous job from {}. {} bytes remain.", from_socket, total_length);
-                    (total_length, result)
-                }
-                Some(ReadRetry::ReadLenOfLen {
-                    bytes,
-                }) => {
-                    cdebug!(NETWORK, "Retry the previous job from {}.", from_socket);
-                    self.read_len_of_len(bytes)?
-                }
+        let mut retry_job = None;
+        ::std::mem::swap(&mut retry_job, &mut self.read);
+        let mut result = match match retry_job {
+            None => self.read_len()?,
+            Some(ReadRetry::ReadBytes {
+                result,
+            }) => {
+                cdebug!(NETWORK, "Retry the previous reading body from {}.", from_socket);
+                Some(result)
             }
+            Some(ReadRetry::ReadLenOfLen {
+                bytes,
+                read_size,
+            }) => {
+                cdebug!(NETWORK, "Retry the previous reading length from {}.", from_socket);
+                self.read_len_of_len(bytes, read_size)?
+            }
+        } {
+            None => return Ok(None),
+            Some(result) => (result),
         };
 
+        let (total_length, len_of_len) = parse_len(&result);
         if total_length == 0 {
-            return Ok(Some(result))
+            return Ok(None)
         }
+        let mut remain_length = total_length + len_of_len - result.len();
         let mut bytes: [u8; 1024] = [0; 1024];
 
         ctrace!(NETWORK, "Read {} bytes from {}", total_length, from_socket);
-        while total_length != 0 {
-            let to_be_read = ::std::cmp::min(total_length, 1024);
+        while remain_length != 0 {
+            let to_be_read = ::std::cmp::min(remain_length, 1024);
             if let Some(read_size) = self.stream.try_read(&mut bytes[0..to_be_read])? {
                 result.extend_from_slice(&bytes[..read_size]);
-                debug_assert!(total_length >= read_size);
-                total_length -= read_size;
+                debug_assert!(remain_length >= read_size);
+                remain_length -= read_size;
             } else {
                 debug_assert_eq!(None, self.read);
                 self.read = Some(ReadRetry::ReadBytes {
-                    total_length,
                     result,
                 });
-                cdebug!(NETWORK, "Cannot read data from {}, {} bytes remain.", from_socket, total_length);
+                cdebug!(NETWORK, "Cannot read data from {}, {} bytes remain.", from_socket, remain_length);
                 return Ok(None)
             }
         }
@@ -229,16 +253,36 @@ impl TryStream {
     }
 
     fn peer_addr(&self) -> Result<SocketAddr> {
-        Ok(self.stream.peer_addr()?.into())
+        self.stream.peer_addr()
     }
 
     fn shutdown(&self) -> io::Result<()> {
-        self.stream.shutdown(net::Shutdown::Both)
+        self.stream.shutdown()
+    }
+}
+
+trait PeerAddr {
+    fn peer_addr(&self) -> Result<SocketAddr>;
+}
+
+trait Shutdown {
+    fn shutdown(&self) -> io::Result<()>;
+}
+
+impl PeerAddr for TcpStream {
+    fn peer_addr(&self) -> Result<SocketAddr> {
+        Ok(self.peer_addr()?.into())
+    }
+}
+
+impl Shutdown for TcpStream {
+    fn shutdown(&self) -> io::Result<()> {
+        self.shutdown(net::Shutdown::Both)
     }
 }
 
 pub struct Stream {
-    try_stream: TryStream,
+    try_stream: TryStream<TcpStream>,
 }
 
 impl Stream {
@@ -396,5 +440,261 @@ impl Evented for SignedStream {
 
     fn deregister(&self, poll: &Poll) -> io::Result<()> {
         self.stream.deregister(poll)
+    }
+}
+
+#[cfg(test)]
+mod test_stream {
+    use super::*;
+
+    pub struct TestStream {
+        peer_addr: SocketAddr,
+        read_stream: VecDeque<Option<Vec<u8>>>,
+    }
+
+    impl TestStream {
+        pub fn new(peer_addr: SocketAddr) -> Self {
+            Self {
+                peer_addr,
+                read_stream: Default::default(),
+            }
+        }
+
+        pub fn append(&mut self, bytes: Vec<u8>) {
+            self.read_stream.push_back(Some(bytes));
+        }
+
+        pub fn append_blank(&mut self) {
+            self.read_stream.push_back(None);
+        }
+    }
+
+    impl TryRead for TestStream {
+        fn try_read(&mut self, buf: &mut [u8]) -> io::Result<Option<usize>> {
+            let mut values = match self.read_stream.pop_front() {
+                Some(Some(values)) => values,
+                _ => return Ok(None),
+            };
+            let len_of_values = values.len();
+            let len_of_buffer = buf.len();
+            if len_of_values <= len_of_buffer {
+                buf[0..len_of_values].copy_from_slice(&values);
+                return Ok(Some(len_of_values))
+            }
+
+            buf.copy_from_slice(&values[0..len_of_buffer]);
+            values.drain(0..len_of_buffer);
+            assert_ne!(0, values.len());
+            self.read_stream.push_front(Some(values));
+            Ok(Some(len_of_buffer))
+        }
+    }
+    impl TryWrite for TestStream {
+        fn try_write(&mut self, _buf: &[u8]) -> io::Result<Option<usize>> {
+            unimplemented!()
+        }
+    }
+    impl PeerAddr for TestStream {
+        fn peer_addr(&self) -> Result<SocketAddr> {
+            Ok(self.peer_addr)
+        }
+    }
+    impl Shutdown for TestStream {
+        fn shutdown(&self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    pub fn short_message() -> Vec<u8> {
+        let message = vec![vec![1]; 10];
+        let encoded = message.rlp_bytes();
+        encoded.to_vec()
+    }
+
+    pub fn long_message() -> Vec<u8> {
+        let message = vec![vec![1]; 300];
+        let encoded = message.rlp_bytes();
+        encoded.to_vec()
+    }
+
+    pub fn fill_at_once(stream: &mut TestStream, bytes: Vec<u8>) {
+        stream.append(bytes);
+    }
+
+    pub fn fill_one_by_one(stream: &mut TestStream, bytes: Vec<u8>) {
+        for i in bytes {
+            stream.append(vec![i]);
+        }
+    }
+
+    pub fn fill_one_by_one_with_blank(stream: &mut TestStream, bytes: Vec<u8>) {
+        for i in bytes {
+            stream.append_blank();
+            stream.append(vec![i]);
+        }
+    }
+
+    #[test]
+    fn short_all_at_once() {
+        let encoded = short_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_at_once(&mut stream, encoded.clone());
+        let mut received = Vec::new();
+        received.resize(encoded.len(), 0);
+        assert_eq!(Some(encoded.len()), stream.try_read(&mut received).unwrap());
+        assert_eq!(&encoded, &received);
+    }
+
+    #[test]
+    fn long_all_at_once() {
+        let encoded = long_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_at_once(&mut stream, encoded.clone());
+        stream.append(encoded.to_vec());
+        let mut received = Vec::new();
+        received.resize(encoded.len(), 0);
+        assert_eq!(Some(encoded.len()), stream.try_read(&mut received).unwrap());
+        assert_eq!(&encoded, &received);
+    }
+
+    #[test]
+    fn short_one_by_one() {
+        let encoded = short_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_one_by_one(&mut stream, encoded.clone());
+        for i in encoded.to_vec() {
+            let mut received = vec![0; 1];
+            assert_eq!(Some(1), stream.try_read(&mut received).unwrap());
+            assert_eq!(received, vec![i]);
+        }
+    }
+
+    #[test]
+    fn long_one_by_one() {
+        let encoded = long_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_one_by_one(&mut stream, encoded.clone());
+        for i in encoded.to_vec() {
+            let mut received = vec![0; 1];
+            assert_eq!(Some(1), stream.try_read(&mut received).unwrap());
+            assert_eq!(received, vec![i]);
+        }
+    }
+
+    #[test]
+    fn short_one_by_one_with_blank() {
+        let encoded = short_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_one_by_one_with_blank(&mut stream, encoded.clone());
+        for i in encoded.to_vec() {
+            let mut received = vec![0; 1];
+            assert_eq!(None, stream.try_read(&mut received).unwrap());
+            assert_eq!(Some(1), stream.try_read(&mut received).unwrap());
+            assert_eq!(received, vec![i]);
+        }
+    }
+
+    #[test]
+    fn long_one_by_one_with_blank() {
+        let encoded = long_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_one_by_one_with_blank(&mut stream, encoded.clone());
+        for i in encoded.to_vec() {
+            let mut received = vec![0; 1];
+            assert_eq!(None, stream.try_read(&mut received).unwrap());
+            assert_eq!(Some(1), stream.try_read(&mut received).unwrap());
+            assert_eq!(received, vec![i]);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_stream::*;
+    use super::*;
+
+    #[test]
+    fn short_message_at_once() {
+        let encoded = short_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_at_once(&mut stream, encoded.clone());
+        let mut stream = TryStream {
+            stream,
+            read: None,
+            write: VecDeque::default(),
+        };
+        assert_eq!(Some(encoded), stream.read_bytes().unwrap());
+    }
+
+    #[test]
+    fn long_message_at_once() {
+        let encoded = long_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_at_once(&mut stream, encoded.clone());
+        let mut stream = TryStream {
+            stream,
+            read: None,
+            write: VecDeque::default(),
+        };
+        assert_eq!(Some(encoded), stream.read_bytes().unwrap());
+    }
+
+    #[test]
+    fn short_message_one_by_one() {
+        let encoded = short_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_one_by_one(&mut stream, encoded.clone());
+        let mut stream = TryStream {
+            stream,
+            read: None,
+            write: VecDeque::default(),
+        };
+        assert_eq!(Some(encoded), stream.read_bytes().unwrap());
+    }
+
+    #[test]
+    fn long_message_one_by_one() {
+        let encoded = long_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_one_by_one(&mut stream, encoded.clone());
+        let mut stream = TryStream {
+            stream,
+            read: None,
+            write: VecDeque::default(),
+        };
+        assert_eq!(None, stream.read_bytes().unwrap());
+        assert_eq!(Some(encoded), stream.read_bytes().unwrap());
+    }
+
+    #[test]
+    fn short_message_one_by_one_with_blank() {
+        let encoded = short_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_one_by_one_with_blank(&mut stream, encoded.clone());
+        let mut stream = TryStream {
+            stream,
+            read: None,
+            write: VecDeque::default(),
+        };
+        for i in 0..(encoded.len()) {
+            assert_eq!(None, stream.read_bytes().unwrap(), "unexpected result in {}th try", i);
+        }
+        assert_eq!(Some(encoded), stream.read_bytes().unwrap());
+    }
+
+    #[test]
+    fn long_message_one_by_one_with_blank() {
+        let encoded = long_message();
+        let mut stream = TestStream::new(SocketAddr::v4(1, 2, 3, 4, 5678));
+        fill_one_by_one_with_blank(&mut stream, encoded.clone());
+        let mut stream = TryStream {
+            stream,
+            read: None,
+            write: VecDeque::default(),
+        };
+        for i in 0..=encoded.len() {
+            assert_eq!(None, stream.read_bytes().unwrap(), "unexpected result in {}th try", i);
+        }
+        assert_eq!(Some(encoded), stream.read_bytes().unwrap());
     }
 }
