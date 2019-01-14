@@ -137,7 +137,7 @@ impl HeaderChain {
 
         let best_header_changed = self.best_header_changed(header, engine);
 
-        let new_hashes = self.new_hash_entries(header, &best_header_changed);
+        let new_hashes = self.new_hash_entries(&best_header_changed);
         let new_details = self.new_detail_entries(header);
 
         let mut pending_best_header_hash = self.pending_best_header_hash.write();
@@ -183,23 +183,20 @@ impl HeaderChain {
     }
 
     /// This function returns modified block hashes.
-    fn new_hash_entries(
-        &self,
-        new_header: &HeaderView,
-        best_header_changed: &BestHeaderChanged,
-    ) -> HashMap<BlockNumber, H256> {
+    fn new_hash_entries(&self, best_header_changed: &BestHeaderChanged) -> HashMap<BlockNumber, H256> {
         let mut hashes = HashMap::new();
 
         match best_header_changed {
             BestHeaderChanged::None => (),
             BestHeaderChanged::CanonChainAppended {
-                ..
+                best_header,
             } => {
-                hashes.insert(new_header.number(), new_header.hash());
+                let best_header_view = HeaderView::new(best_header);
+                hashes.insert(best_header_view.number(), best_header_view.hash());
             }
             BestHeaderChanged::BranchBecomingCanonChain {
                 tree_route,
-                ..
+                best_header,
             } => {
                 let ancestor_number = self.block_number(&tree_route.ancestor).expect("Ancestor always exist in DB");
                 let start_number = ancestor_number + 1;
@@ -208,7 +205,8 @@ impl HeaderChain {
                     hashes.insert(start_number + index as BlockNumber, *hash);
                 }
 
-                hashes.insert(new_header.number(), new_header.hash());
+                let best_header_view = HeaderView::new(best_header);
+                hashes.insert(best_header_view.number(), best_header_view.hash());
             }
         }
 
