@@ -25,7 +25,6 @@
 //!
 //! struct MyHandler;
 //!
-//! #[derive(Clone)]
 //! struct MyMessage {
 //! 	data: u32
 //! }
@@ -114,7 +113,7 @@ impl From<IoHandlerError> for IoError {
 
 impl<Message> From<NotifyError<service::IoMessage<Message>>> for IoError
 where
-    Message: Send + Clone,
+    Message: Send,
 {
     fn from(_err: NotifyError<service::IoMessage<Message>>) -> IoError {
         IoError::Mio(::std::io::Error::new(::std::io::ErrorKind::ConnectionAborted, "Network IO notification error"))
@@ -137,7 +136,7 @@ pub type IoHandlerResult<T> = Result<T, IoHandlerError>;
 /// `Message` type is used as notification data
 pub trait IoHandler<Message>: Send + Sync
 where
-    Message: Send + Sync + Clone + 'static, {
+    Message: Send + Sync + 'static, {
     /// Initialize the handler
     fn initialize(&self, _io: &IoContext<Message>) -> IoHandlerResult<()> {
         Ok(())
@@ -205,7 +204,6 @@ mod tests {
 
     struct MyHandler;
 
-    #[derive(Clone)]
     struct MyMessage {
         data: u32,
     }
