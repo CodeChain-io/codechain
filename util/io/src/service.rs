@@ -18,9 +18,10 @@ use crossbeam::deque;
 use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
 use mio::timer::Timeout;
 use mio::*;
-use parking_lot::{Condvar, Mutex, RwLock};
+use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
+use std::sync::{Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use worker::{Work, WorkType, Worker};
@@ -168,7 +169,7 @@ where
     handler: Arc<HandlerType<Message>>,
     workers: Vec<Worker>,
     worker_channel: deque::Worker<Work<Message>>,
-    work_ready: Arc<Condvar>,
+    work_ready: Arc<SCondvar>,
 }
 
 impl<Message> IoManager<Message>
@@ -183,8 +184,8 @@ where
     ) -> Result<(), IoError> {
         let (worker, stealer) = deque::lifo();
         let num_workers = 4;
-        let work_ready_mutex = Arc::new(Mutex::new(()));
-        let work_ready = Arc::new(Condvar::new());
+        let work_ready_mutex = Arc::new(SMutex::new(()));
+        let work_ready = Arc::new(SCondvar::new());
 
         let workers = (0..num_workers)
             .map(|i| {
