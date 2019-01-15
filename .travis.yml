@@ -7,14 +7,14 @@ stages:
   - name: deploy
     if: branch = docker-build
 
-before_install:
-  - .travis/check-doc-change /tmp/result
-  - if [ $(cat /tmp/result) = "skip" ]; then travis_terminate 0; fi
 jobs:
   include:
     - stage: test
       name: test-osx
       os: osx
+      before_install:
+        - .travis/check-doc-change /tmp/result
+        - if [ $(cat /tmp/result) = "skip" ]; then travis_terminate 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
         - rustup component add rustfmt-preview --toolchain nightly-2018-12-06
@@ -27,6 +27,9 @@ jobs:
         - RUST_BACKTRACE=1 cargo test --verbose --all || exit 1
     - name: int-test-osx
       os: osx
+      before_install:
+        - .travis/check-doc-change /tmp/result
+        - if [ $(cat /tmp/result) = "skip" ]; then travis_terminate 0; fi
       install:
         - nvm install 10
         - nvm use 10
@@ -43,6 +46,9 @@ jobs:
     - name: test-linux
       os: linux
       sudo: required
+      before_install:
+        - .travis/check-doc-change /tmp/result
+        - if [ $(cat /tmp/result) = "skip" ]; then travis_terminate 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
         - rustup component add rustfmt-preview --toolchain nightly-2018-12-06
@@ -56,6 +62,9 @@ jobs:
     - name: int-test-linux
       os: linux
       sudo: required
+      before_install:
+        - .travis/check-doc-change /tmp/result
+        - if [ $(cat /tmp/result) = "skip" ]; then travis_terminate 0; fi
       install:
         - nvm install 10
         - nvm use 10
