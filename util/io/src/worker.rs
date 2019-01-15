@@ -22,7 +22,7 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use IoHandler;
 
-use parking_lot::{Condvar, Mutex};
+use std::sync::{Condvar as SCondvar, Mutex as SMutex};
 
 const STACK_SIZE: usize = 16 * 1024 * 1024;
 
@@ -51,9 +51,9 @@ pub struct Work<Message> {
 /// Sorts them ready for blockchain insertion.
 pub struct Worker {
     thread: Option<JoinHandle<()>>,
-    wait: Arc<Condvar>,
+    wait: Arc<SCondvar>,
     deleting: Arc<AtomicBool>,
-    wait_mutex: Arc<Mutex<()>>,
+    wait_mutex: Arc<SMutex<()>>,
 }
 
 impl Worker {
@@ -62,8 +62,8 @@ impl Worker {
         index: usize,
         stealer: deque::Stealer<Work<Message>>,
         channel: IoChannel<Message>,
-        wait: Arc<Condvar>,
-        wait_mutex: Arc<Mutex<()>>,
+        wait: Arc<SCondvar>,
+        wait_mutex: Arc<SMutex<()>>,
         name: &str,
     ) -> Worker
     where
@@ -91,18 +91,18 @@ impl Worker {
     fn work_loop<Message>(
         stealer: &deque::Stealer<Work<Message>>,
         channel: &IoChannel<Message>,
-        wait: &Condvar,
-        wait_mutex: &Mutex<()>,
+        wait: &SCondvar,
+        wait_mutex: &SMutex<()>,
         deleting: &AtomicBool,
     ) where
         Message: Send + Sync + 'static, {
         loop {
             {
-                let mut lock = wait_mutex.lock();
+                let lock = wait_mutex.lock().expect("Poisoned work_loop mutex");
                 if deleting.load(AtomicOrdering::Acquire) {
                     return
                 }
-                wait.wait(&mut lock);
+                let _ = wait.wait(lock);
             }
 
             while !deleting.load(AtomicOrdering::Acquire) {
@@ -150,11 +150,9 @@ impl Worker {
 impl Drop for Worker {
     fn drop(&mut self) {
         ctrace!(SHUTDOWN, "[IoWorker] Closing...");
-        {
-            let _lock = self.wait_mutex.lock();
-            self.deleting.store(true, AtomicOrdering::Release);
-            self.wait.notify_all();
-        }
+        let _ = self.wait_mutex.lock().expect("Poisoned work_loop mutex");
+        self.deleting.store(true, AtomicOrdering::Release);
+        self.wait.notify_all();
         if let Some(thread) = self.thread.take() {
             thread.join().ok();
         }
