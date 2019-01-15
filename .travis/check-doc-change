@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-RESULT_FILE=$1
+RESULT_FILE="${1}"
 
 echo "Event type ${TRAVIS_EVENT_TYPE}"
 echo "Branch: ${TRAVIS_EVENT_TYPE}"
@@ -23,7 +23,7 @@ push)
             # It'll exit by non-zero with empty output.
             # Since we cannot find common ancestor(A), we should do full check.
             echo "Don't skip for force push"
-            echo "noskip" > $RESULT_FILE
+            echo "noskip" > ${RESULT_FILE}
             exit
         else
             # A--B--C
@@ -52,7 +52,7 @@ pull_request)
     ;;
 *)
     echo "Don't skip for api, cron event"
-    echo "noskip" > $RESULT_FILE
+    echo "noskip" > ${RESULT_FILE}
     exit
     ;;
 esac
@@ -61,7 +61,7 @@ git log --oneline --decorate --all --graph | head -n 10;
 echo "Check doc change for: ${COMMIT_RANGE}"
 if ! git diff --name-only ${COMMIT_RANGE} | grep -qvE '^(docs|spec)/'
 then
-  echo "Only docs were updated, or there's no change, not running the CI."
-  echo "skip" > $RESULT_FILE
-  exit
+    echo "Only docs were updated, or there's no change, not running the CI."
+    echo "skip" > ${RESULT_FILE}
+    exit
 fi
