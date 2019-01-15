@@ -63,23 +63,22 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
         bucket_size: cfg.discovery_bucket_size.unwrap(),
         t_refresh: cfg.discovery_refresh.unwrap(),
     };
-    let discovery = match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
+    match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
         Some("unstructured") => {
             cinfo!(DISCOVERY, "Node runs with unstructured discovery");
-            Some(Discovery::unstructured(config))
+            let discovery = service.new_extension(|api| Discovery::unstructured(config, api));
+            service.set_routing_table(&*discovery);
+            Ok(())
         }
         Some("kademlia") => {
             cinfo!(DISCOVERY, "Node runs with kademlia discovery");
-            Some(Discovery::kademlia(config))
+            let discovery = service.new_extension(|api| Discovery::kademlia(config, api));
+            service.set_routing_table(&*discovery);
+            Ok(())
         }
-        Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
-        None => None,
-    };
-    if let Some(discovery) = discovery {
-        service.set_routing_table(&*discovery);
-        service.register_extension(discovery);
+        Some(discovery_type) => Err(format!("Unknown discovery {}", discovery_type)),
+        None => Ok(()),
     }
-    Ok(())
 }
 
 fn client_start(
@@ -249,13 +248,12 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             }
 
             if config.network.sync.unwrap() {
-                let sync = BlockSyncExtension::new(client.client());
-                service.register_extension(Arc::clone(&sync));
+                let sync = service.new_extension(|api| BlockSyncExtension::new(client.client(), api));
                 client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
                 some_sync = Some(sync);
             }
             if config.network.transaction_relay.unwrap() {
-                service.register_extension(ParcelSyncExtension::new(client.client()));
+                service.new_extension(|api| ParcelSyncExtension::new(client.client(), api));
             }
 
             scheme.engine.register_network_extension_to_service(&service);

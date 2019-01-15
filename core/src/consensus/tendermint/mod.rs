@@ -163,7 +163,9 @@ impl TendermintInner {
             votes_received: BitSet::new(),
         }
     }
+}
 
+impl TendermintInner {
     fn engine(&self) -> Arc<Tendermint> {
         self.engine
             .as_ref()
@@ -1053,13 +1055,13 @@ impl TendermintInner {
 
     fn register_network_extension_to_service(&mut self, service: &NetworkService) {
         let extension = {
+            let timeouts = self.timeouts.clone();
             let tendermint = Arc::downgrade(&self.engine());
             let client = Arc::downgrade(&self.client());
-            Arc::new(TendermintExtension::new(tendermint, client, self.timeouts.clone()))
+            service.new_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api))
         };
 
         self.extension = Some(Arc::clone(&extension));
-        service.register_extension(extension);
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {
@@ -1365,7 +1367,7 @@ struct TendermintExtension {
     tendermint: Weak<Tendermint>,
     client: Weak<EngineClient>,
     peers: RwLock<HashMap<NodeId, PeerState>>,
-    api: Mutex<Option<Arc<Api>>>,
+    api: Arc<Api>,
     timeouts: TimeoutParams,
     timeout_token_nonce: AtomicUsize,
 }
@@ -1374,12 +1376,12 @@ const MIN_PEERS_PROPAGATION: usize = 4;
 const MAX_PEERS_PROPAGATION: usize = 128;
 
 impl TendermintExtension {
-    fn new(tendermint: Weak<Tendermint>, client: Weak<EngineClient>, timeouts: TimeoutParams) -> Self {
+    fn new(tendermint: Weak<Tendermint>, client: Weak<EngineClient>, timeouts: TimeoutParams, api: Arc<Api>) -> Self {
         Self {
             tendermint,
             client,
             peers: RwLock::new(HashMap::new()),
-            api: Mutex::new(None),
+            api,
             timeouts,
             timeout_token_nonce: AtomicUsize::new(ENGINE_TIMEOUT_TOKEN_NONCE_BASE),
         }
@@ -1410,19 +1412,15 @@ impl TendermintExtension {
     fn broadcast_message(&self, message: Bytes) {
         let tokens = self.select_random_peers();
         let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            for token in tokens {
-                api.send(&token, &message);
-            }
+        for token in tokens {
+            self.api.send(&token, &message);
         }
     }
 
     fn send_message(&self, token: &NodeId, message: Bytes) {
         ctrace!(ENGINE, "Send message to {}", token);
         let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            api.send(token, &message);
-        }
+        self.api.send(token, &message);
     }
 
     fn broadcast_state(&self, vote_step: &VoteStep, proposal: Option<H256>, votes: BitSet) {
@@ -1436,10 +1434,8 @@ impl TendermintExtension {
         .rlp_bytes()
         .into_vec();
 
-        if let Some(api) = self.api.lock().as_ref() {
-            for token in tokens {
-                api.send(&token, &message);
-            }
+        for token in tokens {
+            self.api.send(&token, &message);
         }
     }
 
@@ -1450,9 +1446,7 @@ impl TendermintExtension {
         }
         .rlp_bytes()
         .into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            api.send(token, &message);
-        };
+        self.api.send(token, &message);
     }
 
     fn broadcast_proposal_block(&self, signature: SchnorrSignature, message: Bytes) {
@@ -1462,11 +1456,9 @@ impl TendermintExtension {
         }
         .rlp_bytes()
         .into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            for token in self.peers.read().keys() {
-                api.send(&token, &message);
-            }
-        };
+        for token in self.peers.read().keys() {
+            self.api.send(&token, &message);
+        }
     }
 
     fn request_proposal_to_any(&self, height: Height, view: View) {
@@ -1499,9 +1491,7 @@ impl TendermintExtension {
         }
         .rlp_bytes()
         .into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            api.send(&token, &message);
-        }
+        self.api.send(&token, &message);
     }
 
     fn request_all_votes(&self, vote_step: &VoteStep) {
@@ -1521,9 +1511,7 @@ impl TendermintExtension {
         }
         .rlp_bytes()
         .into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            api.send(&token, &message);
-        }
+        self.api.send(&token, &message);
     }
 
     fn is_expired_timeout_token(&self, nonce: usize) -> bool {
@@ -1531,12 +1519,12 @@ impl TendermintExtension {
     }
 
     fn set_timer_step(&self, step: Step, view: View) {
-        if let Some(api) = self.api.lock().as_ref() {
-            let expired_token_nonce = self.timeout_token_nonce.fetch_add(1, AtomicOrdering::SeqCst);
+        let expired_token_nonce = self.timeout_token_nonce.fetch_add(1, AtomicOrdering::SeqCst);
 
-            api.clear_timer(expired_token_nonce).expect("Timer clear succeeds");
-            api.set_timer_once(expired_token_nonce + 1, self.timeouts.timeout(step, view)).expect("Timer set succeeds");
-        };
+        self.api.clear_timer(expired_token_nonce).expect("Timer clear succeeds");
+        self.api
+            .set_timer_once(expired_token_nonce + 1, self.timeouts.timeout(step, view))
+            .expect("Timer set succeeds");
     }
 
     fn on_proposal_message(&self, tendermint: MutexGuard<TendermintInner>, signature: SchnorrSignature, bytes: Bytes) {
@@ -1726,11 +1714,10 @@ impl NetworkExtension for TendermintExtension {
         &VERSIONS
     }
 
-    fn on_initialize(&self, api: Arc<Api>) {
+    fn on_initialize(&self) {
         let initial = self.timeouts.initial();
         ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
-        api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
-        *self.api.lock() = Some(api);
+        self.api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
     }
 
     fn on_node_added(&self, token: &NodeId, _version: u64) {
