@@ -35,7 +35,6 @@ use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, Text, TopLevelState, TopStateView};
-use ctimer::TimerApi;
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
@@ -188,8 +187,6 @@ pub trait Shard {
 
 /// Provides a timer API for reseal_min_period/reseal_max_period on miner client
 pub trait ResealTimer {
-    /// Register timer API
-    fn register_timer(&self, timer: TimerApi);
     /// Set reseal min timer as reseal_min_period, for creating blocks with transactions which are pending because of reseal_min_period
     fn set_min_timer(&self);
     /// Set reseal max timer as reseal_max_period, for creating empty blocks every reseal_max_period

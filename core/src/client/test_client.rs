@@ -39,7 +39,7 @@ use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Ra
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{FindActionHandler, StateDB};
-use ctimer::{TimeoutHandler, TimerApi, TimerToken};
+use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{Action, Transaction};
 use ctypes::BlockNumber;
@@ -532,8 +532,6 @@ impl TimeoutHandler for TestBlockChainClient {
 }
 
 impl ResealTimer for TestBlockChainClient {
-    fn register_timer(&self, _timer: TimerApi) {}
-
     fn set_max_timer(&self) {}
 
     fn set_min_timer(&self) {}
