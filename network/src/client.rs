@@ -124,12 +124,13 @@ impl Client {
         let name = extension.name();
         let mut extensions = self.extensions.write();
         let p2p_channel = self.p2p_channel.clone();
-        let timer = self.timer_loop.new_timer(name, Arc::clone(&extension));
+        let timer = self.timer_loop.new_timer(name);
         let api: Arc<Api> = Arc::new(ClientApi {
             extension: Arc::downgrade(&extension) as Weak<NetworkExtension>,
             p2p_channel,
-            timer,
+            timer: timer.clone(),
         });
+        timer.set_handler(&extension);
         extension.on_initialize(api);
         if extensions.insert(name, extension).is_some() {
             unreachable!("Duplicated extension name : {}", name)

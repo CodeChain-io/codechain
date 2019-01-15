@@ -84,7 +84,7 @@ pub struct Client {
     importer: Importer,
 
     /// Timer for reseal_min_period/reseal_max_period on miner client
-    reseal_timer: RwLock<Option<TimerApi>>,
+    reseal_timer: TimerApi,
 }
 
 impl Client {
@@ -94,6 +94,7 @@ impl Client {
         db: Arc<KeyValueDB>,
         miner: Arc<Miner>,
         message_channel: IoChannel<ClientIoMessage>,
+        reseal_timer: TimerApi,
     ) -> Result<Arc<Client>, Error> {
         let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, ::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db);
@@ -127,16 +128,12 @@ impl Client {
             queue_transactions: AtomicUsize::new(0),
             genesis_accounts,
             importer,
-            reseal_timer: RwLock::new(None),
+            reseal_timer,
         });
 
         // ensure buffered changes are flushed.
         client.db.flush().map_err(ClientError::Database)?;
         Ok(client)
-    }
-
-    pub fn register_reseal_timer(&self, timer: TimerApi) {
-        self.register_timer(timer);
     }
 
     /// Returns engine reference.
@@ -279,38 +276,32 @@ impl TimeoutHandler for Client {
 }
 
 impl ResealTimer for Client {
-    fn register_timer(&self, timer: TimerApi) {
-        *self.reseal_timer.write() = Some(timer);
-    }
-
     fn set_max_timer(&self) {
-        if let Some(reseal_timer) = self.reseal_timer.read().as_ref() {
-            reseal_timer.cancel(RESEAL_MAX_TIMER_TOKEN).expect("Reseal max timer clear succeeds");
-            match reseal_timer
-                .schedule_once(self.importer.miner.get_options().reseal_max_period, RESEAL_MAX_TIMER_TOKEN)
-            {
-                Ok(_) => {}
-                Err(TimerScheduleError::TokenAlreadyScheduled) => {
-                    // Since set_max_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
-                }
-                Err(err) => unreachable!("Reseal max timer should not fail but failed with {:?}", err),
+        self.reseal_timer.cancel(RESEAL_MAX_TIMER_TOKEN).expect("Reseal max timer clear succeeds");
+        match self
+            .reseal_timer
+            .schedule_once(self.importer.miner.get_options().reseal_max_period, RESEAL_MAX_TIMER_TOKEN)
+        {
+            Ok(_) => {}
+            Err(TimerScheduleError::TokenAlreadyScheduled) => {
+                // Since set_max_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
             }
-        };
+            Err(err) => unreachable!("Reseal max timer should not fail but failed with {:?}", err),
+        }
     }
 
     fn set_min_timer(&self) {
-        if let Some(reseal_timer) = self.reseal_timer.read().as_ref() {
-            reseal_timer.cancel(RESEAL_MIN_TIMER_TOKEN).expect("Reseal min timer clear succeeds");
-            match reseal_timer
-                .schedule_once(self.importer.miner.get_options().reseal_min_period, RESEAL_MIN_TIMER_TOKEN)
-            {
-                Ok(_) => {}
-                Err(TimerScheduleError::TokenAlreadyScheduled) => {
-                    // Since set_min_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
-                }
-                Err(err) => unreachable!("Reseal min timer should not fail but failed with {:?}", err),
+        self.reseal_timer.cancel(RESEAL_MIN_TIMER_TOKEN).expect("Reseal min timer clear succeeds");
+        match self
+            .reseal_timer
+            .schedule_once(self.importer.miner.get_options().reseal_min_period, RESEAL_MIN_TIMER_TOKEN)
+        {
+            Ok(_) => {}
+            Err(TimerScheduleError::TokenAlreadyScheduled) => {
+                // Since set_min_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
             }
-        };
+            Err(err) => unreachable!("Reseal min timer should not fail but failed with {:?}", err),
+        }
     }
 }
 

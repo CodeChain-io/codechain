@@ -20,28 +20,43 @@ use std::sync::Arc;
 use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
 use ctimer::{TimeoutHandler, TimerToken};
 use parking_lot::RwLock;
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
 use rlp::{Decodable, Encodable, UntrustedRlp};
 use time::Duration;
 
+use super::message::Message;
 use super::node_id::{address_to_hash, KademliaId};
 use super::Config;
-use super::Message;
 
 pub struct Extension {
     config: Config,
     routing_table: RwLock<Option<Arc<RoutingTable>>>,
     api: RwLock<Option<Arc<Api>>>,
     nodes: RwLock<HashSet<NodeId>>, // FIXME: Find the optimized data structure for it
+    use_kademlia: bool,
 }
 
 impl Extension {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
-    pub fn new(config: Config) -> Arc<Self> {
+    pub fn kademlia(config: Config) -> Arc<Self> {
         Arc::new(Self {
             config,
             routing_table: RwLock::new(None),
             api: RwLock::new(None),
             nodes: RwLock::new(HashSet::new()),
+            use_kademlia: true,
+        })
+    }
+
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
+    pub fn unstructured(config: Config) -> Arc<Self> {
+        Arc::new(Self {
+            config,
+            routing_table: RwLock::new(None),
+            api: RwLock::new(None),
+            nodes: RwLock::new(HashSet::new()),
+            use_kademlia: false,
         })
     }
 }
@@ -50,7 +65,11 @@ const REFRESH_TOKEN: TimerToken = 0;
 
 impl NetworkExtension for Extension {
     fn name(&self) -> &'static str {
-        "kademlia-discovery"
+        if self.use_kademlia {
+            "kademlia-discovery"
+        } else {
+            "unstructured-discovery"
+        }
     }
 
     fn need_encryption(&self) -> bool {
@@ -76,7 +95,7 @@ impl NetworkExtension for Extension {
         let mut nodes = self.nodes.write();
         nodes.insert(*node);
         if let Some(api) = api.as_ref() {
-            api.send(&node, &Message::FindNode(self.config.bucket_size).rlp_bytes());
+            api.send(&node, &Message::Request(self.config.bucket_size).rlp_bytes());
         }
     }
 
@@ -94,29 +113,36 @@ impl NetworkExtension for Extension {
             }
         };
         match message {
-            Message::FindNode(len) => {
+            Message::Request(len) => {
                 let routing_table = self.routing_table.read();
                 let api = self.api.read();
                 if let (Some(api), Some(routing_table)) = (&*api, &*routing_table) {
-                    let datum = address_to_hash(&node.into_addr());
-                    let mut addresses = routing_table
-                        .reachable_addresses(&node.into_addr())
-                        .into_iter()
-                        .map(|address| KademliaId::new(address, &datum))
-                        .collect::<Vec<_>>();
+                    let addresses = if self.use_kademlia {
+                        let datum = address_to_hash(&node.into_addr());
+                        let mut addresses = routing_table
+                            .reachable_addresses(&node.into_addr())
+                            .into_iter()
+                            .map(|address| KademliaId::new(address, &datum))
+                            .collect::<Vec<_>>();
 
-                    addresses.sort_unstable();
+                        addresses.sort_unstable();
 
-                    let addresses = addresses
-                        .into_iter()
-                        .map(|kademlia_id| kademlia_id.into())
-                        .take(::std::cmp::min(self.config.bucket_size, len) as usize)
-                        .collect();
-                    let response = Message::Nodes(addresses).rlp_bytes();
+                        addresses
+                            .into_iter()
+                            .map(|kademlia_id| kademlia_id.into())
+                            .take(::std::cmp::min(self.config.bucket_size, len) as usize)
+                            .collect()
+                    } else {
+                        let mut addresses =
+                            routing_table.reachable_addresses(&node.into_addr()).into_iter().collect::<Vec<_>>();
+                        addresses.shuffle(&mut thread_rng());
+                        addresses.into_iter().take(::std::cmp::min(self.config.bucket_size, len) as usize).collect()
+                    };
+                    let response = Message::Response(addresses).rlp_bytes();
                     api.send(&node, &response);
                 }
             }
-            Message::Nodes(addresses) => {
+            Message::Response(addresses) => {
                 let routing_table = self.routing_table.read();
                 match routing_table.as_ref() {
                     None => cwarn!(DISCOVERY, "No routing table"),
@@ -139,7 +165,7 @@ impl TimeoutHandler for Extension {
                 let nodes = self.nodes.read();
 
                 if let Some(api) = api.as_ref() {
-                    let request = Message::FindNode(self.config.bucket_size).rlp_bytes();
+                    let request = Message::Request(self.config.bucket_size).rlp_bytes();
                     for node in nodes.iter() {
                         api.send(&node, &request);
                     }
