@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 RESULT_FILE="${1}"
 
@@ -65,3 +66,6 @@ then
     echo "skip" > ${RESULT_FILE}
     exit
 fi
+
+echo "noskip" > ${RESULT_FILE}
+exit
