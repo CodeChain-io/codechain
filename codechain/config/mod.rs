@@ -77,6 +77,7 @@ impl Config {
                 0 => None,
                 mem_size => Some(mem_size * 1024 * 1024),
             },
+            mem_pool_fee_bump_shift: self.mining.mem_pool_fee_bump_shift.unwrap(),
             new_work_notify: self.mining.notify_work.clone().unwrap(),
             force_sealing: self.mining.force_sealing.unwrap(),
             reseal_on_own_transaction,
@@ -214,6 +215,7 @@ pub struct Mining {
     pub engine_signer: Option<PlatformAddress>,
     pub mem_pool_size: Option<usize>,
     pub mem_pool_mem_limit: Option<usize>,
+    pub mem_pool_fee_bump_shift: Option<usize>,
     pub notify_work: Option<Vec<String>>,
     pub force_sealing: Option<bool>,
     pub reseal_on_txs: Option<String>,
@@ -395,6 +397,10 @@ impl Mining {
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
             self.engine_signer = Some(engine_signer.parse().map_err(|_| "Invalid address format")?);
+        }
+        if let Some(mem_pool_fee_bump_shift) = matches.value_of("mem-pool-fee-bump-shift") {
+            self.mem_pool_mem_limit =
+                Some(mem_pool_fee_bump_shift.parse().map_err(|_| "Invalid mem pool fee bump shift")?);
         }
         if let Some(mem_pool_mem_limit) = matches.value_of("mem-pool-mem-limit") {
             self.mem_pool_mem_limit = Some(mem_pool_mem_limit.parse().map_err(|_| "Invalid mem limit")?);

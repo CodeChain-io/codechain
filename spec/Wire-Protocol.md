@@ -1,6 +1,6 @@
 # Type Encoding
 
-CodeChain Wire Protocol uses RLP to encode and decode data. Since RLP doesn’t mention how each type is encoded, CodeChain Wire Protocol specifies encodings of each type.
+CodeChain Wire Protocol uses RLP to encode and decode data. Since RLP doesn’t mention how each type is encoded, the CodeChain Wire Protocol specifies the encodings of each type.
 
 * Unsigned Integer
 * Signed Integer
@@ -16,7 +16,7 @@ When encoding types, both the field name and type information themselves are not
 
 An unsigned integer is represented as big-endian without prefix zeros. For example, all 16-bit 1(0x0001), 32-bit 1(0x0000 0001) and 64-bit 1(0x0000 0000 0000 0001) are encoded as 0x01.
 
-The size of an unsigned integer is not specified and implementation dependent. The maximum size of an unsigned integer is not defined, but it MUST be able to handle at least 64-bit unsigned integer.
+The size of an unsigned integer is not specified and implementation dependent. The maximum size of an unsigned integer is not defined, but it MUST be able to handle at least a 64-bit unsigned integer.
 
 * 32-bit unsigned integer examples
 
@@ -42,9 +42,9 @@ The size of an unsigned integer is not specified and implementation dependent. T
 
 ## Signed Integer
 
-CodeChain wire protocol supports two sizes of signed integer: 32-bit signed integer and 64-bit signed integer.
+The CodeChain wire protocol supports two sizes of a signed integer: 32-bit signed integer and 64-bit signed integer.
 
-A signed integer is represented as big-endian with a fixed size. For example, 32-bit signed 1(0x0000 0001) is encoded as “0x84 0x00 0x00 0x00 0x01” while 32-bit unsigned 1 is encoded as “0x01”.
+A signed integer is represented as big-endian with a fixed size. For example, a 32-bit signed 1(0x0000 0001) is encoded as “0x84 0x00 0x00 0x00 0x01” while a 32-bit unsigned 1 is encoded as “0x01”.
 
 * 32-bit signed integer examples
 
@@ -70,7 +70,7 @@ A signed integer is represented as big-endian with a fixed size. For example, 32
 
 ## Boolean
 
-There are only two members in boolean. 0x01 represents True, and 0x00 represents false. Anything else is invalid. The handling of invalid value is not specified.
+There are only two members in a boolean. 0x01 represents True, and 0x00 represents false. Anything else is invalid. The handling of invalid values is not specified.
 
 * Boolean examples
 
@@ -81,7 +81,7 @@ There are only two members in boolean. 0x01 represents True, and 0x00 represents
 
 ## String
 
-String is represented as UTF-8 encoding. A string MUST NOT be null terminated. The length of string is prefixed by RLP encoding.
+A string is represented by UTF-8 encoding. A string MUST NOT be null terminated. The length of a string is prefixed by RLP encoding.
 
 * String examples
 
@@ -92,11 +92,11 @@ String is represented as UTF-8 encoding. A string MUST NOT be null terminated. T
 
 ## Binary
 
-Binary is a variable length sequence of arbitrary characters. Unlike String, any character can be an element of Binary. The length of a binary sequence is prefixed as RLP encoding.
+A binary is a variable length sequence of arbitrary characters. Unlike String, any character can be an element of Binary. The length of a binary sequence is prefixed as RLP encoding.
 
 ## Datetime
 
-Datetime in CodeChain wire protocol is represented as unix timestamp. It will be treated as a unsigned integer. In other words, the leading zeros of timestamp MUST be deleted.
+The datetime in the CodeChain wire protocol is represented as a unix timestamp. It will be treated as an unsigned integer. In other words, the leading zeros of the timestamp MUST be deleted.
 
 * Datetime examples
 
@@ -106,4 +106,4 @@ Datetime in CodeChain wire protocol is represented as unix timestamp. It will be
 
 ## Array
 
-An array is encoded as an a RLP array.
+An array is encoded as an RLP array.

@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
 use std::iter::once;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -30,7 +29,7 @@ use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
-use super::mem_pool::{AccountDetails, MemPool, TxOrigin, TxTimelock};
+use super::mem_pool::{AccountDetails, MemPool, MemPoolInput, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, TransactionImportResult};
@@ -69,6 +68,11 @@ pub struct MinerOptions {
     pub mem_pool_size: usize,
     /// Maximum memory usage of transactions in the queue (current / future).
     pub mem_pool_memory_limit: Option<usize>,
+    /// A value which is used to check whether a new transaciton can replace a transaction in the memory pool with the same signer and seq.
+    /// If the fee of the new transaction is `new_fee` and the fee of the transaction in the memory pool is `old_fee`,
+    /// then `new_fee > old_fee + old_fee >> mem_pool_fee_bump_shift` should be satisfied to replace.
+    /// Local transactions ignore this option.
+    pub mem_pool_fee_bump_shift: usize,
     /// How many historical work packages can we store before running out?
     pub work_queue_size: usize,
 }
@@ -85,6 +89,7 @@ impl Default for MinerOptions {
             no_reseal_timer: false,
             mem_pool_size: 8192,
             mem_pool_memory_limit: Some(2 * 1024 * 1024),
+            mem_pool_fee_bump_shift: 3,
             work_queue_size: 20,
         }
     }
@@ -137,7 +142,11 @@ impl Miner {
 
     fn new_raw(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
-        let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(options.mem_pool_size, mem_limit)));
+        let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(
+            options.mem_pool_size,
+            mem_limit,
+            options.mem_pool_fee_bump_shift,
+        )));
         let notifiers: Vec<Box<NotifyWork>> = if options.new_work_notify.is_empty() {
             Vec::new()
         } else {
@@ -231,9 +240,12 @@ impl Miner {
     ) -> Vec<Result<TransactionImportResult, Error>> {
         let best_block_header = client.best_block_header().decode();
         let insertion_time = client.chain_info().best_block_number;
+        let insertion_timestamp = client.chain_info().best_block_timestamp;
         let mut inserted = Vec::with_capacity(transactions.len());
+        let mut to_insert = Vec::new();
+        let mut tx_hashes = Vec::new();
 
-        let results = transactions
+        let intermediate_results: Vec<Result<(), Error>> = transactions
             .into_iter()
             .map(|tx| {
                 let hash = tx.hash();
@@ -264,25 +276,38 @@ impl Miner {
                             })
                             .unwrap_or(default_origin);
 
-                        let fetch_account = |p: &Public| -> AccountDetails {
-                            let address = public_to_address(p);
-                            let a = client.latest_regular_key_owner(&address).unwrap_or(address);
-                            AccountDetails {
-                                seq: client.latest_seq(&a),
-                                balance: client.latest_balance(&a),
-                            }
-                        };
-
-                        let hash = tx.hash();
-                        let timestamp = client.chain_info().best_block_timestamp;
                         let timelock = self.calculate_timelock(&tx, client)?;
-                        let result = mem_pool
-                            .add(tx, origin, insertion_time, timestamp, timelock, &fetch_account)
-                            .map_err(StateError::from)?;
+                        let tx_hash = tx.hash();
 
-                        inserted.push(hash);
-                        Ok(result)
+                        to_insert.push(MemPoolInput::new(tx, origin, timelock));
+                        tx_hashes.push(tx_hash);
+                        Ok(())
                     }
+                }
+            })
+            .collect();
+
+        let fetch_account = |p: &Public| -> AccountDetails {
+            let address = public_to_address(p);
+            let a = client.latest_regular_key_owner(&address).unwrap_or(address);
+            AccountDetails {
+                seq: client.latest_seq(&a),
+                balance: client.latest_balance(&a),
+            }
+        };
+
+        let insertion_results = mem_pool.add(to_insert, insertion_time, insertion_timestamp, &fetch_account);
+
+        let results = intermediate_results
+            .into_iter()
+            .enumerate()
+            .map(|(idx, res)| match res {
+                Err(e) => Err(e),
+                Ok(()) => {
+                    let result = insertion_results[idx].clone();
+                    let result = result.map_err(StateError::from)?;
+                    inserted.push(tx_hashes[idx]);
+                    Ok(result)
                 }
             })
             .collect();
@@ -411,7 +436,7 @@ impl Miner {
             (transactions, open_block, last_work_hash)
         };
 
-        let mut invalid_transactions = HashSet::new();
+        let mut invalid_transactions = Vec::new();
         let block_number = open_block.block().header().number();
 
         let mut tx_count: usize = 0;
@@ -430,7 +455,7 @@ impl Miner {
                 // already have transaction - ignore
                 Err(Error::State(StateError::Parcel(ParcelError::TransactionAlreadyImported))) => {}
                 Err(e) => {
-                    invalid_transactions.insert(hash);
+                    invalid_transactions.push(hash);
                     cdebug!(
                         MINER,
                         "Error adding transaction to block: number={}. tx_hash={:?}, Error: {:?}",
@@ -463,15 +488,13 @@ impl Miner {
         };
 
         {
-            let mut queue = self.mem_pool.write();
-            for hash in invalid_transactions {
-                queue.remove(
-                    &hash,
-                    &fetch_seq,
-                    chain.chain_info().best_block_number,
-                    chain.chain_info().best_block_timestamp,
-                );
-            }
+            let mut mem_pool = self.mem_pool.write();
+            mem_pool.remove(
+                &invalid_transactions,
+                &fetch_seq,
+                chain.chain_info().best_block_number,
+                chain.chain_info().best_block_timestamp,
+            );
         }
         Ok((block, original_work_hash))
     }

@@ -17,6 +17,7 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
 
+#[derive(Default)]
 pub struct Filter {
     enabled: bool,
     list: HashMap<IpAddr, String>,
@@ -26,15 +27,6 @@ pub struct Filter {
 pub struct FilterEntry {
     pub addr: IpAddr,
     pub tag: String,
-}
-
-impl Default for Filter {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            list: Default::default(),
-        }
-    }
 }
 
 impl Filter {

@@ -142,11 +142,7 @@ impl Importer {
         {
             if !imported_blocks.is_empty() && is_empty {
                 let (enacted, retracted) = self.calculate_enacted_retracted(&import_results);
-
-                if is_empty {
-                    self.miner.chain_new_blocks(client, &imported_blocks, &invalid_blocks, &enacted, &retracted);
-                }
-
+                self.miner.chain_new_blocks(client, &imported_blocks, &invalid_blocks, &enacted, &retracted);
                 client.notify(|notify| {
                     notify.new_blocks(
                         imported_blocks.clone(),

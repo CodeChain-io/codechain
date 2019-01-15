@@ -14,22 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate codechain_crypto as ccrypto;
+extern crate codechain_key as ckey;
+extern crate codechain_types as ctypes;
+extern crate codechain_vm as cvm;
+extern crate primitives;
+extern crate rlp;
+extern crate secp256k1;
+
+mod common;
+
 use ccrypto::{blake128, blake256_with_key};
 use ckey::{sign, KeyPair, NetworkId, Private};
 use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, ShardTransaction};
 use primitives::{H160, H256};
 use rlp::Encodable;
-
 use secp256k1::key::{MINUS_ONE_KEY, ONE_KEY};
 
-use crate::executor::{execute, Config, ScriptResult};
-use crate::instruction::Instruction;
+use cvm::Instruction;
+use cvm::{execute, ScriptResult, VMConfig};
 
-use super::executor::get_test_client;
+use common::TestClient;
 
 #[test]
 fn valid_pay_to_public_key() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -66,14 +75,14 @@ fn valid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn invalid_pay_to_public_key() {
-    let client = get_test_client();
+    let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
@@ -112,14 +121,14 @@ fn invalid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script[..], &[], &lock_script, &transaction, Config::default(), &input, false, &client),
+        execute(&unlock_script[..], &[], &lock_script, &transaction, VMConfig::default(), &input, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
 
 #[test]
 fn sign_all_input_all_output() {
-    let client = get_test_client();
+    let client = TestClient::default();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         tracker: Default::default(),
@@ -188,14 +197,14 @@ fn sign_all_input_all_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn sign_single_input_all_output() {
-    let client = get_test_client();
+    let client = TestClient::default();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         tracker: Default::default(),
@@ -263,14 +272,14 @@ fn sign_single_input_all_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn sign_all_input_partial_output() {
-    let client = get_test_client();
+    let client = TestClient::default();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         tracker: Default::default(),
@@ -338,14 +347,14 @@ fn sign_all_input_partial_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn sign_single_input_partial_output() {
-    let client = get_test_client();
+    let client = TestClient::default();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         tracker: Default::default(),
@@ -413,14 +422,14 @@ fn sign_single_input_partial_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
         Ok(ScriptResult::Unlocked)
     );
 }
 
 #[test]
 fn distinguish_sign_single_input_with_sign_all() {
-    let client = get_test_client();
+    let client = TestClient::default();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         tracker: Default::default(),
@@ -468,7 +477,7 @@ fn distinguish_sign_single_input_with_sign_all() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
         Ok(ScriptResult::Fail)
     );
 }
@@ -476,7 +485,7 @@ fn distinguish_sign_single_input_with_sign_all() {
 
 #[test]
 fn distinguish_sign_single_output_with_sign_all() {
-    let client = get_test_client();
+    let client = TestClient::default();
     // Make input indexed 0
     let out0 = AssetOutPoint {
         tracker: Default::default(),
@@ -524,7 +533,7 @@ fn distinguish_sign_single_output_with_sign_all() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, Config::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
         Ok(ScriptResult::Fail)
     );
 }

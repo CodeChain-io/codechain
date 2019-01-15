@@ -18,10 +18,9 @@ use crossbeam::deque;
 use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
 use mio::timer::Timeout;
 use mio::*;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
-use std::sync::{Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use worker::{Work, WorkType, Worker};
@@ -39,10 +38,9 @@ pub type HandlerId = usize;
 pub const TOKENS_PER_HANDLER: usize = 16384;
 
 /// Messages used to communicate with the event loop from other threads.
-#[derive(Clone)]
 pub enum IoMessage<Message>
 where
-    Message: Send + Clone + Sized, {
+    Message: Send + Sized, {
     /// Shutdown the event loop
     Shutdown,
     AddTimer {
@@ -69,13 +67,13 @@ where
 /// IO access point. This is passed to IO handler and provides an interface to the IO subsystem.
 pub struct IoContext<Message>
 where
-    Message: Send + Clone + Sync + 'static, {
+    Message: Send + Sync + 'static, {
     channel: IoChannel<Message>,
 }
 
 impl<Message> IoContext<Message>
 where
-    Message: Send + Clone + Sync + 'static,
+    Message: Send + Sync + 'static,
 {
     /// Create a new IO access point. Takes references to all the data that can be updated within the IO handler.
     pub fn new(channel: IoChannel<Message>) -> IoContext<Message> {
@@ -165,17 +163,17 @@ type HandlerType<M> = RwLock<Option<Arc<IoHandler<M>>>>;
 /// Root IO handler. Manages user handler, messages and IO timers.
 pub struct IoManager<Message>
 where
-    Message: Clone + Send + Sync, {
+    Message: Send + Sync, {
     timers: Arc<RwLock<HashMap<HandlerId, UserTimer>>>,
     handler: Arc<HandlerType<Message>>,
     workers: Vec<Worker>,
     worker_channel: deque::Worker<Work<Message>>,
-    work_ready: Arc<SCondvar>,
+    work_ready: Arc<Condvar>,
 }
 
 impl<Message> IoManager<Message>
 where
-    Message: Send + Sync + Clone + 'static,
+    Message: Send + Sync + 'static,
 {
     /// Creates a new instance and registers it with the event loop.
     pub fn start(
@@ -185,8 +183,8 @@ where
     ) -> Result<(), IoError> {
         let (worker, stealer) = deque::lifo();
         let num_workers = 4;
-        let work_ready_mutex = Arc::new(SMutex::new(()));
-        let work_ready = Arc::new(SCondvar::new());
+        let work_ready_mutex = Arc::new(Mutex::new(()));
+        let work_ready = Arc::new(Condvar::new());
 
         let workers = (0..num_workers)
             .map(|i| {
@@ -215,7 +213,7 @@ where
 
 impl<Message> Handler for IoManager<Message>
 where
-    Message: Send + Clone + Sync + 'static,
+    Message: Send + Sync + 'static,
 {
     type Timeout = Token;
     type Message = IoMessage<Message>;
@@ -337,7 +335,7 @@ where
                 if let Some(h) = &*self.handler.read() {
                     let handler = Arc::clone(&h);
                     self.worker_channel.push(Work {
-                        work_type: WorkType::Message(data.clone()),
+                        work_type: WorkType::Message(data),
                         token: 0,
                         handler,
                     });
@@ -352,14 +350,14 @@ where
 /// in the `message` callback.
 pub struct IoChannel<Message>
 where
-    Message: Send + Clone, {
+    Message: Send, {
     channel: Option<Sender<IoMessage<Message>>>,
     handler: Weak<HandlerType<Message>>,
 }
 
 impl<Message> Clone for IoChannel<Message>
 where
-    Message: Send + Clone + Sync + 'static,
+    Message: Send + Sync + 'static,
 {
     fn clone(&self) -> IoChannel<Message> {
         IoChannel {
@@ -371,7 +369,7 @@ where
 
 impl<Message> IoChannel<Message>
 where
-    Message: Send + Clone + Sync + 'static,
+    Message: Send + Sync + 'static,
 {
     /// Send a message through the channel
     pub fn send(&self, message: Message) -> Result<(), IoError> {
@@ -396,7 +394,7 @@ where
     }
 
     /// Send low level io message
-    pub fn send_io(&self, message: IoMessage<Message>) -> Result<(), IoError> {
+    fn send_io(&self, message: IoMessage<Message>) -> Result<(), IoError> {
         if let Some(ref channel) = self.channel {
             channel.send(message)?
         }
@@ -422,7 +420,7 @@ where
 /// 'Message' is a notification message type
 pub struct IoService<Message>
 where
-    Message: Send + Sync + Clone + 'static, {
+    Message: Send + Sync + 'static, {
     thread: Mutex<Option<JoinHandle<()>>>,
     host_channel: Mutex<Sender<IoMessage<Message>>>,
     handler: Arc<HandlerType<Message>>,
@@ -431,7 +429,7 @@ where
 
 impl<Message> IoService<Message>
 where
-    Message: Send + Sync + Clone + 'static,
+    Message: Send + Sync + 'static,
 {
     /// Starts IO event loop
     pub fn start(name: &'static str) -> Result<IoService<Message>, IoError> {
@@ -469,7 +467,7 @@ where
         ctrace!(SHUTDOWN, "[IoService] Closed.");
     }
 
-    /// Regiter an IO handler with the event loop.
+    /// Register an IO handler with the event loop.
     pub fn register_handler(&self, handler: Arc<IoHandler<Message> + Send>) -> Result<(), IoError> {
         let h = Arc::clone(&handler);
         assert!(self.handler.read().is_none());
@@ -492,7 +490,7 @@ where
 
 impl<Message> Drop for IoService<Message>
 where
-    Message: Send + Sync + Clone,
+    Message: Send + Sync,
 {
     fn drop(&mut self) {
         self.stop()

@@ -24,7 +24,7 @@ use heapsize::HeapSizeOf;
 use primitives::{remove_0x_prefix, H160};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq)]
+#[derive(Clone, Copy, Default, Debug, Deserialize, Serialize, Eq)]
 pub struct Address(H160);
 
 impl Address {
@@ -74,12 +74,6 @@ impl PartialEq for Address {
 impl Hash for Address {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
-    }
-}
-
-impl Default for Address {
-    fn default() -> Self {
-        Address(Default::default())
     }
 }
 

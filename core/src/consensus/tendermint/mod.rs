@@ -661,9 +661,9 @@ impl TendermintInner {
         let vote_step =
             VoteStep::new(header.number() as Height, consensus_view(&header).expect("I am proposer"), Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
-        let signer_index = self.signer_index(&self.prev_block_hash()).expect("I am proposer");
+        let num_validators = self.validators.count(&self.prev_block_hash());
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-        self.votes.vote(ConsensusMessage::new_proposal(signature, signer_index, header).expect("I am proposer"));
+        self.votes.vote(ConsensusMessage::new_proposal(signature, num_validators, header).expect("I am proposer"));
 
         self.proposal = Some(hash);
         cdebug!(
@@ -992,11 +992,10 @@ impl TendermintInner {
 
         if self.is_signer_proposer(&parent_hash) {
             let vote_info = message_info_rlp(vote_step, Some(hash));
-            let signer_index = self.signer_index(parent_hash).expect("I am proposer");
             let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-            self.extension.broadcast_proposal_block(signature, signer_index, block.into_inner());
-        } else if let Some((signature, signer_index)) = self.votes.round_signature_and_index(&vote_step, &hash) {
-            self.extension.broadcast_proposal_block(signature, signer_index, block.into_inner());
+            self.extension.broadcast_proposal_block(signature, block.into_inner());
+        } else if let Some(signature) = self.votes.round_signature(&vote_step, &hash) {
+            self.extension.broadcast_proposal_block(signature, block.into_inner());
         } else {
             cwarn!(ENGINE, "There is a proposal but does not have signature {:?}", vote_step);
         }
@@ -1406,15 +1405,25 @@ impl TendermintExtension {
         }
     }
 
-    fn send_proposal_block(&self, token: &NodeId, signature: SchnorrSignature, signer_index: usize, message: Bytes) {
-        let message = TendermintMessage::ProposalBlock(signature, signer_index, message).rlp_bytes().into_vec();
+    fn send_proposal_block(&self, token: &NodeId, signature: SchnorrSignature, message: Bytes) {
+        let message = TendermintMessage::ProposalBlock {
+            signature,
+            message,
+        }
+        .rlp_bytes()
+        .into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             api.send(token, &message);
         };
     }
 
-    fn broadcast_proposal_block(&self, signature: SchnorrSignature, signer_index: usize, message: Bytes) {
-        let message = TendermintMessage::ProposalBlock(signature, signer_index, message).rlp_bytes().into_vec();
+    fn broadcast_proposal_block(&self, signature: SchnorrSignature, message: Bytes) {
+        let message = TendermintMessage::ProposalBlock {
+            signature,
+            message,
+        }
+        .rlp_bytes()
+        .into_vec();
         if let Some(api) = self.api.lock().as_ref() {
             for token in self.peers.read().keys() {
                 api.send(&token, &message);
@@ -1496,13 +1505,7 @@ impl TendermintExtension {
         *self.tendermint.write() = Some(tendermint);
     }
 
-    fn on_proposal_message(
-        &self,
-        tendermint: MutexGuard<TendermintInner>,
-        signature: SchnorrSignature,
-        signer_index: usize,
-        bytes: Bytes,
-    ) {
+    fn on_proposal_message(&self, tendermint: MutexGuard<TendermintInner>, signature: SchnorrSignature, bytes: Bytes) {
         let c = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
             Some(c) => c,
             None => return,
@@ -1528,7 +1531,8 @@ impl TendermintExtension {
                 return
             }
 
-            let message = match ConsensusMessage::new_proposal(signature, signer_index, &header_view) {
+            let num_validators = tendermint.validators.count(&parent_hash);
+            let message = match ConsensusMessage::new_proposal(signature, num_validators, &header_view) {
                 Ok(message) => message,
                 Err(err) => {
                     cdebug!(ENGINE, "Invalid proposal received: {:?}", err);
@@ -1548,11 +1552,7 @@ impl TendermintExtension {
                 return
             }
 
-            if signer_index >= tendermint.validators.count(&parent_hash) {
-                cdebug!(ENGINE, "Proposal verification failed: signer index is bigger than the number of validators");
-                return
-            }
-            let signer_public = tendermint.validators.get(&parent_hash, signer_index);
+            let signer_public = tendermint.validators.get(&parent_hash, message.signer_index);
             let signer = public_to_address(&signer_public);
 
             match message.verify(&signer_public) {
@@ -1659,9 +1659,9 @@ impl TendermintExtension {
             return
         }
 
-        if let Some((signature, signer_index, block)) = tendermint.proposal_at(request_height, request_view) {
+        if let Some((signature, _signer_index, block)) = tendermint.proposal_at(request_height, request_view) {
             ctrace!(ENGINE, "Send proposal {}-{} to {:?}", request_height, request_view, token);
-            self.send_proposal_block(token, signature, signer_index, block);
+            self.send_proposal_block(token, signature, block);
         }
     }
 }
@@ -1709,8 +1709,11 @@ impl NetworkExtension for TendermintExtension {
                     cinfo!(ENGINE, "Failed to handle message {:?}", e);
                 }
             }
-            Ok(TendermintMessage::ProposalBlock(signature, signer_index, bytes)) => {
-                self.on_proposal_message(t, signature, signer_index, bytes);
+            Ok(TendermintMessage::ProposalBlock {
+                signature,
+                message,
+            }) => {
+                self.on_proposal_message(t, signature, message);
             }
             Ok(TendermintMessage::StepState {
                 vote_step,
