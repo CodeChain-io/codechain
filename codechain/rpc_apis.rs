@@ -27,7 +27,7 @@ pub struct ApiDependencies {
     pub miner: Arc<Miner>,
     pub network_control: Arc<NetworkControl>,
     pub account_provider: Arc<AccountProvider>,
-    pub block_sync: Arc<BlockSyncExtension>,
+    pub block_sync: Option<Arc<BlockSyncExtension>>,
 }
 
 impl ApiDependencies {
@@ -36,7 +36,7 @@ impl ApiDependencies {
         handler.extend_with(ChainClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         if enable_devel_api {
             handler.extend_with(
-                DevelClient::new(Arc::clone(&self.client), Arc::clone(&self.miner), Arc::clone(&self.block_sync))
+                DevelClient::new(Arc::clone(&self.client), Arc::clone(&self.miner), self.block_sync.clone())
                     .to_delegate(),
             );
         }
