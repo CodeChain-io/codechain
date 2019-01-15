@@ -64,14 +64,13 @@ pub struct Extension {
     tokens_info: RwLock<HashMap<TimerToken, TokenInfo>>,
     token_generator: Mutex<TokenGenerator>,
     client: Arc<Client>,
-    api: RwLock<Option<Arc<Api>>>,
+    api: Arc<Api>,
     last_request: AtomicUsize,
 }
 
 impl Extension {
-    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
-    pub fn new(client: Arc<Client>) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new(client: Arc<Client>, api: Arc<Api>) -> Extension {
+        Extension {
             requests: RwLock::new(HashMap::new()),
             header_downloaders: RwLock::new(HashMap::new()),
             body_downloader: Mutex::new(BodyDownloader::new()),
@@ -79,14 +78,9 @@ impl Extension {
             tokens_info: RwLock::new(HashMap::new()),
             token_generator: Mutex::new(TokenGenerator::new(SYNC_EXPIRE_TOKEN_BEGIN, SYNC_EXPIRE_TOKEN_END)),
             client,
-            api: RwLock::new(None),
+            api,
             last_request: AtomicUsize::new(0),
-        })
-    }
-
-    fn send_message(&self, id: &NodeId, message: &Message) {
-        let api = self.api.read();
-        api.as_ref().expect("Api must exist").send(id, &*message.rlp_bytes());
+        }
     }
 
     fn dismiss_request(&self, id: &NodeId, request_id: u64) {
@@ -99,7 +93,7 @@ impl Extension {
         if let Some(requests) = self.requests.write().get_mut(id) {
             let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
             requests.push((request_id, request.clone()));
-            self.send_message(id, &Message::Request(request_id, request));
+            self.api.send(id, &Message::Request(request_id, request).rlp_bytes());
         }
     }
 
@@ -118,7 +112,7 @@ impl Extension {
             if let Some(request) = self.body_downloader.lock().create_request() {
                 let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
                 requests.push((request_id, request.clone()));
-                self.send_message(id, &Message::Request(request_id, request));
+                self.api.send(id, &Message::Request(request_id, request).rlp_bytes());
 
                 let tokens = self.tokens.read();
                 let mut tokens_info = self.tokens_info.write();
@@ -126,18 +120,12 @@ impl Extension {
                 let token = tokens.get(id).unwrap();
                 let token_info = tokens_info.get_mut(token).unwrap();
 
-                let api = self.api.read();
-                api.as_ref()
-                    .expect("Api must exist")
+                self.api
                     .set_timer_once(*token, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
                     .expect("Timer set succeeds");
                 token_info.request_id = Some(request_id);
             }
         }
-    }
-
-    fn send_response(&self, id: &NodeId, request_id: u64, response: ResponseMessage) {
-        self.send_message(id, &Message::Response(request_id, response));
     }
 }
 
@@ -154,10 +142,8 @@ impl NetworkExtension for Extension {
         &VERSIONS
     }
 
-    fn on_initialize(&self, api: Arc<Api>) {
-        let mut api_lock = self.api.write();
-        api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
-        *api_lock = Some(api);
+    fn on_initialize(&self) {
+        self.api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
 
         let mut header = self.client.best_header();
         let mut hollow_headers = vec![header.decode()];
@@ -185,13 +171,14 @@ impl NetworkExtension for Extension {
 
         cinfo!(SYNC, "New peer detected #{}", id);
         let chain_info = self.client.chain_info();
-        self.send_message(
+        self.api.send(
             id,
             &Message::Status {
                 total_score: chain_info.highest_score,
                 best_hash: chain_info.best_block_hash,
                 genesis_hash: chain_info.genesis_hash,
-            },
+            }
+            .rlp_bytes(),
         );
 
         let token = token_generator.gen().expect("Token generator is full");
@@ -358,13 +345,14 @@ impl ChainNotify for Extension {
         let chain_info = self.client.chain_info();
         let peer_ids = self.header_downloaders.read();
         for id in peer_ids.keys() {
-            self.send_message(
+            self.api.send(
                 id,
                 &Message::Status {
                     total_score: chain_info.highest_score,
                     best_hash: chain_info.best_block_hash,
                     genesis_hash: chain_info.genesis_hash,
-                },
+                }
+                .rlp_bytes(),
             );
         }
     }
@@ -412,7 +400,7 @@ impl Extension {
             } => self.create_state_chunk_response(block_hash, tree_root),
         };
 
-        self.send_response(from, id, response);
+        self.api.send(from, &Message::Response(id, response).rlp_bytes());
     }
 
     fn is_valid_request(&self, request: &RequestMessage) -> bool {
@@ -509,8 +497,7 @@ impl Extension {
                                 ctrace!(SYNC, "Expired before handling response");
                                 return
                             }
-                            let api = self.api.read();
-                            api.as_ref().expect("Api must exist").clear_timer(*token).expect("Timer clear succeed");
+                            self.api.clear_timer(*token).expect("Timer clear succeed");
                             token_info.request_id = None;
                         }
                     }

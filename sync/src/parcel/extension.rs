@@ -61,17 +61,16 @@ impl Peer {
 pub struct Extension {
     peers: RwLock<HashMap<NodeId, RwLock<Peer>>>,
     client: Arc<BlockChainClient>,
-    api: RwLock<Option<Arc<Api>>>,
+    api: Arc<Api>,
 }
 
 impl Extension {
-    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
-    pub fn new(client: Arc<BlockChainClient>) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new(client: Arc<BlockChainClient>, api: Arc<Api>) -> Self {
+        Extension {
             peers: RwLock::new(HashMap::new()),
             client,
-            api: RwLock::new(None),
-        })
+            api,
+        }
     }
 }
 
@@ -88,11 +87,10 @@ impl NetworkExtension for Extension {
         &VERSIONS
     }
 
-    fn on_initialize(&self, api: Arc<Api>) {
-        let mut api_lock = self.api.write();
-        api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
+    fn on_initialize(&self) {
+        self.api
+            .set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
             .expect("Timer set succeeds");
-        *api_lock = Some(api);
     }
 
     fn on_node_added(&self, token: &NodeId, _version: u64) {
@@ -144,11 +142,6 @@ impl TimeoutHandler for Extension {
 }
 
 impl Extension {
-    fn send_message(&self, token: &NodeId, message: &Message) {
-        let api = self.api.read();
-        api.as_ref().expect("Api must exist").send(token, &message.rlp_bytes());
-    }
-
     fn random_broadcast(&self) {
         let parcels = self.client.ready_transactions();
         if parcels.is_empty() {
@@ -171,7 +164,7 @@ impl Extension {
             }
             cdebug!(SYNC_PARCEL, "Send {} parcels to {}", unsent.len(), token);
             ctrace!(SYNC_PARCEL, "Send {:?}", unsent_hashes);
-            self.send_message(token, &Message::Parcels(unsent));
+            self.api.send(token, &Message::Parcels(unsent).rlp_bytes());
         }
     }
 }

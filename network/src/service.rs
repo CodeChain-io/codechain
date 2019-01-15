@@ -29,7 +29,7 @@ use crate::p2p;
 use crate::routing_table::RoutingTable;
 use crate::session_initiator;
 use crate::DiscoveryApi;
-use crate::{NetworkExtension, SocketAddr};
+use crate::{Api, NetworkExtension, SocketAddr};
 
 pub struct Service {
     session_initiator: IoService<session_initiator::Message>,
@@ -83,10 +83,11 @@ impl Service {
         }))
     }
 
-    pub fn register_extension<T>(&self, extension: Arc<T>)
+    pub fn new_extension<T, F>(&self, factory: F) -> Arc<T>
     where
-        T: 'static + Sized + NetworkExtension, {
-        self.client.register_extension(extension);
+        T: 'static + Sized + NetworkExtension,
+        F: FnOnce(Arc<Api>) -> T, {
+        self.client.new_extension(factory)
     }
 
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {
