@@ -2,6 +2,13 @@
 set -e
 
 RESULT_FILE="${1}"
+function return_to_travis {
+    STRATEGY="${1}"
+    echo ${STRATEGY} > ${RESULT_FILE}
+    exit
+}
+function skip_travis { return_to_travis "skip" ; }
+function noskip_travis { return_to_travis "noskip" ; }
 
 echo "Event type ${TRAVIS_EVENT_TYPE}"
 echo "Branch: ${TRAVIS_EVENT_TYPE}"
@@ -24,8 +31,7 @@ push)
             # It'll exit by non-zero with empty output.
             # Since we cannot find common ancestor(A), we should do full check.
             echo "Don't skip for force push"
-            echo "noskip" > ${RESULT_FILE}
-            exit
+            noskip_travis
         else
             # A--B--C
             # Branch was forwarded A to B, or B to C. $TRAVIS_COMMIT_RANGE will be A...B or B...C
@@ -53,8 +59,7 @@ pull_request)
     ;;
 *)
     echo "Don't skip for api, cron event"
-    echo "noskip" > ${RESULT_FILE}
-    exit
+    noskip_travis
     ;;
 esac
 
@@ -63,9 +68,7 @@ echo "Check doc change for: ${COMMIT_RANGE}"
 if ! git diff --name-only ${COMMIT_RANGE} | grep -qvE '^(docs|spec)/'
 then
     echo "Only docs were updated, or there's no change, not running the CI."
-    echo "skip" > ${RESULT_FILE}
-    exit
+    skip_travis
 fi
 
-echo "noskip" > ${RESULT_FILE}
-exit
+noskip_travis
