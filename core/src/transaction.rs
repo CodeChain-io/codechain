@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -136,7 +136,12 @@ impl UnverifiedTransaction {
         if byte_size >= params.max_body_size {
             return Err(ParcelError::TransactionIsTooBig)
         }
-        self.action.verify(params.network_id, params.max_metadata_size, params.max_text_content_size)
+        self.action.verify(
+            params.network_id,
+            params.max_asset_scheme_metadata_size,
+            params.max_transfer_metadata_size,
+            params.max_text_content_size,
+        )
     }
 }
 
