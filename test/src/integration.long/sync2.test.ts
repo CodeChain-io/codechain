@@ -45,12 +45,12 @@ describe("sync 2 nodes", function() {
                         nodeB.port
                     )
                 ).to.be.true;
-                const parcel = await nodeA.sendPayTx({
+                const transaction = await nodeA.sendPayTx({
                     awaitInvoice: true
                 });
                 await nodeB.waitBlockNumberSync(nodeA);
                 expect(await nodeB.getBestBlockHash()).to.deep.equal(
-                    parcel.blockHash
+                    transaction.blockHash
                 );
             }).timeout(10_000);
 
@@ -120,12 +120,14 @@ describe("sync 2 nodes", function() {
             });
         });
 
-        describe("A-B diverged with the same parcel", function() {
+        describe("A-B diverged with the same transaction", function() {
             beforeEach(async function() {
-                const parcelA = await nodeA.sendPayTx({ fee: 10 });
+                const transactionA = await nodeA.sendPayTx({ fee: 10 });
                 await wait(1000);
-                const parcelB = await nodeB.sendPayTx({ fee: 10 });
-                expect(parcelA.unsigned).to.deep.equal(parcelB.unsigned);
+                const transactionB = await nodeB.sendPayTx({ fee: 10 });
+                expect(transactionA.unsigned).to.deep.equal(
+                    transactionB.unsigned
+                );
                 expect(await nodeA.getBestBlockNumber()).to.equal(
                     await nodeB.getBestBlockNumber()
                 );
