@@ -467,6 +467,9 @@ impl TendermintInner {
                         self.save_last_confirmed_view(bh, message.on.step.view);
                         let height = self.height;
                         self.move_to_next_height(height);
+
+                        // Update the best block hash as the hash of the committed block
+                        self.client().update_best_as_committed(bh);
                         Some(Step::Commit)
                     } else {
                         cwarn!(ENGINE, "Cannot find a proposal which committed");

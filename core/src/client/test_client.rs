@@ -572,6 +572,8 @@ impl super::EngineClient for TestBlockChainClient {
         U256::zero()
     }
 
+    fn update_best_as_committed(&self, _block_hash: H256) {}
+
     fn get_kvdb(&self) -> Arc<KeyValueDB> {
         let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
         Arc::new(db)

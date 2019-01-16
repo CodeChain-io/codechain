@@ -204,4 +204,8 @@ impl ImportRoute {
             omitted: vec![],
         }
     }
+
+    pub fn is_none(&self) -> bool {
+        self.retracted.is_empty() && self.enacted.is_empty() && self.omitted.is_empty()
+    }
 }

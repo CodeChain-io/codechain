@@ -41,7 +41,10 @@ const HIGHEST_HEADER_KEY: &[u8] = b"highest-header";
 /// **Does not do input data verification.**
 pub struct HeaderChain {
     // All locks must be captured in the order declared here.
+    /// The hash of the best block of the canonical chain.
     best_header_hash: RwLock<H256>,
+    /// The hash of the block which has the highest score among the blocks
+    /// that is/can be the best block of the canonical chain.
     highest_header_hash: RwLock<H256>,
 
     // cache
@@ -270,6 +273,28 @@ impl HeaderChain {
         } else {
             BestHeaderChanged::None
         }
+    }
+
+    /// Update the best block as the given block hash from the commit state
+    /// in Tendermint.
+    ///
+    /// Used in BlockChain::update_best_as_committed().
+    pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: H256) {
+        assert!(self.pending_best_header_hash.read().is_none());
+        let block_detail = self.block_details(&block_hash).expect("The given hash should exist");
+        let mut new_hashes = HashMap::new();
+        new_hashes.insert(block_detail.number, block_hash);
+
+        let mut pending_best_header_hash = self.pending_best_header_hash.write();
+        batch.put(db::COL_EXTRA, BEST_HEADER_KEY, &block_hash);
+        *pending_best_header_hash = Some(block_hash);
+
+        let mut pending_highest_block_hash = self.pending_highest_block_hash.write();
+        batch.put(db::COL_EXTRA, HIGHEST_HEADER_KEY, &block_hash);
+        *pending_highest_block_hash = Some(block_hash);
+
+        let mut pending_hashes = self.pending_hashes.write();
+        batch.extend_with_cache(db::COL_EXTRA, &mut *pending_hashes, new_hashes, CacheUpdatePolicy::Overwrite);
     }
 
     /// Get best block hash.
