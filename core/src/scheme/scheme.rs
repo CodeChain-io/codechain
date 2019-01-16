@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -46,8 +46,10 @@ use crate::header::Header;
 pub struct CommonParams {
     /// Maximum size of extra data.
     pub max_extra_data_size: usize,
-    /// Maximum size of metadata.
-    pub max_metadata_size: usize,
+    /// Maximum size of metadata of AssetScheme.
+    pub max_asset_scheme_metadata_size: usize,
+    /// Maximum size of metadata of TransferAsset.
+    pub max_transfer_metadata_size: usize,
     /// Maximum size of the content of text used in store/remove actions.
     pub max_text_content_size: usize,
     /// Network id.
@@ -78,7 +80,8 @@ impl From<cjson::scheme::Params> for CommonParams {
     fn from(p: cjson::scheme::Params) -> Self {
         Self {
             max_extra_data_size: p.max_extra_data_size.into(),
-            max_metadata_size: p.max_metadata_size.into(),
+            max_asset_scheme_metadata_size: p.max_asset_scheme_metadata_size.into(),
+            max_transfer_metadata_size: p.max_transfer_metadata_size.into(),
             max_text_content_size: p.max_text_content_size.into(),
             network_id: p.network_id,
             min_pay_transaction_cost: p.min_pay_cost.into(),

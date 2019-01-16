@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -419,8 +419,12 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
         self.machine().max_extra_data_size()
     }
 
-    fn max_metadata_size(&self) -> usize {
-        self.machine().max_metadata_size()
+    fn max_asset_scheme_metadata_size(&self) -> usize {
+        self.machine().max_asset_scheme_metadata_size()
+    }
+
+    fn max_transfer_metadata_size(&self) -> usize {
+        self.machine().max_transfer_metadata_size()
     }
 
     fn max_text_content_size(&self) -> usize {

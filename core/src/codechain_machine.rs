@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -50,8 +50,12 @@ impl CodeChainMachine {
         self.params().max_extra_data_size
     }
 
-    pub fn max_metadata_size(&self) -> usize {
-        self.params().max_metadata_size
+    pub fn max_asset_scheme_metadata_size(&self) -> usize {
+        self.params().max_asset_scheme_metadata_size
+    }
+
+    pub fn max_transfer_metadata_size(&self) -> usize {
+        self.params().max_transfer_metadata_size
     }
 
     pub fn max_text_content_size(&self) -> usize {
