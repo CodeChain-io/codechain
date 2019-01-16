@@ -79,6 +79,7 @@ TransferAsset {
     outputs: Vec<AssetTransferOutput>,
     orders: Vec<OrderOnTransfer>,
 
+    metadata: String,
     approvals: Vec<Signature>,
 }
 
