@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -197,6 +197,7 @@ macro_rules! transfer_asset {
             inputs: $inputs,
             outputs: $outputs,
             orders: Vec::new(),
+            metadata: "".into(),
             approvals: vec![],
         }
     };
@@ -207,6 +208,7 @@ macro_rules! transfer_asset {
             inputs: $inputs,
             outputs: $outputs,
             orders: Vec::new(),
+            metadata: "".into(),
             approvals: $approvals,
         }
     };
@@ -217,6 +219,7 @@ macro_rules! transfer_asset {
             inputs: $inputs,
             outputs: $outputs,
             orders: $orders,
+            metadata: "".into(),
             approvals: vec![],
         }
     };
@@ -227,6 +230,7 @@ macro_rules! transfer_asset {
             inputs: Vec::new(),
             outputs: Vec::new(),
             orders: Vec::new(),
+            metadata: "".into(),
             approvals: vec![],
         }
     };
