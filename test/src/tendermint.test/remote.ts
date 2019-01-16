@@ -20,7 +20,7 @@ import { makeRandomH256 } from "../helper/random";
 import CodeChain from "../helper/spawn";
 
 (async () => {
-    const numParcels = parseInt(process.env.TEST_NUM_PARCELS || "10000", 10);
+    const numTransactions = parseInt(process.env.TEST_NUM_TXS || "10000", 10);
     const rpcPort = parseInt(process.env.TEST_RPC_PORT || "8080", 10);
 
     const node = new CodeChain({
@@ -28,17 +28,17 @@ import CodeChain from "../helper/spawn";
         rpcPort
     });
 
-    const parcels = [];
+    const transactions = [];
     const baseSeq = await node.sdk.rpc.chain.getSeq(faucetAddress);
 
-    for (let i = 0; i < numParcels; i++) {
+    for (let i = 0; i < numTransactions; i++) {
         const value = makeRandomH256();
         const accountId = node.sdk.util.getAccountIdFromPrivate(value);
         const recipient = node.sdk.core.classes.PlatformAddress.fromAccountId(
             accountId,
             { networkId: "tc" }
         );
-        const parcel = node.sdk.core
+        const transaciton = node.sdk.core
             .createPayTransaction({
                 recipient,
                 quantity: 1
@@ -48,19 +48,19 @@ import CodeChain from "../helper/spawn";
                 seq: baseSeq + i,
                 fee: 10
             });
-        parcels.push(parcel);
+        transactions.push(transaciton);
     }
 
-    for (let i = numParcels - 1; i > 0; i--) {
-        await node.sdk.rpc.chain.sendSignedTransaction(parcels[i]);
+    for (let i = numTransactions - 1; i > 0; i--) {
+        await node.sdk.rpc.chain.sendSignedTransaction(transactions[i]);
     }
     const startTime = new Date();
     console.log(`Start at: ${startTime}`);
-    await node.sdk.rpc.chain.sendSignedTransaction(parcels[0]);
+    await node.sdk.rpc.chain.sendSignedTransaction(transactions[0]);
 
     while (true) {
         const invoice = await node.sdk.rpc.chain.getInvoice(
-            parcels[numParcels - 1].hash()
+            transactions[numTransactions - 1].hash()
         );
         console.log(`Node invoice: ${invoice}`);
         if (invoice !== null && invoice.success) {
@@ -72,7 +72,7 @@ import CodeChain from "../helper/spawn";
     const endTime = new Date();
     console.log(`End at: ${endTime}`);
     const tps =
-        (numParcels * 1000.0) / (endTime.getTime() - startTime.getTime());
+        (numTransactions * 1000.0) / (endTime.getTime() - startTime.getTime());
     console.log(
         `Elapsed time (ms): ${endTime.getTime() - startTime.getTime()}`
     );

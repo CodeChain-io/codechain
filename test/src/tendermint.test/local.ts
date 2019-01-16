@@ -69,18 +69,18 @@ import CodeChain from "../helper/spawn";
         nodes[3].waitPeers(4 - 1)
     ]);
 
-    const parcels = [];
-    const numParcels = parseInt(process.env.TEST_NUM_PARCELS || "10000", 10);
+    const transactions = [];
+    const numTransactions = parseInt(process.env.TEST_NUM_TXS || "10000", 10);
     const baseSeq = await nodes[0].sdk.rpc.chain.getSeq(faucetAddress);
 
-    for (let i = 0; i < numParcels; i++) {
+    for (let i = 0; i < numTransactions; i++) {
         const value = makeRandomH256();
         const accountId = nodes[0].sdk.util.getAccountIdFromPrivate(value);
         const recipient = nodes[0].sdk.core.classes.PlatformAddress.fromAccountId(
             accountId,
             { networkId: "tc" }
         );
-        const parcel = nodes[0].sdk.core
+        const transaction = nodes[0].sdk.core
             .createPayTransaction({
                 recipient,
                 quantity: 1
@@ -90,21 +90,21 @@ import CodeChain from "../helper/spawn";
                 seq: baseSeq + i,
                 fee: 10
             });
-        parcels.push(parcel);
+        transactions.push(transaction);
     }
 
-    for (let i = numParcels - 1; i > 0; i--) {
-        await nodes[0].sdk.rpc.chain.sendSignedTransaction(parcels[i]);
+    for (let i = numTransactions - 1; i > 0; i--) {
+        await nodes[0].sdk.rpc.chain.sendSignedTransaction(transactions[i]);
     }
     const startTime = new Date();
     console.log(`Start at: ${startTime}`);
-    await nodes[0].sdk.rpc.chain.sendSignedTransaction(parcels[0]);
+    await nodes[0].sdk.rpc.chain.sendSignedTransaction(transactions[0]);
 
     while (true) {
         let flag = true;
         for (let i = 0; i < 4; i++) {
             const invoice = await nodes[i].sdk.rpc.chain.getInvoice(
-                parcels[numParcels - 1].hash()
+                transactions[numTransactions - 1].hash()
             );
             console.log(`Node ${i} invoice: ${invoice}`);
             if (invoice === null || !invoice.success) {
@@ -121,7 +121,7 @@ import CodeChain from "../helper/spawn";
     const endTime = new Date();
     console.log(`End at: ${endTime}`);
     const tps =
-        (numParcels * 1000.0) / (endTime.getTime() - startTime.getTime());
+        (numTransactions * 1000.0) / (endTime.getTime() - startTime.getTime());
     console.log(
         `Elapsed time (ms): ${endTime.getTime() - startTime.getTime()}`
     );
