@@ -34,9 +34,9 @@ pub trait TimeoutHandler: Send + Sync {
     fn on_timeout(&self, _token: TimerToken);
 }
 
-#[derive(Clone)]
 pub struct TimerLoop {
-    timer_id_nonce: Arc<AtomicUsize>,
+    timer_id_nonce: AtomicUsize,
+
     scheduler: Arc<Scheduler>,
 }
 
@@ -57,7 +57,8 @@ impl TimerLoop {
         }
 
         TimerLoop {
-            timer_id_nonce: Arc::new(AtomicUsize::new(0)),
+            timer_id_nonce: AtomicUsize::new(0),
+
             scheduler,
         }
     }
