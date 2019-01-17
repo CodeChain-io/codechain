@@ -16,12 +16,10 @@
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
-use std::mem::size_of_val;
 
 use ckey::Public;
 use ctypes::transaction::Action;
 use ctypes::BlockNumber;
-use heapsize::HeapSizeOf;
 use primitives::H256;
 use rlp;
 
@@ -93,7 +91,8 @@ pub struct TransactionOrder {
     pub fee: u64,
     /// Fee per bytes(rlp serialized) of the transaction
     pub fee_per_byte: u64,
-    /// Heap usage of this transaction.
+    /// Memory usage of this transaction.
+    /// Currently using the RLP byte length of the transaction as the mem usage.
     pub mem_usage: usize,
     /// Hash to identify associated transaction
     pub hash: H256,
@@ -107,14 +106,13 @@ pub struct TransactionOrder {
 
 impl TransactionOrder {
     pub fn for_transaction(item: &MemPoolItem, seq_seq: u64) -> Self {
-        let rlp_bytes_len = rlp::encode(&item.tx).to_vec().len();
+        let rlp_bytes_len = rlp::encode(&item.tx).len();
         let fee = item.tx.fee;
-        let mem_usage = size_of_val(&item.tx) + item.tx.heap_size_of_children();
-        ctrace!(MEM_POOL, "New tx with size {}", mem_usage);
+        ctrace!(MEM_POOL, "New tx with size {}", rlp_bytes_len);
         Self {
             seq_height: item.seq() - seq_seq,
             fee,
-            mem_usage,
+            mem_usage: rlp_bytes_len,
             fee_per_byte: fee / rlp_bytes_len as u64,
             hash: item.hash(),
             insertion_id: item.insertion_id,
