@@ -5,9 +5,7 @@ stages:
   - name: test
     # Skip a PR merge. We only merge a PR with up-to-date base branch.
     # The HEAD of a master is identical the HEAD to the PR, so testing on master is redundant.
-    if: >
-      branch != docker-build AND
-      NOT (branch = master AND sender != mergify[bot])
+    if: branch != docker-build AND NOT (branch = master AND sender = "mergify[bot]")
   - name: deploy
     if: branch = docker-build
 
