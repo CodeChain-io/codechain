@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use heapsize::HeapSizeOf;
 use std::collections::HashSet;
 
 use ckey::{public_to_address, Address, Public};
@@ -59,12 +58,6 @@ impl From<Vec<Public>> for ValidatorList {
             validators,
             addresses,
         }
-    }
-}
-
-impl HeapSizeOf for ValidatorList {
-    fn heap_size_of_children(&self) -> usize {
-        self.validators.heap_size_of_children()
     }
 }
 
