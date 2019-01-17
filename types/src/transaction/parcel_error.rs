@@ -100,75 +100,81 @@ const ERROR_ID_TEXT_VERIFICATION_FAIL: u8 = 24u8;
 const ERROR_ID_TEXT_NOT_EXIST: u8 = 25u8;
 const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 26u8;
 
-impl Error {
-    fn item_count(&self) -> usize {
-        match self {
-            Error::TransactionAlreadyImported => 1,
-            Error::Old => 1,
-            Error::TooCheapToReplace => 1,
-            Error::InvalidNetworkId(_) => 2,
-            Error::MetadataTooBig => 1,
-            Error::LimitReached => 1,
-            Error::InsufficientFee {
-                ..
-            } => 3,
-            Error::InsufficientBalance {
-                ..
-            } => 4,
-            Error::InvalidSeq(_) => 2,
-            Error::InvalidShardId(_) => 2,
-            Error::ZeroQuantity => 1,
-            Error::InvalidSignature(_) => 2,
-            Error::InconsistentShardOutcomes => 1,
-            Error::TransactionIsTooBig => 1,
-            Error::RegularKeyAlreadyInUse => 1,
-            Error::RegularKeyAlreadyInUseAsPlatformAccount => 1,
-            Error::InvalidTransferDestination => 1,
-            Error::InvalidTransaction(_) => 2,
-            Error::InsufficientPermission => 1,
-            Error::NewOwnersMustContainSender => 1,
-            Error::TextVerificationFail(_) => 2,
-            Error::TextNotExist => 1,
-            Error::TextContentTooBig => 1,
-        }
-    }
+fn list_length_for(tag: u8) -> Result<usize, DecoderError> {
+    Ok(match tag {
+        ERROR_ID_TX_ALREADY_IMPORTED => 1,
+        ERROR_ID_OLD => 1,
+        ERROR_ID_TOO_CHEAP_TO_REPLACE => 1,
+        ERROR_ID_INVALID_NETWORK_ID => 2,
+        ERROR_ID_METADATA_TOO_BIG => 1,
+        ERROR_ID_LIMIT_REACHED => 1,
+        ERROR_ID_INSUFFICIENT_FEE => 3,
+        ERROR_ID_INSUFFICIENT_BALANCE => 4,
+        ERROR_ID_INVALID_SEQ => 2,
+        ERROR_ID_INVALID_SHARD_ID => 2,
+        ERROR_ID_ZERO_QUANTITY => 1,
+        ERROR_ID_INVALID_SIGNATURE => 2,
+        ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => 1,
+        ERROR_ID_TX_IS_TOO_BIG => 1,
+        ERROR_ID_REGULAR_KEY_ALREADY_IN_USE => 1,
+        ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM => 1,
+        ERROR_ID_INVALID_TRANSFER_DESTINATION => 1,
+        ERROR_ID_INVALID_TRANSACTION => 2,
+        ERROR_ID_INSUFFICIENT_PERMISSION => 1,
+        ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER => 1,
+        ERROR_ID_TEXT_VERIFICATION_FAIL => 2,
+        ERROR_ID_TEXT_NOT_EXIST => 1,
+        ERROR_ID_TEXT_CONTENT_TOO_BIG => 1,
+        _ => return Err(DecoderError::Custom("Invalid parcel error")),
+    })
 }
+
+fn tag_with(s: &mut RlpStream, tag: u8) -> &mut RlpStream {
+    s.begin_list(list_length_for(tag).unwrap()).append(&tag)
+}
+
+fn check_tag_size(rlp: &UntrustedRlp, tag: u8) -> Result<(), DecoderError> {
+    if rlp.item_count()? != list_length_for(tag)? {
+        return Err(DecoderError::RlpInvalidLength)
+    }
+    Ok(())
+}
+
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(self.item_count());
         match self {
-            Error::TransactionAlreadyImported => s.append(&ERROR_ID_TX_ALREADY_IMPORTED),
-            Error::Old => s.append(&ERROR_ID_OLD),
-            Error::TooCheapToReplace => s.append(&ERROR_ID_TOO_CHEAP_TO_REPLACE),
-            Error::InvalidNetworkId(network_id) => s.append(&ERROR_ID_INVALID_NETWORK_ID).append(network_id),
-            Error::MetadataTooBig => s.append(&ERROR_ID_METADATA_TOO_BIG),
-            Error::LimitReached => s.append(&ERROR_ID_LIMIT_REACHED),
+            Error::TransactionAlreadyImported => tag_with(s, ERROR_ID_TX_ALREADY_IMPORTED),
+            Error::Old => tag_with(s, ERROR_ID_OLD),
+            Error::TooCheapToReplace => tag_with(s, ERROR_ID_TOO_CHEAP_TO_REPLACE),
+            Error::InvalidNetworkId(network_id) => tag_with(s, ERROR_ID_INVALID_NETWORK_ID).append(network_id),
+            Error::MetadataTooBig => tag_with(s, ERROR_ID_METADATA_TOO_BIG),
+            Error::LimitReached => tag_with(s, ERROR_ID_LIMIT_REACHED),
             Error::InsufficientFee {
                 minimal,
                 got,
-            } => s.append(&ERROR_ID_INSUFFICIENT_FEE).append(minimal).append(got),
+            } => tag_with(s, ERROR_ID_INSUFFICIENT_FEE).append(minimal).append(got),
             Error::InsufficientBalance {
                 address,
                 balance,
                 cost,
-            } => s.append(&ERROR_ID_INSUFFICIENT_BALANCE).append(address).append(balance).append(cost),
-            Error::InvalidSeq(mismatch) => s.append(&ERROR_ID_INVALID_SEQ).append(mismatch),
-            Error::InvalidShardId(shard_id) => s.append(&ERROR_ID_INVALID_SHARD_ID).append(shard_id),
-            Error::ZeroQuantity => s.append(&ERROR_ID_ZERO_QUANTITY),
-            Error::InvalidSignature(err) => s.append(&ERROR_ID_INVALID_SIGNATURE).append(err),
-            Error::InconsistentShardOutcomes => s.append(&ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
-            Error::TransactionIsTooBig => s.append(&ERROR_ID_TX_IS_TOO_BIG),
-            Error::RegularKeyAlreadyInUse => s.append(&ERROR_ID_REGULAR_KEY_ALREADY_IN_USE),
+            } => tag_with(s, ERROR_ID_INSUFFICIENT_BALANCE).append(address).append(balance).append(cost),
+            Error::InvalidSeq(mismatch) => tag_with(s, ERROR_ID_INVALID_SEQ).append(mismatch),
+            Error::InvalidShardId(shard_id) => tag_with(s, ERROR_ID_INVALID_SHARD_ID).append(shard_id),
+            Error::ZeroQuantity => tag_with(s, ERROR_ID_ZERO_QUANTITY),
+            Error::InvalidSignature(err) => tag_with(s, ERROR_ID_INVALID_SIGNATURE).append(err),
+            Error::InconsistentShardOutcomes => tag_with(s, ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
+            Error::TransactionIsTooBig => tag_with(s, ERROR_ID_TX_IS_TOO_BIG),
+            Error::RegularKeyAlreadyInUse => tag_with(s, ERROR_ID_REGULAR_KEY_ALREADY_IN_USE),
             Error::RegularKeyAlreadyInUseAsPlatformAccount => {
-                s.append(&ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM)
+                tag_with(s, ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM)
             }
-            Error::InvalidTransferDestination => s.append(&ERROR_ID_INVALID_TRANSFER_DESTINATION),
-            Error::InvalidTransaction(err) => s.append(&ERROR_ID_INVALID_TRANSACTION).append(err),
-            Error::InsufficientPermission => s.append(&ERROR_ID_INSUFFICIENT_PERMISSION),
-            Error::NewOwnersMustContainSender => s.append(&ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER),
-            Error::TextVerificationFail(err) => s.append(&ERROR_ID_TEXT_VERIFICATION_FAIL).append(err),
-            Error::TextNotExist => s.append(&ERROR_ID_TEXT_NOT_EXIST),
-            Error::TextContentTooBig => s.append(&ERROR_ID_TEXT_CONTENT_TOO_BIG),
+            Error::InvalidTransferDestination => tag_with(s, ERROR_ID_INVALID_TRANSFER_DESTINATION),
+            Error::InvalidTransaction(err) => tag_with(s, ERROR_ID_INVALID_TRANSACTION).append(err),
+            Error::InsufficientPermission => tag_with(s, ERROR_ID_INSUFFICIENT_PERMISSION),
+            Error::NewOwnersMustContainSender => tag_with(s, ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER),
+            Error::TextVerificationFail(err) => tag_with(s, ERROR_ID_TEXT_VERIFICATION_FAIL).append(err),
+            Error::TextNotExist => tag_with(s, ERROR_ID_TEXT_NOT_EXIST),
+            Error::TextContentTooBig => tag_with(s, ERROR_ID_TEXT_CONTENT_TOO_BIG),
         };
     }
 }
@@ -209,51 +215,47 @@ impl Decodable for Error {
             ERROR_ID_TEXT_CONTENT_TOO_BIG => Error::TextContentTooBig,
             _ => return Err(DecoderError::Custom("Invalid parcel error")),
         };
-        if rlp.item_count()? != error.item_count() {
-            return Err(DecoderError::RlpInvalidLength)
-        }
+        check_tag_size(rlp, tag)?;
         Ok(error)
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
-        let msg: String = match self {
-            Error::TransactionAlreadyImported => "The transaction is already imported".into(),
-            Error::Old => "No longer valid".into(),
-            Error::TooCheapToReplace => "Fee too low to replace".into(),
-            Error::InvalidNetworkId(network_id) => format!("{} is an invalid network id", network_id),
-            Error::MetadataTooBig => "Metadata size is too big.".into(),
-            Error::LimitReached => "Transaction limit reached".into(),
+        match self {
+            Error::TransactionAlreadyImported => write!(f, "The transaction is already imported"),
+            Error::Old => write!(f, "No longer valid"),
+            Error::TooCheapToReplace => write!(f, "Fee too low to replace"),
+            Error::InvalidNetworkId(network_id) => write!(f, "{} is an invalid network id", network_id),
+            Error::MetadataTooBig => write!(f, "Metadata size is too big."),
+            Error::LimitReached => write!(f, "Transaction limit reached"),
             Error::InsufficientFee {
                 minimal,
                 got,
-            } => format!("Insufficient fee. Min={}, Given={}", minimal, got),
+            } => write!(f, "Insufficient fee. Min={}, Given={}", minimal, got),
             Error::InsufficientBalance {
                 address,
                 balance,
                 cost,
-            } => format!("{} has only {:?} but it must be larger than {:?}", address, balance, cost),
-            Error::InvalidSeq(mismatch) => format!("Invalid transaction seq {}", mismatch),
-            Error::InvalidShardId(shard_id) => format!("{} is an invalid shard id", shard_id),
-            Error::ZeroQuantity => "A quantity cannot be 0".to_string(),
-            Error::InvalidSignature(err) => format!("Transaction has invalid signature: {}.", err),
-            Error::InconsistentShardOutcomes => "Shard outcomes are inconsistent".to_string(),
-            Error::TransactionIsTooBig => "Transaction size exceeded the body size limit".to_string(),
-            Error::RegularKeyAlreadyInUse => "The regular key is already registered to another account".to_string(),
+            } => write!(f, "{} has only {:?} but it must be larger than {:?}", address, balance, cost),
+            Error::InvalidSeq(mismatch) => write!(f, "Invalid transaction seq {}", mismatch),
+            Error::InvalidShardId(shard_id) => write!(f, "{} is an invalid shard id", shard_id),
+            Error::ZeroQuantity => write!(f, "A quantity cannot be 0"),
+            Error::InvalidSignature(err) => write!(f, "Transaction has invalid signature: {}.", err),
+            Error::InconsistentShardOutcomes => write!(f, "Shard outcomes are inconsistent"),
+            Error::TransactionIsTooBig => write!(f, "Transaction size exceeded the body size limit"),
+            Error::RegularKeyAlreadyInUse => write!(f, "The regular key is already registered to another account"),
             Error::RegularKeyAlreadyInUseAsPlatformAccount => {
-                "The regular key is already used as a platform account".to_string()
+                write!(f, "The regular key is already used as a platform account")
             }
-            Error::InvalidTransferDestination => "Transfer receiver is not valid account".to_string(),
-            Error::InvalidTransaction(err) => format!("Transaction has an invalid transaction: {}", err),
-            Error::InsufficientPermission => "Sender doesn't have a permission".to_string(),
-            Error::NewOwnersMustContainSender => "New owners must contain the sender".to_string(),
-            Error::TextVerificationFail(err) => format!("Text verification has failed: {}", err),
-            Error::TextNotExist => "The text does not exist".to_string(),
-            Error::TextContentTooBig => "The content of the text is too big".into(),
-        };
-
-        f.write_fmt(msg)
+            Error::InvalidTransferDestination => write!(f, "Transfer receiver is not valid account"),
+            Error::InvalidTransaction(err) => write!(f, "Transaction has an invalid transaction: {}", err),
+            Error::InsufficientPermission => write!(f, "Sender doesn't have a permission"),
+            Error::NewOwnersMustContainSender => write!(f, "New owners must contain the sender"),
+            Error::TextVerificationFail(err) => write!(f, "Text verification has failed: {}", err),
+            Error::TextNotExist => write!(f, "The text does not exist"),
+            Error::TextContentTooBig => write!(f, "The content of the text is too big"),
+        }
     }
 }
 
