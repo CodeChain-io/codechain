@@ -3,9 +3,7 @@ rust:
   - 1.31.0
 stages:
   - name: test
-    # Skip a PR merge. We only merge a PR with up-to-date base branch.
-    # The HEAD of a master is identical the HEAD to the PR, so testing on master is redundant.
-    if: branch != docker-build AND NOT (branch = master AND sender = "mergify[bot]")
+    if: branch != docker-build
   - name: deploy
     if: branch = docker-build
 
@@ -15,6 +13,7 @@ jobs:
       name: test-osx
       os: osx
       before_install:
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
         - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
@@ -29,6 +28,7 @@ jobs:
     - name: int-test-osx
       os: osx
       before_install:
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
         - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
       install:
         - nvm install 10
@@ -47,6 +47,7 @@ jobs:
       os: linux
       sudo: required
       before_install:
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
         - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
@@ -62,6 +63,7 @@ jobs:
       os: linux
       sudo: required
       before_install:
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
         - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
       install:
         - nvm install 10
