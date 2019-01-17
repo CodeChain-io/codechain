@@ -253,7 +253,7 @@ impl Display for Error {
             Error::TextContentTooBig => "The content of the text is too big".into(),
         };
 
-        f.write_fmt(format_args!("Parcel error ({})", msg))
+        f.write_fmt(msg)
     }
 }
 
