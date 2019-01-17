@@ -22,7 +22,7 @@ use ctypes::transaction::{AssetMintOutput as AssetMintOutputType, AssetTransferO
 use primitives::{H160, H256};
 use rustc_serialize::hex::{FromHex, FromHexError, ToHex};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetTransferOutput {
     pub lock_script_hash: H160,
@@ -53,7 +53,7 @@ impl From<AssetTransferOutput> for Result<AssetTransferOutputType, FromHexError>
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
