@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -23,12 +23,11 @@ use std::sync::{Arc, Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 
 use cio::IoChannel;
-use heapsize::HeapSizeOf;
 use num_cpus;
 use parking_lot::{Mutex, RwLock};
 use primitives::{H256, U256};
 
-use self::kind::{BlockLike, Kind};
+use self::kind::{BlockLike, Kind, MemUsage};
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error, ImportError};
 use crate::service::ClientIoMessage;
@@ -220,7 +219,7 @@ impl<K: Kind> VerificationQueue<K> {
                     None => continue,
                 };
 
-                verification.sizes.unverified.fetch_sub(item.heap_size_of_children(), AtomicOrdering::SeqCst);
+                verification.sizes.unverified.fetch_sub(item.mem_usage(), AtomicOrdering::SeqCst);
                 verifying.push_back(Verifying {
                     hash: item.hash(),
                     output: None,
@@ -237,10 +236,7 @@ impl<K: Kind> VerificationQueue<K> {
                         if e.hash == hash {
                             idx = Some(i);
 
-                            verification
-                                .sizes
-                                .verifying
-                                .fetch_add(verified.heap_size_of_children(), AtomicOrdering::SeqCst);
+                            verification.sizes.verifying.fetch_add(verified.mem_usage(), AtomicOrdering::SeqCst);
                             e.output = Some(verified);
                             break
                         }
@@ -300,7 +296,7 @@ impl<K: Kind> VerificationQueue<K> {
 
         while let Some(output) = verifying.front_mut().and_then(|x| x.output.take()) {
             assert!(verifying.pop_front().is_some());
-            let size = output.heap_size_of_children();
+            let size = output.mem_usage();
             removed_size += size;
 
             if bad.contains(&output.parent_hash()) {
@@ -346,7 +342,7 @@ impl<K: Kind> VerificationQueue<K> {
         }
         match K::create(input, &*self.engine) {
             Ok(item) => {
-                self.verification.sizes.unverified.fetch_add(item.heap_size_of_children(), AtomicOrdering::SeqCst);
+                self.verification.sizes.unverified.fetch_add(item.mem_usage(), AtomicOrdering::SeqCst);
 
                 self.processing.write().insert(h, item.score());
                 {
@@ -377,7 +373,7 @@ impl<K: Kind> VerificationQueue<K> {
         let count = cmp::min(max, verified.len());
         let result = verified.drain(..count).collect::<Vec<_>>();
 
-        let drained_size = result.iter().map(HeapSizeOf::heap_size_of_children).sum::<usize>();
+        let drained_size = result.iter().map(MemUsage::mem_usage).sum::<usize>();
         self.verification.sizes.verified.fetch_sub(drained_size, AtomicOrdering::SeqCst);
 
         self.ready_signal.reset();
@@ -426,7 +422,7 @@ impl<K: Kind> VerificationQueue<K> {
         let mut removed_size = 0;
         for output in verified.drain(..) {
             if bad.contains(&output.parent_hash()) {
-                removed_size += output.heap_size_of_children();
+                removed_size += output.mem_usage();
                 bad.insert(output.hash());
                 if let Some(score) = processing.remove(&output.hash()) {
                     let mut td = self.total_score.write();

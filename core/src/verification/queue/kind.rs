@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use heapsize::HeapSizeOf;
 use primitives::{H256, U256};
+use rlp::*;
 
 pub use self::blocks::Blocks;
 pub use self::headers::Headers;
@@ -36,6 +36,17 @@ pub trait BlockLike {
     fn score(&self) -> U256;
 }
 
+/// Memory usage in the verification queue
+pub trait MemUsage {
+    fn mem_usage(&self) -> usize;
+}
+
+impl<R: Encodable> MemUsage for R {
+    fn mem_usage(&self) -> usize {
+        rlp::encode(self).len()
+    }
+}
+
 /// Defines transitions between stages of verification.
 ///
 /// It starts with a fallible transformation from an "input" into the unverified item.
@@ -48,13 +59,13 @@ pub trait BlockLike {
 /// consistent.
 pub trait Kind: 'static + Sized + Send + Sync {
     /// The first stage: completely unverified.
-    type Input: Sized + Send + BlockLike + HeapSizeOf;
+    type Input: Sized + Send + BlockLike + MemUsage;
 
     /// The second stage: partially verified.
-    type Unverified: Sized + Send + BlockLike + HeapSizeOf;
+    type Unverified: Sized + Send + BlockLike + MemUsage;
 
     /// The third stage: completely verified.
-    type Verified: Sized + Send + BlockLike + HeapSizeOf;
+    type Verified: Sized + Send + BlockLike + MemUsage;
 
     /// Attempt to create the `Unverified` item from the input.
     fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error>;
@@ -80,7 +91,6 @@ pub mod headers {
     use crate::error::Error;
     use crate::header::Header;
     use crate::service::ClientIoMessage;
-
 
     impl BlockLike for Header {
         fn hash(&self) -> H256 {
@@ -125,11 +135,10 @@ pub mod headers {
 
 /// The blocks verification module.
 pub mod blocks {
-    use heapsize::HeapSizeOf;
     use primitives::{Bytes, H256, U256};
 
     use super::super::super::verification::{verify_block_basic, verify_block_unordered, PreverifiedBlock};
-    use super::{BlockLike, Kind};
+    use super::{BlockLike, Kind, MemUsage};
     use crate::consensus::CodeChainEngine;
     use crate::error::Error;
     use crate::header::Header;
@@ -173,6 +182,7 @@ pub mod blocks {
     pub struct Unverified {
         header: Header,
         bytes: Bytes,
+        mem_usage: usize,
     }
 
     impl Unverified {
@@ -181,16 +191,12 @@ pub mod blocks {
             use crate::views::BlockView;
 
             let header = BlockView::new(&bytes).header();
+            let mem_usage = header.mem_usage() + bytes.len();
             Unverified {
                 header,
                 bytes,
+                mem_usage,
             }
-        }
-    }
-
-    impl HeapSizeOf for Unverified {
-        fn heap_size_of_children(&self) -> usize {
-            self.header.heap_size_of_children() + self.bytes.heap_size_of_children()
         }
     }
 
@@ -219,6 +225,20 @@ pub mod blocks {
 
         fn score(&self) -> U256 {
             *self.header.score()
+        }
+    }
+
+    impl MemUsage for Unverified {
+        fn mem_usage(&self) -> usize {
+            self.mem_usage
+        }
+    }
+
+    impl MemUsage for PreverifiedBlock {
+        fn mem_usage(&self) -> usize {
+            self.header.mem_usage()
+                + self.transactions.iter().map(MemUsage::mem_usage).sum::<usize>()
+                + self.bytes.len()
         }
     }
 }
