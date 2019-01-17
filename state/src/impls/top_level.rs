@@ -41,8 +41,9 @@ use std::collections::HashMap;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, recover, verify_address, Address, NetworkId, Public, Signature};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
+use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 use ctypes::invoice::Invoice;
-use ctypes::transaction::{Action, AssetWrapCCCOutput, ParcelError, ShardTransaction, Transaction};
+use ctypes::transaction::{Action, AssetWrapCCCOutput, ShardTransaction, Transaction};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
@@ -266,14 +267,17 @@ impl TopLevelState {
         self.create_checkpoint(FEE_CHECKPOINT);
 
         match self.apply_internal(tx, &fee_payer, signed_hash, signer_public, client) {
-            Err(StateError::Transaction(err)) => unreachable!("{:?}", err),
-            Err(err) => {
-                self.revert_to_checkpoint(FEE_CHECKPOINT);
-                Err(err)
-            }
             Ok(invoice) => {
                 self.discard_checkpoint(FEE_CHECKPOINT);
                 Ok(invoice)
+            }
+            Err(StateError::Runtime(err)) => {
+                self.discard_checkpoint(FEE_CHECKPOINT);
+                Ok(Invoice::Failure(err))
+            }
+            Err(err) => {
+                self.revert_to_checkpoint(FEE_CHECKPOINT);
+                Err(err)
             }
         }
     }
@@ -288,7 +292,6 @@ impl TopLevelState {
         })
     }
 
-
     fn apply_internal<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
         tx: &Transaction,
@@ -300,7 +303,7 @@ impl TopLevelState {
         let seq = self.seq(fee_payer)?;
 
         if tx.seq != seq {
-            return Err(ParcelError::InvalidSeq(Mismatch {
+            return Err(HistoryError::InvalidSeq(Mismatch {
                 expected: seq,
                 found: tx.seq,
             })
@@ -314,40 +317,20 @@ impl TopLevelState {
 
         // The failed transaction also must pay the fee and increase seq.
         self.create_checkpoint(ACTION_CHECKPOINT);
-
-        match self.apply_action(&tx.action, tx.network_id, &tx.hash(), signed_hash, fee_payer, signer_public, client) {
-            Ok(invoice) => {
+        let result =
+            self.apply_action(&tx.action, tx.network_id, &tx.hash(), signed_hash, fee_payer, signer_public, client);
+        match &result {
+            Ok(_) => {
                 self.discard_checkpoint(ACTION_CHECKPOINT);
-                Ok(invoice)
             }
-            Err(StateError::Parcel(ParcelError::TransactionAlreadyImported)) => {
-                unreachable!();
-            }
-            Err(StateError::Parcel(ParcelError::Old)) => {
-                unreachable!();
-            }
-            Err(StateError::Parcel(ParcelError::TooCheapToReplace)) => {
-                unreachable!();
-            }
-            Err(StateError::Parcel(ParcelError::InvalidNetworkId(_))) => {
-                unreachable!();
-            }
-            Err(StateError::Parcel(ParcelError::LimitReached)) => {
-                unreachable!();
-            }
-            Err(StateError::Parcel(err)) => {
+            Err(StateError::Runtime(_)) => {
                 self.revert_to_checkpoint(ACTION_CHECKPOINT);
-                Ok(Invoice::Failure(err))
             }
-            Err(StateError::Transaction(err)) => {
+            Err(_) => {
                 self.revert_to_checkpoint(ACTION_CHECKPOINT);
-                Ok(Invoice::Failure(err.into()))
-            }
-            Err(err) => {
-                self.revert_to_checkpoint(ACTION_CHECKPOINT);
-                Err(err)
             }
         }
+        result
     }
 
     fn apply_action<C: ChainTimeInfo + FindActionHandler>(
@@ -546,7 +529,7 @@ impl TopLevelState {
         sender: &Address,
         client: &C,
     ) -> StateResult<Invoice> {
-        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| RuntimeError::InvalidShardId(shard_id))?;
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
         self.sub_balance(sender, quantity)?;
@@ -582,7 +565,7 @@ impl TopLevelState {
         for shard_id in shard_ids.iter().skip(1) {
             let invoice = self.apply_shard_transaction_to_shard(transaction, *shard_id, sender, approvers, client)?;
             if invoice != first_invoice {
-                return Err(ParcelError::InconsistentShardOutcomes.into())
+                return Err(RuntimeError::InconsistentShardOutcomes.into())
             }
         }
 
@@ -601,7 +584,7 @@ impl TopLevelState {
         approvers: &[Address],
         client: &C,
     ) -> StateResult<Invoice> {
-        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| RuntimeError::InvalidShardId(shard_id))?;
         let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
 
         let shard_cache = self.shard_caches.entry(shard_id).or_default();
@@ -789,7 +772,7 @@ impl TopState for TopLevelState {
         }
         let balance = self.balance(a)?;
         if balance < decr {
-            return Err(ParcelError::InsufficientBalance {
+            return Err(RuntimeError::InsufficientBalance {
                 address: *a,
                 cost: decr,
                 balance,
@@ -802,7 +785,7 @@ impl TopState for TopLevelState {
 
     fn transfer_balance(&mut self, from: &Address, to: &Address, by: u64) -> StateResult<()> {
         if self.regular_account_exists_and_not_null_by_address(to)? {
-            return Err(ParcelError::InvalidTransferDestination.into())
+            return Err(RuntimeError::InvalidTransferDestination.into())
         }
         self.sub_balance(from, by)?;
         self.add_balance(to, by)?;
@@ -825,12 +808,12 @@ impl TopState for TopLevelState {
         };
 
         if self.regular_account_exists_and_not_null(regular_key)? {
-            return Err(ParcelError::RegularKeyAlreadyInUse.into())
+            return Err(RuntimeError::RegularKeyAlreadyInUse.into())
         }
 
         let regular_address = public_to_address(regular_key);
         if self.account_exists_and_not_null(&regular_address)? {
-            return Err(ParcelError::RegularKeyAlreadyInUseAsPlatformAccount.into())
+            return Err(RuntimeError::RegularKeyAlreadyInUseAsPlatformAccount.into())
         }
 
         let prev_regular_key = self.get_account_mut(&owner_address)?.regular_key();
@@ -858,21 +841,21 @@ impl TopState for TopLevelState {
     }
 
     fn change_shard_owners(&mut self, shard_id: ShardId, owners: &[Address], sender: &Address) -> StateResult<()> {
-        let old_owners = self.shard_owners(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let old_owners = self.shard_owners(shard_id)?.ok_or_else(|| RuntimeError::InvalidShardId(shard_id))?;
         if !old_owners.contains(sender) {
-            return Err(ParcelError::InsufficientPermission.into())
+            return Err(RuntimeError::InsufficientPermission.into())
         }
         if !owners.contains(sender) {
-            return Err(ParcelError::NewOwnersMustContainSender.into())
+            return Err(RuntimeError::NewOwnersMustContainSender.into())
         }
 
         self.set_shard_owners(shard_id, owners.to_vec())
     }
 
     fn change_shard_users(&mut self, shard_id: ShardId, users: &[Address], sender: &Address) -> StateResult<()> {
-        let owners = self.shard_owners(shard_id)?.ok_or_else(|| ParcelError::InvalidShardId(shard_id))?;
+        let owners = self.shard_owners(shard_id)?.ok_or_else(|| RuntimeError::InvalidShardId(shard_id))?;
         if !owners.contains(sender) {
-            return Err(ParcelError::InsufficientPermission.into())
+            return Err(RuntimeError::InsufficientPermission.into())
         }
 
         self.set_shard_users(shard_id, users.to_vec())
@@ -899,9 +882,9 @@ impl TopState for TopLevelState {
     fn store_text(&mut self, key: &H256, text: Text, sig: &Signature) -> StateResult<()> {
         match verify_address(text.certifier(), sig, &text.content_hash()) {
             Ok(false) => {
-                return Err(ParcelError::TextVerificationFail("Certifier and signer are different".to_string()).into())
+                return Err(SyntaxError::TextVerificationFail("Certifier and signer are different".to_string()).into())
             }
-            Err(err) => return Err(ParcelError::TextVerificationFail(err.to_string()).into()),
+            Err(err) => return Err(SyntaxError::TextVerificationFail(err.to_string()).into()),
             _ => {}
         }
         let mut text_entry = self.get_text_mut(key)?;
@@ -910,12 +893,12 @@ impl TopState for TopLevelState {
     }
 
     fn remove_text(&mut self, key: &H256, sig: &Signature) -> StateResult<()> {
-        let text = self.get_text(key)?.ok_or_else(|| ParcelError::TextNotExist)?;
+        let text = self.get_text(key)?.ok_or_else(|| RuntimeError::TextNotExist)?;
         match verify_address(text.certifier(), sig, key) {
             Ok(false) => {
-                return Err(ParcelError::TextVerificationFail("Certifier and signer are different".to_string()).into())
+                return Err(SyntaxError::TextVerificationFail("Certifier and signer are different".to_string()).into())
             }
-            Err(err) => return Err(ParcelError::TextVerificationFail(err.to_string()).into()),
+            Err(err) => return Err(SyntaxError::TextVerificationFail(err.to_string()).into()),
             _ => {}
         }
         self.top_cache.remove_text(key);
@@ -1277,7 +1260,7 @@ mod tests_state {
 mod tests_tx {
     use ccrypto::Blake;
     use ckey::{sign, Generator, Private, Random};
-    use ctypes::transaction::Error as TransactionError;
+    use ctypes::errors::RuntimeError;
     use primitives::H160;
     use rlp::Encodable;
 
@@ -1299,7 +1282,7 @@ mod tests_tx {
 
         let tx = transaction!(seq: 2, fee: 5, pay!(address().0, 10));
         assert_eq!(
-            Err(StateError::Parcel(ParcelError::InvalidSeq(Mismatch {
+            Err(StateError::History(HistoryError::InvalidSeq(Mismatch {
                 expected: 0,
                 found: 2
             }))),
@@ -1320,7 +1303,7 @@ mod tests_tx {
 
         let tx = transaction!(fee: 5, pay!(address().0, 10));
         assert_eq!(
-            Err(StateError::Parcel(ParcelError::InsufficientBalance {
+            Ok(Invoice::Failure(RuntimeError::InsufficientBalance {
                 address: sender,
                 balance: 4,
                 cost: 5,
@@ -1329,7 +1312,7 @@ mod tests_tx {
         );
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 0, balance: 4))
+            (account: sender => (seq: 1, balance: 4))
         ]);
     }
 
@@ -1420,7 +1403,7 @@ mod tests_tx {
 
         let tx = transaction!(fee: 5, set_regular_key!(*key));
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::RegularKeyAlreadyInUse)),
+            Ok(Invoice::Failure(RuntimeError::RegularKeyAlreadyInUse)),
             state.apply(&tx, &H256::random(), &sender_public2, &get_test_client())
         );
 
@@ -1443,7 +1426,7 @@ mod tests_tx {
 
         let tx = transaction! (fee: 5, set_regular_key!(sender_public2));
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::RegularKeyAlreadyInUseAsPlatformAccount)),
+            Ok(Invoice::Failure(RuntimeError::RegularKeyAlreadyInUseAsPlatformAccount)),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -1598,7 +1581,7 @@ mod tests_tx {
 
         let tx = transaction!(fee: 5, pay!(regular_address, 5));
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InvalidTransferDestination)),
+            Ok(Invoice::Failure(RuntimeError::InvalidTransferDestination)),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -1620,7 +1603,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, pay!(receiver, 30));
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InsufficientBalance {
+            Ok(Invoice::Failure(RuntimeError::InsufficientBalance {
                 address: sender,
                 balance: 15,
                 cost: 30,
@@ -1798,7 +1781,7 @@ mod tests_tx {
         let transaction_tracker = transaction.tracker().unwrap();
         let tx = transaction!(seq: 1, fee: 11, transaction);
         assert_eq!(
-            Ok(Invoice::Failure(TransactionError::AssetSchemeDuplicated(transaction_tracker).into())),
+            Ok(Invoice::Failure(RuntimeError::AssetSchemeDuplicated(transaction_tracker).into())),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -1881,10 +1864,10 @@ mod tests_tx {
         let tx = transaction!(seq: 1, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InvalidTransaction(TransactionError::ScriptHashMismatch(Mismatch {
+            Ok(Invoice::Failure(RuntimeError::ScriptHashMismatch(Mismatch {
                 expected: lock_script_hash,
                 found: Blake::blake(&failed_lock_script),
-            })))),
+            }))),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -1912,7 +1895,7 @@ mod tests_tx {
         let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, quantity));
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InsufficientBalance {
+            Ok(Invoice::Failure(RuntimeError::InsufficientBalance {
                 address: sender,
                 balance: 9,
                 cost: 30,
@@ -2049,26 +2032,26 @@ mod tests_tx {
         let tx = transaction!(fee: 10, store!(content.clone(), sender, signature));
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::TextVerificationFail("Invalid Signature".to_string()))),
+            Err(SyntaxError::TextVerificationFail("Invalid Signature".to_string()).into()),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 1, balance: 10)),
+            (account: sender => (seq: 0, balance: 20)),
             (text: &tx.hash())
         ]);
 
         let signature = sign(Random.generate().unwrap().private(), &content_hash).unwrap();
 
-        let tx = transaction!(seq: 1, fee: 10, store!(content.clone(), sender, signature));
+        let tx = transaction!(seq: 0, fee: 10, store!(content.clone(), sender, signature));
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::TextVerificationFail("Certifier and signer are different".to_string()))),
+            Err(SyntaxError::TextVerificationFail("Certifier and signer are different".to_string()).into()),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 2, balance: 0)),
+            (account: sender => (seq: 0, balance: 20)),
             (text: &tx.hash())
         ]);
     }
@@ -2090,7 +2073,7 @@ mod tests_tx {
         let remove_tx = transaction!(fee: 10, remove!(hash, signature));
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::TextNotExist)),
+            Ok(Invoice::Failure(RuntimeError::TextNotExist)),
             state.apply(&remove_tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -2203,7 +2186,7 @@ mod tests_tx {
         let tx = transaction!(fee: 11, transaction);
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InvalidShardId(0))),
+            Ok(Invoice::Failure(RuntimeError::InvalidShardId(0))),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -2240,7 +2223,7 @@ mod tests_tx {
         let tx = transaction!(fee: 30, transfer);
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InvalidShardId(100))),
+            Ok(Invoice::Failure(RuntimeError::InvalidShardId(100))),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
         check_top_level_state!(state, [
@@ -2288,7 +2271,7 @@ mod tests_tx {
         let owners = vec![Address::random(), Address::random()];
         let tx = transaction!(fee: 5, set_shard_owners!(owners));
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::NewOwnersMustContainSender)),
+            Ok(Invoice::Failure(RuntimeError::NewOwnersMustContainSender)),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
         check_top_level_state!(state, [
@@ -2315,7 +2298,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, set_shard_owners!(owners));
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InsufficientPermission)),
+            Ok(Invoice::Failure(RuntimeError::InsufficientPermission)),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -2342,7 +2325,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, set_shard_owners!(shard_id: invalid_shard_id, owners));
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InvalidShardId(invalid_shard_id))),
+            Ok(Invoice::Failure(RuntimeError::InvalidShardId(invalid_shard_id))),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -2370,7 +2353,7 @@ mod tests_tx {
 
         let tx = transaction!(fee: 5, set_shard_owners!(owners));
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InsufficientPermission)),
+            Ok(Invoice::Failure(RuntimeError::InsufficientPermission)),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -2456,7 +2439,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, set_shard_users!(new_users.clone()));
 
         assert_eq!(
-            Ok(Invoice::Failure(ParcelError::InsufficientPermission)),
+            Ok(Invoice::Failure(RuntimeError::InsufficientPermission)),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
         check_top_level_state!(state, [

@@ -18,23 +18,25 @@ use std::fmt;
 
 use ckey::Error as KeyError;
 use cmerkle::TrieError;
-use ctypes::transaction::{Error as TransactionError, ParcelError};
+use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
     Key(KeyError),
     Trie(TrieError),
-    Parcel(ParcelError),
-    Transaction(TransactionError),
+    History(HistoryError),
+    Runtime(RuntimeError),
+    Syntax(SyntaxError),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::Key(err) => err.fmt(f),
-            Error::Parcel(err) => err.fmt(f),
             Error::Trie(err) => err.fmt(f),
-            Error::Transaction(err) => err.fmt(f),
+            Error::History(err) => err.fmt(f),
+            Error::Runtime(err) => err.fmt(f),
+            Error::Syntax(err) => err.fmt(f),
         }
     }
 }
@@ -51,14 +53,20 @@ impl From<TrieError> for Error {
     }
 }
 
-impl From<ParcelError> for Error {
-    fn from(err: ParcelError) -> Error {
-        Error::Parcel(err)
+impl From<HistoryError> for Error {
+    fn from(err: HistoryError) -> Self {
+        Error::History(err)
     }
 }
 
-impl From<TransactionError> for Error {
-    fn from(err: TransactionError) -> Self {
-        Error::Transaction(err)
+impl From<RuntimeError> for Error {
+    fn from(err: RuntimeError) -> Self {
+        Error::Runtime(err)
+    }
+}
+
+impl From<SyntaxError> for Error {
+    fn from(err: SyntaxError) -> Self {
+        Error::Syntax(err)
     }
 }
