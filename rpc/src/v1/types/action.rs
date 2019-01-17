@@ -50,6 +50,7 @@ pub enum Action {
         outputs: Vec<AssetTransferOutput>,
         orders: Vec<OrderOnTransfer>,
 
+        metadata: String,
         approvals: Vec<Signature>,
     },
     #[serde(rename_all = "camelCase")]
@@ -156,6 +157,7 @@ pub enum ActionWithId {
         outputs: Vec<AssetTransferOutput>,
         orders: Vec<OrderOnTransfer>,
 
+        metadata: String,
         approvals: Vec<Signature>,
 
         id: H256,
@@ -283,6 +285,7 @@ impl ActionWithId {
                 inputs,
                 outputs,
                 orders,
+                metadata,
                 approvals,
             } => {
                 let id = tracker.unwrap();
@@ -292,6 +295,7 @@ impl ActionWithId {
                     inputs: inputs.into_iter().map(From::from).collect(),
                     outputs: outputs.into_iter().map(From::from).collect(),
                     orders: orders.into_iter().map(From::from).collect(),
+                    metadata,
                     approvals,
                     id,
                 }
@@ -478,6 +482,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 outputs,
                 orders,
 
+                metadata,
                 approvals,
             } => {
                 let iter_outputs = outputs.into_iter().map(From::from);
@@ -487,6 +492,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     inputs: inputs.into_iter().map(From::from).collect(),
                     outputs: Result::from_iter(iter_outputs)?,
                     orders: orders.into_iter().map(From::from).collect(),
+                    metadata,
                     approvals,
                 }
             }

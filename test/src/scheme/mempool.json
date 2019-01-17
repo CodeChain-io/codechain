@@ -8,7 +8,8 @@
   },
   "params": {
     "maxExtraDataSize": "0x20",
-    "maxMetadataSize": "0x200000",
+    "maxAssetSchemeMetadataSize": "0x200000",
+    "maxTransferMetadataSize": "0x200000",
     "maxTextContentSize": "0x0200",
     "networkID": "tc",
     "minPayCost" : 10,

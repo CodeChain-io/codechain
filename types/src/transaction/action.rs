@@ -63,6 +63,7 @@ pub enum Action {
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
         orders: Vec<OrderOnTransfer>,
+        metadata: String,
         approvals: Vec<Signature>,
     },
     ChangeAssetScheme {
@@ -171,7 +172,8 @@ impl Action {
     pub fn verify(
         &self,
         system_network_id: NetworkId,
-        max_metadata_size: usize,
+        max_asset_scheme_metadata_size: usize,
+        max_transfer_metadata_size: usize,
         max_text_size: usize,
     ) -> Result<(), ParcelError> {
         match self {
@@ -184,7 +186,7 @@ impl Action {
                 if *network_id != system_network_id {
                     return Err(ParcelError::InvalidNetworkId(*network_id))
                 }
-                if metadata.len() > max_metadata_size {
+                if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(ParcelError::MetadataTooBig)
                 }
                 match output.supply {
@@ -198,8 +200,12 @@ impl Action {
                 inputs,
                 outputs,
                 orders,
+                metadata,
                 ..
             } => {
+                if metadata.len() > max_transfer_metadata_size {
+                    return Err(ParcelError::MetadataTooBig)
+                }
                 if outputs.len() > 512 {
                     return Err(TransactionError::TooManyOutputs(outputs.len()).into())
                 }
@@ -233,7 +239,7 @@ impl Action {
                 if *network_id != system_network_id {
                     return Err(ParcelError::InvalidNetworkId(*network_id))
                 }
-                if metadata.len() > max_metadata_size {
+                if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(ParcelError::MetadataTooBig)
                 }
             }
@@ -263,7 +269,7 @@ impl Action {
                 if *network_id != system_network_id {
                     return Err(ParcelError::InvalidNetworkId(*network_id))
                 }
-                if metadata.len() > max_metadata_size {
+                if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(ParcelError::MetadataTooBig)
                 }
             }
@@ -441,6 +447,7 @@ impl HeapSizeOf for Action {
                 inputs,
                 outputs,
                 orders,
+                metadata,
                 approvals,
                 ..
             } => {
@@ -448,6 +455,7 @@ impl HeapSizeOf for Action {
                     + inputs.heap_size_of_children()
                     + outputs.heap_size_of_children()
                     + orders.heap_size_of_children()
+                    + metadata.heap_size_of_children()
                     + approvals.heap_size_of_children()
             }
             Action::ChangeAssetScheme {
@@ -534,15 +542,17 @@ impl Encodable for Action {
                 inputs,
                 outputs,
                 orders,
+                metadata,
                 approvals,
             } => {
-                s.begin_list(7)
+                s.begin_list(8)
                     .append(&TRANSFER_ASSET)
                     .append(network_id)
                     .append_list(burns)
                     .append_list(inputs)
                     .append_list(outputs)
                     .append_list(orders)
+                    .append(metadata)
                     .append_list(approvals);
             }
             Action::ChangeAssetScheme {
@@ -716,7 +726,7 @@ impl Decodable for Action {
                 })
             }
             TRANSFER_ASSET => {
-                if rlp.item_count()? != 7 {
+                if rlp.item_count()? != 8 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::TransferAsset {
@@ -725,7 +735,8 @@ impl Decodable for Action {
                     inputs: rlp.list_at(3)?,
                     outputs: rlp.list_at(4)?,
                     orders: rlp.list_at(5)?,
-                    approvals: rlp.list_at(6)?,
+                    metadata: rlp.val_at(6)?,
+                    approvals: rlp.list_at(7)?,
                 })
             }
             CHANGE_ASSET_SCHEME => {
@@ -1123,12 +1134,14 @@ mod tests {
         let outputs = vec![];
         let orders = vec![];
         let network_id = "tc".into();
+        let metadata = "".into();
         rlp_encode_and_decode_test!(Action::TransferAsset {
             network_id,
             burns,
             inputs,
             outputs,
             orders,
+            metadata,
             approvals: vec![Signature::random(), Signature::random()],
         });
     }
@@ -1243,9 +1256,10 @@ mod tests {
                 input_indices: vec![0],
                 output_indices: vec![0],
             }],
+            metadata: "".into(),
             approvals: vec![],
         };
-        assert_eq!(action.verify(NetworkId::default(), 1000, 1000), Ok(()));
+        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000), Ok(()));
     }
 
     #[test]
@@ -1351,10 +1365,11 @@ mod tests {
                 input_indices: vec![0, 1],
                 output_indices: vec![0, 1, 2, 4],
             }],
+            metadata: "".into(),
             approvals: vec![],
         };
 
-        assert_eq!(action.verify(NetworkId::default(), 1000, 1000), Ok(()));
+        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000), Ok(()));
     }
 
     #[test]
@@ -1430,10 +1445,11 @@ mod tests {
                 input_indices: vec![0],
                 output_indices: vec![0],
             }],
+            metadata: "".into(),
             approvals: vec![],
         };
         assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000),
+            action.verify(NetworkId::default(), 1000, 1000, 1000),
             Err(TransactionError::InconsistentTransactionInOutWithOrders.into())
         );
 
@@ -1538,10 +1554,11 @@ mod tests {
                 input_indices: vec![0, 1],
                 output_indices: vec![0, 1, 2, 3, 5],
             }],
+            metadata: "".into(),
             approvals: vec![],
         };
         assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000),
+            action.verify(NetworkId::default(), 1000, 1000, 1000),
             Err(TransactionError::InconsistentTransactionInOutWithOrders.into())
         );
 
@@ -1618,10 +1635,11 @@ mod tests {
                 input_indices: vec![0, 1],
                 output_indices: vec![0, 1, 2, 3, 5],
             }],
+            metadata: "".into(),
             approvals: vec![],
         };
         assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000),
+            action.verify(NetworkId::default(), 1000, 1000, 1000),
             Err(TransactionError::InconsistentTransactionInOutWithOrders.into())
         );
 
@@ -1698,10 +1716,11 @@ mod tests {
                 input_indices: vec![0, 1],
                 output_indices: vec![0, 1, 2, 3, 5],
             }],
+            metadata: "".into(),
             approvals: vec![],
         };
         assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000),
+            action.verify(NetworkId::default(), 1000, 1000, 1000),
             Err(TransactionError::InconsistentTransactionInOutWithOrders.into())
         );
     }
@@ -1805,9 +1824,10 @@ mod tests {
                     output_indices: vec![1],
                 },
             ],
+            metadata: "".into(),
             approvals: vec![],
         };
-        assert_eq!(action.verify(NetworkId::default(), 1000, 1000), Ok(()));
+        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000), Ok(()));
     }
 
     #[test]
@@ -1828,7 +1848,7 @@ mod tests {
             approvals: vec![],
         };
         assert_eq!(
-            tx_zero_quantity.verify(NetworkId::default(), 1000, 1000),
+            tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000),
             Err(TransactionError::ZeroQuantity.into())
         );
 
@@ -1849,7 +1869,7 @@ mod tests {
             approvals: vec![],
         };
         assert_eq!(
-            tx_invalid_asset_type.verify(NetworkId::default(), 1000, 1000),
+            tx_invalid_asset_type.verify(NetworkId::default(), 1000, 1000, 1000),
             Err(TransactionError::InvalidAssetType(invalid_asset_type).into())
         );
     }
@@ -1862,6 +1882,6 @@ mod tests {
             parameters: vec![],
             quantity: 0,
         };
-        assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000), Err(ParcelError::ZeroQuantity));
+        assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000), Err(ParcelError::ZeroQuantity));
     }
 }

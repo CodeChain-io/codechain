@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -24,8 +24,10 @@ use crate::uint::Uint;
 pub struct Params {
     /// Maximum size of extra data.
     pub max_extra_data_size: Uint,
-    /// Maximum size of metadata.
-    pub max_metadata_size: Uint,
+    /// Maximum size of metadata of AssetScheme.
+    pub max_asset_scheme_metadata_size: Uint,
+    /// Maximum size of metadata of TransferAsset.
+    pub max_transfer_metadata_size: Uint,
     /// Maximum size of the content of text used in store/remove actions.
     pub max_text_content_size: Uint,
     /// Network id.
@@ -67,7 +69,8 @@ mod tests {
     fn params_deserialization() {
         let s = r#"{
             "maxExtraDataSize": "0x20",
-            "maxMetadataSize": "0x0400",
+            "maxAssetSchemeMetadataSize": "0x0400",
+            "maxTransferMetadataSize": "0x0100",
             "maxTextContentSize": "0x0200",
             "networkID" : "tc",
             "minPayCost" : 10,
@@ -91,7 +94,8 @@ mod tests {
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.max_extra_data_size, Uint(U256::from(0x20)));
-        assert_eq!(deserialized.max_metadata_size, Uint(U256::from(0x0400)));
+        assert_eq!(deserialized.max_asset_scheme_metadata_size, Uint(U256::from(0x0400)));
+        assert_eq!(deserialized.max_transfer_metadata_size, Uint(U256::from(0x0100)));
         assert_eq!(deserialized.max_text_content_size, Uint(U256::from(0x0200)));
         assert_eq!(deserialized.network_id, "tc".into());
         assert_eq!(deserialized.min_pay_cost, Uint(10.into()));
