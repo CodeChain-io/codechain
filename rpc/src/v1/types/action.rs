@@ -704,4 +704,53 @@ mod tests {
         };
         assert_eq!(expected, mint);
     }
+
+    #[test]
+    fn parse_metadata_with_apostrophe() {
+        let input = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[]}"#;
+        let mint = from_str(input).unwrap();
+        let expected = Action::MintAsset {
+            network_id: "ab".into(),
+            shard_id: 0,
+            metadata: "string with 'an apostrophe’".to_string(),
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: vec![],
+
+            output: AssetMintOutput {
+                lock_script_hash: Default::default(),
+                parameters: vec![],
+                supply: Some(1.into()),
+            }
+            .into(),
+
+            approvals: vec![],
+        };
+        assert_eq!(expected, mint);
+    }
+
+    #[test]
+    fn serialize_metadata_with_apostrophe() {
+        let mint = ActionWithId::MintAsset {
+            network_id: "ab".into(),
+            shard_id: 0,
+            metadata: "string with 'an apostrophe’".to_string(),
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: vec![],
+
+            output: AssetMintOutput {
+                lock_script_hash: Default::default(),
+                parameters: vec![],
+                supply: Some(1.into()),
+            }
+            .into(),
+
+            approvals: vec![],
+            id: Default::default(),
+        };
+        let s = to_string(&mint).unwrap();
+        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"id":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
+        assert_eq!(&s, expected);
+    }
 }

@@ -1026,6 +1026,24 @@ mod tests {
     }
 
     #[test]
+    fn encode_and_decode_mint_with_apostrophe() {
+        rlp_encode_and_decode_test!(Action::MintAsset {
+            network_id: "tc".into(),
+            shard_id: 3,
+            metadata: "metadata has an apostrophe(’)".to_string(),
+            output: Box::new(AssetMintOutput {
+                lock_script_hash: H160::random(),
+                parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
+                supply: Some(10000),
+            }),
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: vec![],
+            approvals: vec![Signature::random()],
+        });
+    }
+
+    #[test]
     fn encode_and_decode_transfer_asset() {
         let burns = vec![];
         let inputs = vec![];
