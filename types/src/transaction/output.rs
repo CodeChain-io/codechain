@@ -17,7 +17,6 @@
 use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt};
-use heapsize::HeapSizeOf;
 use primitives::{Bytes, H160, H256};
 
 use crate::ShardId;
@@ -28,12 +27,6 @@ pub struct AssetTransferOutput {
     pub parameters: Vec<Bytes>,
     pub asset_type: H256,
     pub quantity: u64,
-}
-
-impl HeapSizeOf for AssetTransferOutput {
-    fn heap_size_of_children(&self) -> usize {
-        self.parameters.heap_size_of_children()
-    }
 }
 
 impl AssetTransferOutput {

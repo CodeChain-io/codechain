@@ -16,7 +16,6 @@
 
 use ccrypto::blake256;
 use ckey::NetworkId;
-use heapsize::HeapSizeOf;
 use primitives::H256;
 use rlp::RlpStream;
 
@@ -33,12 +32,6 @@ pub struct Transaction {
     pub network_id: NetworkId,
 
     pub action: Action,
-}
-
-impl HeapSizeOf for Transaction {
-    fn heap_size_of_children(&self) -> usize {
-        self.action.heap_size_of_children()
-    }
 }
 
 impl Transaction {

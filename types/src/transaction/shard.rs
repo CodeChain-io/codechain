@@ -16,13 +16,11 @@
 
 use ccrypto::{blake128, blake256, blake256_with_key};
 use ckey::{Address, NetworkId};
-use heapsize::HeapSizeOf;
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::{
-    AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, HashingError, Order, OrderOnTransfer,
-    PartialHashing,
+    AssetMintOutput, AssetTransferInput, AssetTransferOutput, HashingError, Order, OrderOnTransfer, PartialHashing,
 };
 use crate::util::tag::Tag;
 use crate::ShardId;
@@ -258,81 +256,6 @@ impl ShardTransaction {
                 shard_id,
                 ..
             } => &id == shard_id,
-        }
-    }
-}
-
-impl HeapSizeOf for AssetOutPoint {
-    fn heap_size_of_children(&self) -> usize {
-        0
-    }
-}
-
-impl HeapSizeOf for AssetMintOutput {
-    fn heap_size_of_children(&self) -> usize {
-        self.parameters.heap_size_of_children() + self.supply.heap_size_of_children()
-    }
-}
-
-impl HeapSizeOf for ShardTransaction {
-    fn heap_size_of_children(&self) -> usize {
-        match self {
-            ShardTransaction::MintAsset {
-                metadata,
-                approver,
-                output,
-                allowed_script_hashes,
-                ..
-            } => {
-                metadata.heap_size_of_children()
-                    + approver.heap_size_of_children()
-                    + output.heap_size_of_children()
-                    + allowed_script_hashes.heap_size_of_children()
-            }
-            ShardTransaction::TransferAsset {
-                burns,
-                inputs,
-                outputs,
-                orders,
-                ..
-            } => {
-                burns.heap_size_of_children()
-                    + inputs.heap_size_of_children()
-                    + outputs.heap_size_of_children()
-                    + orders.heap_size_of_children()
-            }
-            ShardTransaction::ChangeAssetScheme {
-                metadata,
-                allowed_script_hashes,
-                ..
-            } => metadata.heap_size_of_children() + allowed_script_hashes.heap_size_of_children(),
-            ShardTransaction::ComposeAsset {
-                metadata,
-                approver,
-                inputs,
-                output,
-                allowed_script_hashes,
-                ..
-            } => {
-                metadata.heap_size_of_children()
-                    + approver.heap_size_of_children()
-                    + inputs.heap_size_of_children()
-                    + output.heap_size_of_children()
-                    + allowed_script_hashes.heap_size_of_children()
-            }
-            ShardTransaction::DecomposeAsset {
-                input,
-                outputs,
-                ..
-            } => input.heap_size_of_children() + outputs.heap_size_of_children(),
-            ShardTransaction::UnwrapCCC {
-                burn,
-                ..
-            } => burn.heap_size_of_children(),
-            ShardTransaction::WrapCCC {
-                output,
-                ..
-            } => output.heap_size_of_children(),
         }
     }
 }
@@ -751,6 +674,7 @@ mod tests {
 
     use rlp::rlp_encode_and_decode_test;
 
+    use super::super::AssetOutPoint;
     use super::*;
 
     #[test]

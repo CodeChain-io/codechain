@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use heapsize::HeapSizeOf;
 use primitives::{Bytes, H160, H256};
 
 use super::error::Error;
@@ -138,22 +137,6 @@ impl Order {
             lock_script_hash_fee: self.lock_script_hash_fee,
             parameters_fee: self.parameters_fee.clone(),
         }
-    }
-}
-
-impl HeapSizeOf for Order {
-    fn heap_size_of_children(&self) -> usize {
-        self.origin_outputs.heap_size_of_children()
-            + self.parameters_from.heap_size_of_children()
-            + self.parameters_fee.heap_size_of_children()
-    }
-}
-
-impl HeapSizeOf for OrderOnTransfer {
-    fn heap_size_of_children(&self) -> usize {
-        self.order.heap_size_of_children()
-            + self.input_indices.heap_size_of_children()
-            + self.output_indices.heap_size_of_children()
     }
 }
 

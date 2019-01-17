@@ -31,7 +31,6 @@ extern crate codechain_types as ctypes;
 extern crate codechain_vm as cvm;
 extern crate cuckoo;
 extern crate hashdb;
-extern crate heapsize;
 extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_memorydb;
