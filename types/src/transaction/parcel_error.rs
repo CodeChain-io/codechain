@@ -190,7 +190,7 @@ impl Decodable for Error {
             ERROR_ID_INSUFFICIENT_BALANCE => Error::InsufficientBalance {
                 address: rlp.val_at(1)?,
                 balance: rlp.val_at(2)?,
-                cost: rlp.val_at(2)?,
+                cost: rlp.val_at(3)?,
             },
             ERROR_ID_INVALID_SEQ => Error::InvalidSeq(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
