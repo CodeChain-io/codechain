@@ -20,9 +20,9 @@ use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cmerkle::skewed_merkle_root;
 use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelState};
+use ctypes::errors::HistoryError;
 use ctypes::invoice::Invoice;
 use ctypes::machine::{LiveBlock, Transactions};
-use ctypes::transaction::ParcelError;
 use ctypes::util::unexpected::Mismatch;
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
@@ -156,7 +156,7 @@ impl<'x> OpenBlock<'x> {
         client: &C,
     ) -> Result<(), Error> {
         if self.block.transactions_set.contains(&tx.hash()) {
-            return Err(StateError::Parcel(ParcelError::TransactionAlreadyImported).into())
+            return Err(StateError::History(HistoryError::TransactionAlreadyImported).into())
         }
 
         let invoice = self.block.state.apply(&tx, &tx.hash(), &tx.signer_public(), client)?;

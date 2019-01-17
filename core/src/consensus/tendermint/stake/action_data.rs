@@ -18,7 +18,7 @@ use std::collections::{btree_set, BTreeSet};
 
 use ckey::Address;
 use cstate::{ActionDataKeyBuilder, TopLevelState, TopState, TopStateView};
-use ctypes::transaction::ParcelError;
+use ctypes::errors::RuntimeError;
 use primitives::H256;
 use rlp::{RlpStream, UntrustedRlp};
 
@@ -63,9 +63,9 @@ impl<'a> StakeAccount<'a> {
         Ok(())
     }
 
-    pub fn subtract_balance(&mut self, amount: u64) -> Result<(), ParcelError> {
+    pub fn subtract_balance(&mut self, amount: u64) -> Result<(), RuntimeError> {
         if self.balance < amount {
-            return Err(ParcelError::InsufficientBalance {
+            return Err(RuntimeError::InsufficientBalance {
                 address: *self.address,
                 cost: amount,
                 balance: self.balance,
@@ -75,7 +75,7 @@ impl<'a> StakeAccount<'a> {
         Ok(())
     }
 
-    pub fn add_balance(&mut self, amount: u64) -> Result<(), ParcelError> {
+    pub fn add_balance(&mut self, amount: u64) -> Result<(), RuntimeError> {
         self.balance += amount;
         Ok(())
     }
@@ -175,7 +175,7 @@ mod tests {
             assert!(result.is_err());
             assert_eq!(
                 result,
-                Err(ParcelError::InsufficientBalance {
+                Err(RuntimeError::InsufficientBalance {
                     address,
                     cost: 110,
                     balance: 100,

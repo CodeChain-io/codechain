@@ -16,12 +16,10 @@
 
 mod action;
 mod asset_out_point;
-mod error;
 mod incomplete_transaction;
 mod input;
 mod order;
 mod output;
-mod parcel_error;
 mod partial_hashing;
 mod shard;
 mod timelock;
@@ -30,12 +28,10 @@ mod transaction;
 
 pub use self::action::Action;
 pub use self::asset_out_point::AssetOutPoint;
-pub use self::error::{Error, UnlockFailureReason};
 pub use self::incomplete_transaction::IncompleteTransaction;
 pub use self::input::AssetTransferInput;
 pub use self::order::{Order, OrderOnTransfer};
 pub use self::output::{AssetMintOutput, AssetTransferOutput};
-pub use self::parcel_error::Error as ParcelError;
 pub use self::partial_hashing::{HashingError, PartialHashing};
 pub use self::shard::{AssetWrapCCCOutput, ShardTransaction};
 pub use self::timelock::Timelock;

@@ -18,8 +18,8 @@ use primitives::{Bytes, H160};
 
 use crate::ShardId;
 
-use super::error::Error;
 use super::{AssetOutPoint, AssetTransferOutput};
+use crate::errors::SyntaxError;
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
 pub struct Order {
@@ -58,17 +58,17 @@ impl Order {
     // FIXME: Remove this after the clippy nonminimal bool bug is fixed
     // https://rust-lang.github.io/rust-clippy/v0.0.212/#nonminimal_bool
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::nonminimal_bool))]
-    pub fn verify(&self) -> Result<(), Error> {
+    pub fn verify(&self) -> Result<(), SyntaxError> {
         // If asset_quantity_fee is zero, it means there's no fee to pay.
         if (self.asset_type_from == self.asset_type_to && self.shard_id_from == self.shard_id_to)
             || self.asset_quantity_fee != 0
                 && ((self.asset_type_from == self.asset_type_fee && self.shard_id_from == self.shard_id_fee)
                     || (self.asset_type_to == self.asset_type_fee && self.shard_id_to == self.shard_id_fee))
         {
-            return Err(Error::InvalidOrderAssetTypes)
+            return Err(SyntaxError::InvalidOrderAssetTypes)
         }
         if (self.asset_quantity_from == 0) ^ (self.asset_quantity_to == 0) {
-            return Err(Error::InvalidOrderAssetQuantities {
+            return Err(SyntaxError::InvalidOrderAssetQuantities {
                 from: self.asset_quantity_from,
                 to: self.asset_quantity_to,
                 fee: self.asset_quantity_fee,
@@ -77,7 +77,7 @@ impl Order {
         if self.asset_quantity_from == 0 && self.asset_quantity_fee != 0
             || self.asset_quantity_from != 0 && self.asset_quantity_fee % self.asset_quantity_from != 0
         {
-            return Err(Error::InvalidOrderAssetQuantities {
+            return Err(SyntaxError::InvalidOrderAssetQuantities {
                 from: self.asset_quantity_from,
                 to: self.asset_quantity_to,
                 fee: self.asset_quantity_fee,
@@ -87,22 +87,22 @@ impl Order {
             && self.lock_script_hash_fee == self.lock_script_hash_from
             && self.parameters_fee == self.parameters_from
         {
-            return Err(Error::OrderRecipientsAreSame)
+            return Err(SyntaxError::OrderRecipientsAreSame)
         }
         if self.origin_outputs.is_empty() {
-            return Err(Error::InvalidOriginOutputs(self.hash()))
+            return Err(SyntaxError::InvalidOriginOutputs(self.hash()))
         }
         for origin_output in self.origin_outputs.iter() {
             if (origin_output.asset_type != self.asset_type_from || origin_output.shard_id != self.shard_id_from)
                 && (origin_output.asset_type != self.asset_type_fee || origin_output.shard_id != self.shard_id_fee)
             {
-                return Err(Error::InvalidOriginOutputs(self.hash()))
+                return Err(SyntaxError::InvalidOriginOutputs(self.hash()))
             }
         }
         Ok(())
     }
 
-    pub fn check_transfer_output(&self, output: &AssetTransferOutput) -> Result<bool, Error> {
+    pub fn check_transfer_output(&self, output: &AssetTransferOutput) -> Result<bool, SyntaxError> {
         if self.asset_quantity_fee != 0
             && self.asset_type_fee == output.asset_type
             && self.shard_id_fee == output.shard_id
@@ -114,10 +114,10 @@ impl Order {
         }
 
         if self.lock_script_hash_from != output.lock_script_hash {
-            return Err(Error::InvalidOrderLockScriptHash(self.lock_script_hash_from))
+            return Err(SyntaxError::InvalidOrderLockScriptHash(self.lock_script_hash_from))
         }
         if self.parameters_from != output.parameters {
-            return Err(Error::InvalidOrderParameters(self.parameters_from.to_vec()))
+            return Err(SyntaxError::InvalidOrderParameters(self.parameters_from.to_vec()))
         }
         // owned by maker
         Ok(true)
@@ -263,7 +263,7 @@ mod tests {
             lock_script_hash_fee: H160::random(),
             parameters_fee: vec![vec![1]],
         };
-        assert_eq!(order.verify(), Err(Error::InvalidOriginOutputs(order.hash())));
+        assert_eq!(order.verify(), Err(SyntaxError::InvalidOriginOutputs(order.hash())));
 
         let order = Order {
             asset_type_from,
@@ -282,7 +282,7 @@ mod tests {
             lock_script_hash_fee: H160::random(),
             parameters_fee: vec![vec![1]],
         };
-        assert_eq!(order.verify(), Err(Error::InvalidOriginOutputs(order.hash())));
+        assert_eq!(order.verify(), Err(SyntaxError::InvalidOriginOutputs(order.hash())));
 
         // 2. asset quantitys are invalid
         let order = Order {
@@ -310,7 +310,7 @@ mod tests {
         };
         assert_eq!(
             order.verify(),
-            Err(Error::InvalidOrderAssetQuantities {
+            Err(SyntaxError::InvalidOrderAssetQuantities {
                 from: 3,
                 to: 0,
                 fee: 3,
@@ -342,7 +342,7 @@ mod tests {
         };
         assert_eq!(
             order.verify(),
-            Err(Error::InvalidOrderAssetQuantities {
+            Err(SyntaxError::InvalidOrderAssetQuantities {
                 from: 0,
                 to: 2,
                 fee: 3,
@@ -374,7 +374,7 @@ mod tests {
         };
         assert_eq!(
             order.verify(),
-            Err(Error::InvalidOrderAssetQuantities {
+            Err(SyntaxError::InvalidOrderAssetQuantities {
                 from: 0,
                 to: 0,
                 fee: 3,
@@ -406,7 +406,7 @@ mod tests {
         };
         assert_eq!(
             order.verify(),
-            Err(Error::InvalidOrderAssetQuantities {
+            Err(SyntaxError::InvalidOrderAssetQuantities {
                 from: 3,
                 to: 2,
                 fee: 2,
@@ -438,7 +438,7 @@ mod tests {
             lock_script_hash_fee: H160::random(),
             parameters_fee: vec![vec![1]],
         };
-        assert_eq!(order.verify(), Err(Error::InvalidOrderAssetTypes));
+        assert_eq!(order.verify(), Err(SyntaxError::InvalidOrderAssetTypes));
 
         let asset_type = H160::random();
         let order = Order {
@@ -464,6 +464,6 @@ mod tests {
             lock_script_hash_fee: H160::random(),
             parameters_fee: vec![vec![1]],
         };
-        assert_eq!(order.verify(), Err(Error::InvalidOrderAssetTypes));
+        assert_eq!(order.verify(), Err(SyntaxError::InvalidOrderAssetTypes));
     }
 }

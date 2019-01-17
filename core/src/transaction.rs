@@ -18,7 +18,8 @@ use std::ops::Deref;
 
 use ccrypto::blake256;
 use ckey::{self, recover, sign, Private, Public, Signature};
-use ctypes::transaction::{ParcelError, Transaction};
+use ctypes::errors::SyntaxError;
+use ctypes::transaction::Transaction;
 use ctypes::BlockNumber;
 use primitives::H256;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -127,13 +128,13 @@ impl UnverifiedTransaction {
     }
 
     /// Verify basic signature params. Does not attempt signer recovery.
-    pub fn verify_basic(&self, params: &CommonParams) -> Result<(), ParcelError> {
+    pub fn verify_basic(&self, params: &CommonParams) -> Result<(), SyntaxError> {
         if self.network_id != params.network_id {
-            return Err(ParcelError::InvalidNetworkId(self.network_id))
+            return Err(SyntaxError::InvalidNetworkId(self.network_id))
         }
         let byte_size = rlp::encode(self).to_vec().len();
         if byte_size >= params.max_body_size {
-            return Err(ParcelError::TransactionIsTooBig)
+            return Err(SyntaxError::TransactionIsTooBig)
         }
         self.action.verify(
             params.network_id,

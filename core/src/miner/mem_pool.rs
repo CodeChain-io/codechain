@@ -18,7 +18,8 @@ use std::cmp;
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use ckey::{public_to_address, Public};
-use ctypes::transaction::ParcelError;
+use cstate::StateError;
+use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 use ctypes::BlockNumber;
 use primitives::H256;
 use rlp;
@@ -33,6 +34,41 @@ use super::TransactionImportResult;
 use crate::transaction::SignedTransaction;
 
 const DEFAULT_POOLING_PERIOD: BlockNumber = 128;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Error {
+    History(HistoryError),
+    Runtime(RuntimeError),
+    Syntax(SyntaxError),
+}
+
+impl Error {
+    pub fn into_state_error(self) -> StateError {
+        match self {
+            Error::History(err) => StateError::History(err),
+            Error::Runtime(err) => StateError::Runtime(err),
+            Error::Syntax(err) => StateError::Syntax(err),
+        }
+    }
+}
+
+impl From<HistoryError> for Error {
+    fn from(err: HistoryError) -> Error {
+        Error::History(err)
+    }
+}
+
+impl From<RuntimeError> for Error {
+    fn from(err: RuntimeError) -> Error {
+        Error::Runtime(err)
+    }
+}
+
+impl From<SyntaxError> for Error {
+    fn from(err: SyntaxError) -> Error {
+        Error::Syntax(err)
+    }
+}
 
 pub struct MemPool {
     /// Fee threshold for transactions that can be imported to this pool (defaults to 0)
@@ -209,7 +245,7 @@ impl MemPool {
         current_time: PoolingInstant,
         current_timestamp: u64,
         fetch_account: &F,
-    ) -> Vec<Result<TransactionImportResult, ParcelError>>
+    ) -> Vec<Result<TransactionImportResult, Error>>
     where
         F: Fn(&Public) -> AccountDetails, {
         ctrace!(MEM_POOL, "add() called, time: {}, timestamp: {}", current_time, current_timestamp);
@@ -335,7 +371,7 @@ impl MemPool {
                         QueueTag::Future => Ok(TransactionImportResult::Future),
                         QueueTag::New => unreachable!(),
                     },
-                    None => Err(ParcelError::LimitReached),
+                    None => Err(HistoryError::LimitReached.into()),
                 },
                 Err(e) => Err(e),
             })
@@ -646,7 +682,7 @@ impl MemPool {
         tx: &SignedTransaction,
         origin: TxOrigin,
         client_account: &AccountDetails,
-    ) -> Result<(), ParcelError> {
+    ) -> Result<(), Error> {
         if origin != TxOrigin::Local && tx.fee < self.minimal_fee {
             ctrace!(
                 MEM_POOL,
@@ -656,10 +692,11 @@ impl MemPool {
                 self.minimal_fee
             );
 
-            return Err(ParcelError::InsufficientFee {
+            return Err(SyntaxError::InsufficientFee {
                 minimal: self.minimal_fee,
                 got: tx.fee,
-            })
+            }
+            .into())
         }
 
         let full_pools_lowest = self.effective_minimum_fee();
@@ -672,10 +709,11 @@ impl MemPool {
                 full_pools_lowest
             );
 
-            return Err(ParcelError::InsufficientFee {
+            return Err(SyntaxError::InsufficientFee {
                 minimal: full_pools_lowest,
                 got: tx.fee,
-            })
+            }
+            .into())
         }
 
         if client_account.balance < tx.fee {
@@ -687,21 +725,22 @@ impl MemPool {
                 tx.fee
             );
 
-            return Err(ParcelError::InsufficientBalance {
+            return Err(RuntimeError::InsufficientBalance {
                 address: public_to_address(&tx.signer_public()),
                 cost: tx.fee,
                 balance: client_account.balance,
-            })
+            }
+            .into())
         }
 
         if self.by_hash.get(&tx.hash()).is_some() {
             ctrace!(MEM_POOL, "Dropping already imported transaction: {:?}", tx.hash());
-            return Err(ParcelError::TransactionAlreadyImported)
+            return Err(HistoryError::TransactionAlreadyImported.into())
         }
 
         if tx.seq < client_account.seq {
             ctrace!(MEM_POOL, "Dropping old transaction: {:?} (seq: {} < {})", tx.hash(), tx.seq, client_account.seq);
-            return Err(ParcelError::Old)
+            return Err(HistoryError::Old.into())
         }
 
         if origin != TxOrigin::Local {
@@ -723,7 +762,7 @@ impl MemPool {
                         min_required_fee,
                         old_fee,
                     );
-                    return Err(ParcelError::TooCheapToReplace)
+                    return Err(HistoryError::TooCheapToReplace.into())
                 }
             }
         }
@@ -797,6 +836,7 @@ impl MemPool {
         false
     }
 }
+
 
 #[cfg(test)]
 pub mod test {
