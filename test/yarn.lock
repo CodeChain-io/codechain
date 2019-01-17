@@ -875,9 +875,9 @@ codechain-primitives@^0.4.4:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-"codechain-sdk@https://github.com/HoOngEe/codechain-sdk-js.git#Serial-Rename-lib":
+"codechain-sdk@https://github.com/jhs7jhs/codechain-sdk-js.git#add-transfer-metadata-lib":
   version "0.5.1"
-  resolved "https://github.com/HoOngEe/codechain-sdk-js.git#50f758d20d81721aa636be2e9a7029dd6b7f26a5"
+  resolved "https://github.com/jhs7jhs/codechain-sdk-js.git#2bbbf26701fccb021f134145afc02ee316952c40"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"
