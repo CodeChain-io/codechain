@@ -15,8 +15,7 @@ jobs:
       name: test-osx
       os: osx
       before_install:
-        - .travis/check-doc-change /tmp/result
-        - if [ $(cat /tmp/result) = "skip" ]; then travis_terminate 0; fi
+        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
         - rustup component add rustfmt-preview --toolchain nightly-2018-12-06
@@ -30,8 +29,7 @@ jobs:
     - name: int-test-osx
       os: osx
       before_install:
-        - .travis/check-doc-change /tmp/result
-        - if [ $(cat /tmp/result) = "skip" ]; then travis_terminate 0; fi
+        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
       install:
         - nvm install 10
         - nvm use 10
@@ -49,8 +47,7 @@ jobs:
       os: linux
       sudo: required
       before_install:
-        - .travis/check-doc-change /tmp/result
-        - if [ $(cat /tmp/result) = "skip" ]; then travis_terminate 0; fi
+        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
         - rustup component add rustfmt-preview --toolchain nightly-2018-12-06
@@ -65,8 +62,7 @@ jobs:
       os: linux
       sudo: required
       before_install:
-        - .travis/check-doc-change /tmp/result
-        - if [ $(cat /tmp/result) = "skip" ]; then travis_terminate 0; fi
+        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
       install:
         - nvm install 10
         - nvm use 10

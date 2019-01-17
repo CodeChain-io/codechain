@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 set -e
+# Everything that is normally printed to `stdout` in the script will be redirected to `stderr`
+# which will be visible in tty/Travis log.
+# Outputs that is printed to `fd 3` will be redirected to `stdout`,
+# which will be finally assigned to a variable `$SKIP`
+exec 3>&1 1>&2 # fd 3 = fd 1; fd 1 = fd 2
 
-RESULT_FILE="${1}"
 function return_to_travis {
     STRATEGY="${1}"
-    echo ${STRATEGY} > ${RESULT_FILE}
-    exit
+    echo ${STRATEGY} >&3
+    exit 0
 }
 function skip_travis { return_to_travis "skip" ; }
 function noskip_travis { return_to_travis "noskip" ; }
