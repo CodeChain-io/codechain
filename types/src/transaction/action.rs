@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -1080,6 +1080,23 @@ mod tests {
         });
     }
 
+    #[test]
+    fn encode_and_decode_mint_with_single_quotation() {
+        rlp_encode_and_decode_test!(Action::MintAsset {
+            network_id: "tc".into(),
+            shard_id: 3,
+            metadata: "metadata has a single quotation(')".to_string(),
+            output: Box::new(AssetMintOutput {
+                lock_script_hash: H160::random(),
+                parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
+                supply: Some(10000),
+            }),
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: vec![],
+            approvals: vec![Signature::random()],
+        });
+    }
 
     #[test]
     fn encode_and_decode_transfer_asset() {
