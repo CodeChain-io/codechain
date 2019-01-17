@@ -673,6 +673,9 @@ impl MemPool {
 
         self.enforce_limit();
 
+        self.last_time = current_time;
+        self.last_timestamp = current_timestamp;
+
         assert_eq!(self.current.len() + self.future.len(), self.by_hash.len());
         assert_eq!(self.current.fee_counter.values().sum::<usize>(), self.current.len());
         assert_eq!(self.by_signer_public.len(), self.by_hash.len());
@@ -819,6 +822,9 @@ impl MemPool {
                 self.is_local_account.remove(&public);
             }
         }
+
+        self.last_time = current_time;
+        self.last_timestamp = current_timestamp;
 
         assert_eq!(self.current.len() + self.future.len(), self.by_hash.len());
         assert_eq!(self.current.fee_counter.values().sum::<usize>(), self.current.len());
