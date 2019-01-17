@@ -3,7 +3,11 @@ rust:
   - 1.31.0
 stages:
   - name: test
-    if: branch != docker-build
+    if: >
+    branch != docker-build AND
+    # Skip a PR merge. We only merge a PR with up-to-date base branch.
+    # The HEAD of a master is identical the HEAD to the PR, so testing on master is redundant.
+    NOT (branch = master AND sender != mergify[bot])
   - name: deploy
     if: branch = docker-build
 
