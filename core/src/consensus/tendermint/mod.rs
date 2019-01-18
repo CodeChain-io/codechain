@@ -185,6 +185,18 @@ impl TendermintInner {
         *block_hash
     }
 
+    /// Check the previous block is imported to the canonical chain
+    fn check_prev_block_exists(&self) -> bool {
+        let prev_height = (self.height - 1) as u64;
+        self.client().block_header(&BlockId::Number(prev_height)).is_some()
+    }
+
+    /// Check Tendermint can move from the commit step to the propose step
+    fn can_move_from_commit_to_propose(&self) -> bool {
+        let vote_step = VoteStep::new(self.height - 1, self.last_confirmed_view.1, Step::Precommit);
+        self.step == TendermintState::Commit && self.has_all_votes(&vote_step) && self.check_prev_block_exists()
+    }
+
     /// Find the designated for the given view.
     fn view_proposer(&self, bh: &H256, height: Height, view: View) -> Address {
         let proposer_nonce = height + view;
@@ -508,10 +520,12 @@ impl TendermintInner {
             }
         } else if vote_step.step == Step::Precommit
             && self.height - 1 == vote_step.height
-            && self.step == TendermintState::Commit
-            && self.has_all_votes(vote_step)
+            && self.can_move_from_commit_to_propose()
         {
-            ctrace!(ENGINE, "Transition to Propose because all pre-commits are received");
+            ctrace!(
+                ENGINE,
+                "Transition to Propose because all pre-commits are received and the canonical chain is appended"
+            );
             self.move_to_step(Step::Propose);
             return
         }
@@ -884,6 +898,10 @@ impl TendermintInner {
             }
             TendermintState::Commit => {
                 ctrace!(ENGINE, "Commit timeout.");
+                assert!(
+                    self.check_prev_block_exists(),
+                    "The canonical chain must have the block of the previous height"
+                );
                 Some(Step::Propose)
             }
         };
@@ -1263,7 +1281,7 @@ impl ChainNotify for TendermintChainNotify {
         &self,
         imported: Vec<H256>,
         _invalid: Vec<H256>,
-        _enacted: Vec<H256>,
+        enacted: Vec<H256>,
         _retracted: Vec<H256>,
         _sealed: Vec<H256>,
         _duration: u64,
@@ -1279,11 +1297,10 @@ impl ChainNotify for TendermintChainNotify {
         };
 
         let mut t = t.inner.lock();
-
-        let imported_is_empty = imported.is_empty();
-        if imported_is_empty {
+        if imported.is_empty() {
             return
         }
+
         let mut height_changed = false;
         for hash in imported {
             // New Commit received, skip to next height.
@@ -1301,7 +1318,15 @@ impl ChainNotify for TendermintChainNotify {
             }
         }
         if height_changed {
-            t.move_to_step(Step::Commit)
+            t.move_to_step(Step::Commit);
+            return
+        }
+        if !enacted.is_empty() && t.can_move_from_commit_to_propose() {
+            ctrace!(
+                ENGINE,
+                "Transition to Propose because all pre-commits are received and the canonical chain is appended"
+            );
+            t.move_to_step(Step::Propose)
         }
     }
 }
