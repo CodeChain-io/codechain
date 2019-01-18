@@ -75,6 +75,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 ### TranferAsset Action
 
  - networkId: `NetworkID`
+ - metadata: `string`
  - burns: `AssetTransferInput[]`
  - inputs: `AssetTransferInput[]`
  - outputs: `AssetTransferOutput[]`

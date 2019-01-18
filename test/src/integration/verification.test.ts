@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -142,8 +142,8 @@ describe("solo - 1 node", function() {
             { actionType: 0x11, actionLength: 5 },
             { actionType: 0x13, actionLength: 10 },
             { actionType: 0x13, actionLength: 12 },
-            { actionType: 0x14, actionLength: 6 },
-            { actionType: 0x14, actionLength: 8 },
+            { actionType: 0x14, actionLength: 7 },
+            { actionType: 0x14, actionLength: 9 },
             { actionType: 0x15, actionLength: 7 },
             { actionType: 0x15, actionLength: 9 },
             { actionType: 0x16, actionLength: 11 },

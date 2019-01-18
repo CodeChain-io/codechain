@@ -1095,6 +1095,7 @@ pub mod test {
                 inputs: vec![],
                 outputs: vec![],
                 orders: vec![],
+                metadata: "".into(),
                 approvals: vec![],
             },
         };
