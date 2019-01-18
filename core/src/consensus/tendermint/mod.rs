@@ -181,8 +181,11 @@ impl TendermintInner {
 
     /// Get previous block hash to determine validator set
     fn prev_block_hash(&self) -> H256 {
-        let (block_hash, _) = &self.last_confirmed_view;
-        *block_hash
+        let prev_height = (self.height - 1) as u64;
+        self.client()
+            .block_header(&BlockId::Number(prev_height))
+            .expect("Height is increased when previous block is imported")
+            .hash()
     }
 
     /// Check the previous block is imported to the canonical chain
@@ -388,7 +391,7 @@ impl TendermintInner {
                         return
                     }
                 } else {
-                    let (parent_block_hash, _) = &self.last_confirmed_view;
+                    let parent_block_hash = &self.prev_block_hash();
                     if self.is_signer_proposer(parent_block_hash) {
                         ctrace!(ENGINE, "I am a proposer, I'll create a block");
                         self.update_sealing(*parent_block_hash);
@@ -663,8 +666,10 @@ impl TendermintInner {
 
         let view = self.view;
 
-        let (last_block_hash, last_block_view) = &self.last_confirmed_view;
+        let last_block_hash = &self.prev_block_hash();
+        let last_block_view = &self.last_confirmed_view.1;
         assert_eq!(last_block_hash, &parent.hash());
+
         let (precommits, precommit_indices) = self.votes.round_signatures_and_indices(
             &VoteStep::new(height - 1, *last_block_view, Step::Precommit),
             &last_block_hash,
@@ -963,16 +968,11 @@ impl TendermintInner {
                 })
             }
 
-            let prev_block_hash = if message.on.step.height == self.height {
-                self.last_confirmed_view.0
-            } else {
-                // message.on.step.height < self.height
-                let parent_header = self
-                    .client()
-                    .block_header(&BlockId::Number((message.on.step.height as u64) - 1))
-                    .expect("(self.height - 2) <= best block number");
-                parent_header.hash()
-            };
+            let prev_block_hash = self
+                .client()
+                .block_header(&BlockId::Number((message.on.step.height as u64) - 1))
+                .expect("self.height - 1 == the best block number")
+                .hash();
 
             if signer_index >= self.validators.count(&prev_block_hash) {
                 return Err(EngineError::ValidatorNotExist {
