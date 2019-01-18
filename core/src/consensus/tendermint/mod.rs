@@ -95,7 +95,8 @@ struct TendermintInner {
     last_lock: View,
     /// hash of the proposed block, used for seal submission.
     proposal: Option<H256>,
-    last_confirmed_view: (H256, View),
+    /// The last view of the previous height
+    last_confirmed_view: View,
     /// Set used to determine the current validators.
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
@@ -149,7 +150,7 @@ impl TendermintInner {
             lock_change: None,
             last_lock: 0,
             proposal: None,
-            last_confirmed_view: (Default::default(), 0),
+            last_confirmed_view: 0,
             validators: our_params.validators,
             block_reward: our_params.block_reward,
             extension: Arc::new(extension),
@@ -181,7 +182,7 @@ impl TendermintInner {
 
     /// Check Tendermint can move from the commit step to the propose step
     fn can_move_from_commit_to_propose(&self) -> bool {
-        let vote_step = VoteStep::new(self.height - 1, self.last_confirmed_view.1, Step::Precommit);
+        let vote_step = VoteStep::new(self.height - 1, self.last_confirmed_view, Step::Precommit);
         self.step == TendermintState::Commit && self.has_all_votes(&vote_step) && self.check_prev_block_exists()
     }
 
@@ -315,8 +316,8 @@ impl TendermintInner {
         self.client().update_sealing(BlockId::Hash(parent_block_hash), true);
     }
 
-    fn save_last_confirmed_view(&mut self, block_hash: H256, view: View) {
-        self.last_confirmed_view = (block_hash, view);
+    fn save_last_confirmed_view(&mut self, view: View) {
+        self.last_confirmed_view = view;
     }
 
     fn increment_view(&mut self, n: View) {
@@ -330,13 +331,13 @@ impl TendermintInner {
         self.last_lock < lock_change_view && lock_change_view < self.view
     }
 
-    fn move_to_next_height(&mut self, height: Height, confirmed_block_hash: &H256, confirmed_view: View) {
+    fn move_to_next_height(&mut self, height: Height, confirmed_view: View) {
         assert!(height >= self.height, "{} < {}", height, self.height);
         let new_height = height + 1;
         cdebug!(ENGINE, "Received a Commit, transitioning to height {}.", new_height);
         self.last_lock = 0;
         self.height = new_height;
-        self.save_last_confirmed_view(*confirmed_block_hash, confirmed_view);
+        self.save_last_confirmed_view(confirmed_view);
         self.view = 0;
         self.lock_change = None;
         self.proposal = None;
@@ -480,7 +481,7 @@ impl TendermintInner {
                         // Commit the block using a complete signature set.
                         // Generate seal and remove old votes.
                         let height = self.height;
-                        self.move_to_next_height(height, &bh, message.on.step.view);
+                        self.move_to_next_height(height, message.on.step.view);
 
                         // Update the best block hash as the hash of the committed block
                         self.client().update_best_as_committed(bh);
@@ -539,8 +540,7 @@ impl TendermintInner {
                 self.move_to_step(Step::Prevote);
             }
         } else if current_height < height {
-            let parent_hash = proposal.parent_hash();
-            self.move_to_next_height(height - 1, parent_hash, view);
+            self.move_to_next_height(height - 1, view);
             self.proposal = Some(proposal.hash());
             self.move_to_step(Step::Prevote);
         }
@@ -582,7 +582,7 @@ impl TendermintInner {
 
             if let Some((committed, view)) = to_next_height {
                 if client.block(&BlockId::Hash(committed)).is_some() {
-                    self.move_to_next_height(backup.height, &committed, view);
+                    self.move_to_next_height(backup.height, view);
                     return
                 } else {
                     cwarn!(ENGINE, "Cannot find a proposal which committed");
@@ -648,7 +648,7 @@ impl TendermintInner {
         let view = self.view;
 
         let last_block_hash = &self.prev_block_hash();
-        let last_block_view = &self.last_confirmed_view.1;
+        let last_block_view = &self.last_confirmed_view;
         assert_eq!(last_block_hash, &parent.hash());
 
         let (precommits, precommit_indices) = self.votes.round_signatures_and_indices(
@@ -921,10 +921,7 @@ impl TendermintInner {
     }
 
     fn register_client(&mut self, client: Weak<EngineClient>) {
-        if let Some(c) = client.upgrade() {
-            self.height = c.chain_info().best_block_number as usize + 1;
-            self.last_confirmed_view = (c.best_block_header().hash(), 0);
-        }
+        self.last_confirmed_view = 0;
         self.client = Some(Weak::clone(&client));
         self.restore();
         self.extension.register_client(Weak::clone(&client));
@@ -1287,9 +1284,8 @@ impl ChainNotify for TendermintChainNotify {
             } else if t.height < header.number() as usize {
                 height_changed = true;
                 ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
-                let parent_hash = header.parent_hash();
                 let view = consensus_view(&full_header).expect("Imported block already checked");
-                t.move_to_next_height((header.number() - 1) as usize, &parent_hash, view);
+                t.move_to_next_height((header.number() - 1) as usize, view);
             }
         }
         if height_changed {
@@ -1652,7 +1648,7 @@ impl TendermintExtension {
             // the previous step. So, act as the last precommit step.
             VoteStep {
                 height: tendermint.height - 1,
-                view: tendermint.last_confirmed_view.1,
+                view: tendermint.last_confirmed_view,
                 step: Step::Precommit,
             }
         } else {
