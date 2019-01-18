@@ -38,7 +38,7 @@ import CodeChain from "../helper/spawn";
     ];
     nodes = validatorAddresses.map(address => {
         return new CodeChain({
-            chain: `${__dirname}/../scheme/tendermint.json`,
+            chain: `${__dirname}/../scheme/tendermint-tps.json`,
             argv: [
                 "--engine-signer",
                 address.toString(),

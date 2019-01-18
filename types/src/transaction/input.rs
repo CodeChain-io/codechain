@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use heapsize::HeapSizeOf;
 use primitives::Bytes;
 
 use super::{AssetOutPoint, Timelock};
@@ -26,12 +25,6 @@ pub struct AssetTransferInput {
     pub timelock: Option<Timelock>,
     pub lock_script: Bytes,
     pub unlock_script: Bytes,
-}
-
-impl HeapSizeOf for AssetTransferInput {
-    fn heap_size_of_children(&self) -> usize {
-        self.lock_script.heap_size_of_children() + self.unlock_script.heap_size_of_children()
-    }
 }
 
 impl AssetTransferInput {

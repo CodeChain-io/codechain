@@ -20,7 +20,6 @@ use ccrypto::blake256;
 use ckey::{self, recover, sign, Private, Public, Signature};
 use ctypes::transaction::{ParcelError, Transaction};
 use ctypes::BlockNumber;
-use heapsize::HeapSizeOf;
 use primitives::H256;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -150,12 +149,6 @@ impl UnverifiedTransaction {
 pub struct SignedTransaction {
     tx: UnverifiedTransaction,
     signer_public: Public,
-}
-
-impl HeapSizeOf for SignedTransaction {
-    fn heap_size_of_children(&self) -> usize {
-        self.tx.unsigned.heap_size_of_children()
-    }
 }
 
 impl rlp::Encodable for SignedTransaction {
