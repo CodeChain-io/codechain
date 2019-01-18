@@ -17,7 +17,6 @@
 extern crate byteorder;
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_key as ckey;
-extern crate heapsize;
 extern crate primitives;
 extern crate rlp;
 #[macro_use]

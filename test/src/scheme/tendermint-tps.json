@@ -1,0 +1,83 @@
+{
+    "name": "Tendermint",
+    "engine": {
+        "tendermint": {
+            "params": {
+                "validators": [
+                    "0x4f1541fc6bdec60bf0ac6380a8e3914a469fe6cd4fa817c890d5823cfdda83932f61dc083e1b6736dadeceb5afd3fcfbac915e5fa2c9c20acf1c30b080114d7f",
+                    "0x1ac8248deb29a58c4bdbfce031fb22c7ba3bcc9384bf6de058a1c8bef5a17422cf8ca26666a5505684db7364eabeed6fc678b02658ae7c1848a4ae6e50244cf2",
+                    "0xdb3a858d2bafd2cb5382fcf366b847a86b58b42ce1fc29fec0cb0315af881a2ad495045adbdbc86ef7a777b541c4e62a0747f25ff6068a5ec3a052c690c4ff8a",
+                    "0x42829b18de338aa3abf5e6d80cd511121bf9d34be9a135bbace32a3226479e7f3bb6af76c11dcc724a1666a22910d756b075d54d8fdd97be11efd7a0ac3bb222"
+                ],
+                "timeoutPropose": 10000,
+                "timeoutProposeDelta": 5000,
+                "timeoutPrevote": 10000,
+                "timeoutPrevoteDelta": 5000,
+                "timeoutPrecommit": 10000,
+                "timeoutPrecommitDelta": 5000,
+                "timeoutCommit": 10000,
+                "genesisStakes": {
+                    "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": 100000
+                }
+            }
+        }
+    },
+    "params": {
+        "maxExtraDataSize": "0x20",
+        "maxMetadataSize": "0x0400",
+        "maxTextContentSize": "0x0200",
+        "networkID": "tc",
+        "minPayCost" : 10,
+        "minSetRegularKeyCost" : 10,
+        "minCreateShardCost" : 10,
+        "minSetShardOwnersCost" : 10,
+        "minSetShardUsersCost" : 10,
+        "minWrapCccCost" : 10,
+        "minCustomCost" : 10,
+        "minStoreCost" : 10,
+        "minRemoveCost" : 10,
+        "minMintAssetCost" : 10,
+        "minTransferAssetCost" : 10,
+        "minChangeAssetSchemeCost" : 10,
+        "minComposeAssetCost" : 10,
+        "minDecomposeAssetCost" : 10,
+        "minUnwrapCccCost" : 10,
+        "maxBodySize": 4194304,
+        "snapshotPeriod": 16384
+    },
+    "genesis": {
+        "seal": {
+            "tendermint": {
+                "prev_view": "0x0",
+                "cur_view": "0x0",
+                "precommits": [
+                    "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                ]
+            }
+        },
+        "score": "0x20000",
+        "author": "tccq94guhkrfndnehnca06dlkxcfuq0gdlamvw9ga4f",
+        "timestamp": "0x00",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "extraData": "0x"
+    },
+    "accounts": {
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqyca3rwt": { "balance": "1000000", "seq": "0" },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgfrhflv": { "balance": "1000000", "seq": "0" },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvxf40sk": { "balance": "1000000", "seq": "0" },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqszkma5z": { "balance": "1000000", "seq": "0" },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5duemmc": { "balance": "1000000" },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqcuzl32l": { "balance": "1000000" },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqungah99": { "balance": "1000000" },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqc2ul2h": { "balance": "1000000" },
+        "tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u": { "balance": "1000000" },
+        "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": { "balance": "10000000000000000000", "seq": "0" }
+    },
+    "shards": {
+        "0": {
+            "seq": 0,
+            "owners": ["tccq94guhkrfndnehnca06dlkxcfuq0gdlamvw9ga4f"],
+            "users": []
+        }
+    }
+}

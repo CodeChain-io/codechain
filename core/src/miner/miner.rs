@@ -29,7 +29,8 @@ use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
-use super::mem_pool::{AccountDetails, MemPool, MemPoolInput, TxOrigin, TxTimelock};
+use super::mem_pool::MemPool;
+use super::mem_pool_types::{AccountDetails, MemPoolInput, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, TransactionImportResult};

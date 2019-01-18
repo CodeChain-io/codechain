@@ -5,8 +5,8 @@ keys_path = "keys"
 
 [mining]
 disable = false
-mem_pool_mem_limit = 256 # MB
-mem_pool_size = 8192
+mem_pool_mem_limit = 512 # MB
+mem_pool_size = 524288
 mem_pool_fee_bump_shift = 3 # 12.5%
 notify_work = []
 force_sealing = true

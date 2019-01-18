@@ -18,7 +18,6 @@ use std::collections::{HashMap, HashSet};
 
 use ccrypto::Blake;
 use ckey::{Address, NetworkId, Public, Signature};
-use heapsize::HeapSizeOf;
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -423,89 +422,6 @@ impl From<Action> for Option<ShardTransaction> {
                 burn,
             }),
             _ => None,
-        }
-    }
-}
-
-impl HeapSizeOf for Action {
-    fn heap_size_of_children(&self) -> usize {
-        match self {
-            Action::MintAsset {
-                metadata,
-                output,
-                approvals,
-                allowed_script_hashes,
-                ..
-            } => {
-                metadata.heap_size_of_children()
-                    + output.heap_size_of_children()
-                    + approvals.heap_size_of_children()
-                    + allowed_script_hashes.heap_size_of_children()
-            }
-            Action::TransferAsset {
-                burns,
-                inputs,
-                outputs,
-                orders,
-                metadata,
-                approvals,
-                ..
-            } => {
-                burns.heap_size_of_children()
-                    + inputs.heap_size_of_children()
-                    + outputs.heap_size_of_children()
-                    + orders.heap_size_of_children()
-                    + metadata.heap_size_of_children()
-                    + approvals.heap_size_of_children()
-            }
-            Action::ChangeAssetScheme {
-                metadata,
-                approvals,
-                allowed_script_hashes,
-                ..
-            } => {
-                metadata.heap_size_of_children()
-                    + approvals.heap_size_of_children()
-                    + allowed_script_hashes.heap_size_of_children()
-            }
-            Action::ComposeAsset {
-                metadata,
-                inputs,
-                output,
-                approvals,
-                allowed_script_hashes,
-                ..
-            } => {
-                metadata.heap_size_of_children()
-                    + inputs.heap_size_of_children()
-                    + output.heap_size_of_children()
-                    + approvals.heap_size_of_children()
-                    + allowed_script_hashes.heap_size_of_children()
-            }
-            Action::DecomposeAsset {
-                input,
-                outputs,
-                approvals,
-                ..
-            } => input.heap_size_of_children() + outputs.heap_size_of_children() + approvals.heap_size_of_children(),
-            Action::UnwrapCCC {
-                burn,
-                approvals,
-                ..
-            } => burn.heap_size_of_children() + approvals.heap_size_of_children(),
-            Action::SetShardOwners {
-                owners,
-                ..
-            } => owners.heap_size_of_children(),
-            Action::SetShardUsers {
-                users,
-                ..
-            } => users.heap_size_of_children(),
-            Action::WrapCCC {
-                parameters,
-                ..
-            } => parameters.heap_size_of_children(),
-            _ => 0,
         }
     }
 }
