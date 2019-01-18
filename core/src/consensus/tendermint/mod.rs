@@ -483,6 +483,7 @@ impl TendermintInner {
             if let Some(step) = next_step {
                 ctrace!(ENGINE, "Transition to {:?} triggered.", step);
                 self.move_to_step(step);
+                return
             }
         } else if vote_step.step == Step::Precommit
             && self.height - 1 == vote_step.height
@@ -491,7 +492,12 @@ impl TendermintInner {
         {
             ctrace!(ENGINE, "Transition to Propose because all pre-commits are received");
             self.move_to_step(Step::Propose);
+            return
         }
+
+        // self.move_to_step() calls self.broadcast_state()
+        // If self.move_to_step() is not called, call self.broadcast_state() in here.
+        self.broadcast_state(&self.vote_step(), self.proposal, self.votes_received);
     }
 
     pub fn on_imported_proposal(&mut self, proposal: &Header) {
@@ -969,7 +975,6 @@ impl TendermintInner {
             }
             ctrace!(ENGINE, "Handling a valid {:?} from {}.", message, sender);
             self.handle_valid_message(&message);
-            self.broadcast_state(&self.vote_step(), self.proposal, self.votes_received);
         }
         Ok(())
     }
