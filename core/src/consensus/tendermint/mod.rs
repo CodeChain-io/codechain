@@ -1619,7 +1619,11 @@ impl TendermintExtension {
             peer_known_votes
         );
         self.update_peer_state(token, peer_vote_step, peer_proposal, peer_known_votes);
-        if tendermint.vote_step() > peer_vote_step {
+
+        let current_vote_step = tendermint.vote_step();
+        let current_step = current_vote_step.step;
+
+        if current_vote_step > peer_vote_step {
             // no messages to receive
             return
         }
@@ -1640,10 +1644,8 @@ impl TendermintExtension {
             self.request_proposal(token, tendermint.height, tendermint.view);
         }
 
-        let current_step = tendermint.step.to_step();
-
         if current_step == Step::Prevote || current_step == Step::Precommit {
-            let peer_known_votes = if current_step == peer_vote_step.step {
+            let peer_known_votes = if current_vote_step == peer_vote_step {
                 peer_known_votes
             } else {
                 // We don't know which votes peer has.
@@ -1655,7 +1657,7 @@ impl TendermintExtension {
             let current_votes = tendermint.votes_received;
             let difference = &peer_known_votes - &current_votes;
             if !difference.is_empty() {
-                self.request_messages(token, tendermint.vote_step(), difference);
+                self.request_messages(token, current_vote_step, difference);
             }
         }
     }
