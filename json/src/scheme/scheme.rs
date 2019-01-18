@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -75,7 +75,8 @@ mod tests {
             },
             "params": {
                 "maxExtraDataSize": "0x20",
-                "maxMetadataSize": "0x0400",
+                "maxAssetSchemeMetadataSize": "0x0400",
+                "maxTransferMetadataSize": "0x0100",
                 "maxTextContentSize": "0x0200",
                 "networkID" : "tc",
                 "minPayCost" : 10,
