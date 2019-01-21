@@ -335,8 +335,10 @@ impl TendermintInner {
         let vote_step = VoteStep::new(self.height, self.view, step);
 
         // If there are not enough pre-votes or pre-commits,
-        // to_step could be called with same step
-        if prev_step != step.into() {
+        // move_to_step can be called with the same step
+        // Also, when moving to the commit step,
+        // keep `votes_received` for gossiping.
+        if prev_step != step.into() && step != Step::Commit {
             self.votes_received = BitSet::new();
         }
 
@@ -483,6 +485,7 @@ impl TendermintInner {
             if let Some(step) = next_step {
                 ctrace!(ENGINE, "Transition to {:?} triggered.", step);
                 self.move_to_step(step);
+                return
             }
         } else if vote_step.step == Step::Precommit
             && self.height - 1 == vote_step.height
@@ -491,7 +494,12 @@ impl TendermintInner {
         {
             ctrace!(ENGINE, "Transition to Propose because all pre-commits are received");
             self.move_to_step(Step::Propose);
+            return
         }
+
+        // self.move_to_step() calls self.broadcast_state()
+        // If self.move_to_step() is not called, call self.broadcast_state() in here.
+        self.broadcast_state(&self.vote_step(), self.proposal, self.votes_received);
     }
 
     pub fn on_imported_proposal(&mut self, proposal: &Header) {
@@ -969,7 +977,6 @@ impl TendermintInner {
             }
             ctrace!(ENGINE, "Handling a valid {:?} from {}.", message, sender);
             self.handle_valid_message(&message);
-            self.broadcast_state(&self.vote_step(), self.proposal, self.votes_received);
         }
         Ok(())
     }
@@ -1614,7 +1621,21 @@ impl TendermintExtension {
             peer_known_votes
         );
         self.update_peer_state(token, peer_vote_step, peer_proposal, peer_known_votes);
-        if tendermint.vote_step() > peer_vote_step {
+
+        let current_vote_step = if tendermint.step == TendermintState::Commit {
+            // Even in the commit step, it must be possible to get pre-commits from
+            // the previous step. So, act as the last precommit step.
+            VoteStep {
+                height: tendermint.height - 1,
+                view: tendermint.last_confirmed_view.1,
+                step: Step::Precommit,
+            }
+        } else {
+            tendermint.vote_step()
+        };
+        let current_step = current_vote_step.step;
+
+        if current_vote_step > peer_vote_step {
             // no messages to receive
             return
         }
@@ -1635,10 +1656,8 @@ impl TendermintExtension {
             self.request_proposal(token, tendermint.height, tendermint.view);
         }
 
-        let current_step = tendermint.step.to_step();
-
         if current_step == Step::Prevote || current_step == Step::Precommit {
-            let peer_known_votes = if current_step == peer_vote_step.step {
+            let peer_known_votes = if current_vote_step == peer_vote_step {
                 peer_known_votes
             } else {
                 // We don't know which votes peer has.
@@ -1650,7 +1669,7 @@ impl TendermintExtension {
             let current_votes = tendermint.votes_received;
             let difference = &peer_known_votes - &current_votes;
             if !difference.is_empty() {
-                self.request_messages(token, tendermint.vote_step(), difference);
+                self.request_messages(token, current_vote_step, difference);
             }
         }
     }
