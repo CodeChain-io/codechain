@@ -6,7 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use byteorder::{BigEndian, ByteOrder};
 use elastic_array::{ElasticArray1024, ElasticArray16};
 use std::borrow::Borrow;
 use traits::Encodable;
@@ -344,8 +343,7 @@ impl<'a> BasicEncoder<'a> {
         let size = size as u32;
         let leading_empty_bytes = size.leading_zeros() as usize / 8;
         let size_bytes = 4 - leading_empty_bytes as u8;
-        let mut buffer = [0u8; 4];
-        BigEndian::write_u32(&mut buffer, size);
+        let buffer: [u8; 4] = size.to_be_bytes();
         self.buffer.insert_slice(position, &buffer[leading_empty_bytes..]);
         size_bytes as u8
     }

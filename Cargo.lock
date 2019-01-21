@@ -238,7 +238,6 @@ dependencies = [
 name = "codechain-core"
 version = "0.1.0"
 dependencies = [
- "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "codechain-io 1.9.0",
  "codechain-json 0.1.0",
@@ -472,7 +471,6 @@ dependencies = [
 name = "codechain-state"
 version = "0.1.0"
 dependencies = [
- "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
@@ -555,7 +553,6 @@ dependencies = [
 name = "codechain-types"
 version = "0.1.0"
 dependencies = [
- "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "codechain-key 0.1.0",
  "primitives 0.2.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
@@ -569,7 +566,6 @@ dependencies = [
 name = "codechain-vm"
 version = "0.1.0"
 dependencies = [
- "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "codechain-key 0.1.0",
  "codechain-types 0.1.0",
@@ -1783,7 +1779,6 @@ dependencies = [
 name = "rlp"
 version = "0.2.1"
 dependencies = [
- "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "elastic-array 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.2.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",

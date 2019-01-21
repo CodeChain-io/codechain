@@ -16,7 +16,6 @@
 
 use std::mem::size_of;
 
-use byteorder::{BigEndian, WriteBytesExt};
 use ckey::Address;
 use ctypes::ShardId;
 use primitives::{H160, H256};
@@ -202,9 +201,8 @@ impl AssetSchemeAddress {
         let mut hash = H256::zero();
         hash[0..2].copy_from_slice(&[PREFIX, 0]);
 
-        let mut shard_id_bytes = Vec::<u8>::new();
         debug_assert_eq!(size_of::<u16>(), size_of::<ShardId>());
-        WriteBytesExt::write_u16::<BigEndian>(&mut shard_id_bytes, shard_id).unwrap();
+        let shard_id_bytes: [u8; 2] = shard_id.to_be_bytes();
         assert_eq!(2, shard_id_bytes.len());
         hash[2..4].copy_from_slice(&shard_id_bytes);
 

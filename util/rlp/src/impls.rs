@@ -6,9 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use byteorder::{BigEndian, ByteOrder};
-use primitives::{H128, H160, H256, H512, H520, U256};
 use std::{cmp, mem, str};
+
+use primitives::{H128, H160, H256, H512, H520, U256};
 use stream::RlpStream;
 use traits::{Decodable, Encodable};
 use {DecoderError, UntrustedRlp};
@@ -140,8 +140,7 @@ macro_rules! impl_encodable_for_u {
         impl Encodable for $name {
             fn rlp_append(&self, s: &mut RlpStream) {
                 let leading_empty_bytes = self.leading_zeros() as usize / 8;
-                let mut buffer = [0u8; $size];
-                BigEndian::$func(&mut buffer, *self);
+                let buffer: [u8; $size] = self.to_be_bytes();
                 s.encoder().encode_value(&buffer[leading_empty_bytes..]);
             }
         }
@@ -182,8 +181,7 @@ impl_decodable_for_u!(u64);
 
 impl Encodable for i32 {
     fn rlp_append(&self, s: &mut RlpStream) {
-        let mut buffer = [0u8; 4];
-        BigEndian::write_i32(&mut buffer, *self);
+        let buffer: [u8; 4] = self.to_be_bytes();
         s.encoder().encode_value(&buffer[..]);
     }
 }
@@ -192,7 +190,15 @@ impl Decodable for i32 {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| match bytes.len() {
             0...3 => Err(DecoderError::RlpIsTooShort),
-            4 => Ok(BigEndian::read_i32(bytes)),
+            4 => {
+                // FIXME: I don't think it's the best way to make an array from a slice.
+                let array = unsafe {
+                    let mut array = mem::uninitialized::<[u8; 4]>();
+                    array.copy_from_slice(&bytes[0..4]);
+                    array
+                };
+                Ok(Self::from_be_bytes(array))
+            }
             _ => Err(DecoderError::RlpIsTooBig),
         })
     }
@@ -200,8 +206,7 @@ impl Decodable for i32 {
 
 impl Encodable for i64 {
     fn rlp_append(&self, s: &mut RlpStream) {
-        let mut buffer = [0u8; 8];
-        BigEndian::write_i64(&mut buffer, *self);
+        let buffer: [u8; 8] = self.to_be_bytes();
         s.encoder().encode_value(&buffer[..]);
     }
 }
@@ -210,7 +215,15 @@ impl Decodable for i64 {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| match bytes.len() {
             0...7 => Err(DecoderError::RlpIsTooShort),
-            8 => Ok(BigEndian::read_i64(bytes)),
+            8 => {
+                // FIXME: I don't think it's the best way to make an array from a slice.
+                let array = unsafe {
+                    let mut array = mem::uninitialized::<[u8; 8]>();
+                    array.copy_from_slice(&bytes[0..8]);
+                    array
+                };
+                Ok(Self::from_be_bytes(array))
+            }
             _ => Err(DecoderError::RlpIsTooBig),
         })
     }
