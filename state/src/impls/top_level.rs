@@ -450,21 +450,11 @@ impl TopLevelState {
                 Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
             }
             Action::UnwrapCCC {
-                approvals,
                 ..
             } => {
                 let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's an unwrap transaction");
                 debug_assert_eq!(network_id, transaction.network_id());
-
-                let transaction_tracker = transaction.tracker();
-                let approvers = approvals
-                    .iter()
-                    .map(|signature| {
-                        let public = recover(&signature, &transaction_tracker)?;
-                        self.public_to_owner_address(&public)
-                    })
-                    .collect::<StateResult<Vec<_>>>()?;
-                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
+                Ok(self.apply_shard_transaction(&transaction, fee_payer, &[], client)?)
             }
             Action::Pay {
                 receiver,
