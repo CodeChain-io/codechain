@@ -129,26 +129,32 @@ describe("solo - 1 node", function() {
         });
 
         [
-            { actionType: 2, actionLength: 2 },
+            { actionType: 2, actionLength: 2 }, // Pay
             { actionType: 2, actionLength: 4 },
-            { actionType: 3, actionLength: 1 },
+            { actionType: 3, actionLength: 1 }, // SetRegularKey
             { actionType: 3, actionLength: 3 },
-            { actionType: 4, actionLength: 2 },
-            { actionType: 5, actionLength: 2 },
+            { actionType: 4, actionLength: 2 }, // CreateShard
+            { actionType: 5, actionLength: 2 }, // SetShardOwners
             { actionType: 5, actionLength: 4 },
-            { actionType: 6, actionLength: 2 },
+            { actionType: 6, actionLength: 2 }, // SetShardUsers
             { actionType: 6, actionLength: 4 },
-            { actionType: 0x11, actionLength: 3 },
+            { actionType: 7, actionLength: 4 }, // WrapCCC
+            { actionType: 7, actionLength: 6 },
+            { actionType: 8, actionLength: 3 }, // Store
+            { actionType: 8, actionLength: 5 },
+            { actionType: 9, actionLength: 2 }, // Remove
+            { actionType: 9, actionLength: 4 },
+            { actionType: 0x11, actionLength: 3 }, // UnwrapCCC
             { actionType: 0x11, actionLength: 5 },
-            { actionType: 0x13, actionLength: 10 },
+            { actionType: 0x13, actionLength: 10 }, // MintAsset
             { actionType: 0x13, actionLength: 12 },
-            { actionType: 0x14, actionLength: 7 },
+            { actionType: 0x14, actionLength: 7 }, // TransferAsset
             { actionType: 0x14, actionLength: 9 },
-            { actionType: 0x15, actionLength: 7 },
+            { actionType: 0x15, actionLength: 7 }, // ChangeAssetScheme
             { actionType: 0x15, actionLength: 9 },
-            { actionType: 0x16, actionLength: 11 },
+            { actionType: 0x16, actionLength: 11 }, // ComposeAsset
             { actionType: 0x16, actionLength: 13 },
-            { actionType: 0x17, actionLength: 4 },
+            { actionType: 0x17, actionLength: 4 }, // DecomposeAsset
             { actionType: 0x17, actionLength: 6 }
         ].forEach(function(params: {
             actionType: number;
