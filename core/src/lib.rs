@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -31,7 +31,6 @@ extern crate codechain_types as ctypes;
 extern crate codechain_vm as cvm;
 extern crate cuckoo;
 extern crate hashdb;
-extern crate heapsize;
 extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_memorydb;

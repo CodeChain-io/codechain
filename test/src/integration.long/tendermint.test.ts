@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -53,7 +53,7 @@ describeSkippedInTravis("Tendermint ", function() {
         ];
         nodes = validatorAddresses.map(address => {
             return new CodeChain({
-                chain: `${__dirname}/../scheme/tendermint.json`,
+                chain: `${__dirname}/../scheme/tendermint-int.json`,
                 argv: [
                     "--engine-signer",
                     address.toString(),
@@ -254,7 +254,7 @@ describeSkippedInTravis("Tendermint ", function() {
     it("Gossip with not-permissioned node", async function() {
         function createNodeWihtOutSigner() {
             return new CodeChain({
-                chain: `${__dirname}/../scheme/tendermint.json`,
+                chain: `${__dirname}/../scheme/tendermint-int.json`,
                 argv: [
                     "--no-miner",
                     "--password-path",
