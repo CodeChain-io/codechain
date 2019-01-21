@@ -347,7 +347,6 @@ macro_rules! unwrap_ccc {
         $crate::ctypes::transaction::Action::UnwrapCCC {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             burn: $burn,
-            approvals: vec![],
         }
     };
 }

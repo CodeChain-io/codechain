@@ -94,7 +94,6 @@ pub enum Action {
     UnwrapCCC {
         network_id: NetworkId,
         burn: AssetTransferInput,
-        approvals: Vec<Signature>,
     },
     Pay {
         receiver: Address,
@@ -298,7 +297,6 @@ impl Action {
             Action::UnwrapCCC {
                 burn,
                 network_id,
-                ..
             } => {
                 if burn.prev_out.quantity == 0 {
                     return Err(TransactionError::ZeroQuantity.into())
@@ -416,7 +414,6 @@ impl From<Action> for Option<ShardTransaction> {
             Action::UnwrapCCC {
                 network_id,
                 burn,
-                ..
             } => Some(ShardTransaction::UnwrapCCC {
                 network_id,
                 burn,
@@ -531,9 +528,8 @@ impl Encodable for Action {
             Action::UnwrapCCC {
                 network_id,
                 burn,
-                approvals,
             } => {
-                s.begin_list(4).append(&UNWRAP_CCC).append(network_id).append(burn).append_list(approvals);
+                s.begin_list(3).append(&UNWRAP_CCC).append(network_id).append(burn);
             }
             Action::Pay {
                 receiver,
@@ -701,13 +697,12 @@ impl Decodable for Action {
                 })
             }
             UNWRAP_CCC => {
-                if rlp.item_count()? != 4 {
+                if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::UnwrapCCC {
                     network_id: rlp.val_at(1)?,
                     burn: rlp.val_at(2)?,
-                    approvals: rlp.list_at(3)?,
                 })
             }
             PAY => {
@@ -1761,7 +1756,6 @@ mod tests {
                 lock_script: vec![0x30, 0x01],
                 unlock_script: vec![],
             },
-            approvals: vec![],
         };
         assert_eq!(
             tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000),
@@ -1782,7 +1776,6 @@ mod tests {
                 lock_script: vec![0x30, 0x01],
                 unlock_script: vec![],
             },
-            approvals: vec![],
         };
         assert_eq!(
             tx_invalid_asset_type.verify(NetworkId::default(), 1000, 1000, 1000),

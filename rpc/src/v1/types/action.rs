@@ -205,8 +205,6 @@ pub enum ActionWithId {
         network_id: NetworkId,
         burn: Box<AssetTransferInput>,
 
-        approvals: Vec<Signature>,
-
         id: H256,
     },
     Pay {
@@ -366,13 +364,11 @@ impl ActionWithId {
             ActionType::UnwrapCCC {
                 network_id,
                 burn,
-                approvals,
             } => {
                 let id = tracker.unwrap();
                 ActionWithId::UnwrapCCC {
                     network_id,
                     burn: Box::new(burn.into()),
-                    approvals,
                     id,
                 }
             }
@@ -578,7 +574,6 @@ impl From<Action> for Result<ActionType, ConversionError> {
             } => ActionType::UnwrapCCC {
                 network_id,
                 burn: burn.into(),
-                approvals: vec![],
             },
             Action::Pay {
                 receiver,
