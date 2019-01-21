@@ -228,6 +228,9 @@ pub trait BlockChainClient:
     /// List all transactions that are allowed into the next block.
     fn ready_transactions(&self) -> Vec<SignedTransaction>;
 
+    /// Check there are transactions which are allowed into the next block.
+    fn is_pending_queue_empty(&self) -> bool;
+
     /// Look up the block number for the given block ID.
     fn block_number(&self, id: &BlockId) -> Option<BlockNumber>;
 

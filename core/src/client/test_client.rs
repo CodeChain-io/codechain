@@ -483,6 +483,10 @@ impl BlockChainClient for TestBlockChainClient {
         self.miner.ready_transactions()
     }
 
+    fn is_pending_queue_empty(&self) -> bool {
+        self.miner.status().transactions_in_pending_queue == 0
+    }
+
     fn block_number(&self, _id: &BlockId) -> Option<BlockNumber> {
         unimplemented!()
     }
