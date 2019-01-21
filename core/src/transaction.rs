@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,6 @@ use ccrypto::blake256;
 use ckey::{self, recover, sign, Private, Public, Signature};
 use ctypes::transaction::{ParcelError, Transaction};
 use ctypes::BlockNumber;
-use heapsize::HeapSizeOf;
 use primitives::H256;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -136,7 +135,12 @@ impl UnverifiedTransaction {
         if byte_size >= params.max_body_size {
             return Err(ParcelError::TransactionIsTooBig)
         }
-        self.action.verify(params.network_id, params.max_metadata_size, params.max_text_content_size)
+        self.action.verify(
+            params.network_id,
+            params.max_asset_scheme_metadata_size,
+            params.max_transfer_metadata_size,
+            params.max_text_content_size,
+        )
     }
 }
 
@@ -145,12 +149,6 @@ impl UnverifiedTransaction {
 pub struct SignedTransaction {
     tx: UnverifiedTransaction,
     signer_public: Public,
-}
-
-impl HeapSizeOf for SignedTransaction {
-    fn heap_size_of_children(&self) -> usize {
-        self.tx.unsigned.heap_size_of_children()
-    }
 }
 
 impl rlp::Encodable for SignedTransaction {

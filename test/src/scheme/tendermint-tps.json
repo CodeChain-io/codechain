@@ -9,13 +9,13 @@
                     "0xdb3a858d2bafd2cb5382fcf366b847a86b58b42ce1fc29fec0cb0315af881a2ad495045adbdbc86ef7a777b541c4e62a0747f25ff6068a5ec3a052c690c4ff8a",
                     "0x42829b18de338aa3abf5e6d80cd511121bf9d34be9a135bbace32a3226479e7f3bb6af76c11dcc724a1666a22910d756b075d54d8fdd97be11efd7a0ac3bb222"
                 ],
-                "timeoutPropose": 1000,
-                "timeoutProposeDelta": 1000,
-                "timeoutPrevote": 1000,
-                "timeoutPrevoteDelta": 1000,
-                "timeoutPrecommit": 1000,
-                "timeoutPrecommitDelta": 1000,
-                "timeoutCommit": 1000,
+                "timeoutPropose": 10000,
+                "timeoutProposeDelta": 5000,
+                "timeoutPrevote": 10000,
+                "timeoutPrevoteDelta": 5000,
+                "timeoutPrecommit": 10000,
+                "timeoutPrecommitDelta": 5000,
+                "timeoutCommit": 10000,
                 "genesisStakes": {
                     "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": 100000
                 }

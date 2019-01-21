@@ -16,7 +16,6 @@
 
 use std::convert::From;
 use std::result;
-use std::sync::Arc;
 
 use cio::IoError;
 use time::Duration;
@@ -60,7 +59,7 @@ pub trait Extension: TimeoutHandler + Send + Sync {
     fn need_encryption(&self) -> bool;
     fn versions(&self) -> &[u64];
 
-    fn on_initialize(&self, api: Arc<Api>);
+    fn on_initialize(&self);
 
     fn on_node_added(&self, _node: &NodeId, _version: u64) {}
     fn on_node_removed(&self, _node: &NodeId) {}

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,7 @@ use cjson::uint::Uint;
 use ctypes::transaction::{AssetOutPoint as AssetOutPointType, AssetTransferInput as AssetTransferInputType, Timelock};
 use primitives::{Bytes, H256};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetOutPoint {
     pub tracker: H256,
@@ -49,7 +49,7 @@ impl From<AssetOutPoint> for AssetOutPointType {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetTransferInput {
     pub prev_out: AssetOutPoint,

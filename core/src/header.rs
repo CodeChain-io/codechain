@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,6 @@ use time::get_time;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use ckey::Address;
 use ctypes::BlockNumber;
-use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
 
@@ -271,12 +270,6 @@ impl Header {
     /// Get the Blake hash of this header, optionally `with_seal`.
     pub fn rlp_blake(&self, with_seal: &Seal) -> H256 {
         blake256(&self.rlp(with_seal))
-    }
-}
-
-impl HeapSizeOf for Header {
-    fn heap_size_of_children(&self) -> usize {
-        self.extra_data.heap_size_of_children() + self.seal.heap_size_of_children()
     }
 }
 

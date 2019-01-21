@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -63,23 +63,22 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
         bucket_size: cfg.discovery_bucket_size.unwrap(),
         t_refresh: cfg.discovery_refresh.unwrap(),
     };
-    let discovery = match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
+    match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
         Some("unstructured") => {
             cinfo!(DISCOVERY, "Node runs with unstructured discovery");
-            Some(Discovery::unstructured(config))
+            let discovery = service.new_extension(|api| Discovery::unstructured(config, api));
+            service.set_routing_table(&*discovery);
+            Ok(())
         }
         Some("kademlia") => {
             cinfo!(DISCOVERY, "Node runs with kademlia discovery");
-            Some(Discovery::kademlia(config))
+            let discovery = service.new_extension(|api| Discovery::kademlia(config, api));
+            service.set_routing_table(&*discovery);
+            Ok(())
         }
-        Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
-        None => None,
-    };
-    if let Some(discovery) = discovery {
-        service.set_routing_table(&*discovery);
-        service.register_extension(discovery);
+        Some(discovery_type) => Err(format!("Unknown discovery {}", discovery_type)),
+        None => Ok(()),
     }
-    Ok(())
 }
 
 fn client_start(
@@ -92,7 +91,7 @@ fn client_start(
     let db_path = cfg.db_path.as_ref().map(|s| s.as_str()).unwrap();
     let client_path = Path::new(db_path);
     let client_config = Default::default();
-    let reseal_timer = timer_loop.new_timer("Client reseal timer");
+    let reseal_timer = timer_loop.new_timer_with_name("Client reseal timer");
     let service = ClientService::start(&client_config, &scheme, &client_path, miner, reseal_timer.clone())
         .map_err(|e| format!("Client service error: {}", e))?;
     reseal_timer.set_handler(&service.client());
@@ -233,7 +232,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
     let miner = new_miner(&config, &scheme, ap.clone())?;
     let client = client_start(&timer_loop, &config.operating, &scheme, miner.clone())?;
-    let sync = BlockSyncExtension::new(client.client());
+    let mut some_sync = None;
 
     scheme.engine.register_chain_notify(client.client().as_ref());
 
@@ -249,11 +248,12 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             }
 
             if config.network.sync.unwrap() {
-                service.register_extension(sync.clone());
+                let sync = service.new_extension(|api| BlockSyncExtension::new(client.client(), api));
                 client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
+                some_sync = Some(sync);
             }
             if config.network.transaction_relay.unwrap() {
-                service.register_extension(ParcelSyncExtension::new(client.client()));
+                service.new_extension(|api| ParcelSyncExtension::new(client.client(), api));
             }
 
             scheme.engine.register_network_extension_to_service(&service);
@@ -272,7 +272,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         miner: Arc::clone(&miner),
         network_control: Arc::clone(&network_service),
         account_provider: ap,
-        block_sync: Arc::clone(&sync),
+        block_sync: some_sync,
     });
 
     let _rpc_server = {

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,8 @@ use cvm::ChainTimeInfo;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
-use super::mem_pool::{AccountDetails, MemPool, MemPoolInput, TxOrigin, TxTimelock};
+use super::mem_pool::MemPool;
+use super::mem_pool_types::{AccountDetails, MemPoolInput, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, TransactionImportResult};

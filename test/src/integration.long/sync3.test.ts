@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -50,13 +50,13 @@ describe("sync 3 nodes", function() {
             });
 
             it("It should be synced when the first node created a block", async function() {
-                const parcel = await nodes[0].sendPayTx({
+                const transaction = await nodes[0].sendPayTx({
                     awaitInvoice: true
                 });
                 for (let i = 1; i < NUM_NODES; i++) {
                     await nodes[i].waitBlockNumberSync(nodes[i - 1]);
                     expect(await nodes[i].getBestBlockHash()).to.deep.equal(
-                        parcel.blockHash
+                        transaction.blockHash
                     );
                 }
             }).timeout(5000 + 10000 * NUM_NODES);
@@ -126,17 +126,17 @@ describe("sync 3 nodes", function() {
         });
 
         it("It should be synced when the first node created a block", async function() {
-            const parcel = await nodes[0].sendPayTx();
+            const transaction = await nodes[0].sendPayTx();
             for (let i = 1; i <= numHalf; i++) {
                 await nodes[0].waitBlockNumberSync(nodes[i]);
                 expect(await nodes[i].getBestBlockHash()).to.deep.equal(
-                    parcel.blockHash
+                    transaction.blockHash
                 );
 
                 await nodes[0].waitBlockNumberSync(nodes[NUM_NODES - i - 1]);
                 expect(
                     await nodes[NUM_NODES - i - 1].getBestBlockHash()
-                ).to.deep.equal(parcel.blockHash);
+                ).to.deep.equal(transaction.blockHash);
             }
         }).timeout(5000 + 5000 * NUM_NODES);
 

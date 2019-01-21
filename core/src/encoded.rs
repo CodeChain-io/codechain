@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -26,7 +26,6 @@
 use ccrypto::blake256;
 use ckey::Address;
 use ctypes::BlockNumber;
-use heapsize::HeapSizeOf;
 use primitives::{H256, U256};
 use rlp::Rlp;
 
@@ -38,12 +37,6 @@ use crate::views;
 /// Owning header view.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header(Vec<u8>);
-
-impl HeapSizeOf for Header {
-    fn heap_size_of_children(&self) -> usize {
-        self.0.heap_size_of_children()
-    }
-}
 
 impl Header {
     /// Create a new owning header view.
@@ -138,12 +131,6 @@ impl Header {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Body(Vec<u8>);
 
-impl HeapSizeOf for Body {
-    fn heap_size_of_children(&self) -> usize {
-        self.0.heap_size_of_children()
-    }
-}
-
 impl Body {
     /// Create a new owning block body view. The raw bytes passed in must be an rlp-encoded block
     /// body.
@@ -200,12 +187,6 @@ impl Body {
 /// Owning block view.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block(Vec<u8>);
-
-impl HeapSizeOf for Block {
-    fn heap_size_of_children(&self) -> usize {
-        self.0.heap_size_of_children()
-    }
-}
 
 impl Block {
     /// Create a new owning block view. The raw bytes passed in must be an rlp-encoded block.

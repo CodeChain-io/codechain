@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use cmerkle::skewed_merkle_root;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;
-use heapsize::HeapSizeOf;
 use primitives::{Bytes, H256};
 use rlp::UntrustedRlp;
 
@@ -39,14 +38,6 @@ pub struct PreverifiedBlock {
     pub transactions: Vec<SignedTransaction>,
     /// Block bytes
     pub bytes: Bytes,
-}
-
-impl HeapSizeOf for PreverifiedBlock {
-    fn heap_size_of_children(&self) -> usize {
-        self.header.heap_size_of_children()
-            + self.transactions.heap_size_of_children()
-            + self.bytes.heap_size_of_children()
-    }
 }
 
 /// Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block

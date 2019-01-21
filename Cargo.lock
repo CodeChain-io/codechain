@@ -254,7 +254,6 @@ dependencies = [
  "codechain-vm 0.1.0",
  "cuckoo 0.1.0 (git+https://github.com/CodeChain-io/rust-cuckoo.git?rev=280cab9c)",
  "hashdb 0.1.1",
- "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.10.0-a.0 (git+https://github.com/paritytech/hyper)",
  "journaldb 0.1.0",
  "kvdb 0.1.0",
@@ -334,7 +333,6 @@ version = "0.1.0"
 dependencies = [
  "bech32 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
- "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -560,7 +558,6 @@ dependencies = [
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "codechain-key 0.1.0",
- "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.2.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
  "rlp 0.2.1",
  "rlp_derive 0.1.0",

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,6 @@ use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
-use heapsize::HeapSizeOf;
 use primitives::{remove_0x_prefix, H160};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -133,12 +132,6 @@ impl From<Address> for [u8; 20] {
 impl AsRef<[u8]> for Address {
     fn as_ref(&self) -> &[u8] {
         &self.0.as_ref()
-    }
-}
-
-impl HeapSizeOf for Address {
-    fn heap_size_of_children(&self) -> usize {
-        self.0.heap_size_of_children()
     }
 }
 

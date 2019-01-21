@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -68,7 +68,7 @@ describe("Timelock", function() {
         }
     }
 
-    describe("Parcel should go into the current queue", async function() {
+    describe("Transaction should go into the current queue", async function() {
         [1, 2].forEach(function(target) {
             it(`Minted at block 1, send transfer with Timelock::Block(${target})`, async function() {
                 const tracker = await sendTxWithTimelock({
@@ -147,7 +147,7 @@ describe("Timelock", function() {
         await node.sdk.rpc.devel.startSealing();
     });
 
-    describe("Parcels should go into the future queue and then move to current", async function() {
+    describe("Transactions should go into the future queue and then move to current", async function() {
         it("Minted at block 1, send transfer with Timelock::Block(3)", async function() {
             const tracker = await sendTxWithTimelock({
                 // available from block 3

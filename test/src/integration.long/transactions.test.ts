@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -570,7 +570,7 @@ describe("transactions", function() {
             await node.signTransactionInput(transferTx, 0);
         });
 
-        it("approver sends a parcel", async function() {
+        it("approver sends a transaction", async function() {
             const invoice = await node
                 .sendTransaction(transferTx, {
                     account: approver
@@ -586,7 +586,7 @@ describe("transactions", function() {
             expect(invoice.success).to.be.true;
         });
 
-        it("nonApprover sends a parcel", async function() {
+        it("nonApprover sends a transaction", async function() {
             const invoice = await node
                 .sendTransaction(transferTx, {
                     account: nonApprover
@@ -1022,7 +1022,7 @@ describe("transactions", function() {
         [1, 100].forEach(function(amount) {
             it(`Wrap successful - quantity {amount}`, async function() {
                 const recipient = await node.createP2PKHAddress();
-                const parcel = node.sdk.core
+                const transaction = node.sdk.core
                     .createWrapCCCTransaction({
                         shardId: 0,
                         recipient,
@@ -1035,7 +1035,7 @@ describe("transactions", function() {
                     });
 
                 const hash = await node.sdk.rpc.chain.sendSignedTransaction(
-                    parcel
+                    transaction
                 );
                 const invoice = await node.sdk.rpc.chain.getInvoice(hash, {
                     timeout: 120 * 1000
@@ -1046,7 +1046,7 @@ describe("transactions", function() {
 
         it("Wrap unsuccessful - quantity 0", async function() {
             const recipient = await node.createP2PKHAddress();
-            const parcel = node.sdk.core
+            const transaction = node.sdk.core
                 .createWrapCCCTransaction({
                     shardId: 0,
                     recipient,
@@ -1059,7 +1059,7 @@ describe("transactions", function() {
                 });
 
             try {
-                await node.sdk.rpc.chain.sendSignedTransaction(parcel);
+                await node.sdk.rpc.chain.sendSignedTransaction(transaction);
                 expect.fail();
             } catch (e) {
                 expect(e).to.satisfy(

@@ -42,7 +42,7 @@ pub enum Call {
 }
 
 struct TestApi {
-    extension: Weak<Extension>,
+    extension: Option<Weak<Extension>>,
 
     connections: Mutex<HashSet<NodeId>>,
     timers: Mutex<HashMap<TimerToken, (Duration, bool)>>,
@@ -51,20 +51,19 @@ struct TestApi {
 }
 
 impl TestApi {
-    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
-    fn new(extension: Weak<Extension>) -> Arc<Self> {
-        Arc::new(Self {
-            extension,
+    fn new() -> Self {
+        Self {
+            extension: None,
 
             connections: Mutex::new(HashSet::new()),
             timers: Mutex::new(HashMap::new()),
 
             calls: Mutex::new(VecDeque::new()),
-        })
+        }
     }
 
     fn extension(&self) -> Arc<Extension> {
-        self.extension.upgrade().expect("Extension must be alive")
+        self.extension.as_ref().expect("Extension must be set").upgrade().expect("Extension must be alive")
     }
 }
 
@@ -163,16 +162,23 @@ impl TestClient {
         Self::default()
     }
 
-    pub fn register_extension(&mut self, extension: Arc<Extension>) {
+    pub fn new_extension<T, F>(&mut self, factory: F) -> Arc<T>
+    where
+        T: 'static + Extension,
+        F: FnOnce(&Arc<Api>) -> T, {
+        let api = Arc::new(TestApi::new());
+        let extension = {
+            let api = Arc::clone(&api) as Arc<Api>;
+            Arc::new(factory(&api))
+        };
+
         let name = extension.name();
-
-        if self.extensions.contains_key(&name) {
-            panic!("Duplicated extension name : {}", name);
+        extension.on_initialize();
+        let trait_extension = Arc::clone(&extension) as Arc<Extension>;
+        if self.extensions.insert(name, (trait_extension, api)).is_some() {
+            unreachable!("Duplicated extension name : {}", name)
         }
-        let api = TestApi::new(Arc::downgrade(&extension));
-        extension.on_initialize(api.clone());
-
-        self.extensions.insert(name, (extension, api));
+        extension
     }
 
     pub fn get_extension(&self, name: &str) -> &Extension {

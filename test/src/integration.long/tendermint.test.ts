@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -53,7 +53,7 @@ describeSkippedInTravis("Tendermint ", function() {
         ];
         nodes = validatorAddresses.map(address => {
             return new CodeChain({
-                chain: `${__dirname}/../scheme/tendermint.json`,
+                chain: `${__dirname}/../scheme/tendermint-int.json`,
                 argv: [
                     "--engine-signer",
                     address.toString(),
@@ -250,6 +250,58 @@ describeSkippedInTravis("Tendermint ", function() {
             )
         ).to.eventually.greaterThan(1);
     }).timeout(20_000);
+
+    it("Gossip with not-permissioned node", async function() {
+        function createNodeWihtOutSigner() {
+            return new CodeChain({
+                chain: `${__dirname}/../scheme/tendermint-int.json`,
+                argv: [
+                    "--no-miner",
+                    "--password-path",
+                    "test/tendermint/password.json",
+                    "--no-discovery"
+                ],
+                base: BASE,
+                additionalKeysPath: "tendermint/keys"
+            });
+        }
+
+        nodes.push(createNodeWihtOutSigner());
+        nodes.push(createNodeWihtOutSigner());
+        await Promise.all([nodes[4].start(), nodes[5].start()]);
+
+        // 4 <-> 5
+        // 0 <-> 4, 1 <-> 4
+        // 2 <-> 5, 3 <-> 5
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[4].connect(nodes[5]),
+                nodes[4].connect(nodes[0]),
+                nodes[4].connect(nodes[1]),
+                nodes[5].connect(nodes[2]),
+                nodes[5].connect(nodes[3])
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "wait blocknumber",
+            Promise.all([
+                nodes[0].waitBlockNumber(3),
+                nodes[1].waitBlockNumber(3),
+                nodes[2].waitBlockNumber(3),
+                nodes[3].waitBlockNumber(3),
+                nodes[4].waitBlockNumber(3),
+                nodes[5].waitBlockNumber(3)
+            ])
+        );
+        await expect(
+            promiseExpect.shouldFulfill(
+                "best blocknumber",
+                nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            )
+        ).to.eventually.greaterThan(1);
+    }).timeout(30_000);
 
     describe("Staking", function() {
         async function getAllStakingInfo() {

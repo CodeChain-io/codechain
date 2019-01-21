@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -27,6 +27,7 @@ use std::time::{Duration, Instant};
 use parking_lot::{Condvar, Mutex, RwLock};
 
 pub type TimerName = &'static str;
+const TIMER_NAME_DEFAULT: TimerName = "UNNAMED_TIMER";
 pub type TimerToken = usize;
 
 pub trait TimeoutHandler: Send + Sync {
@@ -61,14 +62,20 @@ impl TimerLoop {
         }
     }
 
-    pub fn new_timer(&self, name: TimerName) -> TimerApi {
+    pub fn new_timer(&self) -> TimerApi {
         let timer_id = self.timer_id_nonce.fetch_add(1, Ordering::SeqCst);
         TimerApi {
             timer_id,
             handler: Arc::new(RwLock::new(None)),
-            timer_name: name,
+            timer_name: Arc::new(RwLock::new(None)),
             scheduler: Arc::downgrade(&self.scheduler),
         }
+    }
+
+    pub fn new_timer_with_name(&self, name: TimerName) -> TimerApi {
+        let timer = self.new_timer();
+        timer.set_name(name);
+        timer
     }
 }
 
@@ -77,7 +84,7 @@ type TimerId = usize;
 #[derive(Clone)]
 pub struct TimerApi {
     timer_id: TimerId,
-    timer_name: TimerName,
+    timer_name: Arc<RwLock<Option<TimerName>>>,
     handler: Arc<RwLock<Option<Weak<TimeoutHandler>>>>,
     scheduler: Weak<Scheduler>,
 }
@@ -95,6 +102,12 @@ impl TimerApi {
         let mut handler_guard = self.handler.write();
         assert!(handler_guard.is_none(), "Timer handler cannot be changed once it is set");
         *handler_guard = Some(Arc::downgrade(handler) as Weak<TimeoutHandler>);
+    }
+
+    pub fn set_name(&self, name: TimerName) {
+        let mut name_guard = self.timer_name.write();
+        assert_eq!(None, *name_guard, "Timer name cannot be changed once it is set");
+        *name_guard = Some(name);
     }
 
     pub fn schedule_once(&self, after: Duration, timer_token: TimerToken) -> Result<(), ScheduleError> {
@@ -238,11 +251,12 @@ impl SchedulerInner {
                 state_control
             }
         };
+        let timer_name = requested_timer.timer_name.read().unwrap_or(TIMER_NAME_DEFAULT);
 
         ctrace!(
             TIMER,
             "schedule(TimerName({}), {:?}, after: {:?}, repeat: {:?})",
-            requested_timer.timer_name,
+            timer_name,
             schedule_id,
             after,
             repeat,
@@ -254,7 +268,7 @@ impl SchedulerInner {
             repeat,
             state_control,
             handler,
-            timer_name: requested_timer.timer_name,
+            timer_name,
         };
         // state_control become an attached one (Def 1)
         self.heap.push(Reverse(TimeOrdered(schedule)));
@@ -297,7 +311,8 @@ impl SchedulerInner {
             Entry::Vacant(_) => false,
             Entry::Occupied(entry) => {
                 // Detach and cancel it (Rule 1)
-                ctrace!(TIMER, "cancel(TimerName({}), {:?})", requested_timer.timer_name, schedule_id);
+                let timer_name = requested_timer.timer_name.read().unwrap_or(TIMER_NAME_DEFAULT);
+                ctrace!(TIMER, "cancel(TimerName({}), {:?})", timer_name, schedule_id);
                 let state_control = entry.remove();
                 state_control.cancel()
             }
@@ -645,7 +660,8 @@ mod tests {
     fn new_timer<T>(timer_loop: &TimerLoop, name: TimerName, handler: &Arc<T>) -> TimerApi
     where
         T: 'static + Sized + TimeoutHandler, {
-        let timer = timer_loop.new_timer(name);
+        let timer = timer_loop.new_timer();
+        timer.set_name(name);
         timer.set_handler(handler);
         timer
     }
@@ -708,9 +724,18 @@ mod tests {
     fn test_timer_set_hander_twice() {
         let timer_loop = TimerLoop::new(1);
         let handler = Arc::new(CallbackHandler(|_| {}));
-        let timer = timer_loop.new_timer("test");
+        let timer = timer_loop.new_timer();
         timer.set_handler(&handler);
         timer.set_handler(&handler);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_set_name_twice() {
+        let timer_loop = TimerLoop::new(1);
+        let timer = timer_loop.new_timer();
+        timer.set_name("test");
+        timer.set_name("test");
     }
 
     #[test]

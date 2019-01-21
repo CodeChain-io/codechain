@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -26,14 +26,16 @@ use crate::p2p::Message as P2pMessage;
 use crate::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionResult, NodeId};
 
 struct ClientApi {
-    extension: Weak<NetworkExtension>,
+    extension: RwLock<Option<Weak<NetworkExtension>>>,
     p2p_channel: IoChannel<P2pMessage>,
     timer: TimerApi,
 }
 
 impl Api for ClientApi {
     fn send(&self, id: &NodeId, message: &[u8]) {
-        if let Some(extension) = self.extension.upgrade() {
+        let extension_guard = self.extension.read();
+        let some_extension = extension_guard.as_ref().expect("Extension should be initialized");
+        if let Some(extension) = some_extension.upgrade() {
             let need_encryption = extension.need_encryption();
             let extension_name = extension.name().to_string();
             let node_id = *id;
@@ -118,23 +120,31 @@ macro_rules! define_method {
 }
 
 impl Client {
-    pub fn register_extension<T>(&self, extension: Arc<T>)
+    pub fn new_extension<T, F>(&self, factory: F) -> Arc<T>
     where
-        T: 'static + Sized + NetworkExtension, {
-        let name = extension.name();
+        T: 'static + Sized + NetworkExtension,
+        F: FnOnce(Arc<Api>) -> T, {
         let mut extensions = self.extensions.write();
-        let p2p_channel = self.p2p_channel.clone();
-        let timer = self.timer_loop.new_timer(name);
-        let api: Arc<Api> = Arc::new(ClientApi {
-            extension: Arc::downgrade(&extension) as Weak<NetworkExtension>,
-            p2p_channel,
-            timer: timer.clone(),
-        });
-        timer.set_handler(&extension);
-        extension.on_initialize(api);
-        if extensions.insert(name, extension).is_some() {
+        let timer = self.timer_loop.new_timer();
+        let api = {
+            let p2p_channel = self.p2p_channel.clone();
+            Arc::new(ClientApi {
+                extension: RwLock::new(None),
+                p2p_channel,
+                timer,
+            })
+        };
+        let extension = Arc::new(factory(Arc::clone(&api) as Arc<Api>));
+        let name = extension.name();
+        *api.extension.write() = Some(Arc::downgrade(&extension) as Weak<NetworkExtension>);
+        api.timer.set_name(name);
+        api.timer.set_handler(&extension);
+        extension.on_initialize();
+        let trait_extension = Arc::clone(&extension) as Arc<NetworkExtension>;
+        if extensions.insert(name, trait_extension).is_some() {
             unreachable!("Duplicated extension name : {}", name)
         }
+        extension
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
@@ -168,7 +178,6 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use std::ops::Deref;
-    use std::sync::Arc;
     use std::vec::Vec;
 
     use cio::IoService;
@@ -237,7 +246,7 @@ mod tests {
             &VERSIONS
         }
 
-        fn on_initialize(&self, _api: Arc<Api>) {
+        fn on_initialize(&self) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Initialize);
         }
@@ -275,10 +284,8 @@ mod tests {
         let node_id1 = SocketAddr::v4(127, 0, 0, 1, 8081).into();
         let node_id5 = SocketAddr::v4(127, 0, 0, 1, 8085).into();
 
-        let e1 = Arc::new(TestExtension::new("e1"));
-        client.register_extension(Arc::clone(&e1));
-        let e2 = Arc::new(TestExtension::new("e2"));
-        client.register_extension(Arc::clone(&e2));
+        let e1 = client.new_extension(|_| TestExtension::new("e1"));
+        let e2 = client.new_extension(|_| TestExtension::new("e2"));
 
         client.on_message(&"e1".to_string(), &node_id1, &[]);
         {

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -32,32 +32,30 @@ use super::Config;
 pub struct Extension {
     config: Config,
     routing_table: RwLock<Option<Arc<RoutingTable>>>,
-    api: RwLock<Option<Arc<Api>>>,
+    api: Arc<Api>,
     nodes: RwLock<HashSet<NodeId>>, // FIXME: Find the optimized data structure for it
     use_kademlia: bool,
 }
 
 impl Extension {
-    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
-    pub fn kademlia(config: Config) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn kademlia(config: Config, api: Arc<Api>) -> Self {
+        Self {
             config,
             routing_table: RwLock::new(None),
-            api: RwLock::new(None),
+            api,
             nodes: RwLock::new(HashSet::new()),
             use_kademlia: true,
-        })
+        }
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
-    pub fn unstructured(config: Config) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn unstructured(config: Config, api: Arc<Api>) -> Self {
+        Self {
             config,
             routing_table: RwLock::new(None),
-            api: RwLock::new(None),
+            api,
             nodes: RwLock::new(HashSet::new()),
             use_kademlia: false,
-        })
+        }
     }
 }
 
@@ -81,22 +79,16 @@ impl NetworkExtension for Extension {
         &VERSIONS
     }
 
-    fn on_initialize(&self, api: Arc<Api>) {
-        let mut api_lock = self.api.write();
-
-        api.set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(self.config.t_refresh)))
+    fn on_initialize(&self) {
+        self.api
+            .set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(self.config.t_refresh)))
             .expect("Refresh msut be registered");
-
-        *api_lock = Some(api);
     }
 
     fn on_node_added(&self, node: &NodeId, _version: u64) {
-        let api = self.api.read();
         let mut nodes = self.nodes.write();
         nodes.insert(*node);
-        if let Some(api) = api.as_ref() {
-            api.send(&node, &Message::Request(self.config.bucket_size).rlp_bytes());
-        }
+        self.api.send(&node, &Message::Request(self.config.bucket_size).rlp_bytes());
     }
 
     fn on_node_removed(&self, node: &NodeId) {
@@ -115,8 +107,7 @@ impl NetworkExtension for Extension {
         match message {
             Message::Request(len) => {
                 let routing_table = self.routing_table.read();
-                let api = self.api.read();
-                if let (Some(api), Some(routing_table)) = (&*api, &*routing_table) {
+                if let Some(routing_table) = &*routing_table {
                     let addresses = if self.use_kademlia {
                         let datum = address_to_hash(&node.into_addr());
                         let mut addresses = routing_table
@@ -139,7 +130,7 @@ impl NetworkExtension for Extension {
                         addresses.into_iter().take(::std::cmp::min(self.config.bucket_size, len) as usize).collect()
                     };
                     let response = Message::Response(addresses).rlp_bytes();
-                    api.send(&node, &response);
+                    self.api.send(&node, &response);
                 }
             }
             Message::Response(addresses) => {
@@ -161,14 +152,11 @@ impl TimeoutHandler for Extension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             REFRESH_TOKEN => {
-                let mut api = self.api.read();
                 let nodes = self.nodes.read();
 
-                if let Some(api) = api.as_ref() {
-                    let request = Message::Request(self.config.bucket_size).rlp_bytes();
-                    for node in nodes.iter() {
-                        api.send(&node, &request);
-                    }
+                let request = Message::Request(self.config.bucket_size).rlp_bytes();
+                for node in nodes.iter() {
+                    self.api.send(&node, &request);
                 }
             }
             _ => unreachable!(),

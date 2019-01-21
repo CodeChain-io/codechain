@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,6 @@ extern crate codechain_crypto as crypto;
 #[macro_use]
 extern crate lazy_static;
 extern crate bech32;
-extern crate heapsize;
 extern crate never;
 extern crate parking_lot;
 extern crate primitives;

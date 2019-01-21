@@ -139,6 +139,8 @@ args:
         long: engine-signer
         help: Specify the address which should be used to sign consensus messages and issue blocks.
         takes_value: true
+        conflicts_with:
+            -  no-miner
     - password-path:
         long: password-path
         help: Specify the password file path.

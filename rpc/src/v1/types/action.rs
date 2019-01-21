@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@ use rustc_serialize::hex::FromHexError;
 use super::super::errors::ConversionError;
 use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, OrderOnTransfer};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum Action {
     #[serde(rename_all = "camelCase")]
@@ -50,6 +50,7 @@ pub enum Action {
         outputs: Vec<AssetTransferOutput>,
         orders: Vec<OrderOnTransfer>,
 
+        metadata: String,
         approvals: Vec<Signature>,
     },
     #[serde(rename_all = "camelCase")]
@@ -156,6 +157,7 @@ pub enum ActionWithId {
         outputs: Vec<AssetTransferOutput>,
         orders: Vec<OrderOnTransfer>,
 
+        metadata: String,
         approvals: Vec<Signature>,
 
         id: H256,
@@ -283,6 +285,7 @@ impl ActionWithId {
                 inputs,
                 outputs,
                 orders,
+                metadata,
                 approvals,
             } => {
                 let id = tracker.unwrap();
@@ -292,6 +295,7 @@ impl ActionWithId {
                     inputs: inputs.into_iter().map(From::from).collect(),
                     outputs: outputs.into_iter().map(From::from).collect(),
                     orders: orders.into_iter().map(From::from).collect(),
+                    metadata,
                     approvals,
                     id,
                 }
@@ -478,6 +482,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 outputs,
                 orders,
 
+                metadata,
                 approvals,
             } => {
                 let iter_outputs = outputs.into_iter().map(From::from);
@@ -487,6 +492,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     inputs: inputs.into_iter().map(From::from).collect(),
                     outputs: Result::from_iter(iter_outputs)?,
                     orders: orders.into_iter().map(From::from).collect(),
+                    metadata,
                     approvals,
                 }
             }
@@ -642,5 +648,109 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 bytes,
             },
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{from_str, to_string};
+
+    #[test]
+    fn serialize_metadata_with_single_quotations() {
+        let mint = ActionWithId::MintAsset {
+            network_id: "ab".into(),
+            shard_id: 0,
+            metadata: "string with 'a single quotation'".to_string(),
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: vec![],
+
+            output: AssetMintOutput {
+                lock_script_hash: Default::default(),
+                parameters: vec![],
+                supply: Some(1.into()),
+            }
+            .into(),
+
+            approvals: vec![],
+            id: Default::default(),
+        };
+        let s = to_string(&mint).unwrap();
+        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'a single quotation'","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"id":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
+        assert_eq!(&s, expected);
+    }
+
+    #[test]
+    fn parse_metadata_with_single_quotations() {
+        let input = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'a single quotation'","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[]}"#;
+        let mint = from_str(input).unwrap();
+        let expected = Action::MintAsset {
+            network_id: "ab".into(),
+            shard_id: 0,
+            metadata: "string with 'a single quotation'".to_string(),
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: vec![],
+
+            output: AssetMintOutput {
+                lock_script_hash: Default::default(),
+                parameters: vec![],
+                supply: Some(1.into()),
+            }
+            .into(),
+
+            approvals: vec![],
+        };
+        assert_eq!(expected, mint);
+    }
+
+    #[test]
+    fn parse_metadata_with_apostrophe() {
+        let input = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[]}"#;
+        let mint = from_str(input).unwrap();
+        let expected = Action::MintAsset {
+            network_id: "ab".into(),
+            shard_id: 0,
+            metadata: "string with 'an apostrophe’".to_string(),
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: vec![],
+
+            output: AssetMintOutput {
+                lock_script_hash: Default::default(),
+                parameters: vec![],
+                supply: Some(1.into()),
+            }
+            .into(),
+
+            approvals: vec![],
+        };
+        assert_eq!(expected, mint);
+    }
+
+    #[test]
+    fn serialize_metadata_with_apostrophe() {
+        let mint = ActionWithId::MintAsset {
+            network_id: "ab".into(),
+            shard_id: 0,
+            metadata: "string with 'an apostrophe’".to_string(),
+            approver: None,
+            administrator: None,
+            allowed_script_hashes: vec![],
+
+            output: AssetMintOutput {
+                lock_script_hash: Default::default(),
+                parameters: vec![],
+                supply: Some(1.into()),
+            }
+            .into(),
+
+            approvals: vec![],
+            id: Default::default(),
+        };
+        let s = to_string(&mint).unwrap();
+        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"id":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
+        assert_eq!(&s, expected);
     }
 }
