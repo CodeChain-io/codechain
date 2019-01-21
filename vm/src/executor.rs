@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use byteorder::{BigEndian, ByteOrder};
-
 use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
 use ctypes::transaction::{AssetTransferInput, HashingError, PartialHashing};
@@ -344,7 +342,9 @@ fn read_u64(value_item: Item) -> Result<u64, RuntimeError> {
     if value_item.len() > 8 {
         return Err(RuntimeError::TypeMismatch)
     }
-    Ok(BigEndian::read_uint(value_item.as_ref(), value_item.len()))
+    let mut value_bytes = [0u8; 8];
+    value_bytes[(8 - value_item.len())..8].copy_from_slice(value_item.as_ref());
+    Ok(u64::from_be_bytes(value_bytes))
 }
 
 #[inline]

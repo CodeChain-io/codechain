@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 
 [dependencies]
-byteorder = "1.2.7"
 codechain-crypto = { path = "../crypto" }
 codechain-key = { path = "../key" }
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
