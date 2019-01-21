@@ -18,14 +18,12 @@
 extern crate codechain_crypto;
 extern crate elastic_array;
 extern crate hashdb;
-extern crate heapsize;
 extern crate plain_hasher;
 extern crate primitives;
 extern crate rlp;
 
 use codechain_crypto::{blake256, BLAKE_NULL_RLP};
 use hashdb::{DBValue, HashDB};
-use heapsize::HeapSizeOf;
 use plain_hasher::H256FastMap;
 use primitives::H256;
 use rlp::NULL_RLP;
@@ -131,11 +129,6 @@ impl MemoryDB {
             return Some((DBValue::from_slice(&NULL_RLP), 1))
         }
         self.data.get(key).cloned()
-    }
-
-    /// Returns the size of allocated heap memory
-    pub fn mem_used(&self) -> usize {
-        self.data.heap_size_of_children()
     }
 
     /// Remove an element and delete it from storage if reference count reaches zero.
