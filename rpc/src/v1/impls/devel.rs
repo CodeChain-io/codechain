@@ -39,7 +39,7 @@ where
     client: Arc<C>,
     db: Arc<KeyValueDB>,
     miner: Arc<M>,
-    block_sync: Arc<B>,
+    block_sync: Option<Arc<B>>,
 }
 
 impl<C, M, B> DevelClient<C, M, B>
@@ -48,7 +48,7 @@ where
     M: MinerService,
     B: BlockSyncInfo,
 {
-    pub fn new(client: Arc<C>, miner: Arc<M>, block_sync: Arc<B>) -> Self {
+    pub fn new(client: Arc<C>, miner: Arc<M>, block_sync: Option<Arc<B>>) -> Self {
         let db = client.database();
         Self {
             client,
@@ -91,6 +91,10 @@ where
     }
 
     fn get_block_sync_peers(&self) -> Result<Vec<SocketAddr>> {
-        Ok(self.block_sync.get_peers().into_iter().map(|node_id| node_id.into_addr().into()).collect())
+        if let Some(block_sync) = self.block_sync.as_ref() {
+            Ok(block_sync.get_peers().into_iter().map(|node_id| node_id.into_addr().into()).collect())
+        } else {
+            Ok(Vec::new())
+        }
     }
 }
