@@ -76,6 +76,7 @@ pub struct Tendermint {
 }
 
 struct TendermintInner {
+    engine: Option<Weak<Tendermint>>,
     client: Option<Weak<EngineClient>>,
     /// Blockchain height.
     height: Height,
@@ -101,8 +102,10 @@ struct TendermintInner {
     validators: Box<ValidatorSet>,
     /// Reward per block, in base units.
     block_reward: u64,
-    /// Network extension,
-    extension: Arc<TendermintExtension>,
+    /// TimeoutParams for delayed creation of the TendermintExtension.
+    timeouts: TimeoutParams,
+    /// Network extension, must be set later.
+    extension: Option<Arc<TendermintExtension>>,
     /// codechain machine descriptor
     machine: Arc<CodeChainMachine>,
     /// Chain notify
@@ -125,9 +128,10 @@ impl Tendermint {
         });
 
         {
-            let guard = engine.inner.lock();
-            guard.extension.register_tendermint(Arc::downgrade(&engine));
-            guard.chain_notify.register_tendermint(Arc::downgrade(&engine));
+            let mut guard = engine.inner.lock();
+            let engine_weak = Arc::downgrade(&engine);
+            guard.engine = Some(Weak::clone(&engine_weak));
+            guard.chain_notify.register_tendermint(Weak::clone(&engine_weak));
         }
 
         engine
@@ -138,9 +142,9 @@ impl TendermintInner {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: Arc<CodeChainMachine>) -> Self {
-        let extension = TendermintExtension::new(our_params.timeouts);
         let chain_notify = TendermintChainNotify::new();
         TendermintInner {
+            engine: None,
             client: None,
             height: 1,
             view: 0,
@@ -153,11 +157,22 @@ impl TendermintInner {
             last_confirmed_view: 0,
             validators: our_params.validators,
             block_reward: our_params.block_reward,
-            extension: Arc::new(extension),
+            timeouts: our_params.timeouts,
+            extension: None,
             chain_notify: Arc::new(chain_notify),
             machine,
             votes_received: BitSet::new(),
         }
+    }
+}
+
+impl TendermintInner {
+    fn engine(&self) -> Arc<Tendermint> {
+        self.engine
+            .as_ref()
+            .expect("Only writes in initialize")
+            .upgrade()
+            .expect("Reference to itself should not be dropped")
     }
 
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
@@ -296,20 +311,24 @@ impl TendermintInner {
         self.check_above_threshold(count).is_ok()
     }
 
+    fn extension(&self) -> &Arc<TendermintExtension> {
+        self.extension.as_ref().expect("TendermintExtension must be registered")
+    }
+
     fn broadcast_message(&self, message: Bytes) {
-        self.extension.broadcast_message(message);
+        self.extension().broadcast_message(message);
     }
 
     fn broadcast_state(&self, vote_step: &VoteStep, proposal: Option<H256>, votes: BitSet) {
-        self.extension.broadcast_state(vote_step, proposal, votes);
+        self.extension().broadcast_state(vote_step, proposal, votes);
     }
 
     fn request_all_votes(&self, vote_step: &VoteStep) {
-        self.extension.request_all_votes(vote_step);
+        self.extension().request_all_votes(vote_step);
     }
 
     fn request_proposal(&self, height: Height, view: View) {
-        self.extension.request_proposal_to_any(height, view);
+        self.extension().request_proposal_to_any(height, view);
     }
 
     fn update_sealing(&self, parent_block_hash: H256) {
@@ -346,7 +365,7 @@ impl TendermintInner {
 
     fn move_to_step(&mut self, step: Step) {
         let prev_step = mem::replace(&mut self.step, step.into());
-        self.extension.set_timer_step(step, self.view);
+        self.extension().set_timer_step(step, self.view);
         self.backup();
         let vote_step = VoteStep::new(self.height, self.view, step);
 
@@ -589,7 +608,7 @@ impl TendermintInner {
                 }
             }
 
-            self.extension.set_timer_step(backup.step, backup.view);
+            self.extension().set_timer_step(backup.step, backup.view);
         }
     }
 
@@ -844,7 +863,7 @@ impl TendermintInner {
     }
 
     fn on_timeout(&mut self, token: usize) {
-        if self.extension.is_expired_timeout_token(token) {
+        if self.extension().is_expired_timeout_token(token) {
             return
         }
 
@@ -924,7 +943,6 @@ impl TendermintInner {
         self.last_confirmed_view = 0;
         self.client = Some(Weak::clone(&client));
         self.restore();
-        self.extension.register_client(Weak::clone(&client));
         self.validators.register_client(Weak::clone(&client));
         self.chain_notify.register_client(client);
     }
@@ -1025,9 +1043,9 @@ impl TendermintInner {
         if self.is_signer_proposer(&parent_hash) {
             let vote_info = message_info_rlp(vote_step, Some(hash));
             let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-            self.extension.broadcast_proposal_block(signature, block.into_inner());
+            self.extension().broadcast_proposal_block(signature, block.into_inner());
         } else if let Some(signature) = self.votes.round_signature(&vote_step, &hash) {
-            self.extension.broadcast_proposal_block(signature, block.into_inner());
+            self.extension().broadcast_proposal_block(signature, block.into_inner());
         } else {
             cwarn!(ENGINE, "There is a proposal but does not have signature {:?}", vote_step);
         }
@@ -1050,8 +1068,15 @@ impl TendermintInner {
         self.signer.public().and_then(|public| self.validators.get_index(bh, public))
     }
 
-    fn register_network_extension_to_service(&self, service: &NetworkService) {
-        service.register_extension(Arc::clone(&self.extension));
+    fn register_network_extension_to_service(&mut self, service: &NetworkService) {
+        let extension = {
+            let timeouts = self.timeouts.clone();
+            let tendermint = Arc::downgrade(&self.engine());
+            let client = Arc::downgrade(&self.client());
+            service.new_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api))
+        };
+
+        self.extension = Some(Arc::clone(&extension));
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {
@@ -1198,7 +1223,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
-        let guard = self.inner.lock();
+        let mut guard = self.inner.lock();
         guard.register_network_extension_to_service(service)
     }
 
@@ -1360,10 +1385,10 @@ fn destructure_proofs(combined: &[u8]) -> Result<(BlockNumber, &[u8], &[u8]), Er
 }
 
 struct TendermintExtension {
-    tendermint: RwLock<Option<Weak<Tendermint>>>,
-    client: RwLock<Option<Weak<EngineClient>>>,
+    tendermint: Weak<Tendermint>,
+    client: Weak<EngineClient>,
     peers: RwLock<HashMap<NodeId, PeerState>>,
-    api: Mutex<Option<Arc<Api>>>,
+    api: Arc<Api>,
     timeouts: TimeoutParams,
     timeout_token_nonce: AtomicUsize,
 }
@@ -1372,19 +1397,15 @@ const MIN_PEERS_PROPAGATION: usize = 4;
 const MAX_PEERS_PROPAGATION: usize = 128;
 
 impl TendermintExtension {
-    fn new(timeouts: TimeoutParams) -> Self {
+    fn new(tendermint: Weak<Tendermint>, client: Weak<EngineClient>, timeouts: TimeoutParams, api: Arc<Api>) -> Self {
         Self {
-            tendermint: RwLock::new(None),
-            client: RwLock::new(None),
+            tendermint,
+            client,
             peers: RwLock::new(HashMap::new()),
-            api: Mutex::new(None),
+            api,
             timeouts,
             timeout_token_nonce: AtomicUsize::new(ENGINE_TIMEOUT_TOKEN_NONCE_BASE),
         }
-    }
-
-    fn register_client(&self, client: Weak<EngineClient>) {
-        *self.client.write() = Some(client);
     }
 
     fn update_peer_state(&self, token: &NodeId, vote_step: VoteStep, proposal: Option<H256>, messages: BitSet) {
@@ -1412,19 +1433,15 @@ impl TendermintExtension {
     fn broadcast_message(&self, message: Bytes) {
         let tokens = self.select_random_peers();
         let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            for token in tokens {
-                api.send(&token, &message);
-            }
+        for token in tokens {
+            self.api.send(&token, &message);
         }
     }
 
     fn send_message(&self, token: &NodeId, message: Bytes) {
         ctrace!(ENGINE, "Send message to {}", token);
         let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            api.send(token, &message);
-        }
+        self.api.send(token, &message);
     }
 
     fn broadcast_state(&self, vote_step: &VoteStep, proposal: Option<H256>, votes: BitSet) {
@@ -1438,10 +1455,8 @@ impl TendermintExtension {
         .rlp_bytes()
         .into_vec();
 
-        if let Some(api) = self.api.lock().as_ref() {
-            for token in tokens {
-                api.send(&token, &message);
-            }
+        for token in tokens {
+            self.api.send(&token, &message);
         }
     }
 
@@ -1452,9 +1467,7 @@ impl TendermintExtension {
         }
         .rlp_bytes()
         .into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            api.send(token, &message);
-        };
+        self.api.send(token, &message);
     }
 
     fn broadcast_proposal_block(&self, signature: SchnorrSignature, message: Bytes) {
@@ -1464,11 +1477,9 @@ impl TendermintExtension {
         }
         .rlp_bytes()
         .into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            for token in self.peers.read().keys() {
-                api.send(&token, &message);
-            }
-        };
+        for token in self.peers.read().keys() {
+            self.api.send(&token, &message);
+        }
     }
 
     fn request_proposal_to_any(&self, height: Height, view: View) {
@@ -1501,9 +1512,7 @@ impl TendermintExtension {
         }
         .rlp_bytes()
         .into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            api.send(&token, &message);
-        }
+        self.api.send(&token, &message);
     }
 
     fn request_all_votes(&self, vote_step: &VoteStep) {
@@ -1523,9 +1532,7 @@ impl TendermintExtension {
         }
         .rlp_bytes()
         .into_vec();
-        if let Some(api) = self.api.lock().as_ref() {
-            api.send(&token, &message);
-        }
+        self.api.send(&token, &message);
     }
 
     fn is_expired_timeout_token(&self, nonce: usize) -> bool {
@@ -1533,20 +1540,16 @@ impl TendermintExtension {
     }
 
     fn set_timer_step(&self, step: Step, view: View) {
-        if let Some(api) = self.api.lock().as_ref() {
-            let expired_token_nonce = self.timeout_token_nonce.fetch_add(1, AtomicOrdering::SeqCst);
+        let expired_token_nonce = self.timeout_token_nonce.fetch_add(1, AtomicOrdering::SeqCst);
 
-            api.clear_timer(expired_token_nonce).expect("Timer clear succeeds");
-            api.set_timer_once(expired_token_nonce + 1, self.timeouts.timeout(step, view)).expect("Timer set succeeds");
-        };
-    }
-
-    fn register_tendermint(&self, tendermint: Weak<Tendermint>) {
-        *self.tendermint.write() = Some(tendermint);
+        self.api.clear_timer(expired_token_nonce).expect("Timer clear succeeds");
+        self.api
+            .set_timer_once(expired_token_nonce + 1, self.timeouts.timeout(step, view))
+            .expect("Timer set succeeds");
     }
 
     fn on_proposal_message(&self, tendermint: MutexGuard<TendermintInner>, signature: SchnorrSignature, bytes: Bytes) {
-        let c = match self.client.read().as_ref().and_then(|weak| weak.upgrade()) {
+        let c = match self.client.upgrade() {
             Some(c) => c,
             None => return,
         };
@@ -1732,11 +1735,10 @@ impl NetworkExtension for TendermintExtension {
         &VERSIONS
     }
 
-    fn on_initialize(&self, api: Arc<Api>) {
+    fn on_initialize(&self) {
         let initial = self.timeouts.initial();
         ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
-        api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
-        *self.api.lock() = Some(api);
+        self.api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
     }
 
     fn on_node_added(&self, token: &NodeId, _version: u64) {
@@ -1748,7 +1750,7 @@ impl NetworkExtension for TendermintExtension {
     }
 
     fn on_message(&self, token: &NodeId, data: &[u8]) {
-        let t = match self.tendermint.read().as_ref().and_then(|weak| weak.upgrade()) {
+        let t = match self.tendermint.upgrade() {
             Some(t) => t,
             None => return,
         };
@@ -1799,10 +1801,8 @@ impl NetworkExtension for TendermintExtension {
 impl TimeoutHandler for TendermintExtension {
     fn on_timeout(&self, token: TimerToken) {
         debug_assert!(token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE);
-        if let Some(ref weak) = *self.tendermint.read() {
-            if let Some(c) = weak.upgrade() {
-                c.on_timeout(token);
-            }
+        if let Some(c) = self.tendermint.upgrade() {
+            c.on_timeout(token);
         }
     }
 }
