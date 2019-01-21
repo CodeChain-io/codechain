@@ -302,7 +302,7 @@ impl TimeoutHandler for Client {
             }
             RESEAL_MIN_TIMER_TOKEN => {
                 // Checking self.ready_transactions() for efficiency
-                if !self.engine().engine_type().ignore_reseal_min_period() && !self.ready_transactions().is_empty() {
+                if !self.engine().engine_type().ignore_reseal_min_period() && !self.is_pending_queue_empty() {
                     self.update_sealing(BlockId::Latest, false);
                 }
             }
@@ -643,6 +643,10 @@ impl BlockChainClient for Client {
 
     fn ready_transactions(&self) -> Vec<SignedTransaction> {
         self.importer.miner.ready_transactions()
+    }
+
+    fn is_pending_queue_empty(&self) -> bool {
+        self.importer.miner.status().transactions_in_pending_queue == 0
     }
 
     fn block_number(&self, id: &BlockId) -> Option<BlockNumber> {
