@@ -7,7 +7,6 @@ license = "GPL-3.0"
 
 [dependencies]
 elastic-array = "0.10"
-heapsize = "0.4"
 codechain-crypto = { version = "0.1.0", path = "../../crypto" }
 hashdb = { version = "0.1.1", path = "../hashdb" }
 plain_hasher = { path = "../plain_hasher" }
