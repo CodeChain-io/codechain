@@ -37,6 +37,7 @@ extern crate lazy_static;
 extern crate log;
 extern crate parking_lot;
 extern crate primitives;
+extern crate rand;
 extern crate rlp;
 extern crate rustc_hex;
 extern crate rustc_serialize;
@@ -44,6 +45,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+extern crate time;
 extern crate tokio_core;
 
 #[macro_use]
