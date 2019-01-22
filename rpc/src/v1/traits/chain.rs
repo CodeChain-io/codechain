@@ -19,7 +19,7 @@ use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
 use ctypes::invoice::Invoice;
 use ctypes::{BlockNumber, ShardId};
-use primitives::{Bytes as BytesArray, H256};
+use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
 
@@ -53,7 +53,7 @@ build_rpc_trait! {
 
         /// Gets asset scheme with given asset type.
         # [rpc(name = "chain_getAssetSchemeByType")]
-        fn get_asset_scheme_by_type(&self, H256, Option<u64>) -> Result<Option<AssetScheme>>;
+        fn get_asset_scheme_by_type(&self, H160, ShardId, Option<u64>) -> Result<Option<AssetScheme>>;
 
         /// Gets text with given transaction hash.
         # [rpc(name = "chain_getText")]

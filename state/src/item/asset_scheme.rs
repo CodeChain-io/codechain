@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::mem::size_of;
-
+use ccrypto::Blake;
 use ckey::Address;
 use ctypes::ShardId;
 use primitives::{H160, H256};
@@ -191,21 +190,15 @@ pub struct AssetSchemeAddress(H256);
 impl_address!(SHARD, AssetSchemeAddress, PREFIX);
 
 impl AssetSchemeAddress {
-    pub fn new(tracker: H256, shard_id: ShardId) -> Self {
+    pub fn new(asset_type: H160, shard_id: ShardId) -> Self {
         let index = ::std::u64::MAX;
 
-        Self::from_hash_with_shard_id(tracker, index, shard_id)
+        Self::from_hash_with_shard_id(asset_type, index, shard_id)
     }
-    pub fn new_with_zero_suffix(shard_id: ShardId) -> Self {
-        let mut hash = H256::zero();
-        hash[0..2].copy_from_slice(&[PREFIX, 0]);
 
-        debug_assert_eq!(size_of::<u16>(), size_of::<ShardId>());
-        let shard_id_bytes: [u8; 2] = shard_id.to_be_bytes();
-        assert_eq!(2, shard_id_bytes.len());
-        hash[2..4].copy_from_slice(&shard_id_bytes);
-
-        AssetSchemeAddress(hash)
+    pub fn new_from_tracker(tracker: H256, shard_id: ShardId) -> Self {
+        let asset_type = Blake::blake(tracker);
+        Self::new(asset_type, shard_id)
     }
 }
 

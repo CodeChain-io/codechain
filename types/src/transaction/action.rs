@@ -67,7 +67,8 @@ pub enum Action {
     },
     ChangeAssetScheme {
         network_id: NetworkId,
-        asset_type: H256,
+        shard_id: ShardId,
+        asset_type: H160,
         metadata: String,
         approver: Option<Address>,
         administrator: Option<Address>,
@@ -279,7 +280,8 @@ impl Action {
             } => {
                 if input.prev_out.quantity != 1 {
                     return Err(TransactionError::InvalidDecomposedInput {
-                        address: input.prev_out.asset_type,
+                        asset_type: input.prev_out.asset_type,
+                        shard_id: input.prev_out.shard_id,
                         got: input.prev_out.quantity,
                     }
                     .into())
@@ -301,7 +303,7 @@ impl Action {
                 if burn.prev_out.quantity == 0 {
                     return Err(TransactionError::ZeroQuantity.into())
                 }
-                if !burn.prev_out.asset_type.ends_with(&[0; 28]) {
+                if !burn.prev_out.asset_type.is_zero() {
                     return Err(TransactionError::InvalidAssetType(burn.prev_out.asset_type).into())
                 }
                 if *network_id != system_network_id {
@@ -367,6 +369,7 @@ impl From<Action> for Option<ShardTransaction> {
             }),
             Action::ChangeAssetScheme {
                 network_id,
+                shard_id,
                 asset_type,
                 metadata,
                 approver,
@@ -375,6 +378,7 @@ impl From<Action> for Option<ShardTransaction> {
                 ..
             } => Some(ShardTransaction::ChangeAssetScheme {
                 network_id,
+                shard_id,
                 asset_type,
                 metadata,
                 approver,
@@ -470,6 +474,7 @@ impl Encodable for Action {
             }
             Action::ChangeAssetScheme {
                 network_id,
+                shard_id,
                 asset_type,
                 metadata,
                 approver,
@@ -477,8 +482,9 @@ impl Encodable for Action {
                 allowed_script_hashes,
                 approvals,
             } => {
-                s.begin_list(8)
+                s.begin_list(9)
                     .append(&CHANGE_ASSET_SCHEME)
+                    .append(shard_id)
                     .append(network_id)
                     .append(asset_type)
                     .append(metadata)
@@ -652,17 +658,18 @@ impl Decodable for Action {
                 })
             }
             CHANGE_ASSET_SCHEME => {
-                if rlp.item_count()? != 8 {
+                if rlp.item_count()? != 9 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::ChangeAssetScheme {
                     network_id: rlp.val_at(1)?,
-                    asset_type: rlp.val_at(2)?,
-                    metadata: rlp.val_at(3)?,
-                    approver: rlp.val_at(4)?,
-                    administrator: rlp.val_at(5)?,
-                    allowed_script_hashes: rlp.list_at(6)?,
-                    approvals: rlp.list_at(7)?,
+                    shard_id: rlp.val_at(2)?,
+                    asset_type: rlp.val_at(3)?,
+                    metadata: rlp.val_at(4)?,
+                    approver: rlp.val_at(5)?,
+                    administrator: rlp.val_at(6)?,
+                    allowed_script_hashes: rlp.list_at(7)?,
+                    approvals: rlp.list_at(8)?,
                 })
             }
             COMPOSE_ASSET => {
@@ -791,18 +798,17 @@ impl Decodable for Action {
 }
 
 fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
-    let mut sum: HashMap<H256, u128> = HashMap::new();
+    let mut sum: HashMap<(H160, ShardId), u128> = HashMap::new();
 
     for input in inputs {
-        let asset_type = input.prev_out.asset_type;
+        let shard_asset_type = (input.prev_out.asset_type, input.prev_out.shard_id);
         let quantity = u128::from(input.prev_out.quantity);
-        let current_quantity = sum.get(&asset_type).cloned().unwrap_or_default();
-        sum.insert(asset_type, current_quantity + quantity);
+        *sum.entry(shard_asset_type).or_insert_with(Default::default) += quantity;
     }
     for output in outputs {
-        let asset_type = output.asset_type;
+        let shard_asset_type = (output.asset_type, output.shard_id);
         let quantity = u128::from(output.quantity);
-        let current_quantity = if let Some(current_quantity) = sum.get(&asset_type) {
+        let current_quantity = if let Some(current_quantity) = sum.get(&shard_asset_type) {
             if *current_quantity < quantity {
                 return false
             }
@@ -810,7 +816,7 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
         } else {
             return false
         };
-        let t = sum.insert(asset_type, current_quantity - quantity);
+        let t = sum.insert(shard_asset_type, current_quantity - quantity);
         debug_assert!(t.is_some());
     }
 
@@ -880,9 +886,9 @@ fn verify_input_and_output_consistent_with_order(
 
         for input_idx in order_tx.input_indices.iter() {
             let prev_out = &inputs[*input_idx].prev_out;
-            if prev_out.asset_type == order.asset_type_from {
+            if prev_out.asset_type == order.asset_type_from && prev_out.shard_id == order.shard_id_from {
                 input_quantity_from += prev_out.quantity;
-            } else if prev_out.asset_type == order.asset_type_fee {
+            } else if prev_out.asset_type == order.asset_type_fee && prev_out.shard_id == order.shard_id_fee {
                 input_quantity_fee += prev_out.quantity;
             } else {
                 return Err(TransactionError::InconsistentTransactionInOutWithOrders)
@@ -892,17 +898,17 @@ fn verify_input_and_output_consistent_with_order(
         for output_idx in order_tx.output_indices.iter() {
             let output = &outputs[*output_idx];
             let owned_by_taker = order.check_transfer_output(output)?;
-            if output.asset_type == order.asset_type_from {
+            if output.asset_type == order.asset_type_from && output.shard_id == order.shard_id_from {
                 if output_quantity_from != 0 {
                     return Err(TransactionError::InconsistentTransactionInOutWithOrders)
                 }
                 output_quantity_from = output.quantity;
-            } else if output.asset_type == order.asset_type_to {
+            } else if output.asset_type == order.asset_type_to && output.shard_id == order.shard_id_to {
                 if output_quantity_to != 0 {
                     return Err(TransactionError::InconsistentTransactionInOutWithOrders)
                 }
                 output_quantity_to = output.quantity;
-            } else if output.asset_type == order.asset_type_fee {
+            } else if output.asset_type == order.asset_type_fee && output.shard_id == order.shard_id_fee {
                 if owned_by_taker {
                     if output_quantity_fee_remaining != 0 {
                         return Err(TransactionError::InconsistentTransactionInOutWithOrders)

@@ -16,7 +16,8 @@
 
 use cjson::uint::Uint;
 use ctypes::transaction::{Order as OrderType, OrderOnTransfer as OrderOnTransferType};
-use primitives::{H160, H256};
+use ctypes::ShardId;
+use primitives::H160;
 use rustc_serialize::hex::{FromHex, FromHexError, ToHex};
 
 use super::AssetOutPoint;
@@ -24,9 +25,12 @@ use super::AssetOutPoint;
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Order {
-    pub asset_type_from: H256,
-    pub asset_type_to: H256,
-    pub asset_type_fee: H256,
+    pub asset_type_from: H160,
+    pub asset_type_to: H160,
+    pub asset_type_fee: H160,
+    pub shard_id_from: ShardId,
+    pub shard_id_to: ShardId,
+    pub shard_id_fee: ShardId,
     pub asset_quantity_from: Uint,
     pub asset_quantity_to: Uint,
     pub asset_quantity_fee: Uint,
@@ -44,6 +48,9 @@ impl From<OrderType> for Order {
             asset_type_from: from.asset_type_from,
             asset_type_to: from.asset_type_to,
             asset_type_fee: from.asset_type_fee,
+            shard_id_from: from.shard_id_from,
+            shard_id_to: from.shard_id_to,
+            shard_id_fee: from.shard_id_fee,
             asset_quantity_from: from.asset_quantity_from.into(),
             asset_quantity_to: from.asset_quantity_to.into(),
             asset_quantity_fee: from.asset_quantity_fee.into(),
@@ -66,6 +73,9 @@ impl From<Order> for Result<OrderType, FromHexError> {
             asset_type_from: from.asset_type_from,
             asset_type_to: from.asset_type_to,
             asset_type_fee: from.asset_type_fee,
+            shard_id_from: from.shard_id_from,
+            shard_id_to: from.shard_id_to,
+            shard_id_fee: from.shard_id_fee,
             asset_quantity_from: from.asset_quantity_from.into(),
             asset_quantity_to: from.asset_quantity_to.into(),
             asset_quantity_fee: from.asset_quantity_fee.into(),
