@@ -194,7 +194,7 @@ impl AssetSchemeAddress {
     pub fn new(tracker: H256, shard_id: ShardId) -> Self {
         let index = ::std::u64::MAX;
 
-        Self::from_transaction_hash_with_shard_id(tracker, index, shard_id)
+        Self::from_hash_with_shard_id(tracker, index, shard_id)
     }
     pub fn new_with_zero_suffix(shard_id: ShardId) -> Self {
         let mut hash = H256::zero();

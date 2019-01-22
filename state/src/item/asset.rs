@@ -186,7 +186,7 @@ impl OwnedAssetAddress {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
         let index = index as u64;
 
-        Self::from_transaction_hash_with_shard_id(transaction_tracker, index, shard_id)
+        Self::from_hash_with_shard_id(transaction_tracker, index, shard_id)
     }
 }
 
