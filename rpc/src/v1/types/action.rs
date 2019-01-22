@@ -133,7 +133,7 @@ pub enum Action {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase", tag = "type")]
-pub enum ActionWithId {
+pub enum ActionWithTracker {
     #[serde(rename_all = "camelCase")]
     MintAsset {
         network_id: NetworkId,
@@ -147,7 +147,7 @@ pub enum ActionWithId {
 
         approvals: Vec<Signature>,
 
-        id: H256,
+        tracker: H256,
     },
     #[serde(rename_all = "camelCase")]
     TransferAsset {
@@ -160,7 +160,7 @@ pub enum ActionWithId {
         metadata: String,
         approvals: Vec<Signature>,
 
-        id: H256,
+        tracker: H256,
     },
     #[serde(rename_all = "camelCase")]
     ChangeAssetScheme {
@@ -173,7 +173,7 @@ pub enum ActionWithId {
 
         approvals: Vec<Signature>,
 
-        id: H256,
+        tracker: H256,
     },
     #[serde(rename_all = "camelCase")]
     ComposeAsset {
@@ -188,7 +188,7 @@ pub enum ActionWithId {
 
         approvals: Vec<Signature>,
 
-        id: H256,
+        tracker: H256,
     },
     #[serde(rename_all = "camelCase")]
     DecomposeAsset {
@@ -198,14 +198,14 @@ pub enum ActionWithId {
 
         approvals: Vec<Signature>,
 
-        id: H256,
+        tracker: H256,
     },
     #[serde(rename_all = "camelCase")]
     UnwrapCCC {
         network_id: NetworkId,
         burn: Box<AssetTransferInput>,
 
-        id: H256,
+        tracker: H256,
     },
     Pay {
         receiver: PlatformAddress,
@@ -248,7 +248,7 @@ pub enum ActionWithId {
     },
 }
 
-impl ActionWithId {
+impl ActionWithTracker {
     pub fn from_core(from: ActionType, network_id: NetworkId) -> Self {
         let tracker = from.tracker();
         match from {
@@ -262,21 +262,17 @@ impl ActionWithId {
 
                 output,
                 approvals,
-            } => {
-                let id = tracker.unwrap();
-                ActionWithId::MintAsset {
-                    network_id,
-                    shard_id,
-                    metadata,
-                    approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                    administrator: administrator
-                        .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
-                    allowed_script_hashes,
-                    output: Box::new((*output).into()),
-                    approvals,
-                    id,
-                }
-            }
+            } => ActionWithTracker::MintAsset {
+                network_id,
+                shard_id,
+                metadata,
+                approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                allowed_script_hashes,
+                output: Box::new((*output).into()),
+                approvals,
+                tracker: tracker.unwrap(),
+            },
             ActionType::TransferAsset {
                 network_id,
                 burns,
@@ -285,19 +281,16 @@ impl ActionWithId {
                 orders,
                 metadata,
                 approvals,
-            } => {
-                let id = tracker.unwrap();
-                ActionWithId::TransferAsset {
-                    network_id,
-                    burns: burns.into_iter().map(From::from).collect(),
-                    inputs: inputs.into_iter().map(From::from).collect(),
-                    outputs: outputs.into_iter().map(From::from).collect(),
-                    orders: orders.into_iter().map(From::from).collect(),
-                    metadata,
-                    approvals,
-                    id,
-                }
-            }
+            } => ActionWithTracker::TransferAsset {
+                network_id,
+                burns: burns.into_iter().map(From::from).collect(),
+                inputs: inputs.into_iter().map(From::from).collect(),
+                outputs: outputs.into_iter().map(From::from).collect(),
+                orders: orders.into_iter().map(From::from).collect(),
+                metadata,
+                approvals,
+                tracker: tracker.unwrap(),
+            },
             ActionType::ChangeAssetScheme {
                 network_id,
                 asset_type,
@@ -306,20 +299,16 @@ impl ActionWithId {
                 administrator,
                 allowed_script_hashes,
                 approvals,
-            } => {
-                let id = tracker.unwrap();
-                ActionWithId::ChangeAssetScheme {
-                    network_id,
-                    asset_type,
-                    metadata,
-                    approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                    administrator: administrator
-                        .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
-                    allowed_script_hashes,
-                    approvals,
-                    id,
-                }
-            }
+            } => ActionWithTracker::ChangeAssetScheme {
+                network_id,
+                asset_type,
+                metadata,
+                approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                allowed_script_hashes,
+                approvals,
+                tracker: tracker.unwrap(),
+            },
             ActionType::ComposeAsset {
                 network_id,
                 shard_id,
@@ -330,72 +319,62 @@ impl ActionWithId {
                 inputs,
                 output,
                 approvals,
-            } => {
-                let id = tracker.unwrap();
-                ActionWithId::ComposeAsset {
-                    network_id,
-                    shard_id,
-                    metadata,
-                    approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                    administrator: administrator
-                        .map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
-                    allowed_script_hashes,
-                    inputs: inputs.into_iter().map(From::from).collect(),
-                    output: Box::new((*output).into()),
-                    approvals,
-                    id,
-                }
-            }
+            } => ActionWithTracker::ComposeAsset {
+                network_id,
+                shard_id,
+                metadata,
+                approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
+                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                allowed_script_hashes,
+                inputs: inputs.into_iter().map(From::from).collect(),
+                output: Box::new((*output).into()),
+                approvals,
+                tracker: tracker.unwrap(),
+            },
             ActionType::DecomposeAsset {
                 network_id,
                 input,
                 outputs,
                 approvals,
-            } => {
-                let id = tracker.unwrap();
-                ActionWithId::DecomposeAsset {
-                    network_id,
-                    input: Box::new(input.into()),
-                    outputs: outputs.into_iter().map(From::from).collect(),
-                    approvals,
-                    id,
-                }
-            }
+            } => ActionWithTracker::DecomposeAsset {
+                network_id,
+                input: Box::new(input.into()),
+                outputs: outputs.into_iter().map(From::from).collect(),
+                approvals,
+                tracker: tracker.unwrap(),
+            },
             ActionType::UnwrapCCC {
                 network_id,
                 burn,
-            } => {
-                let id = tracker.unwrap();
-                ActionWithId::UnwrapCCC {
-                    network_id,
-                    burn: Box::new(burn.into()),
-                    id,
-                }
-            }
+            } => ActionWithTracker::UnwrapCCC {
+                network_id,
+                burn: Box::new(burn.into()),
+                tracker: tracker.unwrap(),
+            },
             ActionType::Pay {
                 receiver,
                 quantity,
-            } => ActionWithId::Pay {
+            } => ActionWithTracker::Pay {
                 receiver: PlatformAddress::new_v1(network_id, receiver),
                 quantity: quantity.into(),
             },
             ActionType::SetRegularKey {
                 key,
-            } => ActionWithId::SetRegularKey {
+            } => ActionWithTracker::SetRegularKey {
                 key,
             },
-            ActionType::CreateShard => ActionWithId::CreateShard,
+            ActionType::CreateShard => ActionWithTracker::CreateShard,
             ActionType::SetShardOwners {
                 shard_id,
                 owners,
-            } => ActionWithId::SetShardOwners {
+            } => ActionWithTracker::SetShardOwners {
                 shard_id,
                 owners: owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect(),
             },
             ActionType::SetShardUsers {
                 shard_id,
                 users,
-            } => ActionWithId::SetShardUsers {
+            } => ActionWithTracker::SetShardUsers {
                 shard_id,
                 users: users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect(),
             },
@@ -404,7 +383,7 @@ impl ActionWithId {
                 lock_script_hash,
                 parameters,
                 quantity,
-            } => ActionWithId::WrapCCC {
+            } => ActionWithTracker::WrapCCC {
                 shard_id,
                 lock_script_hash,
                 parameters,
@@ -414,7 +393,7 @@ impl ActionWithId {
                 content,
                 certifier,
                 signature,
-            } => ActionWithId::Store {
+            } => ActionWithTracker::Store {
                 content,
                 certifier: PlatformAddress::new_v1(network_id, certifier),
                 signature,
@@ -422,14 +401,14 @@ impl ActionWithId {
             ActionType::Remove {
                 hash,
                 signature,
-            } => ActionWithId::Remove {
+            } => ActionWithTracker::Remove {
                 hash,
                 signature,
             },
             ActionType::Custom {
                 handler_id,
                 bytes,
-            } => ActionWithId::Custom {
+            } => ActionWithTracker::Custom {
                 handler_id,
                 bytes,
             },
@@ -653,7 +632,7 @@ mod tests {
 
     #[test]
     fn serialize_metadata_with_single_quotations() {
-        let mint = ActionWithId::MintAsset {
+        let mint = ActionWithTracker::MintAsset {
             network_id: "ab".into(),
             shard_id: 0,
             metadata: "string with 'a single quotation'".to_string(),
@@ -669,10 +648,10 @@ mod tests {
             .into(),
 
             approvals: vec![],
-            id: Default::default(),
+            tracker: Default::default(),
         };
         let s = to_string(&mint).unwrap();
-        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'a single quotation'","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"id":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
+        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'a single quotation'","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"tracker":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
         assert_eq!(&s, expected);
     }
 
@@ -726,7 +705,7 @@ mod tests {
 
     #[test]
     fn serialize_metadata_with_apostrophe() {
-        let mint = ActionWithId::MintAsset {
+        let mint = ActionWithTracker::MintAsset {
             network_id: "ab".into(),
             shard_id: 0,
             metadata: "string with 'an apostrophe’".to_string(),
@@ -742,10 +721,10 @@ mod tests {
             .into(),
 
             approvals: vec![],
-            id: Default::default(),
+            tracker: Default::default(),
         };
         let s = to_string(&mint).unwrap();
-        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"id":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
+        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"tracker":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
         assert_eq!(&s, expected);
     }
 }
