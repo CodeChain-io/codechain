@@ -154,7 +154,7 @@ impl FromStr for PlatformAddress {
             version: data[0],
             address: {
                 let mut arr = [0u8; 20];
-                arr[..20].clone_from_slice(&data[1..=20]);
+                arr[..20].copy_from_slice(&data[1..=20]);
                 H160(arr).into()
             },
         })
