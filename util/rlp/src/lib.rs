@@ -38,7 +38,6 @@
 //! * You want to get view onto rlp-slice.
 //! * You don't want to decode whole rlp at once.
 
-extern crate byteorder;
 extern crate elastic_array;
 extern crate primitives;
 extern crate rustc_hex;

@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io::Cursor;
-
-use byteorder::{BigEndian, ReadBytesExt};
 use primitives::H256;
 
 use crate::ShardId;
@@ -32,7 +29,8 @@ pub struct AssetOutPoint {
 impl AssetOutPoint {
     pub fn related_shard(&self) -> ShardId {
         debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-        Cursor::new(&self.asset_type[2..4]).read_u16::<BigEndian>().unwrap()
+        let shard_id_bytes: [u8; 2] = [self.asset_type[2], self.asset_type[3]];
+        ShardId::from_be_bytes(shard_id_bytes)
     }
 }
 
@@ -43,7 +41,7 @@ mod tests {
     #[test]
     fn related_shard_of_asset_out_point() {
         let mut asset_type = H256::new();
-        asset_type[2..4].clone_from_slice(&[0xBE, 0xEF]);
+        asset_type[2..4].copy_from_slice(&[0xBE, 0xEF]);
 
         let p = AssetOutPoint {
             tracker: H256::random(),

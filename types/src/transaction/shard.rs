@@ -680,7 +680,7 @@ mod tests {
     #[test]
     fn related_shard_of_asset_transfer_input() {
         let mut asset_type = H256::new();
-        asset_type[2..4].clone_from_slice(&[0xBE, 0xEF]);
+        asset_type[2..4].copy_from_slice(&[0xBE, 0xEF]);
 
         let prev_out = AssetOutPoint {
             tracker: H256::random(),

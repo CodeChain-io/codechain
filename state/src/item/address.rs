@@ -19,7 +19,7 @@ macro_rules! define_address_constructor {
         fn from_transaction_hash(transaction_hash: ::primitives::H256, index: u64) -> Self {
             let mut hash: ::primitives::H256 =
                 ::ccrypto::Blake::blake_with_key(&transaction_hash, &::primitives::H128::from(index));
-            hash[0..1].clone_from_slice(&[$prefix]);
+            hash[0] = $prefix;
             $name(hash)
         }
     };
@@ -31,13 +31,11 @@ macro_rules! define_address_constructor {
         ) -> Self {
             let mut hash: ::primitives::H256 =
                 ::ccrypto::Blake::blake_with_key(&tracker, &::primitives::H128::from(index));
-            hash[0..2].clone_from_slice(&[$prefix, 0]);
+            hash[0..2].copy_from_slice(&[$prefix, 0]);
 
-            let mut shard_id_bytes = Vec::<u8>::new();
             debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<::ctypes::ShardId>());
-            ::byteorder::WriteBytesExt::write_u16::<::byteorder::BigEndian>(&mut shard_id_bytes, shard_id).unwrap();
-            assert_eq!(2, shard_id_bytes.len());
-            hash[2..4].clone_from_slice(&shard_id_bytes);
+            let shard_id_bytes: [u8; 2] = shard_id.to_be_bytes();
+            hash[2..4].copy_from_slice(&shard_id_bytes);
 
             $name(hash)
         }
@@ -50,8 +48,8 @@ macro_rules! define_id_getter {
     (SHARD) => {
         pub fn shard_id(&self) -> ::ctypes::ShardId {
             debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-            use byteorder::ReadBytesExt;
-            ::std::io::Cursor::new(&self.0[2..4]).read_u16::<::byteorder::BigEndian>().unwrap()
+            let shard_id_bytes: [u8; 2] = [self.0[2], self.0[3]];
+            ::ctypes::ShardId::from_be_bytes(shard_id_bytes)
         }
     };
 }

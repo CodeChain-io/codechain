@@ -30,7 +30,7 @@ use self::asset_input::{AssetOutPoint, AssetTransferInput};
 use self::asset_output::{AssetMintOutput, AssetTransferOutput};
 use self::order::OrderOnTransfer;
 
-pub use self::action::{Action, ActionWithId};
+pub use self::action::{Action, ActionWithTracker};
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
 pub use self::text::Text;
