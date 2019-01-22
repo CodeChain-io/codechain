@@ -43,7 +43,7 @@ mod tests {
     #[test]
     fn related_shard_of_asset_out_point() {
         let mut asset_type = H256::new();
-        asset_type[2..4].clone_from_slice(&[0xBE, 0xEF]);
+        asset_type[2..4].copy_from_slice(&[0xBE, 0xEF]);
 
         let p = AssetOutPoint {
             tracker: H256::random(),

@@ -49,7 +49,7 @@ pub fn address_to_hash(addr: &SocketAddr) -> H256 {
         IpAddr::V4(ip) => {
             if ip.is_loopback() || ip.is_private() {
                 let mut octets = [0u8; 18];
-                octets[0..16].clone_from_slice(&ip.to_ipv6_compatible().octets());
+                octets[0..16].copy_from_slice(&ip.to_ipv6_compatible().octets());
                 octets[16] = (port >> 8) as u8;
                 octets[17] = (port & 0xFF) as u8;
                 return Blake::blake(&octets)
