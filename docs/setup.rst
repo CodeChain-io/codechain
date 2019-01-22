@@ -40,7 +40,7 @@ Build Dependencies
 ------------------
 ::
 
-CodeChain requires Rust version 1.31.0 to build. Using `rustup <https://rustup.rs/>`_ is recommended.
+CodeChain requires Rust version 1.32.0 to build. Using `rustup <https://rustup.rs/>`_ is recommended.
 
 * For Linux Systems:
 

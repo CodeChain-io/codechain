@@ -28,9 +28,6 @@ pub trait JournalDB: HashDB {
     /// Return a copy of ourself, in a box.
     fn boxed_clone(&self) -> Box<JournalDB>;
 
-    /// Returns heap memory size used
-    fn mem_used(&self) -> usize;
-
     /// Returns the size of journalled state in memory.
     /// This function has a considerable speed requirement --
     /// it must be fast enough to call several times per block imported.
