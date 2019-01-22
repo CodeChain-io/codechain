@@ -146,6 +146,56 @@ const ERROR_ID_ORDER_RECIPIENTS_ARE_SAME: u8 = 34u8;
 const ERROR_ID_ORDER_EXPIRED: u8 = 35u8;
 const ERROR_ID_SCRIPT_NOT_ALLOWED: u8 = 36u8;
 
+fn list_length_for(tag: u8) -> Result<usize, DecoderError> {
+    Ok(match tag {
+        ERROR_ID_INVALID_ASSET_QUANTITY => 4,
+        ERROR_ID_ASSET_NOT_FOUND => 2,
+        ERROR_ID_ASSET_SCHEME_NOT_FOUND => 2,
+        ERROR_ID_ASSET_SCHEME_DUPLICATED => 2,
+        ERROR_ID_INVALID_ASSET_TYPE => 2,
+        ERROR_ID_SCRIPT_HASH_MISMATCH => 2,
+        ERROR_ID_SCRIPT_NOT_ALLOWED => 2,
+        ERROR_ID_INVALID_SCRIPT => 1,
+        ERROR_ID_FAILED_TO_UNLOCK => 3,
+        ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => 1,
+        ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => 3,
+        ERROR_ID_INSUFFICIENT_PERMISSION => 1,
+        ERROR_ID_EMPTY_SHARD_OWNERS => 2,
+        ERROR_ID_NOT_APPROVED => 2,
+        ERROR_ID_ZERO_QUANTITY => 1,
+        ERROR_ID_TOO_MANY_OUTPUTS => 2,
+        ERROR_ID_EMPTY_INPUT => 1,
+        ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => 1,
+        ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => 1,
+        ERROR_ID_INVALID_DECOMPOSED_INPUT => 3,
+        ERROR_ID_INVALID_COMPOSED_OUTPUT => 2,
+        ERROR_ID_INVALID_DECOMPOSED_OUTPUT => 4,
+        ERROR_ID_EMPTY_OUTPUT => 1,
+        ERROR_ID_TIMELOCKED => 3,
+        ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
+        ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => 1,
+        ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => 1,
+        ERROR_ID_INVALID_ORDER_ASSET_TYPES => 4,
+        ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => 4,
+        ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => 2,
+        ERROR_ID_INVALID_ORDER_PARAMETERS => 2,
+        ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => 1,
+        ERROR_ID_ORDER_EXPIRED => 3,
+        _ => return Err(DecoderError::Custom("Invalid transaction error")),
+    })
+}
+
+fn tag_with(s: &mut RlpStream, tag: u8) -> &mut RlpStream {
+    s.begin_list(list_length_for(tag).unwrap()).append(&tag)
+}
+
+fn check_tag_size(rlp: &UntrustedRlp, tag: u8) -> Result<(), DecoderError> {
+    if rlp.item_count()? != list_length_for(tag)? {
+        return Err(DecoderError::RlpInvalidLength)
+    }
+    Ok(())
+}
+
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
@@ -153,82 +203,74 @@ impl Encodable for Error {
                 address,
                 expected,
                 got,
-            } => s.begin_list(4).append(&ERROR_ID_INVALID_ASSET_QUANTITY).append(address).append(expected).append(got),
-            Error::AssetNotFound(addr) => s.begin_list(2).append(&ERROR_ID_ASSET_NOT_FOUND).append(addr),
-            Error::AssetSchemeNotFound(addr) => s.begin_list(2).append(&ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(addr),
-            Error::AssetSchemeDuplicated(addr) => {
-                s.begin_list(2).append(&ERROR_ID_ASSET_SCHEME_DUPLICATED).append(addr)
-            }
-            Error::InvalidAssetType(addr) => s.begin_list(2).append(&ERROR_ID_INVALID_ASSET_TYPE).append(addr),
-            Error::ScriptHashMismatch(mismatch) => {
-                s.begin_list(2).append(&ERROR_ID_SCRIPT_HASH_MISMATCH).append(mismatch)
-            }
-            Error::ScriptNotAllowed(hash) => s.begin_list(2).append(&ERROR_ID_SCRIPT_NOT_ALLOWED).append(hash),
-            Error::InvalidScript => s.begin_list(1).append(&ERROR_ID_INVALID_SCRIPT),
+            } => tag_with(s, ERROR_ID_INVALID_ASSET_QUANTITY).append(address).append(expected).append(got),
+            Error::AssetNotFound(addr) => tag_with(s, ERROR_ID_ASSET_NOT_FOUND).append(addr),
+            Error::AssetSchemeNotFound(addr) => tag_with(s, ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(addr),
+            Error::AssetSchemeDuplicated(addr) => tag_with(s, ERROR_ID_ASSET_SCHEME_DUPLICATED).append(addr),
+            Error::InvalidAssetType(addr) => tag_with(s, ERROR_ID_INVALID_ASSET_TYPE).append(addr),
+            Error::ScriptHashMismatch(mismatch) => tag_with(s, ERROR_ID_SCRIPT_HASH_MISMATCH).append(mismatch),
+            Error::ScriptNotAllowed(hash) => tag_with(s, ERROR_ID_SCRIPT_NOT_ALLOWED).append(hash),
+            Error::InvalidScript => tag_with(s, ERROR_ID_INVALID_SCRIPT),
             Error::FailedToUnlock {
                 address,
                 reason,
-            } => s.begin_list(3).append(&ERROR_ID_FAILED_TO_UNLOCK).append(address).append(reason),
-            Error::InconsistentTransactionInOut => s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT),
+            } => tag_with(s, ERROR_ID_FAILED_TO_UNLOCK).append(address).append(reason),
+            Error::InconsistentTransactionInOut => tag_with(s, ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT),
             Error::DuplicatedPreviousOutput {
                 transaction_hash,
                 index,
-            } => s.begin_list(3).append(&ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT).append(transaction_hash).append(index),
-            Error::InsufficientPermission => s.begin_list(1).append(&ERROR_ID_INSUFFICIENT_PERMISSION),
-            Error::EmptyShardOwners(shard_id) => s.begin_list(2).append(&ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id),
-            Error::NotApproved(address) => s.begin_list(2).append(&ERROR_ID_NOT_APPROVED).append(address),
-            Error::ZeroQuantity => s.begin_list(1).append(&ERROR_ID_ZERO_QUANTITY),
-            Error::TooManyOutputs(num) => s.begin_list(2).append(&ERROR_ID_TOO_MANY_OUTPUTS).append(num),
-            Error::EmptyInput => s.begin_list(1).append(&ERROR_ID_EMPTY_INPUT),
-            Error::CannotBurnCentralizedAsset => s.begin_list(1).append(&ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET),
-            Error::CannotComposeCentralizedAsset => s.begin_list(1).append(&ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET),
+            } => tag_with(s, ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT).append(transaction_hash).append(index),
+            Error::InsufficientPermission => tag_with(s, ERROR_ID_INSUFFICIENT_PERMISSION),
+            Error::EmptyShardOwners(shard_id) => tag_with(s, ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id),
+            Error::NotApproved(address) => tag_with(s, ERROR_ID_NOT_APPROVED).append(address),
+            Error::ZeroQuantity => tag_with(s, ERROR_ID_ZERO_QUANTITY),
+            Error::TooManyOutputs(num) => tag_with(s, ERROR_ID_TOO_MANY_OUTPUTS).append(num),
+            Error::EmptyInput => tag_with(s, ERROR_ID_EMPTY_INPUT),
+            Error::CannotBurnCentralizedAsset => tag_with(s, ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET),
+            Error::CannotComposeCentralizedAsset => tag_with(s, ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET),
             Error::InvalidDecomposedInput {
                 address,
                 got,
-            } => s.begin_list(3).append(&ERROR_ID_INVALID_DECOMPOSED_INPUT).append(address).append(got),
+            } => tag_with(s, ERROR_ID_INVALID_DECOMPOSED_INPUT).append(address).append(got),
             Error::InvalidComposedOutput {
                 got,
-            } => s.begin_list(2).append(&ERROR_ID_INVALID_COMPOSED_OUTPUT).append(got),
+            } => tag_with(s, ERROR_ID_INVALID_COMPOSED_OUTPUT).append(got),
             Error::InvalidDecomposedOutput {
                 address,
                 expected,
                 got,
-            } => {
-                s.begin_list(4).append(&ERROR_ID_INVALID_DECOMPOSED_OUTPUT).append(address).append(expected).append(got)
-            }
-            Error::EmptyOutput => s.begin_list(1).append(&ERROR_ID_EMPTY_OUTPUT),
+            } => tag_with(s, ERROR_ID_INVALID_DECOMPOSED_OUTPUT).append(address).append(expected).append(got),
+            Error::EmptyOutput => tag_with(s, ERROR_ID_EMPTY_OUTPUT),
             Error::Timelocked {
                 timelock,
                 remaining_time,
-            } => s.begin_list(3).append(&ERROR_ID_TIMELOCKED).append(timelock).append(remaining_time),
-            Error::InvalidOriginOutputs(order_hash) => {
-                s.begin_list(2).append(&ERROR_ID_INVALID_ORIGIN_OUTPUTS).append(order_hash)
-            }
-            Error::InvalidOrderInOutIndices => s.begin_list(1).append(&ERROR_ID_INVALID_ORDER_IN_OUT_INDICES),
+            } => tag_with(s, ERROR_ID_TIMELOCKED).append(timelock).append(remaining_time),
+            Error::InvalidOriginOutputs(order_hash) => tag_with(s, ERROR_ID_INVALID_ORIGIN_OUTPUTS).append(order_hash),
+            Error::InvalidOrderInOutIndices => tag_with(s, ERROR_ID_INVALID_ORDER_IN_OUT_INDICES),
             Error::InconsistentTransactionInOutWithOrders => {
-                s.begin_list(1).append(&ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS)
+                tag_with(s, ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS)
             }
             Error::InvalidOrderAssetTypes {
                 from,
                 to,
                 fee,
-            } => s.begin_list(4).append(&ERROR_ID_INVALID_ORDER_ASSET_TYPES).append(from).append(to).append(fee),
+            } => tag_with(s, ERROR_ID_INVALID_ORDER_ASSET_TYPES).append(from).append(to).append(fee),
             Error::InvalidOrderAssetQuantities {
                 from,
                 to,
                 fee,
-            } => s.begin_list(4).append(&ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES).append(from).append(to).append(fee),
+            } => tag_with(s, ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES).append(from).append(to).append(fee),
             Error::InvalidOrderLockScriptHash(lock_script_hash) => {
-                s.begin_list(2).append(&ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH).append(lock_script_hash)
+                tag_with(s, ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH).append(lock_script_hash)
             }
             Error::InvalidOrderParameters(parameters) => {
-                s.begin_list(2).append(&ERROR_ID_INVALID_ORDER_PARAMETERS).append(parameters)
+                tag_with(s, ERROR_ID_INVALID_ORDER_PARAMETERS).append(parameters)
             }
-            Error::OrderRecipientsAreSame => s.begin_list(1).append(&ERROR_ID_ORDER_RECIPIENTS_ARE_SAME),
+            Error::OrderRecipientsAreSame => tag_with(s, ERROR_ID_ORDER_RECIPIENTS_ARE_SAME),
             Error::OrderExpired {
                 expiration,
                 timestamp,
-            } => s.begin_list(3).append(&ERROR_ID_ORDER_EXPIRED).append(expiration).append(timestamp),
+            } => tag_with(s, ERROR_ID_ORDER_EXPIRED).append(expiration).append(timestamp),
         };
     }
 }
@@ -236,235 +278,77 @@ impl Encodable for Error {
 impl Decodable for Error {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at::<u8>(0)?;
-        Ok(match tag {
-            ERROR_ID_INVALID_ASSET_QUANTITY => {
-                if rlp.item_count()? != 4 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidAssetQuantity {
-                    address: rlp.val_at(1)?,
-                    expected: rlp.val_at(2)?,
-                    got: rlp.val_at(3)?,
-                }
-            }
-            ERROR_ID_ASSET_NOT_FOUND => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::AssetNotFound(rlp.val_at(1)?)
-            }
-            ERROR_ID_ASSET_SCHEME_NOT_FOUND => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::AssetSchemeNotFound(rlp.val_at(1)?)
-            }
-            ERROR_ID_ASSET_SCHEME_DUPLICATED => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::AssetSchemeDuplicated(rlp.val_at(1)?)
-            }
-            ERROR_ID_INVALID_ASSET_TYPE => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidAssetType(rlp.val_at(1)?)
-            }
-            ERROR_ID_SCRIPT_HASH_MISMATCH => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::ScriptHashMismatch(rlp.val_at(1)?)
-            }
-            ERROR_ID_SCRIPT_NOT_ALLOWED => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::ScriptNotAllowed(rlp.val_at(1)?)
-            }
-            ERROR_ID_INVALID_SCRIPT => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidScript
-            }
-            ERROR_ID_FAILED_TO_UNLOCK => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::FailedToUnlock {
-                    address: rlp.val_at(1)?,
-                    reason: rlp.val_at(2)?,
-                }
-            }
-            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InconsistentTransactionInOut
-            }
-            ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::DuplicatedPreviousOutput {
-                    transaction_hash: rlp.val_at(1)?,
-                    index: rlp.val_at(2)?,
-                }
-            }
-            ERROR_ID_INSUFFICIENT_PERMISSION => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InsufficientPermission
-            }
-            ERROR_ID_EMPTY_SHARD_OWNERS => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::EmptyShardOwners(rlp.val_at(1)?)
-            }
-            ERROR_ID_NOT_APPROVED => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::NotApproved(rlp.val_at(1)?)
-            }
-            ERROR_ID_ZERO_QUANTITY => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::ZeroQuantity
-            }
-            ERROR_ID_TOO_MANY_OUTPUTS => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::TooManyOutputs(rlp.val_at(1)?)
-            }
-            ERROR_ID_EMPTY_INPUT => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::EmptyInput
-            }
-            ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::CannotBurnCentralizedAsset
-            }
-            ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::CannotComposeCentralizedAsset
-            }
-            ERROR_ID_INVALID_DECOMPOSED_INPUT => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidDecomposedInput {
-                    address: rlp.val_at(1)?,
-                    got: rlp.val_at(2)?,
-                }
-            }
-            ERROR_ID_INVALID_COMPOSED_OUTPUT => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidComposedOutput {
-                    got: rlp.val_at(1)?,
-                }
-            }
-            ERROR_ID_INVALID_DECOMPOSED_OUTPUT => {
-                if rlp.item_count()? != 4 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidDecomposedOutput {
-                    address: rlp.val_at(1)?,
-                    expected: rlp.val_at(2)?,
-                    got: rlp.val_at(3)?,
-                }
-            }
-            ERROR_ID_EMPTY_OUTPUT => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::EmptyOutput
-            }
+        let error = match tag {
+            ERROR_ID_INVALID_ASSET_QUANTITY => Error::InvalidAssetQuantity {
+                address: rlp.val_at(1)?,
+                expected: rlp.val_at(2)?,
+                got: rlp.val_at(3)?,
+            },
+            ERROR_ID_ASSET_NOT_FOUND => Error::AssetNotFound(rlp.val_at(1)?),
+            ERROR_ID_ASSET_SCHEME_NOT_FOUND => Error::AssetSchemeNotFound(rlp.val_at(1)?),
+            ERROR_ID_ASSET_SCHEME_DUPLICATED => Error::AssetSchemeDuplicated(rlp.val_at(1)?),
+            ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
+            ERROR_ID_SCRIPT_HASH_MISMATCH => Error::ScriptHashMismatch(rlp.val_at(1)?),
+            ERROR_ID_SCRIPT_NOT_ALLOWED => Error::ScriptNotAllowed(rlp.val_at(1)?),
+            ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
+            ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock {
+                address: rlp.val_at(1)?,
+                reason: rlp.val_at(2)?,
+            },
+            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => Error::InconsistentTransactionInOut,
+            ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => Error::DuplicatedPreviousOutput {
+                transaction_hash: rlp.val_at(1)?,
+                index: rlp.val_at(2)?,
+            },
+            ERROR_ID_INSUFFICIENT_PERMISSION => Error::InsufficientPermission,
+            ERROR_ID_EMPTY_SHARD_OWNERS => Error::EmptyShardOwners(rlp.val_at(1)?),
+            ERROR_ID_NOT_APPROVED => Error::NotApproved(rlp.val_at(1)?),
+            ERROR_ID_ZERO_QUANTITY => Error::ZeroQuantity,
+            ERROR_ID_TOO_MANY_OUTPUTS => Error::TooManyOutputs(rlp.val_at(1)?),
+            ERROR_ID_EMPTY_INPUT => Error::EmptyInput,
+            ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => Error::CannotBurnCentralizedAsset,
+            ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => Error::CannotComposeCentralizedAsset,
+            ERROR_ID_INVALID_DECOMPOSED_INPUT => Error::InvalidDecomposedInput {
+                address: rlp.val_at(1)?,
+                got: rlp.val_at(2)?,
+            },
+            ERROR_ID_INVALID_COMPOSED_OUTPUT => Error::InvalidComposedOutput {
+                got: rlp.val_at(1)?,
+            },
+            ERROR_ID_INVALID_DECOMPOSED_OUTPUT => Error::InvalidDecomposedOutput {
+                address: rlp.val_at(1)?,
+                expected: rlp.val_at(2)?,
+                got: rlp.val_at(3)?,
+            },
+            ERROR_ID_EMPTY_OUTPUT => Error::EmptyOutput,
             ERROR_ID_TIMELOCKED => Error::Timelocked {
                 timelock: rlp.val_at(1)?,
                 remaining_time: rlp.val_at(2)?,
             },
-            ERROR_ID_INVALID_ORIGIN_OUTPUTS => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidOriginOutputs(rlp.val_at(1)?)
-            }
-            ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidOrderInOutIndices
-            }
-            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InconsistentTransactionInOutWithOrders
-            }
-            ERROR_ID_INVALID_ORDER_ASSET_TYPES => {
-                if rlp.item_count()? != 4 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidOrderAssetTypes {
-                    from: rlp.val_at(1)?,
-                    to: rlp.val_at(2)?,
-                    fee: rlp.val_at(3)?,
-                }
-            }
-            ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => {
-                if rlp.item_count()? != 4 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidOrderAssetQuantities {
-                    from: rlp.val_at(1)?,
-                    to: rlp.val_at(2)?,
-                    fee: rlp.val_at(3)?,
-                }
-            }
-            ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidOrderLockScriptHash(rlp.val_at(1)?)
-            }
-            ERROR_ID_INVALID_ORDER_PARAMETERS => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::InvalidOrderParameters(rlp.val_at(1)?)
-            }
-            ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::OrderRecipientsAreSame
-            }
-            ERROR_ID_ORDER_EXPIRED => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpInvalidLength)
-                }
-                Error::OrderExpired {
-                    expiration: rlp.val_at(1)?,
-                    timestamp: rlp.val_at(2)?,
-                }
-            }
+            ERROR_ID_INVALID_ORIGIN_OUTPUTS => Error::InvalidOriginOutputs(rlp.val_at(1)?),
+            ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => Error::InvalidOrderInOutIndices,
+            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => Error::InconsistentTransactionInOutWithOrders,
+            ERROR_ID_INVALID_ORDER_ASSET_TYPES => Error::InvalidOrderAssetTypes {
+                from: rlp.val_at(1)?,
+                to: rlp.val_at(2)?,
+                fee: rlp.val_at(3)?,
+            },
+            ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => Error::InvalidOrderAssetQuantities {
+                from: rlp.val_at(1)?,
+                to: rlp.val_at(2)?,
+                fee: rlp.val_at(3)?,
+            },
+            ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => Error::InvalidOrderLockScriptHash(rlp.val_at(1)?),
+            ERROR_ID_INVALID_ORDER_PARAMETERS => Error::InvalidOrderParameters(rlp.val_at(1)?),
+            ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => Error::OrderRecipientsAreSame,
+            ERROR_ID_ORDER_EXPIRED => Error::OrderExpired {
+                expiration: rlp.val_at(1)?,
+                timestamp: rlp.val_at(2)?,
+            },
             _ => return Err(DecoderError::Custom("Invalid transaction error")),
-        })
+        };
+        check_tag_size(rlp, tag)?;
+        Ok(error)
     }
 }
 
@@ -484,20 +368,17 @@ impl Display for Error {
             Error::AssetSchemeNotFound(addr) => write!(f, "Asset scheme not found: {}", addr),
             Error::AssetSchemeDuplicated(addr) => write!(f, "Asset scheme already exists: {}", addr),
             Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
-            Error::ScriptHashMismatch(mismatch) => {
-                write!(f, "Expected script with hash {}, but got {}", mismatch.expected, mismatch.found)
-            }
-            Error::ScriptNotAllowed(hash) => {
-                write!(f, "Output lock script hash is not allowed : {}", hash)
-            }
+            Error::ScriptHashMismatch(mismatch) =>
+                write!(f, "Expected script with hash {}, but got {}", mismatch.expected, mismatch.found),
+            Error::ScriptNotAllowed(hash) =>
+                write!(f, "Output lock script hash is not allowed : {}", hash),
             Error::InvalidScript => write!(f, "Failed to decode script"),
             Error::FailedToUnlock {
                 address,
                 reason,
             } => write!(f, "Failed to unlock asset {}, reason: {}", address, reason),
-            Error::InconsistentTransactionInOut => {
-                write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs")
-            }
+            Error::InconsistentTransactionInOut =>
+                write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs"),
             Error::DuplicatedPreviousOutput {
                 transaction_hash,
                 index,
@@ -535,15 +416,12 @@ impl Display for Error {
                 "The transaction cannot be executed because of the timelock({:?}). The remaining time is {}",
                 timelock, remaining_time
             ),
-            Error::InvalidOriginOutputs(order_hash) => {
-                write!(f, "The order({}) is invalid because its origin outputs are wrong", order_hash)
-            }
-            Error::InvalidOrderInOutIndices => {
-                write!(f, "The order on transfer is invalid because its input/output indices are wrong or overlapped with other orders")
-            }
-            Error::InconsistentTransactionInOutWithOrders => {
-                write!(f, "The transaction's input and output do not follow its orders")
-            }
+            Error::InvalidOriginOutputs(order_hash) =>
+                write!(f, "The order({}) is invalid because its origin outputs are wrong", order_hash),
+            Error::InvalidOrderInOutIndices =>
+                write!(f, "The order on transfer is invalid because its input/output indices are wrong or overlapped with other orders"),
+            Error::InconsistentTransactionInOutWithOrders =>
+                write!(f, "The transaction's input and output do not follow its orders"),
             Error::InvalidOrderAssetTypes {
                 from,
                 to,
@@ -554,15 +432,12 @@ impl Display for Error {
                 to,
                 fee,
             } => write!(f, "The asset exchange ratio of the order is invalid: from:to:fee = {}:{}:{}", from, to, fee),
-            Error::InvalidOrderLockScriptHash(lock_script_hash) => {
-                write!(f, "The lock script hash of the order is different from the output: {}", lock_script_hash)
-            }
-            Error::InvalidOrderParameters(parameters) => {
-                write!(f, "The parameters of the order is different from the output: {:?}", parameters)
-            }
-            Error::OrderRecipientsAreSame => {
-                write!(f, "Both the lock script hash and parameters should not be same between maker and relayer")
-            }
+            Error::InvalidOrderLockScriptHash(lock_script_hash) =>
+                write!(f, "The lock script hash of the order is different from the output: {}", lock_script_hash),
+            Error::InvalidOrderParameters(parameters) =>
+                write!(f, "The parameters of the order is different from the output: {:?}", parameters),
+            Error::OrderRecipientsAreSame =>
+                write!(f, "Both the lock script hash and parameters should not be same between maker and relayer"),
             Error::OrderExpired {
                 expiration,
                 timestamp,
