@@ -307,10 +307,7 @@ where
             Instruction::ChkTimelock => {
                 let timelock_type = stack.pop()?.assert_len(1)?.as_ref()[0] as u8;
                 let value_item = stack.pop()?;
-                if value_item.len() > 8 {
-                    return Err(RuntimeError::TypeMismatch)
-                }
-                let value = BigEndian::read_uint(value_item.as_ref(), value_item.len());
+                let value = read_u64(value_item)?;
                 match timelock_type {
                     TIMELOCK_TYPE_BLOCK => {
                         stack.push(Item::from(client.best_block_number() >= value))?;
@@ -341,6 +338,13 @@ where
     } else {
         Ok(ScriptResult::Fail)
     }
+}
+
+fn read_u64(value_item: Item) -> Result<u64, RuntimeError> {
+    if value_item.len() > 8 {
+        return Err(RuntimeError::TypeMismatch)
+    }
+    Ok(BigEndian::read_uint(value_item.as_ref(), value_item.len()))
 }
 
 #[inline]
@@ -405,6 +409,47 @@ mod tests {
         let item = Item(vec![0, 0, 0, 1, 0, 0, 0]);
         let result: bool = item.into();
         assert!(result);
+    }
+
+    #[test]
+    fn read_0_0_0_0_0_0_0_1() {
+        assert_eq!(Ok(0x0000_0000_0000_0001), read_u64(Item(vec![0, 0, 0, 0, 0, 0, 0, 1])));
+    }
+
+    #[test]
+    fn read_1() {
+        assert_eq!(Ok(0x01), read_u64(Item(vec![1])));
+    }
+
+    #[test]
+    fn read_f() {
+        assert_eq!(Ok(0x0f), read_u64(Item(vec![0xf])))
+    }
+
+    #[test]
+    fn read_1_0() {
+        assert_eq!(Ok(0x0100), read_u64(Item(vec![1, 0])));
+    }
+
+    #[test]
+    fn read_1_0_0() {
+        assert_eq!(Ok(0x0001_0000), read_u64(Item(vec![1, 0, 0])));
+    }
+
+    #[test]
+    fn read_1_0_0_0() {
+        assert_eq!(Ok(0x0100_0000), read_u64(Item(vec![1, 0, 0, 0])));
+    }
+
+
+    #[test]
+    fn read_1_0_0_0_0_0_0_0() {
+        assert_eq!(Ok(0x0100_0000_0000_0000), read_u64(Item(vec![1, 0, 0, 0, 0, 0, 0, 0])));
+    }
+
+    #[test]
+    fn read_1_0_0_0_0_0_1_0() {
+        assert_eq!(Ok(0x0100_0000_0000_0100), read_u64(Item(vec![1, 0, 0, 0, 0, 0, 1, 0])));
     }
 }
 
