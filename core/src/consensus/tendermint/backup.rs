@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@ pub struct BackupView<'a> {
     pub view: &'a View,
     pub step: &'a Step,
     pub votes: &'a [ConsensusMessage],
-    pub last_confirmed_view: &'a (H256, View),
+    pub last_confirmed_view: &'a View,
 }
 
 pub struct BackupData {
@@ -37,7 +37,7 @@ pub struct BackupData {
     pub step: Step,
     pub votes: Vec<ConsensusMessage>,
     pub proposal: Option<H256>,
-    pub last_confirmed_view: (H256, View),
+    pub last_confirmed_view: View,
 }
 
 pub fn backup(db: &KeyValueDB, backup_data: BackupView) {
@@ -49,9 +49,9 @@ pub fn backup(db: &KeyValueDB, backup_data: BackupView) {
         last_confirmed_view,
     } = backup_data;
     let mut s = rlp::RlpStream::new();
-    s.begin_list(6);
+    s.begin_list(5);
     s.append(height).append(view).append(step).append_list(votes);
-    s.append(&last_confirmed_view.0).append(&last_confirmed_view.1);
+    s.append(last_confirmed_view);
 
     let mut batch = DBTransaction::new();
     batch.put(db::COL_EXTRA, BACKUP_KEY, &s.drain().into_vec());
@@ -63,7 +63,7 @@ pub fn restore(db: &KeyValueDB) -> Option<BackupData> {
     let (height, view, step, votes, last_confirmed_view) = value.map(|bytes| {
         let bytes = bytes.into_vec();
         let rlp = rlp::Rlp::new(&bytes);
-        (rlp.val_at(0), rlp.val_at(1), rlp.val_at(2), rlp.at(3).as_list(), (rlp.val_at(4), rlp.val_at(5)))
+        (rlp.val_at(0), rlp.val_at(1), rlp.val_at(2), rlp.at(3).as_list(), rlp.val_at(4))
     })?;
 
     let proposal = find_proposal(&votes, height, view);
