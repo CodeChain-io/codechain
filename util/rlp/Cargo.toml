@@ -11,4 +11,3 @@ elastic-array = "0.10"
 lazy_static = "1.2"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
 rustc-hex = "1.0"
-byteorder = "1.2.7"

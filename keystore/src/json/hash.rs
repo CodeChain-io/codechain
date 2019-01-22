@@ -94,7 +94,7 @@ macro_rules! impl_hash {
                 match value.from_hex() {
                     Ok(ref hex) if hex.len() == $size => {
                         let mut hash = [0u8; $size];
-                        hash.clone_from_slice(hex);
+                        hash.copy_from_slice(hex);
                         Ok($name(hash))
                     }
                     _ => Err(Error::InvalidH256),

@@ -18,7 +18,6 @@ mod params;
 
 use std::cmp::{max, min};
 
-use byteorder::{ByteOrder, LittleEndian};
 use ccrypto::blake256;
 use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
@@ -128,7 +127,7 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
         let seal = Seal::parse_seal(header.seal())?;
 
         let mut message = header.bare_hash().0;
-        LittleEndian::write_u64(&mut message, seal.nonce);
+        message[0..8].copy_from_slice(&seal.nonce.to_le_bytes());
 
         if !self.verifier.verify(&message, &seal.proof) {
             return Err(From::from(BlockError::InvalidProofOfWork))

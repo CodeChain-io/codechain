@@ -48,7 +48,7 @@ enum ExtrasIndex {
 fn with_index(hash: &H256, i: ExtrasIndex) -> H264 {
     let mut result = H264::default();
     result[0] = i as u8;
-    (*result)[1..].clone_from_slice(hash);
+    (*result)[1..].copy_from_slice(hash);
     result
 }
 

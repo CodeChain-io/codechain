@@ -253,7 +253,7 @@ mod tests {
     fn parse_return_some() {
         let hash = {
             let mut hash = H256::random();
-            hash[0..6].clone_from_slice(&[PREFIX, 0, 0, 0, 0, 0]);
+            hash[0..6].copy_from_slice(&[PREFIX, 0, 0, 0, 0, 0]);
             hash
         };
         let address = OwnedAssetAddress::from_hash(hash);

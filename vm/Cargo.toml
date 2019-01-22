@@ -6,7 +6,6 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 [lib]
 
 [dependencies]
-byteorder = "1.2.7"
 codechain-crypto = { path = "../crypto" }
 codechain-key = { path = "../key" }
 codechain-types = { path = "../types" }
