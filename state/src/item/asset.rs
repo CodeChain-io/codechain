@@ -22,19 +22,19 @@ use crate::CacheableItem;
 
 #[derive(Clone, Debug, PartialEq, RlpEncodable, RlpDecodable)]
 pub struct Asset {
-    asset_type: H256,
+    asset_type: H160,
     quantity: u64,
 }
 
 impl Asset {
-    pub fn new(asset_type: H256, quantity: u64) -> Self {
+    pub fn new(asset_type: H160, quantity: u64) -> Self {
         Self {
             asset_type,
             quantity,
         }
     }
 
-    pub fn asset_type(&self) -> &H256 {
+    pub fn asset_type(&self) -> &H160 {
         &self.asset_type
     }
 
@@ -53,7 +53,7 @@ pub struct OwnedAsset {
 
 impl OwnedAsset {
     pub fn new(
-        asset_type: H256,
+        asset_type: H160,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         quantity: u64,
@@ -70,7 +70,7 @@ impl OwnedAsset {
         }
     }
 
-    pub fn asset_type(&self) -> &H256 {
+    pub fn asset_type(&self) -> &H160 {
         &self.asset.asset_type()
     }
 
@@ -92,7 +92,7 @@ impl OwnedAsset {
 
     pub fn init(
         &mut self,
-        asset_type: H256,
+        asset_type: H160,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         quantity: u64,
@@ -100,7 +100,7 @@ impl OwnedAsset {
     ) {
         assert_eq!(
             Asset {
-                asset_type: H256::zero(),
+                asset_type: H160::zero(),
                 quantity: 0
             },
             self.asset
@@ -121,7 +121,7 @@ impl Default for OwnedAsset {
     fn default() -> Self {
         Self {
             asset: Asset {
-                asset_type: H256::zero(),
+                asset_type: H160::zero(),
                 quantity: 0,
             },
             lock_script_hash: H160::zero(),

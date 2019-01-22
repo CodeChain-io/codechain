@@ -47,7 +47,8 @@ pub enum ShardTransaction {
     },
     ChangeAssetScheme {
         network_id: NetworkId,
-        asset_type: H256,
+        shard_id: ShardId,
+        asset_type: H160,
         metadata: String,
         approver: Option<Address>,
         administrator: Option<Address>,
@@ -153,9 +154,9 @@ impl ShardTransaction {
                 ..
             } => vec![*shard_id],
             ShardTransaction::ChangeAssetScheme {
-                asset_type,
+                shard_id,
                 ..
-            } => vec![(ShardId::from(asset_type[2]) << 8) + ShardId::from(asset_type[3])],
+            } => vec![*shard_id],
             ShardTransaction::ComposeAsset {
                 inputs,
                 shard_id,
@@ -502,16 +503,17 @@ impl Decodable for ShardTransaction {
                 })
             }
             ASSET_SCHEME_CHANGE_ID => {
-                if d.item_count()? != 7 {
+                if d.item_count()? != 8 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(ShardTransaction::ChangeAssetScheme {
                     network_id: d.val_at(1)?,
-                    asset_type: d.val_at(2)?,
-                    metadata: d.val_at(3)?,
-                    approver: d.val_at(4)?,
-                    administrator: d.val_at(5)?,
-                    allowed_script_hashes: d.list_at(6)?,
+                    shard_id: d.val_at(2)?,
+                    asset_type: d.val_at(3)?,
+                    metadata: d.val_at(4)?,
+                    approver: d.val_at(5)?,
+                    administrator: d.val_at(6)?,
+                    allowed_script_hashes: d.list_at(7)?,
                 })
             }
             ASSET_COMPOSE_ID => {
@@ -603,15 +605,17 @@ impl Encodable for ShardTransaction {
             }
             ShardTransaction::ChangeAssetScheme {
                 network_id,
+                shard_id,
                 asset_type,
                 metadata,
                 approver,
                 administrator,
                 allowed_script_hashes,
             } => {
-                s.begin_list(7)
+                s.begin_list(8)
                     .append(&ASSET_SCHEME_CHANGE_ID)
                     .append(network_id)
+                    .append(shard_id)
                     .append(asset_type)
                     .append(metadata)
                     .append(approver)

@@ -19,7 +19,8 @@ use std::iter::FromIterator;
 
 use cjson::uint::Uint;
 use ctypes::transaction::{AssetMintOutput as AssetMintOutputType, AssetTransferOutput as AssetTransferOutputType};
-use primitives::{H160, H256};
+use ctypes::ShardId;
+use primitives::H160;
 use rustc_serialize::hex::{FromHex, FromHexError, ToHex};
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
@@ -27,7 +28,8 @@ use rustc_serialize::hex::{FromHex, FromHexError, ToHex};
 pub struct AssetTransferOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<String>,
-    pub asset_type: H256,
+    pub asset_type: H160,
+    pub shard_id: ShardId,
     pub quantity: Uint,
 }
 
@@ -37,6 +39,7 @@ impl From<AssetTransferOutputType> for AssetTransferOutput {
             lock_script_hash: from.lock_script_hash,
             parameters: from.parameters.iter().map(|bytes| bytes.to_hex()).collect(),
             asset_type: from.asset_type,
+            shard_id: from.shard_id,
             quantity: from.quantity.into(),
         }
     }
@@ -48,6 +51,7 @@ impl From<AssetTransferOutput> for Result<AssetTransferOutputType, FromHexError>
             lock_script_hash: from.lock_script_hash,
             parameters: Result::from_iter(from.parameters.iter().map(|hexstr| hexstr.from_hex()))?,
             asset_type: from.asset_type,
+            shard_id: from.shard_id,
             quantity: from.quantity.into(),
         })
     }

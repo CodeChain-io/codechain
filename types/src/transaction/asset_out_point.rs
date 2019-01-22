@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use primitives::{H160, H256};
 
 use crate::ShardId;
 
@@ -22,15 +22,14 @@ use crate::ShardId;
 pub struct AssetOutPoint {
     pub tracker: H256,
     pub index: usize,
-    pub asset_type: H256,
+    pub asset_type: H160,
+    pub shard_id: ShardId,
     pub quantity: u64,
 }
 
 impl AssetOutPoint {
     pub fn related_shard(&self) -> ShardId {
-        debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-        let shard_id_bytes: [u8; 2] = [self.asset_type[2], self.asset_type[3]];
-        ShardId::from_be_bytes(shard_id_bytes)
+        self.shard_id
     }
 }
 

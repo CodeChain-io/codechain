@@ -37,7 +37,7 @@ pub enum Error {
     /// Desired input asset scheme not found
     AssetSchemeNotFound(H256),
     AssetSchemeDuplicated(H256),
-    InvalidAssetType(H256),
+    InvalidAssetType(H160),
     /// Script hash does not match with provided lock script
     ScriptHashMismatch(Mismatch<H160>),
     ScriptNotAllowed(H160),
@@ -66,14 +66,16 @@ pub enum Error {
     CannotBurnCentralizedAsset,
     CannotComposeCentralizedAsset,
     InvalidDecomposedInput {
-        address: H256,
+        asset_type: H160,
+        shard_id: ShardId,
         got: u64,
     },
     InvalidComposedOutput {
         got: u64,
     },
     InvalidDecomposedOutput {
-        address: H256,
+        asset_type: H160,
+        shard_id: ShardId,
         expected: u64,
         got: u64,
     },
@@ -89,12 +91,8 @@ pub enum Error {
     InvalidOrderInOutIndices,
     /// the input and output of tx is not consistent with its orders
     InconsistentTransactionInOutWithOrders,
-    /// asset_type_from and asset_type_to is equal
-    InvalidOrderAssetTypes {
-        from: H256,
-        to: H256,
-        fee: H256,
-    },
+    /// two of {asset_type_from, asset_type_to, asset_type_fee) are equal
+    InvalidOrderAssetTypes,
     /// invalid asset_quantity_from, asset_quantity_to because of ratio
     InvalidOrderAssetQuantities {
         from: u64,
@@ -167,15 +165,15 @@ fn list_length_for(tag: u8) -> Result<usize, DecoderError> {
         ERROR_ID_EMPTY_INPUT => 1,
         ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => 1,
         ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => 1,
-        ERROR_ID_INVALID_DECOMPOSED_INPUT => 3,
+        ERROR_ID_INVALID_DECOMPOSED_INPUT => 4,
         ERROR_ID_INVALID_COMPOSED_OUTPUT => 2,
-        ERROR_ID_INVALID_DECOMPOSED_OUTPUT => 4,
+        ERROR_ID_INVALID_DECOMPOSED_OUTPUT => 5,
         ERROR_ID_EMPTY_OUTPUT => 1,
         ERROR_ID_TIMELOCKED => 3,
         ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
         ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => 1,
         ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => 1,
-        ERROR_ID_INVALID_ORDER_ASSET_TYPES => 4,
+        ERROR_ID_INVALID_ORDER_ASSET_TYPES => 1,
         ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => 4,
         ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => 2,
         ERROR_ID_INVALID_ORDER_PARAMETERS => 2,
@@ -229,17 +227,23 @@ impl Encodable for Error {
             Error::CannotBurnCentralizedAsset => tag_with(s, ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET),
             Error::CannotComposeCentralizedAsset => tag_with(s, ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET),
             Error::InvalidDecomposedInput {
-                address,
+                asset_type,
+                shard_id,
                 got,
-            } => tag_with(s, ERROR_ID_INVALID_DECOMPOSED_INPUT).append(address).append(got),
+            } => tag_with(s, ERROR_ID_INVALID_DECOMPOSED_INPUT).append(asset_type).append(shard_id).append(got),
             Error::InvalidComposedOutput {
                 got,
             } => tag_with(s, ERROR_ID_INVALID_COMPOSED_OUTPUT).append(got),
             Error::InvalidDecomposedOutput {
-                address,
+                asset_type,
+                shard_id,
                 expected,
                 got,
-            } => tag_with(s, ERROR_ID_INVALID_DECOMPOSED_OUTPUT).append(address).append(expected).append(got),
+            } => tag_with(s, ERROR_ID_INVALID_DECOMPOSED_OUTPUT)
+                .append(asset_type)
+                .append(shard_id)
+                .append(expected)
+                .append(got),
             Error::EmptyOutput => tag_with(s, ERROR_ID_EMPTY_OUTPUT),
             Error::Timelocked {
                 timelock,
@@ -250,11 +254,7 @@ impl Encodable for Error {
             Error::InconsistentTransactionInOutWithOrders => {
                 tag_with(s, ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS)
             }
-            Error::InvalidOrderAssetTypes {
-                from,
-                to,
-                fee,
-            } => tag_with(s, ERROR_ID_INVALID_ORDER_ASSET_TYPES).append(from).append(to).append(fee),
+            Error::InvalidOrderAssetTypes => tag_with(s, ERROR_ID_INVALID_ORDER_ASSET_TYPES),
             Error::InvalidOrderAssetQuantities {
                 from,
                 to,
@@ -309,16 +309,18 @@ impl Decodable for Error {
             ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => Error::CannotBurnCentralizedAsset,
             ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => Error::CannotComposeCentralizedAsset,
             ERROR_ID_INVALID_DECOMPOSED_INPUT => Error::InvalidDecomposedInput {
-                address: rlp.val_at(1)?,
-                got: rlp.val_at(2)?,
+                asset_type: rlp.val_at(1)?,
+                shard_id: rlp.val_at(2)?,
+                got: rlp.val_at(3)?,
             },
             ERROR_ID_INVALID_COMPOSED_OUTPUT => Error::InvalidComposedOutput {
                 got: rlp.val_at(1)?,
             },
             ERROR_ID_INVALID_DECOMPOSED_OUTPUT => Error::InvalidDecomposedOutput {
-                address: rlp.val_at(1)?,
-                expected: rlp.val_at(2)?,
-                got: rlp.val_at(3)?,
+                asset_type: rlp.val_at(1)?,
+                shard_id: rlp.val_at(2)?,
+                expected: rlp.val_at(3)?,
+                got: rlp.val_at(4)?,
             },
             ERROR_ID_EMPTY_OUTPUT => Error::EmptyOutput,
             ERROR_ID_TIMELOCKED => Error::Timelocked {
@@ -328,11 +330,7 @@ impl Decodable for Error {
             ERROR_ID_INVALID_ORIGIN_OUTPUTS => Error::InvalidOriginOutputs(rlp.val_at(1)?),
             ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => Error::InvalidOrderInOutIndices,
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => Error::InconsistentTransactionInOutWithOrders,
-            ERROR_ID_INVALID_ORDER_ASSET_TYPES => Error::InvalidOrderAssetTypes {
-                from: rlp.val_at(1)?,
-                to: rlp.val_at(2)?,
-                fee: rlp.val_at(3)?,
-            },
+            ERROR_ID_INVALID_ORDER_ASSET_TYPES => Error::InvalidOrderAssetTypes,
             ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => Error::InvalidOrderAssetQuantities {
                 from: rlp.val_at(1)?,
                 to: rlp.val_at(2)?,
@@ -392,20 +390,22 @@ impl Display for Error {
             Error::CannotBurnCentralizedAsset => write!(f, "Cannot burn the centralized asset"),
             Error::CannotComposeCentralizedAsset => write!(f, "Cannot compose the centralized asset"),
             Error::InvalidDecomposedInput {
-                address,
+                asset_type,
+                shard_id,
                 got,
-            } => write!(f, "The inputs are not valid. The quantity of asset({}) input must be 1, but {}.", address, got),
+            } => write!(f, "The inputs are not valid. The quantity of asset({}, shard #{}) input must be 1, but {}.", asset_type, shard_id, got),
             Error::InvalidComposedOutput {
                 got,
             } => write!(f, "The composed output is note valid. The supply must be 1, but {}.", got),
             Error::InvalidDecomposedOutput {
-                address,
+                asset_type,
+                shard_id,
                 expected,
                 got,
             } => write!(
                 f,
-                "The decomposed output is not balid. The quantity of asset({}) must be {}, but {}.",
-                address, expected, got
+                "The decomposed output is not balid. The quantity of asset({}, shard #{}) must be {}, but {}.",
+                asset_type, shard_id, expected, got
             ),
             Error::EmptyOutput => writeln!(f, "The output is empty"),
             Error::Timelocked {
@@ -422,11 +422,7 @@ impl Display for Error {
                 write!(f, "The order on transfer is invalid because its input/output indices are wrong or overlapped with other orders"),
             Error::InconsistentTransactionInOutWithOrders =>
                 write!(f, "The transaction's input and output do not follow its orders"),
-            Error::InvalidOrderAssetTypes {
-                from,
-                to,
-                fee,
-            } => write!(f, "There are asset types in the order which are same: from:{}, to:{}, fee:{}", from, to, fee),
+            Error::InvalidOrderAssetTypes => write!(f, "There are same shard asset types in the order"),
             Error::InvalidOrderAssetQuantities {
                 from,
                 to,

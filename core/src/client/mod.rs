@@ -34,13 +34,13 @@ use std::sync::Arc;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, Text, TopLevelState, TopStateView};
+use cstate::{AssetScheme, FindActionHandler, OwnedAsset, Text, TopLevelState, TopStateView};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
-use primitives::{Bytes, H256, U256};
+use primitives::{Bytes, H160, H256, U256};
 
 use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
@@ -293,7 +293,7 @@ pub trait DatabaseClient {
 
 /// Provides methods to access asset
 pub trait AssetClient {
-    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress, id: BlockId) -> TrieResult<Option<AssetScheme>>;
+    fn get_asset_scheme(&self, asset_type: H160, shard_id: ShardId, id: BlockId) -> TrieResult<Option<AssetScheme>>;
 
     fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<OwnedAsset>>;
 
