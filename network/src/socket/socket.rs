@@ -73,7 +73,7 @@ impl Socket {
         }
     }
 
-    pub fn flush(&mut self) -> Result<()> {
+    pub fn flush(&mut self) -> io::Result<()> {
         while let Some((message, target)) = self.queue.pop_front() {
             let result = self.write(&message, &target);
             if let Ok(true) = result {
@@ -112,11 +112,11 @@ impl Socket {
         Ok(())
     }
 
-    fn write_bytes(&self, message: &[u8], target: &SocketAddr) -> Result<usize> {
+    fn write_bytes(&self, message: &[u8], target: &SocketAddr) -> io::Result<usize> {
         Ok(self.socket.send_to(&message, target)?)
     }
 
-    fn read_bytes(&self) -> Result<Option<(Vec<u8>, SocketAddr)>> {
+    fn read_bytes(&self) -> io::Result<Option<(Vec<u8>, SocketAddr)>> {
         let mut buf: [u8; MAX_PACKET_SIZE] = [0; MAX_PACKET_SIZE];
         let result = match self.socket.recv_from(&mut buf) {
             Ok((received_size, socket_address)) => {
@@ -124,15 +124,15 @@ impl Socket {
                 let mut result: Vec<u8> = Vec::new();
                 result.extend_from_slice(&buf[..received_size]);
                 debug_assert_ne!(0, result.len());
-                Ok(Some((result, socket_address)))
+                Some((result, socket_address))
             }
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
-            Err(e) => Err(e),
-        }?;
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
+            Err(e) => return Err(e),
+        };
         Ok(result)
     }
 
-    fn write<M>(&self, message: &M, target: &SocketAddr) -> Result<bool>
+    fn write<M>(&self, message: &M, target: &SocketAddr) -> io::Result<bool>
     where
         M: Encodable, {
         let bytes = message.rlp_bytes();

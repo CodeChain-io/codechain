@@ -175,7 +175,7 @@ impl SessionInitiator {
     }
 
     fn send(&mut self) -> IoHandlerResult<()> {
-        self.socket.flush().map_err(|err| format!("{:?}", err))?;
+        self.socket.flush()?;
         Ok(())
     }
 
