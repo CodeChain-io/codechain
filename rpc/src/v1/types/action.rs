@@ -21,7 +21,7 @@ use ckey::{NetworkId, PlatformAddress, Public, Signature};
 use ctypes::transaction::{Action as ActionType, AssetMintOutput as AssetMintOutputType};
 use ctypes::ShardId;
 use primitives::{Bytes, H160, H256};
-use rustc_serialize::hex::FromHexError;
+use rustc_serialize::hex::{FromHex, FromHexError, ToHex};
 
 use super::super::errors::ConversionError;
 use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, OrderOnTransfer};
@@ -112,7 +112,7 @@ pub enum Action {
     WrapCCC {
         shard_id: ShardId,
         lock_script_hash: H160,
-        parameters: Vec<Bytes>,
+        parameters: Vec<String>,
         quantity: Uint,
     },
     Store {
@@ -229,7 +229,7 @@ pub enum ActionWithTracker {
     WrapCCC {
         shard_id: ShardId,
         lock_script_hash: H160,
-        parameters: Vec<Bytes>,
+        parameters: Vec<String>,
         quantity: Uint,
     },
     Store {
@@ -383,12 +383,15 @@ impl ActionWithTracker {
                 lock_script_hash,
                 parameters,
                 quantity,
-            } => ActionWithTracker::WrapCCC {
-                shard_id,
-                lock_script_hash,
-                parameters,
-                quantity: quantity.into(),
-            },
+            } => {
+                let parameters = parameters.into_iter().map(|param| param.to_hex()).collect();
+                ActionWithTracker::WrapCCC {
+                    shard_id,
+                    lock_script_hash,
+                    parameters,
+                    quantity: quantity.into(),
+                }
+            }
             ActionType::Store {
                 content,
                 certifier,
@@ -461,12 +464,13 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 approvals,
             } => {
                 let iter_outputs = outputs.into_iter().map(From::from);
+                let orders = orders.into_iter().map(From::from).collect::<Result<_, _>>()?;
                 ActionType::TransferAsset {
                     network_id,
                     burns: burns.into_iter().map(From::from).collect(),
                     inputs: inputs.into_iter().map(From::from).collect(),
                     outputs: Result::from_iter(iter_outputs)?,
-                    orders: orders.into_iter().map(From::from).collect(),
+                    orders,
                     metadata,
                     approvals,
                 }
@@ -592,12 +596,15 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 lock_script_hash,
                 parameters,
                 quantity,
-            } => ActionType::WrapCCC {
-                shard_id,
-                lock_script_hash,
-                parameters,
-                quantity: quantity.into(),
-            },
+            } => {
+                let parameters = parameters.into_iter().map(|param| param.from_hex()).collect::<Result<_, _>>()?;
+                ActionType::WrapCCC {
+                    shard_id,
+                    lock_script_hash,
+                    parameters,
+                    quantity: quantity.into(),
+                }
+            }
             Action::Store {
                 content,
                 certifier,

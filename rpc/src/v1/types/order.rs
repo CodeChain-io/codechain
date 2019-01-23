@@ -16,7 +16,8 @@
 
 use cjson::uint::Uint;
 use ctypes::transaction::{Order as OrderType, OrderOnTransfer as OrderOnTransferType};
-use primitives::{Bytes, H160, H256};
+use primitives::{H160, H256};
+use rustc_serialize::hex::{FromHex, FromHexError, ToHex};
 
 use super::AssetOutPoint;
 
@@ -32,9 +33,9 @@ pub struct Order {
     pub origin_outputs: Vec<AssetOutPoint>,
     pub expiration: u64,
     pub lock_script_hash_from: H160,
-    pub parameters_from: Vec<Bytes>,
+    pub parameters_from: Vec<String>,
     pub lock_script_hash_fee: H160,
-    pub parameters_fee: Vec<Bytes>,
+    pub parameters_fee: Vec<String>,
 }
 
 impl From<OrderType> for Order {
@@ -49,16 +50,19 @@ impl From<OrderType> for Order {
             origin_outputs: from.origin_outputs.into_iter().map(From::from).collect(),
             expiration: from.expiration,
             lock_script_hash_from: from.lock_script_hash_from,
-            parameters_from: from.parameters_from,
+            parameters_from: from.parameters_from.into_iter().map(|param| param.to_hex()).collect(),
             lock_script_hash_fee: from.lock_script_hash_fee,
-            parameters_fee: from.parameters_fee,
+            parameters_fee: from.parameters_fee.into_iter().map(|param| param.to_hex()).collect(),
         }
     }
 }
 
-impl From<Order> for OrderType {
+impl From<Order> for Result<OrderType, FromHexError> {
     fn from(from: Order) -> Self {
-        OrderType {
+        let parameters_from =
+            from.parameters_from.into_iter().map(|param| param.from_hex()).collect::<Result<_, _>>()?;
+        let parameters_fee = from.parameters_fee.into_iter().map(|param| param.from_hex()).collect::<Result<_, _>>()?;
+        Ok(OrderType {
             asset_type_from: from.asset_type_from,
             asset_type_to: from.asset_type_to,
             asset_type_fee: from.asset_type_fee,
@@ -68,10 +72,10 @@ impl From<Order> for OrderType {
             origin_outputs: from.origin_outputs.into_iter().map(From::from).collect(),
             expiration: from.expiration,
             lock_script_hash_from: from.lock_script_hash_from,
-            parameters_from: from.parameters_from,
+            parameters_from,
             lock_script_hash_fee: from.lock_script_hash_fee,
-            parameters_fee: from.parameters_fee,
-        }
+            parameters_fee,
+        })
     }
 }
 
@@ -95,13 +99,13 @@ impl From<OrderOnTransferType> for OrderOnTransfer {
     }
 }
 
-impl From<OrderOnTransfer> for OrderOnTransferType {
+impl From<OrderOnTransfer> for Result<OrderOnTransferType, FromHexError> {
     fn from(from: OrderOnTransfer) -> Self {
-        OrderOnTransferType {
-            order: from.order.into(),
+        Ok(OrderOnTransferType {
+            order: Result::from(from.order)?,
             spent_quantity: from.spent_quantity.into(),
             input_indices: from.input_indices,
             output_indices: from.output_indices,
-        }
+        })
     }
 }
