@@ -33,8 +33,6 @@ extern crate primitives;
 extern crate rlp;
 #[cfg(test)]
 extern crate rustc_hex;
-#[macro_use]
-extern crate serde_derive;
 extern crate util_error;
 #[macro_use]
 extern crate rlp_derive;
