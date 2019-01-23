@@ -91,27 +91,22 @@ export const ERROR = {
     },
     INVALID_TX_ZERO_QUANTITY: {
         code: -32099,
-        data: $containsWord("InvalidTransaction(ZeroQuantity"),
-        message: $anything
-    },
-    INVALID_PARCEL_ZERO_QUANTITY: {
-        code: -32099,
-        data: $containsWord("Parcel(ZeroQuantity"),
+        data: $containsWord("State(Syntax(ZeroQuantity"),
         message: $anything
     },
     INVALID_TX_INCONSISTENT_IN_OUT: {
         code: -32099,
-        data: $containsWord("InvalidTransaction(InconsistentTransactionInOut"),
+        data: $containsWord("State(Syntax(InconsistentTransactionInOut"),
         message: $anything
     },
     INVALID_TX_ASSET_TYPE: {
         code: -32099,
-        data: $containsWord("InvalidTransaction(InvalidAssetType("),
+        data: $containsWord("State(Syntax(InvalidAssetType"),
         message: $anything
     },
     INVALID_TX_DUPLICATED_PREV_OUT: {
         code: -32099,
-        data: $containsWord("InvalidTransaction(DuplicatedPreviousOutput"),
+        data: $containsWord("State(Syntax(DuplicatedPreviousOutput"),
         message: $anything
     },
     ORDER_IS_NOT_EMPTY: {
