@@ -110,17 +110,11 @@ describe("store & remove", function() {
                 fee: 10,
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
-
         const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
         const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
-            timeout: 300 * 1000
+            timeout: 1000
         });
-        expect(invoice).not.to.be.null;
-        expect(invoice!.success).to.be.false;
-        expect(invoice!.error!.type).to.equal("TextVerificationFail");
-        expect(invoice!.error!.content).to.equal(
-            "Certifier and signer are different"
-        );
+        expect(invoice).to.be.null;
     });
 
     it("storing with invalid signature fails", async function() {
@@ -138,12 +132,9 @@ describe("store & remove", function() {
 
         const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
         const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
-            timeout: 300 * 1000
+            timeout: 1000
         });
-        expect(invoice).not.to.be.null;
-        expect(invoice!.success).to.be.false;
-        expect(invoice!.error!.type).to.equal("TextVerificationFail");
-        expect(invoice!.error!.content).to.equal("Invalid Signature");
+        expect(invoice).to.be.null;
     });
 
     it("removal on nothing fails", async function() {
