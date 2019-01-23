@@ -29,7 +29,7 @@ kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 memorydb = { path = "../util/memorydb" }
 parking_lot = "0.6.0"
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rand = "0.6.1"
 rlp = { path = "../util/rlp" }
 rlp_compress = { path = "../util/rlp_compress" }

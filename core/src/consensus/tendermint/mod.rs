@@ -857,7 +857,7 @@ impl TendermintInner {
 
     fn populate_from_parent(&self, header: &mut Header, _parent: &Header) {
         let height = U256::from(header.number());
-        let new_score = u256_from_u128(std::u128::MAX) * height - self.view.into();
+        let new_score = u256_from_u128(std::u128::MAX) * height - self.view;
 
         header.set_score(new_score);
     }

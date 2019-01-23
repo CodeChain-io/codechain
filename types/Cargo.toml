@@ -6,7 +6,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 [dependencies]
 codechain-crypto = { path = "../crypto" }
 codechain-key = { path = "../key" }
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = { path = "../util/rlp" }
 rlp_derive = { path = "../util/rlp_derive" }
 serde = "1.0"

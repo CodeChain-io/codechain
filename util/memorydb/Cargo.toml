@@ -10,5 +10,5 @@ elastic-array = "0.10"
 codechain-crypto = { version = "0.1.0", path = "../../crypto" }
 hashdb = { version = "0.1.1", path = "../hashdb" }
 plain_hasher = { path = "../plain_hasher" }
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = { version = "0.2.1", path = "../rlp" }
