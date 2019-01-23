@@ -9,7 +9,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 codechain-crypto = { path = "../crypto" }
 codechain-key = { path = "../key" }
 codechain-types = { path = "../types" }
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = { path = "../util/rlp" }
 
 [dev-dependencies]

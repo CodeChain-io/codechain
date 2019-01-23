@@ -82,9 +82,9 @@ impl Cuckoo {
         //score = parent_score + parent_score // 2048 * max(1 - (block_timestamp - parent_timestamp) // block_interval, -99)
         let diff = (header.timestamp() - parent.timestamp()) / self.params.block_interval;
         let target = if diff <= 1 {
-            parent.score().saturating_add(*parent.score() / 2048.into() * U256::from(1 - diff))
+            parent.score().saturating_add(*parent.score() / 2048 * U256::from(1 - diff))
         } else {
-            parent.score().saturating_sub(*parent.score() / 2048.into() * U256::from(min(diff - 1, 99)))
+            parent.score().saturating_sub(*parent.score() / 2048 * U256::from(min(diff - 1, 99)))
         };
         max(self.params.min_score, target)
     }
