@@ -142,8 +142,8 @@ impl ShardTransaction {
             } => {
                 let mut shards: Vec<ShardId> = burns
                     .iter()
-                    .map(AssetTransferInput::related_shard)
-                    .chain(inputs.iter().map(AssetTransferInput::related_shard))
+                    .map(|v| v.prev_out.shard_id)
+                    .chain(inputs.iter().map(|v| v.prev_out.shard_id))
                     .collect();
                 shards.sort_unstable();
                 shards.dedup();
@@ -162,7 +162,7 @@ impl ShardTransaction {
                 shard_id,
                 ..
             } => {
-                let mut shards: Vec<ShardId> = inputs.iter().map(AssetTransferInput::related_shard).collect();
+                let mut shards: Vec<ShardId> = inputs.iter().map(|v| v.prev_out.shard_id).collect();
                 shards.push(*shard_id);
                 shards.sort_unstable();
                 shards.dedup();
@@ -172,7 +172,7 @@ impl ShardTransaction {
                 outputs,
                 ..
             } => {
-                let mut shards: Vec<ShardId> = outputs.iter().map(AssetTransferOutput::related_shard).collect();
+                let mut shards: Vec<ShardId> = outputs.iter().map(|v| v.shard_id).collect();
                 shards.sort_unstable();
                 shards.dedup();
                 shards
@@ -180,7 +180,7 @@ impl ShardTransaction {
             ShardTransaction::UnwrapCCC {
                 burn,
                 ..
-            } => vec![burn.related_shard()],
+            } => vec![burn.prev_out.shard_id],
             ShardTransaction::WrapCCC {
                 shard_id,
                 ..
@@ -238,7 +238,7 @@ impl ShardTransaction {
             ShardTransaction::TransferAsset {
                 outputs,
                 ..
-            } => id == outputs[index].related_shard(),
+            } => id == outputs[index].shard_id,
             ShardTransaction::ChangeAssetScheme {
                 ..
             } => unreachable!("AssetSchemeChange doesn't have a valid index"),
@@ -249,7 +249,7 @@ impl ShardTransaction {
             ShardTransaction::DecomposeAsset {
                 outputs,
                 ..
-            } => id == outputs[index].related_shard(),
+            } => id == outputs[index].shard_id,
             ShardTransaction::UnwrapCCC {
                 ..
             } => unreachable!("UnwrapCCC doesn't have a valid index"),

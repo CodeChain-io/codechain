@@ -17,7 +17,6 @@
 use primitives::Bytes;
 
 use super::{AssetOutPoint, Timelock};
-use crate::ShardId;
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
 pub struct AssetTransferInput {
@@ -25,10 +24,4 @@ pub struct AssetTransferInput {
     pub timelock: Option<Timelock>,
     pub lock_script: Bytes,
     pub unlock_script: Bytes,
-}
-
-impl AssetTransferInput {
-    pub fn related_shard(&self) -> ShardId {
-        self.prev_out.related_shard()
-    }
 }

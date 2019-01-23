@@ -26,9 +26,3 @@ pub struct AssetOutPoint {
     pub shard_id: ShardId,
     pub quantity: u64,
 }
-
-impl AssetOutPoint {
-    pub fn related_shard(&self) -> ShardId {
-        self.shard_id
-    }
-}

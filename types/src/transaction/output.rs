@@ -27,12 +27,6 @@ pub struct AssetTransferOutput {
     pub quantity: u64,
 }
 
-impl AssetTransferOutput {
-    pub fn related_shard(&self) -> ShardId {
-        self.shard_id
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
