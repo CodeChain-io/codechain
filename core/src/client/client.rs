@@ -356,9 +356,14 @@ impl AssetClient for Client {
         }
     }
 
-    fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<OwnedAsset>> {
+    fn get_asset(
+        &self,
+        transaction_hash: H256,
+        index: usize,
+        shard_id: ShardId,
+        id: BlockId,
+    ) -> TrieResult<Option<OwnedAsset>> {
         if let Some(state) = Client::state_at(&self, id) {
-            let shard_id = 0; // FIXME
             let address = OwnedAssetAddress::new(transaction_hash, index, shard_id);
             Ok(state.asset(shard_id, &address)?)
         } else {

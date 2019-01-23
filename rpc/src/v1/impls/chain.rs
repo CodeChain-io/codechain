@@ -153,9 +153,16 @@ where
             .map(|text| Text::from_core(text, self.client.common_params().network_id)))
     }
 
-    fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<OwnedAsset>> {
+    fn get_asset(
+        &self,
+        transaction_hash: H256,
+        index: usize,
+        shard_id: ShardId,
+        block_number: Option<u64>,
+    ) -> Result<Option<OwnedAsset>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        let asset = self.client.get_asset(transaction_hash, index, block_id).map_err(errors::transaction_state)?;
+        let asset =
+            self.client.get_asset(transaction_hash, index, shard_id, block_id).map_err(errors::transaction_state)?;
         Ok(asset.map(From::from))
     }
 
