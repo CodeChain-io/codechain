@@ -17,10 +17,7 @@
 import * as _ from "lodash";
 import {
     Asset,
-    H256,
     AssetTransferAddress,
-    AssetOutPoint,
-    Order,
     U64,
     H160
 } from "codechain-sdk/lib/core/classes";
@@ -66,7 +63,8 @@ describe("orders", function() {
                         _.times(2, () => ({
                             recipient: aliceAddress,
                             quantity: 5000,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         }))
                     );
                 await node.signTransactionInput(splitTx, 0);
@@ -83,9 +81,9 @@ describe("orders", function() {
                 const expiration = Math.round(Date.now() / 1000) + 120;
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
-                    assetTypeTo: new H256(
-                        "0000000000000000000000000000000000000000000000000000000000000000"
-                    ), // Fake asset type
+                    assetTypeTo: H160.zero(), // Fake asset type
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 5000,
                     assetQuantityTo: 5000,
                     expiration,
@@ -102,12 +100,14 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 5000,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 5000,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -163,6 +163,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -176,22 +178,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -217,7 +223,8 @@ describe("orders", function() {
                         _.times(10, () => ({
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         }))
                     );
                 await node.signTransactionInput(splitTx, 0);
@@ -236,6 +243,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -251,22 +260,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -294,6 +307,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 10000,
                     assetQuantityTo: 1000,
                     expiration,
@@ -307,17 +322,20 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 10000,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -342,6 +360,8 @@ describe("orders", function() {
                 const aliceOrder = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -352,6 +372,8 @@ describe("orders", function() {
                 const bobOrder = node.sdk.core.createOrder({
                     assetTypeFrom: silver.assetType,
                     assetTypeTo: gold.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 1000,
                     assetQuantityTo: 100,
                     expiration,
@@ -366,22 +388,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -412,6 +438,8 @@ describe("orders", function() {
                 const aliceOrder = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -422,6 +450,8 @@ describe("orders", function() {
                 const bobOrder = node.sdk.core.createOrder({
                     assetTypeFrom: silver.assetType,
                     assetTypeTo: gold.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 1000,
                     assetQuantityTo: 50,
                     expiration,
@@ -436,24 +466,28 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         // Bob gets more gold than he wanted.
                         // If there's a relayer, relayer may take it.
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -484,6 +518,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 10000,
                     assetQuantityTo: 1000,
                     expiration,
@@ -497,12 +533,14 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 10000,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 10000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -540,6 +578,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -553,22 +593,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000 - 10,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000 + 10,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -606,6 +650,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -620,22 +666,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -677,6 +727,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -690,22 +742,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -744,6 +800,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -757,27 +815,32 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900 - 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -815,6 +878,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -828,27 +893,32 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000 - 100,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 100,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -886,6 +956,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -899,32 +971,38 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900 - 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000 - 100,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 100,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -962,6 +1040,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -977,22 +1057,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1028,6 +1112,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -1042,22 +1128,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1094,7 +1184,8 @@ describe("orders", function() {
                         _.times(10, () => ({
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         }))
                     );
                 await node.signTransactionInput(splitTx, 0);
@@ -1113,6 +1204,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -1130,22 +1223,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1174,7 +1271,8 @@ describe("orders", function() {
                         _.times(10, () => ({
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         }))
                     );
                 await node.signTransactionInput(splitTx, 0);
@@ -1193,6 +1291,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -1208,22 +1308,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 8900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1251,6 +1355,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -1266,22 +1372,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1317,6 +1427,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -1332,22 +1444,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1383,6 +1499,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -1396,22 +1514,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 1000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 100,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1445,6 +1567,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -1459,22 +1583,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9950,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 500,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 50,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9500,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1501,22 +1629,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9900,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 500,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 50,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9000,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1541,6 +1673,8 @@ describe("orders", function() {
                 const order = node.sdk.core.createOrder({
                     assetTypeFrom: gold.assetType,
                     assetTypeTo: silver.assetType,
+                    shardIdFrom: 0,
+                    shardIdTo: 0,
                     assetQuantityFrom: 100,
                     assetQuantityTo: 1000,
                     expiration,
@@ -1554,22 +1688,26 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9950,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: aliceAddress,
                             quantity: 500,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 50,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9500,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         }
                     )
                     .addOrder({
@@ -1595,12 +1733,14 @@ describe("orders", function() {
                         {
                             recipient: aliceAddress,
                             quantity: 9500,
-                            assetType: silver.assetType
+                            assetType: silver.assetType,
+                            shardId: 0
                         },
                         {
                             recipient: bobAddress,
                             quantity: 9950,
-                            assetType: gold.assetType
+                            assetType: gold.assetType,
+                            shardId: 0
                         }
                     );
                 await node.signTransactionInput(transferTx2, 0);
@@ -1640,12 +1780,14 @@ describe("orders", function() {
                         ..._.range(5).map(i => ({
                             recipient: addresses[i],
                             quantity: 50,
-                            assetType: assets[(i + 1) % 5].assetType
+                            assetType: assets[(i + 1) % 5].assetType,
+                            shardId: 0
                         })),
                         ..._.range(5).map(i => ({
                             recipient: addresses[i],
                             quantity: 9950,
-                            assetType: assets[i].assetType
+                            assetType: assets[i].assetType,
+                            shardId: 0
                         }))
                     ]);
 
@@ -1653,6 +1795,8 @@ describe("orders", function() {
                     const order = node.sdk.core.createOrder({
                         assetTypeFrom: assets[i].assetType,
                         assetTypeTo: assets[(i + 1) % 5].assetType,
+                        shardIdFrom: 0,
+                        shardIdTo: 0,
                         assetQuantityFrom: 100,
                         assetQuantityTo: 100,
                         expiration: U64.MAX_VALUE,

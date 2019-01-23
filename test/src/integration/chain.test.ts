@@ -16,6 +16,7 @@
 
 import {
     AssetScheme,
+    H160,
     H256,
     H512,
     MintAsset,
@@ -36,7 +37,8 @@ chai.use(chaiAsPromised);
 const expect = chai.expect;
 
 describe("chain", function() {
-    const invalidH256 = new H256("0".repeat(64));
+    const invalidH160 = H160.zero();
+    const invalidH256 = H256.zero();
 
     let node: CodeChain;
     before(async function() {
@@ -261,12 +263,23 @@ describe("chain", function() {
         });
 
         it("getAsset", async function() {
-            expect(await node.sdk.rpc.chain.getAsset(invalidH256, 0)).to.be
-                .null;
-            expect(await node.sdk.rpc.chain.getAsset(tx.tracker(), 1)).to.be
-                .null;
+            const invalidShardId = 1;
+            const validShardId = 0;
             expect(
-                await node.sdk.rpc.chain.getAsset(tx.tracker(), 0)
+                await node.sdk.rpc.chain.getAsset(invalidH256, 0, validShardId)
+            ).to.be.null;
+            expect(
+                await node.sdk.rpc.chain.getAsset(tx.tracker(), 1, validShardId)
+            ).to.be.null;
+            expect(
+                await node.sdk.rpc.chain.getAsset(
+                    tx.tracker(),
+                    1,
+                    invalidShardId
+                )
+            ).to.be.null;
+            expect(
+                await node.sdk.rpc.chain.getAsset(tx.tracker(), 0, validShardId)
             ).to.deep.equal(tx.getMintedAsset());
 
             const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
@@ -274,15 +287,23 @@ describe("chain", function() {
                 await node.sdk.rpc.chain.getAsset(
                     tx.tracker(),
                     0,
+                    validShardId,
                     bestBlockNumber
                 )
             ).to.deep.equal(tx.getMintedAsset());
-            expect(await node.sdk.rpc.chain.getAsset(tx.tracker(), 0, 0)).to.be
-                .null;
             expect(
                 await node.sdk.rpc.chain.getAsset(
                     tx.tracker(),
                     0,
+                    validShardId,
+                    0
+                )
+            ).to.be.null;
+            expect(
+                await node.sdk.rpc.chain.getAsset(
+                    tx.tracker(),
+                    0,
+                    validShardId,
                     bestBlockNumber + 1
                 )
             ).to.be.null;
@@ -317,11 +338,24 @@ describe("chain", function() {
         });
 
         it("getAssetSchemeByType", async function() {
-            expect(await node.sdk.rpc.chain.getAssetSchemeByType(invalidH256))
-                .to.be.null;
+            const invalidShardId = 1;
+            const validShardId = 0;
+            expect(
+                await node.sdk.rpc.chain.getAssetSchemeByType(
+                    invalidH160,
+                    validShardId
+                )
+            ).to.be.null;
+            expect(
+                await node.sdk.rpc.chain.getAssetSchemeByType(
+                    tx.getAssetType(),
+                    invalidShardId
+                )
+            ).to.be.null;
 
             const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByType(
-                tx.getAssetSchemeAddress()
+                tx.getAssetType(),
+                validShardId
             );
             if (assetScheme == null) {
                 throw Error("Cannot get asset scheme");
@@ -338,7 +372,7 @@ describe("chain", function() {
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.tracker,
                 asset.outPoint.index,
-                0
+                asset.outPoint.shardId
             )
         ).to.be.false;
 
@@ -347,6 +381,7 @@ describe("chain", function() {
         tx.addInputs(asset);
         tx.addOutputs({
             assetType: asset.assetType,
+            shardId: asset.shardId,
             recipient,
             quantity: "0xa"
         });
@@ -358,7 +393,7 @@ describe("chain", function() {
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.tracker,
                 asset.outPoint.index,
-                0
+                asset.outPoint.shardId
             )
         ).to.be.true;
 
@@ -367,7 +402,7 @@ describe("chain", function() {
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.tracker,
                 asset.outPoint.index,
-                0,
+                asset.outPoint.shardId,
                 bestBlockNumber
             )
         ).to.be.true;
@@ -375,7 +410,7 @@ describe("chain", function() {
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.tracker,
                 asset.outPoint.index,
-                0,
+                asset.outPoint.shardId,
                 bestBlockNumber - 1
             )
         ).to.be.false;
@@ -383,7 +418,7 @@ describe("chain", function() {
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.tracker,
                 asset.outPoint.index,
-                0,
+                asset.outPoint.shardId,
                 0
             )
         ).to.be.null;

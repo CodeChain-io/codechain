@@ -121,6 +121,7 @@ describe("Timelock", function() {
         tx.addOutputs({
             quantity: 1,
             assetType: asset.assetType,
+            shardId: asset.shardId,
             recipient: await node.createP2PKHAddress()
         });
         await node.signTransactionInput(tx, 0);
