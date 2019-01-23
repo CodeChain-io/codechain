@@ -7,7 +7,7 @@ authors = ["CodeChain Team <codechain@kodebox.io>"]
 ring = "0.12"
 quick-error = "1.2"
 rust-crypto = "0.2.36"
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 
 [dev-dependencies]
 rand = "0.6.1"
