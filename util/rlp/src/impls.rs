@@ -174,10 +174,12 @@ macro_rules! impl_decodable_for_u {
 impl_encodable_for_u!(u16, write_u16, 2);
 impl_encodable_for_u!(u32, write_u32, 4);
 impl_encodable_for_u!(u64, write_u64, 8);
+impl_encodable_for_u!(u128, write_u128, 16);
 
 impl_decodable_for_u!(u16);
 impl_decodable_for_u!(u32);
 impl_decodable_for_u!(u64);
+impl_decodable_for_u!(u128);
 
 impl Encodable for i32 {
     fn rlp_append(&self, s: &mut RlpStream) {
