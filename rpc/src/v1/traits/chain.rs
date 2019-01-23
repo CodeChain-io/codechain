@@ -61,7 +61,7 @@ build_rpc_trait! {
 
         /// Gets asset with given asset type.
         # [rpc(name = "chain_getAsset")]
-        fn get_asset(&self, H256, usize, Option<u64>) -> Result<Option<OwnedAsset>>;
+        fn get_asset(&self, H256, usize, ShardId, Option<u64>) -> Result<Option<OwnedAsset>>;
 
         /// Checks whether an asset is spent or not.
         # [rpc(name = "chain_isAssetSpent")]
