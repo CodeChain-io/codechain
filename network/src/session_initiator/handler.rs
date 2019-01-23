@@ -28,8 +28,7 @@ use parking_lot::RwLock;
 use rlp::DecoderError;
 use token_generator::TokenGenerator;
 
-use super::message;
-use super::server::{Error as ServerError, Server};
+use crate::socket::{message, Socket};
 use crate::{p2p, FiltersControl, IntoSocketAddr, RoutingTable, SocketAddr};
 
 const REFRESH_TIMER_TOKEN: TimerToken = 0;
@@ -81,7 +80,7 @@ impl Requests {
 }
 
 struct SessionInitiator {
-    server: Server,
+    socket: Socket,
 
     routing_table: Arc<RoutingTable>,
     requests: Requests,
@@ -91,18 +90,11 @@ struct SessionInitiator {
 
 #[derive(Debug)]
 enum Error {
-    Server(ServerError),
     Io(io::Error),
     CIo(CIoError),
     Decoder(DecoderError),
     SymmetricCipher(SymmetricCipherError),
     Key(KeyError),
-}
-
-impl From<ServerError> for Error {
-    fn from(err: ServerError) -> Self {
-        Error::Server(err)
-    }
 }
 
 impl From<io::Error> for Error {
@@ -153,9 +145,9 @@ impl SessionInitiator {
         channel_to_p2p: IoChannel<p2p::Message>,
         filters: Arc<FiltersControl>,
     ) -> Result<Self> {
-        let server = Server::bind(socket_address)?;
+        let socket = Socket::bind(socket_address)?;
         Ok(Self {
-            server,
+            socket,
             routing_table,
             requests: Requests::new(),
             channel_to_p2p,
@@ -164,7 +156,7 @@ impl SessionInitiator {
     }
 
     fn receive(&self) -> IoHandlerResult<Option<(message::Message, SocketAddr)>> {
-        Ok(self.server.receive()?)
+        Ok(self.socket.receive().map_err(|err| format!("{:?}", err))?)
     }
 
     // return false if there is no message to be sent
@@ -182,16 +174,16 @@ impl SessionInitiator {
         }
     }
 
-    // return false if there is no message to be sent
-    fn send(&mut self) -> IoHandlerResult<bool> {
-        Ok(self.server.send()?)
+    fn send(&mut self) -> IoHandlerResult<()> {
+        self.socket.flush()?;
+        Ok(())
     }
 
     fn create_new_connection(&mut self, target: &SocketAddr, io: &IoContext<Message>) -> IoHandlerResult<()> {
         let seq = self.requests.gen(*target)?;
         io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
         let message = message::Message::node_id_request(seq as u64, target.into());
-        self.server.enqueue(message, *target)?;
+        self.socket.send(message, *target).map_err(|err| format!("{:?}", err))?;
         Ok(())
     }
 
@@ -209,7 +201,7 @@ impl SessionInitiator {
 
                 let requester_node_id = from.into();
                 let message = message::Message::node_id_response(message.seq(), requester_node_id);
-                self.server.enqueue(message, *from)?;
+                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
                 Ok(())
             }
             message::Body::NodeIdResponse(requester_node_id) => {
@@ -233,7 +225,7 @@ impl SessionInitiator {
                     let encrypted_nonce = self.routing_table.request_session(from).ok_or("Cannot generate nonce")?;
 
                     let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
-                    self.server.enqueue(message, *from)?;
+                    self.socket.send(message, *from).map_err(|err| format!("{:?}", err))?;
                 } else {
                     let requester_pub_key =
                         self.routing_table.register_key_pair_for_secret(from).ok_or("Cannot register key pair")?;
@@ -242,7 +234,7 @@ impl SessionInitiator {
                     io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
 
                     let message = message::Message::secret_request(seq as u64, requester_pub_key);
-                    self.server.enqueue(message, *from)?;
+                    self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
                 }
 
                 Ok(())
@@ -251,7 +243,7 @@ impl SessionInitiator {
                 if let Some(responder_pub_key) = self.routing_table.register_key_pair_for_secret(from) {
                     if let Some(_secret) = self.routing_table.share_secret(from, requester_pub_key) {
                         let message = message::Message::secret_allowed(message.seq(), responder_pub_key);
-                        self.server.enqueue(message, *from)?;
+                        self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
                         return Ok(())
                     } else if !self.routing_table.remove_node(*from) {
                         cwarn!(NETWORK, "Cannot reset key pair to {}", from);
@@ -259,7 +251,7 @@ impl SessionInitiator {
                 }
 
                 let message = message::Message::secret_denied(message.seq(), "ECDH Already requested".to_string());
-                self.server.enqueue(message, *from)?;
+                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
                 Err("Cannot response to secret request".into())
             }
             message::Body::SecretAllowed(responder_pub_key) => {
@@ -275,7 +267,7 @@ impl SessionInitiator {
                 io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
 
                 let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
-                self.server.enqueue(message, *from)?;
+                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
 
                 Ok(())
             }
@@ -295,12 +287,12 @@ impl SessionInitiator {
                     self.routing_table.create_requested_session(from, &encrypted_temporary_nonce)
                 {
                     let message = message::Message::nonce_allowed(message.seq(), encrypted_nonce);
-                    self.server.enqueue(message, *from)?;
+                    self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
                     return Ok(())
                 }
 
                 let message = message::Message::nonce_denied(message.seq(), "Cannot create session".to_string());
-                self.server.enqueue(message, *from)?;
+                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
                 Err("Cannot create session".into())
             }
             message::Body::NonceAllowed(encrypted_nonce) => {
@@ -334,12 +326,12 @@ impl SessionInitiator {
     }
 
     fn register(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()> {
-        self.server.register(reg, event_loop)?;
+        self.socket.register(reg, event_loop)?;
         Ok(())
     }
 
     fn reregister(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()> {
-        self.server.reregister(reg, event_loop)?;
+        self.socket.reregister(reg, event_loop)?;
         Ok(())
     }
 }
@@ -470,13 +462,8 @@ impl IoHandler<Message> for Handler {
         let _f = finally(|| {
             io.update_registration(stream);
         });
-        loop {
-            let mut session_initiator = self.session_initiator.write();
-            if !session_initiator.send()? {
-                break
-            }
-        }
-        Ok(())
+        let mut session_initiator = self.session_initiator.write();
+        session_initiator.send()
     }
 
     fn register_stream(
