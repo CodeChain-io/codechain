@@ -31,10 +31,6 @@ pub enum Error {
     Decoder(DecoderError),
     Io(io::Error),
     QueueOverflow,
-    InsufficientSent {
-        message_length: usize,
-        sent_length: usize,
-    },
 }
 
 impl From<DecoderError> for Error {
@@ -77,14 +73,17 @@ impl Socket {
         }
     }
 
-    // return false if there is no message to be sent
-    pub fn flush(&mut self) -> Result<bool> {
-        if let Some((message, target)) = self.queue.pop_front() {
-            self.write(&message, &target)?;
-            Ok(!self.queue.is_empty())
-        } else {
-            Ok(false)
+    pub fn flush(&mut self) -> Result<()> {
+        while let Some((message, target)) = self.queue.pop_front() {
+            let result = self.write(&message, &target);
+            if let Ok(true) = result {
+                continue
+            }
+            self.queue.push_front((message, target));
+            result?;
+            break
         }
+        Ok(())
     }
 
     pub fn receive(&self) -> Result<Option<(Message, SocketAddr)>> {
@@ -133,7 +132,7 @@ impl Socket {
         Ok(result)
     }
 
-    fn write<M>(&self, message: &M, target: &SocketAddr) -> Result<()>
+    fn write<M>(&self, message: &M, target: &SocketAddr) -> Result<bool>
     where
         M: Encodable, {
         let bytes = message.rlp_bytes();
@@ -141,15 +140,7 @@ impl Socket {
         debug_assert!(message_length < MAX_PACKET_SIZE);
 
         let sent_length = self.write_bytes(&bytes, &target)?;
-        if sent_length == message_length {
-            Ok(())
-        } else {
-            // FIXME: Repeat sent remains when the socket is writable again
-            Err(Error::InsufficientSent {
-                message_length,
-                sent_length,
-            })
-        }
+        Ok(sent_length == message_length)
     }
 
     fn read<M>(&self) -> Result<Option<(M, SocketAddr)>>
