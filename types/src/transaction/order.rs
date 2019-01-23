@@ -151,16 +151,20 @@ impl Order {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use primitives::H256;
 
     #[test]
     fn verify_order_success() {
-        let asset_type_from = H256::random();
-        let asset_type_to = H256::random();
-        let asset_type_fee = H256::random();
+        let asset_type_from = H160::random();
+        let asset_type_to = H160::random();
+        let asset_type_fee = H160::random();
         let order = Order {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 3,
             asset_quantity_to: 2,
             asset_quantity_fee: 3,
@@ -168,6 +172,7 @@ mod tests {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -182,6 +187,9 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 3,
             asset_quantity_to: 2,
             asset_quantity_fee: 0,
@@ -189,6 +197,7 @@ mod tests {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -203,6 +212,9 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 0,
             asset_quantity_to: 0,
             asset_quantity_fee: 0,
@@ -210,6 +222,7 @@ mod tests {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -224,20 +237,24 @@ mod tests {
     #[test]
     fn verify_order_fail() {
         // 1. origin outputs are invalid
-        let asset_type_from = H256::random();
-        let asset_type_to = H256::random();
-        let asset_type_fee = H256::random();
+        let asset_type_from = H160::random();
+        let asset_type_to = H160::random();
+        let asset_type_fee = H160::random();
         let order = Order {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 3,
             asset_quantity_to: 2,
             asset_quantity_fee: 3,
             origin_outputs: vec![AssetOutPoint {
                 tracker: H256::random(),
                 index: 0,
-                asset_type: H256::random(),
+                asset_type: H160::random(),
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -252,6 +269,9 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 3,
             asset_quantity_to: 2,
             asset_quantity_fee: 3,
@@ -269,6 +289,9 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 3,
             asset_quantity_to: 0,
             asset_quantity_fee: 3,
@@ -276,6 +299,7 @@ mod tests {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -297,6 +321,9 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 0,
             asset_quantity_to: 2,
             asset_quantity_fee: 3,
@@ -304,6 +331,7 @@ mod tests {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -325,6 +353,9 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 0,
             asset_quantity_to: 0,
             asset_quantity_fee: 3,
@@ -332,6 +363,7 @@ mod tests {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -353,6 +385,9 @@ mod tests {
             asset_type_from,
             asset_type_to,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 3,
             asset_quantity_to: 2,
             asset_quantity_fee: 2,
@@ -360,6 +395,7 @@ mod tests {
                 tracker: H256::random(),
                 index: 0,
                 asset_type: asset_type_from,
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -378,11 +414,14 @@ mod tests {
         );
 
         // 3. asset types are same
-        let asset_type = H256::random();
+        let asset_type = H160::random();
         let order = Order {
             asset_type_from: asset_type,
             asset_type_to: asset_type,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 3,
             asset_quantity_to: 2,
             asset_quantity_fee: 3,
@@ -390,6 +429,7 @@ mod tests {
                 tracker: H256::random(),
                 index: 0,
                 asset_type,
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -398,20 +438,16 @@ mod tests {
             lock_script_hash_fee: H160::random(),
             parameters_fee: vec![vec![1]],
         };
-        assert_eq!(
-            order.verify(),
-            Err(Error::InvalidOrderAssetTypes {
-                from: asset_type,
-                to: asset_type,
-                fee: asset_type_fee,
-            })
-        );
+        assert_eq!(order.verify(), Err(Error::InvalidOrderAssetTypes));
 
-        let asset_type = H256::random();
+        let asset_type = H160::random();
         let order = Order {
             asset_type_from: asset_type,
             asset_type_to,
             asset_type_fee: asset_type,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 3,
             asset_quantity_to: 2,
             asset_quantity_fee: 3,
@@ -419,6 +455,7 @@ mod tests {
                 tracker: H256::random(),
                 index: 0,
                 asset_type,
+                shard_id: 0,
                 quantity: 10,
             }],
             expiration: 10,
@@ -427,13 +464,6 @@ mod tests {
             lock_script_hash_fee: H160::random(),
             parameters_fee: vec![vec![1]],
         };
-        assert_eq!(
-            order.verify(),
-            Err(Error::InvalidOrderAssetTypes {
-                from: asset_type,
-                to: asset_type_to,
-                fee: asset_type,
-            })
-        );
+        assert_eq!(order.verify(), Err(Error::InvalidOrderAssetTypes));
     }
 }

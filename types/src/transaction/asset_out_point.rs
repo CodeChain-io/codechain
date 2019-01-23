@@ -32,23 +32,3 @@ impl AssetOutPoint {
         self.shard_id
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn related_shard_of_asset_out_point() {
-        let mut asset_type = H256::new();
-        asset_type[2..4].copy_from_slice(&[0xBE, 0xEF]);
-
-        let p = AssetOutPoint {
-            tracker: H256::random(),
-            index: 3,
-            asset_type,
-            quantity: 34,
-        };
-
-        assert_eq!(0xBEEF, p.related_shard());
-    }
-}

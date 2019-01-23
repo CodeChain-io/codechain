@@ -1106,20 +1106,24 @@ mod tests {
 
     #[test]
     fn verify_transfer_transaction_with_order() {
-        let asset_type_a = H256::random();
-        let asset_type_b = H256::random();
+        let asset_type_a = H160::random();
+        let asset_type_b = H160::random();
         let lock_script_hash = H160::random();
         let parameters = vec![vec![1]];
         let origin_output = AssetOutPoint {
             tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
+            shard_id: 0,
             quantity: 30,
         };
         let order = Order {
             asset_type_from: asset_type_a,
             asset_type_to: asset_type_b,
-            asset_type_fee: H256::zero(),
+            asset_type_fee: H160::zero(),
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 30,
             asset_quantity_to: 10,
             asset_quantity_fee: 0,
@@ -1146,6 +1150,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
+                        shard_id: 0,
                         quantity: 10,
                     },
                     timelock: None,
@@ -1158,12 +1163,14 @@ mod tests {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_b,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 30,
                 },
             ],
@@ -1181,9 +1188,9 @@ mod tests {
 
     #[test]
     fn verify_partial_fill_transfer_transaction_with_order() {
-        let asset_type_a = H256::random();
-        let asset_type_b = H256::random();
-        let asset_type_c = H256::random();
+        let asset_type_a = H160::random();
+        let asset_type_b = H160::random();
+        let asset_type_c = H160::random();
         let lock_script_hash = H160::random();
         let parameters1 = vec![vec![1]];
         let parameters2 = vec![vec![2]];
@@ -1192,12 +1199,14 @@ mod tests {
             tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
+            shard_id: 0,
             quantity: 40,
         };
         let origin_output_2 = AssetOutPoint {
             tracker: H256::random(),
             index: 0,
             asset_type: asset_type_c,
+            shard_id: 0,
             quantity: 30,
         };
 
@@ -1205,6 +1214,9 @@ mod tests {
             asset_type_from: asset_type_a,
             asset_type_to: asset_type_b,
             asset_type_fee: asset_type_c,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 30,
             asset_quantity_to: 20,
             asset_quantity_fee: 30,
@@ -1237,6 +1249,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
+                        shard_id: 0,
                         quantity: 10,
                     },
                     timelock: None,
@@ -1249,30 +1262,35 @@ mod tests {
                     lock_script_hash,
                     parameters: parameters1.clone(),
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 25,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters1.clone(),
                     asset_type: asset_type_b,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters1.clone(),
                     asset_type: asset_type_c,
+                    shard_id: 0,
                     quantity: 15,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 15,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters2.clone(),
                     asset_type: asset_type_c,
+                    shard_id: 0,
                     quantity: 15,
                 },
             ],
@@ -1291,9 +1309,9 @@ mod tests {
 
     #[test]
     fn verify_inconsistent_transfer_transaction_with_order() {
-        let asset_type_a = H256::random();
-        let asset_type_b = H256::random();
-        let asset_type_c = H256::random();
+        let asset_type_a = H160::random();
+        let asset_type_b = H160::random();
+        let asset_type_c = H160::random();
         let lock_script_hash = H160::random();
         let parameters = vec![vec![1]];
         let parameters_fee = vec![vec![2]];
@@ -1303,12 +1321,16 @@ mod tests {
             tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
+            shard_id: 0,
             quantity: 30,
         };
         let order = Order {
             asset_type_from: asset_type_a,
             asset_type_to: asset_type_b,
-            asset_type_fee: H256::zero(),
+            asset_type_fee: H160::zero(),
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 25,
             asset_quantity_to: 10,
             asset_quantity_fee: 0,
@@ -1335,6 +1357,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
+                        shard_id: 0,
                         quantity: 10,
                     },
                     timelock: None,
@@ -1347,12 +1370,14 @@ mod tests {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_b,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 30,
                 },
             ],
@@ -1375,18 +1400,23 @@ mod tests {
             tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
+            shard_id: 0,
             quantity: 40,
         };
         let origin_output_2 = AssetOutPoint {
             tracker: H256::random(),
             index: 0,
             asset_type: asset_type_c,
+            shard_id: 0,
             quantity: 40,
         };
         let order = Order {
             asset_type_from: asset_type_a,
             asset_type_to: asset_type_b,
             asset_type_fee: asset_type_c,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 30,
             asset_quantity_to: 10,
             asset_quantity_fee: 30,
@@ -1420,6 +1450,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
+                        shard_id: 0,
                         quantity: 10,
                     },
                     timelock: None,
@@ -1432,36 +1463,42 @@ mod tests {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 5,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 5,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_b,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_c,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 30,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters_fee.clone(),
                     asset_type: asset_type_c,
+                    shard_id: 0,
                     quantity: 30,
                 },
             ],
@@ -1501,6 +1538,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
+                        shard_id: 0,
                         quantity: 10,
                     },
                     timelock: None,
@@ -1513,36 +1551,42 @@ mod tests {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_b,
+                    shard_id: 0,
                     quantity: 5,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_b,
+                    shard_id: 0,
                     quantity: 5,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_c,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 30,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters_fee.clone(),
                     asset_type: asset_type_c,
+                    shard_id: 0,
                     quantity: 30,
                 },
             ],
@@ -1582,6 +1626,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type_b,
+                        shard_id: 0,
                         quantity: 10,
                     },
                     timelock: None,
@@ -1594,36 +1639,42 @@ mod tests {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_b,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_c,
+                    shard_id: 0,
                     quantity: 5,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_c,
+                    shard_id: 0,
                     quantity: 5,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 30,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters_fee.clone(),
                     asset_type: asset_type_c,
+                    shard_id: 0,
                     quantity: 30,
                 },
             ],
@@ -1644,27 +1695,32 @@ mod tests {
 
     #[test]
     fn verify_transfer_transaction_with_two_orders() {
-        let asset_type_a = H256::random();
-        let asset_type_b = H256::random();
+        let asset_type_a = H160::random();
+        let asset_type_b = H160::random();
         let lock_script_hash = H160::random();
         let parameters = vec![vec![1]];
         let origin_output_1 = AssetOutPoint {
             tracker: H256::random(),
             index: 0,
             asset_type: asset_type_a,
+            shard_id: 0,
             quantity: 30,
         };
         let origin_output_2 = AssetOutPoint {
             tracker: H256::random(),
             index: 0,
             asset_type: asset_type_b,
+            shard_id: 0,
             quantity: 10,
         };
 
         let order_1 = Order {
             asset_type_from: asset_type_a,
             asset_type_to: asset_type_b,
-            asset_type_fee: H256::zero(),
+            asset_type_fee: H160::zero(),
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 30,
             asset_quantity_to: 10,
             asset_quantity_fee: 0,
@@ -1678,7 +1734,10 @@ mod tests {
         let order_2 = Order {
             asset_type_from: asset_type_b,
             asset_type_to: asset_type_a,
-            asset_type_fee: H256::zero(),
+            asset_type_fee: H160::zero(),
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
             asset_quantity_from: 10,
             asset_quantity_to: 20,
             asset_quantity_fee: 0,
@@ -1712,18 +1771,21 @@ mod tests {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_b,
+                    shard_id: 0,
                     quantity: 10,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: parameters.clone(),
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 20,
                 },
                 AssetTransferOutput {
                     lock_script_hash,
                     parameters: vec![],
                     asset_type: asset_type_a,
+                    shard_id: 0,
                     quantity: 10,
                 },
             ],
@@ -1755,7 +1817,8 @@ mod tests {
                 prev_out: AssetOutPoint {
                     tracker: Default::default(),
                     index: 0,
-                    asset_type: H256::zero(),
+                    asset_type: H160::zero(),
+                    shard_id: 0,
                     quantity: 0,
                 },
                 timelock: None,
@@ -1768,7 +1831,7 @@ mod tests {
             Err(TransactionError::ZeroQuantity.into())
         );
 
-        let invalid_asset_type = H256::random();
+        let invalid_asset_type = H160::random();
         let tx_invalid_asset_type = Action::UnwrapCCC {
             network_id: NetworkId::default(),
             burn: AssetTransferInput {
@@ -1776,6 +1839,7 @@ mod tests {
                     tracker: Default::default(),
                     index: 0,
                     asset_type: invalid_asset_type,
+                    shard_id: 0,
                     quantity: 1,
                 },
                 timelock: None,

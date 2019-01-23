@@ -27,7 +27,7 @@ mod common;
 use ccrypto::{blake128, blake256_with_key};
 use ckey::{sign, KeyPair, NetworkId, Private};
 use ctypes::transaction::{AssetOutPoint, AssetTransferInput, ShardTransaction};
-use primitives::H256;
+use primitives::H160;
 use rlp::Encodable;
 use secp256k1::key::{MINUS_ONE_KEY, ONE_KEY, TWO_KEY};
 
@@ -50,7 +50,8 @@ fn valid_multi_sig_0_of_2() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -91,7 +92,8 @@ fn valid_multi_sig_1_of_2() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -144,7 +146,8 @@ fn valid_multi_sig_2_of_2() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -199,7 +202,8 @@ fn valid_multi_sig_2_of_3_110() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -257,7 +261,8 @@ fn valid_multi_sig_2_of_3_101() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -315,7 +320,8 @@ fn valid_multi_sig_2_of_3_011() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -373,7 +379,8 @@ fn invalid_multi_sig_1_of_2() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -427,7 +434,8 @@ fn invalid_multi_sig_2_of_2() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -482,7 +490,8 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -548,7 +557,8 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -603,7 +613,8 @@ fn invalid_multi_sig_with_less_sig_than_m() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -656,7 +667,8 @@ fn invalid_multi_sig_with_more_sig_than_m() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -711,7 +723,8 @@ fn invalid_multi_sig_with_too_many_arg() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,

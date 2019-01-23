@@ -732,7 +732,7 @@ impl TopLevelState {
         shard_id: ShardId,
         tx_hash: H256,
         index: usize,
-        asset_type: H256,
+        asset_type: H160,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         amount: u64,
@@ -1487,8 +1487,8 @@ mod tests_tx {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let asset_scheme_address = AssetSchemeAddress::new(mint_tracker, shard_id);
-        let asset_type = H256::from(asset_scheme_address);
+        let asset_type = Blake::blake(mint_tracker);
+        let asset_scheme_address = AssetSchemeAddress::new(asset_type, shard_id);
 
         set_top_level_state!(state, [
             (shard: shard_id => owners: [sender]),
@@ -1527,8 +1527,8 @@ mod tests_tx {
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let asset_scheme_address = AssetSchemeAddress::new(mint_tracker, shard_id);
-        let asset_type = H256::from(asset_scheme_address);
+        let asset_type = Blake::blake(mint_tracker);
+        let asset_scheme_address = AssetSchemeAddress::new(asset_type, shard_id);
 
         set_top_level_state!(state, [
             (shard: shard_id => owners: [sender]),
@@ -1658,14 +1658,14 @@ mod tests_tx {
             approver: approver
         );
         let transaction_tracker = transaction.tracker().unwrap();
-        let asset_type = H256::from(AssetSchemeAddress::new(transaction_tracker, shard_id));
+        let asset_type = Blake::blake(transaction_tracker);
         let tx = transaction!(fee: 11, transaction);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11)),
-            (scheme: (transaction_tracker, shard_id) => { metadata: metadata, supply: amount, approver: approver }),
+            (scheme: (asset_type, shard_id) => { metadata: metadata, supply: amount, approver: approver }),
             (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, quantity: amount })
         ]);
     }
@@ -1693,14 +1693,14 @@ mod tests_tx {
             approver: approver
         );
         let transaction_tracker = transaction.tracker().unwrap();
+        let asset_type = Blake::blake(transaction_tracker);
         let tx = transaction!(fee: 5, transaction);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
 
-        let asset_type = H256::from(AssetSchemeAddress::new(transaction_tracker, shard_id));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 5)),
-            (scheme: (transaction_tracker, shard_id) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
+            (scheme: (asset_type, shard_id) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
             (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
@@ -1724,14 +1724,13 @@ mod tests_tx {
         let mint = mint_asset!(Box::new(asset_mint_output!(lock_script_hash, supply: amount)), metadata.clone());
         let mint_tracker = mint.tracker().unwrap();
         let mint_tx = transaction!(fee: 20, mint);
+        let asset_type = Blake::blake(mint_tracker);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&mint_tx, &H256::random(), &sender_public, &get_test_client()));
 
-        let asset_scheme_address = AssetSchemeAddress::new(mint_tracker, shard_id);
-        let asset_type = asset_scheme_address.into();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 120 - 20)),
-            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), supply: 30 }),
+            (scheme: (asset_type, shard_id) => { metadata: metadata.clone(), supply: 30 }),
             (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, quantity: 30 })
         ]);
 
@@ -1757,7 +1756,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 120 - 20 - 30)),
-            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), supply: 30 }),
+            (scheme: (asset_type, shard_id) => { metadata: metadata.clone(), supply: 30 }),
             (asset: (mint_tracker, 0, shard_id)),
             (asset: (transfer_tracker, 0, shard_id) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1, shard_id) => { asset_type: asset_type, quantity: 5 }),
@@ -1829,7 +1828,7 @@ mod tests_tx {
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
 
-        let asset_type = H256::from(AssetSchemeAddress::new_with_zero_suffix(shard_id));
+        let asset_type = H160::zero();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
             (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
@@ -1868,7 +1867,7 @@ mod tests_tx {
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
 
-        let asset_type = H256::from(AssetSchemeAddress::new_with_zero_suffix(shard_id));
+        let asset_type = H160::zero();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
             (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
@@ -1947,7 +1946,7 @@ mod tests_tx {
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
 
-        let asset_type = H256::from(AssetSchemeAddress::new_with_zero_suffix(shard_id));
+        let asset_type = H160::zero();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 30 - 11)),
             (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
@@ -2124,7 +2123,7 @@ mod tests_tx {
         let state = get_temp_state();
 
         let shard_id = 3;
-        check_top_level_state!(state, [(scheme: (H256::random(), shard_id))]);
+        check_top_level_state!(state, [(scheme: (H160::random(), shard_id))]);
     }
 
     #[test]
@@ -2224,13 +2223,17 @@ mod tests_tx {
 
         let shard_id = 100;
 
-        let asset_type = H256::from(AssetSchemeAddress::new(H256::zero(), shard_id));
+        let asset_type = H160::zero();
         let transfer = transfer_asset!(
-            inputs: asset_transfer_inputs![(asset_out_point!(H256::random(), 0, asset_type, 30), vec![0x30, 0x01])],
+            inputs:
+                asset_transfer_inputs![(
+                    asset_out_point!(H256::random(), 0, asset_type, shard_id, 30),
+                    vec![0x30, 0x01]
+                )],
             asset_transfer_outputs![
-                (H160::random(), vec![vec![1]], asset_type, 10),
-                (H160::random(), asset_type, 5),
-                (H160::random(), asset_type, 15),
+                (H160::random(), vec![vec![1]], asset_type, shard_id, 10),
+                (H160::random(), vec![], asset_type, shard_id, 5),
+                (H160::random(), vec![], asset_type, shard_id, 15),
             ]
         );
 
@@ -2399,15 +2402,15 @@ mod tests_tx {
         let mint =
             mint_asset!(Box::new(asset_mint_output!(lock_script_hash, parameters.clone(), amount)), metadata.clone());
         let mint_tracker = mint.tracker().unwrap();
+        let asset_type = Blake::blake(mint_tracker);
 
         let tx = transaction!(fee: 20, mint);
 
         assert_eq!(Invoice::Success, state.apply(&tx, &H256::random(), &sender_public, &get_test_client()).unwrap());
 
-        let asset_type = H256::from(AssetSchemeAddress::new(mint_tracker, shard_id));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 20)),
-            (scheme: (mint_tracker, shard_id) => { metadata: metadata.clone(), supply: amount }),
+            (scheme: (asset_type, shard_id) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, quantity: amount })
         ]);
     }
