@@ -163,7 +163,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 ## Asset
 
  - amount: `U64`
- - assetType: `H256`
+ - assetType: `H160`
  - lockScriptHash: `H160`
  - parameters: `number[][]`
 
@@ -203,21 +203,26 @@ When `Transaction` is included in any response, there will be an additional fiel
 
  - transactionId: `H256`
  - index: `number`
- - assetType: `H256`
+ - assetType: `H160`
+ - shardId: `number`
  - amount: `U64`
 
 ### AssetTransferOutput
 
  - lockScriptHash: `H160`
  - parameters: `number[][]`
- - assetType: `H256`
+ - assetType: `H160`
+ - shardId: `number`
  - amount: `U64`
 
 ### Order
 
- - assetTypeFrom: `H256`
- - assetTypeTo: `H256`
- - assetTypeFee: `H256`
+ - assetTypeFrom: `H160`
+ - assetTypeTo: `H160`
+ - assetTypeFee: `H160`
+ - shardIdFrom: `number`
+ - shardIdTo: `number`
+ - shardIdFee: `number`
  - assetAmountFrom: `U64`
  - assetAmountTo: `U64`
  - assetAmountFee: `U64`
@@ -860,7 +865,8 @@ Gets an asset scheme with the given asset type.
 
 ### Params
  1. asset type - `H256`
- 2. block number: `number` | `null`
+ 2. shard id - `number`
+ 3. block number: `number` | `null`
 
 ### Returns
 `null` | `AssetScheme`
@@ -891,12 +897,13 @@ Errors: `KVDB Error`, `Invalid Params`
 [Back to **List of methods**](#list-of-methods)
 
 ## chain_getAsset
-Gets an asset with the given asset type.
+Gets an asset with the given transaction hash and the index.
 
 ### Params
  1. transaction id - `H256`
  2. index - `number`
- 3. block number: `number` | `null`
+ 3. shard id - `number`
+ 4. block number: `number` | `null`
 
 ### Returns
 `null` | `Asset`
