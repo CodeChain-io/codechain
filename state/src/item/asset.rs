@@ -20,8 +20,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::CacheableItem;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, RlpEncodable, RlpDecodable)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq, RlpEncodable, RlpDecodable)]
 pub struct Asset {
     asset_type: H256,
     quantity: u64,
@@ -44,10 +43,8 @@ impl Asset {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OwnedAsset {
-    #[serde(flatten)]
     asset: Asset,
     lock_script_hash: H160,
     parameters: Vec<Bytes>,

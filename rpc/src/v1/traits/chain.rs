@@ -17,14 +17,13 @@
 use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
-use cstate::{AssetScheme, OwnedAsset};
 use ctypes::invoice::Invoice;
 use ctypes::{BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H256};
 
 use jsonrpc_core::Result;
 
-use super::super::types::{Block, BlockNumberAndHash, Text, Transaction, UnsignedTransaction};
+use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
 
 build_rpc_trait! {
     pub trait Chain {
