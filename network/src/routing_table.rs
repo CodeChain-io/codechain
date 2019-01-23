@@ -51,11 +51,6 @@ enum State {
 pub struct RoutingTable {
     entries: RwLock<HashMap<NodeId, RwLock<State>>>,
 
-    // remote node id => local node id
-    // One node can have multiple node ids because the machine can has a multiple ip addresses
-    // This field represents the local node id that remote node thinks.
-    remote_to_local_node_ids: RwLock<HashMap<NodeId, NodeId>>,
-
     rng: Mutex<OsRng>,
 }
 
@@ -64,7 +59,6 @@ impl RoutingTable {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
             entries: RwLock::new(HashMap::new()),
-            remote_to_local_node_ids: RwLock::new(HashMap::new()),
             rng: Mutex::new(OsRng::new().unwrap()),
         })
     }
@@ -144,16 +138,12 @@ impl RoutingTable {
 
     fn remove_node_internal(&self, addr: SocketAddr, on_shutdown: bool) -> bool {
         let mut entries = self.entries.write();
-        let mut remote_to_local_node_ids = self.remote_to_local_node_ids.write();
 
         let remote_node_id = addr.into();
         if let Some(entry) = entries.get(&remote_node_id) {
             let state = entry.read();
             match *state {
-                State::Banned => {
-                    remote_to_local_node_ids.remove(&remote_node_id);
-                    return false
-                }
+                State::Banned => return false,
                 State::SessionShared(_) => {
                     if on_shutdown {
                         return false
@@ -164,15 +154,13 @@ impl RoutingTable {
         }
         let result = entries.remove(&remote_node_id).is_some();
         if result {
-            remote_to_local_node_ids.remove(&remote_node_id);
             ctrace!(ROUTING_TABLE, "Remove {}", addr);
         }
         result
     }
 
-    pub fn add_node(&self, addr: &SocketAddr, local_node_id: NodeId) -> bool {
+    pub fn add_node(&self, addr: &SocketAddr) -> bool {
         let mut entries = self.entries.write();
-        let mut remote_to_local_node_ids = self.remote_to_local_node_ids.write();
 
         let remote_node_id = addr.into();
 
@@ -181,15 +169,12 @@ impl RoutingTable {
             match *state {
                 State::Candidate => {
                     *state = State::Alive;
-                    let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
-                    assert_eq!(None, t);
                     ctrace!(ROUTING_TABLE, "Mark {} alive", addr);
                     return true
                 }
                 State::SecretPreimported(secret) => {
                     ctrace!(ROUTING_TABLE, "Preimported secret shared with {}", addr);
                     *state = State::SecretShared(secret, SecretOrigin::Preimported);
-                    remote_to_local_node_ids.insert(remote_node_id, local_node_id);
                     return true
                 }
                 _ => {
@@ -201,8 +186,6 @@ impl RoutingTable {
 
         let t = entries.insert(remote_node_id, RwLock::new(State::Alive));
         debug_assert!(t.is_none());
-        let t = remote_to_local_node_ids.insert(remote_node_id, local_node_id);
-        assert_eq!(None, t);
         ctrace!(ROUTING_TABLE, "Add {} as alive", addr);
         true
     }
@@ -456,12 +439,6 @@ impl RoutingTable {
             .take(len)
             .map(|(remote_node_id, _entry)| remote_node_id.into_addr())
             .collect()
-    }
-
-    pub fn local_node_id(&self, remote_node_id: &NodeId) -> Option<NodeId> {
-        let remote_to_local_node_ids = self.remote_to_local_node_ids.read();
-
-        remote_to_local_node_ids.get(&remote_node_id).cloned()
     }
 
     pub fn candidates(&self, len: usize) -> Vec<SocketAddr> {
