@@ -50,6 +50,7 @@ describe("Timelock", function() {
         tx.addOutputs({
             quantity: 1,
             assetType: asset.assetType,
+            shardId: asset.shardId,
             recipient: await node.createP2PKHAddress()
         });
         await node.signTransactionInput(tx, 0);
@@ -113,6 +114,7 @@ describe("Timelock", function() {
         failedTx.addOutputs({
             quantity: 1,
             assetType: asset.assetType,
+            shardId: asset.shardId,
             recipient: await node.createP2PKHAddress()
         });
         const invoices1 = await node.sendAssetTransaction(failedTx);
@@ -132,6 +134,7 @@ describe("Timelock", function() {
         tx.addOutputs({
             quantity: 1,
             assetType: asset.assetType,
+            shardId: asset.shardId,
             recipient: await node.createP2PKHAddress()
         });
         await node.signTransactionInput(tx, 0);
@@ -202,6 +205,7 @@ describe("Timelock", function() {
         tx.addOutputs({
             quantity: 1,
             assetType: asset.assetType,
+            shardId: asset.shardId,
             recipient: await node.createP2PKHAddress()
         });
         await node.signTransactionInput(tx, 0);
@@ -245,6 +249,7 @@ describe("Timelock", function() {
             transferTx.addOutputs(
                 Array.from(Array(count)).map(_ => ({
                     assetType: asset.assetType,
+                    shardId: asset.shardId,
                     quantity: 1,
                     recipient
                 }))
@@ -256,7 +261,7 @@ describe("Timelock", function() {
 
         it("2 inputs [Block(4), Block(6)] => Block(6)", async function() {
             const assets = await createUTXOs(2);
-            const { assetType } = assets[0];
+            const { assetType, shardId } = assets[0];
             const tx = node.sdk.core.createTransferAssetTransaction();
             tx.addInputs([
                 assets[0].createTransferInput({
@@ -272,7 +277,7 @@ describe("Timelock", function() {
                     }
                 })
             ]);
-            tx.addOutputs({ quantity: 2, recipient, assetType });
+            tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
@@ -293,7 +298,7 @@ describe("Timelock", function() {
 
         it("2 inputs [Block(6), Block(4)] => Block(4)", async function() {
             const assets = await createUTXOs(2);
-            const { assetType } = assets[0];
+            const { assetType, shardId } = assets[0];
             const tx = node.sdk.core.createTransferAssetTransaction();
             tx.addInputs([
                 assets[0].createTransferInput({
@@ -309,7 +314,7 @@ describe("Timelock", function() {
                     }
                 })
             ]);
-            tx.addOutputs({ quantity: 2, recipient, assetType });
+            tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
@@ -330,7 +335,7 @@ describe("Timelock", function() {
 
         it("2 inputs [Time(0), Block(4)] => Block(4)", async function() {
             const assets = await createUTXOs(2);
-            const { assetType } = assets[0];
+            const { assetType, shardId } = assets[0];
             const tx = node.sdk.core.createTransferAssetTransaction();
             tx.addInputs([
                 assets[0].createTransferInput({
@@ -346,7 +351,7 @@ describe("Timelock", function() {
                     }
                 })
             ]);
-            tx.addOutputs({ quantity: 2, recipient, assetType });
+            tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
@@ -362,7 +367,7 @@ describe("Timelock", function() {
 
         it("2 inputs [Time(now + 3 seconds), Block(4)] => Time(..)", async function() {
             const assets = await createUTXOs(2);
-            const { assetType } = assets[0];
+            const { assetType, shardId } = assets[0];
             const tx = node.sdk.core.createTransferAssetTransaction();
             tx.addInputs([
                 assets[0].createTransferInput({
@@ -378,7 +383,7 @@ describe("Timelock", function() {
                     }
                 })
             ]);
-            tx.addOutputs({ quantity: 2, recipient, assetType });
+            tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
             await node.sendAssetTransaction(tx, { awaitInvoice: false });
