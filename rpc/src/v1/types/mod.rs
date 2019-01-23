@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod action;
+mod asset;
 mod asset_input;
 mod asset_output;
 mod block;
@@ -31,6 +32,7 @@ use self::asset_output::{AssetMintOutput, AssetTransferOutput};
 use self::order::OrderOnTransfer;
 
 pub use self::action::{Action, ActionWithTracker};
+pub use self::asset::OwnedAsset;
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
 pub use self::text::Text;

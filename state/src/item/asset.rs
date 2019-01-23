@@ -44,10 +44,8 @@ impl Asset {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OwnedAsset {
-    #[serde(flatten)]
     asset: Asset,
     lock_script_hash: H160,
     parameters: Vec<Bytes>,
