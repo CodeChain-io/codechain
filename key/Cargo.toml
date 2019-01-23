@@ -12,7 +12,7 @@ bech32 = "0.2.2"
 codechain-crypto = { path = "../crypto" }
 never = { git = "https://github.com/CodeChain-io/rust-never.git" }
 parking_lot = "0.6.0"
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rand_xorshift = "0.1.0"
 rlp = { path = "../util/rlp" }
 secp256k1 = { path = "../util/secp256k1" }

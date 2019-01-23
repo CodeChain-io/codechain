@@ -6,7 +6,7 @@ description = "A `HashDB` which can manage a short-term journal potentially cont
 license = "GPL3"
 
 [dependencies]
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 hashdb = { path = "../hashdb" }
 kvdb = { path = "../kvdb" }
 memorydb = { path = "../memorydb" }

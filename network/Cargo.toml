@@ -11,7 +11,7 @@ codechain-logger = { path = "../util/logger" }
 codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
 finally = { git = "https://github.com/CodeChain-io/rust-finally.git" }
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 limited-table = { git = "https://github.com/CodeChain-io/rust-limited-table.git" }
 log = "0.4.6"
 mio = "0.6.16"

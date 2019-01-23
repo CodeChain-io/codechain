@@ -6,5 +6,5 @@ description = "Standard test map for profiling tries"
 
 [dependencies]
 codechain-crypto = { path = "../../crypto" }
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = { path = "../rlp" }

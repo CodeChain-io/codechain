@@ -347,7 +347,7 @@ impl<K: Kind> VerificationQueue<K> {
                 self.processing.write().insert(h, item.score());
                 {
                     let mut ts = self.total_score.write();
-                    *ts = *ts + item.score();
+                    *ts += item.score();
                 }
 
                 self.verification.unverified.lock().push_back(item);
@@ -393,7 +393,7 @@ impl<K: Kind> VerificationQueue<K> {
         for hash in hashes {
             if let Some(score) = processing.remove(hash) {
                 let mut td = self.total_score.write();
-                *td = *td - score;
+                *td -= score;
             }
         }
         processing.is_empty()
@@ -414,7 +414,7 @@ impl<K: Kind> VerificationQueue<K> {
             bad.insert(*hash);
             if let Some(score) = processing.remove(hash) {
                 let mut td = self.total_score.write();
-                *td = *td - score;
+                *td -= score;
             }
         }
 
@@ -426,7 +426,7 @@ impl<K: Kind> VerificationQueue<K> {
                 bad.insert(output.hash());
                 if let Some(score) = processing.remove(&output.hash()) {
                     let mut td = self.total_score.write();
-                    *td = *td - score;
+                    *td -= score;
                 }
             } else {
                 new_verified.push_back(output);
