@@ -23,7 +23,7 @@ use ccore::{
 use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
-use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler};
+use cstate::{AssetSchemeAddress, FindActionHandler};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockNumber, ShardId};
@@ -34,7 +34,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
+use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
 
 pub struct ChainClient<C, M>
 where
@@ -131,7 +131,14 @@ where
     fn get_asset_scheme_by_type(&self, asset_type: H256, block_number: Option<u64>) -> Result<Option<AssetScheme>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         match AssetSchemeAddress::from_hash(asset_type) {
-            Some(address) => self.client.get_asset_scheme(address, block_id).map_err(errors::transaction_state),
+            Some(address) => {
+                let network_id = self.client.common_params().network_id;
+                Ok(self
+                    .client
+                    .get_asset_scheme(address, block_id)
+                    .map_err(errors::transaction_state)?
+                    .map(|asset_scheme| AssetScheme::from_core(asset_scheme, network_id)))
+            }
             None => Ok(None),
         }
     }

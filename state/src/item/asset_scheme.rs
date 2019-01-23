@@ -24,8 +24,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use super::asset::Asset;
 use crate::CacheableItem;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AssetScheme {
     metadata: String,
     supply: u64,
