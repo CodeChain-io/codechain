@@ -875,6 +875,22 @@ codechain-primitives@^0.4.4:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
+codechain-primitives@^0.4.5:
+  version "0.4.5"
+  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.5.tgz#b4ee1a86238d4a5197a12f65d2b990ee9c590c03"
+  integrity sha512-FZD+dxXwTCli87HOlXatQvUcl0fgdQfg6T9tE9J4QptWDTkl5ZEJoOx1R0NMHkVxquIfuvTaiCJIsyJJCC7xPQ==
+  dependencies:
+    bignumber.js "^7.2.1"
+    blakejs "^1.1.0"
+    bn.js "^4.11.8"
+    buffer "^5.2.1"
+    elliptic "^6.4.1"
+    hmac-drbg "^1.0.1"
+    lodash "^4.17.11"
+    node-forge "^0.7.6"
+    ripemd160 "^2.0.2"
+    rlp "^2.1.0"
+
 "codechain-sdk@https://github.com/jhs7jhs/codechain-sdk-js.git#asset-type-split-lib":
   version "0.5.1"
   resolved "https://github.com/jhs7jhs/codechain-sdk-js.git#be34ca7b7266c093ea2cf531fead497ef5777028"
@@ -901,13 +917,13 @@ codechain-primitives@^0.4.4:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-test-helper@https://github.com/sgkim126/codechain-test-helper-js.git#refac-lib":
+"codechain-test-helper@https://github.com/sgkim126/codechain-test-helper-js.git#node-id-lib":
   version "1.0.0"
-  resolved "https://github.com/sgkim126/codechain-test-helper-js.git#e7fe9929c2a0df8448a68c707f2b631ee9dc30f9"
+  resolved "https://github.com/sgkim126/codechain-test-helper-js.git#a7e65f1de693579351e09fc7529d88239b020328"
   dependencies:
     "@types/crypto-js" "^3.1.43"
     blakejs "^1.1.0"
-    codechain-primitives "^0.4.4"
+    codechain-primitives "^0.4.5"
     codechain-sdk "https://github.com/sgkim126/codechain-sdk-js.git#refac-lib"
     crypto "^1.0.1"
     dgram "^1.0.1"
