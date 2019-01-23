@@ -15,56 +15,31 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::VecDeque;
-use std::error::Error as StdError;
-use std::fmt;
 use std::io;
 
 use cio::IoManager;
 use mio::deprecated::EventLoop;
+use mio::net::UdpSocket;
 use mio::{PollOpt, Ready, Token};
+use rlp::{Decodable, DecoderError, Encodable, UntrustedRlp};
 
 use super::message::Message;
-use super::socket::{Error as SocketError, Socket};
 use crate::SocketAddr;
 
 #[derive(Debug)]
 pub enum Error {
-    Socket(SocketError),
+    Decoder(DecoderError),
     Io(io::Error),
     QueueOverflow,
+    InsufficientSent {
+        message_length: usize,
+        sent_length: usize,
+    },
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Socket(err) => err.fmt(f),
-            Error::Io(err) => err.fmt(f),
-            Error::QueueOverflow => fmt::Debug::fmt(&self, f),
-        }
-    }
-}
-
-impl StdError for Error {
-    fn description(&self) -> &str {
-        match self {
-            Error::Socket(err) => err.description(),
-            Error::Io(err) => err.description(),
-            Error::QueueOverflow => "Queue overflow",
-        }
-    }
-
-    fn cause(&self) -> Option<&StdError> {
-        match self {
-            Error::Socket(err) => Some(err),
-            Error::Io(err) => Some(err),
-            Error::QueueOverflow => None,
-        }
-    }
-}
-
-impl From<SocketError> for Error {
-    fn from(err: SocketError) -> Self {
-        Error::Socket(err)
+impl From<DecoderError> for Error {
+    fn from(err: DecoderError) -> Self {
+        Error::Decoder(err)
     }
 }
 
@@ -76,21 +51,22 @@ impl From<io::Error> for Error {
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
-pub struct Server {
-    socket: Socket,
+pub struct Socket {
+    socket: UdpSocket,
     queue: VecDeque<(Message, SocketAddr)>,
 }
 
-impl Server {
-    pub fn bind(socket_address: &SocketAddr) -> Result<Server> {
-        let socket = Socket::bind(socket_address)?;
+const MAX_PACKET_SIZE: usize = 1024;
+impl Socket {
+    pub fn bind(socket_address: &SocketAddr) -> io::Result<Socket> {
+        let socket = UdpSocket::bind(socket_address)?;
         Ok(Self {
             socket,
             queue: VecDeque::new(),
         })
     }
 
-    pub fn enqueue(&mut self, message: Message, target: SocketAddr) -> Result<()> {
+    pub fn send(&mut self, message: Message, target: SocketAddr) -> Result<()> {
         const MAX_QUEUE_SIZE: usize = 100;
 
         if self.queue.len() >= MAX_QUEUE_SIZE {
@@ -102,9 +78,9 @@ impl Server {
     }
 
     // return false if there is no message to be sent
-    pub fn send(&mut self) -> Result<bool> {
+    pub fn flush(&mut self) -> Result<bool> {
         if let Some((message, target)) = self.queue.pop_front() {
-            self.socket.write(&message, &target)?;
+            self.write(&message, &target)?;
             Ok(!self.queue.is_empty())
         } else {
             Ok(false)
@@ -112,7 +88,7 @@ impl Server {
     }
 
     pub fn receive(&self) -> Result<Option<(Message, SocketAddr)>> {
-        Ok(self.socket.read()?)
+        Ok(self.read()?)
     }
 
     fn interest(&self) -> Ready {
@@ -135,5 +111,57 @@ impl Server {
         Message: Send + Sync + Clone + 'static, {
         event_loop.reregister(&self.socket, reg, self.interest(), PollOpt::edge())?;
         Ok(())
+    }
+
+    fn write_bytes(&self, message: &[u8], target: &SocketAddr) -> Result<usize> {
+        Ok(self.socket.send_to(&message, target)?)
+    }
+
+    fn read_bytes(&self) -> Result<Option<(Vec<u8>, SocketAddr)>> {
+        let mut buf: [u8; MAX_PACKET_SIZE] = [0; MAX_PACKET_SIZE];
+        let result = match self.socket.recv_from(&mut buf) {
+            Ok((received_size, socket_address)) => {
+                let socket_address = From::from(socket_address);
+                let mut result: Vec<u8> = Vec::new();
+                result.extend_from_slice(&buf[..received_size]);
+                debug_assert_ne!(0, result.len());
+                Ok(Some((result, socket_address)))
+            }
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
+            Err(e) => Err(e),
+        }?;
+        Ok(result)
+    }
+
+    fn write<M>(&self, message: &M, target: &SocketAddr) -> Result<()>
+    where
+        M: Encodable, {
+        let bytes = message.rlp_bytes();
+        let message_length = bytes.len();
+        debug_assert!(message_length < MAX_PACKET_SIZE);
+
+        let sent_length = self.write_bytes(&bytes, &target)?;
+        if sent_length == message_length {
+            Ok(())
+        } else {
+            // FIXME: Repeat sent remains when the socket is writable again
+            Err(Error::InsufficientSent {
+                message_length,
+                sent_length,
+            })
+        }
+    }
+
+    fn read<M>(&self) -> Result<Option<(M, SocketAddr)>>
+    where
+        M: ?Sized + Decodable, {
+        let result = self.read_bytes()?;
+        match result {
+            None => Ok(None),
+            Some((bytes, target)) => {
+                let rlp = UntrustedRlp::new(&bytes);
+                Ok(Some((rlp.as_val::<M>()?, target)))
+            }
+        }
     }
 }

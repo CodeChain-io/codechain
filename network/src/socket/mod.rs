@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod handler;
+pub mod message;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
+mod socket;
 
-
-pub use self::handler::{Handler, Message};
+pub use self::socket::Socket;
