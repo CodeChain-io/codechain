@@ -174,9 +174,9 @@ impl SessionInitiator {
         }
     }
 
-    // return false if there is no message to be sent
-    fn send(&mut self) -> IoHandlerResult<bool> {
-        Ok(self.socket.flush().map_err(|err| format!("{:?}", err))?)
+    fn send(&mut self) -> IoHandlerResult<()> {
+        self.socket.flush().map_err(|err| format!("{:?}", err))?;
+        Ok(())
     }
 
     fn create_new_connection(&mut self, target: &SocketAddr, io: &IoContext<Message>) -> IoHandlerResult<()> {
@@ -462,13 +462,8 @@ impl IoHandler<Message> for Handler {
         let _f = finally(|| {
             io.update_registration(stream);
         });
-        loop {
-            let mut session_initiator = self.session_initiator.write();
-            if !session_initiator.send()? {
-                break
-            }
-        }
-        Ok(())
+        let mut session_initiator = self.session_initiator.write();
+        session_initiator.send()
     }
 
     fn register_stream(
