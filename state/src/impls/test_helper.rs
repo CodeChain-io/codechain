@@ -129,10 +129,14 @@ macro_rules! asset_mint_output {
 
 macro_rules! asset_out_point {
     ($tracker:expr, $index:expr, $asset_type:expr, $quantity:expr) => {
+        asset_out_point!($tracker, $index, $asset_type, $crate::impls::test_helper::SHARD_ID, $quantity)
+    };
+    ($tracker:expr, $index:expr, $asset_type:expr, $shard_id:expr, $quantity:expr) => {
         $crate::ctypes::transaction::AssetOutPoint {
             tracker: $tracker,
             index: $index,
             asset_type: $asset_type,
+            shard_id: $shard_id,
             quantity: $quantity,
         }
     };
@@ -167,6 +171,7 @@ macro_rules! asset_transfer_output {
             lock_script_hash: $lock_script_hash,
             parameters: Vec::new(),
             asset_type: $asset_type,
+            shard_id: $crate::impls::test_helper::SHARD_ID,
             quantity: $quantity,
         }
     };
@@ -175,6 +180,16 @@ macro_rules! asset_transfer_output {
             lock_script_hash: $lock_script_hash,
             parameters: $parameters,
             asset_type: $asset_type,
+            shard_id: $crate::impls::test_helper::SHARD_ID,
+            quantity: $quantity,
+        }
+    };
+    ($lock_script_hash:expr, $parameters:expr, $asset_type:expr, $shard_id:expr, $quantity:expr) => {
+        $crate::ctypes::transaction::AssetTransferOutput {
+            lock_script_hash: $lock_script_hash,
+            parameters: $parameters,
+            asset_type: $asset_type,
+            shard_id: $shard_id,
             quantity: $quantity,
         }
     };
@@ -272,6 +287,9 @@ macro_rules! order {
             asset_type_from: $from,
             asset_type_to: $to,
             asset_type_fee: $fee,
+            shard_id_from: $crate::impls::test_helper::SHARD_ID,
+            shard_id_to: $crate::impls::test_helper::SHARD_ID,
+            shard_id_fee: $crate::impls::test_helper::SHARD_ID,
             asset_quantity_from: $from_quantity,
             asset_quantity_to: $to_quantity,
             asset_quantity_fee: $fee_quantity,
@@ -523,26 +541,23 @@ macro_rules! check_top_level_state {
 
         check_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr }) $(,$x:tt)*]) => {
-        let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
-        let scheme = $state.asset_scheme($shard_id, &asset_scheme_address).unwrap().unwrap();
+    ($state:expr, [(scheme: ($asset_type:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr }) $(,$x:tt)*]) => {
+        let scheme = $state.asset_scheme($shard_id, &$asset_type).unwrap().unwrap();
         assert_eq!(&$metadata, scheme.metadata());
         assert_eq!($supply, scheme.supply());
 
         check_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
-        let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
-        let scheme = $state.asset_scheme($shard_id, &asset_scheme_address).unwrap().unwrap();
+    ($state:expr, [(scheme: ($asset_type:expr, $shard_id:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
+        let scheme = $state.asset_scheme($shard_id, &$asset_type).unwrap().unwrap();
         assert_eq!(&$metadata, scheme.metadata());
         assert_eq!($supply, scheme.supply());
         assert_eq!(Some(&$approver), scheme.approver().as_ref());
 
         check_top_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($tx_hash:expr, $shard_id:expr)) $(,$x:tt)*]) => {
-        let asset_scheme_address = $crate::AssetSchemeAddress::new($tx_hash, $shard_id);
-        assert_eq!(Ok(None), $state.asset_scheme($shard_id, &asset_scheme_address));
+    ($state:expr, [(scheme: ($asset_type:expr, $shard_id:expr)) $(,$x:tt)*]) => {
+        assert_eq!(Ok(None), $state.asset_scheme($shard_id, &$asset_type));
 
         check_top_level_state!($state, [$($x),*]);
     };

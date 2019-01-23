@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn encode_and_decode_asset() {
         rlp_encode_and_decode_test!(Asset {
-            asset_type: H256::random(),
+            asset_type: H160::random(),
             quantity: 0,
         });
     }

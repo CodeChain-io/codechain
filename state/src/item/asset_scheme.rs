@@ -216,33 +216,17 @@ mod tests {
 
     #[test]
     fn asset_from_address() {
-        let origin = {
-            let mut address;
-            'address: loop {
-                address = H256::random();
-                if address[0] == b'S' {
-                    continue
-                }
-                for a in address.iter().take(6).skip(1) {
-                    if *a == 0 {
-                        continue 'address
-                    }
-                }
-                break
-            }
-            address
-        };
+        let origin = H160::random();
         let shard_id = 0xBEE;
         let asset_address = AssetSchemeAddress::new(origin, shard_id);
         let hash: H256 = asset_address.into();
-        assert_ne!(origin, hash);
         assert_eq!(hash[0..2], [PREFIX, 0]);
         assert_eq!(hash[2..4], [0x0B, 0xEE]); // shard id
     }
 
     #[test]
     fn shard_id() {
-        let origin = H256::random();
+        let origin = H160::random();
         let shard_id = 0xCAA;
         let asset_scheme_address = AssetSchemeAddress::new(origin, shard_id);
         assert_eq!(shard_id, asset_scheme_address.shard_id());
