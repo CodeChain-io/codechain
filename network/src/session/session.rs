@@ -17,55 +17,52 @@
 use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::Blake;
 use ckey::Secret;
-use primitives::H256;
+use primitives::{h128_from_u128, H256};
 
 use super::Nonce;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialOrd, PartialEq)]
 pub struct Session {
     secret: Secret,
-    id: Nonce,
+    nonce: Nonce,
 }
 
 type Error = SymmetricCipherError;
 
 impl Session {
     pub fn new_with_zero_nonce(secret: Secret) -> Self {
-        Self::new(secret, Nonce::zero())
+        Self::new(secret, 0)
     }
 
     pub fn new(secret: Secret, nonce: Nonce) -> Self {
         Session {
             secret,
-            id: nonce,
+            nonce,
         }
     }
 
-    pub fn is_expected_nonce(&self, nonce: &Nonce) -> bool {
-        self.id() == nonce
+    pub fn is_expected_nonce(&self, nonce: Nonce) -> bool {
+        self.nonce() == nonce
     }
 
     pub fn secret(&self) -> &Secret {
         &self.secret
     }
 
-    pub fn id(&self) -> &Nonce {
-        &self.id
+    pub fn nonce(&self) -> Nonce {
+        self.nonce
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let iv = self.id();
-        Ok(aes::encrypt(&data, &self.secret, iv)?)
+        Ok(aes::encrypt(&data, &self.secret, &h128_from_u128(self.nonce()))?)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let iv = self.id();
-        Ok(aes::decrypt(&data, &self.secret, &iv)?)
+        Ok(aes::decrypt(&data, &self.secret, &h128_from_u128(self.nonce()))?)
     }
 
     pub fn sign(&self, data: &[u8]) -> H256 {
-        let iv = self.id();
-        Blake::blake_with_key(data, iv)
+        Blake::blake_with_key(data, &self.nonce().to_be_bytes())
     }
 }
 
@@ -76,9 +73,8 @@ mod tests {
     #[test]
     fn encrypt_and_decrypt_short_data() {
         let secret = Secret::random();
-        let id = Nonce::from(1000);
-
-        let session = Session::new(secret, id);
+        let nonce = 1000;
+        let session = Session::new(secret, nonce);
 
         let data = b"some short data".to_vec();
 
@@ -92,10 +88,9 @@ mod tests {
     #[test]
     fn encrypt_and_decrypt_short_data_in_different_session_with_same_secret() {
         let secret = Secret::random();
-        let id = Nonce::from(1000);
-
-        let session1 = Session::new(secret, id);
-        let session2 = Session::new(secret, id);
+        let nonce = 1000;
+        let session1 = Session::new(secret, nonce);
+        let session2 = Session::new(secret, nonce);
 
         let data = b"some short data".to_vec();
 
@@ -109,11 +104,11 @@ mod tests {
     #[test]
     fn encrypt_with_different_nonce() {
         let secret = Secret::random();
-        let id1 = Nonce::from(1000);
-        let id2 = Nonce::from(1001);
+        let nonce1 = 1000;
+        let nonce2 = 1001;
 
-        let session1 = Session::new(secret, id1);
-        let session2 = Session::new(secret, id2);
+        let session1 = Session::new(secret, nonce1);
+        let session2 = Session::new(secret, nonce2);
 
         let data = b"some short data".to_vec();
         let encrypted1 = session1.encrypt(&data).ok().unwrap();
@@ -127,10 +122,10 @@ mod tests {
         let secret1 = Secret::random();
         let secret2 = Secret::random();
         debug_assert_ne!(secret1, secret2);
-        let id = Nonce::from(1000);
+        let nonce = 1000;
 
-        let session1 = Session::new(secret1, id);
-        let session2 = Session::new(secret2, id);
+        let session1 = Session::new(secret1, nonce);
+        let session2 = Session::new(secret2, nonce);
 
         let data = b"some short data".to_vec();
         let encrypted1 = session1.encrypt(&data).ok().unwrap();
