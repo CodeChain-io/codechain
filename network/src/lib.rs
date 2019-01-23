@@ -50,6 +50,7 @@ mod node_id;
 mod routing_table;
 mod service;
 mod session_initiator;
+mod socket;
 mod test;
 
 pub mod control;
