@@ -47,13 +47,13 @@ pub enum Error {
     TransactionAlreadyImported,
 }
 
-const ERROR_ID_INVALID_SEQ: u8 = 10u8;
-const ERROR_ID_LIMIT_REACHED: u8 = 7u8;
-const ERROR_ID_OLD: u8 = 3u8;
-const ERROR_ID_ORDER_EXPIRED: u8 = 35u8;
-const ERROR_ID_TIMELOCKED: u8 = 26u8;
-const ERROR_ID_TOO_CHEAP_TO_REPLACE: u8 = 4u8;
-const ERROR_ID_TX_ALREADY_IMPORTED: u8 = 1u8;
+const ERROR_ID_INVALID_SEQ: u8 = 1;
+const ERROR_ID_LIMIT_REACHED: u8 = 2;
+const ERROR_ID_OLD: u8 = 3;
+const ERROR_ID_ORDER_EXPIRED: u8 = 4;
+const ERROR_ID_TIMELOCKED: u8 = 5;
+const ERROR_ID_TOO_CHEAP_TO_REPLACE: u8 = 6;
+const ERROR_ID_TX_ALREADY_IMPORTED: u8 = 7;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
