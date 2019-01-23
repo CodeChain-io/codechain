@@ -23,7 +23,7 @@ use ccore::{
 use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
-use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset};
+use cstate::{AssetScheme, AssetSchemeAddress, FindActionHandler};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockNumber, ShardId};
@@ -34,7 +34,7 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{Block, BlockNumberAndHash, Text, Transaction, UnsignedTransaction};
+use super::super::types::{Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
 
 pub struct ChainClient<C, M>
 where
@@ -147,7 +147,8 @@ where
 
     fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<OwnedAsset>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        self.client.get_asset(transaction_hash, index, block_id).map_err(errors::transaction_state)
+        let asset = self.client.get_asset(transaction_hash, index, block_id).map_err(errors::transaction_state)?;
+        Ok(asset.map(From::from))
     }
 
     fn is_asset_spent(
