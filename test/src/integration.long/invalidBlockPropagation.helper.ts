@@ -23,33 +23,52 @@ import CodeChain from "../helper/spawn";
 import { expect } from "chai";
 import "mocha";
 import Test = Mocha.Test;
+import { PromiseExpect } from "../helper/promise";
 
-async function setup(base: number): Promise<[Header, Block, Header]> {
+async function setup(
+    base: number,
+    promises: PromiseExpect
+): Promise<[Header, Block, Header]> {
     const temporaryNode = new CodeChain({
         argv: ["--force-sealing"],
         base
     });
-    await temporaryNode.start();
+    await promises.shouldFulfill("tmp.node.start", temporaryNode.start());
 
     const sdk = temporaryNode.sdk;
 
-    await sdk.rpc.devel.startSealing();
-    await sdk.rpc.devel.startSealing();
+    await promises.shouldFulfill(
+        "start.sealing.1",
+        sdk.rpc.devel.startSealing()
+    );
+    await promises.shouldFulfill(
+        "start.sealing.2",
+        sdk.rpc.devel.startSealing()
+    );
 
-    const block0 = await sdk.rpc.chain.getBlock(0);
+    const block0 = await promises.shouldFulfill(
+        "get.block.0",
+        sdk.rpc.chain.getBlock(0)
+    );
     if (block0 == null) {
         throw Error("Cannot get the genesis block");
     }
-    const block1 = await sdk.rpc.chain.getBlock(1);
+    const block1 = await promises.shouldFulfill(
+        "get.block.1",
+        sdk.rpc.chain.getBlock(1)
+    );
     if (block1 == null) {
         throw Error("Cannot get the first block");
     }
-    const block2 = await sdk.rpc.chain.getBlock(2);
+    const block2 = await promises.shouldFulfill(
+        "get.block.2",
+        sdk.rpc.chain.getBlock(2)
+    );
     if (block2 == null) {
         throw Error("Cannot get the second block");
     }
 
-    await temporaryNode.clean();
+    await promises.shouldFulfill("tmp.node.clean", temporaryNode.clean());
     const header0 = new Header(
         block0.parentHash,
         new U256(block0.timestamp),
@@ -89,24 +108,28 @@ async function setup(base: number): Promise<[Header, Block, Header]> {
     return [header0, block1, header2];
 }
 
-async function setupEach(base: number): Promise<[CodeChain, TestHelper]> {
+async function setupEach(
+    base: number,
+    promises: PromiseExpect
+): Promise<[CodeChain, TestHelper]> {
     const node = new CodeChain({ base });
-    await node.start();
+    await promises.shouldFulfill("node.start", node.start());
     const TH = new TestHelper("0.0.0.0", node.port);
-    await TH.establish();
+    await promises.shouldFulfill("th.establish", TH.establish());
     return [node, TH];
 }
 
 async function teardownEach(
     currentTest: Test,
     TH: TestHelper,
-    node: CodeChain
+    node: CodeChain,
+    promises: PromiseExpect
 ) {
     if (currentTest.state === "failed") {
         node.testFailed(currentTest.fullTitle());
     }
-    await TH.end();
-    await node.clean();
+    await promises.shouldFulfill("th.end", TH.end());
+    await promises.shouldFulfill("node.clean", node.clean());
 }
 
 async function testBody(
@@ -125,7 +148,8 @@ async function testBody(
         tinvoiceRoot?: H256;
         tscore?: U256;
         tseal?: Buffer[];
-    }
+    },
+    promises: PromiseExpect
 ) {
     const {
         tnumber,
@@ -184,13 +208,19 @@ async function testBody(
     }
 
     const genesis = TH.genesisHash;
-    await TH.sendStatus(bestScore, bestHash, genesis);
-    await TH.sendBlockHeaderResponse([
-        header0.toEncodeObject(),
-        header.toEncodeObject(),
-        header2.toEncodeObject()
-    ]);
-    await TH.waitHeaderRequest();
+    await promises.shouldFulfill(
+        "th.status",
+        TH.sendStatus(bestScore, bestHash, genesis)
+    );
+    await promises.shouldFulfill(
+        "th.header.response.",
+        TH.sendBlockHeaderResponse([
+            header0.toEncodeObject(),
+            header.toEncodeObject(),
+            header2.toEncodeObject()
+        ])
+    );
+    await promises.shouldFulfill("th.header.request.", TH.waitHeaderRequest());
 
     const bodyRequest = TH.getBlockBodyRequest();
 
@@ -212,27 +242,33 @@ export async function createTestSuite(
         let header2: Header;
 
         const BASE = 300 + testNumber * 5;
+        const promises = new PromiseExpect();
 
         // tslint:disable only-arrow-functions
         before(async function() {
             // tslint:enable only-arrow-functions
-            [header0, block1, header2] = await setup(BASE);
+            [header0, block1, header2] = await setup(BASE, promises);
         });
 
         // tslint:disable only-arrow-functions
         beforeEach(async function() {
             // tslint:enable only-arrow-functions
-            [node, TH] = await setupEach(BASE);
+            [node, TH] = await setupEach(BASE, promises);
         });
 
         afterEach(async function() {
-            await teardownEach(this.currentTest!, TH, node);
+            await teardownEach(this.currentTest!, TH, node, promises);
         });
 
         // tslint:disable only-arrow-functions
         it(title, async function() {
             // tslint:enable only-arrow-functions
-            await testBody(header0, block1, header2, TH, params);
+            await testBody(header0, block1, header2, TH, params, promises);
         }).timeout(30_000);
+
+        // tslint:disable only-arrow-functions
+        after(async function() {
+            await promises.checkFulfilled();
+        });
     });
 }
