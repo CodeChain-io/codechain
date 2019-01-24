@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::path::Path;
 use std::sync::Arc;
 
 use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
 use cnetwork::NodeId;
 use ctimer::TimerApi;
-use kvdb_rocksdb::{Database, DatabaseConfig};
+use kvdb::KeyValueDB;
 use primitives::{Bytes, H256};
 
 use crate::client::{Client, ClientConfig};
@@ -39,22 +38,11 @@ impl ClientService {
     pub fn start(
         config: &ClientConfig,
         scheme: &Scheme,
-        client_path: &Path,
+        db: Arc<KeyValueDB>,
         miner: Arc<Miner>,
         reseal_timer: TimerApi,
     ) -> Result<ClientService, Error> {
         let io_service = IoService::<ClientIoMessage>::start("Client")?;
-
-        let mut db_config = DatabaseConfig::with_columns(crate::db::NUM_COLUMNS);
-
-        db_config.memory_budget = config.db_cache_size;
-        db_config.compaction = config.db_compaction.compaction_profile(client_path);
-        db_config.wal = config.db_wal;
-
-        let db = Arc::new(
-            Database::open(&db_config, &client_path.to_str().expect("DB path could not be converted to string."))
-                .map_err(::client::Error::Database)?,
-        );
 
         let client = Client::try_new(config, &scheme, db, miner, io_service.channel(), reseal_timer)?;
 

@@ -45,6 +45,8 @@ extern crate ctrlc;
 extern crate env_logger;
 extern crate fdlimit;
 extern crate finally;
+extern crate kvdb;
+extern crate kvdb_rocksdb;
 extern crate never;
 extern crate panic_hook;
 extern crate parking_lot;
