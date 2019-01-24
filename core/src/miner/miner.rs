@@ -526,15 +526,15 @@ impl Miner {
                         .lock()
                         .seal(&*self.engine, seal.clone())
                         .map(|sealed| {
-                            self.engine.proposal_generated(&sealed);
                             let import_result = chain.import_sealed_block(&sealed);
+                            self.engine.proposal_generated(&sealed);
                             self.engine.broadcast_proposal_block(encoded::Block::new(sealed.rlp_bytes()));
-                            import_result
+                            import_result.is_ok()
                         })
-                        .map_err(|e| {
+                        .unwrap_or_else(|e| {
                             cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
+                            false
                         })
-                        .is_ok()
                 } else {
                     block
                         .lock()
