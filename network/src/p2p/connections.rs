@@ -23,9 +23,9 @@ use mio::Token;
 use parking_lot::RwLock;
 
 use super::connection::{Connection, Result};
-use super::stream::Stream;
 use crate::node_id::IntoSocketAddr;
 use crate::session::Session;
+use crate::stream::Stream;
 use crate::{FiltersControl, NodeId, SocketAddr};
 
 pub use super::connection::{ConnectionType, ReceivedMessage};

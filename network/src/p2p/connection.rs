@@ -27,9 +27,10 @@ use parking_lot::RwLock;
 use rlp::{DecoderError, UntrustedRlp};
 
 use super::message::{HandshakeMessage, Message, Seq, SignedMessage, Version};
-use super::stream::{Error as StreamError, SignedStream, Stream};
+use super::stream::{Error as StreamError, SignedStream};
 use super::{ExtensionMessage, NegotiationMessage};
 use crate::session::Session;
+use crate::stream::Stream;
 use crate::{NodeId, SocketAddr};
 
 struct EstablishedConnection {
@@ -223,7 +224,7 @@ impl WaitSyncConnection {
     }
 
     fn remote_addr(&self) -> Result<SocketAddr> {
-        Ok(self.stream.peer_addr()?)
+        Ok(self.stream.peer_addr().map_err(StreamError::from)?)
     }
 
     fn stream(&self) -> &Stream {
@@ -247,7 +248,7 @@ impl WaitSyncConnection {
         let message = Message::Handshake(HandshakeMessage::ack());
         let signed_message = SignedMessage::new(&message, session);
 
-        self.stream.write(&signed_message)?;
+        self.stream.write(&signed_message).map_err(StreamError::from)?;
         self.state = WaitState::Sent;
         Ok(false)
     }
@@ -256,7 +257,7 @@ impl WaitSyncConnection {
         if self.state != WaitState::Created {
             return Ok(None)
         }
-        if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
+        if let Some(signed_message) = self.stream.read::<SignedMessage>().map_err(StreamError::from)? {
             let message = {
                 let rlp = UntrustedRlp::new(&signed_message.message);
                 rlp.as_val::<Message>()?
