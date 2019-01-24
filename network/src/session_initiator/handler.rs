@@ -194,8 +194,8 @@ impl SessionInitiator {
         io: &IoContext<Message>,
     ) -> IoHandlerResult<()> {
         match message.body() {
-            message::Body::NodeIdRequest(responder_node_id) => {
-                if !self.routing_table.add_node(from, *responder_node_id) {
+            message::Body::NodeIdRequest(_) => {
+                if !self.routing_table.add_node(from) {
                     ctrace!(NETWORK, "{} is not a new candidate", from);
                 }
 
@@ -214,7 +214,7 @@ impl SessionInitiator {
                     .restore(message.seq() as usize, Some(*from))
                     .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
 
-                if !self.routing_table.add_node(from, *requester_node_id) {
+                if !self.routing_table.add_node(from) {
                     ctrace!(NETWORK, "{} is not a new candidate", from);
                 }
 

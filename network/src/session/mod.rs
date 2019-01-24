@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod nonce;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod session;
 
-pub use self::nonce::Nonce;
+pub type Nonce = u128;
 pub use self::session::Session;
