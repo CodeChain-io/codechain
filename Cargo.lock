@@ -219,6 +219,8 @@ dependencies = [
  "fdlimit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "finally 0.1.0 (git+https://github.com/CodeChain-io/rust-finally.git)",
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kvdb 0.1.0",
+ "kvdb-rocksdb 0.1.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)",
  "panic_hook 0.1.0",
