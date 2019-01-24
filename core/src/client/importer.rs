@@ -113,8 +113,7 @@ impl Importer {
                 }
                 if let Ok(closed_block) = self.check_and_close_block(&block, client) {
                     if self.engine.is_proposal(&block.header) {
-                        self.engine.on_verified_proposal(encoded::Block::new(block.bytes.clone()));
-                        self.engine.broadcast_proposal_block(encoded::Block::new(block.bytes.clone()))
+                        self.engine.on_verified_proposal(encoded::Block::new(block.bytes.clone()))
                     }
 
                     imported_blocks.push(header.hash());

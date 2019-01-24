@@ -274,9 +274,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Consensus many hold the verified proposal block until it should be imported.
     fn on_verified_proposal(&self, _verified_block_data: encoded::Block) {}
 
-    /// Broadcast a block proposal.
-    fn broadcast_proposal_block(&self, _block: encoded::Block) {}
-
     /// Register an account which signs consensus messages.
     fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address, _password: Option<Password>) {}
 
