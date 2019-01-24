@@ -1294,28 +1294,26 @@ impl ChainNotify for TendermintChainNotify {
         };
 
         let mut t = t.inner.lock();
-        if imported.is_empty() {
-            return
-        }
+        if !imported.is_empty() {
+            let mut height_changed = false;
+            for hash in imported {
+                // New Commit received, skip to next height.
+                let header = c.block_header(&hash.into()).expect("ChainNotify is called after the block is imported");
 
-        let mut height_changed = false;
-        for hash in imported {
-            // New Commit received, skip to next height.
-            let header = c.block_header(&hash.into()).expect("ChainNotify is called after the block is imported");
-
-            let full_header = header.decode();
-            if t.is_proposal(&full_header) {
-                t.on_imported_proposal(&full_header);
-            } else if t.height < header.number() as usize {
-                height_changed = true;
-                ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
-                let view = consensus_view(&full_header).expect("Imported block already checked");
-                t.move_to_next_height((header.number() - 1) as usize, view);
+                let full_header = header.decode();
+                if t.is_proposal(&full_header) {
+                    t.on_imported_proposal(&full_header);
+                } else if t.height < header.number() as usize {
+                    height_changed = true;
+                    ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
+                    let view = consensus_view(&full_header).expect("Imported block already checked");
+                    t.move_to_next_height((header.number() - 1) as usize, view);
+                }
             }
-        }
-        if height_changed {
-            t.move_to_step(Step::Commit);
-            return
+            if height_changed {
+                t.move_to_step(Step::Commit);
+                return
+            }
         }
         if !enacted.is_empty() && t.can_move_from_commit_to_propose() {
             ctrace!(
