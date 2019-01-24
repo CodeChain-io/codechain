@@ -764,7 +764,7 @@ impl MemPool {
     }
 
     /// Return all future transactions.
-    pub fn future_tranasctions(&self) -> Vec<SignedTransaction> {
+    pub fn future_transactions(&self) -> Vec<SignedTransaction> {
         self.future
             .queue
             .iter()
