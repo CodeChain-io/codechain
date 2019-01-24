@@ -722,6 +722,11 @@ impl TendermintInner {
             header
         );
         self.move_to_step(Step::Prevote);
+        self.broadcast_proposal_block(encoded::Block::new(sealed_block.rlp_bytes()));
+    }
+
+    fn on_verified_proposal(&self, verified_block_data: encoded::Block) {
+        self.broadcast_proposal_block(verified_block_data);
     }
 
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
@@ -1202,9 +1207,9 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         guard.is_proposal(header)
     }
 
-    fn broadcast_proposal_block(&self, block: encoded::Block) {
+    fn on_verified_proposal(&self, verified_block_data: encoded::Block) {
         let guard = self.inner.lock();
-        guard.broadcast_proposal_block(block)
+        guard.on_verified_proposal(verified_block_data)
     }
 
     fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
