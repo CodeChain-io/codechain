@@ -1,11 +1,38 @@
 #!/usr/bin/env bash
-set -e
+# HOW TO USE THIS SCRIPT IN .travis.yml
+#   > SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = skip ]]; then exit 0; fi
+# There are three possible output categories, and desired effects in this script
+#  1. exit 0; stdout "skip"   -> Stop the process with a "Success" status.
+#  2. exit 0; stdout "noskip" -> Do not skip the build process.
+#  3. exit !0; stdout *;      -> Stop the process with a "Fail" status.
+# For categories 1 and 2, the usage will be evaluated as follows:
+#   > SKIP="skip" && if [[ "$SKIP" = skip ]]; then exit 0; fi
+# `exit 0` is called, then stop the process with "Success" status.
+#   > SKIP="noskip" && ...
+# If the statement returns 0, it will continue the process.
+# For 3., the usage will be evaluated like this, and bash operator `&&` will
+# short-circuit the logic and propagate exit code.
+#   > false && ...
+# Statement that returned non-zero code will stop the process with a "Fail" status.
+# FAILED ONE-LINER ATTEMPTS:
+#   > if [[ `.travis/check` = skip ]] ...
+# `If` consumes exit code of subshell. It will not be propagated.
+#   > [[ `.travis/check` = skip ]] && exit 0
+# It'll return non-zero code and the build will fail when the script prints "noskip".
+#   > [[ `.travis/check` = skip ]] && exit 0 || echo "failed"
+# It'll silently continue the process even if the script had exited with non-zero code.
 
-RESULT_FILE="${1}"
+set -e
+# Everything that is normally printed to `stdout` in the script will be redirected to `stderr`
+# which will be visible in tty/Travis log.
+# Outputs that is printed to `fd 3` will be redirected to `stdout`,
+# which will be finally assigned to a variable `$SKIP`
+exec 3>&1 1>&2 # fd 3 = fd 1; fd 1 = fd 2
+
 function return_to_travis {
     STRATEGY="${1}"
-    echo ${STRATEGY} > ${RESULT_FILE}
-    exit
+    echo ${STRATEGY} >&3
+    exit 0
 }
 function skip_travis { return_to_travis "skip" ; }
 function noskip_travis { return_to_travis "noskip" ; }

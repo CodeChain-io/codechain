@@ -953,7 +953,7 @@ impl MinerService for Miner {
 
     /// Get a list of all future transactions.
     fn future_transactions(&self) -> Vec<SignedTransaction> {
-        self.mem_pool.read().future_tranasctions()
+        self.mem_pool.read().future_transactions()
     }
 
     fn start_sealing<C: MiningBlockChainClient>(&self, client: &C) {

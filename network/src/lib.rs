@@ -39,6 +39,7 @@ extern crate token_generator;
 
 #[macro_use]
 extern crate codechain_logger as clogger;
+extern crate core;
 
 mod addr;
 mod client;
@@ -51,6 +52,7 @@ mod routing_table;
 mod service;
 mod session_initiator;
 mod socket;
+mod stream;
 mod test;
 
 pub mod control;

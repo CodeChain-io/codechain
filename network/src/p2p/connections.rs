@@ -23,9 +23,9 @@ use mio::Token;
 use parking_lot::RwLock;
 
 use super::connection::{Connection, Result};
-use super::stream::Stream;
 use crate::node_id::IntoSocketAddr;
 use crate::session::Session;
+use crate::stream::Stream;
 use crate::{FiltersControl, NodeId, SocketAddr};
 
 pub use super::connection::{ConnectionType, ReceivedMessage};
@@ -58,7 +58,6 @@ impl Connections {
         &self,
         token: StreamToken,
         stream: Stream,
-        local_node_id: NodeId,
         session: Session,
         socket_address: &SocketAddr,
         local_port: u16,
@@ -73,7 +72,7 @@ impl Connections {
             return false
         }
 
-        let connection = Connection::connect(stream, session, local_port, local_node_id, remote_node_id);
+        let connection = Connection::connect(stream, session, local_port, remote_node_id);
         let t = connections.insert(token, connection);
         debug_assert!(t.is_none());
         let t = connected_nodes.insert(remote_node_id, token);

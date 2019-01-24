@@ -233,7 +233,6 @@ mod tests {
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
-    use crate::session::Nonce;
     use crate::SocketAddr;
 
     #[test]
@@ -254,7 +253,7 @@ mod tests {
     fn encode_and_decode_nonce_request() {
         const SEQ: Seq = 0;
 
-        let nonce = Nonce::from(32);
+        let nonce = 32;
         let nonce = nonce.rlp_bytes();
 
         let req = Message::nonce_request(SEQ, nonce.into_vec());
@@ -265,7 +264,7 @@ mod tests {
     fn encode_and_decode_nonce_allowed() {
         const SEQ: Seq = 37;
 
-        let nonce = Nonce::from(4);
+        let nonce = 4;
         let nonce = nonce.rlp_bytes();
 
         let allowed = Message::nonce_allowed(SEQ, nonce.into_vec());
@@ -284,7 +283,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_large_nonce_request() {
-        let nonce = Nonce::from(0xDEAD_BEEF);
+        let nonce = 0xDEAD_BEEFu128;
         let nonce = nonce.rlp_bytes();
 
         const SEQ: Seq = 0;
@@ -295,7 +294,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_large_nonce_allowed() {
-        let nonce = Nonce::from(0x00CC_AFEC);
+        let nonce = 0x00CC_AFEC;
         let nonce = nonce.rlp_bytes();
 
         const SEQ: Seq = 0x4a;

@@ -27,9 +27,10 @@ use parking_lot::RwLock;
 use rlp::{DecoderError, UntrustedRlp};
 
 use super::message::{HandshakeMessage, Message, Seq, SignedMessage, Version};
-use super::stream::{Error as StreamError, SignedStream, Stream};
+use super::stream::{Error as StreamError, SignedStream};
 use super::{ExtensionMessage, NegotiationMessage};
 use crate::session::Session;
+use crate::stream::Stream;
 use crate::{NodeId, SocketAddr};
 
 struct EstablishedConnection {
@@ -223,7 +224,7 @@ impl WaitSyncConnection {
     }
 
     fn remote_addr(&self) -> Result<SocketAddr> {
-        Ok(self.stream.peer_addr()?)
+        Ok(self.stream.peer_addr().map_err(StreamError::from)?)
     }
 
     fn stream(&self) -> &Stream {
@@ -247,7 +248,7 @@ impl WaitSyncConnection {
         let message = Message::Handshake(HandshakeMessage::ack());
         let signed_message = SignedMessage::new(&message, session);
 
-        self.stream.write(&signed_message)?;
+        self.stream.write(&signed_message).map_err(StreamError::from)?;
         self.state = WaitState::Sent;
         Ok(false)
     }
@@ -256,7 +257,7 @@ impl WaitSyncConnection {
         if self.state != WaitState::Created {
             return Ok(None)
         }
-        if let Some(signed_message) = self.stream.read::<SignedMessage>()? {
+        if let Some(signed_message) = self.stream.read::<SignedMessage>().map_err(StreamError::from)? {
             let message = {
                 let rlp = UntrustedRlp::new(&signed_message.message);
                 rlp.as_val::<Message>()?
@@ -299,17 +300,15 @@ impl WaitSyncConnection {
 struct WaitAckConnection {
     stream: SignedStream,
     port: u16,
-    local_node_id: NodeId,
     remote_node_id: NodeId,
     state: WaitState,
 }
 
 impl WaitAckConnection {
-    fn new(stream: Stream, session: Session, port: u16, local_node_id: NodeId, remote_node_id: NodeId) -> Self {
+    fn new(stream: Stream, session: Session, port: u16, remote_node_id: NodeId) -> Self {
         Self {
             stream: SignedStream::new(stream, session),
             port,
-            local_node_id,
             remote_node_id,
             state: WaitState::Created,
         }
@@ -342,7 +341,7 @@ impl WaitAckConnection {
             return Ok(false)
         }
 
-        self.stream.write(&Message::Handshake(HandshakeMessage::sync(self.port, self.local_node_id)))?;
+        self.stream.write(&Message::Handshake(HandshakeMessage::sync(self.port)))?;
         self.state = WaitState::Sent;
         Ok(false)
     }
@@ -434,14 +433,8 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub fn connect(
-        stream: Stream,
-        session: Session,
-        local_port: u16,
-        local_node_id: NodeId,
-        remote_node_id: NodeId,
-    ) -> Self {
-        let connection = WaitAckConnection::new(stream, session, local_port, local_node_id, remote_node_id);
+    pub fn connect(stream: Stream, session: Session, local_port: u16, remote_node_id: NodeId) -> Self {
+        let connection = WaitAckConnection::new(stream, session, local_port, remote_node_id);
         Self {
             state: RwLock::new(State::WaitAck(connection.into())),
         }

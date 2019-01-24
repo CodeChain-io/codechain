@@ -19,7 +19,6 @@ use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
-use ctypes::util::unexpected::Mismatch;
 use finally::finally;
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
@@ -30,10 +29,10 @@ use token_generator::TokenGenerator;
 use super::connections::{ConnectionType, Connections, ReceivedMessage};
 use super::listener::Listener;
 use super::message::{HandshakeMessage, Message as NetworkMessage, Version};
-use super::stream::Stream;
 use super::NegotiationBody;
 use crate::addr::convert_to_node_id;
 use crate::client::Client;
+use crate::stream::Stream;
 use crate::{FiltersControl, IntoSocketAddr, NodeId, RoutingTable, SocketAddr};
 
 pub const MAX_CONNECTIONS: usize = 200;
@@ -74,7 +73,6 @@ enum Error {
     InvalidStream(StreamToken),
     InvalidNode(NodeId),
     InvalidSign,
-    UnexpectedNodeId(Mismatch<NodeId>),
     SymmetricCipher(SymmetricCipherError),
 }
 
@@ -84,7 +82,6 @@ impl ::std::fmt::Display for Error {
             Error::InvalidStream(_) => ::std::fmt::Debug::fmt(self, f),
             Error::InvalidNode(_) => ::std::fmt::Debug::fmt(self, f),
             Error::InvalidSign => ::std::fmt::Debug::fmt(&self, f),
-            Error::UnexpectedNodeId(_) => ::std::fmt::Debug::fmt(&self, f),
             Error::SymmetricCipher(err) => ::std::fmt::Debug::fmt(&err, f),
         }
     }
@@ -173,16 +170,13 @@ impl Handler {
 
         Ok(match Stream::connect(socket_address)? {
             Some(stream) => {
-                let remote_node_id = socket_address.into();
-
                 let _establish_lock = self.establish_lock.lock();
-                let local_node_id = self.routing_table.local_node_id(&remote_node_id).ok_or("Not handshaked")?;
                 let session =
                     self.routing_table.unestablished_session(&socket_address).ok_or("Session doesn't exist")?;
 
                 let mut tokens = self.tokens.lock();
                 let token = tokens.gen().ok_or("TooManyConnections")?;
-                if !self.connections.connect(token, stream, local_node_id, session, socket_address, self.get_port()) {
+                if !self.connections.connect(token, stream, session, socket_address, self.get_port()) {
                     tokens.restore(token);
                     return Err(format!("Cannot create connection to {}", socket_address).into())
                 }
@@ -222,20 +216,11 @@ impl Handler {
                 match message {
                     NetworkMessage::Handshake(HandshakeMessage::Sync {
                         port,
-                        node_id,
                         ..
                     }) => {
                         let remote_addr =
                             self.connections.remote_addr_of_waiting_sync(stream).ok_or("Cannot find remote address")?;
                         let remote_node_id = convert_to_node_id(remote_addr.ip(), port);
-
-                        if remote_node_id != node_id {
-                            return Err(Error::UnexpectedNodeId(Mismatch {
-                                expected: remote_node_id,
-                                found: node_id,
-                            })
-                            .into())
-                        }
 
                         let remote_addr = SocketAddr::new(remote_addr.ip(), port);
 
