@@ -119,6 +119,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getPendingTransactions")]
         fn get_pending_transactions(&self) -> Result<Vec<Transaction>>;
 
+       /// Gets the count of transactions in the current mem pool.
+        # [rpc(name = "chain_getPendingTransactionsCount")]
+        fn get_pending_transactions_count(&self) -> Result<usize>;
+
         /// Gets the mining given block number
         # [rpc(name = "chain_getMiningReward")]
         fn get_mining_reward(&self, u64) -> Result<Option<u64>>;

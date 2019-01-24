@@ -252,6 +252,10 @@ where
         Ok(self.client.ready_transactions().into_iter().map(|signed| signed.into()).collect())
     }
 
+    fn get_pending_transactions_count(&self) -> Result<usize> {
+        Ok(self.client.ready_transactions().len())
+    }
+
     fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {
         Ok(self.client.mining_reward(block_number))
     }
