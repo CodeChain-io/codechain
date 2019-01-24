@@ -297,6 +297,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getNumberOfShards](#chain_getnumberofshards)
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingTransactions](#chain_getpendingtransactions)
+ * [chain_getPendingTransactionsCount](#chain_getpendingtransactionscount)
  * [chain_getMiningReward](#chain_getminingreward)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_executeVM](#chain_executevm)
@@ -1259,6 +1260,34 @@ No parameters
     }
   ],
   "id":null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## chain_getPendingTransactionsCount
+Returns a count of the transactions that are in the current transaction queue.
+
+### Params
+No parameters
+
+### Returns
+`number`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactionsCount", "params": [], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+    "jsonrpc":"2.0",
+    "result":4,
+    "id":null
 }
 ```
 
