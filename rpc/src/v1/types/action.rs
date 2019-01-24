@@ -56,7 +56,8 @@ pub enum Action {
     #[serde(rename_all = "camelCase")]
     ChangeAssetScheme {
         network_id: NetworkId,
-        asset_type: H256,
+        shard_id: ShardId,
+        asset_type: H160,
         metadata: String,
         approver: Option<PlatformAddress>,
         administrator: Option<PlatformAddress>,
@@ -165,7 +166,8 @@ pub enum ActionWithTracker {
     #[serde(rename_all = "camelCase")]
     ChangeAssetScheme {
         network_id: NetworkId,
-        asset_type: H256,
+        shard_id: ShardId,
+        asset_type: H160,
         metadata: String,
         approver: Option<PlatformAddress>,
         administrator: Option<PlatformAddress>,
@@ -293,6 +295,7 @@ impl ActionWithTracker {
             },
             ActionType::ChangeAssetScheme {
                 network_id,
+                shard_id,
                 asset_type,
                 metadata,
                 approver,
@@ -301,6 +304,7 @@ impl ActionWithTracker {
                 approvals,
             } => ActionWithTracker::ChangeAssetScheme {
                 network_id,
+                shard_id,
                 asset_type,
                 metadata,
                 approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
@@ -477,6 +481,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
             }
             Action::ChangeAssetScheme {
                 network_id,
+                shard_id,
                 asset_type,
                 metadata,
                 approver,
@@ -495,6 +500,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 };
                 ActionType::ChangeAssetScheme {
                     network_id,
+                    shard_id,
                     asset_type,
                     metadata,
                     approver,

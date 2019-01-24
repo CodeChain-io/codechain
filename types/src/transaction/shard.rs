@@ -47,7 +47,8 @@ pub enum ShardTransaction {
     },
     ChangeAssetScheme {
         network_id: NetworkId,
-        asset_type: H256,
+        shard_id: ShardId,
+        asset_type: H160,
         metadata: String,
         approver: Option<Address>,
         administrator: Option<Address>,
@@ -141,8 +142,8 @@ impl ShardTransaction {
             } => {
                 let mut shards: Vec<ShardId> = burns
                     .iter()
-                    .map(AssetTransferInput::related_shard)
-                    .chain(inputs.iter().map(AssetTransferInput::related_shard))
+                    .map(|v| v.prev_out.shard_id)
+                    .chain(inputs.iter().map(|v| v.prev_out.shard_id))
                     .collect();
                 shards.sort_unstable();
                 shards.dedup();
@@ -153,15 +154,15 @@ impl ShardTransaction {
                 ..
             } => vec![*shard_id],
             ShardTransaction::ChangeAssetScheme {
-                asset_type,
+                shard_id,
                 ..
-            } => vec![(ShardId::from(asset_type[2]) << 8) + ShardId::from(asset_type[3])],
+            } => vec![*shard_id],
             ShardTransaction::ComposeAsset {
                 inputs,
                 shard_id,
                 ..
             } => {
-                let mut shards: Vec<ShardId> = inputs.iter().map(AssetTransferInput::related_shard).collect();
+                let mut shards: Vec<ShardId> = inputs.iter().map(|v| v.prev_out.shard_id).collect();
                 shards.push(*shard_id);
                 shards.sort_unstable();
                 shards.dedup();
@@ -171,7 +172,7 @@ impl ShardTransaction {
                 outputs,
                 ..
             } => {
-                let mut shards: Vec<ShardId> = outputs.iter().map(AssetTransferOutput::related_shard).collect();
+                let mut shards: Vec<ShardId> = outputs.iter().map(|v| v.shard_id).collect();
                 shards.sort_unstable();
                 shards.dedup();
                 shards
@@ -179,7 +180,7 @@ impl ShardTransaction {
             ShardTransaction::UnwrapCCC {
                 burn,
                 ..
-            } => vec![burn.related_shard()],
+            } => vec![burn.prev_out.shard_id],
             ShardTransaction::WrapCCC {
                 shard_id,
                 ..
@@ -237,7 +238,7 @@ impl ShardTransaction {
             ShardTransaction::TransferAsset {
                 outputs,
                 ..
-            } => id == outputs[index].related_shard(),
+            } => id == outputs[index].shard_id,
             ShardTransaction::ChangeAssetScheme {
                 ..
             } => unreachable!("AssetSchemeChange doesn't have a valid index"),
@@ -248,7 +249,7 @@ impl ShardTransaction {
             ShardTransaction::DecomposeAsset {
                 outputs,
                 ..
-            } => id == outputs[index].related_shard(),
+            } => id == outputs[index].shard_id,
             ShardTransaction::UnwrapCCC {
                 ..
             } => unreachable!("UnwrapCCC doesn't have a valid index"),
@@ -502,16 +503,17 @@ impl Decodable for ShardTransaction {
                 })
             }
             ASSET_SCHEME_CHANGE_ID => {
-                if d.item_count()? != 7 {
+                if d.item_count()? != 8 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(ShardTransaction::ChangeAssetScheme {
                     network_id: d.val_at(1)?,
-                    asset_type: d.val_at(2)?,
-                    metadata: d.val_at(3)?,
-                    approver: d.val_at(4)?,
-                    administrator: d.val_at(5)?,
-                    allowed_script_hashes: d.list_at(6)?,
+                    shard_id: d.val_at(2)?,
+                    asset_type: d.val_at(3)?,
+                    metadata: d.val_at(4)?,
+                    approver: d.val_at(5)?,
+                    administrator: d.val_at(6)?,
+                    allowed_script_hashes: d.list_at(7)?,
                 })
             }
             ASSET_COMPOSE_ID => {
@@ -603,15 +605,17 @@ impl Encodable for ShardTransaction {
             }
             ShardTransaction::ChangeAssetScheme {
                 network_id,
+                shard_id,
                 asset_type,
                 metadata,
                 approver,
                 administrator,
                 allowed_script_hashes,
             } => {
-                s.begin_list(7)
+                s.begin_list(8)
                     .append(&ASSET_SCHEME_CHANGE_ID)
                     .append(network_id)
+                    .append(shard_id)
                     .append(asset_type)
                     .append(metadata)
                     .append(approver)
@@ -678,30 +682,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn related_shard_of_asset_transfer_input() {
-        let mut asset_type = H256::new();
-        asset_type[2..4].copy_from_slice(&[0xBE, 0xEF]);
-
-        let prev_out = AssetOutPoint {
-            tracker: H256::random(),
-            index: 3,
-            asset_type,
-            quantity: 34,
-        };
-
-        let input = AssetTransferInput {
-            prev_out,
-            timelock: None,
-            lock_script: vec![],
-            unlock_script: vec![],
-        };
-
-        assert_eq!(0xBEEF, input.related_shard());
-    }
-
-    #[test]
     fn _is_input_and_output_consistent() {
-        let asset_type = H256::random();
+        let asset_type = H160::random();
         let quantity = 100;
 
         assert!(is_input_and_output_consistent(
@@ -710,6 +692,7 @@ mod tests {
                     tracker: H256::random(),
                     index: 0,
                     asset_type,
+                    shard_id: 0,
                     quantity,
                 },
                 timelock: None,
@@ -720,6 +703,7 @@ mod tests {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
+                shard_id: 0,
                 quantity,
             }]
         ));
@@ -727,11 +711,11 @@ mod tests {
 
     #[test]
     fn multiple_asset_is_input_and_output_consistent() {
-        let asset_type1 = H256::random();
+        let asset_type1 = H160::random();
         let asset_type2 = {
-            let mut asset_type = H256::random();
+            let mut asset_type = H160::random();
             while asset_type == asset_type1 {
-                asset_type = H256::random();
+                asset_type = H160::random();
             }
             asset_type
         };
@@ -745,6 +729,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
+                        shard_id: 0,
                         quantity: quantity1,
                     },
                     timelock: None,
@@ -756,6 +741,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
+                        shard_id: 0,
                         quantity: quantity2,
                     },
                     timelock: None,
@@ -768,12 +754,14 @@ mod tests {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
+                    shard_id: 0,
                     quantity: quantity1,
                 },
                 AssetTransferOutput {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
+                    shard_id: 0,
                     quantity: quantity2,
                 },
             ]
@@ -782,11 +770,11 @@ mod tests {
 
     #[test]
     fn multiple_asset_different_order_is_input_and_output_consistent() {
-        let asset_type1 = H256::random();
+        let asset_type1 = H160::random();
         let asset_type2 = {
-            let mut asset_type = H256::random();
+            let mut asset_type = H160::random();
             while asset_type == asset_type1 {
-                asset_type = H256::random();
+                asset_type = H160::random();
             }
             asset_type
         };
@@ -800,6 +788,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type1,
+                        shard_id: 0,
                         quantity: quantity1,
                     },
                     timelock: None,
@@ -811,6 +800,7 @@ mod tests {
                         tracker: H256::random(),
                         index: 0,
                         asset_type: asset_type2,
+                        shard_id: 0,
                         quantity: quantity2,
                     },
                     timelock: None,
@@ -823,12 +813,14 @@ mod tests {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type2,
+                    shard_id: 0,
                     quantity: quantity2,
                 },
                 AssetTransferOutput {
                     lock_script_hash: H160::random(),
                     parameters: vec![],
                     asset_type: asset_type1,
+                    shard_id: 0,
                     quantity: quantity1,
                 },
             ]
@@ -842,7 +834,7 @@ mod tests {
 
     #[test]
     fn fail_if_output_has_more_asset() {
-        let asset_type = H256::random();
+        let asset_type = H160::random();
         let output_quantity = 100;
         assert!(!is_input_and_output_consistent(
             &[],
@@ -850,6 +842,7 @@ mod tests {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
+                shard_id: 0,
                 quantity: output_quantity,
             }]
         ));
@@ -857,7 +850,7 @@ mod tests {
 
     #[test]
     fn fail_if_input_has_more_asset() {
-        let asset_type = H256::random();
+        let asset_type = H160::random();
         let input_quantity = 100;
 
         assert!(!is_input_and_output_consistent(
@@ -866,6 +859,7 @@ mod tests {
                     tracker: H256::random(),
                     index: 0,
                     asset_type,
+                    shard_id: 0,
                     quantity: input_quantity,
                 },
                 timelock: None,
@@ -878,7 +872,7 @@ mod tests {
 
     #[test]
     fn fail_if_input_is_larger_than_output() {
-        let asset_type = H256::random();
+        let asset_type = H160::random();
         let input_quantity = 100;
         let output_quantity = 80;
 
@@ -888,6 +882,7 @@ mod tests {
                     tracker: H256::random(),
                     index: 0,
                     asset_type,
+                    shard_id: 0,
                     quantity: input_quantity,
                 },
                 timelock: None,
@@ -898,6 +893,7 @@ mod tests {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
+                shard_id: 0,
                 quantity: output_quantity,
             }]
         ));
@@ -905,7 +901,7 @@ mod tests {
 
     #[test]
     fn fail_if_input_is_smaller_than_output() {
-        let asset_type = H256::random();
+        let asset_type = H160::random();
         let input_quantity = 80;
         let output_quantity = 100;
 
@@ -915,6 +911,7 @@ mod tests {
                     tracker: H256::random(),
                     index: 0,
                     asset_type,
+                    shard_id: 0,
                     quantity: input_quantity,
                 },
                 timelock: None,
@@ -925,6 +922,7 @@ mod tests {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
                 asset_type,
+                shard_id: 0,
                 quantity: output_quantity,
             }]
         ));
@@ -939,7 +937,8 @@ mod tests {
                 prev_out: AssetOutPoint {
                     tracker: Default::default(),
                     index: 0,
-                    asset_type: H256::default(),
+                    asset_type: H160::default(),
+                    shard_id: 0,
                     quantity: 30,
                 },
                 timelock: None,
@@ -959,7 +958,8 @@ mod tests {
                 prev_out: AssetOutPoint {
                     tracker: Default::default(),
                     index: 0,
-                    asset_type: H256::zero(),
+                    asset_type: H160::zero(),
+                    shard_id: 0,
                     quantity: 30,
                 },
                 timelock: None,
@@ -979,7 +979,8 @@ mod tests {
                 prev_out: AssetOutPoint {
                     tracker: H256::random(),
                     index: 0,
-                    asset_type: H256::random(),
+                    asset_type: H160::random(),
+                    shard_id: 0,
                     quantity: 30,
                 },
                 timelock: None,
@@ -989,21 +990,26 @@ mod tests {
             outputs: vec![AssetTransferOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![vec![1]],
-                asset_type: H256::random(),
+                asset_type: H160::random(),
+                shard_id: 0,
                 quantity: 30,
             }],
             orders: vec![OrderOnTransfer {
                 order: Order {
-                    asset_type_from: H256::random(),
-                    asset_type_to: H256::random(),
-                    asset_type_fee: H256::random(),
+                    asset_type_from: H160::random(),
+                    asset_type_to: H160::random(),
+                    asset_type_fee: H160::random(),
+                    shard_id_from: 0,
+                    shard_id_to: 0,
+                    shard_id_fee: 0,
                     asset_quantity_from: 10,
                     asset_quantity_to: 10,
                     asset_quantity_fee: 0,
                     origin_outputs: vec![AssetOutPoint {
                         tracker: H256::random(),
                         index: 0,
-                        asset_type: H256::random(),
+                        asset_type: H160::random(),
+                        shard_id: 0,
                         quantity: 30,
                     }],
                     expiration: 10,
@@ -1026,7 +1032,8 @@ mod tests {
             prev_out: AssetOutPoint {
                 tracker: Default::default(),
                 index: 0,
-                asset_type: H256::default(),
+                asset_type: H160::default(),
+                shard_id: 0,
                 quantity: 0,
             },
             timelock: None,
@@ -1038,7 +1045,8 @@ mod tests {
                 prev_out: AssetOutPoint {
                     tracker: Default::default(),
                     index: 0,
-                    asset_type: H256::default(),
+                    asset_type: H160::default(),
+                    shard_id: 0,
                     quantity: 0,
                 },
                 timelock: None,
@@ -1050,7 +1058,8 @@ mod tests {
             .map(|_| AssetTransferOutput {
                 lock_script_hash: H160::default(),
                 parameters: Vec::new(),
-                asset_type: H256::default(),
+                asset_type: H160::default(),
+                shard_id: 0,
                 quantity: 0,
             })
             .collect();
@@ -1113,13 +1122,12 @@ mod tests {
 
     // FIXME: Remove it and reuse the same function declared in action.rs
     fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[AssetTransferOutput]) -> bool {
-        let mut sum: HashMap<H256, u128> = HashMap::new();
+        let mut sum: HashMap<H160, u128> = HashMap::new();
 
         for input in inputs {
             let asset_type = input.prev_out.asset_type;
             let quantity = u128::from(input.prev_out.quantity);
-            let current_quantity = sum.get(&asset_type).cloned().unwrap_or_default();
-            sum.insert(asset_type, current_quantity + quantity);
+            *sum.entry(asset_type).or_insert_with(Default::default) += quantity;
         }
         for output in outputs {
             let asset_type = output.asset_type;

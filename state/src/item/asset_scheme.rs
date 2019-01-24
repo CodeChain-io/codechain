@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::mem::size_of;
-
+use ccrypto::Blake;
 use ckey::Address;
 use ctypes::ShardId;
 use primitives::{H160, H256};
@@ -191,21 +190,15 @@ pub struct AssetSchemeAddress(H256);
 impl_address!(SHARD, AssetSchemeAddress, PREFIX);
 
 impl AssetSchemeAddress {
-    pub fn new(tracker: H256, shard_id: ShardId) -> Self {
+    pub fn new(asset_type: H160, shard_id: ShardId) -> Self {
         let index = ::std::u64::MAX;
 
-        Self::from_transaction_hash_with_shard_id(tracker, index, shard_id)
+        Self::from_hash_with_shard_id(asset_type, index, shard_id)
     }
-    pub fn new_with_zero_suffix(shard_id: ShardId) -> Self {
-        let mut hash = H256::zero();
-        hash[0..2].copy_from_slice(&[PREFIX, 0]);
 
-        debug_assert_eq!(size_of::<u16>(), size_of::<ShardId>());
-        let shard_id_bytes: [u8; 2] = shard_id.to_be_bytes();
-        assert_eq!(2, shard_id_bytes.len());
-        hash[2..4].copy_from_slice(&shard_id_bytes);
-
-        AssetSchemeAddress(hash)
+    pub fn new_from_tracker(tracker: H256, shard_id: ShardId) -> Self {
+        let asset_type = Blake::blake(tracker);
+        Self::new(asset_type, shard_id)
     }
 }
 
@@ -223,33 +216,17 @@ mod tests {
 
     #[test]
     fn asset_from_address() {
-        let origin = {
-            let mut address;
-            'address: loop {
-                address = H256::random();
-                if address[0] == b'S' {
-                    continue
-                }
-                for a in address.iter().take(6).skip(1) {
-                    if *a == 0 {
-                        continue 'address
-                    }
-                }
-                break
-            }
-            address
-        };
+        let origin = H160::random();
         let shard_id = 0xBEE;
         let asset_address = AssetSchemeAddress::new(origin, shard_id);
         let hash: H256 = asset_address.into();
-        assert_ne!(origin, hash);
         assert_eq!(hash[0..2], [PREFIX, 0]);
         assert_eq!(hash[2..4], [0x0B, 0xEE]); // shard id
     }
 
     #[test]
     fn shard_id() {
-        let origin = H256::random();
+        let origin = H160::random();
         let shard_id = 0xCAA;
         let asset_scheme_address = AssetSchemeAddress::new(origin, shard_id);
         assert_eq!(shard_id, asset_scheme_address.shard_id());

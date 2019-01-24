@@ -27,7 +27,7 @@ mod common;
 use ccrypto::{blake128, blake256_with_key};
 use ckey::{sign, KeyPair, NetworkId, Private};
 use ctypes::transaction::{AssetOutPoint, AssetTransferInput, AssetTransferOutput, ShardTransaction};
-use primitives::{H160, H256};
+use primitives::H160;
 use rlp::Encodable;
 use secp256k1::key::{MINUS_ONE_KEY, ONE_KEY};
 
@@ -50,7 +50,8 @@ fn valid_pay_to_public_key() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -94,7 +95,8 @@ fn invalid_pay_to_public_key() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -133,7 +135,8 @@ fn sign_all_input_all_output() {
     let out0 = AssetOutPoint {
         tracker: Default::default(),
         index: 0,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     let input0 = AssetTransferInput {
@@ -146,7 +149,8 @@ fn sign_all_input_all_output() {
     let out1 = AssetOutPoint {
         tracker: Default::default(),
         index: 1,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 1,
     };
     let input1 = AssetTransferInput {
@@ -159,14 +163,16 @@ fn sign_all_input_all_output() {
     let output0 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     // Make output indexed 1
     let output1 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 1,
     };
     let transaction = ShardTransaction::TransferAsset {
@@ -209,7 +215,8 @@ fn sign_single_input_all_output() {
     let out0 = AssetOutPoint {
         tracker: Default::default(),
         index: 0,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     let input0 = AssetTransferInput {
@@ -222,7 +229,8 @@ fn sign_single_input_all_output() {
     let out1 = AssetOutPoint {
         tracker: Default::default(),
         index: 1,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 1,
     };
     let input1 = AssetTransferInput {
@@ -235,14 +243,16 @@ fn sign_single_input_all_output() {
     let output0 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     // Make output indexed 1
     let output1 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 1,
     };
     let transaction = ShardTransaction::TransferAsset {
@@ -284,7 +294,8 @@ fn sign_all_input_partial_output() {
     let out0 = AssetOutPoint {
         tracker: Default::default(),
         index: 0,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     let input0 = AssetTransferInput {
@@ -297,7 +308,8 @@ fn sign_all_input_partial_output() {
     let out1 = AssetOutPoint {
         tracker: Default::default(),
         index: 1,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 1,
     };
     let input1 = AssetTransferInput {
@@ -310,14 +322,16 @@ fn sign_all_input_partial_output() {
     let output0 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     // Make output indexed 1
     let output1 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 1,
     };
     let transaction = ShardTransaction::TransferAsset {
@@ -359,7 +373,8 @@ fn sign_single_input_partial_output() {
     let out0 = AssetOutPoint {
         tracker: Default::default(),
         index: 0,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     let input0 = AssetTransferInput {
@@ -372,7 +387,8 @@ fn sign_single_input_partial_output() {
     let out1 = AssetOutPoint {
         tracker: Default::default(),
         index: 1,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 1,
     };
     let input1 = AssetTransferInput {
@@ -385,14 +401,16 @@ fn sign_single_input_partial_output() {
     let output0 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     // Make output indexed 1
     let output1 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 1,
     };
     let transaction = ShardTransaction::TransferAsset {
@@ -434,7 +452,8 @@ fn distinguish_sign_single_input_with_sign_all() {
     let out0 = AssetOutPoint {
         tracker: Default::default(),
         index: 0,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     let input0 = AssetTransferInput {
@@ -447,7 +466,8 @@ fn distinguish_sign_single_input_with_sign_all() {
     let output0 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     let transaction = ShardTransaction::TransferAsset {
@@ -490,7 +510,8 @@ fn distinguish_sign_single_output_with_sign_all() {
     let out0 = AssetOutPoint {
         tracker: Default::default(),
         index: 0,
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     let input0 = AssetTransferInput {
@@ -503,7 +524,8 @@ fn distinguish_sign_single_output_with_sign_all() {
     let output0 = AssetTransferOutput {
         lock_script_hash: H160::default(),
         parameters: Vec::new(),
-        asset_type: H256::default(),
+        asset_type: H160::default(),
+        shard_id: 0,
         quantity: 0,
     };
     let transaction = ShardTransaction::TransferAsset {

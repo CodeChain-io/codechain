@@ -23,8 +23,8 @@ use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
-    ActionHandler, AssetScheme, AssetSchemeAddress, FindActionHandler, OwnedAsset, OwnedAssetAddress, StateDB, Text,
-    TopLevelState, TopStateView,
+    ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, OwnedAssetAddress, StateDB, Text, TopLevelState,
+    TopStateView,
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::invoice::Invoice;
@@ -35,7 +35,7 @@ use hashdb::AsHashDB;
 use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
-use primitives::{Bytes, H256, U256};
+use primitives::{Bytes, H160, H256, U256};
 use rlp::UntrustedRlp;
 
 use super::importer::Importer;
@@ -348,18 +348,22 @@ impl DatabaseClient for Client {
 }
 
 impl AssetClient for Client {
-    fn get_asset_scheme(&self, asset_type: AssetSchemeAddress, id: BlockId) -> TrieResult<Option<AssetScheme>> {
+    fn get_asset_scheme(&self, asset_type: H160, shard_id: ShardId, id: BlockId) -> TrieResult<Option<AssetScheme>> {
         if let Some(state) = Client::state_at(&self, id) {
-            let shard_id = asset_type.shard_id();
             Ok(state.asset_scheme(shard_id, &asset_type)?)
         } else {
             Ok(None)
         }
     }
 
-    fn get_asset(&self, transaction_hash: H256, index: usize, id: BlockId) -> TrieResult<Option<OwnedAsset>> {
+    fn get_asset(
+        &self,
+        transaction_hash: H256,
+        index: usize,
+        shard_id: ShardId,
+        id: BlockId,
+    ) -> TrieResult<Option<OwnedAsset>> {
         if let Some(state) = Client::state_at(&self, id) {
-            let shard_id = 0; // FIXME
             let address = OwnedAssetAddress::new(transaction_hash, index, shard_id);
             Ok(state.asset(shard_id, &address)?)
         } else {

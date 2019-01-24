@@ -25,10 +25,10 @@ use ccore::{
     BlockId, DatabaseClient, EngineClient, EngineInfo, MinerService, MiningBlockChainClient, SignedTransaction,
     COL_STATE,
 };
+use ccrypto::Blake;
 use cjson::bytes::Bytes;
 use ckey::{Address, KeyPair, Private};
 use cnetwork::IntoSocketAddr;
-use cstate::AssetSchemeAddress;
 use csync::BlockSyncInfo;
 use ctypes::transaction::{
     Action, AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction,
@@ -117,7 +117,6 @@ where
         let transfer_fee = self.client.common_params().min_asset_transfer_cost;
         let pay_fee = self.client.common_params().min_pay_transaction_cost;
         let network_id = self.client.common_params().network_id;
-        let shard_id = 0;
 
         // NOTE: Assuming solo network
         let genesis_secret: Private = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd".into();
@@ -152,7 +151,7 @@ where
                     network_id,
                     action: Action::MintAsset {
                         network_id,
-                        shard_id,
+                        shard_id: 0,
                         metadata: format!("{:?}", Instant::now()),
                         approver: None,
                         administrator: None,
@@ -194,6 +193,7 @@ where
                         tracker: $hash,
                         index: $index,
                         asset_type: $asset_type,
+                        shard_id: 0,
                         quantity: $quantity,
                     },
                     timelock: None,
@@ -209,6 +209,7 @@ where
                     lock_script_hash: lock_script_hash_empty_sig,
                     parameters: vec![],
                     asset_type: $asset_type,
+                    shard_id: 0,
                     quantity: $quantity,
                 }
             };
@@ -229,8 +230,8 @@ where
             Ok(hash)
         }
 
-        fn asset_type(tx: &Transaction, shard_id: u16) -> H256 {
-            AssetSchemeAddress::new(tx.tracker().unwrap(), shard_id).into()
+        fn asset_type(tx: &Transaction) -> H160 {
+            Blake::blake(tx.tracker().unwrap())
         }
 
         fn tps(count: u64, start_time: PreciseTime, end_time: PreciseTime) -> f64 {
@@ -252,7 +253,7 @@ where
             }
             TPSTestOption::TransferSingle => {
                 let mint_tx = mint_tx!(base_seq, 1);
-                let asset_type = asset_type(&mint_tx, shard_id);
+                let asset_type = asset_type(&mint_tx);
                 let mut previous_tracker = mint_tx.tracker().unwrap();
                 send_tx(mint_tx, &*self.client, &genesis_keypair, &*self.miner)?;
 
@@ -272,13 +273,13 @@ where
             TPSTestOption::TransferMultiple => {
                 let number_of_in_out: usize = 10;
                 let mint_tx = mint_tx!(base_seq, number_of_in_out as u64);
-                let asset_type = asset_type(&mint_tx, shard_id);
+                let asset_type = asset_type(&mint_tx);
                 let mut previous_tracker = mint_tx.tracker().unwrap();
                 send_tx(mint_tx, &*self.client, &genesis_keypair, &*self.miner)?;
 
                 fn create_inputs(
                     transaction_hash: H256,
-                    asset_type: H256,
+                    asset_type: H160,
                     total_amount: u64,
                     count: usize,
                 ) -> Vec<AssetTransferInput> {
@@ -305,7 +306,7 @@ where
             }
             TPSTestOption::PayOrTransfer => {
                 let mint_tx = mint_tx!(base_seq, 1);
-                let asset_type = asset_type(&mint_tx, shard_id);
+                let asset_type = asset_type(&mint_tx);
                 let mut previous_tracker = mint_tx.tracker().unwrap();
                 send_tx(mint_tx, &*self.client, &genesis_keypair, &*self.miner)?;
 

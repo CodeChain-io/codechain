@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{Bytes, H160, H256};
+use primitives::{Bytes, H160};
 
 use crate::ShardId;
 
@@ -22,16 +22,9 @@ use crate::ShardId;
 pub struct AssetTransferOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
-    pub asset_type: H256,
+    pub asset_type: H160,
+    pub shard_id: ShardId,
     pub quantity: u64,
-}
-
-impl AssetTransferOutput {
-    pub fn related_shard(&self) -> ShardId {
-        debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<ShardId>());
-        let shard_id_bytes: [u8; 2] = [self.asset_type[2], self.asset_type[3]];
-        ShardId::from_be_bytes(shard_id_bytes)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

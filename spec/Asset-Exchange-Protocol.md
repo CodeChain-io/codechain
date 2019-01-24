@@ -18,9 +18,12 @@ The format of `Order` is as shown below.
 
 |        Name        |    Data Type    |                                                Description                                                |
 |--------------------|-----------------|-----------------------------------------------------------------------------------------------------------|
-| assetTypeFrom      | H256            | The type of the asset offered by maker                                                                    |
-| assetTypeTo        | H256            | The type of the asset requested by maker                                                                  |
-| assetTypeFee       | H256            | The type of the asset offered by maker to give as fees                                                    |
+| assetTypeFrom      | H160            | The type of the asset offered by maker                                                                    |
+| assetTypeTo        | H160            | The type of the asset requested by maker                                                                  |
+| assetTypeFee       | H160            | The type of the asset offered by maker to give as fees                                                    |
+| shardIdFrom        | ShardId         | The shard ID of the asset offered by maker                                                                    |
+| shardIdTo          | ShardId         | The shard ID of the asset requested by maker                                                                  |
+| shardIdFee         | ShardId         | The shard ID of the asset offered by maker to give as fees                                                    |
 | assetAmountFrom    | U64             | Total amount of assets with the type assetTypeFrom                                                        |
 | assetAmountTo      | U64             | Total amount of assets with the type assetTypeTo                                                          |
 | assetAmountFee     | U64             | Total amount of assets with the type assetTypeFee                                                         |

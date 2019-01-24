@@ -45,7 +45,8 @@ fn simple_success() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -77,7 +78,8 @@ fn simple_failure() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -108,7 +110,8 @@ fn simple_burn() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -135,7 +138,8 @@ fn underflow() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -162,7 +166,8 @@ fn out_of_memory() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -201,7 +206,8 @@ fn invalid_unlock_script() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -228,7 +234,8 @@ fn conditional_burn() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -278,7 +285,8 @@ fn _blake256() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -354,7 +362,8 @@ fn _ripemd160() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -438,7 +447,8 @@ fn _sha256() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -522,7 +532,8 @@ fn _keccak256() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -608,7 +619,8 @@ fn dummy_input() -> AssetTransferInput {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
@@ -848,7 +860,8 @@ fn copy_stack_underflow() {
         prev_out: AssetOutPoint {
             tracker: Default::default(),
             index: 0,
-            asset_type: H256::default(),
+            asset_type: H160::default(),
+            shard_id: 0,
             quantity: 0,
         },
         timelock: None,
