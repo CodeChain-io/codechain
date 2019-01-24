@@ -30,10 +30,10 @@ use token_generator::TokenGenerator;
 use super::connections::{ConnectionType, Connections, ReceivedMessage};
 use super::listener::Listener;
 use super::message::{HandshakeMessage, Message as NetworkMessage, Version};
-use super::stream::Stream;
 use super::NegotiationBody;
 use crate::addr::convert_to_node_id;
 use crate::client::Client;
+use crate::stream::Stream;
 use crate::{FiltersControl, IntoSocketAddr, NodeId, RoutingTable, SocketAddr};
 
 pub const MAX_CONNECTIONS: usize = 200;
