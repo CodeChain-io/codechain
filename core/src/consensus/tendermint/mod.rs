@@ -63,7 +63,9 @@ use crate::BlockId;
 use ChainNotify;
 
 /// Timer token representing the consensus step timeouts.
-pub const ENGINE_TIMEOUT_TOKEN_NONCE_BASE: TimerToken = 23;
+const ENGINE_TIMEOUT_TOKEN_NONCE_BASE: TimerToken = 23;
+/// Timer token for empty proposal blocks.
+const ENGINE_TIMEOUT_EMPTY_PROPOSAL: TimerToken = 22;
 
 pub type BlockHash = H256;
 
@@ -198,7 +200,7 @@ impl TendermintInner {
     /// Check Tendermint can move from the commit step to the propose step
     fn can_move_from_commit_to_propose(&self) -> bool {
         let vote_step = VoteStep::new(self.height - 1, self.last_confirmed_view, Step::Precommit);
-        self.step == TendermintState::Commit && self.has_all_votes(&vote_step) && self.check_prev_block_exists()
+        self.step.is_commit() && self.has_all_votes(&vote_step) && self.check_prev_block_exists()
     }
 
     /// Find the designated for the given view.
@@ -373,7 +375,7 @@ impl TendermintInner {
         // move_to_step can be called with the same step
         // Also, when moving to the commit step,
         // keep `votes_received` for gossiping.
-        if prev_step != step.into() && step != Step::Commit {
+        if prev_step.to_step() != step && step != Step::Commit {
             self.votes_received = BitSet::new();
         }
 
@@ -555,7 +557,7 @@ impl TendermintInner {
         let view = consensus_view(proposal).expect("Imported block is already verified");
         if current_height == height && self.view == view {
             self.proposal = Some(proposal.hash());
-            if self.step == TendermintState::Propose {
+            if self.step.is_propose() {
                 self.move_to_step(Step::Prevote);
             }
         } else if current_height < height {
@@ -702,6 +704,22 @@ impl TendermintInner {
         } else {
             panic!("Block is generated at unexpected step {:?}", self.step);
         }
+
+        if !sealed_block.transactions().is_empty() {
+            cdebug!(ENGINE, "Submit proposal {} immediatly", hash);
+            self.submit_proposal_block(sealed_block);
+        } else {
+            cdebug!(ENGINE, "Submit proposal {} after the half of the proposal timeout, because it's empty", hash);
+            self.step = TendermintState::ProposeWaitEmpty {
+                block: Box::new(sealed_block.clone()),
+            };
+            self.extension().set_timer_empty_proposal(self.view);
+        }
+    }
+
+    fn submit_proposal_block(&mut self, sealed_block: &SealedBlock) {
+        let header = sealed_block.header();
+        let hash = header.hash();
 
         let vote_step =
             VoteStep::new(header.number() as Height, consensus_view(&header).expect("I am proposer"), Step::Propose);
@@ -864,6 +882,23 @@ impl TendermintInner {
     }
 
     fn on_timeout(&mut self, token: usize) {
+        // Timeout from empty block generation
+        if token == ENGINE_TIMEOUT_EMPTY_PROPOSAL {
+            let prev_step = mem::replace(&mut self.step, TendermintState::Propose);
+            match prev_step {
+                TendermintState::ProposeWaitEmpty {
+                    block,
+                } => {
+                    self.submit_proposal_block(&block);
+                }
+                _ => {
+                    cwarn!(ENGINE, "Empty proposal timer was not cleared.");
+                }
+            }
+            return
+        }
+
+        // Timeout from Tendermint step
         if self.extension().is_expired_timeout_token(token) {
             return
         }
@@ -884,6 +919,12 @@ impl TendermintInner {
             } => {
                 cwarn!(ENGINE, "Propose timed out but block is not generated yet");
                 None
+            }
+            TendermintState::ProposeWaitEmpty {
+                ..
+            } => {
+                cwarn!(ENGINE, "Propose timed out but still waiting for the empty block");
+                Some(Step::Prevote)
             }
             TendermintState::Prevote if self.has_enough_any_votes() => {
                 ctrace!(ENGINE, "Prevote timeout.");
@@ -1536,9 +1577,17 @@ impl TendermintExtension {
     fn set_timer_step(&self, step: Step, view: View) {
         let expired_token_nonce = self.timeout_token_nonce.fetch_add(1, AtomicOrdering::SeqCst);
 
+        self.api.clear_timer(ENGINE_TIMEOUT_EMPTY_PROPOSAL).expect("Timer clear succeeds");
         self.api.clear_timer(expired_token_nonce).expect("Timer clear succeeds");
         self.api
             .set_timer_once(expired_token_nonce + 1, self.timeouts.timeout(step, view))
+            .expect("Timer set succeeds");
+    }
+
+    fn set_timer_empty_proposal(&self, view: View) {
+        self.api.clear_timer(ENGINE_TIMEOUT_EMPTY_PROPOSAL).expect("Timer clear succeeds");
+        self.api
+            .set_timer_once(ENGINE_TIMEOUT_EMPTY_PROPOSAL, self.timeouts.timeout(Step::Propose, view) / 2)
             .expect("Timer set succeeds");
     }
 
@@ -1640,7 +1689,7 @@ impl TendermintExtension {
         );
         self.update_peer_state(token, peer_vote_step, peer_proposal, peer_known_votes);
 
-        let current_vote_step = if tendermint.step == TendermintState::Commit {
+        let current_vote_step = if tendermint.step.is_commit() {
             // Even in the commit step, it must be possible to get pre-commits from
             // the previous step. So, act as the last precommit step.
             VoteStep {
@@ -1794,7 +1843,7 @@ impl NetworkExtension for TendermintExtension {
 
 impl TimeoutHandler for TendermintExtension {
     fn on_timeout(&self, token: TimerToken) {
-        debug_assert!(token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE);
+        debug_assert!(token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE || token == ENGINE_TIMEOUT_EMPTY_PROPOSAL);
         if let Some(c) = self.tendermint.upgrade() {
             c.on_timeout(token);
         }
