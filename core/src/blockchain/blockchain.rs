@@ -132,7 +132,10 @@ impl BlockChain {
         let new_header = new_block.header_view();
         let new_block_hash = new_header.hash();
 
+        ctrace!(BLOCKCHAIN, "Inserting block #{}({}) to the blockchain.", new_header.number(), new_block_hash);
+
         if self.is_known(&new_block_hash) {
+            ctrace!(BLOCKCHAIN, "Block #{}({}) is already known.", new_header.number(), new_block_hash);
             return ImportRoute::none()
         }
 
@@ -161,6 +164,7 @@ impl BlockChain {
 
     /// Apply pending insertion updates
     pub fn commit(&self) {
+        ctrace!(BLOCKCHAIN, "Committing.");
         self.headerchain.commit();
         self.body_db.commit();
         // NOTE: There are no commit for InvoiceDB
@@ -187,6 +191,12 @@ impl BlockChain {
         let parent_details_of_new_block = self.block_details(&parent_hash_of_new_block).expect("Invalid parent hash");
 
         if parent_details_of_new_block.total_score + new_header.score() > self.best_block_detail().total_score {
+            ctrace!(
+                BLOCKCHAIN,
+                "Block #{}({}) has higher total score, changing the highest/best chain.",
+                new_header.number(),
+                new_header.hash()
+            );
             let prev_best_hash = self.best_block_hash();
             let route = tree_route(self, prev_best_hash, parent_hash_of_new_block)
                 .expect("blocks being imported always within recent history; qed");
@@ -223,6 +233,7 @@ impl BlockChain {
     /// to have the best block and the highest block in different branches.
     pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: H256) -> ImportRoute {
         // FIXME: If it is possible, double check with the consensus engine.
+        ctrace!(BLOCKCHAIN, "Update the best block to {}", block_hash);
 
         assert!(self.pending_best_block_hash.read().is_none());
         let block_detail = self.block_details(&block_hash).expect("The given hash should exist");
@@ -231,15 +242,15 @@ impl BlockChain {
         let prev_best_hash = self.best_block_hash();
 
         if parent_hash != prev_best_hash {
-            assert!(block_detail.number <= prev_best_block_detail.number);
             cwarn!(
                 BLOCKCHAIN,
-                "Tried to update the best block but blocks are inserted: Input - {}({}), Current best - {}({})",
+                "Tried to update the best block but blocks are inserted: Input - #{}({}), Current best - #{}({})",
                 block_detail.number,
                 block_hash,
                 prev_best_block_detail.number,
                 prev_best_hash
             );
+            assert!(block_detail.number <= prev_best_block_detail.number);
             return ImportRoute::none()
         }
 

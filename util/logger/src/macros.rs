@@ -31,6 +31,9 @@ macro_rules! log_target {
     (EXTERNAL_PARCEL) => {
         "external_parcel"
     };
+    (HEADERCHAIN) => {
+        "headerchain"
+    };
     (IO) => {
         "io"
     };

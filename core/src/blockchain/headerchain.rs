@@ -123,7 +123,10 @@ impl HeaderChain {
     ) -> Option<BestHeaderChanged> {
         let hash = header.hash();
 
+        ctrace!(HEADERCHAIN, "Inserting block header #{}({}) to the headerchain.", header.number(), hash);
+
         if self.is_known_header(&hash) {
+            ctrace!(HEADERCHAIN, "Block header #{}({}) is already known.", header.number(), hash);
             return None
         }
 
@@ -160,6 +163,7 @@ impl HeaderChain {
 
     /// Apply pending insertion updates
     pub fn commit(&self) {
+        ctrace!(HEADERCHAIN, "Committing.");
         let mut pending_best_header_hash = self.pending_best_header_hash.write();
         let mut pending_highest_header_hash = self.pending_highest_block_hash.write();
         let mut pending_write_hashes = self.pending_hashes.write();
@@ -239,6 +243,12 @@ impl HeaderChain {
             parent_details_of_new_header.total_score + new_header.score() > self.best_header_detail().total_score;
 
         if is_new_best {
+            ctrace!(
+                HEADERCHAIN,
+                "Block header #{}({}) has higher total score, changing the highest/best chain.",
+                new_header.number(),
+                new_header.hash()
+            );
             // on new best block we need to make sure that all ancestors
             // are moved to "canon chain"
             // find the route between old best block and the new one
@@ -273,6 +283,7 @@ impl HeaderChain {
     ///
     /// Used in BlockChain::update_best_as_committed().
     pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: H256) {
+        ctrace!(HEADERCHAIN, "Update the best block to {}", block_hash);
         assert!(self.pending_best_header_hash.read().is_none());
         let block_detail = self.block_details(&block_hash).expect("The given hash should exist");
         let mut new_hashes = HashMap::new();
