@@ -39,7 +39,7 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "codechain-sdk": "https://github.com/jhs7jhs/codechain-sdk-js.git#asset-type-split-lib",
-    "codechain-test-helper": "https://github.com/sgkim126/codechain-test-helper-js.git#node-id-lib",
+    "codechain-test-helper": "https://github.com/sgkim126/codechain-test-helper-js.git#blake-lib",
     "lodash": "^4.17.11",
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
