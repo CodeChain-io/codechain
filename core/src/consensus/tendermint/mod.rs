@@ -1037,7 +1037,19 @@ impl TendermintInner {
                 return Ok(())
             }
 
-            if message.on.step.height == self.height && message.on.step.view == self.view {
+            let current_vote_step = if self.step.is_commit() {
+                // Even in the commit step, it must be possible to get pre-commits from
+                // the previous step. So, act as the last precommit step.
+                VoteStep {
+                    height: self.height - 1,
+                    view: self.last_confirmed_view,
+                    step: Step::Precommit,
+                }
+            } else {
+                self.vote_step()
+            };
+
+            if message.on.step == current_vote_step {
                 let vote_index = self
                     .validators
                     .get_index(&self.prev_block_hash(), &sender_public)
@@ -1554,7 +1566,8 @@ impl TendermintExtension {
         let peers_guard = self.peers.read();
         for (token, peer) in peers_guard.iter() {
             if *vote_step <= peer.vote_step && !peer.messages.is_empty() {
-                self.request_messages(token, *vote_step, peer.messages);
+                // FIXME: Do not need to request already known votes
+                self.request_messages(token, *vote_step, BitSet::all_set());
             }
         }
     }
