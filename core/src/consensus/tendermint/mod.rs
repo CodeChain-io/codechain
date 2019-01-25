@@ -383,6 +383,7 @@ impl TendermintInner {
         self.broadcast_state(&vote_step, self.proposal, self.votes_received);
         match step {
             Step::Propose => {
+                ctrace!(ENGINE, "move_to_step: Propose.");
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
                     if self.client().block_header(&BlockId::Hash(*hash)).is_some() {
                         self.proposal = Some(*hash);
@@ -407,6 +408,7 @@ impl TendermintInner {
                 }
             }
             Step::Prevote => {
+                ctrace!(ENGINE, "move_to_step: Prevote.");
                 self.request_all_votes(&vote_step);
                 let block_hash = match self.lock_change {
                     Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
@@ -415,8 +417,8 @@ impl TendermintInner {
                 self.generate_and_broadcast_message(block_hash);
             }
             Step::Precommit => {
+                ctrace!(ENGINE, "move_to_step: Precommit.");
                 self.request_all_votes(&vote_step);
-                ctrace!(ENGINE, "to_step: Precommit.");
                 let block_hash = match self.lock_change {
                     Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
                         ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
@@ -428,7 +430,7 @@ impl TendermintInner {
                 self.generate_and_broadcast_message(block_hash);
             }
             Step::Commit => {
-                ctrace!(ENGINE, "to_step: Commit.");
+                ctrace!(ENGINE, "move_to_step: Commit.");
             }
         }
     }
