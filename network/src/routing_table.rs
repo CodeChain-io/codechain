@@ -32,13 +32,11 @@ enum SecretOrigin {
     Preimported,
 }
 
-// Discovery flow : Candidate -> Alive -> KeyPairShared -> SecretShared -> TemporaryNonceShared -> SessionShared -> (Establishing) -> Established
-// Offline secret exchange flow :     SecretPreimported ->
+// Discovery flow : Candidate -> KeyPairShared -> SecretShared -> TemporaryNonceShared -> SessionShared -> (Establishing) -> Established
+// Offline secret exchange flow :                 SecretShared ->
 #[derive(Clone, Debug, PartialEq)]
 enum State {
     Candidate,
-    Alive,
-    SecretPreimported(Secret),
     KeyPairShared(KeyPair),
     SecretShared(Secret, SecretOrigin),
     TemporaryNonceShared(Secret, Nonce, SecretOrigin),
@@ -63,17 +61,16 @@ impl RoutingTable {
         })
     }
 
-    pub fn is_secret_preimported(&self, addr: &SocketAddr) -> bool {
-        let entries = self.entries.read();
+    pub fn is_secret_shared(&self, addr: &SocketAddr) -> bool {
+        let mut entries = self.entries.write();
         let remote_node_id = addr.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
-            let state = entry.read();
-            match *state {
-                State::SecretPreimported(_) => return true,
-                _ => return false,
-            }
+        let entry = entries.entry(remote_node_id).or_insert_with(|| RwLock::new(State::Candidate));
+        let state = entry.read();
+        match *state {
+            State::Candidate => false,
+            State::KeyPairShared(_) => false,
+            _ => true,
         }
-        false
     }
 
     pub fn reset_imported_secret(&self, addr: &SocketAddr) -> bool {
@@ -84,7 +81,7 @@ impl RoutingTable {
             match *state {
                 State::TemporaryNonceShared(secret, _nonce, SecretOrigin::Preimported) => {
                     cinfo!(NETWORK, "{} does not load secret", addr);
-                    *state = State::SecretPreimported(secret);
+                    *state = State::SecretShared(secret, SecretOrigin::Preimported);
                     return true
                 }
                 _ => return false,
@@ -159,76 +156,35 @@ impl RoutingTable {
         result
     }
 
-    pub fn add_node(&self, addr: &SocketAddr) -> bool {
-        let mut entries = self.entries.write();
-
-        let remote_node_id = addr.into();
-
-        if let Some(entry) = entries.get(&remote_node_id) {
-            let mut state = entry.write();
-            match *state {
-                State::Candidate => {
-                    *state = State::Alive;
-                    ctrace!(ROUTING_TABLE, "Mark {} alive", addr);
-                    return true
-                }
-                State::SecretPreimported(secret) => {
-                    ctrace!(ROUTING_TABLE, "Preimported secret shared with {}", addr);
-                    *state = State::SecretShared(secret, SecretOrigin::Preimported);
-                    return true
-                }
-                _ => {
-                    ctrace!(ROUTING_TABLE, "{} is already alive", addr);
-                    return false
-                }
-            }
-        }
-
-        let t = entries.insert(remote_node_id, RwLock::new(State::Alive));
-        debug_assert!(t.is_none());
-        ctrace!(ROUTING_TABLE, "Add {} as alive", addr);
-        true
-    }
-
     pub fn preimport_secret(&self, secret: Secret, addr: &SocketAddr) -> bool {
         let mut entries = self.entries.write();
         let remote_node_id = addr.into();
 
         if let Some(entry) = entries.get(&remote_node_id) {
             let mut state = entry.write();
-
-            match *state {
-                State::Established => return false,
-                _ => {
-                    *state = State::SecretPreimported(secret);
-                    return true
-                }
+            if *state == State::Established {
+                return false
             }
         }
 
-        let t = entries.insert(remote_node_id, RwLock::new(State::SecretPreimported(secret)));
-        debug_assert!(t.is_none());
+        entries.insert(remote_node_id, RwLock::new(State::SecretShared(secret, SecretOrigin::Preimported)));
         true
     }
 
     pub fn register_key_pair_for_secret(&self, remote_address: &SocketAddr) -> Option<Public> {
-        let entries = self.entries.read();
+        let mut entries = self.entries.write();
         let remote_node_id = remote_address.into();
-        let result = entries.get(&remote_node_id).and_then(|entry| {
-            let mut state = entry.write();
-            if *state != State::Alive {
-                return None
-            }
-            let ephemeral = Random.generate().unwrap();
-            let pub_key = *ephemeral.public();
-            *state = State::KeyPairShared(ephemeral);
-            ctrace!(ROUTING_TABLE, "Share pub-key({}) with {}", pub_key, remote_address);
-            Some(pub_key)
-        });
-        if result.is_none() {
+        let entry = entries.entry(remote_node_id).or_insert_with(|| RwLock::new(State::Candidate));
+        let mut state = entry.write();
+        if *state != State::Candidate {
             ctrace!(ROUTING_TABLE, "{} is not alive", remote_address);
+            return None
         }
-        result
+        let ephemeral = Random.generate().unwrap();
+        let pub_key = *ephemeral.public();
+        *state = State::KeyPairShared(ephemeral);
+        ctrace!(ROUTING_TABLE, "Share pub-key({}) with {}", pub_key, remote_address);
+        Some(pub_key)
     }
 
     pub fn share_secret(&self, remote_address: &SocketAddr, remote_public: &Public) -> Option<Secret> {

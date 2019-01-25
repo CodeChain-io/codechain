@@ -917,9 +917,9 @@ codechain-primitives@^0.4.5:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-test-helper@https://github.com/sgkim126/codechain-test-helper-js.git#blake-lib":
+"codechain-test-helper@https://github.com/sgkim126/codechain-test-helper-js.git#nid-lib":
   version "1.0.0"
-  resolved "https://github.com/sgkim126/codechain-test-helper-js.git#e2a8ec85795947554b207a46d22013572f08c77a"
+  resolved "https://github.com/sgkim126/codechain-test-helper-js.git#54784ae2cb4f5c943f1753458bcc569dee6cd1ea"
   dependencies:
     "@types/crypto-js" "^3.1.43"
     blakejs "^1.1.0"

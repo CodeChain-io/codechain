@@ -17,8 +17,6 @@
 use ckey::Public;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use crate::NodeId;
-
 type Version = u32;
 type Raw = Vec<u8>;
 type Seq = u64;
@@ -32,8 +30,6 @@ pub struct Message {
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Body {
-    NodeIdRequest(NodeId),
-    NodeIdResponse(NodeId),
     SecretRequest(Public),
     SecretAllowed(Public),
     SecretDenied(String),
@@ -41,9 +37,6 @@ pub enum Body {
     NonceAllowed(Raw),
     NonceDenied(String),
 }
-
-const NODE_ID_REQUEST: u8 = 0x01;
-const NODE_ID_RESPONSE: u8 = 0x02;
 
 const SECRET_REQUEST: u8 = 0x03;
 const SECRET_ALLOWED: u8 = 0x04;
@@ -54,22 +47,6 @@ const NONCE_ALLOWED: u8 = 0x7;
 const NONCE_DENIED: u8 = 0x8;
 
 impl Message {
-    pub fn node_id_request(seq: Seq, id: NodeId) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::NodeIdRequest(id),
-        }
-    }
-
-    pub fn node_id_response(seq: Seq, id: NodeId) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::NodeIdResponse(id),
-        }
-    }
-
     pub fn secret_request(seq: Seq, key: Public) -> Self {
         Self {
             version: 0,
@@ -120,8 +97,6 @@ impl Message {
 
     pub fn protocol_id(&self) -> u8 {
         match self.body {
-            Body::NodeIdRequest(_) => NODE_ID_REQUEST,
-            Body::NodeIdResponse(_) => NODE_ID_RESPONSE,
             Body::SecretRequest(_) => SECRET_REQUEST,
             Body::SecretAllowed(_) => SECRET_ALLOWED,
             Body::SecretDenied(_) => SECRET_DENIED,
@@ -155,12 +130,6 @@ impl Encodable for Message {
         let seq = self.seq;
         s.begin_list(self.item_count()).append(&version).append(&seq).append(&self.protocol_id());
         match &self.body {
-            Body::NodeIdRequest(id) => {
-                s.append(id);
-            }
-            Body::NodeIdResponse(id) => {
-                s.append(id);
-            }
             Body::SecretRequest(key) => {
                 s.append(key);
             }
@@ -190,11 +159,6 @@ impl Decodable for Message {
         let protocol_id: u8 = rlp.val_at(2)?;
         debug_assert_eq!(0, version);
         let message = match protocol_id {
-            NODE_ID_REQUEST => Message::node_id_request(seq, rlp.val_at(3)?),
-            NODE_ID_RESPONSE => {
-                let node_id = rlp.val_at(3)?;
-                Message::node_id_response(seq, node_id)
-            }
             SECRET_REQUEST => {
                 let key: Public = rlp.val_at(3)?;
                 Message::secret_request(seq, key)
@@ -233,21 +197,6 @@ mod tests {
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
-    use crate::SocketAddr;
-
-    #[test]
-    fn encode_and_decode_node_id_request() {
-        let node_id: NodeId = SocketAddr::v4(80, 80, 80, 80, 8080).into();
-        let request = Message::node_id_request(0x8a, node_id);
-        rlp_encode_and_decode_test!(request);
-    }
-
-    #[test]
-    fn encode_and_decode_node_id_response() {
-        let id: NodeId = SocketAddr::v4(80, 80, 80, 80, 8080).into();
-        let response = Message::node_id_response(0x9a, id);
-        rlp_encode_and_decode_test!(response);
-    }
 
     #[test]
     fn encode_and_decode_nonce_request() {

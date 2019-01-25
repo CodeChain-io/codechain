@@ -29,7 +29,7 @@ use rlp::DecoderError;
 use token_generator::TokenGenerator;
 
 use crate::socket::{message, Socket};
-use crate::{p2p, FiltersControl, IntoSocketAddr, RoutingTable, SocketAddr};
+use crate::{p2p, FiltersControl, RoutingTable, SocketAddr};
 
 const REFRESH_TIMER_TOKEN: TimerToken = 0;
 const BEGIN_OF_REQUEST_TOKEN: TimerToken = 1;
@@ -182,8 +182,16 @@ impl SessionInitiator {
     fn create_new_connection(&mut self, target: &SocketAddr, io: &IoContext<Message>) -> IoHandlerResult<()> {
         let seq = self.requests.gen(*target)?;
         io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
-        let message = message::Message::node_id_request(seq as u64, target.into());
-        self.socket.send(message, *target).map_err(|err| format!("{:?}", err))?;
+
+        let message = if self.routing_table.is_secret_shared(target) {
+            let encrypted_nonce = self.routing_table.request_session(target).ok_or("Cannot generate nonce")?;
+            message::Message::nonce_request(seq as u64, encrypted_nonce)
+        } else {
+            let requester_pub_key =
+                self.routing_table.register_key_pair_for_secret(target).ok_or("Cannot register key pair")?;
+            message::Message::secret_request(seq as u64, requester_pub_key)
+        };
+        self.socket.send(message, *target).map_err(|e| format!("{:?}", e))?;
         Ok(())
     }
 
@@ -194,51 +202,6 @@ impl SessionInitiator {
         io: &IoContext<Message>,
     ) -> IoHandlerResult<()> {
         match message.body() {
-            message::Body::NodeIdRequest(_) => {
-                if !self.routing_table.add_node(from) {
-                    ctrace!(NETWORK, "{} is not a new candidate", from);
-                }
-
-                let requester_node_id = from.into();
-                let message = message::Message::node_id_response(message.seq(), requester_node_id);
-                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
-                Ok(())
-            }
-            message::Body::NodeIdResponse(requester_node_id) => {
-                if &requester_node_id.into_addr() == from {
-                    return Ok(())
-                }
-
-                io.clear_timer(message.seq() as TimerToken);
-                self.requests
-                    .restore(message.seq() as usize, Some(*from))
-                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
-
-                if !self.routing_table.add_node(from) {
-                    ctrace!(NETWORK, "{} is not a new candidate", from);
-                }
-
-                if self.routing_table.is_secret_preimported(from) {
-                    let seq = self.requests.gen(*from)?;
-                    io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
-
-                    let encrypted_nonce = self.routing_table.request_session(from).ok_or("Cannot generate nonce")?;
-
-                    let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
-                    self.socket.send(message, *from).map_err(|err| format!("{:?}", err))?;
-                } else {
-                    let requester_pub_key =
-                        self.routing_table.register_key_pair_for_secret(from).ok_or("Cannot register key pair")?;
-
-                    let seq = self.requests.gen(*from)?;
-                    io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
-
-                    let message = message::Message::secret_request(seq as u64, requester_pub_key);
-                    self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
-                }
-
-                Ok(())
-            }
             message::Body::SecretRequest(requester_pub_key) => {
                 if let Some(responder_pub_key) = self.routing_table.register_key_pair_for_secret(from) {
                     if let Some(_secret) = self.routing_table.share_secret(from, requester_pub_key) {
