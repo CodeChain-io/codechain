@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import CodeChain from "../helper/spawn";
-import { ERROR, errorMatcher } from "../helper/error";
+import { ERROR } from "../helper/error";
 import { invalidAddress, invalidSecret } from "../helper/constants";
 
 import "mocha";
@@ -64,7 +64,7 @@ describe("account", function() {
                     await node.sdk.rpc.account.importRaw(invalidSecret);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.KEY_ERROR));
+                    expect(e).is.similarTo(ERROR.KEY_ERROR);
                 }
             });
 
@@ -74,7 +74,7 @@ describe("account", function() {
                     await node.sdk.rpc.account.importRaw(randomSecret);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.ALREADY_EXISTS));
+                    expect(e).is.similarTo(ERROR.ALREADY_EXISTS);
                 }
             });
         });
@@ -113,7 +113,7 @@ describe("account", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.WRONG_PASSWORD));
+                    expect(e).is.similarTo(ERROR.WRONG_PASSWORD);
                 }
             });
 
@@ -126,7 +126,7 @@ describe("account", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.NO_SUCH_ACCOUNT));
+                    expect(e).is.similarTo(ERROR.NO_SUCH_ACCOUNT);
                 }
             });
         });
@@ -148,7 +148,7 @@ describe("account", function() {
                     await node.sdk.rpc.account.unlock(address, "456");
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.WRONG_PASSWORD));
+                    expect(e).is.similarTo(ERROR.WRONG_PASSWORD);
                 }
             });
 
@@ -157,7 +157,7 @@ describe("account", function() {
                     await node.sdk.rpc.account.unlock(invalidAddress, "456");
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.NO_SUCH_ACCOUNT));
+                    expect(e).is.similarTo(ERROR.NO_SUCH_ACCOUNT);
                 }
             });
         });
@@ -184,7 +184,7 @@ describe("account", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.WRONG_PASSWORD));
+                    expect(e).is.similarTo(ERROR.WRONG_PASSWORD);
                 }
             });
 
@@ -196,7 +196,7 @@ describe("account", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.NO_SUCH_ACCOUNT));
+                    expect(e).is.similarTo(ERROR.NO_SUCH_ACCOUNT);
                 }
             });
         });

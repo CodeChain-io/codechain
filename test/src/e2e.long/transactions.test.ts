@@ -32,7 +32,7 @@ import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { blake160 } from "codechain-sdk/lib/utils";
 
 import CodeChain from "../helper/spawn";
-import { ERROR, errorMatcher } from "../helper/error";
+import { ERROR } from "../helper/error";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 
 import "mocha";
@@ -83,9 +83,7 @@ describe("transactions", function() {
                 await node.sendAssetTransaction(tx);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_ZERO_QUANTITY)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_TX_ZERO_QUANTITY);
             }
         });
 
@@ -111,7 +109,7 @@ describe("transactions", function() {
                 await node.sdk.rpc.chain.sendSignedTransaction(signed);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(errorMatcher(ERROR.INVALID_RLP_TOO_BIG));
+                expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
             }
         });
     });
@@ -165,8 +163,8 @@ describe("transactions", function() {
                     await node.sendAssetTransaction(tx);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_TX_INCONSISTENT_IN_OUT)
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_TX_INCONSISTENT_IN_OUT
                     );
                 }
             });
@@ -190,9 +188,7 @@ describe("transactions", function() {
                 await node.sendAssetTransaction(tx);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_ZERO_QUANTITY)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_TX_ZERO_QUANTITY);
             }
         });
 
@@ -211,9 +207,7 @@ describe("transactions", function() {
                 await node.sendAssetTransaction(tx);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_INCONSISTENT_IN_OUT)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_TX_INCONSISTENT_IN_OUT);
             }
         });
 
@@ -232,9 +226,7 @@ describe("transactions", function() {
                 await node.sendAssetTransaction(tx);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_DUPLICATED_PREV_OUT)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_TX_DUPLICATED_PREV_OUT);
             }
         });
     });
@@ -362,7 +354,8 @@ describe("transactions", function() {
             await node.sendAssetTransaction(tx2);
             expect.fail();
         } catch (e) {
-            expect(e).to.satisfy(errorMatcher(ERROR.INVALID_TX_ZERO_QUANTITY));
+            console.log(e);
+            expect(e).is.similarTo(ERROR.INVALID_TX_ZERO_QUANTITY);
         }
     });
 
@@ -1108,9 +1101,7 @@ describe("transactions", function() {
                 await node.sdk.rpc.chain.sendSignedTransaction(transaction);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_PARCEL_ZERO_QUANTITY)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_PARCEL_ZERO_QUANTITY);
             }
         });
     });
@@ -1243,9 +1234,7 @@ describe("transactions", function() {
                     await node.sendAssetTransaction(tx);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_TX_ASSET_TYPE)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_TX_ASSET_TYPE);
                 }
             });
         });

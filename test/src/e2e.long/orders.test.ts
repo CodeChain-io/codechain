@@ -23,12 +23,13 @@ import {
 } from "codechain-sdk/lib/core/classes";
 
 import CodeChain from "../helper/spawn";
-import { ERROR, errorMatcher } from "../helper/error";
+import { ERROR } from "../helper/error";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 
 import "mocha";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
@@ -128,9 +129,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_ORDER_ASSET_TYPES)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_ORDER_ASSET_TYPES);
                 }
             });
         });
@@ -562,10 +561,8 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(
-                            ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
-                        )
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
                     );
                 }
             });
@@ -634,10 +631,8 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(
-                            ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
-                        )
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
                     );
                 }
             });
@@ -713,8 +708,8 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_ORDER_LOCK_SCRIPT_HASH)
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_ORDER_LOCK_SCRIPT_HASH
                     );
                 }
             });
@@ -786,9 +781,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_ORDER_PARAMETERS)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_ORDER_PARAMETERS);
                 }
             });
 
@@ -862,10 +855,8 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(
-                            ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
-                        )
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
                     );
                 }
             });
@@ -940,10 +931,8 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(
-                            ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
-                        )
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
                     );
                 }
             });
@@ -1024,10 +1013,8 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(
-                            ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
-                        )
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
                     );
                 }
             });
@@ -1098,9 +1085,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_ORIGIN_OUTPUTS)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_ORIGIN_OUTPUTS);
                 }
             });
 
@@ -1169,9 +1154,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_ORIGIN_OUTPUTS)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_ORIGIN_OUTPUTS);
                 }
             });
 
@@ -1258,8 +1241,7 @@ describe("orders", function() {
                 );
 
                 const invoices = await node.sendAssetTransaction(transferTx);
-                expect(invoices!.length).to.equal(1);
-                expect(invoices![0].success).to.be.false;
+                expect(invoices!.length).to.equal(0);
             }).timeout(10_000);
 
             it("Wrong order - originOutputs are wrong (many outputs)", async function() {
@@ -1343,8 +1325,7 @@ describe("orders", function() {
                 );
 
                 const invoices = await node.sendAssetTransaction(transferTx);
-                expect(invoices!.length).to.equal(1);
-                expect(invoices![0].success).to.be.false;
+                expect(invoices!.length).to.equal(0);
             }).timeout(10_000);
 
             it("Wrong order - Ratio is wrong (from is zero)", async function() {
@@ -1413,8 +1394,8 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_ORDER_ASSET_QUANTITIES)
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_ORDER_ASSET_QUANTITIES
                     );
                 }
             });
@@ -1485,8 +1466,8 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_ORDER_ASSET_QUANTITIES)
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_ORDER_ASSET_QUANTITIES
                     );
                 }
             });
@@ -1555,7 +1536,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(errorMatcher(ERROR.ORDER_EXPIRED));
+                    expect(e).is.similarTo(ERROR.ORDER_EXPIRED);
                 }
             });
 
