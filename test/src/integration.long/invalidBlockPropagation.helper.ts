@@ -204,6 +204,7 @@ export async function createTestSuite(
 ) {
     // tslint:disable only-arrow-functions
     describe(`invalid block propagation ${testNumber}`, async function() {
+        this.timeout(60_000);
         // tslint:enable only-arrow-functions
         let node: CodeChain;
         let TH: TestHelper;
