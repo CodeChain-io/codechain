@@ -197,7 +197,7 @@ async function testBody(
     const _ = expect(bodyRequest).to.be.null;
 }
 
-export async function createTestSuite(
+export function createTestSuite(
     testNumber: number,
     title: string,
     params: any
