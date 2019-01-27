@@ -168,7 +168,7 @@ async function testBody(
         header.setExtraData(textraData);
     }
     if (ttransactionRoot != null) {
-        header.setParcelsRoot(ttransactionRoot);
+        header.setTransactionsRoot(ttransactionRoot);
     }
     if (tstateRoot != null) {
         header.setStateRoot(tstateRoot);

@@ -19,20 +19,20 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
-    Parcels(Vec<UnverifiedTransaction>),
+    Transactions(Vec<UnverifiedTransaction>),
 }
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match &self {
-            Message::Parcels(parcels) => s.append_list(parcels),
+            Message::Transactions(transactions) => s.append_list(transactions),
         };
     }
 }
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        Ok(Message::Parcels(rlp.as_list()?))
+        Ok(Message::Transactions(rlp.as_list()?))
     }
 }
 
@@ -43,7 +43,7 @@ mod tests {
     use super::Message;
 
     #[test]
-    fn parcels_message_rlp() {
-        rlp_encode_and_decode_test!(Message::Parcels(Vec::new()));
+    fn transactions_message_rlp() {
+        rlp_encode_and_decode_test!(Message::Transactions(Vec::new()));
     }
 }
