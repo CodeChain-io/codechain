@@ -32,7 +32,7 @@ use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, SocketAddr};
 use creactor::EventLoop;
-use csync::{BlockSyncExtension, ParcelSyncExtension, SnapshotService};
+use csync::{BlockSyncExtension, SnapshotService, TransactionSyncExtension};
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
@@ -253,7 +253,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
                 some_sync = Some(sync);
             }
             if config.network.transaction_relay.unwrap() {
-                service.new_extension(|api| ParcelSyncExtension::new(client.client(), api));
+                service.new_extension(|api| TransactionSyncExtension::new(client.client(), api));
             }
 
             scheme.engine.register_network_extension_to_service(&service);

@@ -24,9 +24,9 @@ use super::super::message::RequestMessage;
 #[derive(Clone)]
 struct Target {
     hash: H256,
-    parent_hash: H256,
-    parcels_root: H256,
-    parent_root: H256,
+    transaction_hash: H256,
+    transactions_root: H256,
+    transaction_root: H256,
 }
 
 pub struct BodyDownloader {
@@ -68,7 +68,7 @@ impl BodyDownloader {
             if self.downloading.remove(&hash) {
                 if body.is_empty() {
                     let target = self.targets.iter().find(|t| t.hash == hash).expect("Downloading target must exist");
-                    if target.parent_root != target.parcels_root {
+                    if target.transaction_root != target.transactions_root {
                         continue
                     }
                 }
@@ -81,9 +81,9 @@ impl BodyDownloader {
         ctrace!(SYNC, "Add download target: {}", header.hash());
         self.targets.push(Target {
             hash: header.hash(),
-            parent_hash: parent.hash(),
-            parcels_root: *header.transactions_root(),
-            parent_root: *parent.transactions_root(),
+            transaction_hash: parent.hash(),
+            transactions_root: *header.transactions_root(),
+            transaction_root: *parent.transactions_root(),
         });
     }
 

@@ -33,7 +33,7 @@ describe("Test onChain block communication", async function() {
         "ff8324bd3b0232e4fd1799496ae422ee0896cc7a8a64a2885052e320b4ba9535"
     );
     let VALID_AUTHOR = new H160("7777777777777777777777777777777777777777");
-    let VALID_PARCELROOT = new H256(
+    let VALID_TRANSACTIONS_ROOT = new H256(
         "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0"
     );
     let VALID_STATEROOT = new H256(
@@ -111,7 +111,7 @@ describe("Test onChain block communication", async function() {
 
         VALID_PARENT = block1.parentHash;
         VALID_AUTHOR = block1.author.accountId;
-        VALID_PARCELROOT = block1.transactionsRoot;
+        VALID_TRANSACTIONS_ROOT = block1.transactionsRoot;
         VALID_STATEROOT = block1.stateRoot;
         VALID_INVOICEROOT = block1.invoicesRoot;
         VALID_SEAL = block1.seal;

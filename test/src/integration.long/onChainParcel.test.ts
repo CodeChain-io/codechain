@@ -95,7 +95,7 @@ describe("Test onChain transaction communication", function() {
             seq: 0
         });
         await sdk.rpc.devel.stopSealing();
-        await TH.sendEncodedParcel([signed.toEncodeObject()]);
+        await TH.sendEncodedTransaction([signed.toEncodeObject()]);
 
         const transactions = await sdk.rpc.chain.getPendingTransactions();
         expect(transactions.length).to.equal(1);
@@ -135,7 +135,7 @@ describe("Test onChain transaction communication", function() {
                 data[2] = tnetworkId;
                 data[4] = tsig;
 
-                await TH.sendEncodedParcel([data]);
+                await TH.sendEncodedTransaction([data]);
                 const txs = await sdk.rpc.chain.getPendingTransactions();
                 expect(txs.length).to.equal(0);
 

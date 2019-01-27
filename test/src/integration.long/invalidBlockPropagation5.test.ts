@@ -20,10 +20,14 @@ import { expect } from "chai";
 import "mocha";
 import { createTestSuite } from "./invalidBlockPropagation.helper";
 
-const INVALID_PARCELROOT = new H256(
+const INVALID_TRANSACTIONS_ROOT = new H256(
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 );
 const params = {
-    ttransactionRoot: INVALID_PARCELROOT
+    ttransactionRoot: INVALID_TRANSACTIONS_ROOT
 };
-createTestSuite(5, "OnChain invalid parcelRoot block propagation test", params);
+createTestSuite(
+    5,
+    "OnChain invalid transactionRoot block propagation test",
+    params
+);
