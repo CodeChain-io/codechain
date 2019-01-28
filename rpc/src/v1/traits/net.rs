@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,15 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use jsonrpc_core::Result;
-use primitives::H256;
 
 use super::super::types::FilterStatus;
 
 build_rpc_trait! {
     pub trait Net {
-        # [rpc(name = "net_shareSecret")]
-        fn share_secret(&self, H256, ::std::net::IpAddr, u16) -> Result<()>;
-
         # [rpc(name = "net_connect")]
         fn connect(&self, ::std::net::IpAddr, u16) -> Result<()>;
 

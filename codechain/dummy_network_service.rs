@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,6 @@
 use std::net::IpAddr;
 
 use cnetwork::{FilterEntry, NetworkControl, NetworkControlError, SocketAddr};
-use primitives::H256;
 
 pub struct DummyNetworkService {}
 
@@ -28,10 +27,6 @@ impl DummyNetworkService {
 }
 
 impl NetworkControl for DummyNetworkService {
-    fn register_secret(&self, _secret: H256, _addr: SocketAddr) -> Result<(), NetworkControlError> {
-        Err(NetworkControlError::Disabled)
-    }
-
     fn connect(&self, _addr: SocketAddr) -> Result<(), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }

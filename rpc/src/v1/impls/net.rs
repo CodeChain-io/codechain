@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,6 @@ use std::sync::Arc;
 
 use cnetwork::{NetworkControl, SocketAddr};
 use jsonrpc_core::Result;
-use primitives::H256;
 
 use super::super::errors;
 use super::super::traits::Net;
@@ -37,13 +36,6 @@ impl NetClient {
 }
 
 impl Net for NetClient {
-    fn share_secret(&self, secret: H256, address: ::std::net::IpAddr, port: u16) -> Result<()> {
-        self.network_control
-            .register_secret(secret, SocketAddr::new(address, port))
-            .map_err(|e| errors::network_control(&e))?;
-        Ok(())
-    }
-
     fn connect(&self, address: ::std::net::IpAddr, port: u16) -> Result<()> {
         self.network_control.connect(SocketAddr::new(address, port)).map_err(|e| errors::network_control(&e))?;
         Ok(())

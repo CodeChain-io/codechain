@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -154,21 +154,6 @@ impl RoutingTable {
             ctrace!(ROUTING_TABLE, "Remove {}", addr);
         }
         result
-    }
-
-    pub fn preimport_secret(&self, secret: Secret, addr: &SocketAddr) -> bool {
-        let mut entries = self.entries.write();
-        let remote_node_id = addr.into();
-
-        if let Some(entry) = entries.get(&remote_node_id) {
-            let mut state = entry.write();
-            if *state == State::Established {
-                return false
-            }
-        }
-
-        entries.insert(remote_node_id, RwLock::new(State::SecretShared(secret, SecretOrigin::Preimported)));
-        true
     }
 
     pub fn register_key_pair_for_secret(&self, remote_address: &SocketAddr) -> Option<Public> {

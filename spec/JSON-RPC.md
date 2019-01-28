@@ -310,7 +310,6 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [miner_getWork](#miner_getwork)
  * [miner_submitWork](#miner_submitwork)
 ***
- * [net_shareSecret](#net_sharesecret)
  * [net_connect](#net_connect)
  * [net_isConnected](#net_isconnected)
  * [net_disconnect](#net_disconnect)
@@ -1593,38 +1592,6 @@ Errors: `No Work Required`, `Invalid Params`
   "jsonrpc":"2.0",
   "result":true,
   "id":6
-}
-```
-
-[Back to **List of methods**](#list-of-methods)
-
-## net_shareSecret
-Share secret to the given address.
-
-### Params
- 1. secret: `string`
- 2. address: `string`
- 3. port: `number`
-
-### Returns
-`null`
-
-Errors: `Invalid Params`
-
-### Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_shareSecret", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", "192.168.0.3", 3485], "id": 5}' \
-    localhost:8080
-```
-
-### Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":null,
-  "id":5
 }
 ```
 
