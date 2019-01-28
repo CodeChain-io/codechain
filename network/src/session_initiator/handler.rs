@@ -212,9 +212,7 @@ impl SessionInitiator {
                     }
                 }
 
-                let message = message::Message::secret_denied(message.seq(), "ECDH Already requested".to_string());
-                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
-                Err("Cannot response to secret request".into())
+                Err(format!("Cannot respond for secret request to {:?}", from).into())
             }
             message::Body::SecretAllowed(responder_pub_key) => {
                 io.clear_timer(message.seq() as TimerToken);
@@ -233,17 +231,6 @@ impl SessionInitiator {
 
                 Ok(())
             }
-            message::Body::SecretDenied(reason) => {
-                io.clear_timer(message.seq() as TimerToken);
-                self.requests
-                    .restore(message.seq() as usize, Some(*from))
-                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
-
-                if self.routing_table.remove_node(*from) {
-                    cinfo!(NETWORK, "Shared Secret to {} denied (reason: {})", from, reason);
-                }
-                Ok(())
-            }
             message::Body::NonceRequest(encrypted_temporary_nonce) => {
                 if let Some(encrypted_nonce) =
                     self.routing_table.create_requested_session(from, &encrypted_temporary_nonce)
@@ -253,8 +240,6 @@ impl SessionInitiator {
                     return Ok(())
                 }
 
-                let message = message::Message::nonce_denied(message.seq(), "Cannot create session".to_string());
-                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
                 Err("Cannot create session".into())
             }
             message::Body::NonceAllowed(encrypted_nonce) => {
@@ -271,17 +256,6 @@ impl SessionInitiator {
                 if !self.routing_table.create_allowed_session(from, &encrypted_nonce) {
                     return Err(format!("Cannot create session to {}", from).into())
                 }
-                Ok(())
-            }
-            message::Body::NonceDenied(reason) => {
-                io.clear_timer(message.seq() as TimerToken);
-                self.requests
-                    .restore(message.seq() as usize, Some(*from))
-                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
-
-                self.routing_table.reset_imported_secret(from);
-
-                cinfo!(NETWORK, "Connection to {} refused(reason: {})", from, reason);
                 Ok(())
             }
         }

@@ -32,19 +32,15 @@ pub struct Message {
 pub enum Body {
     SecretRequest(Public),
     SecretAllowed(Public),
-    SecretDenied(String),
     NonceRequest(Raw),
     NonceAllowed(Raw),
-    NonceDenied(String),
 }
 
 const SECRET_REQUEST: u8 = 0x03;
 const SECRET_ALLOWED: u8 = 0x04;
-const SECRET_DENIED: u8 = 0x05;
 
 const NONCE_REQUEST: u8 = 0x6;
 const NONCE_ALLOWED: u8 = 0x7;
-const NONCE_DENIED: u8 = 0x8;
 
 impl Message {
     pub fn secret_request(seq: Seq, key: Public) -> Self {
@@ -60,14 +56,6 @@ impl Message {
             version: 0,
             seq,
             body: Body::SecretAllowed(key),
-        }
-    }
-
-    pub fn secret_denied(seq: Seq, reason: String) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::SecretDenied(reason),
         }
     }
 
@@ -87,22 +75,12 @@ impl Message {
         }
     }
 
-    pub fn nonce_denied(seq: Seq, reason: String) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::NonceDenied(reason),
-        }
-    }
-
     pub fn protocol_id(&self) -> u8 {
         match self.body {
             Body::SecretRequest(_) => SECRET_REQUEST,
             Body::SecretAllowed(_) => SECRET_ALLOWED,
-            Body::SecretDenied(_) => SECRET_DENIED,
             Body::NonceRequest(_) => NONCE_REQUEST,
             Body::NonceAllowed(_) => NONCE_ALLOWED,
-            Body::NonceDenied(_) => NONCE_DENIED,
         }
     }
 
@@ -136,17 +114,11 @@ impl Encodable for Message {
             Body::SecretAllowed(key) => {
                 s.append(key);
             }
-            Body::SecretDenied(reason) => {
-                s.append(reason);
-            }
             Body::NonceRequest(body) => {
                 s.append(body);
             }
             Body::NonceAllowed(body) => {
                 s.append(body);
-            }
-            Body::NonceDenied(reason) => {
-                s.append(reason);
             }
         }
     }
@@ -167,10 +139,6 @@ impl Decodable for Message {
                 let key: Public = rlp.val_at(3)?;
                 Message::secret_allowed(seq, key)
             }
-            SECRET_DENIED => {
-                let reason: String = rlp.val_at(3)?;
-                Message::secret_denied(seq, reason)
-            }
             NONCE_REQUEST => {
                 let body: Raw = rlp.val_at(3)?;
                 Message::nonce_request(seq, body)
@@ -178,10 +146,6 @@ impl Decodable for Message {
             NONCE_ALLOWED => {
                 let body: Raw = rlp.val_at(3)?;
                 Message::nonce_allowed(seq, body)
-            }
-            NONCE_DENIED => {
-                let reason: String = rlp.val_at(3)?;
-                Message::nonce_denied(seq, reason)
             }
             _ => return Err(DecoderError::Custom("Invalid protocol id")),
         };
@@ -218,16 +182,6 @@ mod tests {
 
         let allowed = Message::nonce_allowed(SEQ, nonce.into_vec());
         rlp_encode_and_decode_test!(allowed);
-    }
-
-    #[test]
-    fn encode_and_decode_nonce_denied() {
-        const SEQ: Seq = 6;
-
-        const REASON: &str = "connection denied";
-
-        let denied = Message::nonce_denied(SEQ, REASON.to_string());
-        rlp_encode_and_decode_test!(denied);
     }
 
     #[test]
