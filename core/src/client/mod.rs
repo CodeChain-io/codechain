@@ -69,8 +69,8 @@ pub trait BlockInfo {
     /// Get the best header. Note that this is different from best block's header.
     fn best_header(&self) -> encoded::Header;
 
-    /// Get the best block header.
-    fn highest_header(&self) -> encoded::Header;
+    /// Get the best proposal block header.
+    fn best_proposal_header(&self) -> encoded::Header;
 
     /// Get raw block data by block header hash.
     fn block(&self, id: &BlockId) -> Option<encoded::Block>;

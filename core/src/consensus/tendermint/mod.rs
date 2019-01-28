@@ -1301,8 +1301,18 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         guard.register_chain_notify(client);
     }
 
-    fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
+    fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> H256 {
         header.parent_hash()
+    }
+
+    fn can_change_canon_chain(&self, header: &HeaderView) -> bool {
+        let guard = self.inner.lock();
+        let allowed_height = if guard.step.is_commit() {
+            guard.height + 1
+        } else {
+            guard.height
+        };
+        header.number() >= allowed_height as u64
     }
 
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
