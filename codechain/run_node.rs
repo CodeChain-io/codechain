@@ -113,8 +113,13 @@ fn stratum_start(cfg: &StratumConfig, miner: &Arc<Miner>, client: Arc<Client>) -
     }
 }
 
-fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
-    let miner = Miner::new(config.miner_options()?, scheme, Some(ap));
+fn new_miner(
+    config: &config::Config,
+    scheme: &Scheme,
+    ap: Arc<AccountProvider>,
+    db: Arc<KeyValueDB>,
+) -> Result<Arc<Miner>, String> {
+    let miner = Miner::new(config.miner_options()?, scheme, Some(ap), db);
 
     if !config.mining.disable.unwrap() {
         match miner.engine_type() {
@@ -250,7 +255,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     let client_config: ClientConfig = Default::default();
     let db = open_db(&config.operating, &client_config)?;
 
-    let miner = new_miner(&config, &scheme, ap.clone())?;
+    let miner = new_miner(&config, &scheme, ap.clone(), Arc::clone(&db))?;
     let client = client_start(&client_config, &timer_loop, db, &scheme, miner.clone())?;
     let mut some_sync = None;
 

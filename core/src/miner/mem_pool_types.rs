@@ -22,6 +22,7 @@ use ctypes::transaction::Action;
 use ctypes::BlockNumber;
 use primitives::H256;
 use rlp;
+use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::transaction::SignedTransaction;
 
@@ -37,6 +38,32 @@ pub enum TxOrigin {
     External,
     /// Transaction from retracted blocks
     RetractedBlock,
+}
+
+type TxOriginType = u8;
+const LOCAL: TxOriginType = 0x01;
+const EXTERNAL: TxOriginType = 0x02;
+const RETRACTEDBLOCK: TxOriginType = 0x03;
+
+impl Encodable for TxOrigin {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self {
+            TxOrigin::Local => LOCAL.rlp_append(s),
+            TxOrigin::External => EXTERNAL.rlp_append(s),
+            TxOrigin::RetractedBlock => RETRACTEDBLOCK.rlp_append(s),
+        };
+    }
+}
+
+impl Decodable for TxOrigin {
+    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+        match d.as_val().expect("rlp decode Error") {
+            LOCAL => Ok(TxOrigin::Local),
+            EXTERNAL => Ok(TxOrigin::External),
+            RETRACTEDBLOCK => Ok(TxOrigin::RetractedBlock),
+            _ => Err(DecoderError::Custom("Unexpected Txorigin type")),
+        }
+    }
 }
 
 impl PartialOrd for TxOrigin {
@@ -74,7 +101,7 @@ impl TxOrigin {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, RlpEncodable, RlpDecodable)]
 pub struct TxTimelock {
     pub block: Option<BlockNumber>,
     pub timestamp: Option<u64>,
@@ -176,7 +203,7 @@ impl Ord for TransactionOrder {
 }
 
 /// Transaction item in the mem pool.
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, RlpEncodable, RlpDecodable)]
 pub struct MemPoolItem {
     /// Transaction.
     pub tx: SignedTransaction,
@@ -256,6 +283,7 @@ impl TransactionOrderWithTag {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct CurrentQueue {
     /// Priority queue for transactions
     pub queue: BTreeSet<TransactionOrder>,
@@ -318,6 +346,7 @@ impl CurrentQueue {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct FutureQueue {
     /// Priority queue for transactions
     pub queue: BTreeSet<TransactionOrder>,
