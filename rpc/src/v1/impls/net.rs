@@ -17,6 +17,7 @@
 use std::net::{self, IpAddr};
 use std::sync::Arc;
 
+use ckey::Public;
 use cnetwork::{NetworkControl, SocketAddr};
 use jsonrpc_core::Result;
 
@@ -37,6 +38,16 @@ impl NetClient {
 }
 
 impl Net for NetClient {
+    fn local_key_for(&self, address: IpAddr, port: u16) -> Result<Public> {
+        self.network_control.local_key_for(address, port).map_err(|e| errors::network_control(&e))
+    }
+
+    fn register_remote_key_for(&self, address: IpAddr, port: u16, remote_pub_key: Public) -> Result<Public> {
+        self.network_control
+            .register_remote_key_for(address, port, remote_pub_key)
+            .map_err(|e| errors::network_control(&e))
+    }
+
     fn connect(&self, address: IpAddr, port: u16) -> Result<()> {
         self.network_control.connect(SocketAddr::new(address, port)).map_err(|e| errors::network_control(&e))?;
         Ok(())

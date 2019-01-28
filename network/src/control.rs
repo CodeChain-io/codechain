@@ -17,10 +17,14 @@
 use std::net::IpAddr;
 use std::result::Result;
 
+use ckey::Public;
+
 use crate::addr::SocketAddr;
 use crate::filters::FilterEntry;
 
 pub trait Control: Send + Sync {
+    fn local_key_for(&self, address: IpAddr, port: u16) -> Result<Public, Error>;
+    fn register_remote_key_for(&self, address: IpAddr, port: u16, remote_pub_key: Public) -> Result<Public, Error>;
     fn connect(&self, addr: SocketAddr) -> Result<(), Error>;
     fn disconnect(&self, addr: SocketAddr) -> Result<(), Error>;
     fn is_connected(&self, addr: &SocketAddr) -> Result<bool, Error>;

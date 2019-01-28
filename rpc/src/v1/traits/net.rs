@@ -16,12 +16,19 @@
 
 use std::net::{IpAddr, SocketAddr};
 
+use ckey::Public;
 use jsonrpc_core::Result;
 
 use super::super::types::FilterStatus;
 
 build_rpc_trait! {
     pub trait Net {
+        # [rpc(name = "net_localKeyFor")]
+        fn local_key_for(&self, ::std::net::IpAddr, u16) -> Result<Public>;
+
+        # [rpc(name = "net_registerRemoteKeyFor")]
+        fn register_remote_key_for(&self, ::std::net::IpAddr, u16, Public) -> Result<Public>;
+
         # [rpc(name = "net_connect")]
         fn connect(&self, IpAddr, u16) -> Result<()>;
 

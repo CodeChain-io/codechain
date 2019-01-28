@@ -19,6 +19,7 @@ use std::net::IpAddr;
 use std::sync::Arc;
 
 use cio::{IoError, IoService};
+use ckey::Public;
 use ctimer::TimerLoop;
 
 use crate::client::Client;
@@ -103,6 +104,25 @@ impl Service {
 }
 
 impl Control for Service {
+    fn local_key_for(&self, address: IpAddr, port: u16) -> Result<Public, ControlError> {
+        Ok(self
+            .routing_table
+            .register_key_pair_for_secret(&SocketAddr::new(address, port))
+            .ok_or_else(|| ControlError::NotConnected)?)
+    }
+
+    fn register_remote_key_for(
+        &self,
+        address: IpAddr,
+        port: u16,
+        remote_pub_key: Public,
+    ) -> Result<Public, ControlError> {
+        Ok(self
+            .routing_table
+            .share_secret(&SocketAddr::new(address, port), &remote_pub_key)
+            .ok_or_else(|| ControlError::NotConnected)?)
+    }
+
     fn connect(&self, addr: SocketAddr) -> Result<(), ControlError> {
         let message = session_initiator::Message::ManuallyConnectTo(addr);
         if let Err(err) = self.session_initiator.send_message(message) {
