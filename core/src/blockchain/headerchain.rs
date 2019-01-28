@@ -240,8 +240,9 @@ impl HeaderChain {
     fn best_header_changed(&self, new_header: &HeaderView, engine: &CodeChainEngine) -> BestHeaderChanged {
         let parent_hash_of_new_header = new_header.parent_hash();
         let parent_details_of_new_header = self.block_details(&parent_hash_of_new_header).expect("Invalid parent hash");
-        let is_new_best =
-            parent_details_of_new_header.total_score + new_header.score() > self.best_header_detail().total_score;
+        let is_new_best = parent_details_of_new_header.total_score + new_header.score()
+            > self.best_header_detail().total_score
+            && engine.can_change_canon_chain(&new_header);
 
         if is_new_best {
             ctrace!(

@@ -189,7 +189,9 @@ impl BlockChain {
         let parent_hash_of_new_block = new_header.parent_hash();
         let parent_details_of_new_block = self.block_details(&parent_hash_of_new_block).expect("Invalid parent hash");
 
-        if parent_details_of_new_block.total_score + new_header.score() > self.best_block_detail().total_score {
+        if parent_details_of_new_block.total_score + new_header.score() > self.best_block_detail().total_score
+            && engine.can_change_canon_chain(&new_header)
+        {
             ctrace!(
                 BLOCKCHAIN,
                 "Block #{}({}) has higher total score, changing the best proposal/canonical chain.",

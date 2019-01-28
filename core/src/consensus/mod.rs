@@ -310,6 +310,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         header.hash()
     }
 
+    fn can_change_canon_chain(&self, _header: &HeaderView) -> bool {
+        true
+    }
+
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
         &[]
     }
