@@ -39,7 +39,7 @@ use crate::transaction::LocalizedTransaction;
 use crate::views::{BlockView, HeaderView};
 
 const BEST_BLOCK_KEY: &[u8] = b"best-block";
-const HIGHEST_BLOCK_KEY: &[u8] = b"highest-block";
+const BEST_PROPOSAL_BLOCK_KEY: &[u8] = b"best-proposal-block";
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -47,9 +47,8 @@ const HIGHEST_BLOCK_KEY: &[u8] = b"highest-block";
 pub struct BlockChain {
     /// The hash of the best block of the canonical chain.
     best_block_hash: RwLock<H256>,
-    /// The hash of the block which has the highest score among the blocks
-    /// that is/can be the best block of the canonical chain.
-    highest_block_hash: RwLock<H256>,
+    /// The hash of the block which has the best score among the proposal blocks
+    best_proposal_block_hash: RwLock<H256>,
 
     headerchain: HeaderChain,
     body_db: BodyDB,
@@ -58,7 +57,7 @@ pub struct BlockChain {
     db: Arc<KeyValueDB>,
 
     pending_best_block_hash: RwLock<Option<H256>>,
-    pending_highest_block_hash: RwLock<Option<H256>>,
+    pending_best_proposal_block_hash: RwLock<Option<H256>>,
 }
 
 impl BlockChain {
@@ -79,12 +78,12 @@ impl BlockChain {
             }
         };
 
-        let highest_block_hash = match db.get(db::COL_EXTRA, HIGHEST_BLOCK_KEY).unwrap() {
+        let best_proposal_block_hash = match db.get(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY).unwrap() {
             Some(hash) => H256::from_slice(&hash),
             None => {
                 let hash = genesis_block.hash();
                 let mut batch = DBTransaction::new();
-                batch.put(db::COL_EXTRA, HIGHEST_BLOCK_KEY, &hash);
+                batch.put(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY, &hash);
                 db.write(batch).expect("Low level database error. Some issue with disk?");
                 hash
             }
@@ -92,7 +91,7 @@ impl BlockChain {
 
         Self {
             best_block_hash: RwLock::new(best_block_hash),
-            highest_block_hash: RwLock::new(highest_block_hash),
+            best_proposal_block_hash: RwLock::new(best_proposal_block_hash),
 
             headerchain: HeaderChain::new(&genesis_block.header_view(), db.clone()),
             body_db: BodyDB::new(&genesis_block, db.clone()),
@@ -101,7 +100,7 @@ impl BlockChain {
             db,
 
             pending_best_block_hash: RwLock::new(None),
-            pending_highest_block_hash: RwLock::new(None),
+            pending_best_proposal_block_hash: RwLock::new(None),
         }
     }
 
@@ -140,7 +139,7 @@ impl BlockChain {
         }
 
         assert!(self.pending_best_block_hash.read().is_none());
-        assert!(self.pending_highest_block_hash.read().is_none());
+        assert!(self.pending_best_proposal_block_hash.read().is_none());
 
         let best_block_changed = self.best_block_changed(&new_block, engine);
 
@@ -154,9 +153,9 @@ impl BlockChain {
             batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &best_block_hash);
             *pending_best_block_hash = Some(best_block_hash);
 
-            let mut pending_highest_block_hash = self.pending_highest_block_hash.write();
-            batch.put(db::COL_EXTRA, HIGHEST_BLOCK_KEY, &*new_block_hash);
-            *pending_highest_block_hash = Some(new_block_hash);
+            let mut pending_best_proposal_block_hash = self.pending_best_proposal_block_hash.write();
+            batch.put(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY, &*new_block_hash);
+            *pending_best_proposal_block_hash = Some(new_block_hash);
         }
 
         ImportRoute::new(new_block_hash, &best_block_changed)
@@ -171,16 +170,16 @@ impl BlockChain {
 
         let mut best_block_hash = self.best_block_hash.write();
         let mut pending_best_block_hash = self.pending_best_block_hash.write();
-        let mut highest_block_hash = self.highest_block_hash.write();
-        let mut pending_highest_block_hash = self.pending_highest_block_hash.write();
+        let mut best_proposal_block_hash = self.best_proposal_block_hash.write();
+        let mut pending_best_proposal_block_hash = self.pending_best_proposal_block_hash.write();
 
         // update best block
         if let Some(hash) = pending_best_block_hash.take() {
             *best_block_hash = hash;
         }
 
-        if let Some(hash) = pending_highest_block_hash.take() {
-            *highest_block_hash = hash;
+        if let Some(hash) = pending_best_proposal_block_hash.take() {
+            *best_proposal_block_hash = hash;
         }
     }
 
@@ -193,7 +192,7 @@ impl BlockChain {
         if parent_details_of_new_block.total_score + new_header.score() > self.best_block_detail().total_score {
             ctrace!(
                 BLOCKCHAIN,
-                "Block #{}({}) has higher total score, changing the highest/best chain.",
+                "Block #{}({}) has higher total score, changing the best proposal/canonical chain.",
                 new_header.number(),
                 new_header.hash()
             );
@@ -201,7 +200,7 @@ impl BlockChain {
             let route = tree_route(self, prev_best_hash, parent_hash_of_new_block)
                 .expect("blocks being imported always within recent history; qed");
 
-            let new_best_block_hash = engine.get_best_block_from_highest_score_header(&new_header);
+            let new_best_block_hash = engine.get_best_block_from_best_proposal_header(&new_header);
             let new_best_block = if new_best_block_hash != new_header.hash() {
                 self.block(&new_best_block_hash)
                     .expect("Best block is already imported as a branch")
@@ -229,8 +228,8 @@ impl BlockChain {
     /// in Tendermint.
     ///
     /// The new best block should be a child of the current best block.
-    /// This will not change the highest block chain. This means it is possible
-    /// to have the best block and the highest block in different branches.
+    /// This will not change the best proposal block chain. This means it is possible
+    /// to have the best block and the best proposal block in different branches.
     pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: H256) -> ImportRoute {
         // FIXME: If it is possible, double check with the consensus engine.
         ctrace!(BLOCKCHAIN, "Update the best block to {}", block_hash);
@@ -270,9 +269,9 @@ impl BlockChain {
         batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &block_hash);
         *pending_best_block_hash = Some(block_hash);
 
-        let mut pending_highest_block_hash = self.pending_highest_block_hash.write();
-        batch.put(db::COL_EXTRA, HIGHEST_BLOCK_KEY, &*block_hash);
-        *pending_highest_block_hash = Some(block_hash);
+        let mut pending_best_proposal_block_hash = self.pending_best_proposal_block_hash.write();
+        batch.put(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY, &*block_hash);
+        *pending_best_proposal_block_hash = Some(block_hash);
 
         ImportRoute::new(block_hash, &best_block_changed)
     }
@@ -280,16 +279,17 @@ impl BlockChain {
     /// Returns general blockchain information
     pub fn chain_info(&self) -> BlockChainInfo {
         let best_block_hash = self.best_block_hash();
-        let highest_block_hash = self.highest_block_hash();
+        let best_proposal_block_hash = self.best_proposal_block_hash();
 
         let best_block_detail = self.block_details(&best_block_hash).expect("Best block always exists");
         let best_block_header = self.block_header_data(&best_block_hash).expect("Best block always exists");
 
-        let highest_block_detail = self.block_details(&highest_block_hash).expect("Highest block always exists");
+        let best_proposal_block_detail =
+            self.block_details(&best_proposal_block_hash).expect("Highest block always exists");
 
         BlockChainInfo {
             best_score: best_block_detail.total_score,
-            highest_score: highest_block_detail.total_score,
+            best_proposal_score: best_proposal_block_detail.total_score,
             pending_total_score: best_block_detail.total_score,
             genesis_hash: self.genesis_hash(),
             best_block_hash: best_block_header.hash(),
@@ -303,9 +303,9 @@ impl BlockChain {
         *self.best_block_hash.read()
     }
 
-    /// Get highest block hash.
-    pub fn highest_block_hash(&self) -> H256 {
-        *self.highest_block_hash.read()
+    /// Get best_proposal block hash.
+    pub fn best_proposal_block_hash(&self) -> H256 {
+        *self.best_proposal_block_hash.read()
     }
 
     /// Get best block detail
@@ -323,8 +323,8 @@ impl BlockChain {
         self.headerchain.best_header()
     }
 
-    pub fn highest_header(&self) -> encoded::Header {
-        self.headerchain.highest_header()
+    pub fn best_proposal_header(&self) -> encoded::Header {
+        self.headerchain.best_proposal_header()
     }
 
     /// Insert an epoch transition. Provide an epoch number being transitioned to

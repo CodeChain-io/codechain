@@ -20,10 +20,10 @@ use primitives::{H256, U256};
 /// Information about the blockchain gathered together.
 #[derive(Clone, Debug)]
 pub struct BlockChainInfo {
-    /// Blockchain score.
+    /// Score of the canonical chain.
     pub best_score: U256,
-    /// Highest score of chain.
-    pub highest_score: U256,
+    /// The best score from proposal blocks.
+    pub best_proposal_score: U256,
     /// Block queue score.
     pub pending_total_score: U256,
     /// Genesis block hash.

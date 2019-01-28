@@ -371,7 +371,7 @@ impl Importer {
         let max_headers_to_import = 256;
 
         let _lock = self.import_lock.lock();
-        let prev_highest_header_hash = client.block_chain().highest_header().hash();
+        let prev_best_proposal_header_hash = client.block_chain().best_proposal_header().hash();
 
         let mut bad = HashSet::new();
         let mut imported = Vec::new();
@@ -401,9 +401,9 @@ impl Importer {
         self.header_queue.mark_as_bad(&bad.drain().collect::<Vec<_>>());
         let (enacted, retracted) = self.calculate_enacted_retracted(&routes);
 
-        let new_highest_header_hash = client.block_chain().highest_header().hash();
-        let highest_header_changed = if prev_highest_header_hash != new_highest_header_hash {
-            Some(new_highest_header_hash)
+        let new_best_proposal_header_hash = client.block_chain().best_proposal_header().hash();
+        let best_proposal_header_changed = if prev_best_proposal_header_hash != new_best_proposal_header_hash {
+            Some(new_best_proposal_header_hash)
         } else {
             None
         };
@@ -416,7 +416,7 @@ impl Importer {
                 retracted.clone(),
                 Vec::new(),
                 0,
-                highest_header_changed,
+                best_proposal_header_changed,
             );
         });
 

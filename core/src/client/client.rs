@@ -559,8 +559,8 @@ impl BlockInfo for Client {
         self.block_chain().best_block_header()
     }
 
-    fn highest_header(&self) -> encoded::Header {
-        self.block_chain().highest_header()
+    fn best_proposal_header(&self) -> encoded::Header {
+        self.block_chain().best_proposal_header()
     }
 
     fn best_header(&self) -> encoded::Header {
