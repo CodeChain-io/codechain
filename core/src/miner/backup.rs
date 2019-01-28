@@ -39,7 +39,7 @@ pub struct RecoveredData {
     pub next_transaction_id: u64,
 }
 
-pub fn backup_batch_with_capacity(length : usize) -> DBTransaction {
+pub fn backup_batch_with_capacity(length: usize) -> DBTransaction {
     DBTransaction::with_capacity(length * FIELD_COUNT)
 }
 
