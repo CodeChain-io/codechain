@@ -14,24 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import {
-    validator0Address,
-    validator1Address,
-    validator2Address,
-    validator3Address,
-    stakeActionHandlerId,
-    faucetAddress,
-    faucetSecret
-} from "../helper/constants";
-import { toHex } from "codechain-sdk/lib/utils";
-import { PromiseExpect } from "../helper/promise";
-
-import "mocha";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
+import { toHex } from "codechain-sdk/lib/utils";
+import "mocha";
+import {
+    faucetAddress,
+    faucetSecret,
+    stakeActionHandlerId,
+    validator0Address,
+    validator1Address,
+    validator2Address,
+    validator3Address
+} from "../helper/constants";
+import { PromiseExpect } from "../helper/promise";
+import CodeChain from "../helper/spawn";
 
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 

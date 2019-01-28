@@ -14,24 +14,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import * as _ from "lodash";
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
+chai.use(chaiAsPromised);
+const expect = chai.expect;
 import {
     Asset,
     AssetTransferAddress,
-    U64,
-    H160
+    H160,
+    U64
 } from "codechain-sdk/lib/core/classes";
-
-import CodeChain from "../helper/spawn";
-import { ERROR } from "../helper/error";
-import { faucetAddress, faucetSecret } from "../helper/constants";
-
+import * as _ from "lodash";
 import "mocha";
-import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
-
-chai.use(chaiAsPromised);
-const expect = chai.expect;
+import { faucetAddress, faucetSecret } from "../helper/constants";
+import { ERROR } from "../helper/error";
+import CodeChain from "../helper/spawn";
 
 describe("orders", function() {
     const BASE = 750;

@@ -14,34 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import { Buffer } from "buffer";
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
+chai.use(chaiAsPromised);
+const expect = chai.expect;
 import {
     Asset,
     AssetTransferAddress,
+    H160,
     H256,
     MintAsset,
     PlatformAddress,
     Script,
     SignedTransaction,
     TransferAsset,
-    U64,
-    H160
+    U64
 } from "codechain-sdk/lib/core/classes";
-import * as _ from "lodash";
-import { Buffer } from "buffer";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { blake160 } from "codechain-sdk/lib/utils";
-
-import CodeChain from "../helper/spawn";
-import { ERROR } from "../helper/error";
-import { faucetAddress, faucetSecret } from "../helper/constants";
-
+import * as _ from "lodash";
 import "mocha";
-import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
-import { fail } from "assert";
 import { $anything } from "../helper/chai-similar";
-chai.use(chaiAsPromised);
-const expect = chai.expect;
+import { faucetAddress, faucetSecret } from "../helper/constants";
+import { ERROR } from "../helper/error";
+import CodeChain from "../helper/spawn";
 
 describe("transactions", function() {
     let node: CodeChain;

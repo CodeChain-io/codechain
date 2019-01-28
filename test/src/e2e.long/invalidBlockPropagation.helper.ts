@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import { expect } from "chai";
 import { H160, H256, U256 } from "codechain-primitives/lib";
 import { Block } from "codechain-sdk/lib/core/Block";
 import { Header } from "codechain-test-helper/lib/cHeader";
 import { TestHelper } from "codechain-test-helper/lib/testHelper";
-import CodeChain from "../helper/spawn";
-
-import { expect } from "chai";
 import "mocha";
 import Test = Mocha.Test;
+import CodeChain from "../helper/spawn";
 
 async function setup(base: number): Promise<[Header, Block, Header]> {
     const temporaryNode = new CodeChain({
