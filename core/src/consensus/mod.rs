@@ -306,8 +306,12 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     fn register_chain_notify(&self, _: &Client) {}
 
-    fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
+    fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> H256 {
         header.hash()
+    }
+
+    fn can_change_canon_chain(&self, _header: &HeaderView) -> bool {
+        true
     }
 
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
