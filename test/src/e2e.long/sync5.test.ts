@@ -178,7 +178,7 @@ describe("sync 5 nodes", function() {
             beforeEach(async function() {
                 this.timeout(5000 + 5000 * NUM_NODES);
 
-                let connects = [];
+                const connects = [];
                 for (let i = 1; i < NUM_NODES; i++) {
                     connects.push(nodes[0].connect(nodes[i]));
                 }
