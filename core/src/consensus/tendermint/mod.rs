@@ -1301,7 +1301,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         guard.register_chain_notify(client);
     }
 
-    fn get_best_block_from_highest_score_header(&self, header: &HeaderView) -> H256 {
+    fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> H256 {
         header.parent_hash()
     }
 
