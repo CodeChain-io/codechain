@@ -62,8 +62,8 @@ describe("sync 3 nodes", function() {
 
             describe("All diverged by both end nodes", function() {
                 beforeEach(async function() {
-                    const nodeA = nodes[0],
-                        nodeB = nodes[NUM_NODES - 1];
+                    const nodeA = nodes[0];
+                    const nodeB = nodes[NUM_NODES - 1];
                     await nodeA.sendPayTx();
                     await nodeB.sendPayTx();
                     expect(await nodeA.getBestBlockNumber()).to.equal(
@@ -141,8 +141,8 @@ describe("sync 3 nodes", function() {
 
         describe("All diverged by two nodes in the opposite", function() {
             beforeEach(async function() {
-                const nodeA = nodes[0],
-                    nodeB = nodes[numHalf];
+                const nodeA = nodes[0];
+                const nodeB = nodes[numHalf];
                 await nodeA.sendPayTx();
                 await nodeB.sendPayTx();
                 expect(await nodeA.getBestBlockNumber()).to.equal(
