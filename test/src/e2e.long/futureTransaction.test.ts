@@ -54,7 +54,7 @@ describe("Handle future transactions", function() {
         it("ping pong", async function() {
             const sending = [];
             for (let i = 0; i < 10; i++) {
-                if (i % 2 == 0) {
+                if (i % 2 === 0) {
                     sending.push(nodeA.sendPayTx({ seq: 9 - i }));
                 } else {
                     sending.push(nodeB.sendPayTx({ seq: 9 - i }));
