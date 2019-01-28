@@ -199,7 +199,9 @@ describe("account", function() {
                             const { address, passphrase } = accountList[
                                 randomIdx
                             ];
-                            if (passphrase === undefined) break;
+                            if (passphrase === undefined) {
+                                break;
+                            }
 
                             const nextPassphrase = makeRandomPassphrase();
                             await node.sdk.rpc.sendRpcRequest(
