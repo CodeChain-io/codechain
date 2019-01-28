@@ -26,6 +26,7 @@ use ctypes::transaction::{Action, IncompleteTransaction};
 use ctypes::transaction::{Error as TransactionError, Timelock};
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
+use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
@@ -130,23 +131,34 @@ impl Miner {
     pub fn add_work_listener(&self, notifier: Box<NotifyWork>) {
         self.notifiers.write().push(notifier);
     }
-
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
-    pub fn new(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Arc<Self> {
-        Arc::new(Self::new_raw(options, scheme, accounts))
+    pub fn new(
+        options: MinerOptions,
+        scheme: &Scheme,
+        accounts: Option<Arc<AccountProvider>>,
+        db: Arc<KeyValueDB>,
+    ) -> Arc<Self> {
+        Arc::new(Self::new_raw(options, scheme, accounts, db))
     }
 
-    pub fn with_scheme(scheme: &Scheme) -> Self {
-        Self::new_raw(Default::default(), scheme, None)
+    pub fn with_scheme(scheme: &Scheme, db: Arc<KeyValueDB>) -> Self {
+        Self::new_raw(Default::default(), scheme, None, db)
     }
 
-    fn new_raw(options: MinerOptions, scheme: &Scheme, accounts: Option<Arc<AccountProvider>>) -> Self {
+    fn new_raw(
+        options: MinerOptions,
+        scheme: &Scheme,
+        accounts: Option<Arc<AccountProvider>>,
+        db: Arc<KeyValueDB>,
+    ) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
         let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(
             options.mem_pool_size,
             mem_limit,
             options.mem_pool_fee_bump_shift,
+            db,
         )));
+
         let notifiers: Vec<Box<NotifyWork>> = if options.new_work_notify.is_empty() {
             Vec::new()
         } else {

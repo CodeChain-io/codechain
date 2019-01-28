@@ -31,8 +31,10 @@ pub const COL_HEADERS: Option<u32> = Some(1);
 pub const COL_BODIES: Option<u32> = Some(2);
 /// Column for Extras
 pub const COL_EXTRA: Option<u32> = Some(3);
+/// Column for MemPool Data
+pub const COL_MEMPOOL: Option<u32> = Some(4);
 /// Number of columns in DB
-pub const NUM_COLUMNS: Option<u32> = Some(4);
+pub const NUM_COLUMNS: Option<u32> = Some(5);
 
 /// Modes for updating caches.
 #[derive(Clone, Copy)]

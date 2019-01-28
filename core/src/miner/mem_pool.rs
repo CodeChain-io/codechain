@@ -16,15 +16,18 @@
 
 use std::cmp;
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::sync::Arc;
 
 use ckey::{public_to_address, Public};
 use ctypes::transaction::ParcelError;
 use ctypes::BlockNumber;
+use kvdb::{DBTransaction, KeyValueDB};
 use primitives::H256;
 use rlp;
 use table::Table;
 use time::get_time;
 
+use super::backup;
 use super::mem_pool_types::{
     AccountDetails, CurrentQueue, FutureQueue, MemPoolInput, MemPoolItem, MemPoolStatus, PoolingInstant, QueueTag,
     TransactionOrder, TransactionOrderWithTag, TxOrigin, TxTimelock,
@@ -70,22 +73,13 @@ pub struct MemPool {
     last_timestamp: u64,
     /// Next id that should be assigned to a transaction imported to the pool
     next_transaction_id: u64,
-}
-
-impl Default for MemPool {
-    fn default() -> Self {
-        MemPool::new()
-    }
+    /// Arc of KeyValueDB in which the backup information is stored.
+    db: Arc<KeyValueDB>,
 }
 
 impl MemPool {
-    /// Creates new instance of this Queue
-    pub fn new() -> Self {
-        Self::with_limits(8192, usize::max_value(), 3)
-    }
-
     /// Create new instance of this Queue with specified limits
-    pub fn with_limits(limit: usize, memory_limit: usize, fee_bump_shift: usize) -> Self {
+    pub fn with_limits(limit: usize, memory_limit: usize, fee_bump_shift: usize, db: Arc<KeyValueDB>) -> Self {
         MemPool {
             minimal_fee: 0,
             fee_bump_shift,
@@ -102,6 +96,7 @@ impl MemPool {
             last_time: 0,
             last_timestamp: 0,
             next_transaction_id: 0,
+            db,
         }
     }
 
@@ -111,7 +106,7 @@ impl MemPool {
     }
 
     /// Enforce the limit to the current/future queue
-    fn enforce_limit(&mut self) {
+    fn enforce_limit(&mut self, batch: &mut DBTransaction) {
         // Get transaction orders to drop from each queue (current/future)
         fn get_orders_to_drop(
             set: &BTreeSet<TransactionOrder>,
@@ -149,6 +144,7 @@ impl MemPool {
         {
             let hash = order.hash;
             let item = self.by_hash.remove(&hash).expect("`by_hash` and `current/future` should be synced");
+            backup::remove_item(batch, &hash);
             let signer_public = item.signer_public();
             let seq = item.seq();
             self.by_signer_public
@@ -216,6 +212,7 @@ impl MemPool {
         let mut insert_results = Vec::new();
         let mut to_insert: HashMap<Public, Vec<u64>> = HashMap::new();
         let mut new_local_accounts = HashSet::new();
+        let mut batch = backup::backup_batch_with_capacity(inputs.len());
 
         for input in inputs {
             let tx = input.transaction;
@@ -246,12 +243,16 @@ impl MemPool {
             let order = TransactionOrder::for_transaction(&item, client_account.seq);
             let order_with_tag = TransactionOrderWithTag::new(order, QueueTag::New);
 
+            backup::backup_item(&mut batch, hash, &item);
             self.by_hash.insert(hash, item);
+
             if let Some(old_order_with_tag) = self.by_signer_public.insert(signer_public, seq, order_with_tag) {
                 let old_order = old_order_with_tag.order;
                 let tag = old_order_with_tag.tag;
 
                 self.by_hash.remove(&old_order.hash);
+                backup::remove_item(&mut batch, &old_order.hash);
+
                 match tag {
                     QueueTag::Current => {
                         self.current.remove(&old_order);
@@ -292,9 +293,10 @@ impl MemPool {
             if current_seq != first_seq || is_this_account_local {
                 self.update_orders(public, current_seq, new_next_seq, is_this_account_local);
                 self.first_seqs.insert(public, current_seq);
+                backup::backup_seqs(&mut batch, public, current_seq, true);
                 first_seq = current_seq;
             }
-            // We don't need to update the height, just move transacitons
+            // We don't need to update the height, just move transactions
             else if new_next_seq < next_seq {
                 self.move_queue(public, new_next_seq, next_seq, QueueTag::Future);
             } else if new_next_seq > next_seq {
@@ -306,6 +308,7 @@ impl MemPool {
                 self.next_seqs.remove(&public);
             } else {
                 self.next_seqs.insert(public, new_next_seq);
+                backup::backup_seqs(&mut batch, public, new_next_seq, false);
             }
 
             if let Some(seq_list) = to_insert.get(&public) {
@@ -317,7 +320,7 @@ impl MemPool {
             }
         }
 
-        self.enforce_limit();
+        self.enforce_limit(&mut batch);
 
         self.last_time = current_time;
         self.last_timestamp = current_timestamp;
@@ -326,6 +329,11 @@ impl MemPool {
         assert_eq!(self.current.fee_counter.values().sum::<usize>(), self.current.len());
         assert_eq!(self.by_signer_public.len(), self.by_hash.len());
 
+        backup::backup_extra(&mut batch, b"last_time", self.last_time);
+        backup::backup_extra(&mut batch, b"last_timestamp", self.last_timestamp);
+        backup::backup_extra(&mut batch, b"next_transaction_id", self.next_transaction_id);
+
+        self.db.write(batch).expect("Low level database error. Some issue with disk?");
         insert_results
             .into_iter()
             .map(|v| match v {
@@ -392,7 +400,8 @@ impl MemPool {
     ) where
         F: Fn(&Public) -> u64, {
         ctrace!(MEM_POOL, "remove() called, time: {}, timestamp: {}", current_time, current_timestamp);
-        let mut removed: HashMap<Public, u64> = HashMap::new();
+        let mut removed: HashMap<_, _> = HashMap::new();
+        let mut batch = backup::backup_batch_with_capacity(transaction_hashes.len());
 
         for hash in transaction_hashes {
             if let Some(item) = self.by_hash.get(hash).map(Clone::clone) {
@@ -412,6 +421,7 @@ impl MemPool {
                 }
 
                 self.by_hash.remove(hash);
+                backup::remove_item(&mut batch, hash);
                 self.by_signer_public.remove(&signer_public, &seq);
                 if current_seq <= seq {
                     let old = removed.get(&signer_public).map(Clone::clone);
@@ -448,9 +458,10 @@ impl MemPool {
             if current_seq != first_seq {
                 self.update_orders(public, current_seq, new_next_seq, false);
                 self.first_seqs.insert(public, current_seq);
+                backup::backup_seqs(&mut batch, public, current_seq, true);
                 first_seq = current_seq;
             }
-            // We don't need to update the height, just move transacitons
+            // We don't need to update the height, just move transactions
             else if new_next_seq < next_seq {
                 self.move_queue(public, new_next_seq, next_seq, QueueTag::Future);
             } else if new_next_seq > next_seq {
@@ -462,6 +473,7 @@ impl MemPool {
                 self.next_seqs.remove(&public);
             } else {
                 self.next_seqs.insert(public, new_next_seq);
+                backup::backup_seqs(&mut batch, public, new_next_seq, false);
             }
 
             if self.by_signer_public.clear_if_empty(&public) {
@@ -475,6 +487,12 @@ impl MemPool {
         assert_eq!(self.current.len() + self.future.len(), self.by_hash.len());
         assert_eq!(self.current.fee_counter.values().sum::<usize>(), self.current.len());
         assert_eq!(self.by_signer_public.len(), self.by_hash.len());
+
+        backup::backup_extra(&mut batch, b"last_time", self.last_time);
+        backup::backup_extra(&mut batch, b"last_timestamp", self.last_timestamp);
+        backup::backup_extra(&mut batch, b"next_transaction_id", self.next_transaction_id);
+
+        self.db.write(batch).expect("Low level database error. Some issue with disk?");
     }
 
     /// Checks the timelock of transactions starting from `start_seq`.
