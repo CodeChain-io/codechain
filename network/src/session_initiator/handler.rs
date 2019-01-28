@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
-use ckey::{Error as KeyError, Secret};
+use ckey::Error as KeyError;
 use finally::finally;
 use mio::deprecated::EventLoop;
 use mio::Token;
@@ -132,7 +132,6 @@ type Result<T> = ::std::result::Result<T, Error>;
 pub enum Message {
     ConnectTo(SocketAddr),
     ManuallyConnectTo(SocketAddr),
-    PreimportSecret(Secret, SocketAddr),
     RequestSession(usize),
 }
 
@@ -385,12 +384,6 @@ impl IoHandler<Message> for Handler {
                     for address in addresses {
                         session_initiator.create_new_connection(&address, io)?;
                     }
-                }
-            }
-            Message::PreimportSecret(secret, socket_address) => {
-                let mut session_initiator = self.session_initiator.write();
-                if !session_initiator.routing_table.preimport_secret(*secret, &socket_address) {
-                    cwarn!(NETWORK, "Cannot import the secret key for already connected host");
                 }
             }
         };

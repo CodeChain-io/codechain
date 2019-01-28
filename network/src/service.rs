@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,6 @@ use std::sync::Arc;
 
 use cio::{IoError, IoService};
 use ctimer::TimerLoop;
-use primitives::H256;
 
 use crate::client::Client;
 use crate::control::{Control, Error as ControlError};
@@ -104,14 +103,6 @@ impl Service {
 }
 
 impl Control for Service {
-    fn register_secret(&self, secret: H256, addr: SocketAddr) -> Result<(), ControlError> {
-        let message = session_initiator::Message::PreimportSecret(secret, addr);
-        if let Err(err) = self.session_initiator.send_message(message) {
-            cerror!(NETWORK, "Error occurred while sending message PreimportSecret : {:?}", err);
-        }
-        Ok(())
-    }
-
     fn connect(&self, addr: SocketAddr) -> Result<(), ControlError> {
         let message = session_initiator::Message::ManuallyConnectTo(addr);
         if let Err(err) = self.session_initiator.send_message(message) {
