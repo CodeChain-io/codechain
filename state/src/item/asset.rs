@@ -22,19 +22,19 @@ use crate::CacheableItem;
 
 #[derive(Clone, Debug, PartialEq, RlpEncodable, RlpDecodable)]
 pub struct Asset {
-    asset_type: H256,
+    asset_type: H160,
     quantity: u64,
 }
 
 impl Asset {
-    pub fn new(asset_type: H256, quantity: u64) -> Self {
+    pub fn new(asset_type: H160, quantity: u64) -> Self {
         Self {
             asset_type,
             quantity,
         }
     }
 
-    pub fn asset_type(&self) -> &H256 {
+    pub fn asset_type(&self) -> &H160 {
         &self.asset_type
     }
 
@@ -53,7 +53,7 @@ pub struct OwnedAsset {
 
 impl OwnedAsset {
     pub fn new(
-        asset_type: H256,
+        asset_type: H160,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         quantity: u64,
@@ -70,7 +70,7 @@ impl OwnedAsset {
         }
     }
 
-    pub fn asset_type(&self) -> &H256 {
+    pub fn asset_type(&self) -> &H160 {
         &self.asset.asset_type()
     }
 
@@ -92,7 +92,7 @@ impl OwnedAsset {
 
     pub fn init(
         &mut self,
-        asset_type: H256,
+        asset_type: H160,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         quantity: u64,
@@ -100,7 +100,7 @@ impl OwnedAsset {
     ) {
         assert_eq!(
             Asset {
-                asset_type: H256::zero(),
+                asset_type: H160::zero(),
                 quantity: 0
             },
             self.asset
@@ -121,7 +121,7 @@ impl Default for OwnedAsset {
     fn default() -> Self {
         Self {
             asset: Asset {
-                asset_type: H256::zero(),
+                asset_type: H160::zero(),
                 quantity: 0,
             },
             lock_script_hash: H160::zero(),
@@ -186,7 +186,7 @@ impl OwnedAssetAddress {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
         let index = index as u64;
 
-        Self::from_transaction_hash_with_shard_id(transaction_tracker, index, shard_id)
+        Self::from_hash_with_shard_id(transaction_tracker, index, shard_id)
     }
 }
 
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn encode_and_decode_asset() {
         rlp_encode_and_decode_test!(Asset {
-            asset_type: H256::random(),
+            asset_type: H160::random(),
             quantity: 0,
         });
     }

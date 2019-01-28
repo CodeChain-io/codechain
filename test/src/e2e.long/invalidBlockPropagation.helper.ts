@@ -168,7 +168,7 @@ async function testBody(
         header.setExtraData(textraData);
     }
     if (ttransactionRoot != null) {
-        header.setParcelsRoot(ttransactionRoot);
+        header.setTransactionsRoot(ttransactionRoot);
     }
     if (tstateRoot != null) {
         header.setStateRoot(tstateRoot);
@@ -197,13 +197,14 @@ async function testBody(
     const _ = expect(bodyRequest).to.be.null;
 }
 
-export async function createTestSuite(
+export function createTestSuite(
     testNumber: number,
     title: string,
     params: any
 ) {
     // tslint:disable only-arrow-functions
     describe(`invalid block propagation ${testNumber}`, async function() {
+        this.timeout(60_000);
         // tslint:enable only-arrow-functions
         let node: CodeChain;
         let TH: TestHelper;

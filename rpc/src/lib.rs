@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_core as ccore;
+extern crate codechain_crypto as ccrypto;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_json as cjson;

@@ -1,4 +1,4 @@
-Integration tests are for testing CodeChain application as a whole. Related files are located in this directory, and written in TypeScript.
+End-to-end tests(a.k.a. e2e tests) are for testing CodeChain application as a whole. Related files are located in this directory, and written in TypeScript.
 
 # Installing Dependencies
 
@@ -11,7 +11,7 @@ yarn install
 
 (We're going to automate this step in the near future)
 
-Currently, it requires you to compile CodeChain in advance to run the tests. The integration tests will directly execute the binary in `target/debug` directory or `target/release` directory.
+Currently, it requires you to compile CodeChain in advance to run the tests. The e2e tests will directly execute the binary in `target/debug` directory or `target/release` directory.
 
 ```sh
 # debug
@@ -25,7 +25,7 @@ cargo build --release
 
 # Running Tests
 
-To run integration tests, run following command in integration test directory.
+To run e2e tests, run following command in e2e test directory.
 ```sh
 # debug
 yarn start
@@ -38,9 +38,9 @@ NODE_ENV=production yarn start
 
 # Writing Test
 
-Simple integration test that sends a parcel and gets an invoice from CodeChain is implemented at `src/integration/basic.test.ts`. It would be a good starting point for implementing new tests.
+Simple e2e test that sends a parcel and gets an invoice from CodeChain is implemented at `src/e2e/basic.test.ts`. It would be a good starting point for implementing new tests.
 
-Writing an integration test involves spawning a new CodeChain process and attaching SDK to it. Helper class for automating this process is defined under `src/helper/spawn.ts`, named `CodeChain`. Some important functions are described below:
+Writing an e2e test involves spawning a new CodeChain process and attaching SDK to it. Helper class for automating this process is defined under `src/helper/spawn.ts`, named `CodeChain`. Some important functions are described below:
 
 ### constructor
 Assigns globally unique instance id to this object. Many parameters that need to avoid conflict(such as a port number) are derived from this instance id.

@@ -9,4 +9,4 @@ homepage = "https://github.com/paritytech/plain_hasher"
 
 [dependencies]
 crunchy = "0.1.6"
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

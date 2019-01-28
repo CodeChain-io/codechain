@@ -20,7 +20,7 @@ use ctypes::invoice::Invoice;
 use ctypes::transaction::ShardTransaction;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
-use primitives::{Bytes, H256};
+use primitives::{Bytes, H160, H256};
 
 use crate::{
     Account, ActionData, AssetScheme, AssetSchemeAddress, CacheableItem, Metadata, OwnedAsset, OwnedAssetAddress,
@@ -105,14 +105,13 @@ pub trait TopStateView {
     }
 
     /// Get the asset scheme.
-    fn asset_scheme(
-        &self,
-        shard_id: ShardId,
-        asset_scheme_address: &AssetSchemeAddress,
-    ) -> TrieResult<Option<AssetScheme>> {
+    fn asset_scheme(&self, shard_id: ShardId, asset_type: &H160) -> TrieResult<Option<AssetScheme>> {
         match self.shard_state(shard_id)? {
             None => Ok(None),
-            Some(state) => state.asset_scheme(asset_scheme_address),
+            Some(state) => {
+                let address = AssetSchemeAddress::new(*asset_type, shard_id);
+                state.asset_scheme(&address)
+            }
         }
     }
 

@@ -20,14 +20,15 @@ use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
     Shard, SignedTransaction, TextClient, UnverifiedTransaction,
 };
+use ccrypto::Blake;
 use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
-use cstate::{AssetSchemeAddress, FindActionHandler};
+use cstate::FindActionHandler;
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockNumber, ShardId};
-use primitives::{Bytes as BytesArray, H256};
+use primitives::{Bytes as BytesArray, H160, H256};
 use rlp::{DecoderError, UntrustedRlp};
 
 use jsonrpc_core::Result;
@@ -124,23 +125,23 @@ where
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<AssetScheme>> {
-        let address = AssetSchemeAddress::new(tracker, shard_id);
-        self.get_asset_scheme_by_type(address.into(), block_number)
+        let asset_type = Blake::blake(tracker);
+        self.get_asset_scheme_by_type(asset_type, shard_id, block_number)
     }
 
-    fn get_asset_scheme_by_type(&self, asset_type: H256, block_number: Option<u64>) -> Result<Option<AssetScheme>> {
+    fn get_asset_scheme_by_type(
+        &self,
+        asset_type: H160,
+        shard_id: ShardId,
+        block_number: Option<u64>,
+    ) -> Result<Option<AssetScheme>> {
+        let network_id = self.client.common_params().network_id;
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        match AssetSchemeAddress::from_hash(asset_type) {
-            Some(address) => {
-                let network_id = self.client.common_params().network_id;
-                Ok(self
-                    .client
-                    .get_asset_scheme(address, block_id)
-                    .map_err(errors::transaction_state)?
-                    .map(|asset_scheme| AssetScheme::from_core(asset_scheme, network_id)))
-            }
-            None => Ok(None),
-        }
+        Ok(self
+            .client
+            .get_asset_scheme(asset_type, shard_id, block_id)
+            .map_err(errors::transaction_state)?
+            .map(|asset_scheme| AssetScheme::from_core(asset_scheme, network_id)))
     }
 
     fn get_text(&self, transaction_hash: H256, block_number: Option<u64>) -> Result<Option<Text>> {
@@ -152,9 +153,16 @@ where
             .map(|text| Text::from_core(text, self.client.common_params().network_id)))
     }
 
-    fn get_asset(&self, transaction_hash: H256, index: usize, block_number: Option<u64>) -> Result<Option<OwnedAsset>> {
+    fn get_asset(
+        &self,
+        transaction_hash: H256,
+        index: usize,
+        shard_id: ShardId,
+        block_number: Option<u64>,
+    ) -> Result<Option<OwnedAsset>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        let asset = self.client.get_asset(transaction_hash, index, block_id).map_err(errors::transaction_state)?;
+        let asset =
+            self.client.get_asset(transaction_hash, index, shard_id, block_id).map_err(errors::transaction_state)?;
         Ok(asset.map(From::from))
     }
 
@@ -242,6 +250,10 @@ where
 
     fn get_pending_transactions(&self) -> Result<Vec<Transaction>> {
         Ok(self.client.ready_transactions().into_iter().map(|signed| signed.into()).collect())
+    }
+
+    fn get_pending_transactions_count(&self) -> Result<usize> {
+        Ok(self.client.ready_transactions().len())
     }
 
     fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {

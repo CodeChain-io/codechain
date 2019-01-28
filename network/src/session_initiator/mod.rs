@@ -15,9 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod handler;
-mod message;
-mod server;
-mod socket;
 
 
 pub use self::handler::{Handler, Message};

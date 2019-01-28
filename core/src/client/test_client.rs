@@ -436,7 +436,7 @@ impl ImportBlock for TestBlockChainClient {
         if number == len {
             {
                 let mut score = self.score.write();
-                *score = *score + *header.score();
+                *score += *header.score();
             }
             mem::replace(&mut *self.last_hash.write(), h);
             mem::replace(&mut *self.last_transactions_root.write(), h);

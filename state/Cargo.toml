@@ -17,7 +17,7 @@ kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 log = "0.4.6"
 lru-cache = "0.1.1"
 parking_lot = "0.6.0"
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git" }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = { path = "../util/rlp" }
 rlp_derive = { path = "../util/rlp_derive" }
 rustc-hex = "1.0"

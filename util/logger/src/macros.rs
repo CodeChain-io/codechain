@@ -31,6 +31,9 @@ macro_rules! log_target {
     (EXTERNAL_PARCEL) => {
         "external_parcel"
     };
+    (HEADERCHAIN) => {
+        "headerchain"
+    };
     (IO) => {
         "io"
     };
@@ -79,8 +82,8 @@ macro_rules! log_target {
     (SYNC) => {
         "sync"
     };
-    (SYNC_PARCEL) => {
-        "sync_parcel"
+    (SYNC_TX) => {
+        "sync_tx"
     };
     (TEST_SCRIPT) => {
         "test_script"

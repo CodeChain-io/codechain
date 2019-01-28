@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,22 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{Bytes, H160};
+pub mod message;
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
+mod socket;
 
-use crate::ShardId;
-
-#[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
-pub struct AssetTransferOutput {
-    pub lock_script_hash: H160,
-    pub parameters: Vec<Bytes>,
-    pub asset_type: H160,
-    pub shard_id: ShardId,
-    pub quantity: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AssetMintOutput {
-    pub lock_script_hash: H160,
-    pub parameters: Vec<Bytes>,
-    pub supply: Option<u64>,
-}
+pub use self::socket::Socket;

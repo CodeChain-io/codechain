@@ -22,24 +22,20 @@ use super::Version;
 use super::ACK_ID;
 use super::SYNC_ID;
 
-use crate::NodeId;
-
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Message {
     Sync {
         version: Version,
         port: u16,
-        node_id: NodeId,
     },
     Ack(Version),
 }
 
 impl Message {
-    pub fn sync(port: u16, node_id: NodeId) -> Self {
+    pub fn sync(port: u16) -> Self {
         Message::Sync {
             version: 0,
             port,
-            node_id,
         }
     }
 
@@ -75,9 +71,8 @@ impl Encodable for Message {
             Message::Sync {
                 version,
                 port,
-                node_id,
             } => {
-                s.begin_list(4).append(version).append(&self.protocol_id()).append(port).append(node_id);
+                s.begin_list(3).append(version).append(&self.protocol_id()).append(port);
             }
             Message::Ack(version) => {
                 s.begin_list(2).append(version).append(&self.protocol_id());
@@ -92,13 +87,12 @@ impl Decodable for Message {
         let protocol_id: ProtocolId = rlp.val_at(1)?;
         match protocol_id {
             SYNC_ID => {
-                if rlp.item_count()? != 4 {
+                if rlp.item_count()? != 3 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Message::Sync {
                     version,
                     port: rlp.val_at(2)?,
-                    node_id: rlp.val_at(3)?,
                 })
             }
             ACK_ID => {
@@ -117,13 +111,11 @@ mod tests {
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
-    use crate::SocketAddr;
 
     #[test]
     fn protocol_id_of_sync_is_0() {
         const PORT: u16 = 1234;
-        let node_id = SocketAddr::v4(127, 0, 0, 1, 8080).into();
-        assert_eq!(0x00, Message::sync(PORT, node_id).protocol_id());
+        assert_eq!(0x00, Message::sync(PORT).protocol_id());
     }
 
     #[test]
@@ -134,8 +126,7 @@ mod tests {
     #[test]
     fn encode_and_decode_sync() {
         const PORT: u16 = 1234;
-        let node_id = SocketAddr::v4(127, 0, 0, 1, 8080).into();
-        rlp_encode_and_decode_test!(Message::sync(PORT, node_id));
+        rlp_encode_and_decode_test!(Message::sync(PORT));
     }
 
     #[test]

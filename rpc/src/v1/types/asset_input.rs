@@ -16,14 +16,16 @@
 
 use cjson::uint::Uint;
 use ctypes::transaction::{AssetOutPoint as AssetOutPointType, AssetTransferInput as AssetTransferInputType, Timelock};
-use primitives::{Bytes, H256};
+use ctypes::ShardId;
+use primitives::{Bytes, H160, H256};
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetOutPoint {
     pub tracker: H256,
     pub index: usize,
-    pub asset_type: H256,
+    pub asset_type: H160,
+    pub shard_id: ShardId,
     pub quantity: Uint,
 }
 
@@ -33,6 +35,7 @@ impl From<AssetOutPointType> for AssetOutPoint {
             tracker: from.tracker,
             index: from.index,
             asset_type: from.asset_type,
+            shard_id: from.shard_id,
             quantity: from.quantity.into(),
         }
     }
@@ -44,6 +47,7 @@ impl From<AssetOutPoint> for AssetOutPointType {
             tracker: from.tracker,
             index: from.index,
             asset_type: from.asset_type,
+            shard_id: from.shard_id,
             quantity: from.quantity.into(),
         }
     }

@@ -468,7 +468,7 @@ export default class CodeChain {
         if (!awaitMint) {
             return { asset: tx.getMintedAsset() };
         }
-        const asset = await this.sdk.rpc.chain.getAsset(tx.tracker(), 0);
+        const asset = await this.sdk.rpc.chain.getAsset(tx.tracker(), 0, 0);
         if (asset === null) {
             throw Error(`Failed to mint asset`);
         }

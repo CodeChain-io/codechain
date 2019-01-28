@@ -42,7 +42,6 @@ use crate::client::{
     ResealTimer,
 };
 use crate::consensus::{CodeChainEngine, EngineType};
-use crate::encoded;
 use crate::error::Error;
 use crate::header::Header;
 use crate::scheme::Scheme;
@@ -539,14 +538,12 @@ impl Miner {
                         .seal(&*self.engine, seal.clone())
                         .map(|sealed| {
                             self.engine.proposal_generated(&sealed);
-                            let import_result = chain.import_sealed_block(&sealed);
-                            self.engine.broadcast_proposal_block(encoded::Block::new(sealed.rlp_bytes()));
-                            import_result
+                            chain.import_sealed_block(&sealed).is_ok()
                         })
-                        .map_err(|e| {
+                        .unwrap_or_else(|e| {
                             cwarn!(MINER, "ERROR: seal failed when given internally generated seal: {}", e);
+                            false
                         })
-                        .is_ok()
                 } else {
                     block
                         .lock()
@@ -967,7 +964,7 @@ impl MinerService for Miner {
 
     /// Get a list of all future transactions.
     fn future_transactions(&self) -> Vec<SignedTransaction> {
-        self.mem_pool.read().future_tranasctions()
+        self.mem_pool.read().future_transactions()
     }
 
     fn start_sealing<C: MiningBlockChainClient>(&self, client: &C) {

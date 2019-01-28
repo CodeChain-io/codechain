@@ -23,7 +23,8 @@ import {
     Script,
     SignedTransaction,
     TransferAsset,
-    U64
+    U64,
+    H160
 } from "codechain-sdk/lib/core/classes";
 import * as _ from "lodash";
 import { Buffer } from "buffer";
@@ -134,6 +135,7 @@ describe("transactions", function() {
                 tx.addOutputs(
                     amounts.map(amount => ({
                         assetType: input.assetType,
+                        shardId: input.shardId,
                         recipient,
                         quantity: amount
                     }))
@@ -153,6 +155,7 @@ describe("transactions", function() {
                 tx.addOutputs(
                     amounts.map(amount => ({
                         assetType: input.assetType,
+                        shardId: input.shardId,
                         recipient,
                         quantity: amount
                     }))
@@ -177,6 +180,7 @@ describe("transactions", function() {
             tx.addOutputs(
                 amounts.map(amount => ({
                     assetType: input.assetType,
+                    shardId: input.shardId,
                     recipient,
                     quantity: amount
                 }))
@@ -197,8 +201,8 @@ describe("transactions", function() {
             const tx = node.sdk.core.createTransferAssetTransaction();
             tx.addInputs(input);
             tx.addOutputs({
-                assetType:
-                    "0x0000000000000000000000000000000000000000000000000000000000000000",
+                assetType: H160.zero(),
+                shardId: input.shardId,
                 recipient,
                 quantity: amount
             });
@@ -219,6 +223,7 @@ describe("transactions", function() {
             tx.addInputs(input, input);
             tx.addOutputs({
                 assetType: input.assetType,
+                shardId: input.shardId,
                 recipient,
                 quantity: amount * 2
             });
@@ -268,11 +273,13 @@ describe("transactions", function() {
                     _.shuffle([
                         ...input1Amounts.map(amount => ({
                             assetType: input1.assetType,
+                            shardId: input1.shardId,
                             recipient,
                             quantity: amount
                         })),
                         ...input2Amounts.map(amount => ({
                             assetType: input2.assetType,
+                            shardId: input2.shardId,
                             recipient,
                             quantity: amount
                         }))
@@ -293,6 +300,7 @@ describe("transactions", function() {
         tx1.addInputs(asset);
         tx1.addOutputs({
             assetType: asset.assetType,
+            shardId: asset.shardId,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 1
         });
@@ -309,7 +317,9 @@ describe("transactions", function() {
         expect(invoices2!.length).to.equal(1);
         expect(invoices2![0].success).to.be.true;
 
-        expect(await node.sdk.rpc.chain.getAsset(tx2.tracker(), 0)).to.be.null;
+        expect(
+            await node.sdk.rpc.chain.getAsset(tx2.tracker(), 0, asset.shardId)
+        ).to.be.null;
     });
 
     it("Burn unsuccessful(ZeroQuantity)", async function() {
@@ -318,6 +328,7 @@ describe("transactions", function() {
         tx1.addInputs(asset);
         tx1.addOutputs({
             assetType: asset.assetType,
+            shardId: asset.shardId,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 1
         });
@@ -329,6 +340,7 @@ describe("transactions", function() {
         const tx2 = node.sdk.core.createTransferAssetTransaction();
         const {
             assetType,
+            shardId,
             lockScriptHash,
             parameters
         } = tx1.getTransferredAsset(0);
@@ -336,6 +348,7 @@ describe("transactions", function() {
             node.sdk.core.createAssetTransferInput({
                 assetOutPoint: {
                     assetType,
+                    shardId,
                     tracker: tx1.tracker(),
                     index: 0,
                     lockScriptHash,
@@ -359,6 +372,7 @@ describe("transactions", function() {
         tx1.addInputs(asset);
         tx1.addOutputs({
             assetType: asset.assetType,
+            shardId: asset.shardId,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 1
         });
@@ -372,6 +386,7 @@ describe("transactions", function() {
         tx2.addInputs(transferredAsset);
         tx2.addOutputs({
             assetType: transferredAsset.assetType,
+            shardId: transferredAsset.shardId,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 1
         });
@@ -388,8 +403,9 @@ describe("transactions", function() {
             "ScriptShouldBeBurnt"
         );
 
-        expect(await node.sdk.rpc.chain.getAsset(tx1.tracker(), 0)).not.to.be
-            .null;
+        expect(
+            await node.sdk.rpc.chain.getAsset(tx1.tracker(), 0, asset.shardId)
+        ).not.to.be.null;
     });
 
     it("Cannot burn P2PKH asset", async function() {
@@ -418,6 +434,7 @@ describe("transactions", function() {
                 .addOutputs({
                     quantity: 1,
                     assetType: asset.assetType,
+                    shardId: asset.shardId,
                     recipient: await node.createP2PKHAddress()
                 });
             tx.input(0)!.setLockScript(P2PKH.getLockScript());
@@ -450,6 +467,7 @@ describe("transactions", function() {
                 .addOutputs({
                     quantity: 1,
                     assetType: asset.assetType,
+                    shardId: asset.shardId,
                     recipient: await node.createP2PKHAddress()
                 });
             tx.input(0)!.setLockScript(triviallyFail);
@@ -484,6 +502,7 @@ describe("transactions", function() {
                 .addOutputs({
                     quantity: 1,
                     assetType: asset.assetType,
+                    shardId: asset.shardId,
                     recipient: await node.createP2PKHAddress()
                 });
             tx.input(0)!.setLockScript(triviallySuccess);
@@ -517,6 +536,7 @@ describe("transactions", function() {
                 .addOutputs({
                     quantity: 1,
                     assetType: asset.assetType,
+                    shardId: asset.shardId,
                     recipient: await node.createP2PKHAddress()
                 });
             tx.input(0)!.setLockScript(leaveMultipleValue);
@@ -556,7 +576,7 @@ describe("transactions", function() {
                 recipient
             });
             await node.sendAssetTransaction(tx);
-            const asset = await node.sdk.rpc.chain.getAsset(tx.tracker(), 0);
+            const asset = await node.sdk.rpc.chain.getAsset(tx.tracker(), 0, 0);
             if (asset === null) {
                 throw Error(`Failed to mint an asset`);
             }
@@ -564,6 +584,7 @@ describe("transactions", function() {
             transferTx.addInputs(asset);
             transferTx.addOutputs({
                 assetType: asset.assetType,
+                shardId: asset.shardId,
                 quantity: 10000,
                 recipient: await node.createP2PKHAddress()
             });
@@ -642,22 +663,26 @@ describe("transactions", function() {
                     {
                         assetType,
                         quantity: 1000,
-                        recipient: address1
+                        recipient: address1,
+                        shardId: 0
                     },
                     {
                         assetType,
                         quantity: 1000,
-                        recipient: address2
+                        recipient: address2,
+                        shardId: 0
                     },
                     {
                         assetType,
                         quantity: 1000,
-                        recipient: burnAddress1
+                        recipient: burnAddress1,
+                        shardId: 0
                     },
                     {
                         assetType,
                         quantity: 1000,
-                        recipient: burnAddress2
+                        recipient: burnAddress2,
+                        shardId: 0
                     }
                 );
             await node.sdk.key.signTransactionInput(transferTx, 0);
@@ -672,6 +697,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
+                    shardId: 0,
                     quantity: 1000,
                     recipient: address1
                 });
@@ -694,6 +720,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
+                    shardId: 0,
                     quantity: 1000,
                     recipient: address1
                 });
@@ -714,6 +741,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
+                    shardId: 0,
                     quantity: 2000,
                     recipient: address1
                 });
@@ -736,6 +764,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
+                    shardId: 0,
                     quantity: 2000,
                     recipient: address1
                 });
@@ -755,11 +784,17 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
+                    shardId: 0,
                     quantity: 500,
                     recipient: address1
                 });
             await node.sdk.key.signTransactionInput(tx, 0);
-            tx.addOutputs({ assetType, quantity: 500, recipient: address2 });
+            tx.addOutputs({
+                assetType,
+                shardId: 0,
+                quantity: 500,
+                recipient: address2
+            });
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
             expect(invoices![0].success).to.be.false;
@@ -776,6 +811,7 @@ describe("transactions", function() {
                 .addInputs(assets[0])
                 .addOutputs({
                     assetType,
+                    shardId: 0,
                     quantity: 500,
                     recipient: address1
                 });
@@ -785,7 +821,12 @@ describe("transactions", function() {
                     output: [0]
                 }
             });
-            tx.addOutputs({ assetType, quantity: 500, recipient: address2 });
+            tx.addOutputs({
+                assetType,
+                shardId: 0,
+                quantity: 500,
+                recipient: address2
+            });
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
             expect(invoices![0].success).to.be.true;
@@ -798,11 +839,13 @@ describe("transactions", function() {
                 .addOutputs(
                     {
                         assetType,
+                        shardId: 0,
                         quantity: 500,
                         recipient: address1
                     },
                     {
                         assetType,
+                        shardId: 0,
                         quantity: 500,
                         recipient: address2
                     }
@@ -851,6 +894,7 @@ describe("transactions", function() {
                         .addOutputs(
                             _.times(length, () => ({
                                 assetType,
+                                shardId: 0,
                                 quantity: 1,
                                 recipient: address1
                             }))
@@ -864,6 +908,7 @@ describe("transactions", function() {
                     });
                     tx.addOutputs({
                         assetType,
+                        shardId: 0,
                         quantity: 1000 - length,
                         recipient: address1
                     });
@@ -968,6 +1013,7 @@ describe("transactions", function() {
             decomposeTx.addOutputs({
                 quantity: 10,
                 assetType: firstAsset.assetType,
+                shardId: firstAsset.shardId,
                 recipient: aliceAddress
             });
             await node.sdk.key.signTransactionInput(decomposeTx, 0);
@@ -1143,6 +1189,7 @@ describe("transactions", function() {
                 transferTx.addInputs(asset1);
                 transferTx.addOutputs({
                     assetType: asset1.assetType,
+                    shardId: asset1.shardId,
                     recipient: recipientBurn,
                     quantity
                 });
@@ -1153,7 +1200,8 @@ describe("transactions", function() {
 
                 const asset2 = await node.sdk.rpc.chain.getAsset(
                     transferTx.tracker(),
-                    0
+                    0,
+                    asset1.shardId
                 );
 
                 const unwrapTx = node.sdk.core.createUnwrapCCCTransaction({

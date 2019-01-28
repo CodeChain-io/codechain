@@ -150,8 +150,8 @@ describe("solo - 1 node", function() {
             { actionType: 0x13, actionLength: 12 },
             { actionType: 0x14, actionLength: 7 }, // TransferAsset
             { actionType: 0x14, actionLength: 9 },
-            { actionType: 0x15, actionLength: 7 }, // ChangeAssetScheme
-            { actionType: 0x15, actionLength: 9 },
+            { actionType: 0x15, actionLength: 8 }, // ChangeAssetScheme
+            { actionType: 0x15, actionLength: 10 },
             { actionType: 0x16, actionLength: 11 }, // ComposeAsset
             { actionType: 0x16, actionLength: 13 },
             { actionType: 0x17, actionLength: 4 }, // DecomposeAsset
@@ -220,7 +220,8 @@ describe("solo - 1 node", function() {
                 assetOutPoint: {
                     tracker: "0x" + "0".repeat(64),
                     index: 0,
-                    assetType: "0x" + "1".repeat(64),
+                    assetType: "0x" + "1".repeat(40),
+                    shardId: 0,
                     quantity: 12345
                 },
                 timelock: {
@@ -229,7 +230,8 @@ describe("solo - 1 node", function() {
                 }
             });
             output = node.sdk.core.createAssetTransferOutput({
-                assetType: "0x" + "0".repeat(64),
+                assetType: "0x" + "0".repeat(40),
+                shardId: 0,
                 quantity: 12345,
                 recipient
             });

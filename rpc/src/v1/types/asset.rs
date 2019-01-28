@@ -22,7 +22,7 @@ use rustc_serialize::hex::ToHex;
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Asset {
-    asset_type: H256,
+    asset_type: H160,
     quantity: Uint,
 }
 
