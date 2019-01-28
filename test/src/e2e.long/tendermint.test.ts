@@ -44,7 +44,7 @@ describeSkippedInTravis("Tendermint ", function() {
     beforeEach(async function() {
         this.timeout(60_000);
 
-        let validatorAddresses = [
+        const validatorAddresses = [
             validator0Address,
             validator1Address,
             validator2Address,
