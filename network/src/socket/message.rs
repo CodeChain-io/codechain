@@ -32,14 +32,12 @@ pub struct Message {
 pub enum Body {
     SecretRequest(Public),
     SecretAllowed(Public),
-    SecretDenied(String),
     NonceRequest(Raw),
     NonceAllowed(Raw),
 }
 
 const SECRET_REQUEST: u8 = 0x03;
 const SECRET_ALLOWED: u8 = 0x04;
-const SECRET_DENIED: u8 = 0x05;
 
 const NONCE_REQUEST: u8 = 0x6;
 const NONCE_ALLOWED: u8 = 0x7;
@@ -58,14 +56,6 @@ impl Message {
             version: 0,
             seq,
             body: Body::SecretAllowed(key),
-        }
-    }
-
-    pub fn secret_denied(seq: Seq, reason: String) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::SecretDenied(reason),
         }
     }
 
@@ -89,7 +79,6 @@ impl Message {
         match self.body {
             Body::SecretRequest(_) => SECRET_REQUEST,
             Body::SecretAllowed(_) => SECRET_ALLOWED,
-            Body::SecretDenied(_) => SECRET_DENIED,
             Body::NonceRequest(_) => NONCE_REQUEST,
             Body::NonceAllowed(_) => NONCE_ALLOWED,
         }
@@ -125,9 +114,6 @@ impl Encodable for Message {
             Body::SecretAllowed(key) => {
                 s.append(key);
             }
-            Body::SecretDenied(reason) => {
-                s.append(reason);
-            }
             Body::NonceRequest(body) => {
                 s.append(body);
             }
@@ -152,10 +138,6 @@ impl Decodable for Message {
             SECRET_ALLOWED => {
                 let key: Public = rlp.val_at(3)?;
                 Message::secret_allowed(seq, key)
-            }
-            SECRET_DENIED => {
-                let reason: String = rlp.val_at(3)?;
-                Message::secret_denied(seq, reason)
             }
             NONCE_REQUEST => {
                 let body: Raw = rlp.val_at(3)?;

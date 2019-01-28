@@ -212,9 +212,7 @@ impl SessionInitiator {
                     }
                 }
 
-                let message = message::Message::secret_denied(message.seq(), "ECDH Already requested".to_string());
-                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
-                Err("Cannot response to secret request".into())
+                Err(format!("Cannot respond for secret request to {:?}", from).into())
             }
             message::Body::SecretAllowed(responder_pub_key) => {
                 io.clear_timer(message.seq() as TimerToken);
@@ -231,17 +229,6 @@ impl SessionInitiator {
                 let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
                 self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
 
-                Ok(())
-            }
-            message::Body::SecretDenied(reason) => {
-                io.clear_timer(message.seq() as TimerToken);
-                self.requests
-                    .restore(message.seq() as usize, Some(*from))
-                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
-
-                if self.routing_table.remove_node(*from) {
-                    cinfo!(NETWORK, "Shared Secret to {} denied (reason: {})", from, reason);
-                }
                 Ok(())
             }
             message::Body::NonceRequest(encrypted_temporary_nonce) => {
