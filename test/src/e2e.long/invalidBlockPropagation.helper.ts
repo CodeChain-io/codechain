@@ -193,7 +193,7 @@ async function testBody(
 
     const bodyRequest = TH.getBlockBodyRequest();
 
-    const _ = expect(bodyRequest).to.be.null;
+    expect(bodyRequest).to.be.null;
 }
 
 export function createTestSuite(

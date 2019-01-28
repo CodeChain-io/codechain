@@ -64,7 +64,6 @@ describe("Handle future transactions", function() {
         }).timeout(20_000);
 
         afterEach(async function() {
-            const bestBlockNumber = await nodeB.getBestBlockNumber();
             if (this.currentTest!.state === "failed") {
                 nodeB.testFailed(this.currentTest!.fullTitle());
             }
@@ -74,7 +73,6 @@ describe("Handle future transactions", function() {
     });
 
     afterEach(async function() {
-        const bestBlockNumber = await nodeA.getBestBlockNumber();
         if (this.currentTest!.state === "failed") {
             nodeA.testFailed(this.currentTest!.fullTitle());
         }

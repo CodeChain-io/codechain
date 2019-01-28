@@ -25,7 +25,6 @@ describe("account", function() {
     describe("account scenario test", function() {
         let node: CodeChain;
         const testSize = 30;
-        const unlockTestSize = 15;
         const randomTestSize = 100;
 
         beforeEach(async function() {
