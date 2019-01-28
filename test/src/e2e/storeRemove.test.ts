@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { faucetAddress, faucetSecret } from "../helper/constants";
-import { makeRandomH256 } from "../helper/random";
-import CodeChain from "../helper/spawn";
-
 import { expect } from "chai";
 import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 import { blake256, signEcdsa } from "codechain-sdk/lib/utils";
 import * as _ from "lodash";
 import "mocha";
+import { faucetAddress, faucetSecret } from "../helper/constants";
+import { makeRandomH256 } from "../helper/random";
+import CodeChain from "../helper/spawn";
 
 const RLP = require("rlp");
 

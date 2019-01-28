@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,13 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import { ERROR } from "../helper/error";
-import { invalidAddress, invalidSecret } from "../helper/constants";
-
-import "mocha";
 import { expect } from "chai";
-import { xor128 } from "seedrandom";
+import "mocha";
+import { invalidAddress, invalidSecret } from "../helper/constants";
+import { ERROR } from "../helper/error";
+import CodeChain from "../helper/spawn";
 
 describe("account", function() {
     describe("account base test", function() {
