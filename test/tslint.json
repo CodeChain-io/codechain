@@ -5,6 +5,7 @@
       "variable-name": [true, "check-format", "allow-leading-underscore", "allow-pascal-case"],
       "no-console": false,
       "object-literal-sort-keys": false,
+      "only-arrow-functions": false,
       "no-var-requires": false,
       "max-classes-per-file": false,
       "no-bitwise": false,
