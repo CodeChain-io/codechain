@@ -77,9 +77,7 @@ describe("Memory pool size test", function() {
             await wait(500 * (counter + 1));
 
             const pendingTransactions = await nodeB.sdk.rpc.chain.getPendingTransactions();
-            expect(
-                (await nodeB.sdk.rpc.chain.getPendingTransactions()).length
-            ).to.equal(sizeLimit);
+            expect(pendingTransactions.length).to.equal(sizeLimit);
         }).timeout(20_000);
 
         afterEach(async function() {
