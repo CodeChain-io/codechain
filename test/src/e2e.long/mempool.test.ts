@@ -137,8 +137,7 @@ describe("Memory pool memory limit test", function() {
                 nodeB.sdk.rpc.chain.getBestBlockNumber()
             ]);
             expect(aBlockNumber).to.equal(bBlockNumber);
-            const metadata =
-                "Very large transaction" + " ".repeat(1 * 1024 * 1024);
+            const metadata = "Very large transaction" + " ".repeat(1024 * 1024);
             const minting = [];
             for (let i = 0; i < sizeLimit; i++) {
                 minting.push(
