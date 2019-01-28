@@ -32,7 +32,10 @@ pub enum TendermintState {
     ProposeWaitBlockGeneration {
         parent_hash: H256,
     },
-    ProposeWaitEmpty {
+    ProposeWaitImported {
+        block: Box<SealedBlock>,
+    },
+    ProposeWaitEmptyBlockTimer {
         block: Box<SealedBlock>,
     },
     Prevote,
@@ -47,25 +50,15 @@ impl TendermintState {
             TendermintState::ProposeWaitBlockGeneration {
                 ..
             } => Step::Propose,
-            TendermintState::ProposeWaitEmpty {
+            TendermintState::ProposeWaitImported {
+                ..
+            } => Step::Propose,
+            TendermintState::ProposeWaitEmptyBlockTimer {
                 ..
             } => Step::Propose,
             TendermintState::Prevote => Step::Prevote,
             TendermintState::Precommit => Step::Precommit,
             TendermintState::Commit => Step::Commit,
-        }
-    }
-
-    pub fn is_propose(&self) -> bool {
-        match self {
-            TendermintState::Propose
-            | TendermintState::ProposeWaitBlockGeneration {
-                ..
-            }
-            | TendermintState::ProposeWaitEmpty {
-                ..
-            } => true,
-            _ => false,
         }
     }
 
@@ -84,9 +77,12 @@ impl fmt::Debug for TendermintState {
             TendermintState::ProposeWaitBlockGeneration {
                 parent_hash,
             } => write!(f, "TendermintState::ProposeWaitBlockGeneration({})", parent_hash),
-            TendermintState::ProposeWaitEmpty {
+            TendermintState::ProposeWaitImported {
                 block,
-            } => write!(f, "TendermintState::ProposeWaitEmpty({})", block.header().hash()),
+            } => write!(f, "TendermintState::ProposeWaitImported({})", block.header().hash()),
+            TendermintState::ProposeWaitEmptyBlockTimer {
+                block,
+            } => write!(f, "TendermintState::ProposeWaitEmptyBlockTimer({})", block.header().hash()),
             TendermintState::Prevote => write!(f, "TendermintState::Prevote"),
             TendermintState::Precommit => write!(f, "TendermintState::Precommit"),
             TendermintState::Commit => write!(f, "TendermintState::Commit"),

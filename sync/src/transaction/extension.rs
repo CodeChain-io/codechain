@@ -76,7 +76,7 @@ impl Extension {
 
 impl NetworkExtension for Extension {
     fn name(&self) -> &'static str {
-        "parcel-propagation"
+        "transaction-propagation"
     }
     fn need_encryption(&self) -> bool {
         false
@@ -103,31 +103,28 @@ impl NetworkExtension for Extension {
     fn on_message(&self, token: &NodeId, data: &[u8]) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
-                Message::Parcels(parcels) => {
+                Message::Transactions(transactions) => {
                     self.client.queue_transactions(
-                        parcels.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
+                        transactions.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
                         *token,
                     );
                     let peers = self.peers.read();
                     if let Some(peer) = peers.get(token) {
                         let mut peer = peer.write();
-                        let parcels: Vec<_> = parcels
-                            .iter()
-                            .map(|parcel| parcel.hash())
-                            .filter(|parcel| !peer.contains(parcel))
-                            .collect();
-                        for unverified in parcels.iter() {
+                        let transactions: Vec<_> =
+                            transactions.iter().map(|tx| tx.hash()).filter(|tx_hash| !peer.contains(tx_hash)).collect();
+                        for unverified in transactions.iter() {
                             peer.push(*unverified);
                         }
-                        cdebug!(SYNC_PARCEL, "Receive {} parcels from {}", parcels.len(), token);
-                        ctrace!(SYNC_PARCEL, "Receive {:?}", parcels);
+                        cdebug!(SYNC_TX, "Receive {} transactions from {}", transactions.len(), token);
+                        ctrace!(SYNC_TX, "Receive {:?}", transactions);
                     } else {
-                        cwarn!(SYNC_PARCEL, "Message from {} but it's already removed", token);
+                        cwarn!(SYNC_TX, "Message from {} but it's already removed", token);
                     }
                 }
             }
         } else {
-            cwarn!(SYNC_PARCEL, "Invalid message from peer {}", token);
+            cwarn!(SYNC_TX, "Invalid message from peer {}", token);
         }
     }
 }
@@ -143,16 +140,16 @@ impl TimeoutHandler for Extension {
 
 impl Extension {
     fn random_broadcast(&self) {
-        let parcels = self.client.ready_transactions();
-        if parcels.is_empty() {
-            ctrace!(SYNC_PARCEL, "No parcels to propagate");
+        let transactions = self.client.ready_transactions();
+        if transactions.is_empty() {
+            ctrace!(SYNC_TX, "No transactions to propagate");
             return
         }
         for (token, peer) in self.peers.read().iter() {
             let mut peer = peer.write();
-            let unsent: Vec<_> = parcels
+            let unsent: Vec<_> = transactions
                 .iter()
-                .filter(|parcel| !peer.contains(&parcel.hash()))
+                .filter(|tx| !peer.contains(&tx.hash()))
                 .map(|signed| signed.clone().deconstruct().0)
                 .collect();
             if unsent.is_empty() {
@@ -162,9 +159,9 @@ impl Extension {
             for h in unsent_hashes.iter() {
                 peer.push(*h);
             }
-            cdebug!(SYNC_PARCEL, "Send {} parcels to {}", unsent.len(), token);
-            ctrace!(SYNC_PARCEL, "Send {:?}", unsent_hashes);
-            self.api.send(token, &Message::Parcels(unsent).rlp_bytes());
+            cdebug!(SYNC_TX, "Send {} transactions to {}", unsent.len(), token);
+            ctrace!(SYNC_TX, "Send {:?}", unsent_hashes);
+            self.api.send(token, &Message::Transactions(unsent).rlp_bytes());
         }
     }
 }

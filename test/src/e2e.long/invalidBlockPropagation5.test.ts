@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod extension;
-mod message;
+import { H256 } from "codechain-primitives/lib";
 
-pub use self::extension::Extension as ParcelSyncExtension;
+import { expect } from "chai";
+import "mocha";
+import { createTestSuite } from "./invalidBlockPropagation.helper";
+
+const INVALID_TRANSACTIONS_ROOT = new H256(
+    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+);
+const params = {
+    ttransactionRoot: INVALID_TRANSACTIONS_ROOT
+};
+createTestSuite(
+    5,
+    "OnChain invalid transactionRoot block propagation test",
+    params
+);

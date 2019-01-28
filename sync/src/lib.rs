@@ -46,12 +46,12 @@ extern crate trie_standardmap;
 extern crate util_error;
 
 mod block;
-mod parcel;
 mod snapshot;
+mod transaction;
 
 pub use crate::block::{BlockSyncExtension, BlockSyncInfo};
-pub use crate::parcel::ParcelSyncExtension;
 pub use crate::snapshot::SnapshotService;
+pub use crate::transaction::TransactionSyncExtension;
 
 #[cfg(test)]
 extern crate codechain_key as ckey;

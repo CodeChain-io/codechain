@@ -534,8 +534,8 @@ impl Extension {
                     return false
                 }
                 for body in bodies {
-                    for parcel in body {
-                        let is_valid = match &parcel.action {
+                    for tx in body {
+                        let is_valid = match &tx.action {
                             Action::Custom {
                                 handler_id,
                                 ..
@@ -596,7 +596,7 @@ impl Extension {
             let mut body_downloader = self.body_downloader.lock();
             body_downloader.import_bodies(hashes, bodies);
             let completed = body_downloader.drain();
-            for (hash, parcels) in completed {
+            for (hash, transactions) in completed {
                 let header = self
                     .client
                     .block_header(&BlockId::Hash(hash))
@@ -604,7 +604,7 @@ impl Extension {
                     .decode();
                 let block = Block {
                     header,
-                    transactions: parcels,
+                    transactions,
                 };
                 cdebug!(SYNC, "Body download completed for #{}({})", block.header.number(), hash);
                 match self.client.import_block(block.rlp_bytes(&Seal::With)) {
