@@ -130,11 +130,11 @@ describe("transactions", function() {
                 const tx = node.sdk.core.createTransferAssetTransaction();
                 tx.addInputs(input);
                 tx.addOutputs(
-                    amounts.map(amount => ({
+                    amounts.map(quantity => ({
                         assetType: input.assetType,
                         shardId: input.shardId,
                         recipient,
-                        quantity: amount
+                        quantity
                     }))
                 );
                 await node.signTransactionInput(tx, 0);
@@ -150,11 +150,11 @@ describe("transactions", function() {
                 const tx = node.sdk.core.createTransferAssetTransaction();
                 tx.addInputs(input);
                 tx.addOutputs(
-                    amounts.map(amount => ({
+                    amounts.map(quantity => ({
                         assetType: input.assetType,
                         shardId: input.shardId,
                         recipient,
-                        quantity: amount
+                        quantity
                     }))
                 );
                 await node.signTransactionInput(tx, 0);
@@ -175,11 +175,11 @@ describe("transactions", function() {
             const tx = node.sdk.core.createTransferAssetTransaction();
             tx.addInputs(input);
             tx.addOutputs(
-                amounts.map(amount => ({
+                amounts.map(quantity => ({
                     assetType: input.assetType,
                     shardId: input.shardId,
                     recipient,
-                    quantity: amount
+                    quantity
                 }))
             );
             await node.signTransactionInput(tx, 0);

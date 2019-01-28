@@ -72,8 +72,8 @@ describe("orders", function() {
                 expect(splitInvoices![0].success).to.be.true;
 
                 const splitGolds = splitTx.getTransferredAssets();
-                const splitGoldInputs = splitGolds.map((gold: Asset) =>
-                    gold.createTransferInput()
+                const splitGoldInputs = splitGolds.map((g: Asset) =>
+                    g.createTransferInput()
                 );
 
                 const expiration = Math.round(Date.now() / 1000) + 120;
@@ -230,8 +230,8 @@ describe("orders", function() {
                 expect(splitInvoices![0].success).to.be.true;
 
                 const splitGolds = splitTx.getTransferredAssets();
-                const splitGoldInputs = splitGolds.map(gold =>
-                    gold.createTransferInput()
+                const splitGoldInputs = splitGolds.map(g =>
+                    g.createTransferInput()
                 );
                 const silverInput = silver.createTransferInput();
 
@@ -1175,8 +1175,8 @@ describe("orders", function() {
                 expect(splitInvoices![0].success).to.be.true;
 
                 const splitGolds = splitTx.getTransferredAssets();
-                const splitGoldInputs = splitGolds.map(gold =>
-                    gold.createTransferInput()
+                const splitGoldInputs = splitGolds.map(g =>
+                    g.createTransferInput()
                 );
                 const silverInput = silver.createTransferInput();
 
@@ -1261,8 +1261,8 @@ describe("orders", function() {
                 expect(splitInvoices![0].success).to.be.true;
 
                 const splitGolds = splitTx.getTransferredAssets();
-                const splitGoldInputs = splitGolds.map(gold =>
-                    gold.createTransferInput()
+                const splitGoldInputs = splitGolds.map(g =>
+                    g.createTransferInput()
                 );
                 const silverInput = silver.createTransferInput();
 
