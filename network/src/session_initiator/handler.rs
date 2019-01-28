@@ -253,8 +253,6 @@ impl SessionInitiator {
                     return Ok(())
                 }
 
-                let message = message::Message::nonce_denied(message.seq(), "Cannot create session".to_string());
-                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
                 Err("Cannot create session".into())
             }
             message::Body::NonceAllowed(encrypted_nonce) => {
@@ -271,17 +269,6 @@ impl SessionInitiator {
                 if !self.routing_table.create_allowed_session(from, &encrypted_nonce) {
                     return Err(format!("Cannot create session to {}", from).into())
                 }
-                Ok(())
-            }
-            message::Body::NonceDenied(reason) => {
-                io.clear_timer(message.seq() as TimerToken);
-                self.requests
-                    .restore(message.seq() as usize, Some(*from))
-                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
-
-                self.routing_table.reset_imported_secret(from);
-
-                cinfo!(NETWORK, "Connection to {} refused(reason: {})", from, reason);
                 Ok(())
             }
         }
