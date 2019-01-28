@@ -1391,6 +1391,8 @@ impl ChainNotify for TendermintChainNotify {
                 ENGINE,
                 "Transition to Propose because all pre-commits are received and the canonical chain is appended"
             );
+            let new_height = t.height + 1;
+            t.move_to_height(new_height);
             t.move_to_step(Step::Propose)
         }
     }
