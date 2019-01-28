@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::net::{IpAddr, SocketAddr};
+
 use jsonrpc_core::Result;
 
 use super::super::types::FilterStatus;
@@ -21,13 +23,13 @@ use super::super::types::FilterStatus;
 build_rpc_trait! {
     pub trait Net {
         # [rpc(name = "net_connect")]
-        fn connect(&self, ::std::net::IpAddr, u16) -> Result<()>;
+        fn connect(&self, IpAddr, u16) -> Result<()>;
 
         # [rpc(name = "net_disconnect")]
-        fn disconnect(&self, ::std::net::IpAddr, u16) -> Result<()>;
+        fn disconnect(&self, IpAddr, u16) -> Result<()>;
 
         # [rpc(name = "net_isConnected")]
-        fn is_connected(&self, ::std::net::IpAddr, u16) -> Result<bool>;
+        fn is_connected(&self, IpAddr, u16) -> Result<bool>;
 
         # [rpc(name = "net_getPort")]
         fn get_port(&self) -> Result<u16>;
@@ -36,19 +38,19 @@ build_rpc_trait! {
         fn get_peer_count(&self) -> Result<usize>;
 
         # [rpc(name = "net_getEstablishedPeers")]
-        fn get_established_peers(&self) -> Result<Vec<::std::net::SocketAddr>>;
+        fn get_established_peers(&self) -> Result<Vec<SocketAddr>>;
 
         #[rpc(name = "net_addToWhitelist")]
-        fn add_to_whitelist(&self, ::std::net::IpAddr, Option<String>) -> Result<()>;
+        fn add_to_whitelist(&self, IpAddr, Option<String>) -> Result<()>;
 
         #[rpc(name = "net_removeFromWhitelist")]
-        fn remove_from_whitelist(&self, ::std::net::IpAddr) -> Result<()>;
+        fn remove_from_whitelist(&self, IpAddr) -> Result<()>;
 
         #[rpc(name = "net_addToBlacklist")]
-        fn add_to_blacklist(&self, ::std::net::IpAddr, Option<String>) -> Result<()>;
+        fn add_to_blacklist(&self, IpAddr, Option<String>) -> Result<()>;
 
         #[rpc(name = "net_removeFromBlacklist")]
-        fn remove_from_blacklist(&self, ::std::net::IpAddr) -> Result<()>;
+        fn remove_from_blacklist(&self, IpAddr) -> Result<()>;
 
         #[rpc(name = "net_enableWhitelist")]
         fn enable_whitelist(&self) -> Result<()>;
