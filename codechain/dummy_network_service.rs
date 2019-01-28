@@ -16,6 +16,7 @@
 
 use std::net::IpAddr;
 
+use ckey::Public;
 use cnetwork::{FilterEntry, NetworkControl, NetworkControlError, SocketAddr};
 
 pub struct DummyNetworkService {}
@@ -27,6 +28,19 @@ impl DummyNetworkService {
 }
 
 impl NetworkControl for DummyNetworkService {
+    fn local_key_for(&self, _: IpAddr, _port: u16) -> Result<Public, NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn register_remote_key_for(
+        &self,
+        _: IpAddr,
+        _port: u16,
+        _remote_pub_key: Public,
+    ) -> Result<Public, NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
     fn connect(&self, _addr: SocketAddr) -> Result<(), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
