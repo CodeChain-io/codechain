@@ -203,16 +203,16 @@ describeSkippedInTravis("Tendermint ", function() {
             ])
         );
 
-        const best_number = await promiseExpect.shouldFulfill(
+        const bestNumber = await promiseExpect.shouldFulfill(
             "best blocknumber",
             nodes[1].getBestBlockNumber()
         );
         await promiseExpect.shouldFulfill(
             "best blocknumber",
             Promise.all([
-                nodes[1].waitBlockNumber(best_number + 1),
-                nodes[2].waitBlockNumber(best_number + 1),
-                nodes[3].waitBlockNumber(best_number + 1)
+                nodes[1].waitBlockNumber(bestNumber + 1),
+                nodes[2].waitBlockNumber(bestNumber + 1),
+                nodes[3].waitBlockNumber(bestNumber + 1)
             ])
         );
         await expect(
@@ -220,7 +220,7 @@ describeSkippedInTravis("Tendermint ", function() {
                 "best blocknumber",
                 nodes[3].sdk.rpc.chain.getBestBlockNumber()
             )
-        ).to.eventually.greaterThan(best_number);
+        ).to.eventually.greaterThan(bestNumber);
     }).timeout(30_000);
 
     it("Gossip", async function() {
