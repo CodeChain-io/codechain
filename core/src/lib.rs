@@ -77,13 +77,14 @@ mod tests;
 
 pub use crate::account_provider::{AccountProvider, SignError as AccountProviderError};
 pub use crate::block::Block;
+pub use crate::client::Error::Database;
 pub use crate::client::{
-    AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, DatabaseClient, EngineClient,
-    EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq, Shard, StateInfo,
-    TestBlockChainClient, TextClient,
+    AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, ClientConfig, DatabaseClient,
+    EngineClient, EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq,
+    Shard, StateInfo, TestBlockChainClient, TextClient,
 };
 pub use crate::consensus::EngineType;
-pub use crate::db::COL_STATE;
+pub use crate::db::{COL_STATE, NUM_COLUMNS};
 pub use crate::error::{BlockImportError, Error, ImportError};
 pub use crate::header::{Header, Seal};
 pub use crate::miner::{Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};

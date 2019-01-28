@@ -116,17 +116,19 @@ impl TestBlockChainClient {
 
     /// Creates new test client with specified extra data for each block
     pub fn new_with_extra_data(extra_data: Bytes) -> Self {
+        let db = Arc::new(kvdb_memorydb::create(NUM_COLUMNS.unwrap()));
         let scheme = Scheme::new_test();
-        TestBlockChainClient::new_with_scheme_and_extra(scheme, extra_data)
+        TestBlockChainClient::new_with_scheme_and_extra(scheme, extra_data, db)
     }
 
     /// Create test client with custom scheme.
     pub fn new_with_scheme(scheme: Scheme) -> Self {
-        TestBlockChainClient::new_with_scheme_and_extra(scheme, Bytes::new())
+        let db = Arc::new(kvdb_memorydb::create(NUM_COLUMNS.unwrap()));
+        TestBlockChainClient::new_with_scheme_and_extra(scheme, Bytes::new(), db)
     }
 
     /// Create test client with custom scheme and extra data.
-    pub fn new_with_scheme_and_extra(scheme: Scheme, extra_data: Bytes) -> Self {
+    pub fn new_with_scheme_and_extra(scheme: Scheme, extra_data: Bytes, db: Arc<KeyValueDB>) -> Self {
         let genesis_block = scheme.genesis_block();
         let genesis_header = scheme.genesis_header();
         let genesis_hash = genesis_header.hash();
@@ -145,7 +147,7 @@ impl TestBlockChainClient {
             seqs: RwLock::new(HashMap::new()),
             storage: RwLock::new(HashMap::new()),
             queue_size: AtomicUsize::new(0),
-            miner: Arc::new(Miner::with_scheme(&scheme)),
+            miner: Arc::new(Miner::with_scheme(&scheme, db)),
             scheme,
             latest_block_timestamp: RwLock::new(10_000_000),
             history: RwLock::new(None),

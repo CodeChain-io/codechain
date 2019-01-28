@@ -158,6 +158,19 @@ impl rlp::Encodable for SignedTransaction {
     }
 }
 
+impl rlp::Decodable for SignedTransaction {
+    fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let unverified_transaction: UnverifiedTransaction = UnverifiedTransaction::decode(d)?;
+        match unverified_transaction.recover_public() {
+            Ok(key) => Ok(SignedTransaction {
+                tx: unverified_transaction,
+                signer_public: key,
+            }),
+            Err(_) => Err(DecoderError::Custom("signer public key recover failed")),
+        }
+    }
+}
+
 impl Deref for SignedTransaction {
     type Target = UnverifiedTransaction;
     fn deref(&self) -> &Self::Target {
