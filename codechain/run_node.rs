@@ -21,8 +21,8 @@ use std::sync::{Arc, Weak};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccore::{
-    AccountProvider, AccountProviderError, ChainNotify, Client, ClientService, EngineType, Miner, MinerService, Scheme,
-    Stratum, StratumConfig, StratumError,
+    AccountProvider, AccountProviderError, ChainNotify, Client, ClientConfig, ClientService, EngineType, Miner,
+    MinerService, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
 };
 use cdiscovery::{Config, Discovery};
 use ckey::Address;
@@ -37,6 +37,8 @@ use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use finally::finally;
+use kvdb::KeyValueDB;
+use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::{Condvar, Mutex};
 
 use crate::config::{self, load_config};
@@ -82,17 +84,15 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
 }
 
 fn client_start(
+    client_config: &ClientConfig,
     timer_loop: &TimerLoop,
-    cfg: &config::Operating,
+    db: Arc<KeyValueDB>,
     scheme: &Scheme,
     miner: Arc<Miner>,
 ) -> Result<ClientService, String> {
     cinfo!(CLIENT, "Starting client");
-    let db_path = cfg.db_path.as_ref().map(|s| s.as_str()).unwrap();
-    let client_path = Path::new(db_path);
-    let client_config = Default::default();
     let reseal_timer = timer_loop.new_timer_with_name("Client reseal timer");
-    let service = ClientService::start(&client_config, &scheme, &client_path, miner, reseal_timer.clone())
+    let service = ClientService::start(client_config, &scheme, db, miner, reseal_timer.clone())
         .map_err(|e| format!("Client service error: {}", e))?;
     reseal_timer.set_handler(&service.client());
 
@@ -113,8 +113,13 @@ fn stratum_start(cfg: &StratumConfig, miner: &Arc<Miner>, client: Arc<Client>) -
     }
 }
 
-fn new_miner(config: &config::Config, scheme: &Scheme, ap: Arc<AccountProvider>) -> Result<Arc<Miner>, String> {
-    let miner = Miner::new(config.miner_options()?, scheme, Some(ap));
+fn new_miner(
+    config: &config::Config,
+    scheme: &Scheme,
+    ap: Arc<AccountProvider>,
+    db: Arc<KeyValueDB>,
+) -> Result<Arc<Miner>, String> {
+    let miner = Miner::new(config.miner_options()?, scheme, Some(ap), db);
 
     if !config.mining.disable.unwrap() {
         match miner.engine_type() {
@@ -189,6 +194,23 @@ fn unlock_accounts(ap: &AccountProvider, pf: &PasswordFile) -> Result<(), String
     Ok(())
 }
 
+pub fn open_db(cfg: &config::Operating, client_config: &ClientConfig) -> Result<Arc<KeyValueDB>, String> {
+    let db_path = cfg.db_path.as_ref().map(|s| s.as_str()).unwrap();
+    let client_path = Path::new(db_path);
+    let mut db_config = DatabaseConfig::with_columns(NUM_COLUMNS);
+
+    db_config.memory_budget = client_config.db_cache_size;
+    db_config.compaction = client_config.db_compaction.compaction_profile(client_path);
+    db_config.wal = client_config.db_wal;
+
+    let db = Arc::new(
+        Database::open(&db_config, &client_path.to_str().expect("DB path could not be converted to string."))
+            .map_err(|_e| "Low level database error. Some issue with disk?".to_string())?,
+    );
+
+    Ok(db)
+}
+
 pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
@@ -230,8 +252,11 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     let ap = prepare_account_provider(keys_path)?;
     unlock_accounts(&*ap, &pf)?;
 
-    let miner = new_miner(&config, &scheme, ap.clone())?;
-    let client = client_start(&timer_loop, &config.operating, &scheme, miner.clone())?;
+    let client_config: ClientConfig = Default::default();
+    let db = open_db(&config.operating, &client_config)?;
+
+    let miner = new_miner(&config, &scheme, ap.clone(), Arc::clone(&db))?;
+    let client = client_start(&client_config, &timer_loop, db, &scheme, miner.clone())?;
     let mut some_sync = None;
 
     scheme.engine.register_chain_notify(client.client().as_ref());

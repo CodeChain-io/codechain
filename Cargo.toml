@@ -35,6 +35,8 @@ ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
 finally = { git = "https://github.com/CodeChain-io/rust-finally.git" }
 futures = "0.1"
+kvdb = { path = "util/kvdb" }
+kvdb-rocksdb = { path = "util/kvdb-rocksdb" }
 log = "0.4.6"
 env_logger = "0.5.3"
 never = { git = "https://github.com/CodeChain-io/rust-never.git" }
