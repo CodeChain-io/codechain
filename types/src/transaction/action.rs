@@ -21,10 +21,8 @@ use ckey::{Address, NetworkId, Public, Signature};
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use crate::transaction::{
-    AssetMintOutput, AssetTransferInput, AssetTransferOutput, Error as TransactionError, OrderOnTransfer, ParcelError,
-    ShardTransaction,
-};
+use crate::errors::SyntaxError;
+use crate::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, OrderOnTransfer, ShardTransaction};
 use crate::ShardId;
 
 const PAY: u8 = 0x02;
@@ -174,7 +172,7 @@ impl Action {
         max_asset_scheme_metadata_size: usize,
         max_transfer_metadata_size: usize,
         max_text_size: usize,
-    ) -> Result<(), ParcelError> {
+    ) -> Result<(), SyntaxError> {
         match self {
             Action::MintAsset {
                 network_id,
@@ -183,13 +181,13 @@ impl Action {
                 ..
             } => {
                 if *network_id != system_network_id {
-                    return Err(ParcelError::InvalidNetworkId(*network_id))
+                    return Err(SyntaxError::InvalidNetworkId(*network_id))
                 }
                 if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(ParcelError::MetadataTooBig)
+                    return Err(SyntaxError::MetadataTooBig)
                 }
                 match output.supply {
-                    Some(supply) if supply == 0 => return Err(TransactionError::ZeroQuantity.into()),
+                    Some(supply) if supply == 0 => return Err(SyntaxError::ZeroQuantity),
                     _ => {}
                 }
             }
@@ -203,23 +201,23 @@ impl Action {
                 ..
             } => {
                 if metadata.len() > max_transfer_metadata_size {
-                    return Err(ParcelError::MetadataTooBig)
+                    return Err(SyntaxError::MetadataTooBig)
                 }
                 if outputs.len() > 512 {
-                    return Err(TransactionError::TooManyOutputs(outputs.len()).into())
+                    return Err(SyntaxError::TooManyOutputs(outputs.len()))
                 }
                 if !is_input_and_output_consistent(inputs, outputs) {
-                    return Err(TransactionError::InconsistentTransactionInOut.into())
+                    return Err(SyntaxError::InconsistentTransactionInOut)
                 }
                 if burns.iter().any(|burn| burn.prev_out.quantity == 0) {
-                    return Err(TransactionError::ZeroQuantity.into())
+                    return Err(SyntaxError::ZeroQuantity)
                 }
                 if inputs.iter().any(|input| input.prev_out.quantity == 0) {
-                    return Err(TransactionError::ZeroQuantity.into())
+                    return Err(SyntaxError::ZeroQuantity)
                 }
                 check_duplication_in_prev_out(burns, inputs)?;
                 if outputs.iter().any(|output| output.quantity == 0) {
-                    return Err(TransactionError::ZeroQuantity.into())
+                    return Err(SyntaxError::ZeroQuantity)
                 }
                 for order in orders {
                     order.order.verify()?;
@@ -227,7 +225,7 @@ impl Action {
                 verify_order_indices(orders, inputs.len(), outputs.len())?;
                 verify_input_and_output_consistent_with_order(orders, inputs, outputs)?;
                 if *network_id != system_network_id {
-                    return Err(ParcelError::InvalidNetworkId(*network_id))
+                    return Err(SyntaxError::InvalidNetworkId(*network_id))
                 }
             }
             Action::ChangeAssetScheme {
@@ -236,10 +234,10 @@ impl Action {
                 ..
             } => {
                 if *network_id != system_network_id {
-                    return Err(ParcelError::InvalidNetworkId(*network_id))
+                    return Err(SyntaxError::InvalidNetworkId(*network_id))
                 }
                 if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(ParcelError::MetadataTooBig)
+                    return Err(SyntaxError::MetadataTooBig)
                 }
             }
             Action::ComposeAsset {
@@ -250,26 +248,25 @@ impl Action {
                 ..
             } => {
                 if inputs.is_empty() {
-                    return Err(TransactionError::EmptyInput.into())
+                    return Err(SyntaxError::EmptyInput)
                 }
                 if inputs.iter().any(|input| input.prev_out.quantity == 0) {
-                    return Err(TransactionError::ZeroQuantity.into())
+                    return Err(SyntaxError::ZeroQuantity)
                 }
                 check_duplication_in_prev_out(&[], inputs)?;
                 match output.supply {
                     Some(supply) if supply == 1 => {}
                     _ => {
-                        return Err(TransactionError::InvalidComposedOutput {
+                        return Err(SyntaxError::InvalidComposedOutputAmount {
                             got: output.supply.unwrap_or_default(),
-                        }
-                        .into())
+                        })
                     }
                 }
                 if *network_id != system_network_id {
-                    return Err(ParcelError::InvalidNetworkId(*network_id))
+                    return Err(SyntaxError::InvalidNetworkId(*network_id))
                 }
                 if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(ParcelError::MetadataTooBig)
+                    return Err(SyntaxError::MetadataTooBig)
                 }
             }
             Action::DecomposeAsset {
@@ -279,21 +276,20 @@ impl Action {
                 ..
             } => {
                 if input.prev_out.quantity != 1 {
-                    return Err(TransactionError::InvalidDecomposedInput {
+                    return Err(SyntaxError::InvalidDecomposedInputAmount {
                         asset_type: input.prev_out.asset_type,
                         shard_id: input.prev_out.shard_id,
                         got: input.prev_out.quantity,
-                    }
-                    .into())
+                    })
                 }
                 if outputs.is_empty() {
-                    return Err(TransactionError::EmptyOutput.into())
+                    return Err(SyntaxError::EmptyOutput)
                 }
                 if outputs.iter().any(|output| output.quantity == 0) {
-                    return Err(TransactionError::ZeroQuantity.into())
+                    return Err(SyntaxError::ZeroQuantity)
                 }
                 if *network_id != system_network_id {
-                    return Err(ParcelError::InvalidNetworkId(*network_id))
+                    return Err(SyntaxError::InvalidNetworkId(*network_id))
                 }
             }
             Action::UnwrapCCC {
@@ -301,13 +297,13 @@ impl Action {
                 network_id,
             } => {
                 if burn.prev_out.quantity == 0 {
-                    return Err(TransactionError::ZeroQuantity.into())
+                    return Err(SyntaxError::ZeroQuantity)
                 }
                 if !burn.prev_out.asset_type.is_zero() {
-                    return Err(TransactionError::InvalidAssetType(burn.prev_out.asset_type).into())
+                    return Err(SyntaxError::InvalidAssetType(burn.prev_out.asset_type))
                 }
                 if *network_id != system_network_id {
-                    return Err(ParcelError::InvalidNetworkId(*network_id))
+                    return Err(SyntaxError::InvalidNetworkId(*network_id))
                 }
             }
             Action::WrapCCC {
@@ -315,7 +311,7 @@ impl Action {
                 ..
             } => {
                 if *quantity == 0 {
-                    return Err(ParcelError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity)
                 }
             }
             Action::Store {
@@ -323,7 +319,7 @@ impl Action {
                 ..
             } => {
                 if content.len() > max_text_size {
-                    return Err(ParcelError::TextContentTooBig)
+                    return Err(SyntaxError::TextContentTooBig)
                 }
             }
             _ => {}
@@ -826,12 +822,12 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
 fn check_duplication_in_prev_out(
     burns: &[AssetTransferInput],
     inputs: &[AssetTransferInput],
-) -> Result<(), TransactionError> {
+) -> Result<(), SyntaxError> {
     let mut prev_out_set = HashSet::new();
     for input in inputs.iter().chain(burns) {
         let prev_out = (input.prev_out.tracker, input.prev_out.index);
         if !prev_out_set.insert(prev_out) {
-            return Err(TransactionError::DuplicatedPreviousOutput {
+            return Err(SyntaxError::DuplicatedPreviousOutput {
                 transaction_hash: input.prev_out.tracker,
                 index: input.prev_out.index,
             })
@@ -840,25 +836,21 @@ fn check_duplication_in_prev_out(
     Ok(())
 }
 
-fn verify_order_indices(
-    orders: &[OrderOnTransfer],
-    input_len: usize,
-    output_len: usize,
-) -> Result<(), TransactionError> {
+fn verify_order_indices(orders: &[OrderOnTransfer], input_len: usize, output_len: usize) -> Result<(), SyntaxError> {
     let mut input_check = vec![false; input_len];
     let mut output_check = vec![false; output_len];
 
     for order in orders {
         for input_idx in order.input_indices.iter() {
             if *input_idx >= input_len || input_check[*input_idx] {
-                return Err(TransactionError::InvalidOrderInOutIndices)
+                return Err(SyntaxError::InvalidOrderInOutIndices)
             }
             input_check[*input_idx] = true;
         }
 
         for output_idx in order.output_indices.iter() {
             if *output_idx >= output_len || output_check[*output_idx] {
-                return Err(TransactionError::InvalidOrderInOutIndices)
+                return Err(SyntaxError::InvalidOrderInOutIndices)
             }
             output_check[*output_idx] = true;
         }
@@ -870,7 +862,7 @@ fn verify_input_and_output_consistent_with_order(
     orders: &[OrderOnTransfer],
     inputs: &[AssetTransferInput],
     outputs: &[AssetTransferOutput],
-) -> Result<(), TransactionError> {
+) -> Result<(), SyntaxError> {
     for order_tx in orders {
         let mut input_quantity_from: u64 = 0;
         let mut input_quantity_fee: u64 = 0;
@@ -891,7 +883,7 @@ fn verify_input_and_output_consistent_with_order(
             } else if prev_out.asset_type == order.asset_type_fee && prev_out.shard_id == order.shard_id_fee {
                 input_quantity_fee += prev_out.quantity;
             } else {
-                return Err(TransactionError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
             }
         }
 
@@ -900,28 +892,28 @@ fn verify_input_and_output_consistent_with_order(
             let owned_by_taker = order.check_transfer_output(output)?;
             if output.asset_type == order.asset_type_from && output.shard_id == order.shard_id_from {
                 if output_quantity_from != 0 {
-                    return Err(TransactionError::InconsistentTransactionInOutWithOrders)
+                    return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
                 }
                 output_quantity_from = output.quantity;
             } else if output.asset_type == order.asset_type_to && output.shard_id == order.shard_id_to {
                 if output_quantity_to != 0 {
-                    return Err(TransactionError::InconsistentTransactionInOutWithOrders)
+                    return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
                 }
                 output_quantity_to = output.quantity;
             } else if output.asset_type == order.asset_type_fee && output.shard_id == order.shard_id_fee {
                 if owned_by_taker {
                     if output_quantity_fee_remaining != 0 {
-                        return Err(TransactionError::InconsistentTransactionInOutWithOrders)
+                        return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
                     }
                     output_quantity_fee_remaining = output.quantity;
                 } else {
                     if output_quantity_fee_given != 0 {
-                        return Err(TransactionError::InconsistentTransactionInOutWithOrders)
+                        return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
                     }
                     output_quantity_fee_given = output.quantity;
                 }
             } else {
-                return Err(TransactionError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
             }
         }
 
@@ -930,7 +922,7 @@ fn verify_input_and_output_consistent_with_order(
         if input_quantity_from <= output_quantity_from
             || input_quantity_from - output_quantity_from != order_tx.spent_quantity
         {
-            return Err(TransactionError::InconsistentTransactionInOutWithOrders)
+            return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         }
         if !is_ratio_greater_or_equal(
             order.asset_quantity_from,
@@ -938,7 +930,7 @@ fn verify_input_and_output_consistent_with_order(
             order_tx.spent_quantity,
             output_quantity_to,
         ) {
-            return Err(TransactionError::InconsistentTransactionInOutWithOrders)
+            return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         }
         if input_quantity_fee < output_quantity_fee_remaining
             || input_quantity_fee - output_quantity_fee_remaining != output_quantity_fee_given
@@ -949,7 +941,7 @@ fn verify_input_and_output_consistent_with_order(
                 output_quantity_fee_given,
             )
         {
-            return Err(TransactionError::InconsistentTransactionInOutWithOrders)
+            return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         }
     }
     Ok(())
@@ -1392,7 +1384,7 @@ mod tests {
         };
         assert_eq!(
             action.verify(NetworkId::default(), 1000, 1000, 1000),
-            Err(TransactionError::InconsistentTransactionInOutWithOrders.into())
+            Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         );
 
         // Case 2: multiple outputs with same order and asset_type
@@ -1513,7 +1505,7 @@ mod tests {
         };
         assert_eq!(
             action.verify(NetworkId::default(), 1000, 1000, 1000),
-            Err(TransactionError::InconsistentTransactionInOutWithOrders.into())
+            Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         );
 
         // Case 2-2: asset_type_to
@@ -1601,7 +1593,7 @@ mod tests {
         };
         assert_eq!(
             action.verify(NetworkId::default(), 1000, 1000, 1000),
-            Err(TransactionError::InconsistentTransactionInOutWithOrders.into())
+            Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         );
 
         // Case 2-3: asset_type_fee
@@ -1689,7 +1681,7 @@ mod tests {
         };
         assert_eq!(
             action.verify(NetworkId::default(), 1000, 1000, 1000),
-            Err(TransactionError::InconsistentTransactionInOutWithOrders.into())
+            Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         );
     }
 
@@ -1826,10 +1818,7 @@ mod tests {
                 unlock_script: vec![],
             },
         };
-        assert_eq!(
-            tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000),
-            Err(TransactionError::ZeroQuantity.into())
-        );
+        assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000), Err(SyntaxError::ZeroQuantity));
 
         let invalid_asset_type = H160::random();
         let tx_invalid_asset_type = Action::UnwrapCCC {
@@ -1849,7 +1838,7 @@ mod tests {
         };
         assert_eq!(
             tx_invalid_asset_type.verify(NetworkId::default(), 1000, 1000, 1000),
-            Err(TransactionError::InvalidAssetType(invalid_asset_type).into())
+            Err(SyntaxError::InvalidAssetType(invalid_asset_type))
         );
     }
 
@@ -1861,6 +1850,6 @@ mod tests {
             parameters: vec![],
             quantity: 0,
         };
-        assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000), Err(ParcelError::ZeroQuantity));
+        assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000), Err(SyntaxError::ZeroQuantity));
     }
 }

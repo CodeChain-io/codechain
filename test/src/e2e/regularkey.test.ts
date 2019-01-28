@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import CodeChain from "../helper/spawn";
-import { ERROR, errorMatcher } from "../helper/error";
+import { ERROR } from "../helper/error";
 
 import "mocha";
 import { expect } from "chai";
@@ -57,7 +57,7 @@ describe("solo - 1 node", function() {
             await node.sendPayTx({ secret: privKey });
             expect.fail("It must fail");
         } catch (e) {
-            expect(e).to.satisfy(errorMatcher(ERROR.NOT_ENOUGH_BALANCE));
+            expect(e).is.similarTo(ERROR.NOT_ENOUGH_BALANCE);
         }
 
         await node.setRegularKey(pubKey);
@@ -77,7 +77,7 @@ describe("solo - 1 node", function() {
             await node.sendPayTx({ secret: privKey });
             expect.fail("It must fail");
         } catch (e) {
-            expect(e).to.satisfy(errorMatcher(ERROR.NOT_ENOUGH_BALANCE));
+            expect(e).is.similarTo(ERROR.NOT_ENOUGH_BALANCE);
         }
     });
 

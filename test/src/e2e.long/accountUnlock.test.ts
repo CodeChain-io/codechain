@@ -16,7 +16,7 @@
 
 import CodeChain from "../helper/spawn";
 import { wait } from "../helper/promise";
-import { ERROR, errorMatcher } from "../helper/error";
+import { ERROR } from "../helper/error";
 import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
 
 import "mocha";
@@ -67,7 +67,7 @@ describe("account unlock", function() {
                 await node.sdk.rpc.account.sign(message, address);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(errorMatcher(ERROR.NOT_UNLOCKED));
+                expect(e).similarTo(ERROR.NOT_UNLOCKED);
             }
         }
     }).timeout(2000 * unlockTestSize + 5000);

@@ -32,12 +32,14 @@ import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { blake160 } from "codechain-sdk/lib/utils";
 
 import CodeChain from "../helper/spawn";
-import { ERROR, errorMatcher } from "../helper/error";
+import { ERROR } from "../helper/error";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 
 import "mocha";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+import { fail } from "assert";
+import { $anything } from "../helper/chai-similar";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
@@ -83,9 +85,7 @@ describe("transactions", function() {
                 await node.sendAssetTransaction(tx);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_ZERO_QUANTITY)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_TX_ZERO_QUANTITY);
             }
         });
 
@@ -111,7 +111,7 @@ describe("transactions", function() {
                 await node.sdk.rpc.chain.sendSignedTransaction(signed);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(errorMatcher(ERROR.INVALID_RLP_TOO_BIG));
+                expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
             }
         });
     });
@@ -165,8 +165,8 @@ describe("transactions", function() {
                     await node.sendAssetTransaction(tx);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_TX_INCONSISTENT_IN_OUT)
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_TX_INCONSISTENT_IN_OUT
                     );
                 }
             });
@@ -190,9 +190,7 @@ describe("transactions", function() {
                 await node.sendAssetTransaction(tx);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_ZERO_QUANTITY)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_TX_ZERO_QUANTITY);
             }
         });
 
@@ -211,9 +209,7 @@ describe("transactions", function() {
                 await node.sendAssetTransaction(tx);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_INCONSISTENT_IN_OUT)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_TX_INCONSISTENT_IN_OUT);
             }
         });
 
@@ -232,9 +228,7 @@ describe("transactions", function() {
                 await node.sendAssetTransaction(tx);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_TX_DUPLICATED_PREV_OUT)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_TX_DUPLICATED_PREV_OUT);
             }
         });
     });
@@ -362,7 +356,7 @@ describe("transactions", function() {
             await node.sendAssetTransaction(tx2);
             expect.fail();
         } catch (e) {
-            expect(e).to.satisfy(errorMatcher(ERROR.INVALID_TX_ZERO_QUANTITY));
+            expect(e).is.similarTo(ERROR.INVALID_TX_ZERO_QUANTITY);
         }
     });
 
@@ -396,13 +390,16 @@ describe("transactions", function() {
         );
         const invoices2 = await node.sendAssetTransaction(tx2);
         expect(invoices2!.length).to.equal(1);
-        expect(invoices2![0].success).to.be.false;
-        expect(invoices2![0].error!.type).to.equal("InvalidTransaction");
-        expect(invoices2![0].error!.content.type).to.equal("FailedToUnlock");
-        expect(invoices2![0].error!.content.content.reason).to.be.equal(
-            "ScriptShouldBeBurnt"
-        );
-
+        expect(invoices2![0]).to.be.similarTo({
+            success: false,
+            error: {
+                type: "FailedToUnlock",
+                content: {
+                    reason: "ScriptShouldBeBurnt",
+                    address: $anything
+                }
+            }
+        });
         expect(
             await node.sdk.rpc.chain.getAsset(tx1.tracker(), 0, asset.shardId)
         ).not.to.be.null;
@@ -416,12 +413,16 @@ describe("transactions", function() {
 
         const invoices = await node.sendAssetTransaction(tx);
         expect(invoices!.length).to.equal(1);
-        expect(invoices![0].success).to.be.false;
-        expect(invoices![0].error!.type).to.equal("InvalidTransaction");
-        expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
-        expect(invoices![0].error!.content.content.reason).to.be.equal(
-            "ScriptShouldNotBeBurnt"
-        );
+        expect(invoices![0]).to.be.similarTo({
+            success: false,
+            error: {
+                type: "FailedToUnlock",
+                content: {
+                    reason: "ScriptShouldNotBeBurnt",
+                    address: $anything
+                }
+            }
+        });
     });
 
     describe("ScriptError", function() {
@@ -441,12 +442,16 @@ describe("transactions", function() {
             tx.input(0)!.setUnlockScript(Buffer.from([Opcode.NOP])); // Invalid Opcode for unlock_script
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
-            expect(invoices![0].success).to.be.false;
-            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
-            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
-            expect(invoices![0].error!.content.content.reason).to.be.equal(
-                "ScriptError"
-            );
+            expect(invoices![0]).to.be.similarTo({
+                success: false,
+                error: {
+                    type: "FailedToUnlock",
+                    content: {
+                        reason: "ScriptError",
+                        address: $anything
+                    }
+                }
+            });
         });
 
         it("Cannot transfer trivially fail script", async function() {
@@ -475,12 +480,16 @@ describe("transactions", function() {
 
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
-            expect(invoices![0].success).to.be.false;
-            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
-            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
-            expect(invoices![0].error!.content.content.reason).to.be.equal(
-                "ScriptError"
-            );
+            expect(invoices![0]).to.be.similarTo({
+                success: false,
+                error: {
+                    type: "FailedToUnlock",
+                    content: {
+                        reason: "ScriptError",
+                        address: $anything
+                    }
+                }
+            });
         });
 
         it("Can transfer trivially success script", async function() {
@@ -544,12 +553,16 @@ describe("transactions", function() {
 
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
-            expect(invoices![0].success).to.be.false;
-            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
-            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
-            expect(invoices![0].error!.content.content.reason).to.be.equal(
-                "ScriptError"
-            );
+            expect(invoices![0]).to.be.similarTo({
+                success: false,
+                error: {
+                    type: "FailedToUnlock",
+                    content: {
+                        reason: "ScriptError",
+                        address: $anything
+                    }
+                }
+            });
         });
     });
 
@@ -621,8 +634,7 @@ describe("transactions", function() {
                 throw Error("Cannot get the invoice");
             }
             expect(invoice.success).to.be.false;
-            expect(invoice.error!.type).to.equal("InvalidTransaction");
-            expect(invoice.error!.content.type).to.equal("NotApproved");
+            expect(invoice.error!.type).to.equal("NotApproved");
         });
     });
 
@@ -706,12 +718,16 @@ describe("transactions", function() {
             await node.sdk.key.signTransactionBurn(tx, 0);
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
-            expect(invoices![0].success).to.be.false;
-            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
-            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
-            expect(invoices![0].error!.content.content.reason).to.equal(
-                "ScriptError"
-            );
+            expect(invoices![0]).to.be.similarTo({
+                success: false,
+                error: {
+                    type: "FailedToUnlock",
+                    content: {
+                        reason: "ScriptError",
+                        address: $anything
+                    }
+                }
+            });
         });
 
         it("Can add burns after signing with the signature tag of single input", async function() {
@@ -750,12 +766,16 @@ describe("transactions", function() {
             await node.sdk.key.signTransactionInput(tx, 1);
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
-            expect(invoices![0].success).to.be.false;
-            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
-            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
-            expect(invoices![0].error!.content.content.reason).to.equal(
-                "ScriptError"
-            );
+            expect(invoices![0]).to.be.similarTo({
+                success: false,
+                error: {
+                    type: "FailedToUnlock",
+                    content: {
+                        reason: "ScriptError",
+                        address: $anything
+                    }
+                }
+            });
         });
 
         it("Can add inputs after signing with the signature tag of single input", async function() {
@@ -797,12 +817,16 @@ describe("transactions", function() {
             });
             const invoices = await node.sendAssetTransaction(tx);
             expect(invoices!.length).to.equal(1);
-            expect(invoices![0].success).to.be.false;
-            expect(invoices![0].error!.type).to.equal("InvalidTransaction");
-            expect(invoices![0].error!.content.type).to.equal("FailedToUnlock");
-            expect(invoices![0].error!.content.content.reason).to.equal(
-                "ScriptError"
-            );
+            expect(invoices![0]).to.be.similarTo({
+                success: false,
+                error: {
+                    type: "FailedToUnlock",
+                    content: {
+                        reason: "ScriptError",
+                        address: $anything
+                    }
+                }
+            });
         });
 
         it("Can add outputs after signing the signature tag of some outputs", async function() {
@@ -1108,9 +1132,7 @@ describe("transactions", function() {
                 await node.sdk.rpc.chain.sendSignedTransaction(transaction);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.INVALID_PARCEL_ZERO_QUANTITY)
-                );
+                expect(e).is.similarTo(ERROR.INVALID_TX_ZERO_QUANTITY);
             }
         });
     });
@@ -1243,9 +1265,7 @@ describe("transactions", function() {
                     await node.sendAssetTransaction(tx);
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_TX_ASSET_TYPE)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_TX_ASSET_TYPE);
                 }
             });
         });
