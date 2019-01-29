@@ -343,6 +343,7 @@ impl<'a> TendermintSealView<'a> {
     pub fn signatures(&self) -> Result<Vec<(usize, SchnorrSignature)>, Error> {
         let precommits = self.precommits();
         let bitset = self.bitset()?;
+        debug_assert_eq!(bitset.count() as usize, precommits.item_count()?);
 
         let bitset_iter = bitset.true_index_iter();
 
