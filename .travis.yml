@@ -46,7 +46,6 @@ jobs:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - name: test-linux
       os: linux
-      sudo: false
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
@@ -63,7 +62,6 @@ jobs:
         - RUST_BACKTRACE=1 cargo test --verbose --all || exit 1
     - name: int-test-linux
       os: linux
-      sudo: false
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
@@ -82,7 +80,6 @@ jobs:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - stage: deploy
       name: deploy
-      sudo: required
       script: skip
       services:
         - docker
