@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#![cfg_attr(feature = "nightly", feature(test))]
+
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_io as cio;
 extern crate codechain_json as cjson;
