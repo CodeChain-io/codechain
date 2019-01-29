@@ -18,11 +18,13 @@ use std::cmp::PartialEq;
 use std::fmt;
 use std::ops::Sub;
 
-use primitives::H256;
+use ckey::SchnorrSignature;
+use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::message::VoteStep;
 use crate::block::{IsBlock, SealedBlock};
+use crate::error::Error;
 
 pub type Height = usize;
 pub type View = usize;
@@ -201,6 +203,17 @@ impl BitSet {
 
         self.0[array_index] &= 0b1111_1111 ^ (1 << bit_index);
     }
+
+    pub fn count(&self) -> u32 {
+        self.0.iter().cloned().map(u8::count_ones).sum()
+    }
+
+    pub fn true_index_iter(&self) -> BitSetIndexIterator {
+        BitSetIndexIterator {
+            index: 0,
+            bitset: self,
+        }
+    }
 }
 
 impl Default for BitSet {
@@ -260,6 +273,33 @@ impl<'a> Sub for &'a BitSet {
     }
 }
 
+pub struct BitSetIndexIterator<'a> {
+    index: usize,
+    bitset: &'a BitSet,
+}
+
+impl<'a> Iterator for BitSetIndexIterator<'a> {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= MAX_VALIDATOR_SIZE {
+            return None
+        }
+
+        while !self.bitset.is_set(self.index) {
+            self.index += 1;
+
+            if self.index >= MAX_VALIDATOR_SIZE {
+                return None
+            }
+        }
+
+        let result = Some(self.index);
+        self.index += 1;
+        result
+    }
+}
+
 pub struct PeerState {
     pub vote_step: VoteStep,
     pub proposal: Option<H256>,
@@ -273,5 +313,40 @@ impl PeerState {
             proposal: None,
             messages: BitSet::new(),
         }
+    }
+}
+
+pub struct TendermintSealView<'a> {
+    seal: &'a [Bytes],
+}
+
+impl<'a> TendermintSealView<'a> {
+    pub fn new(bytes: &'a [Bytes]) -> TendermintSealView<'a> {
+        TendermintSealView {
+            seal: bytes,
+        }
+    }
+
+    pub fn bitset(&self) -> Result<BitSet, Error> {
+        Ok(UntrustedRlp::new(
+            &self.seal.get(3).expect("block went through verify_block_basic; block has .seal_fields() fields; qed"),
+        )
+        .as_val()?)
+    }
+
+    pub fn precommits(&self) -> UntrustedRlp<'a> {
+        UntrustedRlp::new(
+            &self.seal.get(2).expect("block went through verify_block_basic; block has .seal_fields() fields; qed"),
+        )
+    }
+
+    pub fn signatures(&self) -> Result<Vec<(usize, SchnorrSignature)>, Error> {
+        let precommits = self.precommits();
+        let bitset = self.bitset()?;
+
+        let bitset_iter = bitset.true_index_iter();
+        let signatures: Vec<SchnorrSignature> =
+            precommits.iter().map(|rlp| rlp.as_val::<SchnorrSignature>()).collect::<Result<_, _>>()?;
+        Ok(bitset_iter.zip(signatures).collect())
     }
 }
