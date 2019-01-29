@@ -139,7 +139,7 @@ impl Worker {
                 }
             }
             WorkType::Message(message) => {
-                if let Err(err) = work.handler.message(&IoContext::new(channel), &message) {
+                if let Err(err) = work.handler.message(&IoContext::new(channel), message) {
                     cwarn!(IO, "Error in message {:?}", err);
                 }
             }

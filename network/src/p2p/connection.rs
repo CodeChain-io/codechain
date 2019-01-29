@@ -107,13 +107,13 @@ impl EstablishedConnection {
         self.enqueue(Message::Negotiation(NegotiationMessage::allowed(seq, version)));
     }
 
-    fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: &[u8]) {
+    fn enqueue_extension_message(&mut self, extension_name: String, need_encryption: bool, message: Vec<u8>) {
         const VERSION: u64 = 0;
         let message = if need_encryption {
             match ExtensionMessage::encrypted_from_unencrypted_data(
                 extension_name,
                 VERSION,
-                message,
+                &message,
                 self.stream.session(),
             ) {
                 Ok(message) => message,
@@ -123,7 +123,7 @@ impl EstablishedConnection {
                 }
             }
         } else {
-            ExtensionMessage::unencrypted(extension_name, VERSION, &message)
+            ExtensionMessage::unencrypted(extension_name, VERSION, message)
         };
         self.enqueue(Message::Extension(message));
     }
@@ -659,13 +659,13 @@ impl Connection {
         }
     }
 
-    pub fn enqueue_extension_message(&self, extension_name: &str, need_encryption: bool, data: &[u8]) -> bool {
+    pub fn enqueue_extension_message(&self, extension_name: &str, need_encryption: bool, data: Vec<u8>) -> bool {
         let mut state = self.state.write();
         match &mut *state {
             State::WaitAck(_) => false,
             State::WaitSync(_) => false,
             State::Established(connection) => {
-                connection.enqueue_extension_message(extension_name.to_string(), need_encryption, &data);
+                connection.enqueue_extension_message(extension_name.to_string(), need_encryption, data);
                 true
             }
             State::Disconnecting(_) => false,
