@@ -330,7 +330,7 @@ impl MemPool {
             let is_this_account_local = new_local_accounts.contains(&public);
             // Need to update transactions because of height/origin change
             if current_seq != first_seq || is_this_account_local {
-                self.update_orders(public, current_seq, new_next_seq, is_this_account_local);
+                self.update_orders(public, current_seq, new_next_seq, is_this_account_local, &mut batch);
                 self.first_seqs.insert(public, current_seq);
                 backup::backup_seqs(&mut batch, public, current_seq, true);
                 first_seq = current_seq;
@@ -544,7 +544,7 @@ impl MemPool {
 
             // Need to update the height
             if current_seq != first_seq {
-                self.update_orders(public, current_seq, new_next_seq, false);
+                self.update_orders(public, current_seq, new_next_seq, false, &mut batch);
                 self.first_seqs.insert(public, current_seq);
                 backup::backup_seqs(&mut batch, public, current_seq, true);
                 first_seq = current_seq;
@@ -702,7 +702,14 @@ impl MemPool {
 
     /// Updates the seq height of the orders in the queues and self.by_signer_public.
     /// Also, drops old transactions.
-    fn update_orders(&mut self, public: Public, current_seq: u64, new_next_seq: u64, to_local: bool) {
+    fn update_orders(
+        &mut self,
+        public: Public,
+        current_seq: u64,
+        new_next_seq: u64,
+        to_local: bool,
+        batch: &mut DBTransaction,
+    ) {
         let row = self
             .by_signer_public
             .row_mut(&public)
@@ -724,6 +731,7 @@ impl MemPool {
 
             if seq < current_seq {
                 self.by_hash.remove(&old_order.hash);
+                backup::remove_item(batch, &old_order.hash);
             } else {
                 let new_order = old_order.update_height(seq, current_seq);
                 let new_order = if to_local {
