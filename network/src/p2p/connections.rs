@@ -161,7 +161,7 @@ impl Connections {
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> io::Result<ConnectionType>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         let connections = self.connections.read();
         if let Some(connection) = connections.get(&token) {
             let result = connection.register(reg, event_loop)?;
@@ -179,7 +179,7 @@ impl Connections {
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> io::Result<ConnectionType>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         let connections = self.connections.read();
         if let Some(connection) = connections.get(&token) {
             let result = connection.reregister(reg, event_loop)?;
@@ -196,7 +196,7 @@ impl Connections {
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> io::Result<ConnectionType>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         let connections = self.connections.read();
         if let Some(connection) = connections.get(&token) {
             let result = connection.deregister(event_loop)?;

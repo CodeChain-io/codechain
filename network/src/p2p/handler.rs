@@ -51,7 +51,7 @@ pub enum IgnoreConnectionLimit {
     Not,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Message {
     RequestConnection(SocketAddr, IgnoreConnectionLimit),
 

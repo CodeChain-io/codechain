@@ -128,7 +128,7 @@ impl From<KeyError> for Error {
 
 type Result<T> = ::std::result::Result<T, Error>;
 
-#[derive(Clone, Debug, PartialOrd, PartialEq)]
+#[derive(Debug, PartialOrd, PartialEq)]
 pub enum Message {
     ConnectTo(SocketAddr),
     ManuallyConnectTo(SocketAddr),
