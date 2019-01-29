@@ -140,8 +140,8 @@ describe("solo - 1 node", function() {
             { actionType: 0x11, actionLength: 4 },
             { actionType: 0x13, actionLength: 10 }, // MintAsset
             { actionType: 0x13, actionLength: 12 },
-            { actionType: 0x14, actionLength: 7 }, // TransferAsset
-            { actionType: 0x14, actionLength: 9 },
+            { actionType: 0x14, actionLength: 8 }, // TransferAsset
+            { actionType: 0x14, actionLength: 10 },
             { actionType: 0x15, actionLength: 8 }, // ChangeAssetScheme
             { actionType: 0x15, actionLength: 10 },
             { actionType: 0x16, actionLength: 11 }, // ComposeAsset
@@ -431,6 +431,7 @@ describe("solo - 1 node", function() {
             it("index");
             it("timelock");
             it("lockscript/unlockscript");
+            it("expiration");
         });
 
         describe("In assetComposeTransaction", function() {
