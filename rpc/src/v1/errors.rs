@@ -22,7 +22,7 @@ use ckey::Error as KeyError;
 use ckeystore::Error as KeystoreError;
 use cnetwork::control::Error as NetworkControlError;
 use cstate::{ActionHandlerError, StateError};
-use ctypes::transaction::ParcelError;
+use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 use kvdb::Error as KVDBError;
 use rlp::DecoderError;
 use rustc_serialize::hex::FromHexError as HexError;
@@ -53,7 +53,7 @@ mod codes {
     pub const RLP_ERROR: i64 = -32009;
     pub const CORE_ERROR: i64 = -32010;
     pub const KVDB_ERROR: i64 = -32011;
-    pub const PARCEL_ERROR: i64 = -32012;
+    pub const RUNTIME_ERROR: i64 = -32012;
     pub const NETWORK_DISABLED: i64 = -32014;
     pub const NETWORK_CANNOT_DISCONNECT_NOT_CONNECTED_ERROR: i64 = -32015;
     pub const ACCOUNT_PROVIDER_ERROR: i64 = -32016;
@@ -100,9 +100,9 @@ pub fn conversion<T: Into<ConversionError>>(error: T) -> Error {
 
 pub fn transaction_state<T: Into<StateError>>(error: T) -> Error {
     let error = error.into();
-    if let StateError::Parcel(e) = error {
+    if let StateError::Runtime(e) = error {
         Error {
-            code: ErrorCode::ServerError(codes::PARCEL_ERROR),
+            code: ErrorCode::ServerError(codes::RUNTIME_ERROR),
             message: format!("{}", e),
             data: None,
         }
@@ -136,44 +136,50 @@ pub fn transaction_core<T: Into<CoreError>>(error: T) -> Error {
             },
             _ => unknown_error,
         },
-        CoreError::State(StateError::Parcel(error)) => match error {
-            ParcelError::InvalidSignature(_) => Error {
+        CoreError::State(error) => match error {
+            StateError::Syntax(error @ SyntaxError::InvalidSignature(_)) => Error {
                 code: ErrorCode::ServerError(codes::VERIFICATION_FAILED),
                 message: "Verification Failed".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            ParcelError::InvalidNetworkId(_) => Error {
+            StateError::Syntax(error @ SyntaxError::InvalidNetworkId(_)) => Error {
                 code: ErrorCode::ServerError(codes::INVALID_NETWORK_ID),
                 message: "Invalid NetworkId".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            ParcelError::TransactionAlreadyImported => Error {
+            StateError::History(error @ HistoryError::TransactionAlreadyImported) => Error {
                 code: ErrorCode::ServerError(codes::ALREADY_IMPORTED),
                 message: "Already Imported".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            ParcelError::InsufficientBalance {
-                ..
-            } => Error {
+            StateError::Runtime(
+                error @ RuntimeError::InsufficientBalance {
+                    ..
+                },
+            ) => Error {
                 code: ErrorCode::ServerError(codes::NOT_ENOUGH_BALANCE),
                 message: "Not Enough Balance".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            ParcelError::InsufficientFee {
-                ..
-            } => Error {
+            StateError::Syntax(
+                error @ SyntaxError::InsufficientFee {
+                    ..
+                },
+            ) => Error {
                 code: ErrorCode::ServerError(codes::TOO_LOW_FEE),
                 message: "Too Low Fee".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            ParcelError::TooCheapToReplace => Error {
+            StateError::History(error @ HistoryError::TooCheapToReplace) => Error {
                 code: ErrorCode::ServerError(codes::TOO_CHEAP_TO_REPLACE),
                 message: "Too Cheap to Replace".into(),
                 data: Some(Value::String(format!("{:?}", error))),
             },
-            ParcelError::Old {
-                ..
-            } => Error {
+            StateError::History(
+                error @ HistoryError::Old {
+                    ..
+                },
+            ) => Error {
                 code: ErrorCode::ServerError(codes::INVALID_SEQ),
                 message: "Invalid Seq".into(),
                 data: Some(Value::String(format!("{:?}", error))),

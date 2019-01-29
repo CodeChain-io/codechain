@@ -310,7 +310,8 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [miner_getWork](#miner_getwork)
  * [miner_submitWork](#miner_submitwork)
 ***
- * [net_shareSecret](#net_sharesecret)
+ * [net_localKeyFor](#net_localkeyfor)
+ * [net_registerRemoteKeyFor](#net_registerremotekeyfor)
  * [net_connect](#net_connect)
  * [net_isConnected](#net_isconnected)
  * [net_disconnect](#net_disconnect)
@@ -1598,16 +1599,15 @@ Errors: `No Work Required`, `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## net_shareSecret
-Share secret to the given address.
+## net_localKeyFor
+Get a key to communicate with the given address
 
 ### Params
- 1. secret: `string`
- 2. address: `string`
- 3. port: `number`
+ 1. address: `string`
+ 2. port: `number`
 
 ### Returns
-`null`
+The 512-bit public key.
 
 Errors: `Invalid Params`
 
@@ -1615,7 +1615,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_shareSecret", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc", "192.168.0.3", 3485], "id": 5}' \
+    -d '{"jsonrpc": "2.0", "method": "net_localKeyFor", "params": ["192.168.0.3", 3485], "id": 5}' \
     localhost:8080
 ```
 
@@ -1623,7 +1623,39 @@ Errors: `Invalid Params`
 ```
 {
   "jsonrpc":"2.0",
-  "result":null,
+  "result": "0x2a8a69439f2396c9a328289fdc3905d9736da9e14eb1a282cfd2c036cc21a17a5d05595160b7924e5ecf3f2628b440e601f3a531e92fa81571a70e6c695b2d08",
+  "id":5
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## net_registerRemoteKeyFor
+Register the remote public key to communicate with the given address
+
+### Params
+ 1. address: `string`
+ 2. port: `number`
+ 3. remote_public_key: `string`
+
+### Returns
+The 512-bit local public key.
+
+Errors: `Invalid Params`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_registerRemoteKeyFor", "params": ["192.168.0.3", 3485, "0x545ebdc0b8fb2d0be77a27d843945950db6dbddc60477c0cf001751a797df8a41fc51fe5b76e371c8875ad1d0585a60af2eef2b5d631f7bfba86e7988c25088d"], "id": 5}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": "0x2a8a69439f2396c9a328289fdc3905d9736da9e14eb1a282cfd2c036cc21a17a5d05595160b7924e5ecf3f2628b440e601f3a531e92fa81571a70e6c695b2d08",
   "id":5
 }
 ```

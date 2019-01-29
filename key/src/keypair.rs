@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@ pub fn public_to_address(public: &Public) -> Address {
     H160::blake(public).into()
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 /// secp256k1 key pair
 pub struct KeyPair {
     private: Private,

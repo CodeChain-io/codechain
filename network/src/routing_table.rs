@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -35,15 +35,108 @@ enum SecretOrigin {
 // Discovery flow : Candidate -> KeyPairShared -> SecretShared -> TemporaryNonceShared -> SessionShared -> (Establishing) -> Established
 // Offline secret exchange flow :                 SecretShared ->
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::large_enum_variant))]
 enum State {
     Candidate,
     KeyPairShared(KeyPair),
-    SecretShared(Secret, SecretOrigin),
-    TemporaryNonceShared(Secret, Nonce, SecretOrigin),
-    SessionShared(Session),
-    Establishing(Session),
-    Established,
+    SecretShared {
+        local_key_pair: KeyPair,
+        remote_public: Public,
+        shared_secret: Secret,
+        secret_origin: SecretOrigin,
+    },
+    TemporaryNonceShared {
+        local_key_pair: KeyPair,
+        remote_public: Public,
+        shared_secret: Secret,
+        temporary_nonce: Nonce,
+        secret_origin: SecretOrigin,
+    },
+    SessionShared {
+        local_key_pair: KeyPair,
+        remote_public: Public,
+        shared_secret: Secret,
+        nonce: Nonce,
+        secret_origin: SecretOrigin,
+    },
+    Establishing {
+        local_key_pair: KeyPair,
+        remote_public: Public,
+        shared_secret: Secret,
+        nonce: Nonce,
+        secret_origin: SecretOrigin,
+    },
+    Established {
+        local_key_pair: KeyPair,
+        remote_public: Public,
+        shared_secret: Secret,
+        nonce: Nonce,
+        secret_origin: SecretOrigin,
+    },
     Banned,
+}
+
+impl State {
+    fn key_pair_shared() -> RwLock<Self> {
+        let ephemeral = Random.generate().unwrap();
+        RwLock::new(State::KeyPairShared(ephemeral))
+    }
+
+    fn local_public(&self) -> Option<&Public> {
+        match self {
+            State::Candidate => None,
+            State::KeyPairShared(key_pair) => Some(key_pair.public()),
+            State::SecretShared {
+                local_key_pair,
+                ..
+            } => Some(local_key_pair.public()),
+            State::TemporaryNonceShared {
+                local_key_pair,
+                ..
+            } => Some(local_key_pair.public()),
+            State::SessionShared {
+                local_key_pair,
+                ..
+            } => Some(local_key_pair.public()),
+            State::Establishing {
+                local_key_pair,
+                ..
+            } => Some(local_key_pair.public()),
+            State::Established {
+                local_key_pair,
+                ..
+            } => Some(local_key_pair.public()),
+            State::Banned => None,
+        }
+    }
+
+    fn remote_public(&self) -> Option<&Public> {
+        match self {
+            State::Candidate => None,
+            State::KeyPairShared(_) => None,
+            State::SecretShared {
+                remote_public,
+                ..
+            } => Some(remote_public),
+            State::TemporaryNonceShared {
+                remote_public,
+                ..
+            } => Some(remote_public),
+            State::SessionShared {
+                remote_public,
+                ..
+            } => Some(remote_public),
+            State::Establishing {
+                remote_public,
+                ..
+            } => Some(remote_public),
+            State::Established {
+                remote_public,
+                ..
+            } => Some(remote_public),
+            State::Banned => None,
+        }
+    }
 }
 
 pub struct RoutingTable {
@@ -79,9 +172,20 @@ impl RoutingTable {
         if let Some(entry) = entries.get(&remote_node_id) {
             let mut state = entry.write();
             match *state {
-                State::TemporaryNonceShared(secret, _nonce, SecretOrigin::Preimported) => {
+                State::TemporaryNonceShared {
+                    local_key_pair,
+                    remote_public,
+                    shared_secret,
+                    secret_origin,
+                    ..
+                } if secret_origin == SecretOrigin::Preimported => {
                     cinfo!(NETWORK, "{} does not load secret", addr);
-                    *state = State::SecretShared(secret, SecretOrigin::Preimported);
+                    *state = State::SecretShared {
+                        local_key_pair,
+                        remote_public,
+                        shared_secret,
+                        secret_origin,
+                    };
                     return true
                 }
                 _ => return false,
@@ -105,7 +209,9 @@ impl RoutingTable {
         if let Some(entry) = entries.get(&addr.into()) {
             let state = entry.read();
             match *state {
-                State::Established => return true,
+                State::Established {
+                    ..
+                } => return true,
                 _ => return false,
             }
         }
@@ -141,7 +247,9 @@ impl RoutingTable {
             let state = entry.read();
             match *state {
                 State::Banned => return false,
-                State::SessionShared(_) => {
+                State::SessionShared {
+                    ..
+                } => {
                     if on_shutdown {
                         return false
                     }
@@ -156,55 +264,47 @@ impl RoutingTable {
         result
     }
 
-    pub fn preimport_secret(&self, secret: Secret, addr: &SocketAddr) -> bool {
-        let mut entries = self.entries.write();
-        let remote_node_id = addr.into();
-
-        if let Some(entry) = entries.get(&remote_node_id) {
-            let mut state = entry.write();
-            if *state == State::Established {
-                return false
-            }
-        }
-
-        entries.insert(remote_node_id, RwLock::new(State::SecretShared(secret, SecretOrigin::Preimported)));
-        true
-    }
-
     pub fn register_key_pair_for_secret(&self, remote_address: &SocketAddr) -> Option<Public> {
         let mut entries = self.entries.write();
         let remote_node_id = remote_address.into();
         let entry = entries.entry(remote_node_id).or_insert_with(|| RwLock::new(State::Candidate));
         let mut state = entry.write();
-        if *state != State::Candidate {
-            ctrace!(ROUTING_TABLE, "{} is not alive", remote_address);
-            return None
+        if *state == State::Candidate {
+            let ephemeral = Random.generate().unwrap();
+            let pub_key = *ephemeral.public();
+            ctrace!(ROUTING_TABLE, "Share pub-key({}) with {}", pub_key, remote_address);
+            *state = State::KeyPairShared(ephemeral);
         }
-        let ephemeral = Random.generate().unwrap();
-        let pub_key = *ephemeral.public();
-        *state = State::KeyPairShared(ephemeral);
-        ctrace!(ROUTING_TABLE, "Share pub-key({}) with {}", pub_key, remote_address);
-        Some(pub_key)
+        state.local_public().cloned()
     }
 
-    pub fn share_secret(&self, remote_address: &SocketAddr, remote_public: &Public) -> Option<Secret> {
-        let entries = self.entries.read();
+    pub fn share_secret(&self, remote_address: &SocketAddr, remote_public: &Public) -> Option<Public> {
+        let mut entries = self.entries.write();
         let remote_node_id = remote_address.into();
-        let result = entries.get(&remote_node_id).and_then(|entry| {
-            let mut state = entry.write();
+        let entry = entries.entry(remote_node_id).or_insert_with(State::key_pair_shared);
+        let mut state = entry.write();
+        let local_public = state.local_public().cloned();
+        if let Some(registered_remote_public) = state.remote_public() {
+            if registered_remote_public == remote_public {
+                return Some(local_public.expect("The local key always exists when a remote public key exists."))
+            }
+        }
+        if local_public.is_some() {
             if let State::KeyPairShared(local_key_pair) = state.clone() {
-                if let Ok(secret) = exchange(remote_public, local_key_pair.private()) {
-                    *state = State::SecretShared(secret, SecretOrigin::Shared);
+                if let Ok(shared_secret) = exchange(remote_public, local_key_pair.private()) {
+                    *state = State::SecretShared {
+                        local_key_pair,
+                        remote_public: *remote_public,
+                        shared_secret,
+                        secret_origin: SecretOrigin::Shared,
+                    };
                     ctrace!(ROUTING_TABLE, "Secret shared with {}", remote_address);
-                    return Some(secret)
+                    return Some(*local_key_pair.public())
                 }
             }
-            None
-        });
-        if result.is_none() {
-            ctrace!(ROUTING_TABLE, "Cannot share secret with {}", remote_address);
         }
-        result
+        ctrace!(ROUTING_TABLE, "Cannot share secret with {}", remote_address);
+        None
     }
 
     pub fn request_session(&self, remote_address: &SocketAddr) -> Option<Vec<u8>> {
@@ -214,13 +314,24 @@ impl RoutingTable {
         let remote_node_id = remote_address.into();
         let result = entries.get(&remote_node_id).and_then(|entry| {
             let mut state = entry.write();
-            let (shared_secret, secret_origin) = match *state {
-                State::SecretShared(shared_secret, secret_origin) => (shared_secret, secret_origin),
+            let (shared_secret, secret_origin, local_key_pair, remote_public) = match *state {
+                State::SecretShared {
+                    shared_secret,
+                    secret_origin,
+                    local_key_pair,
+                    remote_public,
+                } => (shared_secret, secret_origin, local_key_pair, remote_public),
                 _ => return None,
             };
 
             let temporary_nonce: Nonce = rng.gen();
-            *state = State::TemporaryNonceShared(shared_secret, temporary_nonce, secret_origin);
+            *state = State::TemporaryNonceShared {
+                local_key_pair,
+                remote_public,
+                shared_secret,
+                temporary_nonce,
+                secret_origin,
+            };
             let temporary_session = Session::new_with_zero_nonce(shared_secret);
             let result = encode_and_encrypt_nonce(&temporary_session, &temporary_nonce);
             if result.is_some() {
@@ -245,8 +356,14 @@ impl RoutingTable {
         let remote_node_id = remote_address.into();
         let result = entries.get(&remote_node_id).and_then(|entry| {
             let mut state = entry.write();
-            let shared_secret = match *state {
-                State::SecretShared(shared_secret, _) => shared_secret,
+            let (shared_secret, secret_origin, local_key_pair, remote_public) = match *state {
+                State::SecretShared {
+                    shared_secret,
+                    secret_origin,
+                    local_key_pair,
+                    remote_public,
+                    ..
+                } => (shared_secret, secret_origin, local_key_pair, remote_public),
                 _ => return None,
             };
             let temporary_session = {
@@ -256,7 +373,13 @@ impl RoutingTable {
             };
 
             let nonce: Nonce = rng.gen();
-            *state = State::SessionShared(Session::new(shared_secret, nonce));
+            *state = State::SessionShared {
+                local_key_pair,
+                remote_public,
+                shared_secret,
+                nonce,
+                secret_origin,
+            };
 
             let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce);
             if encrypted_nonce.is_some() {
@@ -275,7 +398,14 @@ impl RoutingTable {
         let remote_node_id = remote_address.into();
         if let Some(entry) = entries.get(&remote_node_id) {
             let mut state = entry.write();
-            if let State::TemporaryNonceShared(shared_secret, temporary_nonce, _secret_origin) = state.clone() {
+            if let State::TemporaryNonceShared {
+                local_key_pair,
+                remote_public,
+                shared_secret,
+                temporary_nonce,
+                secret_origin,
+            } = state.clone()
+            {
                 let temporary_session = Session::new(shared_secret, temporary_nonce);
                 let nonce = match decrypt_and_decode_nonce(&temporary_session, &received_nonce) {
                     Some(nonce) => nonce,
@@ -285,7 +415,13 @@ impl RoutingTable {
                     }
                 };
 
-                *state = State::SessionShared(Session::new(shared_secret, nonce));
+                *state = State::SessionShared {
+                    local_key_pair,
+                    remote_public,
+                    shared_secret,
+                    nonce,
+                    secret_origin,
+                };
                 ctrace!(ROUTING_TABLE, "Allow session to {}", remote_address);
                 return true
             }
@@ -299,8 +435,21 @@ impl RoutingTable {
         let remote_node_id = remote_address.into();
         if let Some(entry) = entries.get(&remote_node_id) {
             let mut state = entry.write();
-            if let State::SessionShared(session) = *state {
-                *state = State::Establishing(session);
+            if let State::SessionShared {
+                local_key_pair,
+                remote_public,
+                shared_secret,
+                nonce,
+                secret_origin,
+            } = *state
+            {
+                *state = State::Establishing {
+                    local_key_pair,
+                    remote_public,
+                    shared_secret,
+                    nonce,
+                    secret_origin,
+                };
                 ctrace!(ROUTING_TABLE, "Connection to {} set establishing", remote_address);
                 return true
             }
@@ -315,8 +464,37 @@ impl RoutingTable {
         if let Some(entry) = entries.get(&remote_node_id) {
             let mut state = entry.write();
             match *state {
-                State::SessionShared(_) | State::Establishing(_) => {
-                    *state = State::Established;
+                State::SessionShared {
+                    local_key_pair,
+                    remote_public,
+                    shared_secret,
+                    nonce,
+                    secret_origin,
+                } => {
+                    *state = State::Established {
+                        local_key_pair,
+                        remote_public,
+                        shared_secret,
+                        nonce,
+                        secret_origin,
+                    };
+                    ctrace!(ROUTING_TABLE, "Connection to {} is established", remote_address);
+                    return true
+                }
+                State::Establishing {
+                    local_key_pair,
+                    remote_public,
+                    shared_secret,
+                    nonce,
+                    secret_origin,
+                } => {
+                    *state = State::Established {
+                        local_key_pair,
+                        remote_public,
+                        shared_secret,
+                        nonce,
+                        secret_origin,
+                    };
                     ctrace!(ROUTING_TABLE, "Connection to {} is established", remote_address);
                     return true
                 }
@@ -332,8 +510,21 @@ impl RoutingTable {
         let remote_node_id = remote_address.into();
         if let Some(entry) = entries.get(&remote_node_id) {
             let mut state = entry.write();
-            if let State::Establishing(session) = *state {
-                *state = State::SessionShared(session);
+            if let State::Establishing {
+                local_key_pair,
+                remote_public,
+                shared_secret,
+                nonce,
+                secret_origin,
+            } = *state
+            {
+                *state = State::SessionShared {
+                    local_key_pair,
+                    remote_public,
+                    shared_secret,
+                    nonce,
+                    secret_origin,
+                };
                 ctrace!(ROUTING_TABLE, "Connection to {} is ready to reconnect", remote_address);
                 return true
             }
@@ -370,11 +561,15 @@ impl RoutingTable {
         let entries = self.entries.read();
         let remote_node_id = remote_address.into();
         if let Some(entry) = entries.get(&remote_node_id) {
-            let mut state = entry.write();
-            if let State::SessionShared(session) = *state {
-                *state = State::SessionShared(session);
+            let state = entry.read();
+            if let State::SessionShared {
+                shared_secret,
+                nonce,
+                ..
+            } = *state
+            {
                 ctrace!(ROUTING_TABLE, "Unestablish connection to {}", remote_address);
-                return Some(session)
+                return Some(Session::new(shared_secret, nonce))
             }
         }
         ctrace!(ROUTING_TABLE, "Connection to {} is not established yet", remote_address);
@@ -388,7 +583,9 @@ impl RoutingTable {
             .filter(|(_remote_node_id, entry)| {
                 let state = entry.read();
                 match *state {
-                    State::SessionShared(_) => true,
+                    State::SessionShared {
+                        ..
+                    } => true,
                     _ => false,
                 }
             })

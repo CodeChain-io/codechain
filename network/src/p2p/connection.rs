@@ -164,19 +164,19 @@ impl EstablishedConnection {
 
     fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
     }
 
     fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
     }
 
     fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.deregister(self.stream())
     }
 }
@@ -280,19 +280,19 @@ impl WaitSyncConnection {
 
     fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
     }
 
     fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
     }
 
     fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.deregister(self.stream())
     }
 }
@@ -369,19 +369,19 @@ impl WaitAckConnection {
 
     fn register<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.register(self.stream(), reg, self.interest(), PollOpt::edge())
     }
 
     fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.reregister(self.stream(), reg, self.interest(), PollOpt::edge())
     }
 
     fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.deregister(self.stream())
     }
 }
@@ -400,13 +400,13 @@ impl DisconnectingConnection {
 
     fn reregister<Message>(&self, reg: Token, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.reregister(&self.stream, reg, Ready::empty(), PollOpt::edge())
     }
 
     fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<()>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         event_loop.deregister(&self.stream)
     }
 }
@@ -502,7 +502,7 @@ impl Connection {
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> io::Result<ConnectionType>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         let state = self.state.read();
         match &*state {
             State::WaitAck(connection) => {
@@ -528,7 +528,7 @@ impl Connection {
         event_loop: &mut EventLoop<IoManager<Message>>,
     ) -> io::Result<ConnectionType>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         let state = self.state.read();
         match &*state {
             State::WaitAck(connection) => {
@@ -554,7 +554,7 @@ impl Connection {
 
     pub fn deregister<Message>(&self, event_loop: &mut EventLoop<IoManager<Message>>) -> io::Result<ConnectionType>
     where
-        Message: Send + Sync + Clone + 'static, {
+        Message: Send + Sync + 'static, {
         let state = self.state.read();
         match &*state {
             State::WaitAck(connection) => {

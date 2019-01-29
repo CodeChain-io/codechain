@@ -60,14 +60,14 @@ mod tests {
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
-    use crate::transaction::{Error as TransactionError, ParcelError};
+    use crate::errors::RuntimeError;
 
     #[test]
     fn rlp_encode_and_decode_block_invoices() {
         rlp_encode_and_decode_test!(BlockInvoices {
             invoices: vec![
                 Invoice::Success,
-                Invoice::Failure(ParcelError::InvalidTransaction(TransactionError::InvalidScript)),
+                Invoice::Failure(RuntimeError::CannotBurnCentralizedAsset),
                 Invoice::Success,
             ],
         });

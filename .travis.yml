@@ -14,7 +14,8 @@ jobs:
       os: osx
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
         - rustup component add rustfmt-preview --toolchain nightly-2018-12-06
@@ -29,7 +30,7 @@ jobs:
       os: osx
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
         - nvm install 10
         - nvm use 10
@@ -48,7 +49,8 @@ jobs:
       sudo: required
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
         - rustup component add rustfmt-preview --toolchain nightly-2018-12-06
@@ -64,7 +66,7 @@ jobs:
       sudo: required
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
         - nvm install 10
         - nvm use 10

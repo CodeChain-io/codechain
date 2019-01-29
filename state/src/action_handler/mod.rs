@@ -22,8 +22,8 @@ use std::sync::Arc;
 use ccrypto::blake256;
 use ckey::Address;
 use cmerkle::TrieError;
+use ctypes::errors::RuntimeError;
 use ctypes::invoice::Invoice;
-use ctypes::transaction::ParcelError;
 use primitives::H256;
 use rlp::{DecoderError, Encodable, RlpStream};
 
@@ -74,9 +74,9 @@ impl From<TrieError> for ActionHandlerError {
     }
 }
 
-impl From<ParcelError> for ActionHandlerError {
-    fn from(error: ParcelError) -> Self {
-        ActionHandlerError::StateError(StateError::Parcel(error))
+impl From<RuntimeError> for ActionHandlerError {
+    fn from(error: RuntimeError) -> Self {
+        ActionHandlerError::StateError(StateError::Runtime(error))
     }
 }
 

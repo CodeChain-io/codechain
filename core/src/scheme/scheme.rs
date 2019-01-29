@@ -25,7 +25,7 @@ use cstate::{
     ActionHandlerError, ActionHandlerResult, Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult,
     StateWithCache, TopLevelState,
 };
-use ctypes::transaction::Error as TransactionError;
+use ctypes::errors::SyntaxError;
 use ctypes::ShardId;
 use hashdb::{AsHashDB, HashDB};
 use parking_lot::RwLock;
@@ -216,7 +216,7 @@ impl Scheme {
             let mut shard_root = BLAKE_NULL_RLP;
             let owners = shard.owners.clone();
             if owners.is_empty() {
-                return Err(TransactionError::EmptyShardOwners(*shard_id).into())
+                return Err(SyntaxError::EmptyShardOwners(*shard_id).into())
             }
             let users = shard.users.clone();
             shards.push((ShardAddress::new(*shard_id), Shard::new(shard_root, owners, users)));
