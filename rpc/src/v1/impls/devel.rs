@@ -181,6 +181,7 @@ where
                         orders: vec![],
                         metadata: "".to_string(),
                         approvals: vec![],
+                        expiration: None,
                     },
                 }
             };

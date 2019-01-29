@@ -45,6 +45,10 @@ pub enum Error {
     TooCheapToReplace,
     /// Transaction is already imported to the queue
     TransactionAlreadyImported,
+    TransferExpired {
+        expiration: u64,
+        timestamp: u64,
+    },
 }
 
 const ERROR_ID_INVALID_SEQ: u8 = 1;
@@ -54,6 +58,7 @@ const ERROR_ID_ORDER_EXPIRED: u8 = 4;
 const ERROR_ID_TIMELOCKED: u8 = 5;
 const ERROR_ID_TOO_CHEAP_TO_REPLACE: u8 = 6;
 const ERROR_ID_TX_ALREADY_IMPORTED: u8 = 7;
+const ERROR_ID_TRANSFER_EXPIRED: u8 = 8;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -68,6 +73,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_TIMELOCKED => 3,
             ERROR_ID_TOO_CHEAP_TO_REPLACE => 1,
             ERROR_ID_TX_ALREADY_IMPORTED => 1,
+            ERROR_ID_TRANSFER_EXPIRED => 3,
             _ => return Err(DecoderError::Custom("Invalid HistoryError")),
         })
     }
@@ -89,6 +95,10 @@ impl Encodable for Error {
             } => RlpHelper::new_tagged_list(s, ERROR_ID_TIMELOCKED).append(timelock).append(remaining_time),
             Error::TooCheapToReplace => RlpHelper::new_tagged_list(s, ERROR_ID_TOO_CHEAP_TO_REPLACE),
             Error::TransactionAlreadyImported => RlpHelper::new_tagged_list(s, ERROR_ID_TX_ALREADY_IMPORTED),
+            Error::TransferExpired {
+                expiration,
+                timestamp,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_TRANSFER_EXPIRED).append(expiration).append(timestamp),
         };
     }
 }
@@ -110,6 +120,10 @@ impl Decodable for Error {
             },
             ERROR_ID_TOO_CHEAP_TO_REPLACE => Error::TooCheapToReplace,
             ERROR_ID_TX_ALREADY_IMPORTED => Error::TransactionAlreadyImported,
+            ERROR_ID_TRANSFER_EXPIRED => Error::TransferExpired {
+                expiration: rlp.val_at(1)?,
+                timestamp: rlp.val_at(2)?,
+            },
             _ => return Err(DecoderError::Custom("Invalid HistoryError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -137,6 +151,14 @@ impl Display for Error {
             ),
             Error::TooCheapToReplace => write!(f, "Fee too low to replace"),
             Error::TransactionAlreadyImported => write!(f, "The transaction is already imported"),
+            Error::TransferExpired {
+                expiration,
+                timestamp,
+            } => write!(
+                f,
+                "The TransferAsset transaction is expired. Expiration: {}, Block timestamp: {}",
+                expiration, timestamp
+            ),
         }
     }
 }
