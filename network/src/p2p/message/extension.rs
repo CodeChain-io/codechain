@@ -65,12 +65,12 @@ impl Message {
             data,
         })
     }
-    pub fn unencrypted(extension_name: String, extension_version: Version, data: &[u8]) -> Self {
+    pub fn unencrypted(extension_name: String, extension_version: Version, data: Vec<u8>) -> Self {
         Self {
             version: 0,
             extension_name,
             extension_version,
-            data: Data::Unencrypted(data.to_vec()),
+            data: Data::Unencrypted(data),
         }
     }
 
