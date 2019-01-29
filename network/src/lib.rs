@@ -47,6 +47,7 @@ mod config;
 mod discovery;
 mod extension;
 mod filters;
+mod listener;
 mod node_id;
 mod routing_table;
 mod service;

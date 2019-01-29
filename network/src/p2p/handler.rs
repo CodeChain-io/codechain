@@ -27,11 +27,11 @@ use rlp::UntrustedRlp;
 use token_generator::TokenGenerator;
 
 use super::connections::{ConnectionType, Connections, ReceivedMessage};
-use super::listener::Listener;
 use super::message::{HandshakeMessage, Message as NetworkMessage, Version};
 use super::NegotiationBody;
 use crate::addr::convert_to_node_id;
 use crate::client::Client;
+use crate::listener::Listener;
 use crate::stream::Stream;
 use crate::{FiltersControl, IntoSocketAddr, NodeId, RoutingTable, SocketAddr};
 

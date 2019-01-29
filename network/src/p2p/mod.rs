@@ -17,7 +17,6 @@
 mod connection;
 mod connections;
 mod handler;
-mod listener;
 mod message;
 mod stream;
 
