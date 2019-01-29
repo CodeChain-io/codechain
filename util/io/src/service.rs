@@ -386,7 +386,7 @@ where
         if let Some(handler) = self.handler.upgrade() {
             if let Some(h) = &*handler.read() {
                 let handler = Arc::clone(&h);
-                if let Err(err) = handler.message(&IoContext::new(self.clone()), &message) {
+                if let Err(err) = handler.message(&IoContext::new(self.clone()), message) {
                     cwarn!(IO, "Error in message {:?}", err);
                 }
             }

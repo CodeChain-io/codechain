@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,13 +17,14 @@
 use std::net::IpAddr;
 use std::result::Result;
 
-use primitives::H256;
+use ckey::Public;
 
 use crate::addr::SocketAddr;
 use crate::filters::FilterEntry;
 
 pub trait Control: Send + Sync {
-    fn register_secret(&self, secret: H256, addr: SocketAddr) -> Result<(), Error>;
+    fn local_key_for(&self, address: IpAddr, port: u16) -> Result<Public, Error>;
+    fn register_remote_key_for(&self, address: IpAddr, port: u16, remote_pub_key: Public) -> Result<Public, Error>;
     fn connect(&self, addr: SocketAddr) -> Result<(), Error>;
     fn disconnect(&self, addr: SocketAddr) -> Result<(), Error>;
     fn is_connected(&self, addr: &SocketAddr) -> Result<bool, Error>;

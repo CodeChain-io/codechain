@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
-use ckey::{Error as KeyError, Secret};
+use ckey::Error as KeyError;
 use finally::finally;
 use mio::deprecated::EventLoop;
 use mio::Token;
@@ -128,11 +128,9 @@ impl From<KeyError> for Error {
 
 type Result<T> = ::std::result::Result<T, Error>;
 
-#[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Message {
     ConnectTo(SocketAddr),
     ManuallyConnectTo(SocketAddr),
-    PreimportSecret(Secret, SocketAddr),
     RequestSession(usize),
 }
 
@@ -213,9 +211,7 @@ impl SessionInitiator {
                     }
                 }
 
-                let message = message::Message::secret_denied(message.seq(), "ECDH Already requested".to_string());
-                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
-                Err("Cannot response to secret request".into())
+                Err(format!("Cannot respond for secret request to {:?}", from).into())
             }
             message::Body::SecretAllowed(responder_pub_key) => {
                 io.clear_timer(message.seq() as TimerToken);
@@ -234,17 +230,6 @@ impl SessionInitiator {
 
                 Ok(())
             }
-            message::Body::SecretDenied(reason) => {
-                io.clear_timer(message.seq() as TimerToken);
-                self.requests
-                    .restore(message.seq() as usize, Some(*from))
-                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
-
-                if self.routing_table.remove_node(*from) {
-                    cinfo!(NETWORK, "Shared Secret to {} denied (reason: {})", from, reason);
-                }
-                Ok(())
-            }
             message::Body::NonceRequest(encrypted_temporary_nonce) => {
                 if let Some(encrypted_nonce) =
                     self.routing_table.create_requested_session(from, &encrypted_temporary_nonce)
@@ -254,8 +239,6 @@ impl SessionInitiator {
                     return Ok(())
                 }
 
-                let message = message::Message::nonce_denied(message.seq(), "Cannot create session".to_string());
-                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
                 Err("Cannot create session".into())
             }
             message::Body::NonceAllowed(encrypted_nonce) => {
@@ -272,17 +255,6 @@ impl SessionInitiator {
                 if !self.routing_table.create_allowed_session(from, &encrypted_nonce) {
                     return Err(format!("Cannot create session to {}", from).into())
                 }
-                Ok(())
-            }
-            message::Body::NonceDenied(reason) => {
-                io.clear_timer(message.seq() as TimerToken);
-                self.requests
-                    .restore(message.seq() as usize, Some(*from))
-                    .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
-
-                self.routing_table.reset_imported_secret(from);
-
-                cinfo!(NETWORK, "Connection to {} refused(reason: {})", from, reason);
                 Ok(())
             }
         }
@@ -358,11 +330,11 @@ impl IoHandler<Message> for Handler {
         }
     }
 
-    fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
+    fn message(&self, io: &IoContext<Message>, message: Message) -> IoHandlerResult<()> {
         match message {
             Message::ConnectTo(socket_address) => {
                 let mut session_initiator = self.session_initiator.write();
-                session_initiator.routing_table.add_candidate(*socket_address);
+                session_initiator.routing_table.add_candidate(socket_address);
                 session_initiator.create_new_connection(&socket_address, io)?;
                 io.update_registration(RECEIVE_TOKEN);
             }
@@ -370,14 +342,14 @@ impl IoHandler<Message> for Handler {
                 let mut session_initiator = self.session_initiator.write();
                 session_initiator.filters.add_to_whitelist(socket_address.ip(), None);
                 session_initiator.routing_table.unban(&socket_address);
-                session_initiator.routing_table.add_candidate(*socket_address);
-                session_initiator.requests.manually_connected_address.insert(*socket_address);
+                session_initiator.routing_table.add_candidate(socket_address);
+                session_initiator.requests.manually_connected_address.insert(socket_address);
                 session_initiator.create_new_connection(&socket_address, io)?;
                 io.update_registration(RECEIVE_TOKEN);
             }
             Message::RequestSession(n) => {
                 let mut session_initiator = self.session_initiator.write();
-                let addresses = session_initiator.routing_table.candidates(*n);
+                let addresses = session_initiator.routing_table.candidates(n);
                 if !addresses.is_empty() {
                     let _f = finally(|| {
                         io.update_registration(RECEIVE_TOKEN);
@@ -385,12 +357,6 @@ impl IoHandler<Message> for Handler {
                     for address in addresses {
                         session_initiator.create_new_connection(&address, io)?;
                     }
-                }
-            }
-            Message::PreimportSecret(secret, socket_address) => {
-                let mut session_initiator = self.session_initiator.write();
-                if !session_initiator.routing_table.preimport_secret(*secret, &socket_address) {
-                    cwarn!(NETWORK, "Cannot import the secret key for already connected host");
                 }
             }
         };

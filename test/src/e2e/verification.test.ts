@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import CodeChain from "../helper/spawn";
-import { ERROR, errorMatcher } from "../helper/error";
+import { ERROR } from "../helper/error";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 
 import "mocha";
@@ -66,9 +66,7 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -84,9 +82,7 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -101,13 +97,10 @@ describe("solo - 1 node", function() {
                     expect.fail();
                 } catch (e) {
                     if (networkId.length !== 2)
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_INVALID_LENGTH)
+                        expect(e).is.similarTo(
+                            ERROR.INVALID_RLP_INVALID_LENGTH
                         );
-                    else
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_NETWORK_ID)
-                        );
+                    else expect(e).is.similarTo(ERROR.INVALID_NETWORK_ID);
                 }
             });
         });
@@ -121,8 +114,8 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_UNEXPECTED_ACTION_PREFIX)
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_RLP_UNEXPECTED_ACTION_PREFIX
                     );
                 }
             });
@@ -169,8 +162,8 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_INCORRECT_LIST_LEN)
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_RLP_INCORRECT_LIST_LEN
                     );
                 }
             });
@@ -191,13 +184,8 @@ describe("solo - 1 node", function() {
                     expect.fail();
                 } catch (e) {
                     if (sig.length < 132)
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_SHORT)
-                        );
-                    else
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_SHORT);
+                    else expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -262,9 +250,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -280,9 +266,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -298,9 +282,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -339,9 +321,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                     // Input
                     encoded[3][3][0][0][3] = amount;
@@ -351,9 +331,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
 
                     // Output
@@ -364,9 +342,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -383,9 +359,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                     // Input
                     encoded[3][3][0][0][0] = tracker;
@@ -395,9 +369,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -414,9 +386,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                     // Input
                     encoded[3][3][0][0][2] = assetType;
@@ -426,9 +396,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
 
                     // Output
@@ -439,9 +407,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -457,9 +423,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -496,9 +460,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -515,9 +477,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
 
                     // Output
@@ -528,9 +488,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -547,9 +505,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -565,9 +521,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -608,9 +562,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
 
                     // Output
@@ -621,9 +573,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -640,9 +590,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -659,9 +607,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
 
                     // Output
@@ -672,9 +618,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -690,9 +634,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -730,9 +672,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -748,9 +688,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -766,9 +704,7 @@ describe("solo - 1 node", function() {
                         );
                         expect.fail();
                     } catch (e) {
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                     }
                 });
             });
@@ -809,13 +745,8 @@ describe("solo - 1 node", function() {
                     expect.fail();
                 } catch (e) {
                     if (recipient.length < 42)
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_SHORT)
-                        );
-                    else
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_SHORT);
+                    else expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -831,9 +762,7 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -869,13 +798,8 @@ describe("solo - 1 node", function() {
                     expect.fail();
                 } catch (e) {
                     if (key.length < 130)
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_SHORT)
-                        );
-                    else
-                        expect(e).to.satisfy(
-                            errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                        );
+                        expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_SHORT);
+                    else expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -908,9 +832,7 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -945,9 +867,7 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -984,9 +904,7 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -1002,9 +920,7 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -1020,9 +936,7 @@ describe("solo - 1 node", function() {
                     );
                     expect.fail();
                 } catch (e) {
-                    expect(e).to.satisfy(
-                        errorMatcher(ERROR.INVALID_RLP_TOO_BIG)
-                    );
+                    expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
                 }
             });
         });
@@ -1047,7 +961,7 @@ describe("solo - 1 node", function() {
                 await node.sdk.rpc.chain.sendSignedTransaction(signed);
                 expect.fail();
             } catch (e) {
-                expect(e).to.satisfy(errorMatcher(ERROR.TOO_LOW_FEE));
+                expect(e).is.similarTo(ERROR.TOO_LOW_FEE);
             }
         });
     });

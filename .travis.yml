@@ -13,8 +13,9 @@ jobs:
       name: test-osx
       os: osx
       before_install:
-        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
-        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
         - rustup component add rustfmt-preview --toolchain nightly-2018-12-06
@@ -28,8 +29,8 @@ jobs:
     - name: int-test-osx
       os: osx
       before_install:
-        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
-        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
         - nvm install 10
         - nvm use 10
@@ -45,10 +46,10 @@ jobs:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - name: test-linux
       os: linux
-      sudo: required
       before_install:
-        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
-        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
         - rustup toolchain install nightly-2018-12-06
         - rustup component add rustfmt-preview --toolchain nightly-2018-12-06
@@ -61,10 +62,9 @@ jobs:
         - RUST_BACKTRACE=1 cargo test --verbose --all || exit 1
     - name: int-test-linux
       os: linux
-      sudo: required
       before_install:
-        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
-        - SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = "skip" ]]; then travis_terminate 0; fi
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
         - nvm install 10
         - nvm use 10
@@ -80,7 +80,6 @@ jobs:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - stage: deploy
       name: deploy
-      sudo: required
       script: skip
       services:
         - docker

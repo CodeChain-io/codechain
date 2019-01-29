@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # HOW TO USE THIS SCRIPT IN .travis.yml
-#   > SKIP=`.travis/check-doc-change` && if [[ "$SKIP" = skip ]]; then exit 0; fi
+#   > SKIP=`.travis/check-change` && if [[ "$SKIP" = skip ]]; then exit 0; fi
 # There are three possible output categories, and desired effects in this script
 #  1. exit 0; stdout "skip"   -> Stop the process with a "Success" status.
 #  2. exit 0; stdout "noskip" -> Do not skip the build process.
@@ -63,8 +63,8 @@ push)
             # A--B--C
             # Branch was forwarded A to B, or B to C. $TRAVIS_COMMIT_RANGE will be A...B or B...C
             # NOTE:
-            #   When job for A->B contains non-doc changes, and didn't finished yet,
-            #   a job B->C which only contains doc changes will automatically cancel A->B
+            #   When job for A->B contains non-target changes, and didn't finished yet,
+            #   a job B->C which only contains target changes will automatically cancel A->B
             #   and can report B->C to success.
             #   TODO: disable auto cancel on master
             echo "Forward push"
@@ -91,10 +91,10 @@ pull_request)
 esac
 
 git log --oneline --decorate --all --graph | head -n 10;
-echo "Check doc change for: ${COMMIT_RANGE}"
-if ! git diff --name-only ${COMMIT_RANGE} | grep -qvE '^(docs|spec)/'
+echo "Check changes for: ${COMMIT_RANGE}"
+if ! git diff --name-only ${COMMIT_RANGE} | grep -qvE "$1"
 then
-    echo "Only docs were updated, or there's no change, not running the CI."
+    echo "Only '$1' were updated, or there's no change, not running the CI."
     skip_travis
 fi
 

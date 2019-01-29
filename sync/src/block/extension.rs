@@ -174,7 +174,7 @@ impl NetworkExtension for Extension {
         self.api.send(
             id,
             &Message::Status {
-                total_score: chain_info.highest_score,
+                total_score: chain_info.best_proposal_score,
                 best_hash: chain_info.best_block_hash,
                 genesis_hash: chain_info.genesis_hash,
             }
@@ -234,7 +234,7 @@ impl TimeoutHandler for Extension {
     fn on_timeout(&self, token: TimerToken) {
         match token {
             SYNC_TIMER_TOKEN => {
-                let highest_score = self.client.chain_info().highest_score;
+                let best_proposal_score = self.client.chain_info().best_proposal_score;
                 let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
                 peer_ids.shuffle(&mut thread_rng());
 
@@ -251,7 +251,7 @@ impl TimeoutHandler for Extension {
                         U256::zero()
                     };
 
-                    if peer_score > highest_score {
+                    if peer_score > best_proposal_score {
                         self.send_body_request(&id);
                     }
                 }
@@ -301,7 +301,7 @@ impl ChainNotify for Extension {
         retracted: Vec<H256>,
         _sealed: Vec<H256>,
         _duration: u64,
-        _new_highest_header: Option<H256>,
+        _new_best_proposal: Option<H256>,
     ) {
         let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         for id in peer_ids {
@@ -348,7 +348,7 @@ impl ChainNotify for Extension {
             self.api.send(
                 id,
                 &Message::Status {
-                    total_score: chain_info.highest_score,
+                    total_score: chain_info.best_proposal_score,
                     best_hash: chain_info.best_block_hash,
                     genesis_hash: chain_info.genesis_hash,
                 }
@@ -428,18 +428,18 @@ impl Extension {
     }
 
     fn create_headers_response(&self, start_number: BlockNumber, max_count: u64) -> ResponseMessage {
-        let highest_header = self.client.highest_header();
+        let best_proposal_header = self.client.best_proposal_header();
         let headers = (0..max_count)
             .map(|number| {
                 let height = start_number + number;
-                let block_id = if highest_header.number() == height {
+                let block_id = if best_proposal_header.number() == height {
                     // If Engine != Tendermint
-                    //    Best block == Highest block
-                    //    We could get the highest block either by the block hash or the block number.
+                    //    Best block == Best proposal block
+                    //    We could get the best proposal block either by the block hash or the block number.
                     // If Engine == Tendermint
-                    //    Highest block's parent == Best block
-                    //    We should get the highest block only by the block hash.
-                    BlockId::Hash(highest_header.hash())
+                    //    Best block = Best proposal block or its parent
+                    //    We should get the best proposal block only by the block hash.
+                    BlockId::Hash(best_proposal_header.hash())
                 } else {
                     BlockId::Number(height)
                 };
@@ -621,7 +621,7 @@ impl Extension {
             }
         }
 
-        let total_score = self.client.chain_info().highest_score;
+        let total_score = self.client.chain_info().best_proposal_score;
         let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         peer_ids.shuffle(&mut thread_rng());
 

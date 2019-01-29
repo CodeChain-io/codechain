@@ -21,9 +21,8 @@ use std::time::{Duration, Instant};
 
 use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
 use cstate::{FindActionHandler, StateError, TopLevelState};
-use ctypes::transaction::ParcelError;
-use ctypes::transaction::{Action, IncompleteTransaction};
-use ctypes::transaction::{Error as TransactionError, Timelock};
+use ctypes::errors::HistoryError;
+use ctypes::transaction::{Action, IncompleteTransaction, Timelock};
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
@@ -263,7 +262,7 @@ impl Miner {
                 let hash = tx.hash();
                 if client.transaction_block(&TransactionId::Hash(hash)).is_some() {
                     cdebug!(MINER, "Rejected transaction {:?}: already in the blockchain", hash);
-                    return Err(StateError::from(ParcelError::TransactionAlreadyImported).into())
+                    return Err(StateError::History(HistoryError::TransactionAlreadyImported).into())
                 }
                 match self
                     .engine
@@ -317,7 +316,7 @@ impl Miner {
                 Err(e) => Err(e),
                 Ok(()) => {
                     let result = insertion_results[idx].clone();
-                    let result = result.map_err(StateError::from)?;
+                    let result = result.map_err(|x| x.into_state_error())?;
                     inserted.push(tx_hashes[idx]);
                     Ok(result)
                 }
@@ -346,7 +345,7 @@ impl Miner {
                         Timelock::BlockAge(value) => (
                             true,
                             client.transaction_block_number(&input.prev_out.tracker).ok_or_else(|| {
-                                Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                Error::State(StateError::History(HistoryError::Timelocked {
                                     timelock,
                                     remaining_time: u64::max_value(),
                                 }))
@@ -356,7 +355,7 @@ impl Miner {
                         Timelock::TimeAge(value) => (
                             false,
                             client.transaction_block_timestamp(&input.prev_out.tracker).ok_or_else(|| {
-                                Error::State(StateError::Transaction(TransactionError::Timelocked {
+                                Error::State(StateError::History(HistoryError::Timelocked {
                                     timelock,
                                     remaining_time: u64::max_value(),
                                 }))
@@ -465,7 +464,7 @@ impl Miner {
 
             match result {
                 // already have transaction - ignore
-                Err(Error::State(StateError::Parcel(ParcelError::TransactionAlreadyImported))) => {}
+                Err(Error::State(StateError::History(HistoryError::TransactionAlreadyImported))) => {}
                 Err(e) => {
                     invalid_transactions.push(hash);
                     cdebug!(

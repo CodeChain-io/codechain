@@ -364,7 +364,7 @@ impl ChainInfo for TestBlockChainClient {
         let number = self.blocks.read().len() as BlockNumber - 1;
         BlockChainInfo {
             best_score: *self.score.read(),
-            highest_score: *self.score.read(),
+            best_proposal_score: *self.score.read(),
             pending_total_score: *self.score.read(),
             genesis_hash: self.genesis_hash,
             best_block_hash: *self.last_hash.read(),
@@ -393,7 +393,7 @@ impl BlockInfo for TestBlockChainClient {
         unimplemented!()
     }
 
-    fn highest_header(&self) -> encoded::Header {
+    fn best_proposal_header(&self) -> encoded::Header {
         unimplemented!()
     }
 

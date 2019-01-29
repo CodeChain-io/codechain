@@ -19,12 +19,12 @@ use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
 use super::invoice_result::InvoiceResult;
-use crate::transaction::ParcelError;
+use crate::errors::RuntimeError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Invoice {
     Success,
-    Failure(ParcelError),
+    Failure(RuntimeError),
 }
 
 const INVOICE_ID_SINGLE_SUCCESS: u8 = 1u8;
@@ -100,6 +100,7 @@ mod tests {
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
+    use crate::errors::RuntimeError;
 
     #[test]
     fn encode_and_decode_single_success_tx_invoice() {
@@ -108,6 +109,6 @@ mod tests {
 
     #[test]
     fn encode_and_decode_single_failed_tx_invoice() {
-        rlp_encode_and_decode_test!(Invoice::Failure(ParcelError::Old));
+        rlp_encode_and_decode_test!(Invoice::Failure(RuntimeError::CannotBurnCentralizedAsset));
     }
 }

@@ -20,10 +20,11 @@ use std::collections::HashMap;
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
 use cmerkle::{self, TrieError, TrieFactory};
+use ctypes::errors::{RuntimeError, SyntaxError, UnlockFailureReason};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
-    AssetMintOutput, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, Error as TransactionError, Order,
-    OrderOnTransfer, PartialHashing, ShardTransaction, UnlockFailureReason,
+    AssetMintOutput, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, Order, OrderOnTransfer,
+    PartialHashing, ShardTransaction,
 };
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
@@ -214,13 +215,13 @@ impl<'db> ShardLevelState<'db> {
         pool: Vec<Asset>,
     ) -> StateResult<()> {
         if !shard_users.is_empty() && !shard_users.contains(sender) {
-            return Err(TransactionError::InsufficientPermission.into())
+            return Err(RuntimeError::InsufficientPermission.into())
         }
 
         let asset_type = Blake::blake(transaction_tracker);
         let asset_scheme_address = AssetSchemeAddress::new(asset_type, self.shard_id);
         if self.asset_scheme(&asset_scheme_address)?.is_some() {
-            return Err(TransactionError::AssetSchemeDuplicated(transaction_tracker).into())
+            return Err(RuntimeError::AssetSchemeDuplicated(transaction_tracker).into())
         }
         let supply = supply.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.create_asset_scheme(
@@ -314,7 +315,7 @@ impl<'db> ShardLevelState<'db> {
                 let transaction_tracker = input.prev_out.tracker;
                 let index = input.prev_out.index;
                 let address = OwnedAssetAddress::new(transaction_tracker, index, self.shard_id);
-                let asset = self.asset(&address)?.ok_or_else(|| TransactionError::AssetNotFound(address.into()))?;
+                let asset = self.asset(&address)?.ok_or_else(|| RuntimeError::AssetNotFound(address.into()))?;
 
                 match &asset.order_hash() {
                     Some(order_hash) if *order_hash == order.hash() => {}
@@ -322,13 +323,13 @@ impl<'db> ShardLevelState<'db> {
                         if order.origin_outputs.contains(&input.prev_out) {
                             counter += 1;
                         } else {
-                            return Err(TransactionError::InvalidOriginOutputs(order.hash()).into())
+                            return Err(SyntaxError::InvalidOriginOutputs(order.hash()).into())
                         }
                     }
                 }
             }
             if counter > 0 && counter != order.origin_outputs.len() {
-                return Err(TransactionError::InvalidOriginOutputs(order.hash()).into())
+                return Err(SyntaxError::InvalidOriginOutputs(order.hash()).into())
             }
         }
         Ok(())
@@ -348,14 +349,14 @@ impl<'db> ShardLevelState<'db> {
         {
             let asset_scheme = self
                 .asset_scheme(&asset_scheme_address)?
-                .ok_or_else(|| TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+                .ok_or_else(|| RuntimeError::AssetSchemeNotFound(asset_scheme_address.into()))?;
 
             if !asset_scheme.is_centralized() {
-                return Err(TransactionError::InsufficientPermission.into())
+                return Err(RuntimeError::InsufficientPermission.into())
             }
             let administrator = asset_scheme.administrator().as_ref().expect("Centralized asset has administrator");
             if administrator != sender && !approvers.contains(administrator) {
-                return Err(TransactionError::InsufficientPermission.into())
+                return Err(RuntimeError::InsufficientPermission.into())
             }
         }
         let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
@@ -380,18 +381,18 @@ impl<'db> ShardLevelState<'db> {
 
         let asset_scheme = self
             .asset_scheme(&asset_scheme_address)?
-            .ok_or_else(|| TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+            .ok_or_else(|| RuntimeError::AssetSchemeNotFound(asset_scheme_address.into()))?;
 
         if let Some(approver) = asset_scheme.approver().as_ref() {
             if sender != approver && !approvers.contains(approver) {
-                return Err(TransactionError::NotApproved(*approver).into())
+                return Err(RuntimeError::NotApproved(*approver).into())
             }
         }
 
         match self.asset(&asset_address)? {
             Some(asset) => {
                 if asset.quantity() != input.prev_out.quantity {
-                    return Err(TransactionError::InvalidAssetQuantity {
+                    return Err(RuntimeError::InvalidAssetQuantity {
                         address: asset_address.into(),
                         expected: asset.quantity(),
                         got: input.prev_out.quantity,
@@ -399,11 +400,11 @@ impl<'db> ShardLevelState<'db> {
                     .into())
                 }
                 if *asset.asset_type() != input.prev_out.asset_type {
-                    return Err(TransactionError::InvalidAssetType(input.prev_out.asset_type).into())
+                    return Err(RuntimeError::InvalidAssetType(input.prev_out.asset_type).into())
                 }
                 Ok((asset, asset_address))
             }
-            None => Err(TransactionError::AssetNotFound(asset_address.into()).into()),
+            None => Err(RuntimeError::AssetNotFound(asset_address.into()).into()),
         }
     }
 
@@ -416,7 +417,7 @@ impl<'db> ShardLevelState<'db> {
         if asset_scheme.is_allowed_script_hash(&lock_script_hash) {
             Ok(())
         } else {
-            Err(TransactionError::ScriptNotAllowed(lock_script_hash).into())
+            Err(RuntimeError::ScriptNotAllowed(lock_script_hash).into())
         }
     }
 
@@ -437,7 +438,7 @@ impl<'db> ShardLevelState<'db> {
             let address = OwnedAssetAddress::new(input.prev_out.tracker, index, self.shard_id);
             match self.asset(&address)? {
                 Some(asset) => (address.into(), asset),
-                None => return Err(TransactionError::AssetNotFound(address.into()).into()),
+                None => return Err(RuntimeError::AssetNotFound(address.into()).into()),
             }
         };
         let asset_scheme = {
@@ -450,7 +451,7 @@ impl<'db> ShardLevelState<'db> {
                 return Ok(())
             } else if burn {
                 // Only the administrator can burn the centralized asset
-                return Err(TransactionError::CannotBurnCentralizedAsset.into())
+                return Err(RuntimeError::CannotBurnCentralizedAsset.into())
             }
         }
 
@@ -468,7 +469,7 @@ impl<'db> ShardLevelState<'db> {
         };
 
         if *asset.lock_script_hash() != Blake::blake(&input.lock_script) {
-            return Err(TransactionError::ScriptHashMismatch(Mismatch {
+            return Err(RuntimeError::ScriptHashMismatch(Mismatch {
                 expected: *asset.lock_script_hash(),
                 found: Blake::blake(&input.lock_script),
             })
@@ -487,7 +488,7 @@ impl<'db> ShardLevelState<'db> {
                 client,
             ),
             // FIXME : Deliver full decode error
-            _ => return Err(TransactionError::InvalidScript.into()),
+            _ => return Err(SyntaxError::InvalidScript.into()),
         };
 
         match (script_result, burn) {
@@ -499,7 +500,7 @@ impl<'db> ShardLevelState<'db> {
         }
         .map_err(|reason| {
             ctrace!(TX, "Cannot run unlock/lock script {:?}", reason);
-            TransactionError::FailedToUnlock {
+            RuntimeError::FailedToUnlock {
                 address,
                 reason,
             }
@@ -535,7 +536,7 @@ impl<'db> ShardLevelState<'db> {
             let asset_scheme =
                 self.asset_scheme(&asset_scheme_address)?.expect("AssetScheme must exist when the asset exist");
             if asset_scheme.is_centralized() {
-                return Err(TransactionError::CannotComposeCentralizedAsset.into())
+                return Err(RuntimeError::CannotComposeCentralizedAsset.into())
             }
 
             self.kill_asset(&asset_address);
@@ -576,10 +577,10 @@ impl<'db> ShardLevelState<'db> {
         let asset_scheme_address = AssetSchemeAddress::new(asset_type, shard_id);
         let asset_scheme = self
             .asset_scheme(&asset_scheme_address)?
-            .ok_or_else(|| TransactionError::AssetSchemeNotFound(asset_scheme_address.into()))?;
+            .ok_or_else(|| RuntimeError::AssetSchemeNotFound(asset_scheme_address.into()))?;
         // The input asset should be composed asset
         if asset_scheme.pool().is_empty() {
-            return Err(TransactionError::InvalidDecomposedInput {
+            return Err(RuntimeError::InvalidDecomposedInput {
                 asset_type,
                 shard_id,
                 got: 0,
@@ -598,7 +599,7 @@ impl<'db> ShardLevelState<'db> {
             let asset_type = asset.asset_type();
             match sum.remove(asset_type) {
                 None => {
-                    return Err(TransactionError::InvalidDecomposedOutput {
+                    return Err(RuntimeError::InvalidDecomposedOutput {
                         asset_type: *asset_type,
                         shard_id: self.shard_id,
                         expected: asset.quantity(),
@@ -608,7 +609,7 @@ impl<'db> ShardLevelState<'db> {
                 }
                 Some(value) => {
                     if value != asset.quantity() {
-                        return Err(TransactionError::InvalidDecomposedOutput {
+                        return Err(RuntimeError::InvalidDecomposedOutput {
                             asset_type: *asset_type,
                             shard_id: self.shard_id,
                             expected: asset.quantity(),
@@ -623,7 +624,7 @@ impl<'db> ShardLevelState<'db> {
             let mut invalid_assets: Vec<Asset> =
                 sum.into_iter().map(|(asset_type, quantity)| Asset::new(asset_type, quantity)).collect();
             let invalid_asset = invalid_assets.pop().unwrap();
-            return Err(TransactionError::InvalidDecomposedOutput {
+            return Err(RuntimeError::InvalidDecomposedOutput {
                 asset_type: *invalid_asset.asset_type(),
                 shard_id: self.shard_id,
                 expected: 0,
@@ -818,10 +819,10 @@ impl<'db> ShardState for ShardLevelState<'db> {
                 self.discard_checkpoint(TRANSACTION_CHECKPOINT);
                 Ok(Invoice::Success)
             }
-            Err(StateError::Transaction(err)) => {
+            Err(StateError::Runtime(err)) => {
                 cinfo!(TX, "Cannot apply InnerTx({}): {:?}", transaction.tracker(), err);
                 self.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
-                Ok(Invoice::Failure(err.into()))
+                Ok(Invoice::Failure(err))
             }
             Err(err) => {
                 self.revert_to_checkpoint(TRANSACTION_CHECKPOINT);
@@ -951,7 +952,7 @@ mod tests {
         );
 
         assert_eq!(
-            Ok(Invoice::Failure(TransactionError::AssetSchemeDuplicated(transaction_tracker).into())),
+            Ok(Invoice::Failure(RuntimeError::AssetSchemeDuplicated(transaction_tracker).into())),
             state.apply(&transaction.into(), &sender, &[sender], &[], &get_test_client())
         );
 
@@ -991,7 +992,7 @@ mod tests {
         let transfer_tracker = transfer.tracker();
 
         assert_eq!(
-            Ok(Invoice::Failure(TransactionError::NotApproved(approver).into())),
+            Ok(Invoice::Failure(RuntimeError::NotApproved(approver).into())),
             state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client())
         );
 
@@ -1129,7 +1130,7 @@ mod tests {
         let transfer_tracker = transfer.tracker();
 
         assert_eq!(
-            Ok(Invoice::Failure(TransactionError::ScriptNotAllowed(lock_script_hash).into())),
+            Ok(Invoice::Failure(RuntimeError::ScriptNotAllowed(lock_script_hash).into())),
             state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client())
         );
 
@@ -1359,7 +1360,7 @@ mod tests {
 
         assert_eq!(
             Ok(Invoice::Failure(
-                TransactionError::InvalidAssetQuantity {
+                RuntimeError::InvalidAssetQuantity {
                     address: asset_address,
                     expected: 30,
                     got: 20
@@ -1420,7 +1421,7 @@ mod tests {
         let transfer_tracker = transfer.tracker();
 
         assert_eq!(
-            Ok(Invoice::Failure(TransactionError::InvalidAssetType(asset_type2).into())),
+            Ok(Invoice::Failure(RuntimeError::InvalidAssetType(asset_type2).into())),
             state.apply(&transfer.into(), &sender, &[sender], &[], &get_test_client())
         );
 
@@ -1674,7 +1675,7 @@ mod tests {
 
         assert_eq!(
             Ok(Invoice::Failure(
-                TransactionError::InvalidDecomposedInput {
+                RuntimeError::InvalidDecomposedInput {
                     asset_type: asset_type2,
                     shard_id: SHARD_ID,
                     got: 0,
@@ -1758,7 +1759,7 @@ mod tests {
 
         assert_eq!(
             Ok(Invoice::Failure(
-                TransactionError::InvalidDecomposedOutput {
+                RuntimeError::InvalidDecomposedOutput {
                     asset_type: asset_type2,
                     shard_id: SHARD_ID,
                     expected: 1,
@@ -1846,7 +1847,7 @@ mod tests {
 
         assert_eq!(
             Ok(Invoice::Failure(
-                TransactionError::InvalidDecomposedOutput {
+                RuntimeError::InvalidDecomposedOutput {
                     asset_type,
                     shard_id: SHARD_ID,
                     expected: 30,
@@ -1995,7 +1996,7 @@ mod tests {
         let sender = address();
         assert_eq!(
             Ok(Invoice::Failure(
-                TransactionError::ScriptHashMismatch(Mismatch {
+                RuntimeError::ScriptHashMismatch(Mismatch {
                     expected: lock_script_hash,
                     found: Blake::blake(&failed_lock_script),
                 })
@@ -2085,7 +2086,7 @@ mod tests {
         let shard_user = address();
 
         assert_eq!(
-            Ok(Invoice::Failure(TransactionError::InsufficientPermission.into())),
+            Ok(Invoice::Failure(RuntimeError::InsufficientPermission.into())),
             state.apply(&transaction.into(), &sender, &[shard_user], &[], &get_test_client())
         );
 

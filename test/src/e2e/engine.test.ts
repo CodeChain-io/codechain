@@ -25,7 +25,7 @@ import {
 } from "../helper/constants";
 import { toHex } from "codechain-primitives/lib";
 import { fail } from "assert";
-import { errorMatcher, ERROR } from "../helper/error";
+import { ERROR } from "../helper/error";
 
 const RLP = require("rlp");
 
@@ -110,7 +110,7 @@ describe("engine", function() {
                 );
                 fail();
             } catch (e) {
-                expect(e).to.satisfy(errorMatcher(ERROR.STATE_NOT_EXIST));
+                expect(e).similarTo(ERROR.STATE_NOT_EXIST);
             }
         });
 
@@ -119,9 +119,7 @@ describe("engine", function() {
                 await node.sdk.rpc.engine.getCustomActionData(999999, []);
                 fail();
             } catch (e) {
-                expect(e).to.satisfy(
-                    errorMatcher(ERROR.ACTION_DATA_HANDLER_NOT_FOUND)
-                );
+                expect(e).similarTo(ERROR.ACTION_DATA_HANDLER_NOT_FOUND);
             }
         });
     });
