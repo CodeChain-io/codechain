@@ -1234,6 +1234,7 @@ pub mod test {
                 orders: vec![],
                 metadata: "".into(),
                 approvals: vec![],
+                expiration: None,
             },
         };
         let timelock = TxTimelock {

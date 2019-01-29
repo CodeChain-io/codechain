@@ -1056,6 +1056,7 @@ mod tests {
             orders,
             metadata,
             approvals: vec![Signature::random(), Signature::random()],
+            expiration: Some(10),
         });
     }
 
@@ -1178,6 +1179,7 @@ mod tests {
             }],
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         };
         assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000), Ok(()));
     }
@@ -1298,6 +1300,7 @@ mod tests {
             }],
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         };
 
         assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000), Ok(()));
@@ -1385,6 +1388,7 @@ mod tests {
             }],
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         };
         assert_eq!(
             action.verify(NetworkId::default(), 1000, 1000, 1000),
@@ -1506,6 +1510,7 @@ mod tests {
             }],
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         };
         assert_eq!(
             action.verify(NetworkId::default(), 1000, 1000, 1000),
@@ -1594,6 +1599,7 @@ mod tests {
             }],
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         };
         assert_eq!(
             action.verify(NetworkId::default(), 1000, 1000, 1000),
@@ -1682,6 +1688,7 @@ mod tests {
             }],
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         };
         assert_eq!(
             action.verify(NetworkId::default(), 1000, 1000, 1000),
@@ -1801,6 +1808,7 @@ mod tests {
             ],
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         };
         assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000), Ok(()));
     }
