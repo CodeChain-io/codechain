@@ -551,10 +551,27 @@ impl TendermintInner {
             step: Step::Propose,
         });
 
-        let current_height = self.height;
         let height = proposal.number() as Height;
-        let view = consensus_view(proposal).expect("Imported block is already verified");
-        if current_height == height && self.view == view {
+        let prev_block_view = previous_block_view(proposal).expect("The proposal is verified");
+        let on = VoteOn {
+            step: VoteStep::new(height - 1, prev_block_view, Step::Precommit),
+            block_hash: Some(*proposal.parent_hash()),
+        };
+        let seal_view = TendermintSealView::new(proposal.seal());
+        for (index, signature) in seal_view.signatures().expect("The proposal is verified") {
+            let message = ConsensusMessage {
+                signature,
+                signer_index: index,
+                on: on.clone(),
+            };
+            if !self.votes.is_old_or_known(&message) {
+                self.votes.vote(message);
+            }
+        }
+
+        let proposal_view = consensus_view(proposal).unwrap();
+        let current_height = self.height;
+        if current_height == height && self.view == proposal_view {
             self.proposal = Some(proposal.hash());
             let prev_step = mem::replace(&mut self.step, TendermintState::Propose);
             match prev_step {
@@ -581,7 +598,7 @@ impl TendermintInner {
             };
         } else if current_height < height {
             self.move_to_height(height);
-            self.save_last_confirmed_view(view);
+            self.save_last_confirmed_view(proposal_view);
             self.proposal = Some(proposal.hash());
             self.move_to_step(Step::Prevote);
         }
