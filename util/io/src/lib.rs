@@ -40,7 +40,7 @@
 //!			Ok(())
 //!		}
 //!
-//!		fn message(&self, _io: &IoContext<MyMessage>, message: &MyMessage) -> IoHandlerResult<()> {
+//!		fn message(&self, _io: &IoContext<MyMessage>, message: MyMessage) -> IoHandlerResult<()> {
 //!			println!("Message {}", message.data);
 //!			Ok(())
 //!		}
@@ -146,7 +146,7 @@ where
         Ok(())
     }
     /// Called when a broadcasted message is received. The message can only be sent from a different IO handler.
-    fn message(&self, _io: &IoContext<Message>, _message: &Message) -> IoHandlerResult<()> {
+    fn message(&self, _io: &IoContext<Message>, _message: Message) -> IoHandlerResult<()> {
         Ok(())
     }
     /// Called when an IO stream gets closed
@@ -219,7 +219,7 @@ mod tests {
             Ok(())
         }
 
-        fn message(&self, _io: &IoContext<MyMessage>, message: &MyMessage) -> IoHandlerResult<()> {
+        fn message(&self, _io: &IoContext<MyMessage>, message: MyMessage) -> IoHandlerResult<()> {
             println!("Message {}", message.data);
             Ok(())
         }
