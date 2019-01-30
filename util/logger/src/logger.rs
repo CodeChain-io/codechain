@@ -80,7 +80,7 @@ impl Log for Logger {
             } else {
                 timestamp.normal()
             };
-            let thread_name = if stderr_isatty {
+            let colored_thread_name = if stderr_isatty {
                 thread_name.blue().bold()
             } else {
                 thread_name.normal()
@@ -88,7 +88,10 @@ impl Log for Logger {
             let log_level = record.level();
             let log_target = record.target();
             let log_message = record.args();
-            eprintln!("#{} {} {} {} {}  {}", instance_id, timestamp, thread_name, log_level, log_target, log_message);
+            eprintln!(
+                "#{} {} {} {} {}  {}",
+                instance_id, timestamp, colored_thread_name, log_level, log_target, log_message
+            );
 
             let rfc3339with_nano_second = "%Y-%m-%dT%H:%M:%S.%f%z";
             let timestamp = time::strftime(rfc3339with_nano_second, &time::now()).unwrap();
@@ -98,6 +101,7 @@ impl Log for Logger {
                 target: log_target.to_string(),
                 message: log_message.to_string(),
                 timestamp,
+                thread_name,
             });
         }
     }

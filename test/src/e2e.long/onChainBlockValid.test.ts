@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { TestHelper } from "codechain-test-helper/lib/testHelper";
-import { Header } from "codechain-test-helper/lib/cHeader";
-import CodeChain from "../helper/spawn";
-import { H256, U256, H160 } from "codechain-primitives/lib";
-
-import "mocha";
 import { expect } from "chai";
+import { H160, H256, U256 } from "codechain-primitives/lib";
+import { TestHelper } from "codechain-test-helper";
+import { Header } from "codechain-test-helper/lib/cHeader";
+import "mocha";
+import CodeChain from "../helper/spawn";
 
 describe("Test onChain block communication", async function() {
     let nodeA: CodeChain;
@@ -42,7 +41,6 @@ describe("Test onChain block communication", async function() {
     let VALID_INVOICEROOT = new H256(
         "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0"
     );
-    let VALID_SEAL: Buffer[] = [];
 
     const BASE = 350;
 
@@ -114,7 +112,6 @@ describe("Test onChain block communication", async function() {
         VALID_TRANSACTIONS_ROOT = block1.transactionsRoot;
         VALID_STATEROOT = block1.stateRoot;
         VALID_INVOICEROOT = block1.invoicesRoot;
-        VALID_SEAL = block1.seal;
 
         nodeA = new CodeChain({ base: BASE });
         await nodeA.start();

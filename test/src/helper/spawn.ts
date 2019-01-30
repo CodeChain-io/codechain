@@ -54,20 +54,20 @@ export type ChainType =
 
 export default class CodeChain {
     private static idCounter = 0;
-    private _id: number;
-    private _sdk: SDK;
-    private _localKeyStorePath: string;
-    private _dbPath: string;
-    private _ipcPath: string;
-    private _keysPath: string;
-    private _logFile: string;
-    private _logPath: string;
-    private _chain: ChainType;
-    private _rpcPort: number;
-    private argv: string[];
+    private readonly _id: number;
+    private readonly _sdk: SDK;
+    private readonly _localKeyStorePath: string;
+    private readonly _dbPath: string;
+    private readonly _ipcPath: string;
+    private readonly _keysPath: string;
+    private readonly _logFile: string;
+    private readonly _logPath: string;
+    private readonly _chain: ChainType;
+    private readonly _rpcPort: number;
+    private readonly argv: string[];
     private isTestFailed: boolean;
     private process?: ChildProcess;
-    private keyFileMovePromise?: Promise<{}>;
+    private readonly keyFileMovePromise?: Promise<{}>;
 
     public get id(): number {
         return this._id;

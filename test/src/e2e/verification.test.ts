@@ -14,11 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import { ERROR } from "../helper/error";
-import { faucetAddress, faucetSecret } from "../helper/constants";
-
-import "mocha";
 import { expect } from "chai";
 import { AssetTransferAddress } from "codechain-primitives/lib";
 import {
@@ -26,6 +21,10 @@ import {
     AssetTransferInput,
     AssetTransferOutput
 } from "codechain-sdk/lib/core/classes";
+import "mocha";
+import { faucetAddress, faucetSecret } from "../helper/constants";
+import { ERROR } from "../helper/error";
+import CodeChain from "../helper/spawn";
 
 const RLP = require("rlp");
 

@@ -31,11 +31,13 @@ pub struct StructuredLogger {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Log {
     pub level: String,
     pub target: String,
     pub message: String,
     pub timestamp: String,
+    pub thread_name: String,
 }
 
 impl StructuredLogger {

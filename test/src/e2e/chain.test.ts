@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
+chai.use(chaiAsPromised);
+const expect = chai.expect;
 import {
     AssetScheme,
     H160,
@@ -22,19 +26,13 @@ import {
     MintAsset,
     U64
 } from "codechain-sdk/lib/core/classes";
+import "mocha";
 import {
     faucetAddress,
     faucetSecret,
     invalidAddress
 } from "../helper/constants";
-
 import CodeChain from "../helper/spawn";
-
-import "mocha";
-import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
-chai.use(chaiAsPromised);
-const expect = chai.expect;
 
 describe("chain", function() {
     const invalidH160 = H160.zero();
