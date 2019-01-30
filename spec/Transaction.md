@@ -81,6 +81,7 @@ TransferAsset {
 
     metadata: String,
     approvals: Vec<Signature>,
+    expiration: Option<u64>,
 }
 
 struct AssetTransferInput {
