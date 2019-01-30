@@ -44,7 +44,7 @@ use rlp::{Encodable, UntrustedRlp};
 use self::backup::{backup, restore, BackupView};
 use self::message::*;
 pub use self::params::{TendermintParams, TimeoutParams};
-use self::types::{BitSet, Height, PeerState, Step, TendermintState, View};
+use self::types::{BitSet, Height, PeerState, Step, TendermintSealView, TendermintState, View};
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
@@ -551,10 +551,27 @@ impl TendermintInner {
             step: Step::Propose,
         });
 
-        let current_height = self.height;
         let height = proposal.number() as Height;
-        let view = consensus_view(proposal).expect("Imported block is already verified");
-        if current_height == height && self.view == view {
+        let prev_block_view = previous_block_view(proposal).expect("The proposal is verified");
+        let on = VoteOn {
+            step: VoteStep::new(height - 1, prev_block_view, Step::Precommit),
+            block_hash: Some(*proposal.parent_hash()),
+        };
+        let seal_view = TendermintSealView::new(proposal.seal());
+        for (index, signature) in seal_view.signatures().expect("The proposal is verified") {
+            let message = ConsensusMessage {
+                signature,
+                signer_index: index,
+                on: on.clone(),
+            };
+            if !self.votes.is_old_or_known(&message) {
+                self.votes.vote(message);
+            }
+        }
+
+        let proposal_view = consensus_view(proposal).unwrap();
+        let current_height = self.height;
+        if current_height == height && self.view == proposal_view {
             self.proposal = Some(proposal.hash());
             let prev_step = mem::replace(&mut self.step, TendermintState::Propose);
             match prev_step {
@@ -581,7 +598,7 @@ impl TendermintInner {
             };
         } else if current_height < height {
             self.move_to_height(height);
-            self.save_last_confirmed_view(view);
+            self.save_last_confirmed_view(proposal_view);
             self.proposal = Some(proposal.hash());
             self.move_to_step(Step::Prevote);
         }
@@ -768,54 +785,40 @@ impl TendermintInner {
         }
         self.check_view_proposer(header.parent_hash(), header.number() as usize, consensus_view(header)?, &proposer)
             .map_err(Error::from)?;
+        let seal_view = TendermintSealView::new(header.seal());
+        let bitset_count = seal_view.bitset()?.count() as usize;
+        let precommits_count = seal_view.precommits().item_count()?;
+
+        if bitset_count < precommits_count {
+            cwarn!(
+                ENGINE,
+                "verify_block_external: The header({})'s bitset count is less than the precommits count",
+                header.hash()
+            );
+            return Err(BlockError::InvalidSeal.into())
+        }
+
+        if bitset_count < precommits_count {
+            cwarn!(
+                ENGINE,
+                "verify_block_external: The header({})'s bitset count is greater than the precommits count",
+                header.hash()
+            );
+            return Err(BlockError::InvalidSeal.into())
+        }
 
         let previous_block_view = previous_block_view(header)?;
         let step = VoteStep::new((header.number() - 1) as usize, previous_block_view, Step::Precommit);
         let precommit_hash = message_hash(step, *header.parent_hash());
-        let precommits_field =
-            &header.seal().get(2).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
-        let mut precommit_bitset: BitSet = UntrustedRlp::new(
-            &header.seal().get(3).expect("block went through verify_block_basic; block has .seal_fields() fields; qed"),
-        )
-        .as_val()?;
-        let mut bitset_index = 0;
         let mut counter = 0;
-        for rlp in UntrustedRlp::new(precommits_field).iter() {
-            let signature = rlp.as_val()?;
-            if precommit_bitset.is_empty() {
-                cwarn!(
-                    ENGINE,
-                    "verify_block_external: Precommit bitset got empty while dealing with validators of block hash {} on the seal.",
-                    header.parent_hash()
-                );
-                return Err(BlockError::InvalidSeal.into())
-            }
-            while !precommit_bitset.is_set(bitset_index) {
-                bitset_index += 1;
-            }
-            precommit_bitset.reset(bitset_index);
 
-            if bitset_index >= self.validators.count(header.parent_hash()) {
-                cwarn!(
-                    ENGINE,
-                    "verify_block_external: Signer index {} is out of bound from validators of block hash {}",
-                    bitset_index,
-                    header.parent_hash()
-                );
-                return Err(BlockError::InvalidSeal.into())
-            }
-
+        for (bitset_index, signature) in seal_view.signatures()? {
             let public = self.validators.get(header.parent_hash(), bitset_index);
             if !verify_schnorr(&public, &signature, &precommit_hash)? {
                 let address = public_to_address(&public);
                 return Err(EngineError::BlockNotAuthorized(address.to_owned()).into())
             }
             counter += 1;
-        }
-
-        if !precommit_bitset.is_empty() {
-            cwarn!(ENGINE, "verify_block_external: Precommit bitset is not empty after checking precommit signatures.",);
-            return Err(BlockError::InvalidSeal.into())
         }
 
         // Genesisblock does not have signatures
@@ -1070,6 +1073,7 @@ impl TendermintInner {
 
             if let Some(double) = self.votes.vote(message.clone()) {
                 let height = message.on.step.height as BlockNumber;
+                cwarn!(ENGINE, "Double vote found {:?}", double);
                 self.validators.report_malicious(&sender, height, height, ::rlp::encode(&double).into_vec());
                 return Err(EngineError::DoubleVote(sender))
             }
@@ -1391,6 +1395,8 @@ impl ChainNotify for TendermintChainNotify {
                 ENGINE,
                 "Transition to Propose because all pre-commits are received and the canonical chain is appended"
             );
+            let new_height = t.height + 1;
+            t.move_to_height(new_height);
             t.move_to_step(Step::Propose)
         }
     }

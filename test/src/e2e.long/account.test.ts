@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,20 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import { wait } from "../helper/promise";
-import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
-
-import "mocha";
 import { expect } from "chai";
+import "mocha";
 import { xor128 } from "seedrandom";
+import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
+import CodeChain from "../helper/spawn";
 
 describe("account", function() {
     const BASE = 0;
     describe("account scenario test", function() {
         let node: CodeChain;
         const testSize = 30;
-        const unlockTestSize = 15;
         const randomTestSize = 100;
 
         beforeEach(async function() {
@@ -201,7 +198,9 @@ describe("account", function() {
                             const { address, passphrase } = accountList[
                                 randomIdx
                             ];
-                            if (passphrase === undefined) break;
+                            if (passphrase === undefined) {
+                                break;
+                            }
 
                             const nextPassphrase = makeRandomPassphrase();
                             await node.sdk.rpc.sendRpcRequest(

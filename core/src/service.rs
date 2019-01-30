@@ -89,7 +89,7 @@ struct ClientIoHandler {
 }
 
 impl IoHandler<ClientIoMessage> for ClientIoHandler {
-    fn message(&self, _io: &IoContext<ClientIoMessage>, net_message: &ClientIoMessage) -> IoHandlerResult<()> {
+    fn message(&self, _io: &IoContext<ClientIoMessage>, net_message: ClientIoMessage) -> IoHandlerResult<()> {
         match net_message {
             ClientIoMessage::BlockVerified => {
                 self.client.import_verified_blocks();
@@ -98,16 +98,16 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
                 self.client.import_verified_headers();
             }
             ClientIoMessage::NewParcels(parcels, peer_id) => {
-                self.client.import_queued_parcels(parcels, *peer_id);
+                self.client.import_queued_parcels(&parcels, peer_id);
             }
             ClientIoMessage::NewBlockRequired {
                 parent_block,
                 allow_empty_block,
             } => {
-                self.client.update_sealing(*parent_block, *allow_empty_block);
+                self.client.update_sealing(parent_block, allow_empty_block);
             }
             ClientIoMessage::UpdateBestAsCommitted(block_hash) => {
-                self.client.update_best_as_committed(*block_hash);
+                self.client.update_best_as_committed(block_hash);
             }
         }
         Ok(())

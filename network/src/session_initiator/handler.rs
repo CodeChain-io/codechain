@@ -128,7 +128,6 @@ impl From<KeyError> for Error {
 
 type Result<T> = ::std::result::Result<T, Error>;
 
-#[derive(Debug, PartialOrd, PartialEq)]
 pub enum Message {
     ConnectTo(SocketAddr),
     ManuallyConnectTo(SocketAddr),
@@ -331,11 +330,11 @@ impl IoHandler<Message> for Handler {
         }
     }
 
-    fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
+    fn message(&self, io: &IoContext<Message>, message: Message) -> IoHandlerResult<()> {
         match message {
             Message::ConnectTo(socket_address) => {
                 let mut session_initiator = self.session_initiator.write();
-                session_initiator.routing_table.add_candidate(*socket_address);
+                session_initiator.routing_table.add_candidate(socket_address);
                 session_initiator.create_new_connection(&socket_address, io)?;
                 io.update_registration(RECEIVE_TOKEN);
             }
@@ -343,14 +342,14 @@ impl IoHandler<Message> for Handler {
                 let mut session_initiator = self.session_initiator.write();
                 session_initiator.filters.add_to_whitelist(socket_address.ip(), None);
                 session_initiator.routing_table.unban(&socket_address);
-                session_initiator.routing_table.add_candidate(*socket_address);
-                session_initiator.requests.manually_connected_address.insert(*socket_address);
+                session_initiator.routing_table.add_candidate(socket_address);
+                session_initiator.requests.manually_connected_address.insert(socket_address);
                 session_initiator.create_new_connection(&socket_address, io)?;
                 io.update_registration(RECEIVE_TOKEN);
             }
             Message::RequestSession(n) => {
                 let mut session_initiator = self.session_initiator.write();
-                let addresses = session_initiator.routing_table.candidates(*n);
+                let addresses = session_initiator.routing_table.candidates(n);
                 if !addresses.is_empty() {
                     let _f = finally(|| {
                         io.update_registration(RECEIVE_TOKEN);

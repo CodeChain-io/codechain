@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -16,6 +16,7 @@
 
 import { expect } from "chai";
 import "mocha";
+
 describe.skip("invalid block propagation 1", async function() {
     // FIXME
     it("OnChain invalid timestamp block propagation test", async function() {}).timeout(

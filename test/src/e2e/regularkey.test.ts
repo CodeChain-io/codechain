@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import { ERROR } from "../helper/error";
-
-import "mocha";
 import { expect } from "chai";
+import "mocha";
+import { ERROR } from "../helper/error";
+import CodeChain from "../helper/spawn";
 
 const INVOICE = {
     SUCCESS: {

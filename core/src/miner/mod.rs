@@ -167,3 +167,6 @@ pub enum TransactionImportResult {
     /// Transaction was imported to future queue.
     Future,
 }
+
+#[cfg(all(feature = "nightly", test))]
+mod mem_pool_benches;

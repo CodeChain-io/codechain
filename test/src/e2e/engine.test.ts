@@ -16,15 +16,15 @@
 
 import CodeChain from "../helper/spawn";
 
-import "mocha";
-import { expect } from "chai";
-import {
-    hitActionHandlerId,
-    faucetSecret,
-    faucetAddress
-} from "../helper/constants";
-import { toHex } from "codechain-primitives/lib";
 import { fail } from "assert";
+import { expect } from "chai";
+import { toHex } from "codechain-primitives/lib";
+import "mocha";
+import {
+    faucetAddress,
+    faucetSecret,
+    hitActionHandlerId
+} from "../helper/constants";
 import { ERROR } from "../helper/error";
 
 const RLP = require("rlp");

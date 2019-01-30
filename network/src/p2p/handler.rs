@@ -51,7 +51,6 @@ pub enum IgnoreConnectionLimit {
     Not,
 }
 
-#[derive(Debug, PartialEq)]
 pub enum Message {
     RequestConnection(SocketAddr, IgnoreConnectionLimit),
 
@@ -351,14 +350,14 @@ impl IoHandler<Message> for Handler {
         }
     }
 
-    fn message(&self, io: &IoContext<Message>, message: &Message) -> IoHandlerResult<()> {
+    fn message(&self, io: &IoContext<Message>, message: Message) -> IoHandlerResult<()> {
         match message {
             Message::RequestConnection(socket_address, ignore_connection_limit) => {
-                if self.routing_table.is_connected(socket_address) {
+                if self.routing_table.is_connected(&socket_address) {
                     return Ok(())
                 }
 
-                if ignore_connection_limit == &IgnoreConnectionLimit::Not {
+                if ignore_connection_limit == IgnoreConnectionLimit::Not {
                     let number_of_connections = self.connections.len();
                     if self.max_peers <= number_of_connections {
                         return Err(format!("Already has maximum peers({})", number_of_connections).into())
@@ -376,7 +375,7 @@ impl IoHandler<Message> for Handler {
             } => {
                 let versions = self.client.extension_versions();
                 for (extension_name, versions) in versions.into_iter() {
-                    let token = self.connections.stream_token(&node_id).ok_or_else(|| Error::InvalidNode(*node_id))?;
+                    let token = self.connections.stream_token(&node_id).ok_or_else(|| Error::InvalidNode(node_id))?;
                     if !self.connections.enqueue_negotiation_request(token, extension_name, versions) {
                         return Err(Error::InvalidStream(token).into())
                     }
@@ -390,8 +389,8 @@ impl IoHandler<Message> for Handler {
                 need_encryption,
                 data,
             } => {
-                let token = self.connections.stream_token(node_id).ok_or_else(|| Error::InvalidNode(*node_id))?;
-                if !self.connections.enqueue_extension_message(token, extension_name, *need_encryption, data) {
+                let token = self.connections.stream_token(&node_id).ok_or_else(|| Error::InvalidNode(node_id))?;
+                if !self.connections.enqueue_extension_message(token, &extension_name, need_encryption, data) {
                     return Err(Error::InvalidStream(token).into())
                 }
                 io.update_registration(token);

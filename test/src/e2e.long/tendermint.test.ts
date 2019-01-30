@@ -14,24 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import {
-    validator0Address,
-    validator1Address,
-    validator2Address,
-    validator3Address,
-    stakeActionHandlerId,
-    faucetAddress,
-    faucetSecret
-} from "../helper/constants";
-import { toHex } from "codechain-sdk/lib/utils";
-import { PromiseExpect } from "../helper/promise";
-
-import "mocha";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
+import { toHex } from "codechain-sdk/lib/utils";
+import "mocha";
+import {
+    faucetAddress,
+    faucetSecret,
+    stakeActionHandlerId,
+    validator0Address,
+    validator1Address,
+    validator2Address,
+    validator3Address
+} from "../helper/constants";
+import { PromiseExpect } from "../helper/promise";
+import CodeChain from "../helper/spawn";
 
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
@@ -45,7 +44,7 @@ describeSkippedInTravis("Tendermint ", function() {
     beforeEach(async function() {
         this.timeout(60_000);
 
-        let validatorAddresses = [
+        const validatorAddresses = [
             validator0Address,
             validator1Address,
             validator2Address,
@@ -204,16 +203,16 @@ describeSkippedInTravis("Tendermint ", function() {
             ])
         );
 
-        const best_number = await promiseExpect.shouldFulfill(
+        const bestNumber = await promiseExpect.shouldFulfill(
             "best blocknumber",
             nodes[1].getBestBlockNumber()
         );
         await promiseExpect.shouldFulfill(
             "best blocknumber",
             Promise.all([
-                nodes[1].waitBlockNumber(best_number + 1),
-                nodes[2].waitBlockNumber(best_number + 1),
-                nodes[3].waitBlockNumber(best_number + 1)
+                nodes[1].waitBlockNumber(bestNumber + 1),
+                nodes[2].waitBlockNumber(bestNumber + 1),
+                nodes[3].waitBlockNumber(bestNumber + 1)
             ])
         );
         await expect(
@@ -221,7 +220,7 @@ describeSkippedInTravis("Tendermint ", function() {
                 "best blocknumber",
                 nodes[3].sdk.rpc.chain.getBestBlockNumber()
             )
-        ).to.eventually.greaterThan(best_number);
+        ).to.eventually.greaterThan(bestNumber);
     }).timeout(30_000);
 
     it("Gossip", async function() {
