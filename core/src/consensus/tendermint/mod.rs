@@ -631,7 +631,14 @@ impl TendermintInner {
         let client = self.client();
         let backup = restore(client.get_kvdb().as_ref());
         if let Some(backup) = backup {
-            self.step = backup.step.into();
+            let backup_step = if backup.step == Step::Commit {
+                // If the backuped step is `Commit`, we should start at `Precommit` to update the
+                // chain's best block safely.
+                Step::Precommit
+            } else {
+                backup.step
+            };
+            self.step = backup_step.into();
             self.height = backup.height;
             self.view = backup.view;
             self.last_confirmed_view = backup.last_confirmed_view;
@@ -641,7 +648,7 @@ impl TendermintInner {
                 }
             }
 
-            self.move_to_step(backup.step, true);
+            self.move_to_step(backup_step, true);
 
             for vote in backup.votes {
                 let bytes = rlp::encode(&vote);
