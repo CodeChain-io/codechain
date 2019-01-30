@@ -82,6 +82,8 @@ pub enum Error {
     TextNotExist,
     /// Remove Text error
     TextVerificationFail(String),
+    /// Tried to use master key even register key is registered
+    CannotUseMasterKey,
 }
 
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 1;
@@ -108,6 +110,7 @@ const ERROR_ID_SCRIPT_HASH_MISMATCH: u8 = 21;
 const ERROR_ID_SCRIPT_NOT_ALLOWED: u8 = 22;
 const ERROR_ID_TEXT_NOT_EXIST: u8 = 23;
 const ERROR_ID_TEXT_VERIFICATION_FAIL: u8 = 24;
+const ERROR_ID_CANNOT_USE_MASTER_KEY: u8 = 25;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -139,6 +142,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_SCRIPT_NOT_ALLOWED => 2,
             ERROR_ID_TEXT_NOT_EXIST => 1,
             ERROR_ID_TEXT_VERIFICATION_FAIL => 2,
+            ERROR_ID_CANNOT_USE_MASTER_KEY => 1,
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         })
     }
@@ -220,6 +224,7 @@ impl Encodable for Error {
             Error::TextVerificationFail(err) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_TEXT_VERIFICATION_FAIL).append(err)
             }
+            Error::CannotUseMasterKey => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_USE_MASTER_KEY),
         };
     }
 }
@@ -274,6 +279,7 @@ impl Decodable for Error {
             ERROR_ID_SCRIPT_NOT_ALLOWED => Error::ScriptNotAllowed(rlp.val_at(1)?),
             ERROR_ID_TEXT_NOT_EXIST => Error::TextNotExist,
             ERROR_ID_TEXT_VERIFICATION_FAIL => Error::TextVerificationFail(rlp.val_at(1)?),
+            ERROR_ID_CANNOT_USE_MASTER_KEY => Error::CannotUseMasterKey,
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -346,6 +352,9 @@ impl Display for Error {
             Error::ScriptNotAllowed(hash) => write!(f, "Output lock script hash is not allowed : {}", hash),
             Error::TextNotExist => write!(f, "The text does not exist"),
             Error::TextVerificationFail(err) => write!(f, "Text verification has failed: {}", err),
+            Error::CannotUseMasterKey => {
+                write!(f, "Cannot use the master key because a regular key is already registered")
+            }
         }
     }
 }

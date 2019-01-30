@@ -55,4 +55,12 @@ impl Transaction {
         let t: Option<ShardTransaction> = self.action.clone().into();
         t.map(|t| t.tracker())
     }
+    pub fn is_master_key_allowed(&self) -> bool {
+        match self.action {
+            Action::SetRegularKey {
+                ..
+            } => true,
+            _ => false,
+        }
+    }
 }
