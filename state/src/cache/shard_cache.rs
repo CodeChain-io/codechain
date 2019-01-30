@@ -66,10 +66,6 @@ impl ShardCache {
         self.asset_scheme.get_mut(a, db)
     }
 
-    pub fn remove_asset_scheme(&self, address: &AssetSchemeAddress) {
-        self.asset_scheme.remove(address)
-    }
-
     pub fn asset(&self, a: &OwnedAssetAddress, db: &TrieDB) -> TrieResult<Option<OwnedAsset>> {
         self.asset.get(a, db)
     }

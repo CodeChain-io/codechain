@@ -637,7 +637,6 @@ impl<'db> ShardLevelState<'db> {
         self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
         self.kill_asset(&asset_address);
-        self.kill_asset_scheme(&asset_scheme_address);
 
         ctrace!(TX, "Deleted assets {:?} {:?}", asset_type, input.prev_out.quantity);
 
@@ -712,10 +711,6 @@ impl<'db> ShardLevelState<'db> {
 
     fn kill_asset(&mut self, account: &OwnedAssetAddress) {
         self.cache.remove_asset(account);
-    }
-
-    fn kill_asset_scheme(&mut self, account: &AssetSchemeAddress) {
-        self.cache.remove_asset_scheme(account);
     }
 
     pub fn create_asset_scheme(
@@ -1608,7 +1603,7 @@ mod tests {
         check_shard_level_state!(state, [
             (scheme: (asset_type, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (scheme: (composed_asset_type, SHARD_ID)),
+            (scheme: (composed_asset_type, SHARD_ID)  => { metadata: "composed".to_string(), supply: 1, pool: [Asset::new(asset_type, amount)] }),
             (asset: (compose_tracker, 0, SHARD_ID)),
             (asset: (decompose_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
