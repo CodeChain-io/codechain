@@ -646,7 +646,7 @@ impl TendermintInner {
 
             if let Some((committed, view)) = to_next_height {
                 if client.block(&BlockId::Hash(committed)).is_some() {
-                    self.move_to_height(backup.height);
+                    self.move_to_height(backup.height + 1);
                     self.save_last_confirmed_view(view);
                     return
                 } else {
