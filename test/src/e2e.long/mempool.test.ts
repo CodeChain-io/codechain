@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import { expect } from "chai";
+import "mocha";
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
-
-import "mocha";
-
-import { expect } from "chai";
 
 const BASE = 200;
 
@@ -79,9 +77,7 @@ describe("Memory pool size test", function() {
             await wait(500 * (counter + 1));
 
             const pendingTransactions = await nodeB.sdk.rpc.chain.getPendingTransactions();
-            expect(
-                (await nodeB.sdk.rpc.chain.getPendingTransactions()).length
-            ).to.equal(sizeLimit);
+            expect(pendingTransactions.length).to.equal(sizeLimit);
         }).timeout(20_000);
 
         afterEach(async function() {
@@ -139,8 +135,7 @@ describe("Memory pool memory limit test", function() {
                 nodeB.sdk.rpc.chain.getBestBlockNumber()
             ]);
             expect(aBlockNumber).to.equal(bBlockNumber);
-            const metadata =
-                "Very large transaction" + " ".repeat(1 * 1024 * 1024);
+            const metadata = "Very large transaction" + " ".repeat(1024 * 1024);
             const minting = [];
             for (let i = 0; i < sizeLimit; i++) {
                 minting.push(

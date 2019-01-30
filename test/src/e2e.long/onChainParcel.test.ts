@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { TestHelper } from "codechain-test-helper/lib/testHelper";
-import CodeChain from "../helper/spawn";
-import { faucetSecret } from "../helper/constants";
-
-import "mocha";
 import { expect } from "chai";
+import { TestHelper } from "codechain-test-helper";
+import "mocha";
+import { faucetSecret } from "../helper/constants";
+import CodeChain from "../helper/spawn";
 
 describe("Test onChain transaction communication", function() {
     let nodeA: CodeChain;
