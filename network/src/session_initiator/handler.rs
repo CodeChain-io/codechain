@@ -129,7 +129,6 @@ impl From<KeyError> for Error {
 type Result<T> = ::std::result::Result<T, Error>;
 
 pub enum Message {
-    ConnectTo(SocketAddr),
     ManuallyConnectTo(SocketAddr),
     RequestSession(usize),
 }
@@ -332,12 +331,6 @@ impl IoHandler<Message> for Handler {
 
     fn message(&self, io: &IoContext<Message>, message: Message) -> IoHandlerResult<()> {
         match message {
-            Message::ConnectTo(socket_address) => {
-                let mut session_initiator = self.session_initiator.write();
-                session_initiator.routing_table.add_candidate(socket_address);
-                session_initiator.create_new_connection(&socket_address, io)?;
-                io.update_registration(RECEIVE_TOKEN);
-            }
             Message::ManuallyConnectTo(socket_address) => {
                 let mut session_initiator = self.session_initiator.write();
                 session_initiator.filters.add_to_whitelist(socket_address.ip(), None);

@@ -90,14 +90,6 @@ impl Service {
         self.client.new_extension(factory)
     }
 
-    pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {
-        if let Err(err) = self.session_initiator.send_message(session_initiator::Message::ConnectTo(address)) {
-            return Err(format!("{:?}", err))
-        } else {
-            Ok(())
-        }
-    }
-
     pub fn set_routing_table(&self, disc: &DiscoveryApi) {
         disc.set_routing_table(Arc::clone(&self.routing_table));
     }

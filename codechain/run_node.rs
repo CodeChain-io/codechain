@@ -284,7 +284,9 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             scheme.engine.register_network_extension_to_service(&service);
 
             for address in network_config.bootstrap_addresses {
-                service.connect_to(address)?;
+                service
+                    .connect(address)
+                    .map_err(|e| format!("Cannot connect to bootstrap address({}): {:?}", address, e))?;
             }
             service
         } else {
