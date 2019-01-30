@@ -964,7 +964,6 @@ impl TendermintInner {
     fn register_client(&mut self, client: Weak<EngineClient>) {
         self.last_confirmed_view = 0;
         self.client = Some(Weak::clone(&client));
-        self.restore();
         self.validators.register_client(Weak::clone(&client));
         self.chain_notify.register_client(client);
     }
@@ -1112,6 +1111,7 @@ impl TendermintInner {
         };
 
         self.extension = Some(Arc::clone(&extension));
+        self.restore();
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {
