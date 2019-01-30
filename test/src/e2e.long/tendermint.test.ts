@@ -108,6 +108,103 @@ describeSkippedInTravis("Tendermint ", function() {
         ).to.eventually.greaterThan(1);
     }).timeout(20_000);
 
+    it("Block generation with restart", async function() {
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[0].connect(nodes[2]),
+                nodes[0].connect(nodes[3]),
+                nodes[1].connect(nodes[2]),
+                nodes[1].connect(nodes[3]),
+                nodes[2].connect(nodes[3])
+            ])
+        );
+        await promiseExpect.shouldFulfill(
+            "wait peers",
+            Promise.all([
+                nodes[0].waitPeers(4 - 1),
+                nodes[1].waitPeers(4 - 1),
+                nodes[2].waitPeers(4 - 1),
+                nodes[3].waitPeers(4 - 1)
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "block generation",
+            Promise.all([
+                nodes[0].waitBlockNumber(2),
+                nodes[1].waitBlockNumber(2),
+                nodes[2].waitBlockNumber(2),
+                nodes[3].waitBlockNumber(2)
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "stop",
+            Promise.all([
+                nodes[0].clean(),
+                nodes[1].clean(),
+                nodes[2].clean(),
+                nodes[3].clean()
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "start",
+            Promise.all([
+                nodes[0].start(),
+                nodes[1].start(),
+                nodes[2].start(),
+                nodes[3].start()
+            ])
+        );
+
+        const bestBlockNumber = await promiseExpect.shouldFulfill(
+            "BestBlockNUmber",
+            nodes[0].getBestBlockNumber()
+        );
+
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[0].connect(nodes[2]),
+                nodes[0].connect(nodes[3]),
+                nodes[1].connect(nodes[2]),
+                nodes[1].connect(nodes[3]),
+                nodes[2].connect(nodes[3])
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "wait peers",
+            Promise.all([
+                nodes[0].waitPeers(4 - 1),
+                nodes[1].waitPeers(4 - 1),
+                nodes[2].waitPeers(4 - 1),
+                nodes[3].waitPeers(4 - 1)
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "block generation",
+            Promise.all([
+                nodes[0].waitBlockNumber(bestBlockNumber + 2),
+                nodes[1].waitBlockNumber(bestBlockNumber + 2),
+                nodes[2].waitBlockNumber(bestBlockNumber + 2),
+                nodes[3].waitBlockNumber(bestBlockNumber + 2)
+            ])
+        );
+
+        await expect(
+            promiseExpect.shouldFulfill(
+                "best blocknumber",
+                nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            )
+        ).to.eventually.greaterThan(bestBlockNumber + 1);
+    }).timeout(40_000);
+
     it("Block generation with transaction", async function() {
         await promiseExpect.shouldFulfill(
             "connect",

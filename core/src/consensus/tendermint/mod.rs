@@ -653,8 +653,6 @@ impl TendermintInner {
                     cwarn!(ENGINE, "Cannot find a proposal which committed");
                 }
             }
-
-            self.extension().set_timer_step(backup.step, backup.view);
         }
     }
 
