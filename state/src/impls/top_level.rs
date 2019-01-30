@@ -262,11 +262,8 @@ impl TopLevelState {
         signer_public: &Public,
         client: &C,
     ) -> StateResult<Invoice> {
-        let fee_payer = self.public_to_owner_address(signer_public)?;
-
         self.create_checkpoint(FEE_CHECKPOINT);
-
-        match self.apply_internal(tx, &fee_payer, signed_hash, signer_public, client) {
+        match self.apply_internal(tx, signed_hash, signer_public, client) {
             Ok(invoice) => {
                 self.discard_checkpoint(FEE_CHECKPOINT);
                 Ok(invoice)
@@ -295,12 +292,12 @@ impl TopLevelState {
     fn apply_internal<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
         tx: &Transaction,
-        fee_payer: &Address,
         signed_hash: &H256,
         signer_public: &Public,
         client: &C,
     ) -> StateResult<Invoice> {
-        let seq = self.seq(fee_payer)?;
+        let fee_payer = self.public_to_owner_address(signer_public)?;
+        let seq = self.seq(&fee_payer)?;
 
         if tx.seq != seq {
             return Err(HistoryError::InvalidSeq(Mismatch {
@@ -312,13 +309,13 @@ impl TopLevelState {
 
         let fee = tx.fee;
 
-        self.inc_seq(fee_payer)?;
-        self.sub_balance(fee_payer, fee)?;
+        self.inc_seq(&fee_payer)?;
+        self.sub_balance(&fee_payer, fee)?;
 
         // The failed transaction also must pay the fee and increase seq.
         self.create_checkpoint(ACTION_CHECKPOINT);
         let result =
-            self.apply_action(&tx.action, tx.network_id, &tx.hash(), signed_hash, fee_payer, signer_public, client);
+            self.apply_action(&tx.action, tx.network_id, &tx.hash(), signed_hash, &fee_payer, signer_public, client);
         match &result {
             Ok(_) => {
                 self.discard_checkpoint(ACTION_CHECKPOINT);
