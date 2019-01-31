@@ -644,19 +644,6 @@ mod tests {
         tick() * 2
     }
 
-    fn tick_epsilon() -> Duration {
-        tick() / 5
-    }
-
-    fn similar(a: Instant, b: Instant) -> bool {
-        let diff = if a > b {
-            a - b
-        } else {
-            b - a
-        };
-        diff < tick_epsilon()
-    }
-
     fn new_timer<T>(timer_loop: &TimerLoop, name: TimerName, handler: &Arc<T>) -> TimerApi
     where
         T: 'static + Sized + TimeoutHandler, {
@@ -691,7 +678,7 @@ mod tests {
         assert!(value.is_some());
         let (called_at, token) = value.unwrap();
         assert_eq!(token, timer_token);
-        assert!(similar(called_at, begin + tick())); // called_at = now + ticksufficiently small
+        assert!(called_at >= begin + tick(), "{:?} >= {:?} + {:?} ({:?})", called_at, begin, tick(), begin + tick());
     }
 
     #[test]
@@ -814,7 +801,7 @@ mod tests {
         assert!(value.is_some());
         let (called_at, token) = value.unwrap();
         assert_eq!(token, timer_token);
-        assert!(similar(called_at, begin + tick())); // called_at = now + ticksufficiently small
+        assert!(called_at >= begin + tick(), "{:?} >= {:?} + {:?} ({:?})", called_at, begin, tick(), begin + tick());
     }
 
     #[test]
@@ -845,7 +832,7 @@ mod tests {
         assert!(value.is_some());
         let (called_at, token) = value.unwrap();
         assert_eq!(token, timer_token);
-        assert!(similar(called_at, begin + tick())); // called_at = now + ticksufficiently small
+        assert!(called_at >= begin + tick(), "{:?} >= {:?} + {:?} ({:?})", called_at, begin, tick(), begin + tick());
     }
     #[test]
     fn test_repeat() {
@@ -879,11 +866,20 @@ mod tests {
 
         let (ref condvar, ref value) = *pair;
         let mut value = value.lock();
-        condvar.wait_for(&mut value, long_tick()); // wait sufficiently
+        condvar.wait_for(&mut value, long_tick());
         assert_eq!(value.len(), TEST_COUNT);
-        assert!(similar(value[0], begin + tick()));
+        assert!(value[0] >= begin + tick(), "{:?} >= {:?} + {:?} ({:?})", value[0], begin, tick(), begin + tick());
         for i in 1..TEST_COUNT {
-            assert!(similar(value[i - 1] + tick(), value[i]));
+            let margin = tick() / 5;
+            assert!(
+                value[i] >= value[i - 1] + tick() - margin,
+                "{:?} >= {:?} + {:?} - {:?} ({:?})",
+                value[i],
+                value[i - 1],
+                tick(),
+                margin,
+                value[i - 1] + tick() - margin
+            );
         }
     }
 }
