@@ -56,9 +56,6 @@ pub enum Error {
     },
     /// AssetType error other than format.
     InvalidAssetType(H160),
-    InvalidComposedOutput {
-        got: u64,
-    },
     InvalidDecomposedInput {
         asset_type: H160,
         shard_id: ShardId,
@@ -103,7 +100,6 @@ const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 9;
 const ERROR_ID_INVALID_ASSET_QUANTITY: u8 = 10;
 const ERROR_ID_INVALID_ASSET_TYPE: u8 = 11;
-const ERROR_ID_INVALID_COMPOSED_OUTPUT: u8 = 12;
 const ERROR_ID_INVALID_DECOMPOSED_INPUT: u8 = 13;
 const ERROR_ID_INVALID_DECOMPOSED_OUTPUT: u8 = 14;
 const ERROR_ID_INVALID_SHARD_ID: u8 = 15;
@@ -138,7 +134,6 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_INSUFFICIENT_PERMISSION => 1,
             ERROR_ID_INVALID_ASSET_QUANTITY => 4,
             ERROR_ID_INVALID_ASSET_TYPE => 2,
-            ERROR_ID_INVALID_COMPOSED_OUTPUT => 2,
             ERROR_ID_INVALID_DECOMPOSED_INPUT => 4,
             ERROR_ID_INVALID_DECOMPOSED_OUTPUT => 5,
             ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
@@ -197,9 +192,6 @@ impl Encodable for Error {
                 .append(expected)
                 .append(got),
             Error::InvalidAssetType(addr) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_TYPE).append(addr),
-            Error::InvalidComposedOutput {
-                got,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_COMPOSED_OUTPUT).append(got),
             Error::InvalidDecomposedInput {
                 asset_type,
                 shard_id,
@@ -272,9 +264,6 @@ impl Decodable for Error {
                 got: rlp.val_at(3)?,
             },
             ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
-            ERROR_ID_INVALID_COMPOSED_OUTPUT => Error::InvalidComposedOutput {
-                got: rlp.val_at(1)?,
-            },
             ERROR_ID_INVALID_DECOMPOSED_INPUT => Error::InvalidDecomposedInput {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
@@ -336,9 +325,6 @@ impl Display for Error {
                 address, expected, got
             ),
             Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
-            Error::InvalidComposedOutput {
-                got,
-            } => write!(f, "The composed output is note valid. The supply must be 1, but {}.", got),
             Error::InvalidDecomposedInput {
                 asset_type,
                 shard_id,
