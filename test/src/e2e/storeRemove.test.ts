@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
+import "../helper/chai-similar";
 import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 import { blake256, signEcdsa } from "codechain-sdk/lib/utils";
 import * as _ from "lodash";
@@ -113,7 +114,13 @@ describe("store & remove", function() {
         const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
             timeout: 1000
         });
-        expect(invoice).to.be.null;
+        expect(invoice).to.be.similarTo({
+            success: false,
+            error: {
+                type: "TextVerificationFail",
+                content: "Certifier and signer are different"
+            }
+        });
     });
 
     it("storing with invalid signature fails", async function() {
@@ -133,7 +140,13 @@ describe("store & remove", function() {
         const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
             timeout: 1000
         });
-        expect(invoice).to.be.null;
+        expect(invoice).to.be.similarTo({
+            success: false,
+            error: {
+                type: "TextVerificationFail",
+                content: "Invalid Signature"
+            }
+        });
     });
 
     it("removal on nothing fails", async function() {

@@ -41,7 +41,7 @@ use std::collections::HashMap;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::{public_to_address, recover, verify_address, Address, NetworkId, Public, Signature};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
-use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
+use ctypes::errors::RuntimeError;
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{Action, AssetWrapCCCOutput, ShardTransaction, Transaction};
 use ctypes::util::unexpected::Mismatch;
@@ -307,7 +307,7 @@ impl TopLevelState {
         let seq = self.seq(&fee_payer)?;
 
         if tx.seq != seq {
-            return Err(HistoryError::InvalidSeq(Mismatch {
+            return Err(RuntimeError::InvalidSeq(Mismatch {
                 expected: seq,
                 found: tx.seq,
             })
@@ -890,9 +890,9 @@ impl TopState for TopLevelState {
     fn store_text(&mut self, key: &H256, text: Text, sig: &Signature) -> StateResult<()> {
         match verify_address(text.certifier(), sig, &text.content_hash()) {
             Ok(false) => {
-                return Err(SyntaxError::TextVerificationFail("Certifier and signer are different".to_string()).into())
+                return Err(RuntimeError::TextVerificationFail("Certifier and signer are different".to_string()).into())
             }
-            Err(err) => return Err(SyntaxError::TextVerificationFail(err.to_string()).into()),
+            Err(err) => return Err(RuntimeError::TextVerificationFail(err.to_string()).into()),
             _ => {}
         }
         let mut text_entry = self.get_text_mut(key)?;
@@ -904,9 +904,9 @@ impl TopState for TopLevelState {
         let text = self.get_text(key)?.ok_or_else(|| RuntimeError::TextNotExist)?;
         match verify_address(text.certifier(), sig, key) {
             Ok(false) => {
-                return Err(SyntaxError::TextVerificationFail("Certifier and signer are different".to_string()).into())
+                return Err(RuntimeError::TextVerificationFail("Certifier and signer are different".to_string()).into())
             }
-            Err(err) => return Err(SyntaxError::TextVerificationFail(err.to_string()).into()),
+            Err(err) => return Err(RuntimeError::TextVerificationFail(err.to_string()).into()),
             _ => {}
         }
         self.top_cache.remove_text(key);
@@ -1290,7 +1290,7 @@ mod tests_tx {
 
         let tx = transaction!(seq: 2, fee: 5, pay!(address().0, 10));
         assert_eq!(
-            Err(StateError::History(HistoryError::InvalidSeq(Mismatch {
+            Ok(Invoice::Failure(RuntimeError::InvalidSeq(Mismatch {
                 expected: 0,
                 found: 2
             }))),
@@ -2065,26 +2065,28 @@ mod tests_tx {
         let tx = transaction!(fee: 10, store!(content.clone(), sender, signature));
 
         assert_eq!(
-            Err(SyntaxError::TextVerificationFail("Invalid Signature".to_string()).into()),
+            Ok(Invoice::Failure(RuntimeError::TextVerificationFail("Invalid Signature".to_string()).into())),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 0, balance: 20)),
+            (account: sender => (seq: 1, balance: 10)),
             (text: &tx.hash())
         ]);
 
         let signature = sign(Random.generate().unwrap().private(), &content_hash).unwrap();
 
-        let tx = transaction!(seq: 0, fee: 10, store!(content.clone(), sender, signature));
+        let tx = transaction!(seq: 1, fee: 10, store!(content.clone(), sender, signature));
 
         assert_eq!(
-            Err(SyntaxError::TextVerificationFail("Certifier and signer are different".to_string()).into()),
+            Ok(Invoice::Failure(
+                RuntimeError::TextVerificationFail("Certifier and signer are different".to_string()).into()
+            )),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 0, balance: 20)),
+            (account: sender => (seq: 2, balance: 0)),
             (text: &tx.hash())
         ]);
     }

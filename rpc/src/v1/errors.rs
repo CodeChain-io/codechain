@@ -136,55 +136,52 @@ pub fn transaction_core<T: Into<CoreError>>(error: T) -> Error {
             },
             _ => unknown_error,
         },
-        CoreError::State(error) => match error {
-            StateError::Syntax(error @ SyntaxError::InvalidSignature(_)) => Error {
-                code: ErrorCode::ServerError(codes::VERIFICATION_FAILED),
-                message: "Verification Failed".into(),
-                data: Some(Value::String(format!("{:?}", error))),
+        CoreError::Syntax(error @ SyntaxError::InvalidSignature(_)) => Error {
+            code: ErrorCode::ServerError(codes::VERIFICATION_FAILED),
+            message: "Verification Failed".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
+        CoreError::Syntax(error @ SyntaxError::InvalidNetworkId(_)) => Error {
+            code: ErrorCode::ServerError(codes::INVALID_NETWORK_ID),
+            message: "Invalid NetworkId".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
+        CoreError::History(error @ HistoryError::TransactionAlreadyImported) => Error {
+            code: ErrorCode::ServerError(codes::ALREADY_IMPORTED),
+            message: "Already Imported".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
+        CoreError::Runtime(
+            error @ RuntimeError::InsufficientBalance {
+                ..
             },
-            StateError::Syntax(error @ SyntaxError::InvalidNetworkId(_)) => Error {
-                code: ErrorCode::ServerError(codes::INVALID_NETWORK_ID),
-                message: "Invalid NetworkId".into(),
-                data: Some(Value::String(format!("{:?}", error))),
+        ) => Error {
+            code: ErrorCode::ServerError(codes::NOT_ENOUGH_BALANCE),
+            message: "Not Enough Balance".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
+        CoreError::Syntax(
+            error @ SyntaxError::InsufficientFee {
+                ..
             },
-            StateError::History(error @ HistoryError::TransactionAlreadyImported) => Error {
-                code: ErrorCode::ServerError(codes::ALREADY_IMPORTED),
-                message: "Already Imported".into(),
-                data: Some(Value::String(format!("{:?}", error))),
+        ) => Error {
+            code: ErrorCode::ServerError(codes::TOO_LOW_FEE),
+            message: "Too Low Fee".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
+        CoreError::History(error @ HistoryError::TooCheapToReplace) => Error {
+            code: ErrorCode::ServerError(codes::TOO_CHEAP_TO_REPLACE),
+            message: "Too Cheap to Replace".into(),
+            data: Some(Value::String(format!("{:?}", error))),
+        },
+        CoreError::History(
+            error @ HistoryError::Old {
+                ..
             },
-            StateError::Runtime(
-                error @ RuntimeError::InsufficientBalance {
-                    ..
-                },
-            ) => Error {
-                code: ErrorCode::ServerError(codes::NOT_ENOUGH_BALANCE),
-                message: "Not Enough Balance".into(),
-                data: Some(Value::String(format!("{:?}", error))),
-            },
-            StateError::Syntax(
-                error @ SyntaxError::InsufficientFee {
-                    ..
-                },
-            ) => Error {
-                code: ErrorCode::ServerError(codes::TOO_LOW_FEE),
-                message: "Too Low Fee".into(),
-                data: Some(Value::String(format!("{:?}", error))),
-            },
-            StateError::History(error @ HistoryError::TooCheapToReplace) => Error {
-                code: ErrorCode::ServerError(codes::TOO_CHEAP_TO_REPLACE),
-                message: "Too Cheap to Replace".into(),
-                data: Some(Value::String(format!("{:?}", error))),
-            },
-            StateError::History(
-                error @ HistoryError::Old {
-                    ..
-                },
-            ) => Error {
-                code: ErrorCode::ServerError(codes::INVALID_SEQ),
-                message: "Invalid Seq".into(),
-                data: Some(Value::String(format!("{:?}", error))),
-            },
-            _ => unknown_error,
+        ) => Error {
+            code: ErrorCode::ServerError(codes::INVALID_SEQ),
+            message: "Invalid Seq".into(),
+            data: Some(Value::String(format!("{:?}", error))),
         },
         _ => unknown_error,
     }

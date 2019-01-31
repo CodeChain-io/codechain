@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
 use cmerkle::{self, TrieError, TrieFactory};
-use ctypes::errors::{RuntimeError, SyntaxError, UnlockFailureReason};
+use ctypes::errors::{RuntimeError, UnlockFailureReason};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
     AssetMintOutput, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, Order, OrderOnTransfer,
@@ -323,13 +323,13 @@ impl<'db> ShardLevelState<'db> {
                         if order.origin_outputs.contains(&input.prev_out) {
                             counter += 1;
                         } else {
-                            return Err(SyntaxError::InvalidOriginOutputs(order.hash()).into())
+                            return Err(RuntimeError::InvalidOriginOutputs(order.hash()).into())
                         }
                     }
                 }
             }
             if counter > 0 && counter != order.origin_outputs.len() {
-                return Err(SyntaxError::InvalidOriginOutputs(order.hash()).into())
+                return Err(RuntimeError::InvalidOriginOutputs(order.hash()).into())
             }
         }
         Ok(())
@@ -488,7 +488,7 @@ impl<'db> ShardLevelState<'db> {
                 client,
             ),
             // FIXME : Deliver full decode error
-            _ => return Err(SyntaxError::InvalidScript.into()),
+            _ => return Err(RuntimeError::InvalidScript.into()),
         };
 
         match (script_result, burn) {

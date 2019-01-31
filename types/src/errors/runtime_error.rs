@@ -70,6 +70,12 @@ pub enum Error {
         expected: u64,
         got: u64,
     },
+    /// Errors on orders: origin_outputs of order is not satisfied.
+    InvalidOriginOutputs(H256),
+    /// Failed to decode script.
+    InvalidScript,
+    /// Returned when transaction seq does not match state seq
+    InvalidSeq(Mismatch<u64>),
     InvalidShardId(ShardId),
     InvalidTransferDestination,
     NewOwnersMustContainSender,
@@ -111,6 +117,9 @@ const ERROR_ID_SCRIPT_NOT_ALLOWED: u8 = 22;
 const ERROR_ID_TEXT_NOT_EXIST: u8 = 23;
 const ERROR_ID_TEXT_VERIFICATION_FAIL: u8 = 24;
 const ERROR_ID_CANNOT_USE_MASTER_KEY: u8 = 25;
+const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 26;
+const ERROR_ID_INVALID_SCRIPT: u8 = 27;
+const ERROR_ID_INVALID_SEQ: u8 = 28;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -132,6 +141,9 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_INVALID_COMPOSED_OUTPUT => 2,
             ERROR_ID_INVALID_DECOMPOSED_INPUT => 4,
             ERROR_ID_INVALID_DECOMPOSED_OUTPUT => 5,
+            ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
+            ERROR_ID_INVALID_SCRIPT => 1,
+            ERROR_ID_INVALID_SEQ => 2,
             ERROR_ID_INVALID_SHARD_ID => 2,
             ERROR_ID_INVALID_TRANSFER_DESTINATION => 1,
             ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER => 1,
@@ -206,6 +218,11 @@ impl Encodable for Error {
                 .append(shard_id)
                 .append(expected)
                 .append(got),
+            Error::InvalidOriginOutputs(addr) => {
+                RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORIGIN_OUTPUTS).append(addr)
+            }
+            Error::InvalidScript => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SCRIPT),
+            Error::InvalidSeq(mismatch) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SEQ).append(mismatch),
             Error::InvalidShardId(shard_id) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SHARD_ID).append(shard_id)
             }
@@ -269,6 +286,9 @@ impl Decodable for Error {
                 expected: rlp.val_at(3)?,
                 got: rlp.val_at(4)?,
             },
+            ERROR_ID_INVALID_ORIGIN_OUTPUTS => Error::InvalidOriginOutputs(rlp.val_at(1)?),
+            ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
+            ERROR_ID_INVALID_SEQ => Error::InvalidSeq(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
             ERROR_ID_INVALID_TRANSFER_DESTINATION => Error::InvalidTransferDestination,
             ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER => Error::NewOwnersMustContainSender,
@@ -338,6 +358,9 @@ impl Display for Error {
                 "The decomposed output is not balid. The quantity of asset({}, shard #{}) must be {}, but {}.",
                 asset_type, shard_id, expected, got
             ),
+            Error::InvalidOriginOutputs(addr) => write!(f, "origin_outputs of order({}) is not satisfied", addr),
+            Error::InvalidScript => write!(f, "Failed to decode script"),
+            Error::InvalidSeq(mismatch) => write!(f, "Invalid transaction seq {}", mismatch),
             Error::InvalidShardId(shard_id) => write!(f, "{} is an invalid shard id", shard_id),
             Error::InvalidTransferDestination => write!(f, "Transfer receiver is not valid account"),
             Error::NewOwnersMustContainSender => write!(f, "New owners must contain the sender"),

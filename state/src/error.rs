@@ -18,15 +18,13 @@ use std::fmt;
 
 use ckey::Error as KeyError;
 use cmerkle::TrieError;
-use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
+use ctypes::errors::RuntimeError;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
     Key(KeyError),
     Trie(TrieError),
-    History(HistoryError),
     Runtime(RuntimeError),
-    Syntax(SyntaxError),
 }
 
 impl fmt::Display for Error {
@@ -34,9 +32,7 @@ impl fmt::Display for Error {
         match self {
             Error::Key(err) => err.fmt(f),
             Error::Trie(err) => err.fmt(f),
-            Error::History(err) => err.fmt(f),
             Error::Runtime(err) => err.fmt(f),
-            Error::Syntax(err) => err.fmt(f),
         }
     }
 }
@@ -53,20 +49,8 @@ impl From<TrieError> for Error {
     }
 }
 
-impl From<HistoryError> for Error {
-    fn from(err: HistoryError) -> Self {
-        Error::History(err)
-    }
-}
-
 impl From<RuntimeError> for Error {
     fn from(err: RuntimeError) -> Self {
         Error::Runtime(err)
-    }
-}
-
-impl From<SyntaxError> for Error {
-    fn from(err: SyntaxError) -> Self {
-        Error::Syntax(err)
     }
 }
