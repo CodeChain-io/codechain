@@ -97,9 +97,11 @@ impl CodeChainMachine {
         if let Action::TransferAsset {
             inputs,
             orders,
+            expiration,
             ..
         } = &tx.action
         {
+            Self::verify_transaction_expiration(&expiration, header)?;
             if verify_timelock {
                 Self::verify_transfer_timelock(inputs, header, client)?;
             }
@@ -113,6 +115,22 @@ impl CodeChainMachine {
     /// Usually implements the chain scoring rule based on weight.
     pub fn populate_from_parent(&self, header: &mut Header, parent: &Header) {
         header.set_score(*parent.score());
+    }
+
+    fn verify_transaction_expiration(expiration: &Option<u64>, header: &Header) -> Result<(), Error> {
+        if expiration.is_none() {
+            return Ok(())
+        }
+        let expiration = expiration.unwrap();
+
+        if expiration < header.timestamp() {
+            return Err(StateError::History(HistoryError::TransferExpired {
+                expiration,
+                timestamp: header.timestamp(),
+            })
+            .into())
+        }
+        Ok(())
     }
 
     fn verify_transfer_timelock<C: BlockInfo + TransactionInfo>(

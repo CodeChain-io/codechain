@@ -259,6 +259,16 @@ impl MemPoolItem {
             _ => self.tx.fee,
         }
     }
+
+    pub fn expiration(&self) -> Option<u64> {
+        match &self.tx.action {
+            Action::TransferAsset {
+                expiration,
+                ..
+            } => *expiration,
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
