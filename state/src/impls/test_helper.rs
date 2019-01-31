@@ -214,6 +214,7 @@ macro_rules! transfer_asset {
             orders: Vec::new(),
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         }
     };
     (inputs: $inputs:expr, $outputs:expr, approvals: $approvals:expr) => {
@@ -225,6 +226,7 @@ macro_rules! transfer_asset {
             orders: Vec::new(),
             metadata: "".into(),
             approvals: $approvals,
+            expiration: None,
         }
     };
     (inputs: $inputs:expr, $outputs:expr, $orders:expr) => {
@@ -236,6 +238,7 @@ macro_rules! transfer_asset {
             orders: $orders,
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         }
     };
     (burns: $burns:expr) => {
@@ -247,6 +250,7 @@ macro_rules! transfer_asset {
             orders: Vec::new(),
             metadata: "".into(),
             approvals: vec![],
+            expiration: None,
         }
     };
 }
