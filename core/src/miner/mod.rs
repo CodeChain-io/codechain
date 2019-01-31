@@ -138,6 +138,9 @@ pub trait MinerService: Send + Sync {
     /// Get a list of all pending transactions in the mem pool.
     fn ready_transactions(&self) -> Vec<SignedTransaction>;
 
+    /// Get a count of all pending transactions in the mem pool.
+    fn count_pending_transactions(&self) -> usize;
+
     /// Get a list of all future transactions.
     fn future_transactions(&self) -> Vec<SignedTransaction>;
 
