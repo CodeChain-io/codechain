@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -xe
 # Everything that is normally printed to `stdout` in the script will be redirected to `stderr`
 # which will be visible in tty/Travis log.
 # Outputs that is printed to `fd 3` will be redirected to `stdout`,
