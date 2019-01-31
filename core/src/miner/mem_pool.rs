@@ -19,7 +19,6 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 use ckey::{public_to_address, Public};
-use cstate::StateError;
 use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
@@ -35,6 +34,7 @@ use super::mem_pool_types::{
 };
 use super::TransactionImportResult;
 use crate::transaction::SignedTransaction;
+use crate::Error as CoreError;
 
 const DEFAULT_POOLING_PERIOD: BlockNumber = 128;
 
@@ -46,11 +46,11 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn into_state_error(self) -> StateError {
+    pub fn into_core_error(self) -> CoreError {
         match self {
-            Error::History(err) => StateError::History(err),
-            Error::Runtime(err) => StateError::Runtime(err),
-            Error::Syntax(err) => StateError::Syntax(err),
+            Error::History(err) => CoreError::History(err),
+            Error::Runtime(err) => CoreError::Runtime(err),
+            Error::Syntax(err) => CoreError::Syntax(err),
         }
     }
 }

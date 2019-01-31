@@ -156,7 +156,7 @@ impl<'x> OpenBlock<'x> {
         client: &C,
     ) -> Result<(), Error> {
         if self.block.transactions_set.contains(&tx.hash()) {
-            return Err(StateError::History(HistoryError::TransactionAlreadyImported).into())
+            return Err(HistoryError::TransactionAlreadyImported.into())
         }
 
         let invoice = self.block.state.apply(&tx, &tx.hash(), &tx.signer_public(), client)?;

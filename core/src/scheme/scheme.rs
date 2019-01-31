@@ -179,7 +179,7 @@ impl Scheme {
         }
     }
 
-    fn initialize_state(&self, db: StateDB) -> StateResult<StateDB> {
+    fn initialize_state(&self, db: StateDB) -> Result<StateDB, Error> {
         let root = BLAKE_NULL_RLP;
         let (db, root) = self.initialize_accounts(db, root)?;
         let (db, root) = self.initialize_shards(db, root)?;
@@ -208,7 +208,7 @@ impl Scheme {
         Ok((db, root))
     }
 
-    fn initialize_shards<DB: AsHashDB>(&self, mut db: DB, mut root: H256) -> StateResult<(DB, H256)> {
+    fn initialize_shards<DB: AsHashDB>(&self, mut db: DB, mut root: H256) -> Result<(DB, H256), Error> {
         let mut shards = Vec::<(ShardAddress, Shard)>::with_capacity(self.genesis_shards.len());
 
         // Initialize shard-level tries

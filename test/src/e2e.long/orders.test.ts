@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import * as chai from "chai";
+import { $anything } from "../helper/chai-similar";
 import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -1238,7 +1239,14 @@ describe("orders", function() {
                 );
 
                 const invoices = await node.sendAssetTransaction(transferTx);
-                expect(invoices!.length).to.equal(0);
+                expect(invoices!.length).to.equal(1);
+                expect(invoices![0]).to.be.similarTo({
+                    success: false,
+                    error: {
+                        type: "InvalidOriginOutputs",
+                        content: $anything
+                    }
+                });
             }).timeout(10_000);
 
             it("Wrong order - originOutputs are wrong (many outputs)", async function() {
@@ -1322,7 +1330,14 @@ describe("orders", function() {
                 );
 
                 const invoices = await node.sendAssetTransaction(transferTx);
-                expect(invoices!.length).to.equal(0);
+                expect(invoices!.length).to.equal(1);
+                expect(invoices![0]).to.be.similarTo({
+                    success: false,
+                    error: {
+                        type: "InvalidOriginOutputs",
+                        content: $anything
+                    }
+                });
             }).timeout(10_000);
 
             it("Wrong order - Ratio is wrong (from is zero)", async function() {
