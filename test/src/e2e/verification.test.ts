@@ -14,11 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import { ERROR } from "../helper/error";
-import { faucetAddress, faucetSecret } from "../helper/constants";
-
-import "mocha";
 import { expect } from "chai";
 import { AssetTransferAddress } from "codechain-primitives/lib";
 import {
@@ -26,6 +21,10 @@ import {
     AssetTransferInput,
     AssetTransferOutput
 } from "codechain-sdk/lib/core/classes";
+import "mocha";
+import { faucetAddress, faucetSecret } from "../helper/constants";
+import { ERROR } from "../helper/error";
+import CodeChain from "../helper/spawn";
 
 const RLP = require("rlp");
 
@@ -141,8 +140,8 @@ describe("solo - 1 node", function() {
             { actionType: 0x11, actionLength: 4 },
             { actionType: 0x13, actionLength: 10 }, // MintAsset
             { actionType: 0x13, actionLength: 12 },
-            { actionType: 0x14, actionLength: 7 }, // TransferAsset
-            { actionType: 0x14, actionLength: 9 },
+            { actionType: 0x14, actionLength: 8 }, // TransferAsset
+            { actionType: 0x14, actionLength: 10 },
             { actionType: 0x15, actionLength: 8 }, // ChangeAssetScheme
             { actionType: 0x15, actionLength: 10 },
             { actionType: 0x16, actionLength: 11 }, // ComposeAsset
@@ -432,6 +431,7 @@ describe("solo - 1 node", function() {
             it("index");
             it("timelock");
             it("lockscript/unlockscript");
+            it("expiration");
         });
 
         describe("In assetComposeTransaction", function() {

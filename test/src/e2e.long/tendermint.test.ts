@@ -14,24 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import {
-    validator0Address,
-    validator1Address,
-    validator2Address,
-    validator3Address,
-    stakeActionHandlerId,
-    faucetAddress,
-    faucetSecret
-} from "../helper/constants";
-import { toHex } from "codechain-sdk/lib/utils";
-import { PromiseExpect } from "../helper/promise";
-
-import "mocha";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
+import { toHex } from "codechain-sdk/lib/utils";
+import "mocha";
+import {
+    faucetAddress,
+    faucetSecret,
+    stakeActionHandlerId,
+    validator0Address,
+    validator1Address,
+    validator2Address,
+    validator3Address
+} from "../helper/constants";
+import { PromiseExpect } from "../helper/promise";
+import CodeChain from "../helper/spawn";
 
 const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
 
@@ -45,7 +44,7 @@ describeSkippedInTravis("Tendermint ", function() {
     beforeEach(async function() {
         this.timeout(60_000);
 
-        let validatorAddresses = [
+        const validatorAddresses = [
             validator0Address,
             validator1Address,
             validator2Address,
@@ -108,6 +107,103 @@ describeSkippedInTravis("Tendermint ", function() {
             )
         ).to.eventually.greaterThan(1);
     }).timeout(20_000);
+
+    it("Block generation with restart", async function() {
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[0].connect(nodes[2]),
+                nodes[0].connect(nodes[3]),
+                nodes[1].connect(nodes[2]),
+                nodes[1].connect(nodes[3]),
+                nodes[2].connect(nodes[3])
+            ])
+        );
+        await promiseExpect.shouldFulfill(
+            "wait peers",
+            Promise.all([
+                nodes[0].waitPeers(4 - 1),
+                nodes[1].waitPeers(4 - 1),
+                nodes[2].waitPeers(4 - 1),
+                nodes[3].waitPeers(4 - 1)
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "block generation",
+            Promise.all([
+                nodes[0].waitBlockNumber(2),
+                nodes[1].waitBlockNumber(2),
+                nodes[2].waitBlockNumber(2),
+                nodes[3].waitBlockNumber(2)
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "stop",
+            Promise.all([
+                nodes[0].clean(),
+                nodes[1].clean(),
+                nodes[2].clean(),
+                nodes[3].clean()
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "start",
+            Promise.all([
+                nodes[0].start(),
+                nodes[1].start(),
+                nodes[2].start(),
+                nodes[3].start()
+            ])
+        );
+
+        const bestBlockNumber = await promiseExpect.shouldFulfill(
+            "BestBlockNUmber",
+            nodes[0].getBestBlockNumber()
+        );
+
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[0].connect(nodes[2]),
+                nodes[0].connect(nodes[3]),
+                nodes[1].connect(nodes[2]),
+                nodes[1].connect(nodes[3]),
+                nodes[2].connect(nodes[3])
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "wait peers",
+            Promise.all([
+                nodes[0].waitPeers(4 - 1),
+                nodes[1].waitPeers(4 - 1),
+                nodes[2].waitPeers(4 - 1),
+                nodes[3].waitPeers(4 - 1)
+            ])
+        );
+
+        await promiseExpect.shouldFulfill(
+            "block generation",
+            Promise.all([
+                nodes[0].waitBlockNumber(bestBlockNumber + 2),
+                nodes[1].waitBlockNumber(bestBlockNumber + 2),
+                nodes[2].waitBlockNumber(bestBlockNumber + 2),
+                nodes[3].waitBlockNumber(bestBlockNumber + 2)
+            ])
+        );
+
+        await expect(
+            promiseExpect.shouldFulfill(
+                "best blocknumber",
+                nodes[0].sdk.rpc.chain.getBestBlockNumber()
+            )
+        ).to.eventually.greaterThan(bestBlockNumber + 1);
+    }).timeout(40_000);
 
     it("Block generation with transaction", async function() {
         await promiseExpect.shouldFulfill(
@@ -204,16 +300,16 @@ describeSkippedInTravis("Tendermint ", function() {
             ])
         );
 
-        const best_number = await promiseExpect.shouldFulfill(
+        const bestNumber = await promiseExpect.shouldFulfill(
             "best blocknumber",
             nodes[1].getBestBlockNumber()
         );
         await promiseExpect.shouldFulfill(
             "best blocknumber",
             Promise.all([
-                nodes[1].waitBlockNumber(best_number + 1),
-                nodes[2].waitBlockNumber(best_number + 1),
-                nodes[3].waitBlockNumber(best_number + 1)
+                nodes[1].waitBlockNumber(bestNumber + 1),
+                nodes[2].waitBlockNumber(bestNumber + 1),
+                nodes[3].waitBlockNumber(bestNumber + 1)
             ])
         );
         await expect(
@@ -221,7 +317,7 @@ describeSkippedInTravis("Tendermint ", function() {
                 "best blocknumber",
                 nodes[3].sdk.rpc.chain.getBestBlockNumber()
             )
-        ).to.eventually.greaterThan(best_number);
+        ).to.eventually.greaterThan(bestNumber);
     }).timeout(30_000);
 
     it("Gossip", async function() {

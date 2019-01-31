@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
+chai.use(chaiAsPromised);
+const expect = chai.expect;
 import {
     AssetScheme,
     H160,
@@ -22,19 +26,13 @@ import {
     MintAsset,
     U64
 } from "codechain-sdk/lib/core/classes";
+import "mocha";
 import {
     faucetAddress,
     faucetSecret,
     invalidAddress
 } from "../helper/constants";
-
 import CodeChain from "../helper/spawn";
-
-import "mocha";
-import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
-chai.use(chaiAsPromised);
-const expect = chai.expect;
 
 describe("chain", function() {
     const invalidH160 = H160.zero();
@@ -168,8 +166,16 @@ describe("chain", function() {
         const key = node.sdk.util.getPublicFromPrivate(
             node.sdk.util.generatePrivateKey()
         );
-        expect(await node.sdk.rpc.chain.getRegularKey(faucetAddress)).to.be
-            .null;
+
+        const secret = node.sdk.util.generatePrivateKey();
+        const accountId = node.sdk.util.getAccountIdFromPrivate(secret);
+        const address = node.sdk.core.classes.PlatformAddress.fromAccountId(
+            accountId,
+            { networkId: "tc" }
+        );
+
+        await node.sendPayTx({ quantity: 10000, recipient: address });
+        expect(await node.sdk.rpc.chain.getRegularKey(address)).to.be.null;
         expect(await node.sdk.rpc.chain.getRegularKeyOwner(key)).to.be.null;
 
         const tx = node.sdk.core
@@ -177,38 +183,31 @@ describe("chain", function() {
                 key
             })
             .sign({
-                secret: faucetSecret,
+                secret,
                 fee: 10,
-                seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                seq: await node.sdk.rpc.chain.getSeq(address)
             });
         await node.sdk.rpc.chain.sendSignedTransaction(tx);
 
-        expect(
-            await node.sdk.rpc.chain.getRegularKey(faucetAddress)
-        ).to.deep.equal(new H512(key));
+        expect(await node.sdk.rpc.chain.getRegularKey(address)).to.deep.equal(
+            new H512(key)
+        );
         expect(await node.sdk.rpc.chain.getRegularKeyOwner(key)).to.deep.equal(
-            faucetAddress
+            address
         );
 
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         expect(
-            await node.sdk.rpc.chain.getRegularKey(
-                faucetAddress,
-                bestBlockNumber
-            )
+            await node.sdk.rpc.chain.getRegularKey(address, bestBlockNumber)
         ).to.deep.equal(new H512(key));
-        expect(await node.sdk.rpc.chain.getRegularKey(faucetAddress, 0)).to.be
-            .null;
+        expect(await node.sdk.rpc.chain.getRegularKey(address, 0)).to.be.null;
         expect(
-            await node.sdk.rpc.chain.getRegularKey(
-                faucetAddress,
-                bestBlockNumber + 1
-            )
+            await node.sdk.rpc.chain.getRegularKey(address, bestBlockNumber + 1)
         ).to.be.null;
 
         expect(
             await node.sdk.rpc.chain.getRegularKeyOwner(key, bestBlockNumber)
-        ).to.deep.equal(faucetAddress);
+        ).to.deep.equal(address);
         expect(await node.sdk.rpc.chain.getRegularKeyOwner(key, 0)).to.be.null;
         expect(
             await node.sdk.rpc.chain.getRegularKeyOwner(

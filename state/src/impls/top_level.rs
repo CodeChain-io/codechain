@@ -262,11 +262,8 @@ impl TopLevelState {
         signer_public: &Public,
         client: &C,
     ) -> StateResult<Invoice> {
-        let fee_payer = self.public_to_owner_address(signer_public)?;
-
         self.create_checkpoint(FEE_CHECKPOINT);
-
-        match self.apply_internal(tx, &fee_payer, signed_hash, signer_public, client) {
+        match self.apply_internal(tx, signed_hash, signer_public, client) {
             Ok(invoice) => {
                 self.discard_checkpoint(FEE_CHECKPOINT);
                 Ok(invoice)
@@ -295,12 +292,19 @@ impl TopLevelState {
     fn apply_internal<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
         tx: &Transaction,
-        fee_payer: &Address,
         signed_hash: &H256,
         signer_public: &Public,
         client: &C,
     ) -> StateResult<Invoice> {
-        let seq = self.seq(fee_payer)?;
+        let (fee_payer, restricted_master_key) = if self.regular_account_exists_and_not_null(signer_public)? {
+            let regular_account = self.get_regular_account_mut(signer_public)?;
+            (public_to_address(&regular_account.owner_public()), false)
+        } else {
+            let address = public_to_address(signer_public);
+            let account = self.get_account_mut(&address)?;
+            (address, !tx.is_master_key_allowed() && account.regular_key().is_some())
+        };
+        let seq = self.seq(&fee_payer)?;
 
         if tx.seq != seq {
             return Err(HistoryError::InvalidSeq(Mismatch {
@@ -312,13 +316,17 @@ impl TopLevelState {
 
         let fee = tx.fee;
 
-        self.inc_seq(fee_payer)?;
-        self.sub_balance(fee_payer, fee)?;
+        self.inc_seq(&fee_payer)?;
+        self.sub_balance(&fee_payer, fee)?;
+
+        if restricted_master_key {
+            return Err(RuntimeError::CannotUseMasterKey.into())
+        }
 
         // The failed transaction also must pay the fee and increase seq.
         self.create_checkpoint(ACTION_CHECKPOINT);
         let result =
-            self.apply_action(&tx.action, tx.network_id, &tx.hash(), signed_hash, fee_payer, signer_public, client);
+            self.apply_action(&tx.action, tx.network_id, &tx.hash(), signed_hash, &fee_payer, signer_public, client);
         match &result {
             Ok(_) => {
                 self.discard_checkpoint(ACTION_CHECKPOINT);
@@ -1571,12 +1579,13 @@ mod tests_tx {
     #[test]
     fn fail_when_someone_sends_some_ccc_to_an_address_which_used_as_a_regular_key() {
         let (sender, sender_public, _) = address();
+        let (receiver, receiver_public, _) = address();
         let (regular_address, regular_public, _) = address();
 
         let mut state = get_temp_state();
         set_top_level_state!(state, [
             (account: sender => balance: 20),
-            (regular_key: sender_public => regular_public)
+            (regular_key: receiver_public => regular_public)
         ]);
 
         let tx = transaction!(fee: 5, pay!(regular_address, 5));
@@ -1587,7 +1596,31 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 20 - 5)),
-            (account: regular_address => (seq: 0, balance: 0))
+            (account: receiver => (seq: 0, balance: 0, key: regular_public))
+        ]);
+    }
+
+    #[test]
+    fn fail_when_tried_to_use_master_key_instead_of_regular_key() {
+        let (sender, sender_public, _) = address();
+        let (_, regular_public, _) = address();
+        let (receiver_address, ..) = address();
+
+        let mut state = get_temp_state();
+        set_top_level_state!(state, [
+            (account: sender => balance: 20),
+            (regular_key: sender_public => regular_public)
+        ]);
+
+        let tx = transaction!(fee: 5, pay!(receiver_address, 5));
+        assert_eq!(
+            Ok(Invoice::Failure(RuntimeError::CannotUseMasterKey)),
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 20 - 5, key: regular_public)),
+            (account: receiver_address => (seq: 0, balance: 0))
         ]);
     }
 

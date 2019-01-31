@@ -330,7 +330,7 @@ impl MemPool {
             let is_this_account_local = new_local_accounts.contains(&public);
             // Need to update transactions because of height/origin change
             if current_seq != first_seq || is_this_account_local {
-                self.update_orders(public, current_seq, new_next_seq, is_this_account_local);
+                self.update_orders(public, current_seq, new_next_seq, is_this_account_local, &mut batch);
                 self.first_seqs.insert(public, current_seq);
                 backup::backup_seqs(&mut batch, public, current_seq, true);
                 first_seq = current_seq;
@@ -390,6 +390,7 @@ impl MemPool {
     }
 
     /// Checks the current seq for all transactions' senders in the pool and removes the old transactions.
+    /// Expired transactions are removed by this function only.
     pub fn remove_old<F>(&mut self, fetch_account: &F, current_time: PoolingInstant, current_timestamp: u64)
     where
         F: Fn(&Public) -> AccountDetails, {
@@ -399,20 +400,28 @@ impl MemPool {
         let max_time = self.max_time_in_pool;
         let balance_check = max_time >> 3;
 
-        // Clear transactions occupying the pool too long
+        // Clear transactions occupying the pool too long, or expired
         let invalid = self
             .by_hash
             .iter()
-            .filter(|&(_, ref tx)| !tx.origin.is_local())
-            .map(|(hash, tx)| (hash, tx, current_time.saturating_sub(tx.insertion_time)))
-            .filter_map(|(hash, tx, time_diff)| {
+            .filter(|&(_, ref item)| !item.origin.is_local())
+            .map(|(hash, item)| (hash, item, current_time.saturating_sub(item.insertion_time)))
+            .filter_map(|(hash, item, time_diff)| {
+                // FIXME: In PoW, current_timestamp can be roll-backed.
+                // In that case, transactions which are removed in here can be recovered.
+                if let Some(expiration) = item.expiration() {
+                    if expiration < current_timestamp {
+                        return Some(*hash)
+                    }
+                }
+
                 if time_diff > max_time {
                     return Some(*hash)
                 }
 
                 if time_diff > balance_check {
-                    return match signers.get(&tx.signer_public()) {
-                        Some(details) if tx.cost() > details.balance => Some(*hash),
+                    return match signers.get(&item.signer_public()) {
+                        Some(details) if item.cost() > details.balance => Some(*hash),
                         _ => None,
                     }
                 }
@@ -544,7 +553,7 @@ impl MemPool {
 
             // Need to update the height
             if current_seq != first_seq {
-                self.update_orders(public, current_seq, new_next_seq, false);
+                self.update_orders(public, current_seq, new_next_seq, false, &mut batch);
                 self.first_seqs.insert(public, current_seq);
                 backup::backup_seqs(&mut batch, public, current_seq, true);
                 first_seq = current_seq;
@@ -702,7 +711,14 @@ impl MemPool {
 
     /// Updates the seq height of the orders in the queues and self.by_signer_public.
     /// Also, drops old transactions.
-    fn update_orders(&mut self, public: Public, current_seq: u64, new_next_seq: u64, to_local: bool) {
+    fn update_orders(
+        &mut self,
+        public: Public,
+        current_seq: u64,
+        new_next_seq: u64,
+        to_local: bool,
+        batch: &mut DBTransaction,
+    ) {
         let row = self
             .by_signer_public
             .row_mut(&public)
@@ -724,6 +740,7 @@ impl MemPool {
 
             if seq < current_seq {
                 self.by_hash.remove(&old_order.hash);
+                backup::remove_item(batch, &old_order.hash);
             } else {
                 let new_order = old_order.update_height(seq, current_seq);
                 let new_order = if to_local {
@@ -852,7 +869,8 @@ impl MemPool {
     }
 
     /// Returns top transactions from the pool ordered by priority.
-    pub fn top_transactions(&self, size_limit: usize) -> Vec<SignedTransaction> {
+    // FIXME: current_timestamp should be `u64`, not `Option<u64>`.
+    pub fn top_transactions(&self, size_limit: usize, current_timestamp: Option<u64>) -> Vec<SignedTransaction> {
         let mut current_size: usize = 0;
         self.current
             .queue
@@ -861,6 +879,14 @@ impl MemPool {
                 self.by_hash
                     .get(&t.hash)
                     .expect("All transactions in `current` and `future` are always included in `by_hash`")
+            })
+            .filter(|t| {
+                if let Some(expiration) = t.expiration() {
+                    if let Some(timestamp) = current_timestamp {
+                        return expiration >= timestamp
+                    }
+                }
+                true
             })
             .take_while(|t| {
                 let encoded_byte_array: Vec<u8> = rlp::encode(&t.tx).into_vec();
@@ -1208,6 +1234,7 @@ pub mod test {
                 orders: vec![],
                 metadata: "".into(),
                 approvals: vec![],
+                expiration: None,
             },
         };
         let timelock = TxTimelock {

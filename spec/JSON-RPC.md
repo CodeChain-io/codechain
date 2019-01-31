@@ -72,7 +72,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - approver: `PlatformAddress` | `null`
  - approvals: `Signature[]`
 
-### TranferAsset Action
+### TransferAsset Action
 
  - networkId: `NetworkID`
  - metadata: `string`
@@ -81,6 +81,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - outputs: `AssetTransferOutput[]`
  - orders: `OrderOnTransfer[]`
  - approvals: `Signature[]`
+ - expiration: `Expiration time` | `null`
 
 ### ComposeAsset Action
 

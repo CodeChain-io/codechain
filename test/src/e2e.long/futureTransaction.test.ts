@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import "mocha";
 import { PromiseExpect } from "../helper/promise";
 import CodeChain from "../helper/spawn";
-
-import "mocha";
 
 const BASE = 1100;
 
@@ -55,7 +54,7 @@ describe("Handle future transactions", function() {
         it("ping pong", async function() {
             const sending = [];
             for (let i = 0; i < 10; i++) {
-                if (i % 2 == 0) {
+                if (i % 2 === 0) {
                     sending.push(nodeA.sendPayTx({ seq: 9 - i }));
                 } else {
                     sending.push(nodeB.sendPayTx({ seq: 9 - i }));
@@ -65,7 +64,6 @@ describe("Handle future transactions", function() {
         }).timeout(20_000);
 
         afterEach(async function() {
-            const bestBlockNumber = await nodeB.getBestBlockNumber();
             if (this.currentTest!.state === "failed") {
                 nodeB.testFailed(this.currentTest!.fullTitle());
             }
@@ -75,7 +73,6 @@ describe("Handle future transactions", function() {
     });
 
     afterEach(async function() {
-        const bestBlockNumber = await nodeA.getBestBlockNumber();
         if (this.currentTest!.state === "failed") {
             nodeA.testFailed(this.currentTest!.fullTitle());
         }

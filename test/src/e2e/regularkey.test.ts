@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import { ERROR } from "../helper/error";
-
-import "mocha";
 import { expect } from "chai";
+import "mocha";
+import { ERROR } from "../helper/error";
+import CodeChain from "../helper/spawn";
 
 const INVOICE = {
     SUCCESS: {
@@ -35,6 +34,12 @@ const INVOICE = {
         success: false,
         error: {
             type: "RegularKeyAlreadyInUse"
+        }
+    },
+    CANNOT_USE_MASTER_KEY: {
+        success: false,
+        error: {
+            type: "CannotUseMasterKey"
         }
     }
 };
@@ -64,7 +69,7 @@ describe("solo - 1 node", function() {
         await node.sendPayTx({ secret: privKey });
     });
 
-    it("Make then change regular key", async function() {
+    it("Make then change regular key with the master key", async function() {
         await node.setRegularKey(pubKey);
         await node.sendPayTx({ secret: privKey });
 
@@ -79,6 +84,42 @@ describe("solo - 1 node", function() {
         } catch (e) {
             expect(e).is.similarTo(ERROR.NOT_ENOUGH_BALANCE);
         }
+    });
+
+    it("Make then change regular key with the previous regular key", async function() {
+        await node.setRegularKey(pubKey);
+        await node.sendPayTx({ secret: privKey });
+
+        const newPrivKey = node.sdk.util.generatePrivateKey();
+        const newPubKey = node.sdk.util.getPublicFromPrivate(newPrivKey);
+
+        await node.setRegularKey(newPubKey, { secret: privKey });
+        await node.sendPayTx({ secret: newPrivKey });
+        try {
+            await node.sendPayTx({ secret: privKey });
+            expect.fail("It must fail");
+        } catch (e) {
+            expect(e).is.similarTo(ERROR.NOT_ENOUGH_BALANCE);
+        }
+    });
+
+    it("Try to use the master key instead of the regular key", async function() {
+        try {
+            await node.sendPayTx({ secret: privKey });
+            expect.fail("It must fail");
+        } catch (e) {
+            expect(e).is.similarTo(ERROR.NOT_ENOUGH_BALANCE);
+        }
+
+        await node.setRegularKey(pubKey);
+        const tx = await node.sendPayTx({ awaitInvoice: false });
+        const invoice = (await node.sdk.rpc.chain.getInvoice(tx.hash(), {
+            timeout: 300 * 1000
+        }))!;
+        expect(invoice.error!.type).to.equal(
+            INVOICE.CANNOT_USE_MASTER_KEY.error.type
+        );
+        expect(invoice.success).to.equal(INVOICE.CANNOT_USE_MASTER_KEY.success);
     });
 
     it("Try to use the key of another account as its regular key", async function() {

@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-import { aliceAddress, aliceSecret, bobAddress } from "../helper/constants";
-import { U64 } from "codechain-sdk/lib/core/classes";
-
-import "mocha";
 import { expect } from "chai";
+import { U64 } from "codechain-sdk/lib/core/classes";
+import "mocha";
+import { aliceAddress, aliceSecret, bobAddress } from "../helper/constants";
+import CodeChain from "../helper/spawn";
 
 describe("reward2", function() {
     let nodeA: CodeChain;
