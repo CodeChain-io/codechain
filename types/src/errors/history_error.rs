@@ -21,13 +21,10 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::TaggedRlp;
 use crate::transaction::Timelock;
-use crate::util::unexpected::Mismatch;
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]
 pub enum Error {
-    /// Returned when transaction seq does not match state seq
-    InvalidSeq(Mismatch<u64>),
     /// Transaction was not imported to the queue because limit has been reached.
     LimitReached,
     /// Transaction is not valid anymore (state already has higher seq)
@@ -51,7 +48,6 @@ pub enum Error {
     },
 }
 
-const ERROR_ID_INVALID_SEQ: u8 = 1;
 const ERROR_ID_LIMIT_REACHED: u8 = 2;
 const ERROR_ID_OLD: u8 = 3;
 const ERROR_ID_ORDER_EXPIRED: u8 = 4;
@@ -66,7 +62,6 @@ impl TaggedRlp for RlpHelper {
 
     fn length_of(tag: u8) -> Result<usize, DecoderError> {
         Ok(match tag {
-            ERROR_ID_INVALID_SEQ => 2,
             ERROR_ID_LIMIT_REACHED => 1,
             ERROR_ID_OLD => 1,
             ERROR_ID_ORDER_EXPIRED => 3,
@@ -82,7 +77,6 @@ impl TaggedRlp for RlpHelper {
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Error::InvalidSeq(mismatch) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SEQ).append(mismatch),
             Error::LimitReached => RlpHelper::new_tagged_list(s, ERROR_ID_LIMIT_REACHED),
             Error::Old => RlpHelper::new_tagged_list(s, ERROR_ID_OLD),
             Error::OrderExpired {
@@ -107,7 +101,6 @@ impl Decodable for Error {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at::<u8>(0)?;
         let error = match tag {
-            ERROR_ID_INVALID_SEQ => Error::InvalidSeq(rlp.val_at(1)?),
             ERROR_ID_LIMIT_REACHED => Error::LimitReached,
             ERROR_ID_OLD => Error::Old,
             ERROR_ID_ORDER_EXPIRED => Error::OrderExpired {
@@ -134,7 +127,6 @@ impl Decodable for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         match self {
-            Error::InvalidSeq(mismatch) => write!(f, "Invalid transaction seq {}", mismatch),
             Error::LimitReached => write!(f, "Transaction limit reached"),
             Error::Old => write!(f, "No longer valid"),
             Error::OrderExpired {

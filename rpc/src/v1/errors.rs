@@ -136,11 +136,6 @@ pub fn transaction_core<T: Into<CoreError>>(error: T) -> Error {
             },
             _ => unknown_error,
         },
-        CoreError::Syntax(error @ SyntaxError::InvalidSignature(_)) => Error {
-            code: ErrorCode::ServerError(codes::VERIFICATION_FAILED),
-            message: "Verification Failed".into(),
-            data: Some(Value::String(format!("{:?}", error))),
-        },
         CoreError::Syntax(error @ SyntaxError::InvalidNetworkId(_)) => Error {
             code: ErrorCode::ServerError(codes::INVALID_NETWORK_ID),
             message: "Invalid NetworkId".into(),
