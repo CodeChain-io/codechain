@@ -253,7 +253,7 @@ where
     }
 
     fn get_pending_transactions_count(&self) -> Result<usize> {
-        Ok(self.client.ready_transactions().len())
+        Ok(self.client.count_pending_transactions())
     }
 
     fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {

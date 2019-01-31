@@ -649,6 +649,10 @@ impl BlockChainClient for Client {
         self.importer.miner.ready_transactions()
     }
 
+    fn count_pending_transactions(&self) -> usize {
+        self.importer.miner.count_pending_transactions()
+    }
+
     fn is_pending_queue_empty(&self) -> bool {
         self.importer.miner.status().transactions_in_pending_queue == 0
     }

@@ -485,6 +485,11 @@ impl BlockChainClient for TestBlockChainClient {
         self.miner.ready_transactions()
     }
 
+    fn count_pending_transactions(&self) -> usize {
+        self.miner.count_pending_transactions()
+    }
+
+
     fn is_pending_queue_empty(&self) -> bool {
         self.miner.status().transactions_in_pending_queue == 0
     }

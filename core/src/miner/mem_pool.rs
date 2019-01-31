@@ -898,6 +898,11 @@ impl MemPool {
             .collect()
     }
 
+    /// Return all transactions in the memory pool.
+    pub fn count_pending_transactions(&self) -> usize {
+        self.current.queue.len() + self.future.queue.len()
+    }
+
     /// Return all future transactions.
     pub fn future_transactions(&self) -> Vec<SignedTransaction> {
         self.future
