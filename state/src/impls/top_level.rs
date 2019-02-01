@@ -1814,7 +1814,7 @@ mod tests_tx {
         let transaction_tracker = transaction.tracker().unwrap();
         let tx = transaction!(seq: 1, fee: 11, transaction);
         assert_eq!(
-            Ok(Invoice::Failure(RuntimeError::AssetSchemeDuplicated(transaction_tracker).into())),
+            Ok(Invoice::Failure(RuntimeError::AssetSchemeDuplicated(transaction_tracker))),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -2065,7 +2065,7 @@ mod tests_tx {
         let tx = transaction!(fee: 10, store!(content.clone(), sender, signature));
 
         assert_eq!(
-            Ok(Invoice::Failure(RuntimeError::TextVerificationFail("Invalid Signature".to_string()).into())),
+            Ok(Invoice::Failure(RuntimeError::TextVerificationFail("Invalid Signature".to_string()))),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -2079,9 +2079,7 @@ mod tests_tx {
         let tx = transaction!(seq: 1, fee: 10, store!(content.clone(), sender, signature));
 
         assert_eq!(
-            Ok(Invoice::Failure(
-                RuntimeError::TextVerificationFail("Certifier and signer are different".to_string()).into()
-            )),
+            Ok(Invoice::Failure(RuntimeError::TextVerificationFail("Certifier and signer are different".to_string()))),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
