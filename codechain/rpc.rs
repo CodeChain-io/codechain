@@ -36,8 +36,14 @@ pub fn rpc_http_start(
 ) -> Result<HttpServer, String> {
     let url = format!("{}:{}", cfg.interface, cfg.port);
     let addr = url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?;
-    let server = setup_http_rpc_server(&addr, cfg.cors, cfg.hosts, enable_devel_api, deps)?;
+    let server = setup_http_rpc_server(&addr, cfg.cors.clone(), cfg.hosts.clone(), enable_devel_api, deps)?;
     cinfo!(RPC, "RPC Listening on {}", url);
+    if let Some(hosts) = cfg.hosts {
+        cinfo!(RPC, "Allowed hosts are {:?}", hosts);
+    }
+    if let Some(cors) = cfg.cors {
+        cinfo!(RPC, "CORS domains are {:?}", cors);
+    }
     Ok(server)
 }
 
