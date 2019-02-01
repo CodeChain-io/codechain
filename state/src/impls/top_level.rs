@@ -461,13 +461,7 @@ impl TopLevelState {
                 Ok(Invoice::Success)
             }
             Action::CreateShard => {
-                // FIXME: Make shard creation cost configurable
-                #[cfg(test)]
-                let shard_creation_cost = 1;
-                #[cfg(not(test))]
-                let shard_creation_cost = ::std::u64::MAX;
-
-                self.create_shard(shard_creation_cost, fee_payer)?;
+                self.create_shard(fee_payer)?;
                 Ok(Invoice::Success)
             }
             Action::SetShardOwners {
@@ -836,9 +830,7 @@ impl TopState for TopLevelState {
         Ok(())
     }
 
-    fn create_shard(&mut self, shard_creation_cost: u64, fee_payer: &Address) -> StateResult<()> {
-        self.sub_balance(fee_payer, shard_creation_cost)?;
-
+    fn create_shard(&mut self, fee_payer: &Address) -> StateResult<()> {
         let shard_id = {
             let mut metadata = self.get_metadata_mut()?;
             metadata.increase_number_of_shards()
@@ -1382,7 +1374,7 @@ mod tests_tx {
         );
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 2, balance: 4)),
+            (account: sender => (seq: 2, balance: 15 - 5 - 5)),
             (shard: 0 => owners: [sender])
         ]);
     }
@@ -1571,7 +1563,7 @@ mod tests_tx {
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &regular_public, &get_test_client()));
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 20)),
-            (account: regular_address => (seq: 1, balance: 20 - 5 - 1)),
+            (account: regular_address => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: [regular_address])
         ]);
     }
@@ -2155,7 +2147,7 @@ mod tests_tx {
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 1, balance: 20 - 5 - 1)),
+            (account: sender => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: [sender]),
             (shard: 1)
         ]);
@@ -2174,7 +2166,7 @@ mod tests_tx {
 
         let invalid_shard_id = 3;
         check_top_level_state!(state, [
-            (account: sender => (seq: 1, balance: 20 - 5 - 1)),
+            (account: sender => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: [sender]),
             (asset: (H256::random(), 0, invalid_shard_id))
         ]);
@@ -2193,7 +2185,7 @@ mod tests_tx {
 
         let invalid_shard_id = 3;
         check_top_level_state!(state, [
-            (account: sender => (seq: 1, balance: 20 - 5 - 1)),
+            (account: sender => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: [sender]),
             (asset: (H256::random(), 0, invalid_shard_id))
         ]);
