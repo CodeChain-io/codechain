@@ -139,6 +139,13 @@ impl AssetScheme {
         self.administrator = administrator;
         self.allowed_script_hashes = allowed_script_hashes;
     }
+
+    pub fn reduce_supply(&mut self, quantity: u64) -> u64 {
+        assert!(self.supply >= quantity, "AssetScheme supply shouldn't be depleted");
+        let previous = self.supply;
+        self.supply -= quantity;
+        previous
+    }
 }
 
 const PREFIX: u8 = super::ASSET_SCHEME_PREFIX;
