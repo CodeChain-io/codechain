@@ -483,8 +483,8 @@ impl Encodable for Action {
             } => {
                 s.begin_list(9)
                     .append(&CHANGE_ASSET_SCHEME)
-                    .append(shard_id)
                     .append(network_id)
+                    .append(shard_id)
                     .append(asset_type)
                     .append(metadata)
                     .append(approver)
@@ -1098,6 +1098,20 @@ mod tests {
         rlp_encode_and_decode_test!(Action::Remove {
             hash: H256::random(),
             signature: Signature::random(),
+        });
+    }
+
+    #[test]
+    fn encode_and_decode_change_asset_scheme_action() {
+        rlp_encode_and_decode_test!(Action::ChangeAssetScheme {
+            network_id: "ab".into(),
+            shard_id: 1,
+            asset_type: H160::random(),
+            metadata: "some asset scheme metadata".to_string(),
+            approver: Some(Address::random()),
+            administrator: Some(Address::random()),
+            allowed_script_hashes: vec![H160::random(), H160::random(), H160::random()],
+            approvals: vec![],
         });
     }
 
