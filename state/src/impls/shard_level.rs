@@ -23,8 +23,8 @@ use cmerkle::{self, TrieError, TrieFactory};
 use ctypes::errors::{RuntimeError, UnlockFailureReason};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{
-    AssetMintOutput, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, Order, OrderOnTransfer,
-    PartialHashing, ShardTransaction,
+    AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, Order,
+    OrderOnTransfer, PartialHashing, ShardTransaction,
 };
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
@@ -301,8 +301,22 @@ impl<'db> ShardLevelState<'db> {
             )?;
             created_asset.push((asset_address, output.quantity));
         }
+        let mut reduced_supplies = Vec::with_capacity(burns.len());
+        for burn in burns {
+            let AssetOutPoint {
+                asset_type,
+                shard_id,
+                quantity,
+                ..
+            } = burn.prev_out;
+            let mut asset_scheme = self.get_asset_scheme_mut(&AssetSchemeAddress::new(asset_type, shard_id))?;
+            let previous_supply = asset_scheme.reduce_supply(quantity);
+            reduced_supplies.push((asset_type, previous_supply, quantity))
+        }
+
         ctrace!(TX, "Deleted assets {:?}", deleted_asset);
         ctrace!(TX, "Created assets {:?}", created_asset);
+        ctrace!(TX, "Reduced asset supplies {:?}", reduced_supplies);
         Ok(())
     }
 
@@ -572,8 +586,12 @@ impl<'db> ShardLevelState<'db> {
         approvers: &[Address],
         client: &C,
     ) -> StateResult<()> {
-        let asset_type = input.prev_out.asset_type;
-        let shard_id = input.prev_out.shard_id;
+        let AssetOutPoint {
+            asset_type,
+            shard_id,
+            quantity,
+            ..
+        } = input.prev_out;
         let asset_scheme_address = AssetSchemeAddress::new(asset_type, shard_id);
         let asset_scheme = self
             .asset_scheme(&asset_scheme_address)?
@@ -638,7 +656,11 @@ impl<'db> ShardLevelState<'db> {
 
         self.kill_asset(&asset_address);
 
-        ctrace!(TX, "Deleted assets {:?} {:?}", asset_type, input.prev_out.quantity);
+        let mut asset_scheme = self.get_asset_scheme_mut(&asset_scheme_address)?;
+        let previous_supply = asset_scheme.reduce_supply(quantity);
+
+        ctrace!(TX, "Deleted assets {:?} {:?}", asset_type, quantity);
+        ctrace!(TX, "Reduced asset supply {:?} {:?} {:?}", asset_type, previous_supply, quantity);
 
         // Put asset into DB
         for (index, output) in outputs.iter().enumerate() {
@@ -1163,7 +1185,7 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&burn, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type, SHARD_ID) => { metadata: metadata, supply: amount }),
+            (scheme: (asset_type, SHARD_ID) => { metadata: metadata, supply: 0 }),
             (asset: (mint_tracker, 0, SHARD_ID)),
             (asset: (burn_tracker, 0, SHARD_ID))
         ]);
@@ -1191,13 +1213,14 @@ mod tests {
             (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
+        let burn_amount = 5;
         let lock_script_hash_burn = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
         let random_lock_script_hash = H160::random();
         let transfer = asset_transfer!(
             inputs: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30), vec![0x30, 0x01])],
             asset_transfer_outputs![
                 (lock_script_hash, vec![vec![1]], asset_type, 10),
-                (lock_script_hash_burn, asset_type, 5),
+                (lock_script_hash_burn, asset_type, burn_amount),
                 (random_lock_script_hash, asset_type, 15),
             ]
         );
@@ -1209,7 +1232,7 @@ mod tests {
             (scheme: (asset_type, SHARD_ID) => { metadata: metadata, supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
             (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
-            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, quantity: 5 }),
+            (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, quantity: burn_amount }),
             (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15 })
         ]);
 
@@ -1221,7 +1244,7 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&burn, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type, SHARD_ID) => { metadata: metadata, supply: amount }),
+            (scheme: (asset_type, SHARD_ID) => { metadata: metadata, supply: amount - burn_amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
             (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1, SHARD_ID)),
@@ -1307,13 +1330,14 @@ mod tests {
             (asset: (mint_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
-        let burn = asset_transfer!(burns: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, 30))]);
+        let burn =
+            asset_transfer!(burns: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, amount))]);
         let burn_tracker = burn.tracker();
 
         assert_eq!(Ok(Invoice::Success), state.apply(&burn, &administrator, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type, SHARD_ID) => { metadata: metadata, supply: amount, administrator: administrator }),
+            (scheme: (asset_type, SHARD_ID) => { metadata: metadata, supply: 0, administrator: administrator }),
             (asset: (mint_tracker, 0, SHARD_ID)),
             (asset: (burn_tracker, 0, SHARD_ID))
         ]);
@@ -1597,7 +1621,7 @@ mod tests {
         check_shard_level_state!(state, [
             (scheme: (asset_type, SHARD_ID) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, SHARD_ID)),
-            (scheme: (composed_asset_type, SHARD_ID)  => { metadata: "composed".to_string(), supply: 1, pool: [Asset::new(asset_type, amount)] }),
+            (scheme: (composed_asset_type, SHARD_ID)  => { metadata: "composed".to_string(), supply: 0, pool: [Asset::new(asset_type, amount)] }),
             (asset: (compose_tracker, 0, SHARD_ID)),
             (asset: (decompose_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
