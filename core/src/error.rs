@@ -18,7 +18,9 @@ use std::fmt;
 
 use cio::IoError;
 use ckey::{Address, Error as KeyError};
+use cmerkle::TrieError;
 use cstate::StateError;
+use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;
 use primitives::{H256, U256};
@@ -187,7 +189,10 @@ pub enum Error {
     Scheme(SchemeError),
     /// Account Provider error.
     AccountProvider(AccountsError),
-    State(StateError),
+    Trie(TrieError),
+    Runtime(RuntimeError),
+    History(HistoryError),
+    Syntax(SyntaxError),
 }
 
 impl fmt::Display for Error {
@@ -204,7 +209,10 @@ impl fmt::Display for Error {
             Error::PowInvalid => f.write_str("Invalid nonce or mishash"),
             Error::Scheme(err) => err.fmt(f),
             Error::AccountProvider(err) => err.fmt(f),
-            Error::State(err) => err.fmt(f),
+            Error::Trie(err) => err.fmt(f),
+            Error::Runtime(err) => err.fmt(f),
+            Error::History(err) => err.fmt(f),
+            Error::Syntax(err) => err.fmt(f),
         }
     }
 }
@@ -279,8 +287,36 @@ impl From<AccountsError> for Error {
     }
 }
 
+impl From<TrieError> for Error {
+    fn from(err: TrieError) -> Self {
+        Error::Trie(err)
+    }
+}
+
 impl From<StateError> for Error {
     fn from(err: StateError) -> Self {
-        Error::State(err)
+        match err {
+            StateError::Trie(err) => Error::Trie(err),
+            StateError::Runtime(err) => Error::Runtime(err),
+            StateError::Key(err) => Error::Key(err),
+        }
+    }
+}
+
+impl From<RuntimeError> for Error {
+    fn from(err: RuntimeError) -> Self {
+        Error::Runtime(err)
+    }
+}
+
+impl From<HistoryError> for Error {
+    fn from(err: HistoryError) -> Self {
+        Error::History(err)
+    }
+}
+
+impl From<SyntaxError> for Error {
+    fn from(err: SyntaxError) -> Self {
+        Error::Syntax(err)
     }
 }
