@@ -60,7 +60,7 @@ rustup component add clippy-preview --toolchain nightly-2018-12-06
 ### Run
 
 ```
-cargo +nightly-2018-12-06 clippy --all
+cargo +nightly-2018-12-06 clippy --all --all-targets
 ```
 
 ## Testing
