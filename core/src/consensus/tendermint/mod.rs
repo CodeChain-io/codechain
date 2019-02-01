@@ -1954,7 +1954,7 @@ mod tests {
             prev_view: 0,
             cur_view: 0,
             precommits: vec![signature0],
-            precommit_bitset: BitSet::new_with_indices(&vec![0]),
+            precommit_bitset: BitSet::new_with_indices(&[0]),
         }
         .seal_fields()
         .unwrap();
@@ -1975,7 +1975,7 @@ mod tests {
             prev_view: 0,
             cur_view: 0,
             precommits: vec![signature0, signature1, signature2],
-            precommit_bitset: BitSet::new_with_indices(&vec![0, 1, 2]),
+            precommit_bitset: BitSet::new_with_indices(&[0, 1, 2]),
         }
         .seal_fields()
         .unwrap();
@@ -1990,7 +1990,7 @@ mod tests {
             prev_view: 0,
             cur_view: 0,
             precommits: vec![signature0, signature1, bad_signature],
-            precommit_bitset: BitSet::new_with_indices(&vec![0, 1, 2]),
+            precommit_bitset: BitSet::new_with_indices(&[0, 1, 2]),
         }
         .seal_fields()
         .unwrap();

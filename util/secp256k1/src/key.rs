@@ -412,7 +412,8 @@ mod test {
             }
 
             fn try_fill_bytes(&mut self, data: &mut [u8]) -> Result<(), Error> {
-                Ok(self.fill_bytes(data))
+                self.fill_bytes(data);
+                Ok(())
             }
         }
 
@@ -443,7 +444,7 @@ mod test {
                 self.0
             }
             fn next_u64(&mut self) -> u64 {
-                ((self.next_u32() as u64) << 32) | (self.next_u32() as u64)
+                (u64::from(self.next_u32()) << 32) | u64::from(self.next_u32())
             }
             fn fill_bytes(&mut self, dest: &mut [u8]) {
                 // this could, in theory, be done by transmuting dest to a
@@ -469,7 +470,8 @@ mod test {
                 }
             }
             fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-                Ok(self.fill_bytes(dest))
+                self.fill_bytes(dest);
+                Ok(())
             }
         }
 
@@ -488,7 +490,7 @@ mod test {
                 self.0
             }
             fn next_u64(&mut self) -> u64 {
-                ((self.next_u32() as u64) << 32) | (self.next_u32() as u64)
+                (u64::from(self.next_u32()) << 32) | u64::from(self.next_u32())
             }
             fn fill_bytes(&mut self, dest: &mut [u8]) {
                 // this could, in theory, be done by transmuting dest to a
@@ -514,7 +516,8 @@ mod test {
                 }
             }
             fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-                Ok(self.fill_bytes(dest))
+                self.fill_bytes(dest);
+                Ok(())
             }
         }
 

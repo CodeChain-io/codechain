@@ -179,8 +179,7 @@ mod tests {
                     address,
                     cost: 110,
                     balance: 100,
-                }
-                .into())
+                })
             );
         }
         let account = StakeAccount::load_from_state(&state, &address).unwrap();
