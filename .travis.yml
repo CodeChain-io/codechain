@@ -24,7 +24,7 @@ jobs:
         - cargo fetch --verbose
       script:
         - cargo +nightly-2018-12-06 fmt -- --check || exit 1
-        - cargo +nightly-2018-12-06 clippy --all-targets --all-features -- -D warnings || exit 1
+        - cargo +nightly-2018-12-06 clippy --all --all-targets -- -D warnings || exit 1
         - RUST_BACKTRACE=1 cargo test --verbose --all || exit 1
     - name: int-test-osx
       os: osx
@@ -58,7 +58,7 @@ jobs:
         - cargo fetch --verbose
       script:
         - cargo +nightly-2018-12-06 fmt -- --check || exit 1
-        - cargo +nightly-2018-12-06 clippy --all-targets --all-features -- -D warnings || exit 1
+        - cargo +nightly-2018-12-06 clippy --all --all-targets -- -D warnings || exit 1
         - RUST_BACKTRACE=1 cargo test --verbose --all || exit 1
     - name: int-test-linux
       os: linux
