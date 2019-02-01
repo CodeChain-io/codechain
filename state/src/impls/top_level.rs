@@ -1942,6 +1942,7 @@ mod tests_tx {
     }
 
     #[test]
+    #[allow(clippy::cyclomatic_complexity)]
     fn wrap_ccc_and_transfer_and_unwrap_ccc() {
         let (sender, sender_public, _) = address();
 
