@@ -576,6 +576,7 @@ mod tests {
     macro_rules! hex (($hex:expr) => (hex::decode($hex).unwrap()));
 
     #[test]
+    #[allow(clippy::cyclomatic_complexity)]
     fn capabilities() {
         let none = Secp256k1::with_caps(ContextFlag::None);
         let sign = Secp256k1::with_caps(ContextFlag::SignOnly);
@@ -628,12 +629,6 @@ mod tests {
         let new_sk = SecretKey::from_slice(&none, sk_slice).unwrap();
         assert_eq!(sk, new_sk);
         assert_eq!(pk, new_pk);
-    }
-
-    #[test]
-    fn recid_sanity_check() {
-        let one = RecoveryId(1);
-        assert_eq!(one, one.clone());
     }
 
     #[test]
