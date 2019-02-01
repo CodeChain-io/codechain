@@ -96,8 +96,8 @@ impl Config {
         RpcHttpConfig {
             interface: self.rpc.interface.clone().unwrap(),
             port: self.rpc.port.unwrap(),
-            cors: None,
-            hosts: None,
+            cors: self.rpc.cors.clone(),
+            hosts: self.rpc.hosts.clone(),
         }
     }
 
@@ -249,6 +249,8 @@ pub struct Network {
 pub struct Rpc {
     pub disable: Option<bool>,
     pub interface: Option<String>,
+    pub hosts: Option<Vec<String>>,
+    pub cors: Option<Vec<String>>,
     pub port: Option<u16>,
     #[serde(default = "default_enable_devel_api")]
     pub enable_devel_api: bool,
@@ -544,6 +546,12 @@ impl Rpc {
         if other.interface.is_some() {
             self.interface = other.interface.clone();
         }
+        if other.hosts.is_some() {
+            self.hosts = other.hosts.clone();
+        }
+        if other.cors.is_some() {
+            self.cors = other.cors.clone();
+        }
         if other.port.is_some() {
             self.port = other.port;
         }
@@ -553,12 +561,17 @@ impl Rpc {
         if matches.is_present("no-jsonrpc") {
             self.disable = Some(true);
         }
-
         if let Some(port) = matches.value_of("jsonrpc-port") {
             self.port = Some(port.parse().map_err(|_| "Invalid port")?);
         }
         if let Some(interface) = matches.value_of("jsonrpc-interface") {
             self.interface = Some(interface.to_string());
+        }
+        if let Some(hosts) = matches.values_of_lossy("jsonrpc-hosts") {
+            self.hosts = Some(hosts);
+        }
+        if let Some(cors) = matches.values_of_lossy("jsonrpc-cors") {
+            self.cors = Some(cors);
         }
         if matches.is_present("enable-devel-api") {
             self.enable_devel_api = true;

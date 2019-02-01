@@ -77,6 +77,14 @@ args:
         value_name: INTERFACE
         help: Specify the interface address for rpc connections
         takes_value: true
+    - jsonrpc-hosts:
+        long: jsonrpc-hosts
+        value_name: HOSTS
+        help: Specify the allowed host addresses for rpc connections
+    - jsonrpc-cors:
+        long: jsonrpc-cors
+        value_name: CORS
+        help: Specify the cors domains for rpc connections
     - jsonrpc-port:
         long: jsonrpc-port
         value_name: PORT
