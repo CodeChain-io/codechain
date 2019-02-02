@@ -309,14 +309,17 @@ impl Miner {
 
         let insertion_results = mem_pool.add(to_insert, insertion_time, insertion_timestamp, &fetch_account);
 
+        debug_assert_eq!(insertion_results.len(), intermediate_results.iter().filter(|r| r.is_ok()).count());
+        let mut insertion_results_index = 0;
         let results = intermediate_results
             .into_iter()
-            .enumerate()
-            .map(|(idx, res)| match res {
+            .map(|res| match res {
                 Err(e) => Err(e),
                 Ok(()) => {
+                    let idx = insertion_results_index;
                     let result = insertion_results[idx].clone().map_err(|x| x.into_core_error())?;
                     inserted.push(tx_hashes[idx]);
+                    insertion_results_index += 1;
                     Ok(result)
                 }
             })
