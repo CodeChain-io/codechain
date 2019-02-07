@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -24,12 +24,16 @@ use crate::CacheableItem;
 #[derive(Clone, Debug)]
 pub struct Metadata {
     number_of_shards: ShardId,
+    number_of_initial_shards: ShardId,
+    hashes: Vec<H256>,
 }
 
 impl Metadata {
     pub fn new(number_of_shards: ShardId) -> Self {
         Self {
             number_of_shards,
+            number_of_initial_shards: number_of_shards,
+            hashes: vec![],
         }
     }
 
@@ -37,15 +41,29 @@ impl Metadata {
         &self.number_of_shards
     }
 
-    pub fn increase_number_of_shards(&mut self) -> ShardId {
+    pub fn add_shard(&mut self, tx_hash: H256) -> ShardId {
         let r = self.number_of_shards;
         self.number_of_shards += 1;
+        self.hashes.push(tx_hash);
         r
     }
 
     #[cfg(test)]
     pub fn set_number_of_shards(&mut self, number_of_shards: ShardId) {
+        assert!(self.number_of_shards <= number_of_shards);
+        assert_eq!(0, self.hashes.len());
         self.number_of_shards = number_of_shards;
+        self.number_of_initial_shards = number_of_shards;
+    }
+
+    pub fn shard_id_by_hash(&self, tx_hash: &H256) -> Option<ShardId> {
+        debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<::ctypes::ShardId>());
+        assert!(self.hashes.len() < ::std::u16::MAX as usize);
+        self.hashes.iter().enumerate().find(|(_index, hash)| tx_hash == *hash).map(|(index, _)| {
+            let index = index as ShardId + self.number_of_initial_shards;
+            assert!(index < self.number_of_shards);
+            index
+        })
     }
 }
 
@@ -67,13 +85,17 @@ const PREFIX: u8 = super::METADATA_PREFIX;
 
 impl Encodable for Metadata {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(2).append(&PREFIX).append(&self.number_of_shards);
+        s.begin_list(4)
+            .append(&PREFIX)
+            .append(&self.number_of_shards)
+            .append(&self.number_of_initial_shards)
+            .append_list(&self.hashes);
     }
 }
 
 impl Decodable for Metadata {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 {
+        if rlp.item_count()? != 4 {
             return Err(DecoderError::RlpInvalidLength)
         }
         let prefix = rlp.val_at::<u8>(0)?;
@@ -83,6 +105,8 @@ impl Decodable for Metadata {
         }
         Ok(Self {
             number_of_shards: rlp.val_at(1)?,
+            number_of_initial_shards: rlp.val_at(2)?,
+            hashes: rlp.list_at(3)?,
         })
     }
 }
