@@ -105,28 +105,28 @@ impl ShardTransaction {
             ShardTransaction::TransferAsset {
                 network_id,
                 ..
-            } => *network_id,
-            ShardTransaction::MintAsset {
+            }
+            | ShardTransaction::MintAsset {
                 network_id,
                 ..
-            } => *network_id,
-            ShardTransaction::ComposeAsset {
+            }
+            | ShardTransaction::ComposeAsset {
                 network_id,
                 ..
-            } => *network_id,
-            ShardTransaction::ChangeAssetScheme {
+            }
+            | ShardTransaction::ChangeAssetScheme {
                 network_id,
                 ..
-            } => *network_id,
-            ShardTransaction::DecomposeAsset {
+            }
+            | ShardTransaction::DecomposeAsset {
                 network_id,
                 ..
-            } => *network_id,
-            ShardTransaction::UnwrapCCC {
+            }
+            | ShardTransaction::UnwrapCCC {
                 network_id,
                 ..
-            } => *network_id,
-            ShardTransaction::WrapCCC {
+            }
+            | ShardTransaction::WrapCCC {
                 network_id,
                 ..
             } => *network_id,

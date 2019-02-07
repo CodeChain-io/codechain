@@ -144,20 +144,20 @@ impl Action {
         match self {
             Action::MintAsset {
                 ..
-            } => self.clone().into(),
-            Action::TransferAsset {
+            }
+            | Action::TransferAsset {
                 ..
-            } => self.clone().into(),
-            Action::ChangeAssetScheme {
+            }
+            | Action::ChangeAssetScheme {
                 ..
-            } => self.clone().into(),
-            Action::ComposeAsset {
+            }
+            | Action::ComposeAsset {
                 ..
-            } => self.clone().into(),
-            Action::DecomposeAsset {
+            }
+            | Action::DecomposeAsset {
                 ..
-            } => self.clone().into(),
-            Action::UnwrapCCC {
+            }
+            | Action::UnwrapCCC {
                 ..
             } => self.clone().into(),
             _ => None,
@@ -175,16 +175,18 @@ impl Action {
         max_transfer_metadata_size: usize,
         max_text_size: usize,
     ) -> Result<(), SyntaxError> {
+        if let Some(network_id) = self.network_id() {
+            if network_id != system_network_id {
+                return Err(SyntaxError::InvalidNetworkId(network_id))
+            }
+        }
+
         match self {
             Action::MintAsset {
-                network_id,
                 metadata,
                 output,
                 ..
             } => {
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -194,7 +196,6 @@ impl Action {
                 }
             }
             Action::TransferAsset {
-                network_id,
                 burns,
                 inputs,
                 outputs,
@@ -226,19 +227,12 @@ impl Action {
                 }
                 verify_order_indices(orders, inputs.len(), outputs.len())?;
                 verify_input_and_output_consistent_with_order(orders, inputs, outputs)?;
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
             }
             Action::ChangeAssetScheme {
-                network_id,
                 metadata,
                 asset_type,
                 ..
             } => {
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -247,7 +241,6 @@ impl Action {
                 }
             }
             Action::ComposeAsset {
-                network_id,
                 metadata,
                 inputs,
                 output,
@@ -272,9 +265,6 @@ impl Action {
                         })
                     }
                 }
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -282,7 +272,6 @@ impl Action {
             Action::DecomposeAsset {
                 input,
                 outputs,
-                network_id,
                 ..
             } => {
                 let disable_decompose_asset = true;
@@ -302,22 +291,16 @@ impl Action {
                 if outputs.iter().any(|output| output.quantity == 0) {
                     return Err(SyntaxError::ZeroQuantity)
                 }
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
             }
             Action::UnwrapCCC {
                 burn,
-                network_id,
+                ..
             } => {
                 if burn.prev_out.quantity == 0 {
                     return Err(SyntaxError::ZeroQuantity)
                 }
                 if !burn.prev_out.asset_type.is_zero() {
                     return Err(SyntaxError::InvalidAssetType(burn.prev_out.asset_type))
-                }
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
                 }
             }
             Action::WrapCCC {
@@ -352,6 +335,36 @@ impl Action {
             }
         }
         Ok(())
+    }
+
+    fn network_id(&self) -> Option<NetworkId> {
+        match self {
+            Action::MintAsset {
+                network_id,
+                ..
+            }
+            | Action::TransferAsset {
+                network_id,
+                ..
+            }
+            | Action::ChangeAssetScheme {
+                network_id,
+                ..
+            }
+            | Action::ComposeAsset {
+                network_id,
+                ..
+            }
+            | Action::DecomposeAsset {
+                network_id,
+                ..
+            }
+            | Action::UnwrapCCC {
+                network_id,
+                ..
+            } => Some(*network_id),
+            _ => None,
+        }
     }
 }
 
