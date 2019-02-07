@@ -326,7 +326,7 @@ impl TopLevelState {
         // The failed transaction also must pay the fee and increase seq.
         self.create_checkpoint(ACTION_CHECKPOINT);
         let result =
-            self.apply_action(&tx.action, tx.network_id, &tx.hash(), signed_hash, &fee_payer, signer_public, client);
+            self.apply_action(&tx.action, tx.network_id, tx.hash(), signed_hash, &fee_payer, signer_public, client);
         match &result {
             Ok(_) => {
                 self.discard_checkpoint(ACTION_CHECKPOINT);
@@ -345,7 +345,7 @@ impl TopLevelState {
         &mut self,
         action: &Action,
         network_id: NetworkId,
-        tx_hash: &H256,
+        tx_hash: H256,
         signed_hash: &H256,
         fee_payer: &Address,
         signer_public: &Public,
@@ -461,7 +461,7 @@ impl TopLevelState {
                 Ok(Invoice::Success)
             }
             Action::CreateShard => {
-                self.create_shard(fee_payer)?;
+                self.create_shard(fee_payer, *signed_hash)?;
                 Ok(Invoice::Success)
             }
             Action::SetShardOwners {
@@ -486,7 +486,7 @@ impl TopLevelState {
             } => Ok(self.apply_wrap_ccc(
                 network_id,
                 *shard_id,
-                *tx_hash,
+                tx_hash,
                 *lock_script_hash,
                 parameters.clone(),
                 *quantity,
@@ -830,10 +830,10 @@ impl TopState for TopLevelState {
         Ok(())
     }
 
-    fn create_shard(&mut self, fee_payer: &Address) -> StateResult<()> {
+    fn create_shard(&mut self, fee_payer: &Address, tx_hash: H256) -> StateResult<()> {
         let shard_id = {
             let mut metadata = self.get_metadata_mut()?;
-            metadata.increase_number_of_shards()
+            metadata.add_shard(tx_hash)
         };
         self.create_shard_level_state(shard_id, vec![*fee_payer], vec![])?;
 
@@ -2143,13 +2143,92 @@ mod tests_tx {
             (account: sender => balance: 20)
         ]);
 
-        let tx = transaction!(fee: 5, Action::CreateShard);
-        assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
+        let tx1 = transaction!(fee: 5, Action::CreateShard);
+        let tx2 = transaction!(seq: 1, fee: 5, Action::CreateShard);
+        let invalid_hash = H256::random();
+        let signed_hash1 = H256::random();
+        let signed_hash2 = H256::random();
+
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&tx1, &signed_hash1, &sender_public, &get_test_client()));
+
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(Some(0)), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: [sender]),
             (shard: 1)
+        ]);
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&tx2, &signed_hash2, &sender_public, &get_test_client()));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(Some(0)), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(Some(1)), state.shard_id_by_hash(&signed_hash2));
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 2, balance: 20 - 5 - 5)),
+            (shard: 0 => owners: [sender]),
+            (shard: 1 => owners: [sender]),
+            (shard: 2)
+        ]);
+    }
+
+    #[test]
+    #[allow(clippy::cyclomatic_complexity)]
+    fn apply_create_shard_when_there_are_default_shards() {
+        let mut state = get_temp_state();
+        let (sender, sender_public, _) = address();
+        let shard_owner0 = address().0;
+        let shard_owner1 = address().0;
+
+        set_top_level_state!(state, [
+            (shard: 0 => owners: [shard_owner0]),
+            (shard: 1 => owners: [shard_owner1]),
+            (metadata: shards: 2),
+            (account: sender => balance: 20)
+        ]);
+
+        let tx1 = transaction!(fee: 5, Action::CreateShard);
+        let tx2 = transaction!(seq: 1, fee: 5, Action::CreateShard);
+        let invalid_hash = H256::random();
+        let signed_hash1 = H256::random();
+        let signed_hash2 = H256::random();
+
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&tx1, &signed_hash1, &sender_public, &get_test_client()));
+
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(Some(2)), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 20 - 5)),
+            (shard: 0 => owners: [shard_owner0]),
+            (shard: 1 => owners: [shard_owner1]),
+            (shard: 2 => owners: [sender]),
+            (shard: 3)
+        ]);
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&tx2, &signed_hash2, &sender_public, &get_test_client()));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(Some(2)), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(Some(3)), state.shard_id_by_hash(&signed_hash2));
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 2, balance: 20 - 5 - 5)),
+            (shard: 0 => owners: [shard_owner0]),
+            (shard: 1 => owners: [shard_owner1]),
+            (shard: 2 => owners: [sender]),
+            (shard: 3 => owners: [sender]),
+            (shard: 4)
         ]);
     }
 

@@ -89,6 +89,10 @@ pub trait TopStateView {
         Ok(*self.metadata()?.expect("Metadata must exist").number_of_shards())
     }
 
+    fn shard_id_by_hash(&self, tx_hash: &H256) -> TrieResult<Option<ShardId>> {
+        Ok(self.metadata()?.and_then(|metadata| metadata.shard_id_by_hash(tx_hash)))
+    }
+
     fn shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>>;
     fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>>;
 
@@ -164,7 +168,7 @@ pub trait TopState {
     /// Set the regular key of account `owner_public`
     fn set_regular_key(&mut self, owner_public: &Public, key: &Public) -> StateResult<()>;
 
-    fn create_shard(&mut self, fee_payer: &Address) -> StateResult<()>;
+    fn create_shard(&mut self, fee_payer: &Address, tx_hash: H256) -> StateResult<()>;
     fn change_shard_owners(&mut self, shard_id: ShardId, owners: &[Address], sender: &Address) -> StateResult<()>;
     fn change_shard_users(&mut self, shard_id: ShardId, users: &[Address], sender: &Address) -> StateResult<()>;
 
