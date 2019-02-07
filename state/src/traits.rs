@@ -23,8 +23,8 @@ use cvm::ChainTimeInfo;
 use primitives::{Bytes, H160, H256};
 
 use crate::{
-    Account, ActionData, AssetScheme, AssetSchemeAddress, CacheableItem, Metadata, OwnedAsset, OwnedAssetAddress,
-    RegularAccount, Shard, StateDB, StateResult, Text,
+    Account, ActionData, AssetScheme, CacheableItem, Metadata, OwnedAsset, OwnedAssetAddress, RegularAccount, Shard,
+    StateDB, StateResult, Text,
 };
 
 
@@ -109,13 +109,10 @@ pub trait TopStateView {
     }
 
     /// Get the asset scheme.
-    fn asset_scheme(&self, shard_id: ShardId, asset_type: &H160) -> TrieResult<Option<AssetScheme>> {
+    fn asset_scheme(&self, shard_id: ShardId, asset_type: H160) -> TrieResult<Option<AssetScheme>> {
         match self.shard_state(shard_id)? {
             None => Ok(None),
-            Some(state) => {
-                let address = AssetSchemeAddress::new(*asset_type, shard_id);
-                state.asset_scheme(&address)
-            }
+            Some(state) => state.asset_scheme(shard_id, asset_type),
         }
     }
 
@@ -134,7 +131,7 @@ pub trait TopStateView {
 
 pub trait ShardStateView {
     /// Get the asset scheme.
-    fn asset_scheme(&self, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
+    fn asset_scheme(&self, shard_id: ShardId, asset_type: H160) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
     fn asset(&self, a: &OwnedAssetAddress) -> TrieResult<Option<OwnedAsset>>;
 }

@@ -60,7 +60,7 @@ use crate::{
     ShardAddress, ShardLevelState, StateDB, StateError, StateResult, Text,
 };
 #[cfg(test)]
-use crate::{Asset, AssetSchemeAddress, OwnedAssetAddress};
+use crate::{Asset, OwnedAssetAddress};
 
 /// Representation of the entire state of all accounts in the system.
 ///
@@ -692,7 +692,7 @@ impl TopLevelState {
     fn create_asset_scheme(
         &mut self,
         shard_id: ShardId,
-        a: &AssetSchemeAddress,
+        asset_type: H160,
         metadata: String,
         amount: u64,
         approver: Option<Address>,
@@ -704,7 +704,16 @@ impl TopLevelState {
             Some(shard_root) => {
                 let mut shard_cache = self.shard_caches.entry(shard_id).or_default();
                 let state = ShardLevelState::from_existing(shard_id, &mut self.db, shard_root, &mut shard_cache)?;
-                state.create_asset_scheme(a, metadata, amount, approver, administrator, allowed_script_hashes, pool)?;
+                state.create_asset_scheme(
+                    shard_id,
+                    asset_type,
+                    metadata,
+                    amount,
+                    approver,
+                    administrator,
+                    allowed_script_hashes,
+                    pool,
+                )?;
                 Ok(true)
             }
             None => Ok(false),
@@ -1266,7 +1275,6 @@ mod tests_tx {
 
     use super::*;
     use crate::tests::helpers::{get_temp_state, get_test_client};
-    use crate::AssetSchemeAddress;
 
     fn address() -> (Address, Public, Private) {
         let keypair = Random.generate().unwrap();
@@ -1471,14 +1479,13 @@ mod tests_tx {
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
         let asset_type = Blake::blake(mint_tracker);
-        let asset_scheme_address = AssetSchemeAddress::new(asset_type, shard_id);
 
         set_top_level_state!(state, [
             (shard: shard_id => owners: [sender]),
             (metadata: shards: 1),
             (account: sender => balance: 25),
             (regular_key: sender_public => regular_public),
-            (scheme: (shard_id, asset_scheme_address) => { supply: amount, metadata: metadata, approver: Some(sender) }),
+            (scheme: (shard_id, asset_type) => { supply: amount, metadata: metadata, approver: Some(sender) }),
             (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, quantity: amount, lock_script_hash: lock_script_hash })
         ]);
 
@@ -1511,14 +1518,13 @@ mod tests_tx {
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
         let asset_type = Blake::blake(mint_tracker);
-        let asset_scheme_address = AssetSchemeAddress::new(asset_type, shard_id);
 
         set_top_level_state!(state, [
             (shard: shard_id => owners: [sender]),
             (metadata: shards: 1),
             (account: sender => balance: 25),
             (regular_key: sender_public => regular_public),
-            (scheme: (shard_id, asset_scheme_address) => { supply: amount, metadata: metadata, approver: Some(sender) }),
+            (scheme: (shard_id, asset_type) => { supply: amount, metadata: metadata, approver: Some(sender) }),
             (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, quantity: amount, lock_script_hash: lock_script_hash })
         ]);
 
@@ -1673,7 +1679,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata, supply: amount, approver: approver }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata, supply: amount, approver: approver }),
             (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, quantity: amount })
         ]);
     }
@@ -1708,7 +1714,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 5)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
             (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
@@ -1738,7 +1744,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 120 - 20)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata.clone(), supply: 30 }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata.clone(), supply: 30 }),
             (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, quantity: 30 })
         ]);
 
@@ -1764,7 +1770,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 120 - 20 - 30)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata.clone(), supply: 30 }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata.clone(), supply: 30 }),
             (asset: (mint_tracker, 0, shard_id)),
             (asset: (transfer_tracker, 0, shard_id) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1, shard_id) => { asset_type: asset_type, quantity: 5 }),
@@ -2132,7 +2138,7 @@ mod tests_tx {
         let state = get_temp_state();
 
         let shard_id = 3;
-        check_top_level_state!(state, [(scheme: (H160::random(), shard_id))]);
+        check_top_level_state!(state, [(scheme: (shard_id, H160::random()))]);
     }
 
     #[test]
@@ -2498,7 +2504,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 20)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata.clone(), supply: amount }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, quantity: amount })
         ]);
     }

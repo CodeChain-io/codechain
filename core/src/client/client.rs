@@ -350,7 +350,7 @@ impl DatabaseClient for Client {
 impl AssetClient for Client {
     fn get_asset_scheme(&self, asset_type: H160, shard_id: ShardId, id: BlockId) -> TrieResult<Option<AssetScheme>> {
         if let Some(state) = Client::state_at(&self, id) {
-            Ok(state.asset_scheme(shard_id, &asset_type)?)
+            Ok(state.asset_scheme(shard_id, asset_type)?)
         } else {
             Ok(None)
         }
