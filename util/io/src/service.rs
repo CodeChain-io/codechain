@@ -497,3 +497,47 @@ where
         self.stop()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+    use super::*;
+
+    #[test]
+    fn register_and_deregister() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1000);
+        let stream = mio::net::TcpStream::connect(&addr).unwrap();
+
+        let mut event_loop = EventLoopBuilder::new().build::<IoManager<()>>().unwrap();
+        event_loop.register(&stream, Token(1), Ready::empty(), PollOpt::edge()).unwrap();
+        event_loop.deregister(&stream).unwrap();
+    }
+
+    #[test]
+    fn cannot_move_socket_to_other_event_loop() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1000);
+        let stream = mio::net::TcpStream::connect(&addr).unwrap();
+
+        let mut event_loop1 = EventLoopBuilder::new().build::<IoManager<()>>().unwrap();
+        event_loop1.register(&stream, Token(1), Ready::empty(), PollOpt::edge()).unwrap();
+        event_loop1.reregister(&stream, Token(1), Ready::empty(), PollOpt::edge()).unwrap();
+        event_loop1.deregister(&stream).unwrap();
+
+        let mut event_loop2 = EventLoopBuilder::new().build::<IoManager<()>>().unwrap();
+        let result = event_loop2.register(&stream, Token(2), Ready::empty(), PollOpt::edge());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn register_to_the_same_event_loop() {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1000);
+        let stream = mio::net::TcpStream::connect(&addr).unwrap();
+
+        let mut event_loop = EventLoopBuilder::new().build::<IoManager<()>>().unwrap();
+        event_loop.register(&stream, Token(1), Ready::empty(), PollOpt::edge()).unwrap();
+        event_loop.deregister(&stream).unwrap();
+
+        event_loop.register(&stream, Token(2), Ready::empty(), PollOpt::edge()).unwrap();
+    }
+}

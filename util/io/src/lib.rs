@@ -115,8 +115,11 @@ impl<Message> From<NotifyError<service::IoMessage<Message>>> for IoError
 where
     Message: Send,
 {
-    fn from(_err: NotifyError<service::IoMessage<Message>>) -> IoError {
-        IoError::Mio(::std::io::Error::new(::std::io::ErrorKind::ConnectionAborted, "Network IO notification error"))
+    fn from(err: NotifyError<service::IoMessage<Message>>) -> IoError {
+        IoError::Mio(::std::io::Error::new(
+            ::std::io::ErrorKind::ConnectionAborted,
+            format!("Network IO notification error: {}", err),
+        ))
     }
 }
 
