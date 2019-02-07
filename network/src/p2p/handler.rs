@@ -434,7 +434,7 @@ impl IoHandler<Message> for Handler {
                 let was_established = self.connections.is_established(stream);
                 self.connections.set_disconnecting(stream);
                 let node_id = self.connections.node_id(stream).ok_or_else(|| Error::InvalidStream(stream))?;
-                self.routing_table.remove_node_on_shutdown(node_id.into_addr());
+                self.routing_table.remove_node_on_shutdown(&node_id.into_addr());
                 if was_established {
                     self.client.on_node_removed(&node_id);
                 }

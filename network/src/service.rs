@@ -107,7 +107,7 @@ impl Control for Service {
     fn local_key_for(&self, address: IpAddr, port: u16) -> Result<Public, ControlError> {
         Ok(self
             .routing_table
-            .register_key_pair_for_secret(&SocketAddr::new(address, port))
+            .register_key_pair_for_secret(SocketAddr::new(address, port))
             .ok_or_else(|| ControlError::NotConnected)?)
     }
 
@@ -119,7 +119,7 @@ impl Control for Service {
     ) -> Result<Public, ControlError> {
         Ok(self
             .routing_table
-            .share_secret(&SocketAddr::new(address, port), &remote_pub_key)
+            .share_secret(SocketAddr::new(address, port), remote_pub_key)
             .ok_or_else(|| ControlError::NotConnected)?)
     }
 
