@@ -166,7 +166,7 @@ impl SessionInitiator {
                 if !self.filters.is_allowed(&ip) {
                     return Err(format!("Message from {} is received. But it's not allowed", ip).into())
                 }
-                self.on_packet(&msg, &socket_address, io)?;
+                self.on_packet(&msg, socket_address, io)?;
                 Ok(true)
             }
         }
@@ -186,7 +186,7 @@ impl SessionInitiator {
             message::Message::nonce_request(seq as u64, encrypted_nonce)
         } else {
             let requester_pub_key =
-                self.routing_table.register_key_pair_for_secret(target).ok_or("Cannot register key pair")?;
+                self.routing_table.register_key_pair_for_secret(*target).ok_or("Cannot register key pair")?;
             message::Message::secret_request(seq as u64, requester_pub_key)
         };
         self.socket.send(message, *target).map_err(|e| format!("{:?}", e))?;
@@ -196,17 +196,17 @@ impl SessionInitiator {
     fn on_packet(
         &mut self,
         message: &message::Message,
-        from: &SocketAddr,
+        from: SocketAddr,
         io: &IoContext<Message>,
     ) -> IoHandlerResult<()> {
         match message.body() {
             message::Body::SecretRequest(requester_pub_key) => {
                 if let Some(responder_pub_key) = self.routing_table.register_key_pair_for_secret(from) {
-                    if let Some(_secret) = self.routing_table.share_secret(from, requester_pub_key) {
+                    if let Some(_secret) = self.routing_table.share_secret(from, *requester_pub_key) {
                         let message = message::Message::secret_allowed(message.seq(), responder_pub_key);
-                        self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
+                        self.socket.send(message, from).map_err(|e| format!("{:?}", e))?;
                         return Ok(())
-                    } else if !self.routing_table.remove_node(*from) {
+                    } else if !self.routing_table.remove_node(&from) {
                         cwarn!(NETWORK, "Cannot reset key pair to {}", from);
                     }
                 }
@@ -216,26 +216,26 @@ impl SessionInitiator {
             message::Body::SecretAllowed(responder_pub_key) => {
                 io.clear_timer(message.seq() as TimerToken);
                 self.requests
-                    .restore(message.seq() as usize, Some(*from))
+                    .restore(message.seq() as usize, Some(from))
                     .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
 
-                let _secret = self.routing_table.share_secret(from, responder_pub_key).ok_or("Cannot share secret")?;
-                let encrypted_nonce = self.routing_table.request_session(from).ok_or("Cannot generate nonce")?;
+                let _secret = self.routing_table.share_secret(from, *responder_pub_key).ok_or("Cannot share secret")?;
+                let encrypted_nonce = self.routing_table.request_session(&from).ok_or("Cannot generate nonce")?;
 
-                let seq = self.requests.gen(*from)?;
+                let seq = self.requests.gen(from)?;
                 io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
 
                 let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
-                self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
+                self.socket.send(message, from).map_err(|e| format!("{:?}", e))?;
 
                 Ok(())
             }
             message::Body::NonceRequest(encrypted_temporary_nonce) => {
                 if let Some(encrypted_nonce) =
-                    self.routing_table.create_requested_session(from, &encrypted_temporary_nonce)
+                    self.routing_table.create_requested_session(&from, &encrypted_temporary_nonce)
                 {
                     let message = message::Message::nonce_allowed(message.seq(), encrypted_nonce);
-                    self.socket.send(message, *from).map_err(|e| format!("{:?}", e))?;
+                    self.socket.send(message, from).map_err(|e| format!("{:?}", e))?;
                     return Ok(())
                 }
 
@@ -244,15 +244,15 @@ impl SessionInitiator {
             message::Body::NonceAllowed(encrypted_nonce) => {
                 io.clear_timer(message.seq() as TimerToken);
                 self.requests
-                    .restore(message.seq() as usize, Some(*from))
+                    .restore(message.seq() as usize, Some(from))
                     .map_err(|err| format!("Invalid message({:?}) from {}: {:?}", message, from, err))?;
 
-                if self.requests.manually_connected_address.take(from).is_some() {
+                if self.requests.manually_connected_address.take(&from).is_some() {
                     self.channel_to_p2p
-                        .send(p2p::Message::RequestConnection(*from, p2p::IgnoreConnectionLimit::Ignore))?;
+                        .send(p2p::Message::RequestConnection(from, p2p::IgnoreConnectionLimit::Ignore))?;
                 }
 
-                if !self.routing_table.create_allowed_session(from, &encrypted_nonce) {
+                if !self.routing_table.create_allowed_session(&from, &encrypted_nonce) {
                     return Err(format!("Cannot create session to {}", from).into())
                 }
                 Ok(())
@@ -321,7 +321,7 @@ impl IoHandler<Message> for Handler {
                         } else {
                             cinfo!(NETWORK, "The message to {} is dropped because of timeout", address);
                         }
-                        session_initiator.routing_table.remove_node(address);
+                        session_initiator.routing_table.remove_node(&address);
                     }
                 }
                 Ok(())

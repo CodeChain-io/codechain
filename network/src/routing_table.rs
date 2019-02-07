@@ -24,7 +24,7 @@ use rand::Rng;
 use rlp::{Decodable, Encodable, UntrustedRlp};
 
 use crate::session::{Nonce, Session};
-use crate::{IntoSocketAddr, NodeId, SocketAddr};
+use crate::SocketAddr;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum SecretOrigin {
@@ -140,7 +140,7 @@ impl State {
 }
 
 pub struct RoutingTable {
-    entries: RwLock<HashMap<NodeId, RwLock<State>>>,
+    entries: RwLock<HashMap<SocketAddr, RwLock<State>>>,
 
     rng: Mutex<OsRng>,
 }
@@ -155,21 +155,22 @@ impl RoutingTable {
     }
 
     pub fn is_secret_shared(&self, addr: &SocketAddr) -> bool {
-        let mut entries = self.entries.write();
-        let remote_node_id = addr.into();
-        let entry = entries.entry(remote_node_id).or_insert_with(|| RwLock::new(State::Candidate));
-        let state = entry.read();
-        match *state {
-            State::Candidate => false,
-            State::KeyPairShared(_) => false,
-            _ => true,
+        let entries = self.entries.read();
+        if let Some(entry) = entries.get(addr) {
+            let state = entry.read();
+            match *state {
+                State::Candidate => false,
+                State::KeyPairShared(_) => false,
+                _ => true,
+            }
+        } else {
+            true
         }
     }
 
     pub fn reset_imported_secret(&self, addr: &SocketAddr) -> bool {
         let entries = self.entries.read();
-        let remote_node_id = addr.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
+        if let Some(entry) = entries.get(addr) {
             let mut state = entry.write();
             match *state {
                 State::TemporaryNonceShared {
@@ -196,17 +197,17 @@ impl RoutingTable {
 
     pub fn all_addresses(&self) -> HashSet<SocketAddr> {
         let entries = self.entries.read();
-        entries.keys().map(|node_id| node_id.into_addr()).collect()
+        entries.keys().cloned().collect()
     }
 
     pub fn reachable_addresses(&self, from: &SocketAddr) -> HashSet<SocketAddr> {
         let entries = self.entries.read();
-        entries.keys().map(|node_id| node_id.into_addr()).filter(|addr| from.is_reachable(addr)).collect()
+        entries.keys().filter(|addr| from.is_reachable(addr)).cloned().collect()
     }
 
     pub fn is_connected(&self, addr: &SocketAddr) -> bool {
         let entries = self.entries.read();
-        if let Some(entry) = entries.get(&addr.into()) {
+        if let Some(entry) = entries.get(addr) {
             let state = entry.read();
             match *state {
                 State::Established {
@@ -220,30 +221,28 @@ impl RoutingTable {
 
     pub fn add_candidate(&self, addr: SocketAddr) -> bool {
         let mut entries = self.entries.write();
-        let remote_node_id = addr.into();
-        if entries.contains_key(&remote_node_id) {
+        if entries.contains_key(&addr) {
             ctrace!(ROUTING_TABLE, "{} is already in table", addr);
             return false
         }
-        let t = entries.insert(remote_node_id, RwLock::new(State::Candidate));
+        let t = entries.insert(addr, RwLock::new(State::Candidate));
         debug_assert!(t.is_none());
         ctrace!(ROUTING_TABLE, "Candidate added {}", addr);
         true
     }
 
-    pub fn remove_node(&self, addr: SocketAddr) -> bool {
+    pub fn remove_node(&self, addr: &SocketAddr) -> bool {
         self.remove_node_internal(addr, false)
     }
 
-    pub fn remove_node_on_shutdown(&self, addr: SocketAddr) -> bool {
+    pub fn remove_node_on_shutdown(&self, addr: &SocketAddr) -> bool {
         self.remove_node_internal(addr, true)
     }
 
-    fn remove_node_internal(&self, addr: SocketAddr, on_shutdown: bool) -> bool {
+    fn remove_node_internal(&self, addr: &SocketAddr, on_shutdown: bool) -> bool {
         let mut entries = self.entries.write();
 
-        let remote_node_id = addr.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
+        if let Some(entry) = entries.get(addr) {
             let state = entry.read();
             match *state {
                 State::Banned => return false,
@@ -257,17 +256,16 @@ impl RoutingTable {
                 _ => {}
             }
         }
-        let result = entries.remove(&remote_node_id).is_some();
+        let result = entries.remove(addr).is_some();
         if result {
             ctrace!(ROUTING_TABLE, "Remove {}", addr);
         }
         result
     }
 
-    pub fn register_key_pair_for_secret(&self, remote_address: &SocketAddr) -> Option<Public> {
+    pub fn register_key_pair_for_secret(&self, remote_address: SocketAddr) -> Option<Public> {
         let mut entries = self.entries.write();
-        let remote_node_id = remote_address.into();
-        let entry = entries.entry(remote_node_id).or_insert_with(|| RwLock::new(State::Candidate));
+        let entry = entries.entry(remote_address).or_insert_with(|| RwLock::new(State::Candidate));
         let mut state = entry.write();
         if *state == State::Candidate {
             let ephemeral = Random.generate().unwrap();
@@ -278,23 +276,22 @@ impl RoutingTable {
         state.local_public().cloned()
     }
 
-    pub fn share_secret(&self, remote_address: &SocketAddr, remote_public: &Public) -> Option<Public> {
+    pub fn share_secret(&self, remote_address: SocketAddr, remote_public: Public) -> Option<Public> {
         let mut entries = self.entries.write();
-        let remote_node_id = remote_address.into();
-        let entry = entries.entry(remote_node_id).or_insert_with(State::key_pair_shared);
+        let entry = entries.entry(remote_address).or_insert_with(State::key_pair_shared);
         let mut state = entry.write();
         let local_public = state.local_public().cloned();
         if let Some(registered_remote_public) = state.remote_public() {
-            if registered_remote_public == remote_public {
+            if *registered_remote_public == remote_public {
                 return Some(local_public.expect("The local key always exists when a remote public key exists."))
             }
         }
         if local_public.is_some() {
             if let State::KeyPairShared(local_key_pair) = state.clone() {
-                if let Ok(shared_secret) = exchange(remote_public, local_key_pair.private()) {
+                if let Ok(shared_secret) = exchange(&remote_public, local_key_pair.private()) {
                     *state = State::SecretShared {
                         local_key_pair,
-                        remote_public: *remote_public,
+                        remote_public,
                         shared_secret,
                         secret_origin: SecretOrigin::Shared,
                     };
@@ -311,8 +308,7 @@ impl RoutingTable {
         let entries = self.entries.read();
         let mut rng = self.rng.lock();
 
-        let remote_node_id = remote_address.into();
-        let result = entries.get(&remote_node_id).and_then(|entry| {
+        let result = entries.get(remote_address).and_then(|entry| {
             let mut state = entry.write();
             let (shared_secret, secret_origin, local_key_pair, remote_public) = match *state {
                 State::SecretShared {
@@ -353,8 +349,7 @@ impl RoutingTable {
         let entries = self.entries.read();
         let mut rng = self.rng.lock();
 
-        let remote_node_id = remote_address.into();
-        let result = entries.get(&remote_node_id).and_then(|entry| {
+        let result = entries.get(remote_address).and_then(|entry| {
             let mut state = entry.write();
             let (shared_secret, secret_origin, local_key_pair, remote_public) = match *state {
                 State::SecretShared {
@@ -395,8 +390,7 @@ impl RoutingTable {
 
     pub fn create_allowed_session(&self, remote_address: &SocketAddr, received_nonce: &[u8]) -> bool {
         let entries = self.entries.read();
-        let remote_node_id = remote_address.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
+        if let Some(entry) = entries.get(remote_address) {
             let mut state = entry.write();
             if let State::TemporaryNonceShared {
                 local_key_pair,
@@ -432,8 +426,7 @@ impl RoutingTable {
 
     pub fn set_establishing(&self, remote_address: &SocketAddr) -> bool {
         let entries = self.entries.read();
-        let remote_node_id = remote_address.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
+        if let Some(entry) = entries.get(remote_address) {
             let mut state = entry.write();
             if let State::SessionShared {
                 local_key_pair,
@@ -460,8 +453,7 @@ impl RoutingTable {
 
     pub fn establish(&self, remote_address: &SocketAddr) -> bool {
         let entries = self.entries.read();
-        let remote_node_id = remote_address.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
+        if let Some(entry) = entries.get(remote_address) {
             let mut state = entry.write();
             match *state {
                 State::SessionShared {
@@ -507,8 +499,7 @@ impl RoutingTable {
 
     pub fn reset_session(&self, remote_address: &SocketAddr) -> bool {
         let entries = self.entries.read();
-        let remote_node_id = remote_address.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
+        if let Some(entry) = entries.get(remote_address) {
             let mut state = entry.write();
             if let State::Establishing {
                 local_key_pair,
@@ -535,8 +526,7 @@ impl RoutingTable {
 
     pub fn ban(&self, remote_address: &SocketAddr) -> bool {
         let entries = self.entries.read();
-        let remote_node_id = remote_address.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
+        if let Some(entry) = entries.get(remote_address) {
             let mut state = entry.write();
             *state = State::Banned;
             return true
@@ -546,8 +536,7 @@ impl RoutingTable {
 
     pub fn unban(&self, remote_address: &SocketAddr) -> bool {
         let entries = self.entries.read();
-        let remote_node_id = remote_address.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
+        if let Some(entry) = entries.get(remote_address) {
             let mut state = entry.write();
             if *state == State::Banned {
                 *state = State::Candidate;
@@ -559,8 +548,7 @@ impl RoutingTable {
 
     pub fn unestablished_session(&self, remote_address: &SocketAddr) -> Option<Session> {
         let entries = self.entries.read();
-        let remote_node_id = remote_address.into();
-        if let Some(entry) = entries.get(&remote_node_id) {
+        if let Some(entry) = entries.get(remote_address) {
             let state = entry.read();
             if let State::SessionShared {
                 shared_secret,
@@ -590,7 +578,7 @@ impl RoutingTable {
                 }
             })
             .take(len)
-            .map(|(remote_node_id, _entry)| remote_node_id.into_addr())
+            .map(|(remote_node_id, _entry)| *remote_node_id)
             .collect()
     }
 
@@ -604,7 +592,7 @@ impl RoutingTable {
                 let state = entry.read();
                 State::Candidate == *state
             })
-            .map(|(remote_node_id, _entry)| remote_node_id.into_addr())
+            .map(|(remote_node_id, _entry)| *remote_node_id)
             .collect::<Vec<_>>();
 
         rng.shuffle(&mut addresses);
