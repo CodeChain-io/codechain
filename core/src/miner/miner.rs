@@ -1000,3 +1000,69 @@ fn get_next_seq(transactions: impl Iterator<Item = SignedTransaction>, addresses
     seqs.sort();
     seqs.last().map(|seq| seq + 1)
 }
+
+#[cfg(test)]
+pub mod test {
+    use cio::IoService;
+    use ckey::{Private, Signature};
+    use ctimer::TimerLoop;
+    use ctypes::transaction::Transaction;
+    use primitives::H512;
+
+    use super::super::super::client::ClientConfig;
+    use super::super::super::service::ClientIoMessage;
+    use super::super::super::transaction::{SignedTransaction, UnverifiedTransaction};
+    use super::*;
+    use crate::client::Client;
+    use crate::db::NUM_COLUMNS;
+
+    #[test]
+    fn check_add_transactions_result_idx() {
+        let db = Arc::new(kvdb_memorydb::create(NUM_COLUMNS.unwrap()));
+        let scheme = Scheme::new_test();
+        let miner = Arc::new(Miner::with_scheme(&scheme, db.clone()));
+
+        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
+        let client = generate_test_client(db, Arc::clone(&miner), &scheme).unwrap();
+
+        let private: Private = H256::random().into();
+        let transaction1: UnverifiedTransaction = SignedTransaction::new_with_sign(
+            Transaction {
+                seq: 30,
+                fee: 40,
+                network_id: "tc".into(),
+                action: Action::SetRegularKey {
+                    key: H512::random(),
+                },
+            },
+            &private,
+        )
+        .into();
+
+        // Invalid signature transaction which will be rejected before mem_pool.add
+        let transaction2 = UnverifiedTransaction::new(
+            Transaction {
+                seq: 32,
+                fee: 40,
+                network_id: "tc".into(),
+                action: Action::SetRegularKey {
+                    key: H512::random(),
+                },
+            },
+            Signature::random(),
+        );
+
+        let transactions = vec![transaction1.clone(), transaction2, transaction1];
+        miner.add_transactions_to_pool(client.as_ref(), transactions, TxOrigin::Local, &mut mem_pool);
+    }
+
+    fn generate_test_client(db: Arc<KeyValueDB>, miner: Arc<Miner>, scheme: &Scheme) -> Result<Arc<Client>, Error> {
+        let timer_loop = TimerLoop::new(2);
+
+        let client_config: ClientConfig = Default::default();
+        let reseal_timer = timer_loop.new_timer_with_name("Client reseal timer");
+        let io_service = IoService::<ClientIoMessage>::start("Client")?;
+
+        Client::try_new(&client_config, scheme, db, miner, io_service.channel(), reseal_timer)
+    }
+}
