@@ -745,21 +745,15 @@ impl<'db> ShardLevelState<'db> {
         allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> cmerkle::Result<AssetScheme> {
-        let mut asset_scheme = self.get_asset_scheme_mut(a)?;
-        asset_scheme.init(metadata, supply, approver, administrator, allowed_script_hashes, pool);
-        Ok(asset_scheme.clone())
+        self.cache.create_asset_scheme(a, || {
+            AssetScheme::new_with_pool(metadata, supply, approver, administrator, allowed_script_hashes, pool)
+        })
     }
 
     fn get_asset_scheme_mut(&self, a: &AssetSchemeAddress) -> cmerkle::Result<RefMut<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         self.cache.asset_scheme_mut(a, &trie)
-    }
-
-    fn get_asset_mut(&self, a: &OwnedAssetAddress) -> cmerkle::Result<RefMut<OwnedAsset>> {
-        let db = self.db.borrow();
-        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_mut(a, &trie)
     }
 
     pub fn create_asset(
@@ -771,9 +765,7 @@ impl<'db> ShardLevelState<'db> {
         quantity: u64,
         order_hash: Option<H256>,
     ) -> cmerkle::Result<OwnedAsset> {
-        let mut asset = self.get_asset_mut(a)?;
-        asset.init(asset_type, lock_script_hash, parameters, quantity, order_hash);
-        Ok(asset.clone())
+        self.cache.create_asset(a, || OwnedAsset::new(asset_type, lock_script_hash, parameters, quantity, order_hash))
     }
 }
 
