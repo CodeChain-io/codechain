@@ -31,7 +31,10 @@ pub enum Error {
     AssetNotFound(H256),
     AssetSchemeDuplicated(H256),
     /// Desired input asset scheme not found
-    AssetSchemeNotFound(H256),
+    AssetSchemeNotFound {
+        asset_type: H160,
+        shard_id: ShardId,
+    },
     CannotBurnCentralizedAsset,
     CannotComposeCentralizedAsset,
     /// Script execution result is `Fail`
@@ -125,7 +128,7 @@ impl TaggedRlp for RlpHelper {
         Ok(match tag {
             ERROR_ID_ASSET_NOT_FOUND => 2,
             ERROR_ID_ASSET_SCHEME_DUPLICATED => 2,
-            ERROR_ID_ASSET_SCHEME_NOT_FOUND => 2,
+            ERROR_ID_ASSET_SCHEME_NOT_FOUND => 3,
             ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => 1,
             ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => 1,
             ERROR_ID_FAILED_TO_UNLOCK => 3,
@@ -162,9 +165,10 @@ impl Encodable for Error {
             Error::AssetSchemeDuplicated(addr) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_DUPLICATED).append(addr)
             }
-            Error::AssetSchemeNotFound(addr) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(addr)
-            }
+            Error::AssetSchemeNotFound {
+                asset_type,
+                shard_id,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(asset_type).append(shard_id),
             Error::CannotBurnCentralizedAsset => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET),
             Error::CannotComposeCentralizedAsset => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET)
@@ -244,7 +248,10 @@ impl Decodable for Error {
         let error = match tag {
             ERROR_ID_ASSET_NOT_FOUND => Error::AssetNotFound(rlp.val_at(1)?),
             ERROR_ID_ASSET_SCHEME_DUPLICATED => Error::AssetSchemeDuplicated(rlp.val_at(1)?),
-            ERROR_ID_ASSET_SCHEME_NOT_FOUND => Error::AssetSchemeNotFound(rlp.val_at(1)?),
+            ERROR_ID_ASSET_SCHEME_NOT_FOUND => Error::AssetSchemeNotFound {
+                asset_type: rlp.val_at(1)?,
+                shard_id: rlp.val_at(2)?,
+            },
             ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => Error::CannotBurnCentralizedAsset,
             ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => Error::CannotComposeCentralizedAsset,
             ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock {
@@ -301,7 +308,10 @@ impl Display for Error {
         match self {
             Error::AssetNotFound(addr) => write!(f, "Asset not found: {}", addr),
             Error::AssetSchemeDuplicated(addr) => write!(f, "Asset scheme already exists: {}", addr),
-            Error::AssetSchemeNotFound(addr) => write!(f, "Asset scheme not found: {}", addr),
+            Error::AssetSchemeNotFound {
+                asset_type,
+                shard_id,
+            } => write!(f, "Asset scheme not found: {}:{}", asset_type, shard_id),
             Error::CannotBurnCentralizedAsset => write!(f, "Cannot burn the centralized asset"),
             Error::CannotComposeCentralizedAsset => write!(f, "Cannot compose the centralized asset"),
             Error::FailedToUnlock {
