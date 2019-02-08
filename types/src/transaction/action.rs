@@ -232,6 +232,7 @@ impl Action {
             Action::ChangeAssetScheme {
                 network_id,
                 metadata,
+                asset_type,
                 ..
             } => {
                 if *network_id != system_network_id {
@@ -239,6 +240,9 @@ impl Action {
                 }
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
+                }
+                if asset_type.is_zero() {
+                    return Err(SyntaxError::CannotChangeWcccAssetScheme)
                 }
             }
             Action::ComposeAsset {
