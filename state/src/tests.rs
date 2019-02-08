@@ -17,8 +17,9 @@
 pub mod helpers {
     use std::sync::Arc;
 
+    use cmerkle::TrieFactory;
     use cvm::ChainTimeInfo;
-
+    use hashdb::AsHashDB;
     use kvdb::KeyValueDB;
     use kvdb_memorydb;
     use primitives::H256;
@@ -58,10 +59,20 @@ pub mod helpers {
 
     pub fn get_temp_state() -> TopLevelState {
         let state_db = get_temp_state_db();
-        TopLevelState::new_for_testing(state_db)
+        empty_top_state(state_db)
     }
 
     pub fn get_test_client() -> TestClient {
         TestClient {}
+    }
+
+    /// Creates new state with empty state root
+    /// Used for tests.
+    pub fn empty_top_state(mut db: StateDB) -> TopLevelState {
+        let mut root = H256::new();
+        // init trie and reset root too null
+        let _ = TrieFactory::create(db.as_hashdb_mut(), &mut root);
+
+        TopLevelState::from_existing(db, root).expect("The empty trie root was initialized")
     }
 }
