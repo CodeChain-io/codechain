@@ -694,7 +694,7 @@ impl<'db> ShardLevelState<'db> {
                 self.shard_id,
                 asset_type,
                 format!("{{\"name\":\"Wrapped CCC\",\"description\":\"Wrapped CCC in shard {}\"}}", self.shard_id),
-                ::std::u64::MAX,
+                0,
                 None,
                 None,
                 Vec::new(),
@@ -703,6 +703,8 @@ impl<'db> ShardLevelState<'db> {
             // FIXME: Wrapped CCC is minted in here, but the metadata is not well-defined.
             ctrace!(TX, "Wrapped CCC in shard {} ({:?}) is minted on {:?}", self.shard_id, asset_scheme, asset_type);
         }
+        let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
+        asset_scheme.increase_supply(quantity);
 
         let asset_address = OwnedAssetAddress::new(*tx_hash, 0, self.shard_id);
         let asset =
@@ -724,6 +726,9 @@ impl<'db> ShardLevelState<'db> {
 
         let (_, asset_address) = self.check_input_asset(burn, sender, &approvers)?;
         self.kill_asset(&asset_address);
+        let asset_type = H160::zero();
+        let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
+        asset_scheme.reduce_supply(burn.prev_out.quantity);
         ctrace!(TX, "Removed Wrapped CCC asset {:?}, quantity {:?}", asset_address, burn.prev_out.quantity);
         Ok(())
     }
@@ -1884,17 +1889,20 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&wrap_ccc, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (SHARD_ID, asset_type) => { supply: std::u64::MAX }),
+            (scheme: (SHARD_ID, asset_type) => { supply: amount }),
             (asset: (wrap_ccc_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
-        let unwrap_ccc =
-            asset_unwrap_ccc!(asset_transfer_input!(asset_out_point!(wrap_ccc_tracker, 0, asset_type, 30), vec![0x01]));
+        let unwrap_amount = 30;
+        let unwrap_ccc = asset_unwrap_ccc!(asset_transfer_input!(
+            asset_out_point!(wrap_ccc_tracker, 0, asset_type, unwrap_amount),
+            vec![0x01]
+        ));
 
         assert_eq!(Ok(Invoice::Success), state.apply(&unwrap_ccc, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (SHARD_ID, asset_type) => { supply: std::u64::MAX }),
+            (scheme: (SHARD_ID, asset_type) => { supply: amount - unwrap_amount }),
             (asset: (wrap_ccc_tracker, 0, SHARD_ID))
         ]);
     }
@@ -1919,7 +1927,7 @@ mod tests {
         let asset_type = H160::zero();
 
         check_shard_level_state!(state, [
-            (scheme: (SHARD_ID, asset_type) => { supply: std::u64::MAX }),
+            (scheme: (SHARD_ID, asset_type) => { supply: amount }),
             (asset: (wrap_ccc_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: amount })
         ]);
 
@@ -1938,20 +1946,23 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transfer, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (SHARD_ID, asset_type) => { supply: std::u64::MAX }),
+            (scheme: (SHARD_ID, asset_type) => { supply: amount }),
             (asset: (wrap_ccc_tracker, 0, SHARD_ID)),
             (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1, SHARD_ID) => { asset_type: asset_type, quantity: 5 }),
             (asset: (transfer_tracker, 2, SHARD_ID) => { asset_type: asset_type, quantity: 15 })
         ]);
 
-        let unwrap_ccc =
-            asset_unwrap_ccc!(asset_transfer_input!(asset_out_point!(transfer_tracker, 1, asset_type, 5), vec![0x01]));
+        let unwrap_amount = 5;
+        let unwrap_ccc = asset_unwrap_ccc!(asset_transfer_input!(
+            asset_out_point!(transfer_tracker, 1, asset_type, unwrap_amount),
+            vec![0x01]
+        ));
 
         assert_eq!(Ok(Invoice::Success), state.apply(&unwrap_ccc, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (SHARD_ID, asset_type) => { supply: std::u64::MAX }),
+            (scheme: (SHARD_ID, asset_type) => { supply: amount - unwrap_amount }),
             (asset: (wrap_ccc_tracker, 0, SHARD_ID)),
             (asset: (transfer_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1, SHARD_ID)),

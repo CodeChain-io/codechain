@@ -32,8 +32,9 @@ describe("WrapCCC", function() {
     });
 
     it("WCCC can be burnt", async function() {
+        const shardId = 0;
         const wrapCCC = node.sdk.core.createWrapCCCTransaction({
-            shardId: 0,
+            shardId,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 30
         });
@@ -54,6 +55,14 @@ describe("WrapCCC", function() {
         ))!;
         expect(invoice1).not.to.be.null;
         expect(invoice1.success).be.equal(true);
+
+        const schemeAfterWrap = (await node.sdk.rpc.chain.getAssetSchemeByType(
+            H160.zero(),
+            shardId
+        ))!;
+        expect(schemeAfterWrap.supply.isEqualTo(30)).to.be.true;
+
+        const blockNumberBeforeBurn = await node.sdk.rpc.chain.getBestBlockNumber();
 
         const WCCC = wrapCCC.getAsset();
 
@@ -78,6 +87,19 @@ describe("WrapCCC", function() {
         ))!;
         expect(invoice2).not.to.be.null;
         expect(invoice2.success).be.equal(true);
+
+        const schemeAfterBurn = (await node.sdk.rpc.chain.getAssetSchemeByType(
+            H160.zero(),
+            shardId
+        ))!;
+        expect(schemeAfterBurn.supply.isEqualTo(0)).to.be.true;
+
+        const schemeBeforeBurn = (await node.sdk.rpc.chain.getAssetSchemeByType(
+            H160.zero(),
+            shardId,
+            blockNumberBeforeBurn
+        ))!;
+        expect(schemeBeforeBurn.supply.isEqualTo(30)).to.be.true;
     }).timeout(30_000);
 
     it("Changing asset scheme of WCCC causes syntax error", async function() {
