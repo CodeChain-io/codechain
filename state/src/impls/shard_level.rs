@@ -15,7 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::iter::{once, FromIterator};
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use ckey::Address;
@@ -121,6 +122,7 @@ impl<'db> ShardLevelState<'db> {
                     &parameters,
                     supply,
                     approver,
+                    approvers,
                     administrator,
                     allowed_script_hashes,
                     sender,
@@ -208,14 +210,19 @@ impl<'db> ShardLevelState<'db> {
         parameters: &[Bytes],
         supply: &Option<u64>,
         approver: &Option<Address>,
+        approvers: &[Address],
         administrator: &Option<Address>,
         allowed_script_hashes: &[H160],
         sender: &Address,
         shard_users: &[Address],
         pool: Vec<Asset>,
     ) -> StateResult<()> {
-        if !shard_users.is_empty() && !shard_users.contains(sender) {
-            return Err(RuntimeError::InsufficientPermission.into())
+        if !shard_users.is_empty() {
+            let sender_and_approvers: HashSet<&Address> = HashSet::from_iter(once(sender).chain(approvers.iter()));
+            let shard_users = HashSet::from_iter(shard_users.iter());
+            if shard_users.is_disjoint(&sender_and_approvers) {
+                return Err(RuntimeError::InsufficientPermission.into())
+            }
         }
 
         let asset_type = Blake::blake(transaction_tracker);
@@ -571,6 +578,7 @@ impl<'db> ShardLevelState<'db> {
             &output.parameters,
             &output.supply,
             approver,
+            approvers,
             administrator,
             allowed_script_hashes,
             sender,
@@ -2068,8 +2076,11 @@ mod tests {
     }
 
     #[test]
-    fn mint_is_failed_when_the_sender_is_not_user() {
+    fn mint_is_failed_when_shard_users_are_disjoint_to_sender_and_approvers() {
+        let shard_users = [address(), address(), address()];
         let sender = address();
+        let approvers = [address(), address(), address()];
+
         let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
@@ -2086,16 +2097,93 @@ mod tests {
 
         let transaction_tracker = transaction.tracker();
         let asset_type = Blake::blake(transaction_tracker);
-        let shard_user = address();
 
         assert_eq!(
             Ok(Invoice::Failure(RuntimeError::InsufficientPermission)),
-            state.apply(&transaction, &sender, &[shard_user], &[], &get_test_client())
+            state.apply(&transaction, &sender, &shard_users, &approvers, &get_test_client())
         );
 
         check_shard_level_state!(state, [
             (scheme: (SHARD_ID, asset_type)),
             (asset: (transaction_tracker, 0, SHARD_ID))
+        ]);
+    }
+
+    #[test]
+    fn can_mint_when_shard_user_sent_a_transaction() {
+        let shard_users = [address(), address(), address()];
+        let sender = shard_users[0];
+        let approvers = [address(), address(), address()];
+
+        let mut state_db = RefCell::new(get_temp_state_db());
+        let mut shard_cache = ShardCache::default();
+        let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let approver = Address::random();
+        let transaction = asset_mint!(
+            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
+            metadata.clone(),
+            approver: approver
+        );
+
+        let transaction_tracker = transaction.tracker();
+        let asset_type = Blake::blake(transaction_tracker);
+
+        check_shard_level_state!(state, [
+            (scheme: (SHARD_ID, asset_type)),
+            (asset: (transaction_tracker, 0, SHARD_ID))
+        ]);
+
+        assert_eq!(
+            Ok(Invoice::Success),
+            state.apply(&transaction, &sender, &shard_users, &approvers, &get_test_client())
+        );
+
+        check_shard_level_state!(state, [
+            (scheme: (SHARD_ID, asset_type) => { metadata: metadata.clone(), supply: ::std::u64::MAX }),
+            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: ::std::u64::MAX })
+        ]);
+    }
+
+    #[test]
+    fn can_mint_when_shard_user_approves_a_transaction() {
+        let shard_users = [address(), address(), address()];
+        let sender = address();
+        let approvers = [shard_users[0], address(), address()];
+
+        let mut state_db = RefCell::new(get_temp_state_db());
+        let mut shard_cache = ShardCache::default();
+        let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let approver = Address::random();
+        let transaction = asset_mint!(
+            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
+            metadata.clone(),
+            approver: approver
+        );
+
+        let transaction_tracker = transaction.tracker();
+        let asset_type = Blake::blake(transaction_tracker);
+
+        check_shard_level_state!(state, [
+            (scheme: (SHARD_ID, asset_type)),
+            (asset: (transaction_tracker, 0, SHARD_ID))
+        ]);
+
+        assert_eq!(
+            Ok(Invoice::Success),
+            state.apply(&transaction, &sender, &shard_users, &approvers, &get_test_client())
+        );
+
+        check_shard_level_state!(state, [
+            (scheme: (SHARD_ID, asset_type) => { metadata: metadata.clone(), supply: ::std::u64::MAX }),
+            (asset: (transaction_tracker, 0, SHARD_ID) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
 
