@@ -52,7 +52,7 @@ impl ShardCache {
         self.asset.revert_to_checkpoint();
     }
 
-    pub fn commit<'db>(&mut self, trie: &mut (TrieMut + 'db)) -> TrieResult<()> {
+    pub fn commit(&mut self, trie: &mut TrieMut) -> TrieResult<()> {
         self.asset_scheme.commit(trie)?;
         self.asset.commit(trie)?;
         Ok(())
