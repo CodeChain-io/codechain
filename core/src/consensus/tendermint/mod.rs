@@ -409,28 +409,39 @@ impl TendermintInner {
             Step::Prevote => {
                 ctrace!(ENGINE, "move_to_step: Prevote.");
                 self.request_all_votes(&vote_step);
-                let block_hash = match self.lock_change {
-                    Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
-                    _ => self.proposal,
-                };
-                self.generate_and_broadcast_message(block_hash, is_restoring);
+                if !self.already_generated_message() {
+                    let block_hash = match self.lock_change {
+                        Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
+                        _ => self.proposal,
+                    };
+                    self.generate_and_broadcast_message(block_hash, is_restoring);
+                }
             }
             Step::Precommit => {
                 ctrace!(ENGINE, "move_to_step: Precommit.");
                 self.request_all_votes(&vote_step);
-                let block_hash = match self.lock_change {
-                    Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
-                        ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
-                        self.last_lock = m.on.step.view;
-                        m.on.block_hash
-                    }
-                    _ => None,
-                };
-                self.generate_and_broadcast_message(block_hash, is_restoring);
+                if !self.already_generated_message() {
+                    let block_hash = match self.lock_change {
+                        Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
+                            ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
+                            self.last_lock = m.on.step.view;
+                            m.on.block_hash
+                        }
+                        _ => None,
+                    };
+                    self.generate_and_broadcast_message(block_hash, is_restoring);
+                }
             }
             Step::Commit => {
                 ctrace!(ENGINE, "move_to_step: Commit.");
             }
+        }
+    }
+
+    fn already_generated_message(&self) -> bool {
+        match self.signer_index(&self.prev_block_hash()) {
+            Some(signer_index) => self.votes_received.is_set(signer_index),
+            _ => false,
         }
     }
 
