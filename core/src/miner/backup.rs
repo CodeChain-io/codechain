@@ -49,8 +49,7 @@ pub fn backup_item(batch: &mut DBTransaction, key: H256, item: &MemPoolItem) {
     batch.put(dblib::COL_MEMPOOL, db_key.as_ref(), item.rlp_bytes().as_ref());
 }
 
-/// Backup first sequence
-pub fn backup_seqs(batch: &mut DBTransaction, key: Public, value: u64, is_first: bool) {
+pub fn backup_seqs(batch: &mut DBTransaction, key: &Public, value: u64, is_first: bool) {
     let mut db_key = if is_first {
         PREFIX_FIRST_SEQS.to_vec()
     } else {
@@ -66,6 +65,16 @@ pub fn backup_extra(batch: &mut DBTransaction, key: &[u8], val: u64) {
 
 pub fn remove_item(batch: &mut DBTransaction, key: &H256) {
     let mut db_key = PREFIX_ITEM.to_vec();
+    db_key.extend_from_slice(key.as_ref());
+    batch.delete(dblib::COL_MEMPOOL, db_key.as_ref());
+}
+
+pub fn remove_seqs(batch: &mut DBTransaction, key: &Public, is_first: bool) {
+    let mut db_key = if is_first {
+        PREFIX_FIRST_SEQS.to_vec()
+    } else {
+        PREFIX_NEXT_SEQS.to_vec()
+    };
     db_key.extend_from_slice(key.as_ref());
     batch.delete(dblib::COL_MEMPOOL, db_key.as_ref());
 }

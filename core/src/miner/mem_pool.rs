@@ -332,7 +332,7 @@ impl MemPool {
             if current_seq != first_seq || is_this_account_local {
                 self.update_orders(public, current_seq, new_next_seq, is_this_account_local, &mut batch);
                 self.first_seqs.insert(public, current_seq);
-                backup::backup_seqs(&mut batch, public, current_seq, true);
+                backup::backup_seqs(&mut batch, &public, current_seq, true);
                 first_seq = current_seq;
             }
             // We don't need to update the height, just move transactions
@@ -345,9 +345,10 @@ impl MemPool {
 
             if new_next_seq <= first_seq {
                 self.next_seqs.remove(&public);
+                backup::remove_seqs(&mut batch, &public, false);
             } else {
                 self.next_seqs.insert(public, new_next_seq);
-                backup::backup_seqs(&mut batch, public, new_next_seq, false);
+                backup::backup_seqs(&mut batch, &public, new_next_seq, false);
             }
 
             if let Some(seq_list) = to_insert.get(&public) {
@@ -555,7 +556,7 @@ impl MemPool {
             if current_seq != first_seq {
                 self.update_orders(public, current_seq, new_next_seq, false, &mut batch);
                 self.first_seqs.insert(public, current_seq);
-                backup::backup_seqs(&mut batch, public, current_seq, true);
+                backup::backup_seqs(&mut batch, &public, current_seq, true);
                 first_seq = current_seq;
             }
             // We don't need to update the height, just move transactions
@@ -568,9 +569,10 @@ impl MemPool {
 
             if new_next_seq <= first_seq {
                 self.next_seqs.remove(&public);
+                backup::remove_seqs(&mut batch, &public, false);
             } else {
                 self.next_seqs.insert(public, new_next_seq);
-                backup::backup_seqs(&mut batch, public, new_next_seq, false);
+                backup::backup_seqs(&mut batch, &public, new_next_seq, false);
             }
 
             if self.by_signer_public.clear_if_empty(&public) {

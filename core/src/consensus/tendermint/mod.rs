@@ -459,6 +459,7 @@ impl TendermintInner {
                     on,
                 };
                 let message_rlp = message.rlp_bytes().into_vec();
+                self.votes_received.set(signer_index);
                 self.votes.vote(message.clone());
                 cdebug!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
                 self.handle_valid_message(&message, is_restoring);

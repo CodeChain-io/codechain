@@ -941,7 +941,7 @@ describe("transactions", function() {
         });
     });
 
-    describe("Asset compose and decompose test", function() {
+    describe.skip("Asset compose and decompose test", function() {
         it("AssetCompose", async function() {
             const aliceAddress = await node.sdk.key.createAssetTransferAddress({
                 type: "P2PKH"
