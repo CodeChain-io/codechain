@@ -223,16 +223,6 @@ impl StateWithCheckpoint for TopLevelState {
 }
 
 impl TopLevelState {
-    /// Creates new state with empty state root
-    /// Used for tests.
-    pub fn new_for_testing(mut db: StateDB) -> Self {
-        let mut root = H256::new();
-        // init trie and reset root too null
-        let _ = TrieFactory::create(db.as_hashdb_mut(), &mut root);
-
-        Self::from_existing(db, root).expect("The empty trie root was initialized")
-    }
-
     /// Creates new state with existing state root
     pub fn from_existing(db: StateDB, root: H256) -> Result<Self, TrieError> {
         if !db.as_hashdb().contains(&root) {
@@ -928,7 +918,7 @@ mod tests_state {
     use journaldb::{self, Algorithm};
 
     use super::*;
-    use crate::tests::helpers::{get_memory_db, get_temp_state, get_temp_state_db};
+    use crate::tests::helpers::{empty_top_state, get_memory_db, get_temp_state, get_temp_state_db};
 
     #[test]
     fn work_when_cloned() {
@@ -994,7 +984,7 @@ mod tests_state {
         let db = StateDB::new(jorunal.boxed_clone());
         let a = Address::default();
         let root = {
-            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal));
+            let mut state = empty_top_state(StateDB::new(jorunal));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.add_balance(&a, 100));
             assert_eq!(Ok(100), state.balance(&a));
@@ -1025,7 +1015,7 @@ mod tests_state {
         let mut db = StateDB::new(jorunal.boxed_clone());
         let a = Address::default();
         let root = {
-            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal));
+            let mut state = empty_top_state(StateDB::new(jorunal));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.add_balance(&a, 69));
             assert_eq!(Ok(69), state.balance(&a));
@@ -1072,7 +1062,7 @@ mod tests_state {
         let a = Address::default();
         let mut db = get_temp_state_db();
         let root = {
-            let mut state = TopLevelState::new_for_testing(db.clone(&H256::zero()));
+            let mut state = empty_top_state(db.clone(&H256::zero()));
             assert_eq!(Ok(()), state.add_balance(&a, 0)); // create an empty account
             let root = state.commit();
             assert!(root.is_ok(), "{:?}", root);
@@ -1096,7 +1086,7 @@ mod tests_state {
         let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
         let mut db = StateDB::new(jorunal.boxed_clone());
         let root = {
-            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal));
+            let mut state = empty_top_state(StateDB::new(jorunal));
             assert_eq!(Ok(()), state.inc_seq(&a));
             let root = state.commit();
             assert!(root.is_ok(), "{:?}", root);
