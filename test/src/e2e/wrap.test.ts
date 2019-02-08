@@ -19,7 +19,11 @@ import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 import { H160, PlatformAddress } from "codechain-primitives";
 import "mocha";
-import { faucetAddress, faucetSecret } from "../helper/constants";
+import {
+    faucetAccointId,
+    faucetAddress,
+    faucetSecret
+} from "../helper/constants";
 import CodeChain from "../helper/spawn";
 
 const expect = chai.expect;
@@ -36,7 +40,10 @@ describe("WrapCCC", function() {
         const wrapCCC = node.sdk.core.createWrapCCCTransaction({
             shardId,
             recipient: await node.createP2PKHBurnAddress(),
-            quantity: 30
+            quantity: 30,
+            sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                networkId: "tc"
+            })
         });
         const seq = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
         expect(seq).not.to.be.null;
@@ -106,7 +113,10 @@ describe("WrapCCC", function() {
         const wrapCCC = node.sdk.core.createWrapCCCTransaction({
             shardId: 0,
             recipient: await node.createP2PKHBurnAddress(),
-            quantity: 30
+            quantity: 30,
+            sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                networkId: "tc"
+            })
         });
         const seq = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
         expect(seq).not.to.be.null;

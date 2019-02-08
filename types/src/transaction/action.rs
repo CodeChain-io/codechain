@@ -117,6 +117,7 @@ pub enum Action {
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         quantity: u64,
+        payer: Address,
     },
     Custom {
         handler_id: u64,
@@ -336,6 +337,19 @@ impl Action {
                 }
             }
             _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn verify_with_signer_address(&self, signer: &Address) -> Result<(), SyntaxError> {
+        if let Action::WrapCCC {
+            payer,
+            ..
+        } = self
+        {
+            if payer != signer {
+                return Err(SyntaxError::InvalidSignerOfWrapCCC)
+            }
         }
         Ok(())
     }
@@ -591,13 +605,15 @@ impl Encodable for Action {
                 lock_script_hash,
                 parameters,
                 quantity,
+                payer,
             } => {
-                s.begin_list(5);
+                s.begin_list(6);
                 s.append(&WRAP_CCC);
                 s.append(shard_id);
                 s.append(lock_script_hash);
                 s.append(parameters);
                 s.append(quantity);
+                s.append(payer);
             }
             Action::Store {
                 content,
@@ -766,7 +782,7 @@ impl Decodable for Action {
                 })
             }
             WRAP_CCC => {
-                if rlp.item_count()? != 5 {
+                if rlp.item_count()? != 6 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::WrapCCC {
@@ -774,6 +790,7 @@ impl Decodable for Action {
                     lock_script_hash: rlp.val_at(2)?,
                     parameters: rlp.val_at(3)?,
                     quantity: rlp.val_at(4)?,
+                    payer: rlp.val_at(5)?,
                 })
             }
             STORE => {
@@ -1887,6 +1904,7 @@ mod tests {
             lock_script_hash: H160::random(),
             parameters: vec![],
             quantity: 0,
+            payer: Address::random(),
         };
         assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000), Err(SyntaxError::ZeroQuantity));
     }

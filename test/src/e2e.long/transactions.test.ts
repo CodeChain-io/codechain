@@ -36,7 +36,11 @@ import { blake160 } from "codechain-sdk/lib/utils";
 import * as _ from "lodash";
 import "mocha";
 import { $anything } from "../helper/chai-similar";
-import { faucetAddress, faucetSecret } from "../helper/constants";
+import {
+    faucetAccointId,
+    faucetAddress,
+    faucetSecret
+} from "../helper/constants";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
 
@@ -965,7 +969,10 @@ describe("transactions", function() {
                     .createWrapCCCTransaction({
                         shardId: 0,
                         recipient,
-                        quantity: amount
+                        quantity: amount,
+                        sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                            networkId: "tc"
+                        })
                     })
                     .sign({
                         secret: faucetSecret,
@@ -989,7 +996,10 @@ describe("transactions", function() {
                 .createWrapCCCTransaction({
                     shardId: 0,
                     recipient,
-                    quantity: 0
+                    quantity: 0,
+                    sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                        networkId: "tc"
+                    })
                 })
                 .sign({
                     secret: faucetSecret,
@@ -1017,7 +1027,10 @@ describe("transactions", function() {
                     .createWrapCCCTransaction({
                         shardId: 0,
                         recipient,
-                        quantity
+                        quantity,
+                        sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                            networkId: "tc"
+                        })
                     })
                     .sign({
                         secret: faucetSecret,
@@ -1055,7 +1068,10 @@ describe("transactions", function() {
                     .createWrapCCCTransaction({
                         shardId: 0,
                         recipient,
-                        quantity
+                        quantity,
+                        sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                            networkId: "tc"
+                        })
                     })
                     .sign({
                         secret: faucetSecret,

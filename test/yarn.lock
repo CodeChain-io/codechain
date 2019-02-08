@@ -904,9 +904,9 @@ codechain-primitives@^0.4.5:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#rlp-lib":
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#wrap-lib":
   version "0.5.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#a1ae4d81d27c5d277590763a630bb322af15c1bd"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#692404e61774aca659d50426944b550fa7436a0e"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"
