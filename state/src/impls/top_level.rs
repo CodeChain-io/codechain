@@ -473,6 +473,7 @@ impl TopLevelState {
                 lock_script_hash,
                 parameters,
                 quantity,
+                ..
             } => Ok(self.apply_wrap_ccc(
                 network_id,
                 *shard_id,

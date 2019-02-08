@@ -406,6 +406,7 @@ macro_rules! wrap_ccc {
             lock_script_hash: $lock_script_hash,
             parameters: Vec::new(),
             quantity: $quantity,
+            payer: Default::default(), // The payer field is used for validation only.
         }
     };
 }

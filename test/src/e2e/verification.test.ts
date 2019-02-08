@@ -15,14 +15,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
-import { AssetTransferAddress } from "codechain-primitives/lib";
+import { AssetTransferAddress, PlatformAddress } from "codechain-primitives";
 import {
     AssetScheme,
     AssetTransferInput,
     AssetTransferOutput
 } from "codechain-sdk/lib/core/classes";
 import "mocha";
-import { faucetAddress, faucetSecret } from "../helper/constants";
+import {
+    faucetAccointId,
+    faucetAddress,
+    faucetSecret
+} from "../helper/constants";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
 
@@ -130,8 +134,8 @@ describe("solo - 1 node", function() {
             { actionType: 5, actionLength: 4 },
             { actionType: 6, actionLength: 2 }, // SetShardUsers
             { actionType: 6, actionLength: 4 },
-            { actionType: 7, actionLength: 4 }, // WrapCCC
-            { actionType: 7, actionLength: 6 },
+            { actionType: 7, actionLength: 5 }, // WrapCCC
+            { actionType: 7, actionLength: 7 },
             { actionType: 8, actionLength: 3 }, // Store
             { actionType: 8, actionLength: 5 },
             { actionType: 9, actionLength: 2 }, // Remove
@@ -674,7 +678,10 @@ describe("solo - 1 node", function() {
                 .createWrapCCCTransaction({
                     shardId: 0,
                     recipient,
-                    quantity: 10
+                    quantity: 10,
+                    sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                        networkId: "tc"
+                    })
                 })
                 .sign({
                     secret: faucetSecret,
