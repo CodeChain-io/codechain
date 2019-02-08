@@ -232,6 +232,7 @@ impl Action {
             Action::ChangeAssetScheme {
                 network_id,
                 metadata,
+                asset_type,
                 ..
             } => {
                 if *network_id != system_network_id {
@@ -239,6 +240,9 @@ impl Action {
                 }
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
+                }
+                if asset_type.is_zero() {
+                    return Err(SyntaxError::CannotChangeWcccAssetScheme)
                 }
             }
             Action::ComposeAsset {
@@ -248,6 +252,10 @@ impl Action {
                 output,
                 ..
             } => {
+                let disable_compose_asset = true;
+                if disable_compose_asset {
+                    return Err(SyntaxError::DisabledTransaction)
+                }
                 if inputs.is_empty() {
                     return Err(SyntaxError::EmptyInput)
                 }
@@ -276,6 +284,10 @@ impl Action {
                 network_id,
                 ..
             } => {
+                let disable_decompose_asset = true;
+                if disable_decompose_asset {
+                    return Err(SyntaxError::DisabledTransaction)
+                }
                 if input.prev_out.quantity != 1 {
                     return Err(SyntaxError::InvalidDecomposedInputAmount {
                         asset_type: input.prev_out.asset_type,

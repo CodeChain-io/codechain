@@ -89,32 +89,6 @@ impl OwnedAsset {
     pub fn order_hash(&self) -> &Option<H256> {
         &self.order_hash
     }
-
-    pub fn init(
-        &mut self,
-        asset_type: H160,
-        lock_script_hash: H160,
-        parameters: Vec<Bytes>,
-        quantity: u64,
-        order_hash: Option<H256>,
-    ) {
-        assert_eq!(
-            Asset {
-                asset_type: H160::zero(),
-                quantity: 0
-            },
-            self.asset
-        );
-        assert_eq!(H160::zero(), self.lock_script_hash);
-        assert_eq!(0, self.parameters.len());
-        self.asset = Asset {
-            asset_type,
-            quantity,
-        };
-        self.lock_script_hash = lock_script_hash;
-        self.parameters = parameters;
-        self.order_hash = order_hash;
-    }
 }
 
 impl Default for OwnedAsset {

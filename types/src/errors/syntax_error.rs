@@ -84,6 +84,8 @@ pub enum Error {
     TransactionIsTooBig,
     /// Returned when the quantity of either input or output is 0.
     ZeroQuantity,
+    CannotChangeWcccAssetScheme,
+    DisabledTransaction,
 }
 
 const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 1;
@@ -109,6 +111,8 @@ const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 22;
 const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 24;
 const ERROR_ID_TX_IS_TOO_BIG: u8 = 25;
 const ERROR_ID_ZERO_QUANTITY: u8 = 26;
+const ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME: u8 = 27;
+const ERROR_ID_DISABLED_TRANSACTION: u8 = 28;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -139,6 +143,8 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_TOO_MANY_OUTPUTS => 2,
             ERROR_ID_TX_IS_TOO_BIG => 1,
             ERROR_ID_ZERO_QUANTITY => 1,
+            ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => 1,
+            ERROR_ID_DISABLED_TRANSACTION => 1,
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         })
     }
@@ -208,6 +214,10 @@ impl Encodable for Error {
             Error::TooManyOutputs(num) => RlpHelper::new_tagged_list(s, ERROR_ID_TOO_MANY_OUTPUTS).append(num),
             Error::TransactionIsTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_TX_IS_TOO_BIG),
             Error::ZeroQuantity => RlpHelper::new_tagged_list(s, ERROR_ID_ZERO_QUANTITY),
+            Error::CannotChangeWcccAssetScheme => {
+                RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME)
+            }
+            Error::DisabledTransaction => RlpHelper::new_tagged_list(s, ERROR_ID_DISABLED_TRANSACTION),
         };
     }
 }
@@ -255,6 +265,8 @@ impl Decodable for Error {
             ERROR_ID_TOO_MANY_OUTPUTS => Error::TooManyOutputs(rlp.val_at(1)?),
             ERROR_ID_TX_IS_TOO_BIG => Error::TransactionIsTooBig,
             ERROR_ID_ZERO_QUANTITY => Error::ZeroQuantity,
+            ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => Error::CannotChangeWcccAssetScheme,
+            ERROR_ID_DISABLED_TRANSACTION => Error::DisabledTransaction,
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -305,6 +317,8 @@ impl Display for Error {
             Error::TooManyOutputs (num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
             Error::TransactionIsTooBig  => write!(f, "Transaction size exceeded the body size limit"),
             Error::ZeroQuantity  => write!(f, "A quantity cannot be 0"),
+            Error::CannotChangeWcccAssetScheme => write!(f, "Cannot change the asset scheme of WCCC"),
+            Error::DisabledTransaction => write!(f, "Used the disabled transaction"),
         }
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -232,6 +232,16 @@ where
             entry.touched = touched_count();
             entry.item.as_mut().expect("Required item must always exist; qed")
         }))
+    }
+
+    pub fn create<F: FnOnce() -> Item>(&self, a: &Item::Address, f: F) -> cmerkle::Result<Item> {
+        if let Some(cached) = self.cache.borrow().get(a) {
+            assert!(cached.item.is_none());
+        }
+        let item = f();
+        self.insert(a, Entry::<Item>::new_dirty(Some(item.clone())));
+
+        Ok(item)
     }
 
     pub fn items(&self) -> Vec<(usize, Item::Address, Option<Item>)> {

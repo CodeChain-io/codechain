@@ -23,8 +23,8 @@ use cvm::ChainTimeInfo;
 use primitives::{Bytes, H160, H256};
 
 use crate::{
-    Account, ActionData, AssetScheme, AssetSchemeAddress, CacheableItem, Metadata, OwnedAsset, OwnedAssetAddress,
-    RegularAccount, Shard, StateDB, StateResult, Text,
+    Account, ActionData, AssetScheme, CacheableItem, Metadata, OwnedAsset, OwnedAssetAddress, RegularAccount, Shard,
+    StateDB, StateResult, Text,
 };
 
 
@@ -89,6 +89,10 @@ pub trait TopStateView {
         Ok(*self.metadata()?.expect("Metadata must exist").number_of_shards())
     }
 
+    fn shard_id_by_hash(&self, tx_hash: &H256) -> TrieResult<Option<ShardId>> {
+        Ok(self.metadata()?.and_then(|metadata| metadata.shard_id_by_hash(tx_hash)))
+    }
+
     fn shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>>;
     fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>>;
 
@@ -105,13 +109,10 @@ pub trait TopStateView {
     }
 
     /// Get the asset scheme.
-    fn asset_scheme(&self, shard_id: ShardId, asset_type: &H160) -> TrieResult<Option<AssetScheme>> {
+    fn asset_scheme(&self, shard_id: ShardId, asset_type: H160) -> TrieResult<Option<AssetScheme>> {
         match self.shard_state(shard_id)? {
             None => Ok(None),
-            Some(state) => {
-                let address = AssetSchemeAddress::new(*asset_type, shard_id);
-                state.asset_scheme(&address)
-            }
+            Some(state) => state.asset_scheme(shard_id, asset_type),
         }
     }
 
@@ -130,7 +131,7 @@ pub trait TopStateView {
 
 pub trait ShardStateView {
     /// Get the asset scheme.
-    fn asset_scheme(&self, a: &AssetSchemeAddress) -> TrieResult<Option<AssetScheme>>;
+    fn asset_scheme(&self, shard_id: ShardId, asset_type: H160) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
     fn asset(&self, a: &OwnedAssetAddress) -> TrieResult<Option<OwnedAsset>>;
 }
@@ -164,7 +165,7 @@ pub trait TopState {
     /// Set the regular key of account `owner_public`
     fn set_regular_key(&mut self, owner_public: &Public, key: &Public) -> StateResult<()>;
 
-    fn create_shard(&mut self, shard_creation_cost: u64, fee_payer: &Address) -> StateResult<()>;
+    fn create_shard(&mut self, fee_payer: &Address, tx_hash: H256) -> StateResult<()>;
     fn change_shard_owners(&mut self, shard_id: ShardId, owners: &[Address], sender: &Address) -> StateResult<()>;
     fn change_shard_users(&mut self, shard_id: ShardId, users: &[Address], sender: &Address) -> StateResult<()>;
 

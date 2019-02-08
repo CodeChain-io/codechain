@@ -60,7 +60,7 @@ use crate::{
     ShardAddress, ShardLevelState, StateDB, StateError, StateResult, Text,
 };
 #[cfg(test)]
-use crate::{Asset, AssetSchemeAddress, OwnedAssetAddress};
+use crate::{Asset, OwnedAssetAddress};
 
 /// Representation of the entire state of all accounts in the system.
 ///
@@ -223,16 +223,6 @@ impl StateWithCheckpoint for TopLevelState {
 }
 
 impl TopLevelState {
-    /// Creates new state with empty state root
-    /// Used for tests.
-    pub fn new_for_testing(mut db: StateDB) -> Self {
-        let mut root = H256::new();
-        // init trie and reset root too null
-        let _ = TrieFactory::create(db.as_hashdb_mut(), &mut root);
-
-        Self::from_existing(db, root).expect("The empty trie root was initialized")
-    }
-
     /// Creates new state with existing state root
     pub fn from_existing(db: StateDB, root: H256) -> Result<Self, TrieError> {
         if !db.as_hashdb().contains(&root) {
@@ -326,7 +316,7 @@ impl TopLevelState {
         // The failed transaction also must pay the fee and increase seq.
         self.create_checkpoint(ACTION_CHECKPOINT);
         let result =
-            self.apply_action(&tx.action, tx.network_id, &tx.hash(), signed_hash, &fee_payer, signer_public, client);
+            self.apply_action(&tx.action, tx.network_id, tx.hash(), signed_hash, &fee_payer, signer_public, client);
         match &result {
             Ok(_) => {
                 self.discard_checkpoint(ACTION_CHECKPOINT);
@@ -345,7 +335,7 @@ impl TopLevelState {
         &mut self,
         action: &Action,
         network_id: NetworkId,
-        tx_hash: &H256,
+        tx_hash: H256,
         signed_hash: &H256,
         fee_payer: &Address,
         signer_public: &Public,
@@ -461,13 +451,7 @@ impl TopLevelState {
                 Ok(Invoice::Success)
             }
             Action::CreateShard => {
-                // FIXME: Make shard creation cost configurable
-                #[cfg(test)]
-                let shard_creation_cost = 1;
-                #[cfg(not(test))]
-                let shard_creation_cost = ::std::u64::MAX;
-
-                self.create_shard(shard_creation_cost, fee_payer)?;
+                self.create_shard(fee_payer, *signed_hash)?;
                 Ok(Invoice::Success)
             }
             Action::SetShardOwners {
@@ -492,7 +476,7 @@ impl TopLevelState {
             } => Ok(self.apply_wrap_ccc(
                 network_id,
                 *shard_id,
-                *tx_hash,
+                tx_hash,
                 *lock_script_hash,
                 parameters.clone(),
                 *quantity,
@@ -698,7 +682,7 @@ impl TopLevelState {
     fn create_asset_scheme(
         &mut self,
         shard_id: ShardId,
-        a: &AssetSchemeAddress,
+        asset_type: H160,
         metadata: String,
         amount: u64,
         approver: Option<Address>,
@@ -710,7 +694,16 @@ impl TopLevelState {
             Some(shard_root) => {
                 let mut shard_cache = self.shard_caches.entry(shard_id).or_default();
                 let state = ShardLevelState::from_existing(shard_id, &mut self.db, shard_root, &mut shard_cache)?;
-                state.create_asset_scheme(a, metadata, amount, approver, administrator, allowed_script_hashes, pool)?;
+                state.create_asset_scheme(
+                    shard_id,
+                    asset_type,
+                    metadata,
+                    amount,
+                    approver,
+                    administrator,
+                    allowed_script_hashes,
+                    pool,
+                )?;
                 Ok(true)
             }
             None => Ok(false),
@@ -836,12 +829,10 @@ impl TopState for TopLevelState {
         Ok(())
     }
 
-    fn create_shard(&mut self, shard_creation_cost: u64, fee_payer: &Address) -> StateResult<()> {
-        self.sub_balance(fee_payer, shard_creation_cost)?;
-
+    fn create_shard(&mut self, fee_payer: &Address, tx_hash: H256) -> StateResult<()> {
         let shard_id = {
             let mut metadata = self.get_metadata_mut()?;
-            metadata.increase_number_of_shards()
+            metadata.add_shard(tx_hash)
         };
         self.create_shard_level_state(shard_id, vec![*fee_payer], vec![])?;
 
@@ -927,7 +918,7 @@ mod tests_state {
     use journaldb::{self, Algorithm};
 
     use super::*;
-    use crate::tests::helpers::{get_memory_db, get_temp_state, get_temp_state_db};
+    use crate::tests::helpers::{empty_top_state, get_memory_db, get_temp_state, get_temp_state_db};
 
     #[test]
     fn work_when_cloned() {
@@ -993,7 +984,7 @@ mod tests_state {
         let db = StateDB::new(jorunal.boxed_clone());
         let a = Address::default();
         let root = {
-            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal));
+            let mut state = empty_top_state(StateDB::new(jorunal));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.add_balance(&a, 100));
             assert_eq!(Ok(100), state.balance(&a));
@@ -1024,7 +1015,7 @@ mod tests_state {
         let mut db = StateDB::new(jorunal.boxed_clone());
         let a = Address::default();
         let root = {
-            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal));
+            let mut state = empty_top_state(StateDB::new(jorunal));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(()), state.add_balance(&a, 69));
             assert_eq!(Ok(69), state.balance(&a));
@@ -1071,7 +1062,7 @@ mod tests_state {
         let a = Address::default();
         let mut db = get_temp_state_db();
         let root = {
-            let mut state = TopLevelState::new_for_testing(db.clone(&H256::zero()));
+            let mut state = empty_top_state(db.clone(&H256::zero()));
             assert_eq!(Ok(()), state.add_balance(&a, 0)); // create an empty account
             let root = state.commit();
             assert!(root.is_ok(), "{:?}", root);
@@ -1095,7 +1086,7 @@ mod tests_state {
         let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
         let mut db = StateDB::new(jorunal.boxed_clone());
         let root = {
-            let mut state = TopLevelState::new_for_testing(StateDB::new(jorunal));
+            let mut state = empty_top_state(StateDB::new(jorunal));
             assert_eq!(Ok(()), state.inc_seq(&a));
             let root = state.commit();
             assert!(root.is_ok(), "{:?}", root);
@@ -1274,7 +1265,6 @@ mod tests_tx {
 
     use super::*;
     use crate::tests::helpers::{get_temp_state, get_test_client};
-    use crate::AssetSchemeAddress;
 
     fn address() -> (Address, Public, Private) {
         let keypair = Random.generate().unwrap();
@@ -1382,7 +1372,7 @@ mod tests_tx {
         );
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 2, balance: 4)),
+            (account: sender => (seq: 2, balance: 15 - 5 - 5)),
             (shard: 0 => owners: [sender])
         ]);
     }
@@ -1479,14 +1469,13 @@ mod tests_tx {
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
         let asset_type = Blake::blake(mint_tracker);
-        let asset_scheme_address = AssetSchemeAddress::new(asset_type, shard_id);
 
         set_top_level_state!(state, [
             (shard: shard_id => owners: [sender]),
             (metadata: shards: 1),
             (account: sender => balance: 25),
             (regular_key: sender_public => regular_public),
-            (scheme: (shard_id, asset_scheme_address) => { supply: amount, metadata: metadata, approver: Some(sender) }),
+            (scheme: (shard_id, asset_type) => { supply: amount, metadata: metadata, approver: Some(sender) }),
             (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, quantity: amount, lock_script_hash: lock_script_hash })
         ]);
 
@@ -1519,14 +1508,13 @@ mod tests_tx {
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
         let asset_type = Blake::blake(mint_tracker);
-        let asset_scheme_address = AssetSchemeAddress::new(asset_type, shard_id);
 
         set_top_level_state!(state, [
             (shard: shard_id => owners: [sender]),
             (metadata: shards: 1),
             (account: sender => balance: 25),
             (regular_key: sender_public => regular_public),
-            (scheme: (shard_id, asset_scheme_address) => { supply: amount, metadata: metadata, approver: Some(sender) }),
+            (scheme: (shard_id, asset_type) => { supply: amount, metadata: metadata, approver: Some(sender) }),
             (asset: (shard_id, mint_tracker, 0) => { asset_type: asset_type, quantity: amount, lock_script_hash: lock_script_hash })
         ]);
 
@@ -1571,7 +1559,7 @@ mod tests_tx {
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &regular_public, &get_test_client()));
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 20)),
-            (account: regular_address => (seq: 1, balance: 20 - 5 - 1)),
+            (account: regular_address => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: [regular_address])
         ]);
     }
@@ -1681,7 +1669,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata, supply: amount, approver: approver }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata, supply: amount, approver: approver }),
             (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, quantity: amount })
         ]);
     }
@@ -1716,7 +1704,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 5)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
             (asset: (transaction_tracker, 0, shard_id) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
@@ -1746,7 +1734,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 120 - 20)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata.clone(), supply: 30 }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata.clone(), supply: 30 }),
             (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, quantity: 30 })
         ]);
 
@@ -1772,7 +1760,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 120 - 20 - 30)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata.clone(), supply: 30 }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata.clone(), supply: 30 }),
             (asset: (mint_tracker, 0, shard_id)),
             (asset: (transfer_tracker, 0, shard_id) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1, shard_id) => { asset_type: asset_type, quantity: 5 }),
@@ -2140,7 +2128,7 @@ mod tests_tx {
         let state = get_temp_state();
 
         let shard_id = 3;
-        check_top_level_state!(state, [(scheme: (H160::random(), shard_id))]);
+        check_top_level_state!(state, [(scheme: (shard_id, H160::random()))]);
     }
 
     #[test]
@@ -2151,13 +2139,92 @@ mod tests_tx {
             (account: sender => balance: 20)
         ]);
 
-        let tx = transaction!(fee: 5, Action::CreateShard);
-        assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
+        let tx1 = transaction!(fee: 5, Action::CreateShard);
+        let tx2 = transaction!(seq: 1, fee: 5, Action::CreateShard);
+        let invalid_hash = H256::random();
+        let signed_hash1 = H256::random();
+        let signed_hash2 = H256::random();
+
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&tx1, &signed_hash1, &sender_public, &get_test_client()));
+
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(Some(0)), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 1, balance: 20 - 5 - 1)),
+            (account: sender => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: [sender]),
             (shard: 1)
+        ]);
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&tx2, &signed_hash2, &sender_public, &get_test_client()));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(Some(0)), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(Some(1)), state.shard_id_by_hash(&signed_hash2));
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 2, balance: 20 - 5 - 5)),
+            (shard: 0 => owners: [sender]),
+            (shard: 1 => owners: [sender]),
+            (shard: 2)
+        ]);
+    }
+
+    #[test]
+    #[allow(clippy::cyclomatic_complexity)]
+    fn apply_create_shard_when_there_are_default_shards() {
+        let mut state = get_temp_state();
+        let (sender, sender_public, _) = address();
+        let shard_owner0 = address().0;
+        let shard_owner1 = address().0;
+
+        set_top_level_state!(state, [
+            (shard: 0 => owners: [shard_owner0]),
+            (shard: 1 => owners: [shard_owner1]),
+            (metadata: shards: 2),
+            (account: sender => balance: 20)
+        ]);
+
+        let tx1 = transaction!(fee: 5, Action::CreateShard);
+        let tx2 = transaction!(seq: 1, fee: 5, Action::CreateShard);
+        let invalid_hash = H256::random();
+        let signed_hash1 = H256::random();
+        let signed_hash2 = H256::random();
+
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&tx1, &signed_hash1, &sender_public, &get_test_client()));
+
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(Some(2)), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 20 - 5)),
+            (shard: 0 => owners: [shard_owner0]),
+            (shard: 1 => owners: [shard_owner1]),
+            (shard: 2 => owners: [sender]),
+            (shard: 3)
+        ]);
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&tx2, &signed_hash2, &sender_public, &get_test_client()));
+        assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
+        assert_eq!(Ok(Some(2)), state.shard_id_by_hash(&signed_hash1));
+        assert_eq!(Ok(Some(3)), state.shard_id_by_hash(&signed_hash2));
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 2, balance: 20 - 5 - 5)),
+            (shard: 0 => owners: [shard_owner0]),
+            (shard: 1 => owners: [shard_owner1]),
+            (shard: 2 => owners: [sender]),
+            (shard: 3 => owners: [sender]),
+            (shard: 4)
         ]);
     }
 
@@ -2174,7 +2241,7 @@ mod tests_tx {
 
         let invalid_shard_id = 3;
         check_top_level_state!(state, [
-            (account: sender => (seq: 1, balance: 20 - 5 - 1)),
+            (account: sender => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: [sender]),
             (asset: (H256::random(), 0, invalid_shard_id))
         ]);
@@ -2193,7 +2260,7 @@ mod tests_tx {
 
         let invalid_shard_id = 3;
         check_top_level_state!(state, [
-            (account: sender => (seq: 1, balance: 20 - 5 - 1)),
+            (account: sender => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: [sender]),
             (asset: (H256::random(), 0, invalid_shard_id))
         ]);
@@ -2427,7 +2494,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 20)),
-            (scheme: (asset_type, shard_id) => { metadata: metadata.clone(), supply: amount }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata.clone(), supply: amount }),
             (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, quantity: amount })
         ]);
     }

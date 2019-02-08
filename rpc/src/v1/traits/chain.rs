@@ -91,6 +91,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getNumberOfShards")]
         fn get_number_of_shards(&self, Option<u64>) -> Result<Option<ShardId>>;
 
+        /// Gets shard id
+        # [rpc(name = "chain_getShardIdByHash")]
+        fn get_shard_id_by_hash(&self, H256, Option<u64>) -> Result<Option<ShardId>>;
+
         /// Gets shard root
         # [rpc(name = "chain_getShardRoot")]
         fn get_shard_root(&self, ShardId, Option<u64>) -> Result<Option<H256>>;

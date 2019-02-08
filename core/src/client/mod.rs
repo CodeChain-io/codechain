@@ -190,6 +190,7 @@ pub trait RegularKeyOwner {
 pub trait Shard {
     fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId>;
 
+    fn shard_id_by_hash(&self, create_shard_tx_hash: &H256, state: StateOrBlock) -> Option<ShardId>;
     fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256>;
 }
 

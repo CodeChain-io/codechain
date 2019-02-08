@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -66,13 +66,22 @@ impl ShardCache {
         self.asset_scheme.get_mut(a, db)
     }
 
+    pub fn create_asset_scheme<F>(&self, a: &AssetSchemeAddress, f: F) -> TrieResult<AssetScheme>
+    where
+        F: FnOnce() -> AssetScheme, {
+        self.asset_scheme.create(a, f)
+    }
+
     pub fn asset(&self, a: &OwnedAssetAddress, db: &TrieDB) -> TrieResult<Option<OwnedAsset>> {
         self.asset.get(a, db)
     }
 
-    pub fn asset_mut(&self, a: &OwnedAssetAddress, db: &TrieDB) -> TrieResult<RefMut<OwnedAsset>> {
-        self.asset.get_mut(a, db)
+    pub fn create_asset<F>(&self, a: &OwnedAssetAddress, f: F) -> TrieResult<OwnedAsset>
+    where
+        F: FnOnce() -> OwnedAsset, {
+        self.asset.create(a, f)
     }
+
 
     pub fn remove_asset(&self, address: &OwnedAssetAddress) {
         self.asset.remove(address)
