@@ -354,6 +354,10 @@ impl TopLevelState {
                 approvals,
                 ..
             }
+            | Action::IncreaseAssetSupply {
+                approvals,
+                ..
+            }
             | Action::ComposeAsset {
                 approvals,
                 ..

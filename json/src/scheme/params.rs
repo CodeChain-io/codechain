@@ -47,6 +47,7 @@ pub struct Params {
     pub min_mint_asset_cost: Uint,
     pub min_transfer_asset_cost: Uint,
     pub min_change_asset_scheme_cost: Uint,
+    pub min_increase_asset_supply_cost: Uint,
     pub min_compose_asset_cost: Uint,
     pub min_decompose_asset_cost: Uint,
     pub min_unwrap_ccc_cost: Uint,
@@ -88,6 +89,7 @@ mod tests {
             "minComposeAssetCost" : 22,
             "minDecomposeAssetCost" : 23,
             "minUnwrapCccCost" : 24,
+            "minIncreaseAssetSupplyCost": 25,
             "maxBodySize" : 4194304,
             "snapshotPeriod": 16384
         }"#;
@@ -113,6 +115,7 @@ mod tests {
         assert_eq!(deserialized.min_compose_asset_cost, Uint(22.into()));
         assert_eq!(deserialized.min_decompose_asset_cost, Uint(23.into()));
         assert_eq!(deserialized.min_unwrap_ccc_cost, Uint(24.into()));
+        assert_eq!(deserialized.min_increase_asset_supply_cost, Uint(25.into()));
         assert_eq!(deserialized.max_body_size, Uint(4_194_304.into()));
         assert_eq!(deserialized.snapshot_period, Uint(16_384.into()));
     }

@@ -217,6 +217,9 @@ impl CodeChainMachine {
             Action::ChangeAssetScheme {
                 ..
             } => self.params.min_asset_scheme_change_cost,
+            Action::IncreaseAssetSupply {
+                ..
+            } => self.params.min_asset_supply_increase_cost,
             Action::ComposeAsset {
                 ..
             } => self.params.min_asset_compose_cost,

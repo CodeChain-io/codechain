@@ -54,6 +54,12 @@ pub enum ShardTransaction {
         administrator: Option<Address>,
         allowed_script_hashes: Vec<H160>,
     },
+    IncreaseAssetSupply {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        asset_type: H160,
+        output: AssetMintOutput,
+    },
     ComposeAsset {
         network_id: NetworkId,
         shard_id: ShardId,
@@ -110,6 +116,10 @@ impl ShardTransaction {
                 network_id,
                 ..
             }
+            | ShardTransaction::IncreaseAssetSupply {
+                network_id,
+                ..
+            }
             | ShardTransaction::ComposeAsset {
                 network_id,
                 ..
@@ -150,6 +160,10 @@ impl ShardTransaction {
                 shards
             }
             ShardTransaction::MintAsset {
+                shard_id,
+                ..
+            } => vec![*shard_id],
+            ShardTransaction::IncreaseAssetSupply {
                 shard_id,
                 ..
             } => vec![*shard_id],
@@ -207,6 +221,9 @@ impl ShardTransaction {
                 outputs,
                 ..
             } => index < outputs.len(),
+            ShardTransaction::IncreaseAssetSupply {
+                ..
+            } => index == 0,
             ShardTransaction::ChangeAssetScheme {
                 ..
             } => false,
@@ -239,6 +256,10 @@ impl ShardTransaction {
                 outputs,
                 ..
             } => id == outputs[index].shard_id,
+            ShardTransaction::IncreaseAssetSupply {
+                shard_id,
+                ..
+            } => &id == shard_id,
             ShardTransaction::ChangeAssetScheme {
                 ..
             } => unreachable!("AssetSchemeChange doesn't have a valid index"),
@@ -468,6 +489,7 @@ const ASSET_TRANSFER_ID: TransactionId = 0x14;
 const ASSET_SCHEME_CHANGE_ID: TransactionId = 0x15;
 const ASSET_COMPOSE_ID: TransactionId = 0x16;
 const ASSET_DECOMPOSE_ID: TransactionId = 0x17;
+const ASSET_INCREASE_SUPPLY_ID: TransactionId = 0x18;
 
 impl Decodable for ShardTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
@@ -514,6 +536,21 @@ impl Decodable for ShardTransaction {
                     approver: d.val_at(5)?,
                     administrator: d.val_at(6)?,
                     allowed_script_hashes: d.list_at(7)?,
+                })
+            }
+            ASSET_INCREASE_SUPPLY_ID => {
+                if d.item_count()? != 7 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(ShardTransaction::IncreaseAssetSupply {
+                    network_id: d.val_at(1)?,
+                    shard_id: d.val_at(2)?,
+                    asset_type: d.val_at(3)?,
+                    output: AssetMintOutput {
+                        lock_script_hash: d.val_at(4)?,
+                        parameters: d.val_at(5)?,
+                        supply: d.val_at(6)?,
+                    },
                 })
             }
             ASSET_COMPOSE_ID => {
@@ -621,6 +658,26 @@ impl Encodable for ShardTransaction {
                     .append(approver)
                     .append(administrator)
                     .append_list(allowed_script_hashes);
+            }
+            ShardTransaction::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output:
+                    AssetMintOutput {
+                        lock_script_hash,
+                        parameters,
+                        supply,
+                    },
+            } => {
+                s.begin_list(7)
+                    .append(&ASSET_INCREASE_SUPPLY_ID)
+                    .append(network_id)
+                    .append(shard_id)
+                    .append(asset_type)
+                    .append(lock_script_hash)
+                    .append(parameters)
+                    .append(supply);
             }
             ShardTransaction::ComposeAsset {
                 network_id,

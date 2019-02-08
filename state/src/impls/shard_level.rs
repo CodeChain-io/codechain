@@ -163,6 +163,11 @@ impl<'db> ShardLevelState<'db> {
                 administrator,
                 allowed_script_hashes,
             ),
+            ShardTransaction::IncreaseAssetSupply {
+                asset_type,
+                output,
+                ..
+            } => self.increase_asset_supply(transaction.tracker(), sender, approvers, asset_type, output),
             ShardTransaction::ComposeAsset {
                 metadata,
                 approver,
@@ -396,6 +401,52 @@ impl<'db> ShardLevelState<'db> {
             administrator.clone(),
             allowed_script_hashes.to_vec(),
         );
+
+        Ok(())
+    }
+
+    fn increase_asset_supply(
+        &mut self,
+        transaction_tracker: H256,
+        sender: &Address,
+        approvers: &[Address],
+        asset_type: &H160,
+        output: &AssetMintOutput,
+    ) -> StateResult<()> {
+        let index = 0;
+        {
+            let asset_scheme = self.asset_scheme(*asset_type)?.ok_or(RuntimeError::AssetNotFound {
+                shard_id: self.shard_id,
+                tracker: transaction_tracker,
+                index,
+            })?;
+
+            if !asset_scheme.is_centralized() {
+                return Err(RuntimeError::InsufficientPermission.into())
+            }
+            let administrator = asset_scheme.administrator().as_ref().expect("Centralized asset has administrator");
+            if administrator != sender && !approvers.contains(administrator) {
+                return Err(RuntimeError::InsufficientPermission.into())
+            }
+        }
+
+        // This assertion should be filtered while verifying action.
+        assert!(output.supply > Some(0), "Supply increasing quantity must be specified and greater than 0");
+        let additional_supply = output.supply.unwrap();
+
+        let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, *asset_type)?;
+        let previous_supply = asset_scheme.increase_supply(additional_supply);
+        self.create_asset(
+            transaction_tracker,
+            index,
+            *asset_type,
+            output.lock_script_hash,
+            output.parameters.clone(),
+            additional_supply,
+            None,
+        )?;
+        ctrace!(TX, "Increased asset supply {:?} {:?} {:?}", asset_type, previous_supply, additional_supply);
+        ctrace!(TX, "Created asset on {}:{}:{}", self.shard_id, transaction_tracker, index);
 
         Ok(())
     }
@@ -2281,6 +2332,59 @@ mod tests {
         check_shard_level_state!(state, [
             (scheme: (asset_type) => { metadata: "New metadata".to_string(), supply: amount, approver: approver, administrator }),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
+        ]);
+    }
+
+    #[test]
+    fn increase_asset_amount() {
+        let sender = address();
+        let mut state_db = RefCell::new(get_temp_state_db());
+        let mut shard_cache = ShardCache::default();
+        let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
+
+        let metadata = "metadata".to_string();
+        let lock_script_hash = H160::random();
+        let parameters = vec![];
+        let amount = 100;
+        let administrator = Address::random();
+        let mint = asset_mint!(
+            asset_mint_output!(lock_script_hash, parameters.clone(), amount),
+            metadata.clone(),
+            administrator: administrator
+        );
+
+        let mint_tracker = mint.tracker();
+        let asset_type = Blake::blake(mint_tracker);
+
+        assert_eq!(Ok(Invoice::Success), state.apply(&mint, &sender, &[sender], &[], &get_test_client()));
+
+        check_shard_level_state!(state, [
+            (scheme: (asset_type) => { metadata: metadata.clone(), supply: amount, approver, administrator: administrator }),
+            (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
+        ]);
+
+        let new_supply = 200;
+        let increase_supply = ShardTransaction::IncreaseAssetSupply {
+            network_id: "tc".into(),
+            shard_id: SHARD_ID,
+            asset_type,
+            output: AssetMintOutput {
+                lock_script_hash: H160::random(),
+                parameters: vec![],
+                supply: Some(new_supply),
+            },
+        };
+        let supply_tracker = increase_supply.tracker();
+
+        assert_eq!(
+            Ok(Invoice::Success),
+            state.apply(&increase_supply, &sender, &[], &[administrator], &get_test_client())
+        );
+
+        check_shard_level_state!(state, [
+            (scheme: (asset_type) => { metadata: "metadata".to_string(), supply: amount + new_supply, approver, administrator: administrator }),
+            (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount }),
+            (asset: (supply_tracker, 0) => { asset_type: asset_type, quantity: new_supply })
         ]);
     }
 }
