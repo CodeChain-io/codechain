@@ -39,6 +39,7 @@ const TRANSFER_ASSET: u8 = 0x14;
 const CHANGE_ASSET_SCHEME: u8 = 0x15;
 const COMPOSE_ASSET: u8 = 0x16;
 const DECOMPOSE_ASSET: u8 = 0x17;
+const INCREASE_ASSET_SUPPLY: u8 = 0x18;
 
 const CUSTOM: u8 = 0xFF;
 
@@ -72,6 +73,13 @@ pub enum Action {
         approver: Option<Address>,
         administrator: Option<Address>,
         allowed_script_hashes: Vec<H160>,
+        approvals: Vec<Signature>,
+    },
+    IncreaseAssetSupply {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        asset_type: H160,
+        output: Box<AssetMintOutput>,
         approvals: Vec<Signature>,
     },
     ComposeAsset {
@@ -149,6 +157,9 @@ impl Action {
                 ..
             }
             | Action::ChangeAssetScheme {
+                ..
+            }
+            | Action::IncreaseAssetSupply {
                 ..
             }
             | Action::ComposeAsset {
@@ -235,6 +246,18 @@ impl Action {
             } => {
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
+                }
+                if asset_type.is_zero() {
+                    return Err(SyntaxError::CannotChangeWcccAssetScheme)
+                }
+            }
+            Action::IncreaseAssetSupply {
+                asset_type,
+                output,
+                ..
+            } => {
+                if output.supply.unwrap_or(0) == 0 {
+                    return Err(SyntaxError::ZeroQuantity)
                 }
                 if asset_type.is_zero() {
                     return Err(SyntaxError::CannotChangeWcccAssetScheme)
@@ -348,6 +371,10 @@ impl Action {
                 ..
             }
             | Action::ChangeAssetScheme {
+                network_id,
+                ..
+            }
+            | Action::IncreaseAssetSupply {
                 network_id,
                 ..
             }
@@ -531,6 +558,23 @@ impl Encodable for Action {
                     .append_list(allowed_script_hashes)
                     .append_list(approvals);
             }
+            Action::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output,
+                approvals,
+            } => {
+                s.begin_list(8)
+                    .append(&INCREASE_ASSET_SUPPLY)
+                    .append(network_id)
+                    .append(shard_id)
+                    .append(asset_type)
+                    .append(&output.lock_script_hash)
+                    .append(&output.parameters)
+                    .append(&output.supply)
+                    .append_list(approvals);
+            }
             Action::ComposeAsset {
                 network_id,
                 shard_id,
@@ -711,6 +755,22 @@ impl Decodable for Action {
                     administrator: rlp.val_at(6)?,
                     allowed_script_hashes: rlp.list_at(7)?,
                     approvals: rlp.list_at(8)?,
+                })
+            }
+            INCREASE_ASSET_SUPPLY => {
+                if rlp.item_count()? != 8 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::IncreaseAssetSupply {
+                    network_id: rlp.val_at(1)?,
+                    shard_id: rlp.val_at(2)?,
+                    asset_type: rlp.val_at(3)?,
+                    output: Box::new(AssetMintOutput {
+                        lock_script_hash: rlp.val_at(4)?,
+                        parameters: rlp.val_at(5)?,
+                        supply: rlp.val_at(6)?,
+                    }),
+                    approvals: rlp.list_at(7)?,
                 })
             }
             COMPOSE_ASSET => {

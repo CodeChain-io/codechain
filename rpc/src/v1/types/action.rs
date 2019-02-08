@@ -67,6 +67,15 @@ pub enum Action {
         approvals: Vec<Signature>,
     },
     #[serde(rename_all = "camelCase")]
+    IncreaseAssetSupply {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        asset_type: H160,
+        output: Box<AssetMintOutput>,
+
+        approvals: Vec<Signature>,
+    },
+    #[serde(rename_all = "camelCase")]
     ComposeAsset {
         network_id: NetworkId,
         shard_id: ShardId,
@@ -175,6 +184,17 @@ pub enum ActionWithTracker {
         approver: Option<PlatformAddress>,
         administrator: Option<PlatformAddress>,
         allowed_script_hashes: Vec<H160>,
+
+        approvals: Vec<Signature>,
+
+        tracker: H256,
+    },
+    #[serde(rename_all = "camelCase")]
+    IncreaseAssetSupply {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        asset_type: H160,
+        output: Box<AssetMintOutput>,
 
         approvals: Vec<Signature>,
 
@@ -316,6 +336,20 @@ impl ActionWithTracker {
                 approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
                 administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
                 allowed_script_hashes,
+                approvals,
+                tracker: tracker.unwrap(),
+            },
+            ActionType::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output,
+                approvals,
+            } => ActionWithTracker::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output: Box::new((*output).into()),
                 approvals,
                 tracker: tracker.unwrap(),
             },
@@ -517,6 +551,22 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     approver,
                     administrator,
                     allowed_script_hashes,
+                    approvals,
+                }
+            }
+            Action::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output,
+                approvals,
+            } => {
+                let output_content = Result::<AssetMintOutputType, FromHexError>::from(*output)?;
+                ActionType::IncreaseAssetSupply {
+                    network_id,
+                    shard_id,
+                    asset_type,
+                    output: Box::new(output_content),
                     approvals,
                 }
             }
