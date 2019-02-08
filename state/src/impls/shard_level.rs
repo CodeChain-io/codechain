@@ -693,7 +693,7 @@ impl<'db> ShardLevelState<'db> {
             let asset_scheme = self.create_asset_scheme(
                 self.shard_id,
                 asset_type,
-                format!("{{\"name\":\"Wrapped CCC\",\"description\":\"Wrapped CCC in shard {}\"}}", self.shard_id),
+                String::new(),
                 0,
                 None,
                 None,
