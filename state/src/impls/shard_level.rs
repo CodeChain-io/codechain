@@ -233,7 +233,11 @@ impl<'db> ShardLevelState<'db> {
 
         let asset_type = Blake::blake(transaction_tracker);
         if self.asset_scheme(asset_type)?.is_some() {
-            return Err(RuntimeError::AssetSchemeDuplicated(transaction_tracker).into())
+            return Err(RuntimeError::AssetSchemeDuplicated {
+                tracker: transaction_tracker,
+                shard_id: self.shard_id,
+            }
+            .into())
         }
         let supply = supply.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.create_asset_scheme(
@@ -998,7 +1002,10 @@ mod tests {
         assert_eq!(Ok(Invoice::Success), state.apply(&transaction, &sender, &[sender], &[], &get_test_client()));
 
         assert_eq!(
-            Ok(Invoice::Failure(RuntimeError::AssetSchemeDuplicated(transaction_tracker))),
+            Ok(Invoice::Failure(RuntimeError::AssetSchemeDuplicated {
+                tracker: transaction_tracker,
+                shard_id: SHARD_ID
+            })),
             state.apply(&transaction, &sender, &[sender], &[], &get_test_client())
         );
 
