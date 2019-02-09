@@ -29,7 +29,7 @@ use crate::ShardId;
 pub enum Error {
     /// There are burn/inputs that shares same previous output
     DuplicatedPreviousOutput {
-        transaction_hash: H256,
+        tracker: H256,
         index: usize,
     },
     /// AssetCompose requires at least 1 input.
@@ -154,11 +154,9 @@ impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             Error::DuplicatedPreviousOutput {
-                transaction_hash,
+                tracker,
                 index,
-            } => RlpHelper::new_tagged_list(s, ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT)
-                .append(transaction_hash)
-                .append(index),
+            } => RlpHelper::new_tagged_list(s, ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT).append(tracker).append(index),
             Error::EmptyInput => RlpHelper::new_tagged_list(s, ERROR_ID_EMPTY_INPUT),
             Error::EmptyOutput => RlpHelper::new_tagged_list(s, ERROR_ID_EMPTY_OUTPUT),
             Error::EmptyShardOwners(shard_id) => {
@@ -227,7 +225,7 @@ impl Decodable for Error {
         let tag = rlp.val_at::<u8>(0)?;
         let error = match tag {
             ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => Error::DuplicatedPreviousOutput {
-                transaction_hash: rlp.val_at(1)?,
+                tracker: rlp.val_at(1)?,
                 index: rlp.val_at(2)?,
             },
             ERROR_ID_EMPTY_INPUT => Error::EmptyInput,
@@ -279,9 +277,9 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         match self {
             Error::DuplicatedPreviousOutput {
-                transaction_hash,
+                tracker,
                 index,
-            } => write!(f, "The previous output of inputs/burns are duplicated: ({}, {})", transaction_hash, index),
+            } => write!(f, "The previous output of inputs/burns are duplicated: ({}, {})", tracker, index),
             Error::EmptyInput  => write!(f, "The input is empty"),
             Error::EmptyOutput  => writeln!(f, "The output is empty"),
             Error::EmptyShardOwners (shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
