@@ -243,10 +243,16 @@ impl<'db> ShardLevelState<'db> {
 
         ctrace!(TX, "{:?} is minted on {}:{:?}", asset_scheme, self.shard_id, asset_type);
 
-        let asset_address = OwnedAssetAddress::new(transaction_tracker, 0, self.shard_id);
-        let asset =
-            self.create_asset(&asset_address, asset_type, *lock_script_hash, parameters.to_vec(), supply, None)?;
-        ctrace!(TX, "{:?} is generated on {:?}", asset, asset_address);
+        let asset = self.create_asset(
+            transaction_tracker,
+            0,
+            asset_type,
+            *lock_script_hash,
+            parameters.to_vec(),
+            supply,
+            None,
+        )?;
+        ctrace!(TX, "{:?} is generated on {}:{}", asset, transaction_tracker, 0);
         Ok(())
     }
 
@@ -289,9 +295,9 @@ impl<'db> ShardLevelState<'db> {
 
         let mut deleted_asset = Vec::with_capacity(inputs.len() + burns.len());
         for input in inputs.iter().chain(burns) {
-            let (_, asset_address) = self.check_input_asset(input, sender, approvers)?;
-            self.kill_asset(&asset_address);
-            deleted_asset.push((asset_address, input.prev_out.quantity));
+            self.check_input_asset(input, sender, approvers)?;
+            self.kill_asset(input.prev_out.tracker, input.prev_out.index);
+            deleted_asset.push((input.prev_out.tracker, input.prev_out.index, input.prev_out.quantity));
         }
         let mut created_asset = Vec::with_capacity(outputs.len());
         for (index, output) in outputs.iter().enumerate() {
@@ -299,7 +305,8 @@ impl<'db> ShardLevelState<'db> {
 
             let asset_address = OwnedAssetAddress::new(transaction.tracker(), index, self.shard_id);
             let _asset = self.create_asset(
-                &asset_address,
+                transaction.tracker(),
+                index,
                 output.asset_type,
                 output.lock_script_hash,
                 output.parameters.clone(),
@@ -321,7 +328,7 @@ impl<'db> ShardLevelState<'db> {
             reduced_supplies.push((asset_type, previous_supply, quantity))
         }
 
-        ctrace!(TX, "Deleted assets {:?}", deleted_asset);
+        ctrace!(TX, "Deleted assets on {} {:?}", self.shard_id, deleted_asset);
         ctrace!(TX, "Created assets {:?}", created_asset);
         ctrace!(TX, "Reduced asset supplies {:?}", reduced_supplies);
         Ok(())
@@ -333,10 +340,13 @@ impl<'db> ShardLevelState<'db> {
             let mut counter: usize = 0;
             for input_idx in order_tx.input_indices.iter() {
                 let input = &inputs[*input_idx];
-                let transaction_tracker = input.prev_out.tracker;
+                let tracker = input.prev_out.tracker;
                 let index = input.prev_out.index;
-                let address = OwnedAssetAddress::new(transaction_tracker, index, self.shard_id);
-                let asset = self.asset(&address)?.ok_or_else(|| RuntimeError::AssetNotFound(address.into()))?;
+                let asset = self.asset(self.shard_id, tracker, index)?.ok_or_else(|| RuntimeError::AssetNotFound {
+                    shard_id: self.shard_id,
+                    tracker,
+                    index,
+                })?;
 
                 match &asset.order_hash() {
                     Some(order_hash) if *order_hash == order.hash() => {}
@@ -397,9 +407,7 @@ impl<'db> ShardLevelState<'db> {
         input: &AssetTransferInput,
         sender: &Address,
         approvers: &[Address],
-    ) -> StateResult<(OwnedAsset, OwnedAssetAddress)> {
-        let asset_address = OwnedAssetAddress::new(input.prev_out.tracker, input.prev_out.index, self.shard_id);
-
+    ) -> StateResult<OwnedAsset> {
         let asset_scheme = self.asset_scheme(input.prev_out.shard_id, input.prev_out.asset_type)?.ok_or_else(|| {
             RuntimeError::AssetSchemeNotFound {
                 shard_id: input.prev_out.shard_id,
@@ -413,23 +421,27 @@ impl<'db> ShardLevelState<'db> {
             }
         }
 
-        match self.asset(&asset_address)? {
-            Some(asset) => {
-                if asset.quantity() != input.prev_out.quantity {
-                    return Err(RuntimeError::InvalidAssetQuantity {
-                        address: asset_address.into(),
-                        expected: asset.quantity(),
-                        got: input.prev_out.quantity,
-                    }
-                    .into())
-                }
-                if *asset.asset_type() != input.prev_out.asset_type {
-                    return Err(RuntimeError::InvalidAssetType(input.prev_out.asset_type).into())
-                }
-                Ok((asset, asset_address))
+        let asset = self.asset(self.shard_id, input.prev_out.tracker, input.prev_out.index)?.ok_or_else(|| {
+            RuntimeError::AssetNotFound {
+                shard_id: input.prev_out.shard_id,
+                tracker: input.prev_out.tracker,
+                index: input.prev_out.index,
             }
-            None => Err(RuntimeError::AssetNotFound(asset_address.into()).into()),
+        })?;
+        if asset.quantity() != input.prev_out.quantity {
+            return Err(RuntimeError::InvalidAssetQuantity {
+                shard_id: self.shard_id,
+                tracker: input.prev_out.tracker,
+                index: input.prev_out.index,
+                expected: asset.quantity(),
+                got: input.prev_out.quantity,
+            }
+            .into())
         }
+        if *asset.asset_type() != input.prev_out.asset_type {
+            return Err(RuntimeError::InvalidAssetType(input.prev_out.asset_type).into())
+        }
+        Ok(asset)
     }
 
     fn check_output_script_hash(&self, output: &AssetTransferOutput) -> StateResult<()> {
@@ -456,14 +468,16 @@ impl<'db> ShardLevelState<'db> {
     ) -> StateResult<()> {
         debug_assert!(!burn || order.is_none());
 
-        let (address, asset) = {
-            let index = input.prev_out.index;
-            let address = OwnedAssetAddress::new(input.prev_out.tracker, index, self.shard_id);
-            match self.asset(&address)? {
-                Some(asset) => (address.into(), asset),
-                None => return Err(RuntimeError::AssetNotFound(address.into()).into()),
-            }
-        };
+        let AssetOutPoint {
+            index,
+            tracker,
+            ..
+        } = input.prev_out;
+        let asset = self.asset(self.shard_id, tracker, index)?.ok_or_else(|| RuntimeError::AssetNotFound {
+            shard_id: self.shard_id,
+            tracker,
+            index,
+        })?;
         let asset_scheme = {
             self.asset_scheme(input.prev_out.shard_id, input.prev_out.asset_type)?
                 .expect("AssetScheme must exist when the asset exist")
@@ -524,7 +538,9 @@ impl<'db> ShardLevelState<'db> {
         .map_err(|reason| {
             ctrace!(TX, "Cannot run unlock/lock script {:?}", reason);
             RuntimeError::FailedToUnlock {
-                address,
+                shard_id: self.shard_id,
+                tracker,
+                index,
                 reason,
             }
             .into()
@@ -549,9 +565,9 @@ impl<'db> ShardLevelState<'db> {
     ) -> StateResult<()> {
         let mut sum: HashMap<(H160, ShardId), u64> = HashMap::new();
 
-        let mut deleted_assets: Vec<(H256, _)> = Vec::with_capacity(inputs.len());
+        let mut deleted_assets = Vec::with_capacity(inputs.len());
         for input in inputs.iter() {
-            let (_, asset_address) = self.check_input_asset(input, sender, approvers)?;
+            self.check_input_asset(input, sender, approvers)?;
             self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
             let shard_asset_type = (input.prev_out.asset_type, input.prev_out.shard_id);
@@ -562,8 +578,8 @@ impl<'db> ShardLevelState<'db> {
                 return Err(RuntimeError::CannotComposeCentralizedAsset.into())
             }
 
-            self.kill_asset(&asset_address);
-            deleted_assets.push((asset_address.into(), input.prev_out.quantity));
+            self.kill_asset(input.prev_out.tracker, input.prev_out.index);
+            deleted_assets.push((input.prev_out.tracker, input.prev_out.index, input.prev_out.quantity));
 
             *sum.entry(shard_asset_type).or_insert_with(Default::default) += input.prev_out.quantity;
         }
@@ -662,10 +678,10 @@ impl<'db> ShardLevelState<'db> {
             .into())
         }
 
-        let (_, asset_address) = self.check_input_asset(input, sender, approvers)?;
+        self.check_input_asset(input, sender, approvers)?;
         self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
-        self.kill_asset(&asset_address);
+        self.kill_asset(input.prev_out.tracker, input.prev_out.index);
 
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
         let previous_supply = asset_scheme.reduce_supply(quantity);
@@ -675,9 +691,9 @@ impl<'db> ShardLevelState<'db> {
 
         // Put asset into DB
         for (index, output) in outputs.iter().enumerate() {
-            let asset_address = OwnedAssetAddress::new(transaction.tracker(), index, self.shard_id);
             let _asset = self.create_asset(
-                &asset_address,
+                transaction.tracker(),
+                index,
                 output.asset_type,
                 output.lock_script_hash,
                 output.parameters.clone(),
@@ -714,10 +730,9 @@ impl<'db> ShardLevelState<'db> {
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
         asset_scheme.increase_supply(quantity);
 
-        let asset_address = OwnedAssetAddress::new(*tx_hash, 0, self.shard_id);
         let asset =
-            self.create_asset(&asset_address, asset_type, *lock_script_hash, parameters.to_vec(), quantity, None)?;
-        ctrace!(TX, "Created Wrapped CCC {:?} on {:?}", asset, asset_address);
+            self.create_asset(*tx_hash, 0, asset_type, *lock_script_hash, parameters.to_vec(), quantity, None)?;
+        ctrace!(TX, "Created Wrapped CCC {:?} on {}:{}", asset, tx_hash, 0);
         Ok(())
     }
 
@@ -732,17 +747,24 @@ impl<'db> ShardLevelState<'db> {
         let approvers = [];
         self.check_and_run_input_script(burn, transaction, None, true, sender, &approvers, client)?;
 
-        let (_, asset_address) = self.check_input_asset(burn, sender, &approvers)?;
-        self.kill_asset(&asset_address);
+        self.check_input_asset(burn, sender, &approvers)?;
+        self.kill_asset(burn.prev_out.tracker, burn.prev_out.index);
         let asset_type = H160::zero();
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
         asset_scheme.reduce_supply(burn.prev_out.quantity);
-        ctrace!(TX, "Removed Wrapped CCC asset {:?}, quantity {:?}", asset_address, burn.prev_out.quantity);
+        ctrace!(
+            TX,
+            "Removed Wrapped CCC asset {}:{}:{}, quantity {:?}",
+            self.shard_id,
+            burn.prev_out.tracker,
+            burn.prev_out.index,
+            burn.prev_out.quantity
+        );
         Ok(())
     }
 
-    fn kill_asset(&mut self, account: &OwnedAssetAddress) {
-        self.cache.remove_asset(account);
+    fn kill_asset(&mut self, tracker: H256, index: usize) {
+        self.cache.remove_asset(&OwnedAssetAddress::new(tracker, index, self.shard_id));
     }
 
     pub fn create_asset_scheme(
@@ -769,14 +791,17 @@ impl<'db> ShardLevelState<'db> {
 
     pub fn create_asset(
         &self,
-        a: &OwnedAssetAddress,
+        tracker: H256,
+        index: usize,
         asset_type: H160,
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         quantity: u64,
         order_hash: Option<H256>,
     ) -> cmerkle::Result<OwnedAsset> {
-        self.cache.create_asset(a, || OwnedAsset::new(asset_type, lock_script_hash, parameters, quantity, order_hash))
+        self.cache.create_asset(&OwnedAssetAddress::new(tracker, index, self.shard_id), || {
+            OwnedAsset::new(asset_type, lock_script_hash, parameters, quantity, order_hash)
+        })
     }
 }
 
@@ -787,10 +812,10 @@ impl<'db> ShardStateView for ShardLevelState<'db> {
         self.cache.asset_scheme(&AssetSchemeAddress::new(asset_type, shard_id), &trie)
     }
 
-    fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
+    fn asset(&self, shard_id: u16, tracker: H256, index: usize) -> Result<Option<OwnedAsset>, TrieError> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset(a, &trie)
+        self.cache.asset(&OwnedAssetAddress::new(tracker, index, shard_id), &trie)
     }
 }
 
@@ -865,10 +890,10 @@ impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
         self.cache.asset_scheme(&AssetSchemeAddress::new(asset_type, shard_id), &trie)
     }
 
-    fn asset(&self, a: &OwnedAssetAddress) -> cmerkle::Result<Option<OwnedAsset>> {
+    fn asset(&self, shard_id: u16, tracker: H256, index: usize) -> Result<Option<OwnedAsset>, TrieError> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset(a, &trie)
+        self.cache.asset(&OwnedAssetAddress::new(tracker, index, shard_id), &trie)
     }
 }
 
@@ -1373,11 +1398,11 @@ mod tests {
         );
         let transfer_tracker = transfer.tracker();
 
-        let asset_address = OwnedAssetAddress::new(mint_tracker, 0, SHARD_ID).into();
-
         assert_eq!(
             Ok(Invoice::Failure(RuntimeError::InvalidAssetQuantity {
-                address: asset_address,
+                shard_id: SHARD_ID,
+                tracker: mint_tracker,
+                index: 0,
                 expected: 30,
                 got: 20
             })),

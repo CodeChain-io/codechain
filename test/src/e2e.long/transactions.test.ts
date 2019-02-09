@@ -393,7 +393,9 @@ describe("transactions", function() {
                 type: "FailedToUnlock",
                 content: {
                     reason: "ScriptShouldBeBurnt",
-                    address: $anything
+                    index: 0,
+                    shard_id: 0,
+                    tracker: $anything
                 }
             }
         });
@@ -416,7 +418,9 @@ describe("transactions", function() {
                 type: "FailedToUnlock",
                 content: {
                     reason: "ScriptShouldNotBeBurnt",
-                    address: $anything
+                    index: 0,
+                    shard_id: 0,
+                    tracker: $anything
                 }
             }
         });
@@ -445,7 +449,9 @@ describe("transactions", function() {
                     type: "FailedToUnlock",
                     content: {
                         reason: "ScriptError",
-                        address: $anything
+                        index: 0,
+                        shard_id: 0,
+                        tracker: $anything
                     }
                 }
             });
@@ -483,7 +489,9 @@ describe("transactions", function() {
                     type: "FailedToUnlock",
                     content: {
                         reason: "ScriptError",
-                        address: $anything
+                        index: 0,
+                        shard_id: 0,
+                        tracker: $anything
                     }
                 }
             });
@@ -556,7 +564,9 @@ describe("transactions", function() {
                     type: "FailedToUnlock",
                     content: {
                         reason: "ScriptError",
-                        address: $anything
+                        index: 0,
+                        shard_id: 0,
+                        tracker: $anything
                     }
                 }
             });
@@ -721,7 +731,9 @@ describe("transactions", function() {
                     type: "FailedToUnlock",
                     content: {
                         reason: "ScriptError",
-                        address: $anything
+                        index: 0,
+                        shard_id: 0,
+                        tracker: $anything
                     }
                 }
             });
@@ -769,7 +781,9 @@ describe("transactions", function() {
                     type: "FailedToUnlock",
                     content: {
                         reason: "ScriptError",
-                        address: $anything
+                        index: 0,
+                        shard_id: 0,
+                        tracker: $anything
                     }
                 }
             });
@@ -820,7 +834,9 @@ describe("transactions", function() {
                     type: "FailedToUnlock",
                     content: {
                         reason: "ScriptError",
-                        address: $anything
+                        index: 0,
+                        shard_id: 0,
+                        tracker: $anything
                     }
                 }
             });

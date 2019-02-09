@@ -22,10 +22,7 @@ use cio::IoChannel;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{
-    ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, OwnedAssetAddress, StateDB, Text, TopLevelState,
-    TopStateView,
-};
+use cstate::{ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, Text, TopLevelState, TopStateView};
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::invoice::Invoice;
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
@@ -356,16 +353,9 @@ impl AssetClient for Client {
         }
     }
 
-    fn get_asset(
-        &self,
-        transaction_hash: H256,
-        index: usize,
-        shard_id: ShardId,
-        id: BlockId,
-    ) -> TrieResult<Option<OwnedAsset>> {
+    fn get_asset(&self, tracker: H256, index: usize, shard_id: ShardId, id: BlockId) -> TrieResult<Option<OwnedAsset>> {
         if let Some(state) = Client::state_at(&self, id) {
-            let address = OwnedAssetAddress::new(transaction_hash, index, shard_id);
-            Ok(state.asset(shard_id, &address)?)
+            Ok(state.asset(shard_id, tracker, index)?)
         } else {
             Ok(None)
         }
@@ -410,8 +400,7 @@ impl AssetClient for Client {
         }
 
         let state = Client::state_at(&self, block_id).unwrap();
-        let address = OwnedAssetAddress::new(transaction_hash, index, shard_id);
-        Ok(Some(state.asset(shard_id, &address)?.is_none()))
+        Ok(Some(state.asset(shard_id, transaction_hash, index)?.is_none()))
     }
 }
 
