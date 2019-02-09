@@ -566,14 +566,12 @@ macro_rules! check_top_level_state {
         check_top_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr)) $(,$x:tt)*]) => {
-        let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
-        assert_eq!(Ok(None), $state.asset($shard_id, &asset_address));
+        assert_eq!(Ok(None), $state.asset($shard_id, $tx_hash, $index));
 
         check_top_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
-        let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
-        let asset = $state.asset($shard_id, &asset_address).unwrap().unwrap();
+        let asset = $state.asset($shard_id, $tx_hash, $index).unwrap().unwrap();
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
 
@@ -663,16 +661,14 @@ macro_rules! check_shard_level_state {
         check_shard_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
-        let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
-        let asset = $state.asset(&asset_address).unwrap().expect("asset must exist");
+        let asset = $state.asset($shard_id, $tx_hash, $index).unwrap().expect("asset must exist");
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
 
         check_shard_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, order: $order:expr }) $(,$x:tt)*]) => {
-        let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
-        let asset = $state.asset(&asset_address).unwrap().expect("asset must exist");
+        let asset = $state.asset($shard_id, $tx_hash, $index).unwrap().expect("asset must exist");
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
         assert_eq!(Some(&$order), asset.order_hash().as_ref());
@@ -680,8 +676,7 @@ macro_rules! check_shard_level_state {
         check_shard_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, order }) $(,$x:tt)*]) => {
-        let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
-        let asset = $state.asset(&asset_address).unwrap().expect("asset must exist");
+        let asset = $state.asset($shard_id, $tx_hash, $index).unwrap().expect("asset must exist");
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
         assert_eq!(&None, asset.order_hash());
@@ -689,8 +684,7 @@ macro_rules! check_shard_level_state {
         check_shard_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, lock_script_hash: $lock_script_hash:expr }) $(,$x:tt)*]) => {
-        let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
-        let asset = $state.asset(&asset_address).unwrap().expect("asset must exist");
+        let asset = $state.asset($shard_id, $tx_hash, $index).unwrap().expect("asset must exist");
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
         assert_eq!(&$lock_script_hash, asset.lock_script_hash());
@@ -698,8 +692,7 @@ macro_rules! check_shard_level_state {
         check_shard_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(asset: ($tx_hash:expr, $index:expr, $shard_id:expr)) $(,$x:tt)*]) => {
-        let asset_address = $crate::OwnedAssetAddress::new($tx_hash, $index, $shard_id);
-        assert_eq!(Ok(None), $state.asset(&asset_address));
+        assert_eq!(Ok(None), $state.asset($shard_id, $tx_hash, $index));
 
         check_shard_level_state!($state, [$($x),*]);
     };
