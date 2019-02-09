@@ -1801,7 +1801,10 @@ mod tests_tx {
         let transaction_tracker = transaction.tracker().unwrap();
         let tx = transaction!(seq: 1, fee: 11, transaction);
         assert_eq!(
-            Ok(Invoice::Failure(RuntimeError::AssetSchemeDuplicated(transaction_tracker))),
+            Ok(Invoice::Failure(RuntimeError::AssetSchemeDuplicated {
+                tracker: transaction_tracker,
+                shard_id
+            })),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 

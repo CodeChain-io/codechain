@@ -33,7 +33,10 @@ pub enum Error {
         tracker: H256,
         index: usize,
     },
-    AssetSchemeDuplicated(H256),
+    AssetSchemeDuplicated {
+        tracker: H256,
+        shard_id: ShardId,
+    },
     /// Desired input asset scheme not found
     AssetSchemeNotFound {
         asset_type: H160,
@@ -135,7 +138,7 @@ impl TaggedRlp for RlpHelper {
     fn length_of(tag: u8) -> Result<usize, DecoderError> {
         Ok(match tag {
             ERROR_ID_ASSET_NOT_FOUND => 4,
-            ERROR_ID_ASSET_SCHEME_DUPLICATED => 2,
+            ERROR_ID_ASSET_SCHEME_DUPLICATED => 3,
             ERROR_ID_ASSET_SCHEME_NOT_FOUND => 3,
             ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => 1,
             ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => 1,
@@ -174,9 +177,10 @@ impl Encodable for Error {
                 tracker,
                 index,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_NOT_FOUND).append(shard_id).append(tracker).append(index),
-            Error::AssetSchemeDuplicated(addr) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_DUPLICATED).append(addr)
-            }
+            Error::AssetSchemeDuplicated {
+                tracker,
+                shard_id,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_DUPLICATED).append(tracker).append(shard_id),
             Error::AssetSchemeNotFound {
                 asset_type,
                 shard_id,
@@ -273,7 +277,10 @@ impl Decodable for Error {
                 tracker: rlp.val_at(2)?,
                 index: rlp.val_at(3)?,
             },
-            ERROR_ID_ASSET_SCHEME_DUPLICATED => Error::AssetSchemeDuplicated(rlp.val_at(1)?),
+            ERROR_ID_ASSET_SCHEME_DUPLICATED => Error::AssetSchemeDuplicated {
+                tracker: rlp.val_at(1)?,
+                shard_id: rlp.val_at(2)?,
+            },
             ERROR_ID_ASSET_SCHEME_NOT_FOUND => Error::AssetSchemeNotFound {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
@@ -337,7 +344,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         match self {
             Error::AssetNotFound { shard_id, tracker, index } => write!(f, "Asset not found: {}:{}:{}", shard_id, tracker, index),
-            Error::AssetSchemeDuplicated(addr) => write!(f, "Asset scheme already exists: {}", addr),
+            Error::AssetSchemeDuplicated { tracker, shard_id} => write!(f, "Asset scheme already exists: {}:{}", shard_id, tracker),
             Error::AssetSchemeNotFound {
                 asset_type,
                 shard_id,
