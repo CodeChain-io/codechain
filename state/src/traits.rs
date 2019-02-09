@@ -112,7 +112,7 @@ pub trait TopStateView {
     fn asset_scheme(&self, shard_id: ShardId, asset_type: H160) -> TrieResult<Option<AssetScheme>> {
         match self.shard_state(shard_id)? {
             None => Ok(None),
-            Some(state) => state.asset_scheme(shard_id, asset_type),
+            Some(state) => state.asset_scheme(asset_type),
         }
     }
 
@@ -120,7 +120,7 @@ pub trait TopStateView {
     fn asset(&self, shard_id: ShardId, tracker: H256, index: usize) -> TrieResult<Option<OwnedAsset>> {
         match self.shard_state(shard_id)? {
             None => Ok(None),
-            Some(state) => state.asset(shard_id, tracker, index),
+            Some(state) => state.asset(tracker, index),
         }
     }
 
@@ -131,9 +131,9 @@ pub trait TopStateView {
 
 pub trait ShardStateView {
     /// Get the asset scheme.
-    fn asset_scheme(&self, shard_id: ShardId, asset_type: H160) -> TrieResult<Option<AssetScheme>>;
+    fn asset_scheme(&self, asset_type: H160) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
-    fn asset(&self, shard_id: ShardId, tracker: H256, index: usize) -> TrieResult<Option<OwnedAsset>>;
+    fn asset(&self, tracker: H256, index: usize) -> TrieResult<Option<OwnedAsset>>;
 }
 
 pub trait ShardState {

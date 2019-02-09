@@ -129,7 +129,7 @@ impl TopStateView for TopLevelState {
             // FIXME: Find a way to use stored cache.
             Some(shard_root) => {
                 let shard_cache = self.shard_caches.get(&shard_id).cloned().unwrap_or_default();
-                Ok(Some(Box::new(ShardLevelState::read_only(&self.db, shard_root, shard_cache)?)))
+                Ok(Some(Box::new(ShardLevelState::read_only(shard_id, &self.db, shard_root, shard_cache)?)))
             }
             None => Ok(None),
         }
