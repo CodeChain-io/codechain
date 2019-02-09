@@ -434,7 +434,7 @@ describe("solo - 1 node", function() {
             it("expiration");
         });
 
-        describe("In assetComposeTransaction", function() {
+        describe.skip("In assetComposeTransaction", function() {
             let encoded: any[];
             beforeEach(async function() {
                 const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
@@ -533,7 +533,7 @@ describe("solo - 1 node", function() {
             it("lockscript/unlockscript");
         });
 
-        describe("In assetDecomposeTransaction", function() {
+        describe.skip("In assetDecomposeTransaction", function() {
             let encoded: any[];
             beforeEach(async function() {
                 const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
