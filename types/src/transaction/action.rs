@@ -861,7 +861,7 @@ fn check_duplication_in_prev_out(
         let prev_out = (input.prev_out.tracker, input.prev_out.index);
         if !prev_out_set.insert(prev_out) {
             return Err(SyntaxError::DuplicatedPreviousOutput {
-                transaction_hash: input.prev_out.tracker,
+                tracker: input.prev_out.tracker,
                 index: input.prev_out.index,
             })
         }

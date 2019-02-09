@@ -28,8 +28,15 @@ use crate::ShardId;
 #[serde(tag = "type", content = "content")]
 pub enum Error {
     /// Desired input asset not found
-    AssetNotFound(H256),
-    AssetSchemeDuplicated(H256),
+    AssetNotFound {
+        shard_id: ShardId,
+        tracker: H256,
+        index: usize,
+    },
+    AssetSchemeDuplicated {
+        tracker: H256,
+        shard_id: ShardId,
+    },
     /// Desired input asset scheme not found
     AssetSchemeNotFound {
         asset_type: H160,
@@ -39,7 +46,9 @@ pub enum Error {
     CannotComposeCentralizedAsset,
     /// Script execution result is `Fail`
     FailedToUnlock {
-        address: H256,
+        shard_id: ShardId,
+        tracker: H256,
+        index: usize,
         reason: UnlockFailureReason,
     },
     InconsistentShardOutcomes,
@@ -53,7 +62,9 @@ pub enum Error {
     },
     InsufficientPermission,
     InvalidAssetQuantity {
-        address: H256,
+        shard_id: ShardId,
+        tracker: H256,
+        index: usize,
         expected: u64,
         got: u64,
     },
@@ -126,16 +137,16 @@ impl TaggedRlp for RlpHelper {
 
     fn length_of(tag: u8) -> Result<usize, DecoderError> {
         Ok(match tag {
-            ERROR_ID_ASSET_NOT_FOUND => 2,
-            ERROR_ID_ASSET_SCHEME_DUPLICATED => 2,
+            ERROR_ID_ASSET_NOT_FOUND => 4,
+            ERROR_ID_ASSET_SCHEME_DUPLICATED => 3,
             ERROR_ID_ASSET_SCHEME_NOT_FOUND => 3,
             ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => 1,
             ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => 1,
-            ERROR_ID_FAILED_TO_UNLOCK => 3,
+            ERROR_ID_FAILED_TO_UNLOCK => 5,
             ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => 1,
             ERROR_ID_INSUFFICIENT_BALANCE => 4,
             ERROR_ID_INSUFFICIENT_PERMISSION => 1,
-            ERROR_ID_INVALID_ASSET_QUANTITY => 4,
+            ERROR_ID_INVALID_ASSET_QUANTITY => 6,
             ERROR_ID_INVALID_ASSET_TYPE => 2,
             ERROR_ID_INVALID_DECOMPOSED_INPUT => 4,
             ERROR_ID_INVALID_DECOMPOSED_OUTPUT => 5,
@@ -161,10 +172,15 @@ impl TaggedRlp for RlpHelper {
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Error::AssetNotFound(addr) => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_NOT_FOUND).append(addr),
-            Error::AssetSchemeDuplicated(addr) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_DUPLICATED).append(addr)
-            }
+            Error::AssetNotFound {
+                shard_id,
+                tracker,
+                index,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_NOT_FOUND).append(shard_id).append(tracker).append(index),
+            Error::AssetSchemeDuplicated {
+                tracker,
+                shard_id,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_DUPLICATED).append(tracker).append(shard_id),
             Error::AssetSchemeNotFound {
                 asset_type,
                 shard_id,
@@ -174,9 +190,15 @@ impl Encodable for Error {
                 RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET)
             }
             Error::FailedToUnlock {
-                address,
+                shard_id,
+                tracker,
+                index,
                 reason,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_FAILED_TO_UNLOCK).append(address).append(reason),
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_FAILED_TO_UNLOCK)
+                .append(shard_id)
+                .append(tracker)
+                .append(index)
+                .append(reason),
             Error::InconsistentShardOutcomes => RlpHelper::new_tagged_list(s, ERROR_ID_INCONSISTENT_SHARD_OUTCOMES),
             Error::InsufficientBalance {
                 address,
@@ -188,11 +210,15 @@ impl Encodable for Error {
                 .append(cost),
             Error::InsufficientPermission => RlpHelper::new_tagged_list(s, ERROR_ID_INSUFFICIENT_PERMISSION),
             Error::InvalidAssetQuantity {
-                address,
+                shard_id,
+                tracker,
+                index,
                 expected,
                 got,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_QUANTITY)
-                .append(address)
+                .append(shard_id)
+                .append(tracker)
+                .append(index)
                 .append(expected)
                 .append(got),
             Error::InvalidAssetType(addr) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_TYPE).append(addr),
@@ -246,8 +272,15 @@ impl Decodable for Error {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at::<u8>(0)?;
         let error = match tag {
-            ERROR_ID_ASSET_NOT_FOUND => Error::AssetNotFound(rlp.val_at(1)?),
-            ERROR_ID_ASSET_SCHEME_DUPLICATED => Error::AssetSchemeDuplicated(rlp.val_at(1)?),
+            ERROR_ID_ASSET_NOT_FOUND => Error::AssetNotFound {
+                shard_id: rlp.val_at(1)?,
+                tracker: rlp.val_at(2)?,
+                index: rlp.val_at(3)?,
+            },
+            ERROR_ID_ASSET_SCHEME_DUPLICATED => Error::AssetSchemeDuplicated {
+                tracker: rlp.val_at(1)?,
+                shard_id: rlp.val_at(2)?,
+            },
             ERROR_ID_ASSET_SCHEME_NOT_FOUND => Error::AssetSchemeNotFound {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
@@ -255,8 +288,10 @@ impl Decodable for Error {
             ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => Error::CannotBurnCentralizedAsset,
             ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => Error::CannotComposeCentralizedAsset,
             ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock {
-                address: rlp.val_at(1)?,
-                reason: rlp.val_at(2)?,
+                shard_id: rlp.val_at(1)?,
+                tracker: rlp.val_at(2)?,
+                index: rlp.val_at(3)?,
+                reason: rlp.val_at(4)?,
             },
             ERROR_ID_INCONSISTENT_SHARD_OUTCOMES => Error::InconsistentShardOutcomes,
             ERROR_ID_INSUFFICIENT_BALANCE => Error::InsufficientBalance {
@@ -266,9 +301,11 @@ impl Decodable for Error {
             },
             ERROR_ID_INSUFFICIENT_PERMISSION => Error::InsufficientPermission,
             ERROR_ID_INVALID_ASSET_QUANTITY => Error::InvalidAssetQuantity {
-                address: rlp.val_at(1)?,
-                expected: rlp.val_at(2)?,
-                got: rlp.val_at(3)?,
+                shard_id: rlp.val_at(1)?,
+                tracker: rlp.val_at(2)?,
+                index: rlp.val_at(3)?,
+                expected: rlp.val_at(4)?,
+                got: rlp.val_at(5)?,
             },
             ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
             ERROR_ID_INVALID_DECOMPOSED_INPUT => Error::InvalidDecomposedInput {
@@ -306,8 +343,8 @@ impl Decodable for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
         match self {
-            Error::AssetNotFound(addr) => write!(f, "Asset not found: {}", addr),
-            Error::AssetSchemeDuplicated(addr) => write!(f, "Asset scheme already exists: {}", addr),
+            Error::AssetNotFound { shard_id, tracker, index } => write!(f, "Asset not found: {}:{}:{}", shard_id, tracker, index),
+            Error::AssetSchemeDuplicated { tracker, shard_id} => write!(f, "Asset scheme already exists: {}:{}", shard_id, tracker),
             Error::AssetSchemeNotFound {
                 asset_type,
                 shard_id,
@@ -315,9 +352,11 @@ impl Display for Error {
             Error::CannotBurnCentralizedAsset => write!(f, "Cannot burn the centralized asset"),
             Error::CannotComposeCentralizedAsset => write!(f, "Cannot compose the centralized asset"),
             Error::FailedToUnlock {
-                address,
+                shard_id,
+                tracker,
+                index,
                 reason,
-            } => write!(f, "Failed to unlock asset {}, reason: {}", address, reason),
+            } => write!(f, "Failed to unlock asset {}:{}:{}, reason: {}", shard_id, tracker, index, reason),
             Error::InconsistentShardOutcomes => write!(f, "Shard outcomes are inconsistent"),
             Error::InsufficientBalance {
                 address,
@@ -326,13 +365,15 @@ impl Display for Error {
             } => write!(f, "{} has only {:?} but it must be larger than {:?}", address, balance, cost),
             Error::InsufficientPermission => write!(f, "Sender doesn't have a permission"),
             Error::InvalidAssetQuantity {
-                address,
+                shard_id,
+                tracker,
+                index,
                 expected,
                 got,
             } => write!(
                 f,
-                "AssetTransfer must consume input asset completely. The quantity of asset({}) must be {}, but {}.",
-                address, expected, got
+                "AssetTransfer must consume input asset completely. The quantity of asset({}:{}:{}) must be {}, but {}.",
+                shard_id, tracker, index, expected, got
             ),
             Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
             Error::InvalidDecomposedInput {
