@@ -36,7 +36,7 @@ impl Decodable for BlockInvoices {
         let invoices = rlp
             .as_list::<Vec<u8>>()?
             .iter()
-            .map(|invoice| UntrustedRlp::new(&invoice).as_val::<Invoice>())
+            .map(|invoice| Invoice::recover_from_bytes(&invoice))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
             invoices,
@@ -48,8 +48,7 @@ impl Encodable for BlockInvoices {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(self.invoices.len());
         for i in self.invoices.iter() {
-            let encoded = i.rlp_bytes();
-            s.append(&encoded.into_vec());
+            s.append(&i.bytes_to_store());
         }
     }
 }
