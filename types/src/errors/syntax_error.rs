@@ -86,6 +86,7 @@ pub enum Error {
     ZeroQuantity,
     CannotChangeWcccAssetScheme,
     DisabledTransaction,
+    InvalidSignerOfWrapCCC,
 }
 
 const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 1;
@@ -113,6 +114,7 @@ const ERROR_ID_TX_IS_TOO_BIG: u8 = 25;
 const ERROR_ID_ZERO_QUANTITY: u8 = 26;
 const ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME: u8 = 27;
 const ERROR_ID_DISABLED_TRANSACTION: u8 = 28;
+const ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC: u8 = 29;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -145,6 +147,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_ZERO_QUANTITY => 1,
             ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => 1,
             ERROR_ID_DISABLED_TRANSACTION => 1,
+            ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => 1,
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         })
     }
@@ -216,6 +219,7 @@ impl Encodable for Error {
                 RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME)
             }
             Error::DisabledTransaction => RlpHelper::new_tagged_list(s, ERROR_ID_DISABLED_TRANSACTION),
+            Error::InvalidSignerOfWrapCCC => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC),
         };
     }
 }
@@ -265,6 +269,7 @@ impl Decodable for Error {
             ERROR_ID_ZERO_QUANTITY => Error::ZeroQuantity,
             ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => Error::CannotChangeWcccAssetScheme,
             ERROR_ID_DISABLED_TRANSACTION => Error::DisabledTransaction,
+            ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => Error::InvalidSignerOfWrapCCC,
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -317,6 +322,7 @@ impl Display for Error {
             Error::ZeroQuantity  => write!(f, "A quantity cannot be 0"),
             Error::CannotChangeWcccAssetScheme => write!(f, "Cannot change the asset scheme of WCCC"),
             Error::DisabledTransaction => write!(f, "Used the disabled transaction"),
+            Error::InvalidSignerOfWrapCCC => write!(f, "The signer of WrapCCC must be matched"),
         }
     }
 }

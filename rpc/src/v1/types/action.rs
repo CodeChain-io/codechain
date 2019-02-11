@@ -67,6 +67,15 @@ pub enum Action {
         approvals: Vec<Signature>,
     },
     #[serde(rename_all = "camelCase")]
+    IncreaseAssetSupply {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        asset_type: H160,
+        output: Box<AssetMintOutput>,
+
+        approvals: Vec<Signature>,
+    },
+    #[serde(rename_all = "camelCase")]
     ComposeAsset {
         network_id: NetworkId,
         shard_id: ShardId,
@@ -116,6 +125,7 @@ pub enum Action {
         lock_script_hash: H160,
         parameters: Vec<String>,
         quantity: Uint,
+        payer: PlatformAddress,
     },
     Store {
         content: String,
@@ -180,6 +190,17 @@ pub enum ActionWithTracker {
         tracker: H256,
     },
     #[serde(rename_all = "camelCase")]
+    IncreaseAssetSupply {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        asset_type: H160,
+        output: Box<AssetMintOutput>,
+
+        approvals: Vec<Signature>,
+
+        tracker: H256,
+    },
+    #[serde(rename_all = "camelCase")]
     ComposeAsset {
         network_id: NetworkId,
         shard_id: ShardId,
@@ -235,6 +256,7 @@ pub enum ActionWithTracker {
         lock_script_hash: H160,
         parameters: Vec<String>,
         quantity: Uint,
+        payer: PlatformAddress,
     },
     Store {
         content: String,
@@ -317,6 +339,20 @@ impl ActionWithTracker {
                 approvals,
                 tracker: tracker.unwrap(),
             },
+            ActionType::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output,
+                approvals,
+            } => ActionWithTracker::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output: Box::new((*output).into()),
+                approvals,
+                tracker: tracker.unwrap(),
+            },
             ActionType::ComposeAsset {
                 network_id,
                 shard_id,
@@ -391,13 +427,16 @@ impl ActionWithTracker {
                 lock_script_hash,
                 parameters,
                 quantity,
+                payer,
             } => {
                 let parameters = parameters.into_iter().map(|param| param.to_hex()).collect();
+                let payer = PlatformAddress::new_v1(network_id, payer);
                 ActionWithTracker::WrapCCC {
                     shard_id,
                     lock_script_hash,
                     parameters,
                     quantity: quantity.into(),
+                    payer,
                 }
             }
             ActionType::Store {
@@ -515,6 +554,22 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     approvals,
                 }
             }
+            Action::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output,
+                approvals,
+            } => {
+                let output_content = Result::<AssetMintOutputType, FromHexError>::from(*output)?;
+                ActionType::IncreaseAssetSupply {
+                    network_id,
+                    shard_id,
+                    asset_type,
+                    output: Box::new(output_content),
+                    approvals,
+                }
+            }
             Action::ComposeAsset {
                 network_id,
                 shard_id,
@@ -608,6 +663,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 lock_script_hash,
                 parameters,
                 quantity,
+                payer,
             } => {
                 let parameters = parameters.into_iter().map(|param| param.from_hex()).collect::<Result<_, _>>()?;
                 ActionType::WrapCCC {
@@ -615,6 +671,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     lock_script_hash,
                     parameters,
                     quantity: quantity.into(),
+                    payer: payer.try_into_address()?,
                 }
             }
             Action::Store {

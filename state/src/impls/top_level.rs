@@ -345,79 +345,28 @@ impl TopLevelState {
             Action::MintAsset {
                 approvals,
                 ..
-            } => {
-                let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's a mint transaction");
-                debug_assert_eq!(network_id, transaction.network_id());
-
-                let transaction_tracker = transaction.tracker();
-                let approvers = approvals
-                    .iter()
-                    .map(|signature| {
-                        let public = recover(&signature, &transaction_tracker)?;
-                        self.public_to_owner_address(&public)
-                    })
-                    .collect::<StateResult<Vec<_>>>()?;
-                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
             }
-            Action::TransferAsset {
+            | Action::TransferAsset {
+                approvals,
+                ..
+            }
+            | Action::ChangeAssetScheme {
+                approvals,
+                ..
+            }
+            | Action::IncreaseAssetSupply {
+                approvals,
+                ..
+            }
+            | Action::ComposeAsset {
+                approvals,
+                ..
+            }
+            | Action::DecomposeAsset {
                 approvals,
                 ..
             } => {
-                let transaction =
-                    Option::<ShardTransaction>::from(action.clone()).expect("It's a transfer transaction");
-                debug_assert_eq!(network_id, transaction.network_id());
-
-                let transaction_tracker = transaction.tracker();
-                let approvers = approvals
-                    .iter()
-                    .map(|signature| {
-                        let public = recover(&signature, &transaction_tracker)?;
-                        self.public_to_owner_address(&public)
-                    })
-                    .collect::<StateResult<Vec<_>>>()?;
-                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
-            }
-            Action::ChangeAssetScheme {
-                approvals,
-                ..
-            } => {
-                let transaction =
-                    Option::<ShardTransaction>::from(action.clone()).expect("It's a change scheme transaction");
-                debug_assert_eq!(network_id, transaction.network_id());
-
-                let transaction_tracker = transaction.tracker();
-                let approvers = approvals
-                    .iter()
-                    .map(|signature| {
-                        let public = recover(&signature, &transaction_tracker)?;
-                        self.public_to_owner_address(&public)
-                    })
-                    .collect::<StateResult<Vec<_>>>()?;
-                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
-            }
-            Action::ComposeAsset {
-                approvals,
-                ..
-            } => {
-                let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's a compose transaction");
-                debug_assert_eq!(network_id, transaction.network_id());
-
-                let transaction_tracker = transaction.tracker();
-                let approvers = approvals
-                    .iter()
-                    .map(|signature| {
-                        let public = recover(&signature, &transaction_tracker)?;
-                        self.public_to_owner_address(&public)
-                    })
-                    .collect::<StateResult<Vec<_>>>()?;
-                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
-            }
-            Action::DecomposeAsset {
-                approvals,
-                ..
-            } => {
-                let transaction =
-                    Option::<ShardTransaction>::from(action.clone()).expect("It's a decompose transaction");
+                let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's a shard transaction");
                 debug_assert_eq!(network_id, transaction.network_id());
 
                 let transaction_tracker = transaction.tracker();
@@ -473,6 +422,7 @@ impl TopLevelState {
                 lock_script_hash,
                 parameters,
                 quantity,
+                ..
             } => Ok(self.apply_wrap_ccc(
                 network_id,
                 *shard_id,

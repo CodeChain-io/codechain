@@ -27,6 +27,7 @@
     "minMintAssetCost" : 10,
     "minTransferAssetCost" : 10,
     "minChangeAssetSchemeCost" : 10,
+    "minIncreaseAssetSupplyCost" : 10,
     "minComposeAssetCost" : 10,
     "minDecomposeAssetCost" : 10,
     "minUnwrapCccCost" : 10,

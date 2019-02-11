@@ -91,9 +91,10 @@ mod tests {
                 "minMintAssetCost" : 19,
                 "minTransferAssetCost" : 20,
                 "minChangeAssetSchemeCost" : 21,
-                "minComposeAssetCost" : 22,
-                "minDecomposeAssetCost" : 23,
-                "minUnwrapCccCost" : 24,
+                "minIncreaseAssetSupplyCost" : 22,
+                "minComposeAssetCost" : 23,
+                "minDecomposeAssetCost" : 24,
+                "minUnwrapCccCost" : 25,
                 "maxBodySize": 4194304,
                 "snapshotPeriod": 16384
             },

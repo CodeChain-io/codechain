@@ -39,6 +39,7 @@ const TRANSFER_ASSET: u8 = 0x14;
 const CHANGE_ASSET_SCHEME: u8 = 0x15;
 const COMPOSE_ASSET: u8 = 0x16;
 const DECOMPOSE_ASSET: u8 = 0x17;
+const INCREASE_ASSET_SUPPLY: u8 = 0x18;
 
 const CUSTOM: u8 = 0xFF;
 
@@ -72,6 +73,13 @@ pub enum Action {
         approver: Option<Address>,
         administrator: Option<Address>,
         allowed_script_hashes: Vec<H160>,
+        approvals: Vec<Signature>,
+    },
+    IncreaseAssetSupply {
+        network_id: NetworkId,
+        shard_id: ShardId,
+        asset_type: H160,
+        output: Box<AssetMintOutput>,
         approvals: Vec<Signature>,
     },
     ComposeAsset {
@@ -117,6 +125,7 @@ pub enum Action {
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         quantity: u64,
+        payer: Address,
     },
     Custom {
         handler_id: u64,
@@ -143,20 +152,23 @@ impl Action {
         match self {
             Action::MintAsset {
                 ..
-            } => self.clone().into(),
-            Action::TransferAsset {
+            }
+            | Action::TransferAsset {
                 ..
-            } => self.clone().into(),
-            Action::ChangeAssetScheme {
+            }
+            | Action::ChangeAssetScheme {
                 ..
-            } => self.clone().into(),
-            Action::ComposeAsset {
+            }
+            | Action::IncreaseAssetSupply {
                 ..
-            } => self.clone().into(),
-            Action::DecomposeAsset {
+            }
+            | Action::ComposeAsset {
                 ..
-            } => self.clone().into(),
-            Action::UnwrapCCC {
+            }
+            | Action::DecomposeAsset {
+                ..
+            }
+            | Action::UnwrapCCC {
                 ..
             } => self.clone().into(),
             _ => None,
@@ -174,16 +186,18 @@ impl Action {
         max_transfer_metadata_size: usize,
         max_text_size: usize,
     ) -> Result<(), SyntaxError> {
+        if let Some(network_id) = self.network_id() {
+            if network_id != system_network_id {
+                return Err(SyntaxError::InvalidNetworkId(network_id))
+            }
+        }
+
         match self {
             Action::MintAsset {
-                network_id,
                 metadata,
                 output,
                 ..
             } => {
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -193,7 +207,6 @@ impl Action {
                 }
             }
             Action::TransferAsset {
-                network_id,
                 burns,
                 inputs,
                 outputs,
@@ -225,19 +238,12 @@ impl Action {
                 }
                 verify_order_indices(orders, inputs.len(), outputs.len())?;
                 verify_input_and_output_consistent_with_order(orders, inputs, outputs)?;
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
             }
             Action::ChangeAssetScheme {
-                network_id,
                 metadata,
                 asset_type,
                 ..
             } => {
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -245,8 +251,19 @@ impl Action {
                     return Err(SyntaxError::CannotChangeWcccAssetScheme)
                 }
             }
+            Action::IncreaseAssetSupply {
+                asset_type,
+                output,
+                ..
+            } => {
+                if output.supply.unwrap_or(0) == 0 {
+                    return Err(SyntaxError::ZeroQuantity)
+                }
+                if asset_type.is_zero() {
+                    return Err(SyntaxError::CannotChangeWcccAssetScheme)
+                }
+            }
             Action::ComposeAsset {
-                network_id,
                 metadata,
                 inputs,
                 output,
@@ -271,9 +288,6 @@ impl Action {
                         })
                     }
                 }
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -281,7 +295,6 @@ impl Action {
             Action::DecomposeAsset {
                 input,
                 outputs,
-                network_id,
                 ..
             } => {
                 let disable_decompose_asset = true;
@@ -301,22 +314,16 @@ impl Action {
                 if outputs.iter().any(|output| output.quantity == 0) {
                     return Err(SyntaxError::ZeroQuantity)
                 }
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
-                }
             }
             Action::UnwrapCCC {
                 burn,
-                network_id,
+                ..
             } => {
                 if burn.prev_out.quantity == 0 {
                     return Err(SyntaxError::ZeroQuantity)
                 }
                 if !burn.prev_out.asset_type.is_zero() {
                     return Err(SyntaxError::InvalidAssetType(burn.prev_out.asset_type))
-                }
-                if *network_id != system_network_id {
-                    return Err(SyntaxError::InvalidNetworkId(*network_id))
                 }
             }
             Action::WrapCCC {
@@ -338,6 +345,53 @@ impl Action {
             _ => {}
         }
         Ok(())
+    }
+
+    pub fn verify_with_signer_address(&self, signer: &Address) -> Result<(), SyntaxError> {
+        if let Action::WrapCCC {
+            payer,
+            ..
+        } = self
+        {
+            if payer != signer {
+                return Err(SyntaxError::InvalidSignerOfWrapCCC)
+            }
+        }
+        Ok(())
+    }
+
+    fn network_id(&self) -> Option<NetworkId> {
+        match self {
+            Action::MintAsset {
+                network_id,
+                ..
+            }
+            | Action::TransferAsset {
+                network_id,
+                ..
+            }
+            | Action::ChangeAssetScheme {
+                network_id,
+                ..
+            }
+            | Action::IncreaseAssetSupply {
+                network_id,
+                ..
+            }
+            | Action::ComposeAsset {
+                network_id,
+                ..
+            }
+            | Action::DecomposeAsset {
+                network_id,
+                ..
+            }
+            | Action::UnwrapCCC {
+                network_id,
+                ..
+            } => Some(*network_id),
+            _ => None,
+        }
     }
 }
 
@@ -504,6 +558,23 @@ impl Encodable for Action {
                     .append_list(allowed_script_hashes)
                     .append_list(approvals);
             }
+            Action::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output,
+                approvals,
+            } => {
+                s.begin_list(8)
+                    .append(&INCREASE_ASSET_SUPPLY)
+                    .append(network_id)
+                    .append(shard_id)
+                    .append(asset_type)
+                    .append(&output.lock_script_hash)
+                    .append(&output.parameters)
+                    .append(&output.supply)
+                    .append_list(approvals);
+            }
             Action::ComposeAsset {
                 network_id,
                 shard_id,
@@ -591,13 +662,15 @@ impl Encodable for Action {
                 lock_script_hash,
                 parameters,
                 quantity,
+                payer,
             } => {
-                s.begin_list(5);
+                s.begin_list(6);
                 s.append(&WRAP_CCC);
                 s.append(shard_id);
                 s.append(lock_script_hash);
                 s.append(parameters);
                 s.append(quantity);
+                s.append(payer);
             }
             Action::Store {
                 content,
@@ -684,6 +757,22 @@ impl Decodable for Action {
                     approvals: rlp.list_at(8)?,
                 })
             }
+            INCREASE_ASSET_SUPPLY => {
+                if rlp.item_count()? != 8 {
+                    return Err(DecoderError::RlpIncorrectListLen)
+                }
+                Ok(Action::IncreaseAssetSupply {
+                    network_id: rlp.val_at(1)?,
+                    shard_id: rlp.val_at(2)?,
+                    asset_type: rlp.val_at(3)?,
+                    output: Box::new(AssetMintOutput {
+                        lock_script_hash: rlp.val_at(4)?,
+                        parameters: rlp.val_at(5)?,
+                        supply: rlp.val_at(6)?,
+                    }),
+                    approvals: rlp.list_at(7)?,
+                })
+            }
             COMPOSE_ASSET => {
                 if rlp.item_count()? != 12 {
                     return Err(DecoderError::RlpIncorrectListLen)
@@ -766,7 +855,7 @@ impl Decodable for Action {
                 })
             }
             WRAP_CCC => {
-                if rlp.item_count()? != 5 {
+                if rlp.item_count()? != 6 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 Ok(Action::WrapCCC {
@@ -774,6 +863,7 @@ impl Decodable for Action {
                     lock_script_hash: rlp.val_at(2)?,
                     parameters: rlp.val_at(3)?,
                     quantity: rlp.val_at(4)?,
+                    payer: rlp.val_at(5)?,
                 })
             }
             STORE => {
@@ -1887,6 +1977,7 @@ mod tests {
             lock_script_hash: H160::random(),
             parameters: vec![],
             quantity: 0,
+            payer: Address::random(),
         };
         assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000), Err(SyntaxError::ZeroQuantity));
     }
