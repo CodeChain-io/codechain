@@ -59,14 +59,13 @@ mod tests {
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
-    use crate::errors::RuntimeError;
 
     #[test]
     fn rlp_encode_and_decode_block_invoices() {
         rlp_encode_and_decode_test!(BlockInvoices {
             invoices: vec![
                 Invoice::Success,
-                Invoice::Failure(RuntimeError::CannotBurnCentralizedAsset),
+                Invoice::Failure("There are some failure reasons.".to_string()),
                 Invoice::Success,
             ],
         });

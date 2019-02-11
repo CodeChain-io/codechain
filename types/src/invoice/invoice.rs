@@ -18,12 +18,10 @@ use primitives::Bytes;
 use rlp::{DecoderError, RlpStream, UntrustedRlp};
 use serde::{Serialize, Serializer};
 
-use crate::errors::RuntimeError;
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum Invoice {
     Success,
-    Failure(RuntimeError),
+    Failure(String),
 }
 
 const INVOICE_ID_SINGLE_SUCCESS: u8 = 1u8;
@@ -87,7 +85,6 @@ impl Invoice {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::errors::RuntimeError;
 
     #[test]
     fn encode_and_decode_single_success_tx_invoice() {
@@ -98,7 +95,7 @@ mod tests {
 
     #[test]
     fn encode_and_decode_single_failed_tx_invoice() {
-        let origin = Invoice::Failure(RuntimeError::CannotBurnCentralizedAsset);
+        let origin = Invoice::Failure("It failed because it's an invalid transaction.".to_string());
         let bytes = origin.bytes_to_store();
         assert_eq!(Ok(origin), Invoice::recover_from_bytes(&bytes));
     }
