@@ -253,16 +253,8 @@ impl<'db> ShardLevelState<'db> {
 
         ctrace!(TX, "{:?} is minted on {}:{:?}", asset_scheme, self.shard_id, asset_type);
 
-        let asset = self.create_asset(
-            transaction_tracker,
-            0,
-            asset_type,
-            *lock_script_hash,
-            parameters.to_vec(),
-            supply,
-            None,
-        )?;
-        ctrace!(TX, "{:?} is generated on {}:{}", asset, transaction_tracker, 0);
+        self.create_asset(transaction_tracker, 0, asset_type, *lock_script_hash, parameters.to_vec(), supply, None)?;
+        ctrace!(TX, "Created asset on {}:{}:{}", self.shard_id, transaction_tracker, 0);
         Ok(())
     }
 
@@ -309,13 +301,11 @@ impl<'db> ShardLevelState<'db> {
             self.kill_asset(input.prev_out.tracker, input.prev_out.index);
             deleted_asset.push((input.prev_out.tracker, input.prev_out.index, input.prev_out.quantity));
         }
-        let mut created_asset = Vec::with_capacity(outputs.len());
+        let transaction_tracker = transaction.tracker();
         for (index, output) in outputs.iter().enumerate() {
             self.check_output_script_hash(output)?;
-
-            let asset_address = OwnedAssetAddress::new(transaction.tracker(), index, self.shard_id);
-            let _asset = self.create_asset(
-                transaction.tracker(),
+            self.create_asset(
+                transaction_tracker,
                 index,
                 output.asset_type,
                 output.lock_script_hash,
@@ -323,7 +313,6 @@ impl<'db> ShardLevelState<'db> {
                 output.quantity,
                 output_order_hashes[index],
             )?;
-            created_asset.push((asset_address, output.quantity));
         }
         let mut reduced_supplies = Vec::with_capacity(burns.len());
         for burn in burns {
@@ -339,7 +328,7 @@ impl<'db> ShardLevelState<'db> {
         }
 
         ctrace!(TX, "Deleted assets on {} {:?}", self.shard_id, deleted_asset);
-        ctrace!(TX, "Created assets {:?}", created_asset);
+        ctrace!(TX, "Created assets {}:{}:(0..{})", self.shard_id, transaction_tracker, outputs.len());
         ctrace!(TX, "Reduced asset supplies {:?}", reduced_supplies);
         Ok(())
     }
@@ -697,9 +686,10 @@ impl<'db> ShardLevelState<'db> {
         ctrace!(TX, "Reduced asset supply {:?} {:?} {:?}", asset_type, previous_supply, quantity);
 
         // Put asset into DB
+        let transaction_tracker = transaction.tracker();
         for (index, output) in outputs.iter().enumerate() {
-            let _asset = self.create_asset(
-                transaction.tracker(),
+            self.create_asset(
+                transaction_tracker,
                 index,
                 output.asset_type,
                 output.lock_script_hash,
@@ -708,6 +698,7 @@ impl<'db> ShardLevelState<'db> {
                 None,
             )?;
         }
+        ctrace!(TX, "Created assets {}:{}:(0..{})", self.shard_id, transaction_tracker, outputs.len());
 
         Ok(())
     }
@@ -737,9 +728,8 @@ impl<'db> ShardLevelState<'db> {
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
         asset_scheme.increase_supply(quantity);
 
-        let asset =
-            self.create_asset(*tx_hash, 0, asset_type, *lock_script_hash, parameters.to_vec(), quantity, None)?;
-        ctrace!(TX, "Created Wrapped CCC {:?} on {}:{}", asset, tx_hash, 0);
+        self.create_asset(*tx_hash, 0, asset_type, *lock_script_hash, parameters.to_vec(), quantity, None)?;
+        ctrace!(TX, "Created Wrapped CCC on {}:{}:{}", self.shard_id, tx_hash, 0);
         Ok(())
     }
 
