@@ -872,8 +872,7 @@ impl TendermintInner {
                     block,
                 } => {
                     cdebug!(ENGINE, "Empty proposal timer is finished, go to the prevote step and broadcast the block");
-                    self.move_to_step(Step::Prevote, false);
-                    self.broadcast_proposal_block(encoded::Block::new(block.rlp_bytes()));
+                    self.submit_proposal_block(block.as_ref());
                 }
                 _ => {
                     cwarn!(ENGINE, "Empty proposal timer was not cleared.");
