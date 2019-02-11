@@ -221,7 +221,7 @@ describe("sync 2 nodes", function() {
                     await nodeA.signTransactionInput(tx1, 0);
                     const invoices1 = await nodeA.sendAssetTransaction(tx1);
                     expect(invoices1!.length).to.equal(1);
-                    expect(invoices1![0].success).to.be.true;
+                    expect(invoices1![0]).to.be.true;
 
                     tx2 = nodeA.sdk.core.createTransferAssetTransaction();
                     tx2.addInputs(asset);
@@ -234,14 +234,14 @@ describe("sync 2 nodes", function() {
                     await nodeA.signTransactionInput(tx2, 0);
                     const invoicesA = await nodeA.sendAssetTransaction(tx2);
                     expect(invoicesA!.length).to.equal(1);
-                    expect(invoicesA![0].success).to.be.false;
+                    expect(invoicesA![0]).to.be.false;
 
                     // FIXME
                     tx2._fee = null;
                     tx2._seq = null;
                     const invoicesB = await nodeB.sendAssetTransaction(tx2);
                     expect(invoicesB!.length).to.equal(1);
-                    expect(invoicesB![0].success).to.be.true;
+                    expect(invoicesB![0]).to.be.true;
 
                     expect(await nodeA.getBestBlockNumber()).to.equal(
                         (await nodeB.getBestBlockNumber()) + 1
@@ -260,13 +260,13 @@ describe("sync 2 nodes", function() {
                             tx2.tracker()
                         );
                         expect(invoicesA!.length).to.equal(1);
-                        expect(invoicesA![0].success).to.be.false;
+                        expect(invoicesA![0]).to.be.false;
 
                         const invoicesB = await nodeB.sdk.rpc.chain.getInvoicesByTracker(
                             tx2.tracker()
                         );
                         expect(invoicesB!.length).to.equal(1);
-                        expect(invoicesB![0].success).to.be.false;
+                        expect(invoicesB![0]).to.be.false;
                     }).timeout(30_000);
                 });
 
@@ -290,13 +290,13 @@ describe("sync 2 nodes", function() {
                             tx2.tracker()
                         );
                         expect(invoicesA!.length).to.equal(1);
-                        expect(invoicesA![0].success).to.be.true;
+                        expect(invoicesA![0]).to.be.true;
 
                         const invoicesB = await nodeB.sdk.rpc.chain.getInvoicesByTracker(
                             tx2.tracker()
                         );
                         expect(invoicesB!.length).to.equal(1);
-                        expect(invoicesB![0].success).to.be.true;
+                        expect(invoicesB![0]).to.be.true;
                     }).timeout(30_000);
                 });
             });

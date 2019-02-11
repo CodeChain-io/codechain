@@ -70,7 +70,7 @@ describe("orders", function() {
 
                 const splitInvoices = await node.sendAssetTransaction(splitTx);
                 expect(splitInvoices!.length).to.equal(1);
-                expect(splitInvoices![0].success).to.be.true;
+                expect(splitInvoices![0]).to.be.true;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map((g: Asset) =>
@@ -208,7 +208,7 @@ describe("orders", function() {
 
                 const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
-                expect(invoices![0].success).to.be.true;
+                expect(invoices![0]).to.be.true;
             });
 
             it("Correct order, correct transfer - Many originOutputs", async function() {
@@ -228,7 +228,7 @@ describe("orders", function() {
 
                 const splitInvoices = await node.sendAssetTransaction(splitTx);
                 expect(splitInvoices!.length).to.equal(1);
-                expect(splitInvoices![0].success).to.be.true;
+                expect(splitInvoices![0]).to.be.true;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map(g =>
@@ -293,7 +293,7 @@ describe("orders", function() {
 
                 const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
-                expect(invoices![0].success).to.be.true;
+                expect(invoices![0]).to.be.true;
             }).timeout(10_000);
 
             it("Correct order, correct transfer - Output(to) is empty", async function() {
@@ -346,7 +346,7 @@ describe("orders", function() {
 
                 const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
-                expect(invoices![0].success).to.be.true;
+                expect(invoices![0]).to.be.true;
             });
 
             it("Correct two orders, correct transfer - Ratio is same", async function() {
@@ -424,7 +424,7 @@ describe("orders", function() {
 
                 const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
-                expect(invoices![0].success).to.be.true;
+                expect(invoices![0]).to.be.true;
             });
 
             it("Correct two orders, correct transfer - Ratio is different", async function() {
@@ -504,7 +504,7 @@ describe("orders", function() {
 
                 const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
-                expect(invoices![0].success).to.be.true;
+                expect(invoices![0]).to.be.true;
             });
 
             it("Correct order, wrong transfer - Output(from) is empty", async function() {
@@ -1173,7 +1173,7 @@ describe("orders", function() {
 
                 const splitInvoices = await node.sendAssetTransaction(splitTx);
                 expect(splitInvoices!.length).to.equal(1);
-                expect(splitInvoices![0].success).to.be.true;
+                expect(splitInvoices![0]).to.be.true;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map(g =>
@@ -1240,13 +1240,7 @@ describe("orders", function() {
 
                 const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
-                expect(invoices![0]).to.be.similarTo({
-                    success: false,
-                    error: {
-                        type: "InvalidOriginOutputs",
-                        content: $anything
-                    }
-                });
+                expect(invoices![0]).to.be.false;
             }).timeout(10_000);
 
             it("Wrong order - originOutputs are wrong (many outputs)", async function() {
@@ -1266,7 +1260,7 @@ describe("orders", function() {
 
                 const splitInvoices = await node.sendAssetTransaction(splitTx);
                 expect(splitInvoices!.length).to.equal(1);
-                expect(splitInvoices![0].success).to.be.true;
+                expect(splitInvoices![0]).to.be.true;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map(g =>
@@ -1331,13 +1325,7 @@ describe("orders", function() {
 
                 const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
-                expect(invoices![0]).to.be.similarTo({
-                    success: false,
-                    error: {
-                        type: "InvalidOriginOutputs",
-                        content: $anything
-                    }
-                });
+                expect(invoices![0]).to.be.false;
             }).timeout(10_000);
 
             it("Wrong order - Ratio is wrong (from is zero)", async function() {
@@ -1609,7 +1597,7 @@ describe("orders", function() {
 
                 const invoices1 = await node.sendAssetTransaction(transferTx1);
                 expect(invoices1!.length).to.equal(1);
-                expect(invoices1![0].success).to.be.true;
+                expect(invoices1![0]).to.be.true;
 
                 const orderConsumed = order.consume(50);
                 const transferTx2 = node.sdk.core
@@ -1655,7 +1643,7 @@ describe("orders", function() {
 
                 const invoices2 = await node.sendAssetTransaction(transferTx2);
                 expect(invoices2!.length).to.equal(1);
-                expect(invoices2![0].success).to.be.true;
+                expect(invoices2![0]).to.be.true;
             }).timeout(10_000);
 
             it("Successful partial cancel", async function() {
@@ -1714,7 +1702,7 @@ describe("orders", function() {
 
                 const invoices1 = await node.sendAssetTransaction(transferTx1);
                 expect(invoices1!.length).to.equal(1);
-                expect(invoices1![0].success).to.be.true;
+                expect(invoices1![0]).to.be.true;
 
                 const transferTx2 = node.sdk.core
                     .createTransferAssetTransaction()
@@ -1741,7 +1729,7 @@ describe("orders", function() {
 
                 const invoices2 = await node.sendAssetTransaction(transferTx2);
                 expect(invoices2!.length).to.equal(1);
-                expect(invoices2![0].success).to.be.true;
+                expect(invoices2![0]).to.be.true;
             });
         }).timeout(10_000);
 
@@ -1812,7 +1800,7 @@ describe("orders", function() {
 
                 const invoices = await node.sendAssetTransaction(transferTx);
                 expect(invoices!.length).to.equal(1);
-                expect(invoices![0].success).to.be.true;
+                expect(invoices![0]).to.be.true;
             }).timeout(10_000);
         });
     });
