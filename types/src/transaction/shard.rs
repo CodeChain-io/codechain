@@ -202,16 +202,6 @@ impl ShardTransaction {
         }
     }
 
-    pub fn unwrapped_quantity(&self) -> u64 {
-        match self {
-            ShardTransaction::UnwrapCCC {
-                burn,
-                ..
-            } => burn.prev_out.quantity,
-            _ => 0,
-        }
-    }
-
     fn is_valid_output_index(&self, index: usize) -> bool {
         match self {
             ShardTransaction::MintAsset {
