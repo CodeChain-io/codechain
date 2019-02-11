@@ -435,7 +435,7 @@ impl<'db> ShardLevelState<'db> {
         let additional_supply = output.supply.unwrap();
 
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, *asset_type)?;
-        let previous_supply = asset_scheme.increase_supply(additional_supply);
+        let previous_supply = asset_scheme.increase_supply(additional_supply)?;
         self.create_asset(
             transaction_tracker,
             index,
@@ -777,7 +777,7 @@ impl<'db> ShardLevelState<'db> {
             ctrace!(TX, "Wrapped CCC in shard {} ({:?}) is minted on {:?}", self.shard_id, asset_scheme, asset_type);
         }
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
-        asset_scheme.increase_supply(quantity);
+        asset_scheme.increase_supply(quantity)?;
 
         self.create_asset(*tx_hash, 0, asset_type, *lock_script_hash, parameters.to_vec(), quantity, None)?;
         ctrace!(TX, "Created Wrapped CCC on {}:{}:{}", self.shard_id, tx_hash, 0);

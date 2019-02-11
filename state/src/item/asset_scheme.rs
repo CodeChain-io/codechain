@@ -16,6 +16,7 @@
 
 use ccrypto::Blake;
 use ckey::Address;
+use ctypes::errors::RuntimeError;
 use ctypes::ShardId;
 use primitives::{H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -119,11 +120,14 @@ impl AssetScheme {
         self.allowed_script_hashes = allowed_script_hashes;
     }
 
-    pub fn increase_supply(&mut self, quantity: u64) -> u64 {
-        assert!(std::u64::MAX - quantity > self.supply, "AssetScheme supply shouldn't be overflowed");
+    pub fn increase_supply(&mut self, quantity: u64) -> Result<u64, RuntimeError> {
+        let headroom = std::u64::MAX - self.supply;
+        if quantity > headroom {
+            return Err(RuntimeError::AssetSupplyOverflow)
+        }
         let previous = self.supply;
         self.supply += quantity;
-        previous
+        Ok(previous)
     }
 
     pub fn reduce_supply(&mut self, quantity: u64) -> u64 {
