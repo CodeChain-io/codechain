@@ -241,7 +241,7 @@ impl HeaderChain {
         let parent_hash_of_new_header = new_header.parent_hash();
         let parent_details_of_new_header = self.block_details(&parent_hash_of_new_header).expect("Invalid parent hash");
         let is_new_best = parent_details_of_new_header.total_score + new_header.score()
-            > self.best_header_detail().total_score
+            > self.best_proposal_header_detail().total_score
             && engine.can_change_canon_chain(&new_header);
 
         if is_new_best {
@@ -316,12 +316,12 @@ impl HeaderChain {
         self.block_header_data(&self.best_header_hash()).expect("Best header always exists")
     }
 
-    pub fn best_header_detail(&self) -> BlockDetails {
-        self.block_details(&self.best_header_hash()).expect("Best header always exists")
-    }
-
     pub fn best_proposal_header(&self) -> encoded::Header {
         self.block_header_data(&self.best_proposal_header_hash()).expect("Highest header always exists")
+    }
+
+    pub fn best_proposal_header_detail(&self) -> BlockDetails {
+        self.block_details(&self.best_proposal_header_hash()).expect("Best Proposal header always exists")
     }
 }
 
