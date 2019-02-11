@@ -43,7 +43,9 @@ use ckey::{public_to_address, recover, verify_address, Address, NetworkId, Publi
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::errors::RuntimeError;
 use ctypes::invoice::Invoice;
-use ctypes::transaction::{Action, AssetWrapCCCOutput, ShardTransaction, Transaction};
+use ctypes::transaction::{
+    Action, AssetOutPoint, AssetTransferInput, AssetWrapCCCOutput, ShardTransaction, Transaction,
+};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
@@ -380,11 +382,24 @@ impl TopLevelState {
                 Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
             }
             Action::UnwrapCCC {
+                burn:
+                    AssetTransferInput {
+                        prev_out:
+                            AssetOutPoint {
+                                quantity,
+                                ..
+                            },
+                        ..
+                    },
                 ..
             } => {
                 let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's an unwrap transaction");
                 debug_assert_eq!(network_id, transaction.network_id());
-                Ok(self.apply_shard_transaction(&transaction, fee_payer, &[], client)?)
+                let invoice = self.apply_shard_transaction(&transaction, fee_payer, &[], client)?;
+                if invoice == Invoice::Success {
+                    self.add_balance(fee_payer, *quantity)?;
+                }
+                Ok(invoice)
             }
             Action::Pay {
                 receiver,
@@ -517,8 +532,6 @@ impl TopLevelState {
             })
             .collect();
         if failed.is_empty() {
-            let unwrapped_quantity = transaction.unwrapped_quantity();
-            self.add_balance(sender, unwrapped_quantity)?;
             Ok(Invoice::Success)
         } else {
             Ok(Invoice::Failure(failed.join("\n")))
