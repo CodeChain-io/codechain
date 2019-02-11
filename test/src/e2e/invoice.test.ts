@@ -53,12 +53,12 @@ describe("invoice", function() {
         );
         expect(mintInvoices).not.to.be.null;
         expect(mintInvoices.length).to.equal(1);
-        expect(mintInvoices[0].success).to.be.true;
+        expect(mintInvoices[0]).to.be.true;
         const mintInvoice = (await node.sdk.rpc.chain.getInvoice(
             signedMint.hash()
         ))!;
         expect(mintInvoice).not.to.be.null;
-        expect(mintInvoice.success).to.be.true;
+        expect(mintInvoice).to.be.true;
     });
 
     it("Invoice of Transfer Asset", async function() {
@@ -117,33 +117,33 @@ describe("invoice", function() {
         );
         expect(mintInvoices).not.to.be.null;
         expect(mintInvoices.length).to.equal(1);
-        expect(mintInvoices[0].success).to.be.true;
+        expect(mintInvoices[0]).to.be.true;
 
         const transferInvoices = await node.sdk.rpc.chain.getInvoicesByTracker(
             transfer2.tracker()
         );
         expect(transferInvoices).not.to.be.null;
         expect(transferInvoices.length).to.equal(2);
-        expect(transferInvoices[0].success).to.be.false;
-        expect(transferInvoices[1].success).to.be.true;
+        expect(transferInvoices[0]).to.be.false;
+        expect(transferInvoices[1]).to.be.true;
 
         const transfer1Invoice = (await node.sdk.rpc.chain.getInvoice(
             signedTransfer1.hash()
         ))!;
         expect(transfer1Invoice).not.to.be.null;
-        expect(transfer1Invoice.success).to.be.false;
+        expect(transfer1Invoice).to.be.false;
 
         const mintInvoice = (await node.sdk.rpc.chain.getInvoice(
             signedMint.hash()
         ))!;
         expect(mintInvoice).not.to.be.null;
-        expect(mintInvoice.success).to.be.true;
+        expect(mintInvoice).to.be.true;
 
         const transfer2Invoice = (await node.sdk.rpc.chain.getInvoice(
             signedTransfer2.hash()
         ))!;
         expect(transfer2Invoice).not.to.be.null;
-        expect(transfer2Invoice.success).to.be.true;
+        expect(transfer2Invoice).to.be.true;
     });
 
     describe("In the same block", async function() {
@@ -208,33 +208,33 @@ describe("invoice", function() {
             );
             expect(mintInvoices).not.to.be.null;
             expect(mintInvoices.length).to.equal(1);
-            expect(mintInvoices[0].success).to.be.true;
+            expect(mintInvoices[0]).to.be.true;
 
             const transferInvoices = await node.sdk.rpc.chain.getInvoicesByTracker(
                 transfer2.tracker()
             );
             expect(transferInvoices).not.to.be.null;
             expect(transferInvoices.length).to.equal(2);
-            expect(transferInvoices[0].success).to.be.false;
-            expect(transferInvoices[1].success).to.be.true;
+            expect(transferInvoices[0]).to.be.false;
+            expect(transferInvoices[1]).to.be.true;
 
             const transfer1Invoice = (await node.sdk.rpc.chain.getInvoice(
                 signedTransfer1.hash()
             ))!;
             expect(transfer1Invoice).not.to.be.null;
-            expect(transfer1Invoice.success).to.be.false;
+            expect(transfer1Invoice).to.be.false;
 
             const mintInvoice = (await node.sdk.rpc.chain.getInvoice(
                 signedMint.hash()
             ))!;
             expect(mintInvoice).not.to.be.null;
-            expect(mintInvoice.success).to.be.true;
+            expect(mintInvoice).to.be.true;
 
             const transfer2Invoice = (await node.sdk.rpc.chain.getInvoice(
                 signedTransfer2.hash()
             ))!;
             expect(transfer2Invoice).not.to.be.null;
-            expect(transfer2Invoice.success).to.be.true;
+            expect(transfer2Invoice).to.be.true;
 
             const block = (await node.sdk.rpc.chain.getBlock(
                 blockNumberBeforeTx + 1

@@ -22,7 +22,6 @@ import {
     ComposeAsset,
     DecomposeAsset,
     H256,
-    Invoice,
     PlatformAddress,
     SignedTransaction,
     Transaction,
@@ -378,11 +377,9 @@ export default class CodeChain {
         const hash = await this.sdk.rpc.chain.sendSignedTransaction(tx);
         const invoice = (await this.sdk.rpc.chain.getInvoice(hash, {
             timeout: 300 * 1000
-        })) as Invoice | null;
-        if (invoice === null || !invoice.success) {
-            throw Error(
-                `An error occurred while pay: ${invoice && invoice.error}`
-            );
+        })) as boolean | null;
+        if (!invoice) {
+            throw Error("An error occurred while pay");
         }
     }
 
@@ -522,7 +519,7 @@ export default class CodeChain {
         if (awaitInvoice) {
             return (await this.sdk.rpc.chain.getInvoice(hash, {
                 timeout: 300 * 1000
-            })) as Invoice;
+            })) as boolean;
         }
     }
 

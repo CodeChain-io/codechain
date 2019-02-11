@@ -94,8 +94,7 @@ describe("Timelock", function() {
         const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(txhash);
         if (shouldBeConfirmed) {
             expect(invoices.length).to.equal(1);
-            expect(invoices[0].error).to.be.undefined;
-            expect(invoices[0].success).to.be.true;
+            expect(invoices[0]).to.be.true;
         } else {
             expect(invoices.length).to.equal(0);
         }
