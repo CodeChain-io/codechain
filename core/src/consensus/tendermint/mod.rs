@@ -363,10 +363,10 @@ impl TendermintInner {
     }
 
     fn move_to_step(&mut self, step: Step, is_restoring: bool) {
+        let prev_step = mem::replace(&mut self.step, step.into());
         if !is_restoring {
             self.backup();
         }
-        let prev_step = mem::replace(&mut self.step, step.into());
         self.extension().set_timer_step(step, self.view);
         let vote_step = VoteStep::new(self.height, self.view, step);
 
@@ -659,8 +659,6 @@ impl TendermintInner {
                     self.proposal = Some(proposal);
                 }
             }
-
-            self.move_to_step(backup_step, true);
 
             for vote in backup.votes {
                 let bytes = rlp::encode(&vote);
