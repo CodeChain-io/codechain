@@ -115,14 +115,14 @@ macro_rules! asset_mint_output {
         $crate::ctypes::transaction::AssetMintOutput {
             lock_script_hash: $lock_script_hash,
             parameters: $params,
-            supply: None,
+            supply: ::std::u64::MAX,
         }
     };
     ($lock_script_hash:expr, $params:expr, $supply:expr) => {
         $crate::ctypes::transaction::AssetMintOutput {
             lock_script_hash: $lock_script_hash,
             parameters: $params,
-            supply: Some($supply),
+            supply: $supply,
         }
     };
 }
