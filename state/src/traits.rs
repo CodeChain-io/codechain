@@ -16,7 +16,6 @@
 
 use ckey::{public_to_address, Address, Public, Signature};
 use cmerkle::Result as TrieResult;
-use ctypes::invoice::Invoice;
 use ctypes::transaction::ShardTransaction;
 use ctypes::ShardId;
 use cvm::ChainTimeInfo;
@@ -144,7 +143,7 @@ pub trait ShardState {
         shard_owners: &[Address],
         approvers: &[Address],
         client: &C,
-    ) -> StateResult<Invoice>;
+    ) -> StateResult<()>;
 }
 
 pub trait TopState {
