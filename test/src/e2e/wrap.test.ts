@@ -41,7 +41,7 @@ describe("WrapCCC", function() {
             shardId,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 30,
-            sender: PlatformAddress.fromAccountId(faucetAccointId, {
+            payer: PlatformAddress.fromAccountId(faucetAccointId, {
                 networkId: "tc"
             })
         });
@@ -114,7 +114,7 @@ describe("WrapCCC", function() {
             shardId: 0,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 30,
-            sender: PlatformAddress.fromAccountId(faucetAccointId, {
+            payer: PlatformAddress.fromAccountId(faucetAccointId, {
                 networkId: "tc"
             })
         });
