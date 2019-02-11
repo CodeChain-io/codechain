@@ -416,8 +416,7 @@ impl TopLevelState {
                 approvals,
                 ..
             } => {
-                let transaction =
-                    Option::<ShardTransaction>::from(action.clone()).expect("It's a decompose transaction");
+                let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's a shard transaction");
                 debug_assert_eq!(network_id, transaction.network_id());
 
                 let transaction_tracker = transaction.tracker();
