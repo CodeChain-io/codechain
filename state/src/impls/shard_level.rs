@@ -112,20 +112,13 @@ impl<'db> ShardLevelState<'db> {
                 approver,
                 administrator,
                 allowed_script_hashes,
-                output:
-                    AssetMintOutput {
-                        lock_script_hash,
-                        supply,
-                        parameters,
-                    },
+                output,
                 ..
             } => {
                 self.mint_asset(
                     transaction.tracker(),
                     metadata,
-                    lock_script_hash,
-                    &parameters,
-                    *supply,
+                    output,
                     approver,
                     approvers,
                     administrator,
@@ -216,9 +209,7 @@ impl<'db> ShardLevelState<'db> {
         &mut self,
         transaction_tracker: H256,
         metadata: &str,
-        lock_script_hash: &H160,
-        parameters: &[Bytes],
-        supply: u64,
+        output: &AssetMintOutput,
         approver: &Option<Address>,
         approvers: &[Address],
         administrator: &Option<Address>,
@@ -247,7 +238,7 @@ impl<'db> ShardLevelState<'db> {
             self.shard_id,
             asset_type,
             metadata.to_string(),
-            supply,
+            output.supply,
             *approver,
             *administrator,
             allowed_script_hashes.to_vec(),
@@ -256,7 +247,15 @@ impl<'db> ShardLevelState<'db> {
 
         ctrace!(TX, "{:?} is minted on {}:{:?}", asset_scheme, self.shard_id, asset_type);
 
-        self.create_asset(transaction_tracker, 0, asset_type, *lock_script_hash, parameters.to_vec(), supply, None)?;
+        self.create_asset(
+            transaction_tracker,
+            0,
+            asset_type,
+            output.lock_script_hash,
+            output.parameters.clone(),
+            output.supply,
+            None,
+        )?;
         ctrace!(TX, "Created asset on {}:{}:{}", self.shard_id, transaction_tracker, 0);
         Ok(())
     }
@@ -635,9 +634,7 @@ impl<'db> ShardLevelState<'db> {
         self.mint_asset(
             transaction.tracker(),
             metadata,
-            &output.lock_script_hash,
-            &output.parameters,
-            output.supply,
+            output,
             approver,
             approvers,
             administrator,
