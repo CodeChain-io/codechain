@@ -348,15 +348,28 @@ impl TopLevelState {
                 approvals,
                 ..
             }
-            | Action::TransferAsset {
-                approvals,
-                ..
-            }
             | Action::ChangeAssetScheme {
                 approvals,
                 ..
             }
             | Action::IncreaseAssetSupply {
+                approvals,
+                ..
+            } => {
+                let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's a shard transaction");
+                let transaction_tracker = transaction.tracker();
+                let approvers = approvals
+                    .iter()
+                    .map(|signature| {
+                        let public = recover(&signature, &transaction_tracker)?;
+                        self.public_to_owner_address(&public)
+                    })
+                    .collect::<StateResult<Vec<_>>>()?;
+                let shard_ids = transaction.related_shards();
+                assert_eq!(1, shard_ids.len());
+                Ok(self.apply_shard_transaction_to_shard(&transaction, shard_ids[0], fee_payer, &approvers, client)?)
+            }
+            Action::TransferAsset {
                 approvals,
                 ..
             }
