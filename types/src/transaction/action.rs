@@ -201,9 +201,8 @@ impl Action {
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
-                match output.supply {
-                    Some(supply) if supply == 0 => return Err(SyntaxError::ZeroQuantity),
-                    _ => {}
+                if output.supply == 0 {
+                    return Err(SyntaxError::ZeroQuantity)
                 }
             }
             Action::TransferAsset {
@@ -256,7 +255,7 @@ impl Action {
                 output,
                 ..
             } => {
-                if output.supply.unwrap_or(0) == 0 {
+                if output.supply == 0 {
                     return Err(SyntaxError::ZeroQuantity)
                 }
                 if asset_type.is_zero() {
@@ -280,13 +279,10 @@ impl Action {
                     return Err(SyntaxError::ZeroQuantity)
                 }
                 check_duplication_in_prev_out(&[], inputs)?;
-                match output.supply {
-                    Some(supply) if supply == 1 => {}
-                    _ => {
-                        return Err(SyntaxError::InvalidComposedOutputAmount {
-                            got: output.supply.unwrap_or_default(),
-                        })
-                    }
+                if output.supply != 1 {
+                    return Err(SyntaxError::InvalidComposedOutputAmount {
+                        got: output.supply,
+                    })
                 }
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
@@ -1091,7 +1087,7 @@ mod tests {
             output: Box::new(AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
-                supply: Some(10000),
+                supply: 10000,
             }),
             approver: None,
             administrator: None,
@@ -1109,7 +1105,7 @@ mod tests {
             output: Box::new(AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
-                supply: Some(10000),
+                supply: 10000,
             }),
             approver: None,
             administrator: None,
@@ -1127,7 +1123,7 @@ mod tests {
             output: Box::new(AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
-                supply: Some(10000),
+                supply: 10000,
             }),
             approver: None,
             administrator: None,
@@ -1145,7 +1141,7 @@ mod tests {
             output: Box::new(AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![vec![1, 2, 3], vec![4, 5, 6], vec![0, 7]],
-                supply: Some(10000),
+                supply: 10000,
             }),
             approver: None,
             administrator: None,

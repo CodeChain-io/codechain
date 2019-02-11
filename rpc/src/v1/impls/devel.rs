@@ -159,7 +159,7 @@ where
                         output: Box::new(AssetMintOutput {
                             lock_script_hash: lock_script_hash_empty_sig,
                             parameters: vec![],
-                            supply: Some($supply),
+                            supply: $supply,
                         }),
                         approvals: vec![],
                     },

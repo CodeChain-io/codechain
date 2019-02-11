@@ -1207,7 +1207,7 @@ pub mod test {
                 output: Box::new(AssetMintOutput {
                     lock_script_hash: H160::zero(),
                     parameters: vec![],
-                    supply: None,
+                    supply: ::std::u64::MAX,
                 }),
                 approver: None,
                 administrator: None,
@@ -1367,7 +1367,7 @@ pub mod test {
                 output: Box::new(AssetMintOutput {
                     lock_script_hash: H160::zero(),
                     parameters: vec![],
-                    supply: None,
+                    supply: ::std::u64::MAX,
                 }),
                 approvals: vec![],
             },
@@ -1456,7 +1456,7 @@ pub mod test {
                 output: Box::new(AssetMintOutput {
                     lock_script_hash: H160::zero(),
                     parameters: vec![],
-                    supply: None,
+                    supply: ::std::u64::MAX,
                 }),
                 approvals: vec![],
             },

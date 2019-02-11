@@ -62,7 +62,7 @@ impl From<AssetTransferOutput> for Result<AssetTransferOutputType, FromHexError>
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<String>,
-    pub supply: Option<Uint>,
+    pub supply: Uint,
 }
 
 impl From<AssetMintOutputType> for AssetMintOutput {
@@ -70,7 +70,7 @@ impl From<AssetMintOutputType> for AssetMintOutput {
         AssetMintOutput {
             lock_script_hash: from.lock_script_hash,
             parameters: from.parameters.iter().map(|bytes| bytes.to_hex()).collect(),
-            supply: from.supply.map(|supply| supply.into()),
+            supply: from.supply.into(),
         }
     }
 }
@@ -80,7 +80,7 @@ impl From<AssetMintOutput> for Result<AssetMintOutputType, FromHexError> {
         Ok(AssetMintOutputType {
             lock_script_hash: from.lock_script_hash,
             parameters: Result::from_iter(from.parameters.iter().map(|hexstr| hexstr.from_hex()))?,
-            supply: from.supply.map(|supply| supply.into()),
+            supply: from.supply.into(),
         })
     }
 }
