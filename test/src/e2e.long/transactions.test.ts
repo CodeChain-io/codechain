@@ -970,7 +970,7 @@ describe("transactions", function() {
                         shardId: 0,
                         recipient,
                         quantity: amount,
-                        sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                        payer: PlatformAddress.fromAccountId(faucetAccointId, {
                             networkId: "tc"
                         })
                     })
@@ -997,7 +997,7 @@ describe("transactions", function() {
                     shardId: 0,
                     recipient,
                     quantity: 0,
-                    sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                    payer: PlatformAddress.fromAccountId(faucetAccointId, {
                         networkId: "tc"
                     })
                 })
@@ -1028,7 +1028,7 @@ describe("transactions", function() {
                         shardId: 0,
                         recipient,
                         quantity,
-                        sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                        payer: PlatformAddress.fromAccountId(faucetAccointId, {
                             networkId: "tc"
                         })
                     })
@@ -1069,7 +1069,7 @@ describe("transactions", function() {
                         shardId: 0,
                         recipient,
                         quantity,
-                        sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                        payer: PlatformAddress.fromAccountId(faucetAccointId, {
                             networkId: "tc"
                         })
                     })

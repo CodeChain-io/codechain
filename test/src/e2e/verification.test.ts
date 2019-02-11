@@ -679,7 +679,7 @@ describe("solo - 1 node", function() {
                     shardId: 0,
                     recipient,
                     quantity: 10,
-                    sender: PlatformAddress.fromAccountId(faucetAccointId, {
+                    payer: PlatformAddress.fromAccountId(faucetAccointId, {
                         networkId: "tc"
                     })
                 })
