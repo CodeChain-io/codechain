@@ -262,7 +262,7 @@ describe("solo - 1 node", function() {
                 amount
             ) {
                 it(`amount: ${amount}`, async function() {
-                    encoded[3][6][0] = amount;
+                    encoded[3][6] = amount;
                     try {
                         await node.sendSignedTransactionWithRlpBytes(
                             RLP.encode(encoded)
