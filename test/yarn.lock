@@ -891,9 +891,9 @@ codechain-primitives@^0.4.5:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#invoice-lib":
+"codechain-sdk@https://github.com/foriequal0/codechain-sdk-js.git#feature/increase_asset_supply":
   version "0.5.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#37ee0e3a9ff6726f65cc157e7df425e798cf90b4"
+  resolved "https://github.com/foriequal0/codechain-sdk-js.git#e2fb53b710b9429ee5294505226d650ed91aeb04"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"
