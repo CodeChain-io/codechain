@@ -448,6 +448,18 @@ impl From<Action> for Option<ShardTransaction> {
                 administrator,
                 allowed_script_hashes,
             }),
+            Action::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output,
+                ..
+            } => Some(ShardTransaction::IncreaseAssetSupply {
+                network_id,
+                shard_id,
+                asset_type,
+                output: *output,
+            }),
             Action::ComposeAsset {
                 network_id,
                 shard_id,
