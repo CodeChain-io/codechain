@@ -727,7 +727,7 @@ Gets a transaction invoice with the given hash.
  1. transaction hash - `H256`
 
 ### Returns
-`null` | `string[]` - Each string is either "Success" or "Failed"
+`null` | `boolean`
 
 Errors: `Invalid Params`
 
@@ -744,7 +744,7 @@ Errors: `Invalid Params`
 {
   "jsonrpc":"2.0",
   "result":[
-    "Success"
+    true
   ],
   "id":null
 }
@@ -804,7 +804,7 @@ Gets transaction invoices with the given tracker.
  1. tracker - `H256`
 
 ### Returns
-`string[]` - Each string is either "Success" or "Failed".
+`boolean[]`
 
 Errors: `Invalid Params`
 
@@ -820,7 +820,7 @@ Errors: `Invalid Params`
 ```
 {
   "jsonrpc":"2.0",
-  "result": ["Failed", "Success"],
+  "result": [false, true],
   "id":null
 }
 ```
@@ -1364,7 +1364,7 @@ Executes the transactions and returns the current shard root and the changed sha
  2. sender: `PlatformAddress`
 
 ### Returns
-`Invoice`
+ `boolean`
 
 Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 
@@ -1381,7 +1381,7 @@ Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 {
   "jsonrpc":"2.0",
   "result":[
-    "Success"
+    true
   ],
   "id":null
 }
@@ -1608,7 +1608,7 @@ Used for submitting a proof-of-work solution.
  2. seal: `string[]`
 
 ### Returns
-`bool`
+`boolean`
 
 Errors: `No Work Required`, `Invalid Params`
 

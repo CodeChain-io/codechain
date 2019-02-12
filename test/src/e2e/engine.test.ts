@@ -81,8 +81,7 @@ describe("engine", function() {
                 timeout: 120 * 1000
             }))!;
 
-            expect(invoice.error).to.be.undefined;
-            expect(invoice.success).to.be.true;
+            expect(invoice).to.be.true;
 
             const actionData = await node.sdk.rpc.engine.getCustomActionData(
                 hitActionHandlerId,

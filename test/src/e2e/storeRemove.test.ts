@@ -59,7 +59,7 @@ describe("store & remove", function() {
             timeout: 300 * 1000
         });
         expect(invoice1).not.to.be.null;
-        expect(invoice1!.success).to.be.true;
+        expect(invoice1).to.be.true;
 
         const text = await node.sdk.rpc.chain.getText(storeHash);
         expect(text).not.to.be.null;
@@ -84,7 +84,7 @@ describe("store & remove", function() {
             timeout: 300 * 1000
         });
         expect(invoice2).not.to.be.null;
-        expect(invoice2!.success).to.be.true;
+        expect(invoice2).to.be.true;
     });
 
     it("storing with wrong certifier fails", async function() {
@@ -114,13 +114,7 @@ describe("store & remove", function() {
         const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
             timeout: 1000
         });
-        expect(invoice).to.be.similarTo({
-            success: false,
-            error: {
-                type: "TextVerificationFail",
-                content: "Certifier and signer are different"
-            }
-        });
+        expect(invoice).to.be.false;
     });
 
     it("storing with invalid signature fails", async function() {
@@ -140,13 +134,7 @@ describe("store & remove", function() {
         const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
             timeout: 1000
         });
-        expect(invoice).to.be.similarTo({
-            success: false,
-            error: {
-                type: "TextVerificationFail",
-                content: "Invalid Signature"
-            }
-        });
+        expect(invoice).to.be.false;
     });
 
     it("removal on nothing fails", async function() {
@@ -167,9 +155,7 @@ describe("store & remove", function() {
         const invoice = await node.sdk.rpc.chain.getInvoice(removeHash, {
             timeout: 300 * 1000
         });
-        expect(invoice).not.to.be.null;
-        expect(invoice!.success).to.be.false;
-        expect(invoice!.error!.type).to.equal("TextNotExist");
+        expect(invoice).to.be.false;
     });
 
     afterEach(async function() {

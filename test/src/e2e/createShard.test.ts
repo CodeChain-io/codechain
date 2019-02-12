@@ -41,7 +41,7 @@ describe("CreateShard", function() {
             timeout: 300 * 1000
         }))!;
         expect(invoice).not.to.be.null;
-        expect(invoice.success).be.equal(true);
+        expect(invoice).to.be.true;
         const afterShardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
             [tx.hash(), null]
@@ -64,7 +64,7 @@ describe("CreateShard", function() {
             timeout: 300 * 1000
         }))!;
         expect(invoice1).not.to.be.null;
-        expect(invoice1.success).be.equal(true);
+        expect(invoice1).to.be.true;
         const shardId1 = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
             [tx1.hash(), null]
@@ -84,7 +84,7 @@ describe("CreateShard", function() {
             timeout: 300 * 1000
         }))!;
         expect(invoice2).not.to.be.null;
-        expect(invoice2.success).be.equal(true);
+        expect(invoice2).to.be.true;
         const shardId2 = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
             [tx2.hash(), null]

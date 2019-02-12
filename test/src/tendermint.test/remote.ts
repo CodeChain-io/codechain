@@ -63,7 +63,7 @@ import CodeChain from "../helper/spawn";
             transactions[numTransactions - 1].hash()
         );
         console.log(`Node invoice: ${invoice}`);
-        if (invoice !== null && invoice.success) {
+        if (invoice) {
             break;
         }
 

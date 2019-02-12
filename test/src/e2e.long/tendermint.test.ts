@@ -497,8 +497,7 @@ describeSkippedInTravis("Tendermint ", function() {
                 })
             ))!;
 
-            expect(invoice.error).to.be.undefined;
-            expect(invoice.success).to.be.true;
+            expect(invoice).to.be.true;
 
             const { amounts, stakeholders } = await getAllStakingInfo();
 

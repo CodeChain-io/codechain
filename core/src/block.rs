@@ -207,7 +207,7 @@ impl<'x> OpenBlock<'x> {
         self.block.header.set_state_root(state_root);
         self.block.header.set_invoices_root(skewed_merkle_root(
             parent_invoices_root,
-            self.block.invoices.iter().map(|invoice| invoice.rlp_bytes()),
+            self.block.invoices.iter().map(|invoice| invoice.to_bool().rlp_bytes()),
         ));
 
         Ok(ClosedBlock {
@@ -244,12 +244,12 @@ impl<'x> OpenBlock<'x> {
         if self.block.header.invoices_root().is_zero() || self.block.header.invoices_root() == &BLAKE_NULL_RLP {
             self.block.header.set_invoices_root(skewed_merkle_root(
                 parent_invoices_root,
-                self.block.invoices.iter().map(Encodable::rlp_bytes),
+                self.block.invoices.iter().map(|i| i.to_bool().rlp_bytes()),
             ));
         }
         debug_assert_eq!(
             self.block.header.invoices_root(),
-            &skewed_merkle_root(parent_invoices_root, self.block.invoices.iter().map(Encodable::rlp_bytes),)
+            &skewed_merkle_root(parent_invoices_root, self.block.invoices.iter().map(|i| i.to_bool().rlp_bytes()),)
         );
         self.block.header.set_state_root(state_root);
 
