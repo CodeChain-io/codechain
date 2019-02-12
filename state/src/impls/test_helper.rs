@@ -500,6 +500,11 @@ macro_rules! set_top_level_state {
 
         set_top_level_state!($state, [$($x),*]);
     };
+    ($state:expr, [(scheme: ($shard_id:expr, $asset_type:expr) => { supply: $supply:expr, metadata: $metadata:expr }) $(,$x:tt)*]) => {
+        assert_eq!(Ok((true)), $state.create_asset_scheme($shard_id, $asset_type, $metadata, $supply, None, None, Vec::new(), Vec::new()));
+
+        set_top_level_state!($state, [$($x),*]);
+    };
     ($state:expr, [(scheme: ($shard_id:expr, $asset_type:expr) => { supply: $supply:expr, metadata: $metadata:expr, approver: $approver:expr }) $(,$x:tt)*]) => {
         assert_eq!(Ok((true)), $state.create_asset_scheme($shard_id, $asset_type, $metadata, $supply, $approver, None, Vec::new(), Vec::new()));
 
@@ -543,6 +548,14 @@ macro_rules! check_top_level_state {
     };
     ($state:expr, [(shard: $shard_id:expr) $(,$x:tt)*]) => {
         assert_eq!(Ok(None), $state.shard_root($shard_id));
+
+        check_top_level_state!($state, [$($x),*]);
+    };
+    ($state:expr, [(scheme: ($shard_id:expr, $asset_type:expr) => { supply: $supply:expr }) $(,$x:tt)*]) => {
+        let scheme = $state.asset_scheme($shard_id, $asset_type)
+            .expect(&format!("Cannot read AssetScheme from {}:{}", $shard_id, $asset_type))
+            .expect(&format!("AssetScheme for {}:{} not exist", $shard_id, $asset_type));
+        assert_eq!($supply, scheme.supply());
 
         check_top_level_state!($state, [$($x),*]);
     };
