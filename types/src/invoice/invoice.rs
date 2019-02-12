@@ -14,17 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use serde::ser::SerializeStruct;
+use primitives::Bytes;
+use rlp::{DecoderError, RlpStream, UntrustedRlp};
 use serde::{Serialize, Serializer};
-
-use super::invoice_result::InvoiceResult;
-use crate::errors::RuntimeError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Invoice {
     Success,
-    Failure(RuntimeError),
+    Failure(String),
 }
 
 const INVOICE_ID_SINGLE_SUCCESS: u8 = 1u8;
@@ -35,48 +32,31 @@ impl Serialize for Invoice {
     where
         S: Serializer, {
         match self {
-            Invoice::Success => {
-                let mut s = serializer.serialize_struct("Invoice", 1)?;
-                s.serialize_field("success", &true)?;
-                s.end()
-            }
-            Invoice::Failure(ref err) => {
-                let mut s = serializer.serialize_struct("Invoice", 2)?;
-                s.serialize_field("success", &false)?;
-                s.serialize_field("error", err)?;
-                s.end()
-            }
+            Invoice::Success => serializer.serialize_bool(true),
+            Invoice::Failure(_) => serializer.serialize_bool(false),
         }
     }
 }
 
 impl Invoice {
-    pub fn result(&self) -> InvoiceResult {
-        match self {
-            Invoice::Success => InvoiceResult::Success,
-            Invoice::Failure(_) => InvoiceResult::Failed,
-        }
-    }
-}
-
-impl Encodable for Invoice {
-    fn rlp_append(&self, s: &mut RlpStream) {
+    pub fn bytes_to_store(&self) -> Bytes {
         match self {
             Invoice::Success => {
-                s.begin_list(1);
+                let mut s = RlpStream::new_list(1);
                 s.append(&INVOICE_ID_SINGLE_SUCCESS);
+                s.drain().to_vec()
             }
             Invoice::Failure(err) => {
-                s.begin_list(2);
+                let mut s = RlpStream::new_list(2);
                 s.append(&INVOICE_ID_SINGLE_FAIL);
                 s.append(err);
+                s.drain().to_vec()
             }
         }
     }
-}
 
-impl Decodable for Invoice {
-    fn decode(rlp: &UntrustedRlp) -> Result<Invoice, DecoderError> {
+    pub fn recover_from_bytes(bytes: &[u8]) -> Result<Invoice, DecoderError> {
+        let rlp = UntrustedRlp::new(bytes);
         match rlp.val_at::<u8>(0)? {
             INVOICE_ID_SINGLE_SUCCESS => {
                 if rlp.item_count()? != 1 {
@@ -93,22 +73,30 @@ impl Decodable for Invoice {
             _ => Err(DecoderError::Custom("Unknown invoice")),
         }
     }
+
+    pub fn to_bool(&self) -> bool {
+        match self {
+            Invoice::Success => true,
+            Invoice::Failure(_) => false,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use rlp::rlp_encode_and_decode_test;
-
     use super::*;
-    use crate::errors::RuntimeError;
 
     #[test]
     fn encode_and_decode_single_success_tx_invoice() {
-        rlp_encode_and_decode_test!(Invoice::Success);
+        let origin = Invoice::Success;
+        let bytes = origin.bytes_to_store();
+        assert_eq!(Ok(origin), Invoice::recover_from_bytes(&bytes));
     }
 
     #[test]
     fn encode_and_decode_single_failed_tx_invoice() {
-        rlp_encode_and_decode_test!(Invoice::Failure(RuntimeError::CannotBurnCentralizedAsset));
+        let origin = Invoice::Failure("It failed because it's an invalid transaction.".to_string());
+        let bytes = origin.bytes_to_store();
+        assert_eq!(Ok(origin), Invoice::recover_from_bytes(&bytes));
     }
 }

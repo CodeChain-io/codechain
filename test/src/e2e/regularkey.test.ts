@@ -19,31 +19,6 @@ import "mocha";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
 
-const INVOICE = {
-    SUCCESS: {
-        success: true,
-        error: undefined
-    },
-    REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT: {
-        success: false,
-        error: {
-            type: "RegularKeyAlreadyInUseAsPlatformAccount"
-        }
-    },
-    REGULARKEY_ALREADY_IN_USE: {
-        success: false,
-        error: {
-            type: "RegularKeyAlreadyInUse"
-        }
-    },
-    CANNOT_USE_MASTER_KEY: {
-        success: false,
-        error: {
-            type: "CannotUseMasterKey"
-        }
-    }
-};
-
 describe("solo - 1 node", function() {
     let node: CodeChain;
     let privKey: string;
@@ -116,10 +91,7 @@ describe("solo - 1 node", function() {
         const invoice = (await node.sdk.rpc.chain.getInvoice(tx.hash(), {
             timeout: 300 * 1000
         }))!;
-        expect(invoice.error!.type).to.equal(
-            INVOICE.CANNOT_USE_MASTER_KEY.error.type
-        );
-        expect(invoice.success).to.equal(INVOICE.CANNOT_USE_MASTER_KEY.success);
+        expect(invoice).to.be.false;
     });
 
     it("Try to use the key of another account as its regular key", async function() {
@@ -131,12 +103,7 @@ describe("solo - 1 node", function() {
 
         await node.sendPayTx({ quantity: 5, recipient: address });
         const invoice = (await node.setRegularKey(pubKey))!;
-        expect(invoice.error!.type).to.equal(
-            INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT.error.type
-        );
-        expect(invoice.success).to.equal(
-            INVOICE.REGULARKEY_ALREADY_IN_USE_AS_PLATFORM_ACCOUNT.success
-        );
+        expect(invoice).to.be.false;
     }).timeout(10_000);
 
     it("Try to use the regulary key already used in another account", async function() {
@@ -153,15 +120,9 @@ describe("solo - 1 node", function() {
             seq,
             secret: newPrivKey
         }))!;
-        expect(invoice.error).to.be.undefined;
-        expect(invoice.success).to.be.true;
+        expect(invoice).to.be.true;
         invoice = (await node.setRegularKey(pubKey))!;
-        expect(invoice.error!.type).to.equal(
-            INVOICE.REGULARKEY_ALREADY_IN_USE.error.type
-        );
-        expect(invoice.success).to.equal(
-            INVOICE.REGULARKEY_ALREADY_IN_USE.success
-        );
+        expect(invoice).to.be.false;
     });
 
     afterEach(async function() {

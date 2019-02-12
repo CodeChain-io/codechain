@@ -61,8 +61,7 @@ describe("Timelock", function() {
         const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(tracker);
         if (shouldBeConfirmed) {
             expect(invoices.length).to.equal(1);
-            expect(invoices[0].error).to.be.undefined;
-            expect(invoices[0].success).to.be.true;
+            expect(invoices[0]).to.be.true;
         } else {
             expect(invoices.length).to.equal(0);
         }
@@ -118,7 +117,7 @@ describe("Timelock", function() {
         });
         const invoices1 = await node.sendAssetTransaction(failedTx);
         expect(invoices1!.length).to.equal(1);
-        expect(invoices1![0].success).to.be.false;
+        expect(invoices1![0]).to.be.false;
 
         const output0 = failedTx.getTransferredAsset(0);
         const tx = node.sdk.core.createTransferAssetTransaction();

@@ -61,7 +61,7 @@ describe("WrapCCC", function() {
             }
         ))!;
         expect(invoice1).not.to.be.null;
-        expect(invoice1.success).be.equal(true);
+        expect(invoice1).to.be.true;
 
         const schemeAfterWrap = (await node.sdk.rpc.chain.getAssetSchemeByType(
             H160.zero(),
@@ -93,7 +93,7 @@ describe("WrapCCC", function() {
             }
         ))!;
         expect(invoice2).not.to.be.null;
-        expect(invoice2.success).be.equal(true);
+        expect(invoice2).to.be.true;
 
         const schemeAfterBurn = (await node.sdk.rpc.chain.getAssetSchemeByType(
             H160.zero(),
@@ -134,7 +134,7 @@ describe("WrapCCC", function() {
             }
         ))!;
         expect(invoice1).not.to.be.null;
-        expect(invoice1.success).be.equal(true);
+        expect(invoice1).to.be.true;
 
         const changeAssetScheme = node.sdk.core.createChangeAssetSchemeTransaction(
             {
