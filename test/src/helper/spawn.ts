@@ -434,7 +434,7 @@ export default class CodeChain {
     }
 
     public async mintAsset(params: {
-        supply: number;
+        supply: U64 | number;
         recipient?: string | AssetTransferAddress;
         secret?: string;
         seq?: number;

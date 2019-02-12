@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import { U64 } from "codechain-primitives";
 import * as _ from "lodash";
 
 export const $else = Symbol("else");
@@ -127,6 +128,9 @@ function deepCompare(actual: any, expected: any): boolean {
             return arraysEqual([...actual], expected);
         }
         throw new Error("Not implemented");
+    }
+    if (expected instanceof U64) {
+        return expected.isEqualTo(actual);
     }
     if (expected instanceof RegExp) {
         return expected.test(actual);
