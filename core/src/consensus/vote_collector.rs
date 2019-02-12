@@ -138,6 +138,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     pub fn throw_out_old(&self, vote_round: &M::Round) {
         let mut guard = self.votes.write();
         let new_collector = guard.split_off(vote_round);
+        assert!(!new_collector.is_empty());
         *guard = new_collector;
     }
 
