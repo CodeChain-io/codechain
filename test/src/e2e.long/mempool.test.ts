@@ -18,6 +18,7 @@ import { expect } from "chai";
 import "mocha";
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
+import { SignedTransaction } from "codechain-sdk/lib/core/classes";
 
 const BASE = 200;
 
@@ -78,6 +79,67 @@ describe("Memory pool size test", function() {
 
             const pendingTransactions = await nodeB.sdk.rpc.chain.getPendingTransactions();
             expect(pendingTransactions.length).to.equal(sizeLimit);
+        }).timeout(20_000);
+
+        it("Rejected by limit and reaccepted", async function() {
+            const sent = [];
+            for (let i = 0; i < sizeLimit * 2; i++) {
+                sent.push(
+                    await nodeA.sendPayTx({
+                        seq: i,
+                        awaitInvoice: false
+                    })
+                );
+            }
+
+            while (
+                (await nodeB.sdk.rpc.chain.getPendingTransactions()).length <
+                sizeLimit
+            ) {
+                await wait(500);
+            }
+
+            const pendingTransactions = await nodeB.sdk.rpc.chain.getPendingTransactions();
+            const pendingTransactionHashes = pendingTransactions.map(
+                (tx: SignedTransaction) => tx.hash().value
+            );
+            const rejectedTransactions = sent.filter(
+                tx => !pendingTransactionHashes.includes(tx.hash().value)
+            );
+
+            await nodeB.sdk.rpc.devel.startSealing();
+
+            while (
+                (await nodeB.sdk.rpc.chain.getPendingTransactions()).length > 0
+            ) {
+                await wait(500);
+            }
+
+            await nodeB.sdk.rpc.devel.stopSealing();
+
+            await Promise.all(
+                rejectedTransactions.map((tx: SignedTransaction) =>
+                    nodeB.sdk.rpc.chain
+                        .sendSignedTransaction(tx)
+                        .then(txhash =>
+                            expect(txhash.value).to.eq(tx.hash().value)
+                        )
+                )
+            );
+
+            const pendingTransactionsAfterResend = await nodeB.sdk.rpc.chain.getPendingTransactions();
+            const pendingTransactionHashesAfterResend = pendingTransactionsAfterResend.map(
+                (tx: SignedTransaction) => tx.hash().value
+            );
+
+            rejectedTransactions.forEach(
+                tx =>
+                    expect(
+                        pendingTransactionHashesAfterResend.includes(
+                            tx.hash().value
+                        )
+                    ).to.true
+            );
         }).timeout(20_000);
 
         afterEach(async function() {
