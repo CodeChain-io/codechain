@@ -27,9 +27,9 @@ pub struct AssetTransferOutput {
     pub quantity: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct AssetMintOutput {
     pub lock_script_hash: H160,
     pub parameters: Vec<Bytes>,
-    pub supply: Option<u64>,
+    pub supply: u64,
 }
