@@ -845,6 +845,11 @@ impl<'db> ShardLevelState<'db> {
             OwnedAsset::new(asset_type, lock_script_hash, parameters, quantity, order_hash)
         })
     }
+
+    #[cfg(test)]
+    fn shard_id(&self) -> ShardId {
+        self.shard_id
+    }
 }
 
 impl<'db> ShardStateView for ShardLevelState<'db> {
