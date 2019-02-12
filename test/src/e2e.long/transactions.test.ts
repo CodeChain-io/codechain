@@ -35,7 +35,6 @@ import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { blake160 } from "codechain-sdk/lib/utils";
 import * as _ from "lodash";
 import "mocha";
-import { $anything } from "../helper/chai-similar";
 import {
     faucetAccointId,
     faucetAddress,
@@ -114,6 +113,131 @@ describe("transactions", function() {
             } catch (e) {
                 expect(e).is.similarTo(ERROR.INVALID_RLP_TOO_BIG);
             }
+        });
+    });
+
+    describe("IncreaseAssetSupply", async function() {
+        let outsider: PlatformAddress;
+        before(async function() {
+            outsider = await node.createPlatformAddress();
+            await node.pay(outsider, 10000);
+        });
+
+        it("can increase total supply", async function() {
+            const amount = 100;
+            const increasedAmount = 300;
+            const { asset } = await node.mintAsset({
+                supply: amount,
+                administrator: faucetAddress
+            });
+            const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
+                shardId: asset.shardId,
+                assetType: asset.assetType,
+                recipient: await node.createP2PKHAddress(),
+                supply: increasedAmount
+            });
+
+            const invoices = await node.sendAssetTransaction(tx);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0]).to.be.true;
+
+            const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByType(
+                asset.assetType,
+                asset.shardId
+            );
+            expect(assetScheme!.supply).to.be.similarTo(
+                new U64(amount + increasedAmount)
+            );
+
+            const additionalAsset = await node.sdk.rpc.chain.getAsset(
+                tx.tracker(),
+                0,
+                asset.shardId
+            );
+            expect(additionalAsset!.quantity).to.be.similarTo(
+                new U64(increasedAmount)
+            );
+        });
+
+        it("cannot increase without administrator", async function() {
+            const amount = 100;
+            const increasedAmount = 300;
+            const { asset } = await node.mintAsset({
+                supply: amount
+            });
+            const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
+                shardId: asset.shardId,
+                assetType: asset.assetType,
+                recipient: await node.createP2PKHAddress(),
+                supply: increasedAmount
+            });
+
+            const invoices = await node.sendAssetTransaction(tx);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0]).to.be.false;
+
+            const additionalAsset = await node.sdk.rpc.chain.getAsset(
+                tx.tracker(),
+                0,
+                asset.shardId
+            );
+            expect(additionalAsset).to.be.null;
+        });
+
+        it("outsider cannot increase", async function() {
+            const amount = 100;
+            const increasedAmount = 300;
+            const { asset } = await node.mintAsset({
+                supply: amount,
+                administrator: faucetAddress
+            });
+            const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
+                shardId: asset.shardId,
+                assetType: asset.assetType,
+                recipient: await node.createP2PKHAddress(),
+                supply: increasedAmount
+            });
+
+            await node.sendTransaction(tx, { account: outsider });
+            const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(
+                tx.tracker(),
+                {
+                    timeout: 300 * 1000
+                }
+            );
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0]).to.be.false;
+
+            const additionalAsset = await node.sdk.rpc.chain.getAsset(
+                tx.tracker(),
+                0,
+                asset.shardId
+            );
+            expect(additionalAsset).to.be.null;
+        });
+
+        it("cannot be overflowed", async function() {
+            const { asset } = await node.mintAsset({
+                supply: U64.MAX_VALUE,
+                administrator: faucetAddress
+            });
+            const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
+                shardId: asset.shardId,
+                assetType: asset.assetType,
+                recipient: await node.createP2PKHAddress(),
+                supply: 1
+            });
+
+            const invoices = await node.sendAssetTransaction(tx);
+            expect(invoices!.length).to.equal(1);
+            expect(invoices![0]).to.be.false;
+
+            const additionalAsset = await node.sdk.rpc.chain.getAsset(
+                tx.tracker(),
+                0,
+                asset.shardId
+            );
+            expect(additionalAsset).to.be.null;
         });
     });
 
