@@ -214,6 +214,14 @@ impl NetworkExtension for Extension {
     }
 
     fn on_message(&self, id: &NodeId, data: &[u8]) {
+        {
+            let requests = self.requests.read();
+            if !requests.contains_key(id) {
+                cdebug!(SYNC, "Message received after the node disconnected");
+                debug_assert!(!self.tokens.read().contains_key(id));
+                return
+            }
+        }
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Status {
