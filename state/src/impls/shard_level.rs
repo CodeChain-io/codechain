@@ -167,6 +167,7 @@ impl<'db> ShardLevelState<'db> {
                 allowed_script_hashes,
                 inputs,
                 output,
+                shard_id,
                 ..
             } => self.compose_asset(
                 &transaction,
@@ -179,6 +180,7 @@ impl<'db> ShardLevelState<'db> {
                 sender,
                 approvers,
                 shard_users,
+                *shard_id,
                 client,
             ),
             ShardTransaction::DecomposeAsset {
@@ -285,6 +287,9 @@ impl<'db> ShardLevelState<'db> {
             .map(|(index, input)| (input, transaction, values_to_hash[index], false))
             .chain(burns.iter().map(|input| (input, transaction, None, true)))
         {
+            if input.prev_out.shard_id != self.shard_id {
+                continue
+            }
             self.check_and_run_input_script(input, transaction, order, burn, sender, approvers, client)?;
         }
 
@@ -299,12 +304,18 @@ impl<'db> ShardLevelState<'db> {
 
         let mut deleted_asset = Vec::with_capacity(inputs.len() + burns.len());
         for input in inputs.iter().chain(burns) {
+            if input.prev_out.shard_id != self.shard_id {
+                continue
+            }
             self.check_input_asset(input, sender, approvers)?;
             self.kill_asset(input.prev_out.tracker, input.prev_out.index);
             deleted_asset.push((input.prev_out.tracker, input.prev_out.index, input.prev_out.quantity));
         }
         let transaction_tracker = transaction.tracker();
         for (index, output) in outputs.iter().enumerate() {
+            if output.shard_id != self.shard_id {
+                continue
+            }
             self.check_output_script_hash(output)?;
             self.create_asset(
                 transaction_tracker,
@@ -324,6 +335,9 @@ impl<'db> ShardLevelState<'db> {
                 quantity,
                 ..
             } = burn.prev_out;
+            if shard_id != self.shard_id {
+                continue
+            }
             let mut asset_scheme = self.get_asset_scheme_mut(shard_id, asset_type)?;
             let previous_supply = asset_scheme.reduce_supply(quantity);
             reduced_supplies.push((asset_type, previous_supply, quantity))
@@ -343,6 +357,9 @@ impl<'db> ShardLevelState<'db> {
                 let input = &inputs[*input_idx];
                 let tracker = input.prev_out.tracker;
                 let index = input.prev_out.index;
+                if input.prev_out.shard_id != self.shard_id {
+                    continue
+                }
                 let asset = self.asset(tracker, index)?.ok_or_else(|| RuntimeError::AssetNotFound {
                     shard_id: self.shard_id,
                     tracker,
@@ -491,7 +508,10 @@ impl<'db> ShardLevelState<'db> {
     fn check_output_script_hash(&self, output: &AssetTransferOutput) -> StateResult<()> {
         let asset_scheme = {
             assert_eq!(self.shard_id, output.shard_id);
-            self.asset_scheme(output.asset_type)?.expect("AssetScheme must exist when the asset exist")
+            self.asset_scheme(output.asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
+                asset_type: output.asset_type,
+                shard_id: self.shard_id,
+            })?
         };
         let lock_script_hash = output.lock_script_hash;
         if asset_scheme.is_allowed_script_hash(&lock_script_hash) {
@@ -605,12 +625,16 @@ impl<'db> ShardLevelState<'db> {
         sender: &Address,
         approvers: &[Address],
         shard_users: &[Address],
+        output_shard_id: ShardId,
         client: &C,
     ) -> StateResult<()> {
         let mut sum: HashMap<(H160, ShardId), u64> = HashMap::new();
 
         let mut deleted_assets = Vec::with_capacity(inputs.len());
         for input in inputs.iter() {
+            if input.prev_out.shard_id != self.shard_id {
+                continue
+            }
             self.check_input_asset(input, sender, approvers)?;
             self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
@@ -631,18 +655,21 @@ impl<'db> ShardLevelState<'db> {
 
         let pool = sum.into_iter().map(|((asset_type, _), quantity)| Asset::new(asset_type, quantity)).collect();
 
-        self.mint_asset(
-            transaction.tracker(),
-            metadata,
-            output,
-            approver,
-            approvers,
-            administrator,
-            allowed_script_hashes,
-            sender,
-            shard_users,
-            pool,
-        )
+        if output_shard_id == self.shard_id {
+            self.mint_asset(
+                transaction.tracker(),
+                metadata,
+                output,
+                approver,
+                approvers,
+                administrator,
+                allowed_script_hashes,
+                sender,
+                shard_users,
+                pool,
+            )?;
+        }
+        Ok(())
     }
 
     fn decompose_asset<C: ChainTimeInfo>(
@@ -660,79 +687,84 @@ impl<'db> ShardLevelState<'db> {
             quantity,
             ..
         } = input.prev_out;
-        let asset_scheme = self.asset_scheme(asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
-            shard_id,
-            asset_type,
-        })?;
-        // The input asset should be composed asset
-        if asset_scheme.pool().is_empty() {
-            return Err(RuntimeError::InvalidDecomposedInput {
-                asset_type,
+        if self.shard_id == input.prev_out.shard_id {
+            let asset_scheme = self.asset_scheme(asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
                 shard_id,
-                got: 0,
-            }
-            .into())
-        }
-
-        // Check that the outputs are match with pool
-        let mut sum: HashMap<H160, u64> = HashMap::new();
-        for output in outputs {
-            let output_type = output.asset_type;
-
-            *sum.entry(output_type).or_insert_with(Default::default) += output.quantity;
-        }
-        for asset in asset_scheme.pool() {
-            let asset_type = asset.asset_type();
-            match sum.remove(asset_type) {
-                None => {
-                    return Err(RuntimeError::InvalidDecomposedOutput {
-                        asset_type: *asset_type,
-                        shard_id: self.shard_id,
-                        expected: asset.quantity(),
-                        got: 0,
-                    }
-                    .into())
+                asset_type,
+            })?;
+            // The input asset should be composed asset
+            if asset_scheme.pool().is_empty() {
+                return Err(RuntimeError::InvalidDecomposedInput {
+                    asset_type,
+                    shard_id,
+                    got: 0,
                 }
-                Some(value) => {
-                    if value != asset.quantity() {
+                .into())
+            }
+
+            // Check that the outputs are match with pool
+            let mut sum: HashMap<H160, u64> = HashMap::new();
+            for output in outputs {
+                let output_type = output.asset_type;
+
+                *sum.entry(output_type).or_insert_with(Default::default) += output.quantity;
+            }
+            for asset in asset_scheme.pool() {
+                let asset_type = asset.asset_type();
+                match sum.remove(asset_type) {
+                    None => {
                         return Err(RuntimeError::InvalidDecomposedOutput {
                             asset_type: *asset_type,
                             shard_id: self.shard_id,
                             expected: asset.quantity(),
-                            got: value,
+                            got: 0,
                         }
                         .into())
                     }
+                    Some(value) => {
+                        if value != asset.quantity() {
+                            return Err(RuntimeError::InvalidDecomposedOutput {
+                                asset_type: *asset_type,
+                                shard_id: self.shard_id,
+                                expected: asset.quantity(),
+                                got: value,
+                            }
+                            .into())
+                        }
+                    }
                 }
             }
-        }
-        if !sum.is_empty() {
-            let mut invalid_assets: Vec<Asset> =
-                sum.into_iter().map(|(asset_type, quantity)| Asset::new(asset_type, quantity)).collect();
-            let invalid_asset = invalid_assets.pop().unwrap();
-            return Err(RuntimeError::InvalidDecomposedOutput {
-                asset_type: *invalid_asset.asset_type(),
-                shard_id: self.shard_id,
-                expected: 0,
-                got: invalid_asset.quantity(),
+            if !sum.is_empty() {
+                let mut invalid_assets: Vec<Asset> =
+                    sum.into_iter().map(|(asset_type, quantity)| Asset::new(asset_type, quantity)).collect();
+                let invalid_asset = invalid_assets.pop().unwrap();
+                return Err(RuntimeError::InvalidDecomposedOutput {
+                    asset_type: *invalid_asset.asset_type(),
+                    shard_id: self.shard_id,
+                    expected: 0,
+                    got: invalid_asset.quantity(),
+                }
+                .into())
             }
-            .into())
+
+            self.check_input_asset(input, sender, approvers)?;
+            self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
+
+            self.kill_asset(input.prev_out.tracker, input.prev_out.index);
+
+            let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
+            let previous_supply = asset_scheme.reduce_supply(quantity);
+
+            ctrace!(TX, "Deleted assets {:?} {:?}", asset_type, quantity);
+            ctrace!(TX, "Reduced asset supply {:?} {:?} {:?}", asset_type, previous_supply, quantity);
         }
-
-        self.check_input_asset(input, sender, approvers)?;
-        self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
-
-        self.kill_asset(input.prev_out.tracker, input.prev_out.index);
-
-        let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
-        let previous_supply = asset_scheme.reduce_supply(quantity);
-
-        ctrace!(TX, "Deleted assets {:?} {:?}", asset_type, quantity);
-        ctrace!(TX, "Reduced asset supply {:?} {:?} {:?}", asset_type, previous_supply, quantity);
 
         // Put asset into DB
         let transaction_tracker = transaction.tracker();
         for (index, output) in outputs.iter().enumerate() {
+            if output.shard_id != self.shard_id {
+                continue
+            }
             self.create_asset(
                 transaction_tracker,
                 index,
