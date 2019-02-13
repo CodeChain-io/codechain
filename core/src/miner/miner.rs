@@ -933,13 +933,13 @@ impl MinerService for Miner {
                     let regular_key_address = client.latest_regular_key(&address).map(|key| public_to_address(&key));
                     once(address).chain(owner_address.into_iter()).chain(regular_key_address.into_iter()).collect()
                 };
-                get_next_seq(self.future_transactions().into_iter(), &addresses)
+                get_next_seq(self.future_transactions(), &addresses)
                     .map(|seq| {
                         cerror!(RPC, "There are future transactions for {}", platform_address);
                         seq
                     })
                     .unwrap_or_else(|| {
-                        get_next_seq(self.ready_transactions().into_iter(), &addresses)
+                        get_next_seq(self.ready_transactions(), &addresses)
                             .map(|seq| {
                                 cdebug!(RPC, "There are ready transactions for {}", platform_address);
                                 seq
@@ -992,13 +992,16 @@ impl MinerService for Miner {
     }
 }
 
-fn get_next_seq(transactions: impl Iterator<Item = SignedTransaction>, addresses: &[Address]) -> Option<u64> {
-    let mut seqs: Vec<_> = transactions
+fn get_next_seq(transactions: impl IntoIterator<Item = SignedTransaction>, addresses: &[Address]) -> Option<u64> {
+    let mut txes = transactions
+        .into_iter()
         .filter(|tx| addresses.contains(&public_to_address(&tx.signer_public())))
-        .map(|tx| tx.seq)
-        .collect();
-    seqs.sort();
-    seqs.last().map(|seq| seq + 1)
+        .map(|tx| tx.seq);
+    if let Some(first) = txes.next() {
+        Some(txes.fold(first, std::cmp::max) + 1)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
