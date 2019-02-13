@@ -14,91 +14,63 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use ccrypto::aes::{self, SymmetricCipherError};
 use ckey::{exchange, Generator, KeyPair, Public, Random, Secret};
 use parking_lot::{Mutex, RwLock};
+use primitives::Bytes;
 use rand::rngs::OsRng;
 use rand::Rng;
-use rlp::{Decodable, Encodable, UntrustedRlp};
 
 use crate::session::{Nonce, Session};
 use crate::SocketAddr;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum SecretOrigin {
     Shared,
     Preimported,
 }
 
-// Discovery flow : Candidate -> KeyPairShared -> SecretShared -> TemporaryNonceShared -> SessionShared -> (Establishing) -> Established
-// Offline secret exchange flow :                 SecretShared ->
+// Candidate -> Registered -> Establishing2 -> Established
+//                 ->         Establishing1 -> Established
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::large_enum_variant))]
 enum State {
-    Candidate,
-    KeyPairShared(KeyPair),
-    SecretShared {
+    Candidate(KeyPair),
+    Registered {
         local_key_pair: KeyPair,
         remote_public: Public,
-        shared_secret: Secret,
         secret_origin: SecretOrigin,
     },
-    TemporaryNonceShared {
+    Establishing1(KeyPair),
+    Establishing2 {
         local_key_pair: KeyPair,
         remote_public: Public,
         shared_secret: Secret,
-        temporary_nonce: Nonce,
-        secret_origin: SecretOrigin,
-    },
-    SessionShared {
-        local_key_pair: KeyPair,
-        remote_public: Public,
-        shared_secret: Secret,
-        nonce: Nonce,
-        secret_origin: SecretOrigin,
-    },
-    Establishing {
-        local_key_pair: KeyPair,
-        remote_public: Public,
-        shared_secret: Secret,
-        nonce: Nonce,
         secret_origin: SecretOrigin,
     },
     Established {
         local_key_pair: KeyPair,
         remote_public: Public,
         shared_secret: Secret,
-        nonce: Nonce,
         secret_origin: SecretOrigin,
+        nonce: Nonce,
     },
     Banned,
 }
 
 impl State {
-    fn key_pair_shared() -> RwLock<Self> {
-        let ephemeral = Random.generate().unwrap();
-        RwLock::new(State::KeyPairShared(ephemeral))
-    }
-
     fn local_public(&self) -> Option<&Public> {
         match self {
-            State::Candidate => None,
-            State::KeyPairShared(key_pair) => Some(key_pair.public()),
-            State::SecretShared {
+            State::Candidate(key_pair) => Some(key_pair.public()),
+            State::Registered {
                 local_key_pair,
                 ..
             } => Some(local_key_pair.public()),
-            State::TemporaryNonceShared {
-                local_key_pair,
-                ..
-            } => Some(local_key_pair.public()),
-            State::SessionShared {
-                local_key_pair,
-                ..
-            } => Some(local_key_pair.public()),
-            State::Establishing {
+            State::Establishing1(key_pair) => Some(key_pair.public()),
+            State::Establishing2 {
                 local_key_pair,
                 ..
             } => Some(local_key_pair.public()),
@@ -112,21 +84,13 @@ impl State {
 
     fn remote_public(&self) -> Option<&Public> {
         match self {
-            State::Candidate => None,
-            State::KeyPairShared(_) => None,
-            State::SecretShared {
+            State::Candidate(_) => None,
+            State::Registered {
                 remote_public,
                 ..
             } => Some(remote_public),
-            State::TemporaryNonceShared {
-                remote_public,
-                ..
-            } => Some(remote_public),
-            State::SessionShared {
-                remote_public,
-                ..
-            } => Some(remote_public),
-            State::Establishing {
+            State::Establishing1(_) => None,
+            State::Establishing2 {
                 remote_public,
                 ..
             } => Some(remote_public),
@@ -137,10 +101,28 @@ impl State {
             State::Banned => None,
         }
     }
+
+    fn session(&self) -> Option<Session> {
+        match self {
+            State::Established {
+                nonce,
+                shared_secret,
+                ..
+            } => Some(Session::new(*shared_secret, *nonce)),
+            _ => None,
+        }
+    }
+}
+
+impl Default for State {
+    fn default() -> Self {
+        let ephemeral = Random.generate().unwrap();
+        State::Candidate(ephemeral)
+    }
 }
 
 pub struct RoutingTable {
-    entries: RwLock<HashMap<SocketAddr, RwLock<State>>>,
+    entries: RwLock<HashMap<SocketAddr, State>>,
 
     rng: Mutex<OsRng>,
 }
@@ -154,478 +136,478 @@ impl RoutingTable {
         })
     }
 
-    pub fn is_secret_shared(&self, addr: &SocketAddr) -> bool {
+    pub fn is_establishing_or_established(&self, target: &SocketAddr) -> bool {
         let entries = self.entries.read();
-        if let Some(entry) = entries.get(addr) {
-            let state = entry.read();
-            match *state {
-                State::Candidate => false,
-                State::KeyPairShared(_) => false,
-                _ => true,
-            }
-        } else {
+        match entries.get(target) {
+            Some(State::Establishing1 {
+                ..
+            }) => true,
+            Some(State::Establishing2 {
+                ..
+            }) => true,
+            Some(State::Established {
+                ..
+            }) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_established(&self, target: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        if let Some(State::Established {
+            ..
+        }) = entries.get(target)
+        {
             true
+        } else {
+            false
         }
     }
 
-    pub fn reset_imported_secret(&self, addr: &SocketAddr) -> bool {
+    pub fn is_establishing(&self, target: &SocketAddr) -> bool {
         let entries = self.entries.read();
-        if let Some(entry) = entries.get(addr) {
-            let mut state = entry.write();
-            match *state {
-                State::TemporaryNonceShared {
-                    local_key_pair,
-                    remote_public,
-                    shared_secret,
-                    secret_origin,
-                    ..
-                } if secret_origin == SecretOrigin::Preimported => {
-                    cinfo!(NETWORK, "{} does not load secret", addr);
-                    *state = State::SecretShared {
-                        local_key_pair,
-                        remote_public,
-                        shared_secret,
-                        secret_origin,
-                    };
-                    return true
-                }
-                _ => return false,
-            }
+        match entries.get(target) {
+            Some(State::Establishing1 {
+                ..
+            }) => true,
+            Some(State::Establishing2 {
+                ..
+            }) => true,
+            _ => false,
         }
-        false
     }
 
-    pub fn all_addresses(&self) -> HashSet<SocketAddr> {
+    pub fn all_addresses(&self) -> Vec<SocketAddr> {
         let entries = self.entries.read();
         entries.keys().cloned().collect()
     }
 
-    pub fn reachable_addresses(&self, from: &SocketAddr) -> HashSet<SocketAddr> {
+    pub fn candidates(&self) -> Vec<SocketAddr> {
+        let entries = self.entries.read();
+        entries
+            .iter()
+            .filter_map(|(addr, state)| match state {
+                State::Candidate(_) => Some(addr),
+                State::Registered {
+                    ..
+                } => Some(addr),
+                _ => None,
+            })
+            .cloned()
+            .collect()
+    }
+
+    pub fn established_addresses(&self) -> Vec<SocketAddr> {
+        let entries = self.entries.read();
+        entries
+            .iter()
+            .filter_map(|(addr, state)| {
+                if let State::Established {
+                    ..
+                } = state
+                {
+                    Some(addr)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .collect()
+    }
+
+    pub fn reachable_addresses(&self, from: &SocketAddr) -> Vec<SocketAddr> {
         let entries = self.entries.read();
         entries.keys().filter(|addr| from.is_reachable(addr)).cloned().collect()
     }
 
-    pub fn is_connected(&self, addr: &SocketAddr) -> bool {
-        let entries = self.entries.read();
-        if let Some(entry) = entries.get(addr) {
-            let state = entry.read();
-            match *state {
-                State::Established {
-                    ..
-                } => return true,
-                _ => return false,
-            }
-        }
-        false
+    pub fn touch(&self, target: SocketAddr) -> Option<Public> {
+        let mut entries = self.entries.write();
+        let entry = entries.entry(target).or_default();
+        entry.local_public().cloned()
     }
 
-    pub fn add_candidate(&self, addr: SocketAddr) -> bool {
+    pub fn touch_addresses<I: IntoIterator<Item = SocketAddr>>(&self, targets: I) {
         let mut entries = self.entries.write();
-        if entries.contains_key(&addr) {
-            ctrace!(ROUTING_TABLE, "{} is already in table", addr);
-            return false
+        for target in targets.into_iter() {
+            entries.entry(target).or_default();
         }
-        let t = entries.insert(addr, RwLock::new(State::Candidate));
-        debug_assert!(t.is_none());
-        ctrace!(ROUTING_TABLE, "Candidate added {}", addr);
+    }
+
+    pub fn register_remote_public(&self, target: SocketAddr, remote: Public) -> Option<Public> {
+        let mut entries = self.entries.write();
+        let entry = entries.entry(target).or_default();
+        let new_state = match entry {
+            State::Candidate(local_key_pair)
+            | State::Registered {
+                local_key_pair,
+                ..
+            } => State::Registered {
+                local_key_pair: *local_key_pair,
+                remote_public: remote,
+                secret_origin: SecretOrigin::Preimported,
+            },
+            _ => return None,
+        };
+        *entry = new_state;
+        Some(*entry.local_public().expect("Registered state must have local public"))
+    }
+
+    pub fn reset_local_key(&self, target: SocketAddr) -> bool {
+        let mut entries = self.entries.write();
+        let entry = entries.entry(target).or_default();
+        let new_state = match entry {
+            State::Candidate(_) => State::default(),
+            State::Registered {
+                remote_public,
+                secret_origin,
+                ..
+            } => {
+                let local_key_pair = Random.generate().unwrap();
+                State::Registered {
+                    local_key_pair,
+                    remote_public: *remote_public,
+                    secret_origin: *secret_origin,
+                }
+            }
+            _ => return false,
+        };
+        *entry = new_state;
         true
     }
 
-    pub fn remove_node(&self, addr: &SocketAddr) -> bool {
-        self.remove_node_internal(addr, false)
-    }
-
-    pub fn remove_node_on_shutdown(&self, addr: &SocketAddr) -> bool {
-        self.remove_node_internal(addr, true)
-    }
-
-    fn remove_node_internal(&self, addr: &SocketAddr, on_shutdown: bool) -> bool {
+    pub fn try_establish(&self, target: SocketAddr) -> Result<Option<Public>, String> {
         let mut entries = self.entries.write();
-
-        if let Some(entry) = entries.get(addr) {
-            let state = entry.read();
-            match *state {
-                State::Banned => return false,
-                State::SessionShared {
-                    ..
-                } => {
-                    if on_shutdown {
-                        return false
-                    }
+        let entry = entries.entry(target).or_default();
+        let new_state = match entry {
+            State::Candidate(local_key_pair) => State::Establishing1(*local_key_pair),
+            State::Registered {
+                local_key_pair,
+                remote_public,
+                secret_origin,
+            } => {
+                let shared_secret = exchange(remote_public, local_key_pair.private())
+                    .map_err(|e| format!("Cannot exchange key: {:?}", e))?;
+                State::Establishing2 {
+                    local_key_pair: *local_key_pair,
+                    remote_public: *remote_public,
+                    shared_secret,
+                    secret_origin: *secret_origin,
                 }
-                _ => {}
             }
-        }
-        let result = entries.remove(addr).is_some();
-        if result {
-            ctrace!(ROUTING_TABLE, "Remove {}", addr);
-        }
-        result
+            _ => return Err("Invalid state".to_string()),
+        };
+        *entry = new_state;
+        Ok(entry.remote_public().cloned())
     }
 
-    pub fn register_key_pair_for_secret(&self, remote_address: SocketAddr) -> Option<Public> {
+    pub fn set_recipient_establish1(
+        &self,
+        target: SocketAddr,
+        received_remote_public: Public,
+    ) -> Result<Option<(Bytes, Public, Session)>, String> {
         let mut entries = self.entries.write();
-        let entry = entries.entry(remote_address).or_insert_with(|| RwLock::new(State::Candidate));
-        let mut state = entry.write();
-        if *state == State::Candidate {
-            let ephemeral = Random.generate().unwrap();
-            let pub_key = *ephemeral.public();
-            ctrace!(ROUTING_TABLE, "Share pub-key({}) with {}", pub_key, remote_address);
-            *state = State::KeyPairShared(ephemeral);
-        }
-        state.local_public().cloned()
-    }
-
-    pub fn share_secret(&self, remote_address: SocketAddr, remote_public: Public) -> Option<Public> {
-        let mut entries = self.entries.write();
-        let entry = entries.entry(remote_address).or_insert_with(State::key_pair_shared);
-        let mut state = entry.write();
-        let local_public = state.local_public().cloned();
-        if let Some(registered_remote_public) = state.remote_public() {
-            if *registered_remote_public == remote_public {
-                return Some(local_public.expect("The local key always exists when a remote public key exists."))
-            }
-        }
-        if local_public.is_some() {
-            if let State::KeyPairShared(local_key_pair) = state.clone() {
-                if let Ok(shared_secret) = exchange(&remote_public, local_key_pair.private()) {
-                    *state = State::SecretShared {
-                        local_key_pair,
-                        remote_public,
+        let mut rng = self.rng.lock();
+        let entry = entries.entry(target).or_default();
+        let (new_state, shared_secret, nonce, local_public) = match entry {
+            State::Candidate(local_key_pair) => {
+                let nonce = rng.gen();
+                let shared_secret = exchange(&received_remote_public, local_key_pair.private())
+                    .map_err(|e| format!("Cannot exchange key: {:?}", e))?;
+                (
+                    State::Established {
+                        local_key_pair: *local_key_pair,
+                        remote_public: received_remote_public,
                         shared_secret,
                         secret_origin: SecretOrigin::Shared,
-                    };
-                    ctrace!(ROUTING_TABLE, "Secret shared with {}", remote_address);
-                    return Some(*local_key_pair.public())
-                }
-            }
-        }
-        ctrace!(ROUTING_TABLE, "Cannot share secret with {}", remote_address);
-        None
-    }
-
-    pub fn request_session(&self, remote_address: &SocketAddr) -> Option<Vec<u8>> {
-        let entries = self.entries.read();
-        let mut rng = self.rng.lock();
-
-        let result = entries.get(remote_address).and_then(|entry| {
-            let mut state = entry.write();
-            let (shared_secret, secret_origin, local_key_pair, remote_public) = match *state {
-                State::SecretShared {
-                    shared_secret,
-                    secret_origin,
-                    local_key_pair,
-                    remote_public,
-                } => (shared_secret, secret_origin, local_key_pair, remote_public),
-                _ => return None,
-            };
-
-            let temporary_nonce: Nonce = rng.gen();
-            *state = State::TemporaryNonceShared {
-                local_key_pair,
-                remote_public,
-                shared_secret,
-                temporary_nonce,
-                secret_origin,
-            };
-            let temporary_session = Session::new_with_zero_nonce(shared_secret);
-            let result = encode_and_encrypt_nonce(&temporary_session, &temporary_nonce);
-            if result.is_some() {
-                ctrace!(ROUTING_TABLE, "Temporary nonce shared with {}", remote_address);
-            }
-            result
-        });
-        if result.is_none() {
-            ctrace!(ROUTING_TABLE, "Cannot share temporary nonce with {}", remote_address);
-        }
-        result
-    }
-
-    pub fn create_requested_session(
-        &self,
-        remote_address: &SocketAddr,
-        encrypted_temporary_nonce: &[u8],
-    ) -> Option<Vec<u8>> {
-        let entries = self.entries.read();
-        let mut rng = self.rng.lock();
-
-        let result = entries.get(remote_address).and_then(|entry| {
-            let mut state = entry.write();
-            let (shared_secret, secret_origin, local_key_pair, remote_public) = match *state {
-                State::SecretShared {
-                    shared_secret,
-                    secret_origin,
-                    local_key_pair,
-                    remote_public,
-                    ..
-                } => (shared_secret, secret_origin, local_key_pair, remote_public),
-                _ => return None,
-            };
-            let temporary_session = {
-                let temporary_zero_session = Session::new_with_zero_nonce(shared_secret);
-                let temporary_nonce = decrypt_and_decode_nonce(&temporary_zero_session, encrypted_temporary_nonce)?;
-                Session::new(shared_secret, temporary_nonce)
-            };
-
-            let nonce: Nonce = rng.gen();
-            *state = State::SessionShared {
-                local_key_pair,
-                remote_public,
-                shared_secret,
-                nonce,
-                secret_origin,
-            };
-
-            let encrypted_nonce = encode_and_encrypt_nonce(&temporary_session, &nonce);
-            if encrypted_nonce.is_some() {
-                ctrace!(ROUTING_TABLE, "Create session to {}", remote_address);
-            }
-            encrypted_nonce
-        });
-        if result.is_none() {
-            ctrace!(ROUTING_TABLE, "Cannot create session to {}", remote_address);
-        }
-        result
-    }
-
-    pub fn create_allowed_session(&self, remote_address: &SocketAddr, received_nonce: &[u8]) -> bool {
-        let entries = self.entries.read();
-        if let Some(entry) = entries.get(remote_address) {
-            let mut state = entry.write();
-            if let State::TemporaryNonceShared {
-                local_key_pair,
-                remote_public,
-                shared_secret,
-                temporary_nonce,
-                secret_origin,
-            } = state.clone()
-            {
-                let temporary_session = Session::new(shared_secret, temporary_nonce);
-                let nonce = match decrypt_and_decode_nonce(&temporary_session, &received_nonce) {
-                    Some(nonce) => nonce,
-                    None => {
-                        ctrace!(ROUTING_TABLE, "Cannot allow session to {}. Cannot decrypt nonce", remote_address);
-                        return false
-                    }
-                };
-
-                *state = State::SessionShared {
-                    local_key_pair,
-                    remote_public,
-                    shared_secret,
-                    nonce,
-                    secret_origin,
-                };
-                ctrace!(ROUTING_TABLE, "Allow session to {}", remote_address);
-                return true
-            }
-        }
-        ctrace!(ROUTING_TABLE, "Cannot allow session to {}. Invalid state", remote_address);
-        false
-    }
-
-    pub fn set_establishing(&self, remote_address: &SocketAddr) -> bool {
-        let entries = self.entries.read();
-        if let Some(entry) = entries.get(remote_address) {
-            let mut state = entry.write();
-            if let State::SessionShared {
-                local_key_pair,
-                remote_public,
-                shared_secret,
-                nonce,
-                secret_origin,
-            } = *state
-            {
-                *state = State::Establishing {
-                    local_key_pair,
-                    remote_public,
-                    shared_secret,
-                    nonce,
-                    secret_origin,
-                };
-                ctrace!(ROUTING_TABLE, "Connection to {} set establishing", remote_address);
-                return true
-            }
-        }
-        ctrace!(ROUTING_TABLE, "Cannot set connection to {} as establishing", remote_address);
-        false
-    }
-
-    pub fn establish(&self, remote_address: &SocketAddr) -> bool {
-        let entries = self.entries.read();
-        if let Some(entry) = entries.get(remote_address) {
-            let mut state = entry.write();
-            match *state {
-                State::SessionShared {
-                    local_key_pair,
-                    remote_public,
-                    shared_secret,
-                    nonce,
-                    secret_origin,
-                } => {
-                    *state = State::Established {
-                        local_key_pair,
-                        remote_public,
-                        shared_secret,
                         nonce,
-                        secret_origin,
-                    };
-                    ctrace!(ROUTING_TABLE, "Connection to {} is established", remote_address);
-                    return true
-                }
-                State::Establishing {
-                    local_key_pair,
-                    remote_public,
+                    },
                     shared_secret,
                     nonce,
-                    secret_origin,
-                } => {
-                    *state = State::Established {
-                        local_key_pair,
-                        remote_public,
-                        shared_secret,
-                        nonce,
-                        secret_origin,
-                    };
-                    ctrace!(ROUTING_TABLE, "Connection to {} is established", remote_address);
-                    return true
-                }
-                _ => {}
+                    *local_key_pair.public(),
+                )
             }
-        }
-        ctrace!(ROUTING_TABLE, "Cannot establish connection to {}", remote_address);
-        false
-    }
-
-    pub fn reset_session(&self, remote_address: &SocketAddr) -> bool {
-        let entries = self.entries.read();
-        if let Some(entry) = entries.get(remote_address) {
-            let mut state = entry.write();
-            if let State::Establishing {
+            State::Registered {
                 local_key_pair,
                 remote_public,
-                shared_secret,
-                nonce,
                 secret_origin,
-            } = *state
-            {
-                *state = State::SessionShared {
-                    local_key_pair,
-                    remote_public,
+            } => {
+                if *remote_public != received_remote_public {
+                    return Err(format!(
+                        "Unexpected remote public received. expected: {}, got: {}",
+                        remote_public, received_remote_public
+                    ))
+                }
+                let nonce = rng.gen();
+                let shared_secret = exchange(remote_public, local_key_pair.private())
+                    .map_err(|e| format!("Cannot exchange key: {:?}", e))?;
+                (
+                    State::Established {
+                        local_key_pair: *local_key_pair,
+                        remote_public: *remote_public,
+                        shared_secret,
+                        secret_origin: *secret_origin,
+                        nonce,
+                    },
                     shared_secret,
                     nonce,
-                    secret_origin,
-                };
-                ctrace!(ROUTING_TABLE, "Connection to {} is ready to reconnect", remote_address);
-                return true
+                    *local_key_pair.public(),
+                )
             }
-        }
-        ctrace!(ROUTING_TABLE, "Cannot reset connection to {}, because it's not establishing", remote_address);
-        false
-    }
-
-    pub fn ban(&self, remote_address: &SocketAddr) -> bool {
-        let entries = self.entries.read();
-        if let Some(entry) = entries.get(remote_address) {
-            let mut state = entry.write();
-            *state = State::Banned;
-            return true
-        }
-        false
-    }
-
-    pub fn unban(&self, remote_address: &SocketAddr) -> bool {
-        let entries = self.entries.read();
-        if let Some(entry) = entries.get(remote_address) {
-            let mut state = entry.write();
-            if *state == State::Banned {
-                *state = State::Candidate;
-                return true
-            }
-        }
-        false
-    }
-
-    pub fn unestablished_session(&self, remote_address: &SocketAddr) -> Option<Session> {
-        let entries = self.entries.read();
-        if let Some(entry) = entries.get(remote_address) {
-            let state = entry.read();
-            if let State::SessionShared {
-                shared_secret,
-                nonce,
+            State::Establishing1(_) => return Ok(None),
+            State::Establishing2 {
+                remote_public,
                 ..
-            } = *state
-            {
-                ctrace!(ROUTING_TABLE, "Unestablish connection to {}", remote_address);
-                return Some(Session::new(shared_secret, nonce))
-            }
-        }
-        ctrace!(ROUTING_TABLE, "Connection to {} is not established yet", remote_address);
-        None
-    }
-
-    pub fn unestablished_addresses(&self, len: usize) -> Vec<SocketAddr> {
-        let entries = self.entries.read();
-        entries
-            .iter()
-            .filter(|(_remote_node_id, entry)| {
-                let state = entry.read();
-                match *state {
-                    State::SessionShared {
-                        ..
-                    } => true,
-                    _ => false,
+            } => {
+                if *remote_public != received_remote_public {
+                    return Err(format!(
+                        "Unexpected remote public received. expected: {}, got: {}",
+                        remote_public, received_remote_public
+                    ))
                 }
-            })
-            .take(len)
-            .map(|(remote_node_id, _entry)| *remote_node_id)
-            .collect()
+                return Ok(None)
+            }
+            _ => return Err("Cannot establish a connection for Recipient".to_string()),
+        };
+        let encrypted_nonce =
+            encrypt_nonce(nonce, &shared_secret).map_err(|e| format!("Cannot encrypt nonce: {:?}", e))?;
+        *entry = new_state;
+        Ok(Some((encrypted_nonce, local_public, entry.session().expect("Established connection must have a session"))))
     }
 
-    pub fn candidates(&self, len: usize) -> Vec<SocketAddr> {
-        let entries = self.entries.read();
+    pub fn set_recipient_establish2(
+        &self,
+        target: SocketAddr,
+        received_local_public: Public,
+        received_remote_public: Public,
+    ) -> Result<Option<(Bytes, Public, Session)>, String> {
+        let mut entries = self.entries.write();
         let mut rng = self.rng.lock();
+        let entry = entries.entry(target).or_default();
+        let (new_state, shared_secret, nonce, local_public) = match entry {
+            State::Candidate(local_key_pair) => {
+                if received_local_public != *local_key_pair.public() {
+                    return Err(format!(
+                        "Unexpected local public received. expected: {}, got: {}",
+                        local_key_pair.public(),
+                        received_local_public
+                    ))
+                }
+                let nonce = rng.gen();
+                let shared_secret = exchange(&received_remote_public, local_key_pair.private())
+                    .map_err(|e| format!("Cannot exchange key: {:?}", e))?;
+                (
+                    State::Established {
+                        local_key_pair: *local_key_pair,
+                        remote_public: received_remote_public,
+                        shared_secret,
+                        secret_origin: SecretOrigin::Shared,
+                        nonce,
+                    },
+                    shared_secret,
+                    nonce,
+                    *local_key_pair.public(),
+                )
+            }
+            State::Registered {
+                local_key_pair,
+                remote_public,
+                secret_origin,
+            } => {
+                if received_local_public != *local_key_pair.public() {
+                    return Err(format!(
+                        "Unexpected local public received. expected: {}, got: {}",
+                        local_key_pair.public(),
+                        received_local_public
+                    ))
+                }
+                if *remote_public != received_remote_public {
+                    return Err(format!(
+                        "Unexpected remote public received. expected: {}, got: {}",
+                        remote_public, received_remote_public
+                    ))
+                }
+                let nonce = rng.gen();
+                let shared_secret = exchange(remote_public, local_key_pair.private())
+                    .map_err(|e| format!("Cannot exchange key: {:?}", e))?;
+                (
+                    State::Established {
+                        local_key_pair: *local_key_pair,
+                        remote_public: *remote_public,
+                        shared_secret,
+                        secret_origin: *secret_origin,
+                        nonce,
+                    },
+                    shared_secret,
+                    nonce,
+                    *local_key_pair.public(),
+                )
+            }
+            State::Establishing1(local_key_pair) => {
+                if received_local_public != *local_key_pair.public() {
+                    return Err(format!(
+                        "Unexpected local public received. expected: {}, got: {}",
+                        local_key_pair.public(),
+                        received_local_public
+                    ))
+                }
+                return Ok(None)
+            }
+            State::Establishing2 {
+                local_key_pair,
+                remote_public,
+                ..
+            } => {
+                if received_local_public != *local_key_pair.public() {
+                    return Err(format!(
+                        "Unexpected local public received. expected: {}, got: {}",
+                        local_key_pair.public(),
+                        received_local_public
+                    ))
+                }
+                if *remote_public != received_remote_public {
+                    return Err(format!(
+                        "Unexpected remote public received. expected: {}, got: {}",
+                        remote_public, received_remote_public
+                    ))
+                }
+                return Ok(None)
+            }
+            _ => return Err("Cannot establish a connection for Recipient".to_string()),
+        };
+        let encrypted_nonce =
+            encrypt_nonce(nonce, &shared_secret).map_err(|e| format!("Cannot encrypt nonce: {:?}", e))?;
+        *entry = new_state;
+        Ok(Some((encrypted_nonce, local_public, entry.session().expect("Established connection must have a session"))))
+    }
 
-        let mut addresses = entries
-            .iter()
-            .filter(|(_remote_node_id, entry)| {
-                let state = entry.read();
-                State::Candidate == *state
-            })
-            .map(|(remote_node_id, _entry)| *remote_node_id)
-            .collect::<Vec<_>>();
+    pub fn set_initiator_establish(
+        &self,
+        target: SocketAddr,
+        remote_public: Public,
+        encrypted_nonce: &[u8],
+    ) -> Result<Session, String> {
+        let mut entries = self.entries.write();
+        let entry = entries.entry(target).or_default();
+        let new_state = match entry {
+            State::Establishing1(local_key_pair) => {
+                let shared_secret = exchange(&remote_public, local_key_pair.private())
+                    .map_err(|e| format!("Cannot exchange key: {:?}", e))?;
+                let nonce = decrypt_nonce(encrypted_nonce, &shared_secret)
+                    .map_err(|e| format!("Cannot decrypt nonce: {:?}", e))?;
+                State::Established {
+                    local_key_pair: *local_key_pair,
+                    remote_public,
+                    shared_secret,
+                    secret_origin: SecretOrigin::Shared,
+                    nonce,
+                }
+            }
+            State::Establishing2 {
+                local_key_pair,
+                remote_public: reserved_remote_public,
+                shared_secret,
+                secret_origin,
+            } => {
+                if remote_public != *reserved_remote_public {
+                    return Err(format!(
+                        "Ack with an unexepected remote key. expected: {}, got: {}",
+                        reserved_remote_public, remote_public
+                    ))
+                }
+                debug_assert_eq!(*shared_secret, exchange(&remote_public, local_key_pair.private()).unwrap());
+                let nonce = decrypt_nonce(encrypted_nonce, &shared_secret)
+                    .map_err(|e| format!("Cannot decrypt nonce: {:?}", e))?;
+                State::Established {
+                    local_key_pair: *local_key_pair,
+                    remote_public,
+                    shared_secret: *shared_secret,
+                    secret_origin: *secret_origin,
+                    nonce,
+                }
+            }
+            _ => return Err("Initiator is not Establishing1".to_string()),
+        };
+        *entry = new_state;
+        Ok(entry.session().expect("Established connection must have a session"))
+    }
 
-        rng.shuffle(&mut addresses);
-        addresses.into_iter().take(len).collect::<Vec<_>>()
+    pub fn reset_initiator_establish(&self, target: SocketAddr) -> Result<(), String> {
+        let mut entries = self.entries.write();
+        let entry = entries.entry(target).or_default();
+        let new_state = match entry {
+            State::Establishing1(local_key_pair) => State::Candidate(*local_key_pair),
+            State::Establishing2 {
+                local_key_pair,
+                remote_public,
+                secret_origin,
+                ..
+            } => State::Registered {
+                local_key_pair: *local_key_pair,
+                remote_public: *remote_public,
+                secret_origin: *secret_origin,
+            },
+            _ => return Err("Initiator is not Establishing1".to_string()),
+        };
+        *entry = new_state;
+        Ok(())
+    }
+
+    // true if the connection is established
+    pub fn ban(&self, target: SocketAddr) -> bool {
+        let mut entries = self.entries.write();
+        let entry = entries.entry(target).or_default();
+        let mut new_state = State::Banned;
+        std::mem::swap(&mut new_state, entry);
+        if let State::Established {
+            ..
+        } = new_state
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn unban(&self, target: SocketAddr) -> bool {
+        let mut entries = self.entries.write();
+        let entry = entries.entry(target).or_default();
+        match entry {
+            State::Banned => {}
+            _ => return false,
+        }
+        *entry = State::default();
+        true
+    }
+
+    pub fn remove(&self, target: &SocketAddr) -> bool {
+        let mut entries = self.entries.write();
+        if let Some(&State::Banned) = entries.get(target) {
+            return false
+        }
+        entries.remove(target);
+        true
+    }
+
+    pub fn local_public(&self, target: SocketAddr) -> Option<Public> {
+        let mut entries = self.entries.write();
+        let entry = entries.entry(target).or_default();
+        entry.local_public().cloned()
     }
 }
 
-fn decrypt_and_decode_nonce(session: &Session, encrypted_bytes: &[u8]) -> Option<Nonce> {
-    session
-        .decrypt(&encrypted_bytes)
-        .map_err(|e| {
-            ctrace!(ROUTING_TABLE, "Cannot decode nonce {:?}", e);
-            e
-        })
-        .ok()
-        .and_then(|unencrypted_bytes| {
-            let rlp = UntrustedRlp::new(&unencrypted_bytes);
-            Decodable::decode(&rlp)
-                .map_err(|e| {
-                    ctrace!(ROUTING_TABLE, "Cannot decrypt nonce {:?}", e);
-                    e
-                })
-                .ok()
-        })
+fn decrypt_nonce(encrypted_bytes: &[u8], shared_secret: &Secret) -> Result<Nonce, SymmetricCipherError> {
+    let iv = 0; // FIXME: Use proper iv
+    let unecrypted = aes::decrypt(encrypted_bytes, shared_secret, &iv)?;
+    debug_assert_eq!(std::mem::size_of::<Nonce>(), 16);
+    if unecrypted.len() != 16 {
+        return Err(SymmetricCipherError::InvalidLength) // FIXME
+    }
+    let mut nonce_bytes = [0u8; 16];
+    nonce_bytes.copy_from_slice(&unecrypted);
+    Ok(Nonce::from_be_bytes(nonce_bytes))
 }
 
-fn encode_and_encrypt_nonce(session: &Session, nonce: &Nonce) -> Option<Vec<u8>> {
-    let encoded_nonce = nonce.rlp_bytes();
-    session
-        .encrypt(&encoded_nonce)
-        .map_err(|e| {
-            ctrace!(ROUTING_TABLE, "Cannot encrypt nonce {:?}", e);
-            e
-        })
-        .ok()
+fn encrypt_nonce(nonce: Nonce, shared_secret: &Secret) -> Result<Bytes, SymmetricCipherError> {
+    let iv = 0; // FIXME: Use proper iv
+    Ok(aes::encrypt(&nonce.to_be_bytes(), shared_secret, &iv)?)
 }
