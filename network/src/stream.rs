@@ -283,6 +283,7 @@ impl Stream {
     pub fn connect(socket_address: &net::SocketAddr) -> Result<Option<Self>> {
         Ok(match TcpStream::connect(socket_address) {
             Ok(stream) => Some(Self::from(stream)),
+            Err(ref e) if e.kind() == io::ErrorKind::NotConnected => None,
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
             Err(e) => Err(e)?,
         })

@@ -53,11 +53,9 @@ impl Decodable for SignedMessage {
         if rlp.item_count()? != 2 {
             return Err(DecoderError::Custom("Cannot decode a signed message"))
         }
-        let message: Vec<u8> = rlp.val_at(0)?;
-        let signature: Signature = rlp.val_at(1)?;
         Ok(Self {
-            message,
-            signature,
+            message: rlp.val_at(0)?,
+            signature: rlp.val_at(1)?,
         })
     }
 }

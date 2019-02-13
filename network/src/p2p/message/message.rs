@@ -17,29 +17,23 @@
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::ExtensionMessage;
-use super::HandshakeMessage;
 use super::NegotiationMessage;
 
 #[derive(Debug)]
 pub enum Message {
     Extension(ExtensionMessage),
-    Handshake(HandshakeMessage),
     Negotiation(NegotiationMessage),
 }
 
-use super::ACK_ID;
-use super::ALLOWED_ID;
-use super::DENIED_ID;
 use super::ENCRYPTED_ID;
 use super::REQUEST_ID;
-use super::SYNC_ID;
+use super::RESPONSE_ID;
 use super::UNENCRYPTED_ID;
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             Message::Extension(message) => message.rlp_append(s),
-            Message::Handshake(message) => message.rlp_append(s),
             Message::Negotiation(message) => message.rlp_append(s),
         }
     }
@@ -47,15 +41,12 @@ impl Encodable for Message {
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let protocol_id = rlp.val_at(1)?;
+        let protocol_id = rlp.val_at(0)?;
         match protocol_id {
-            SYNC_ID => Ok(Message::Handshake(HandshakeMessage::decode(rlp)?)),
-            ACK_ID => Ok(Message::Handshake(HandshakeMessage::decode(rlp)?)),
-            REQUEST_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
-            ALLOWED_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
-            DENIED_ID => Ok(Message::Negotiation(NegotiationMessage::decode(rlp)?)),
-            ENCRYPTED_ID => Ok(Message::Extension(ExtensionMessage::decode(rlp)?)),
-            UNENCRYPTED_ID => Ok(Message::Extension(ExtensionMessage::decode(rlp)?)),
+            REQUEST_ID => Ok(Message::Negotiation(Decodable::decode(rlp)?)),
+            RESPONSE_ID => Ok(Message::Negotiation(Decodable::decode(rlp)?)),
+            ENCRYPTED_ID => Ok(Message::Extension(Decodable::decode(rlp)?)),
+            UNENCRYPTED_ID => Ok(Message::Extension(Decodable::decode(rlp)?)),
             _ => Err(DecoderError::Custom("unexpected protocol id")),
         }
     }
