@@ -95,7 +95,7 @@ struct TendermintInner {
     /// Message for the last PoLC.
     lock_change: Option<ConsensusMessage>,
     /// Last lock view.
-    last_lock: View,
+    last_lock: Option<View>,
     /// hash of the proposed block, used for seal submission.
     proposal: Option<H256>,
     /// The last confirmed view from the commit step.
@@ -154,7 +154,7 @@ impl TendermintInner {
             votes: Default::default(),
             signer: Default::default(),
             lock_change: None,
-            last_lock: 0,
+            last_lock: None,
             proposal: None,
             last_confirmed_view: 0,
             validators: our_params.validators,
@@ -348,13 +348,13 @@ impl TendermintInner {
     }
 
     fn should_unlock(&self, lock_change_view: View) -> bool {
-        self.last_lock < lock_change_view && lock_change_view < self.view
+        self.last_lock.unwrap_or(0) < lock_change_view && lock_change_view < self.view
     }
 
     fn move_to_height(&mut self, height: Height) {
         assert!(height > self.height, "{} < {}", height, self.height);
         cdebug!(ENGINE, "Transitioning to height {}.", height);
-        self.last_lock = 0;
+        self.last_lock = None;
         self.height = height;
         self.view = 0;
         self.lock_change = None;
@@ -424,7 +424,7 @@ impl TendermintInner {
                     let block_hash = match self.lock_change {
                         Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
                             ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
-                            self.last_lock = m.on.step.view;
+                            self.last_lock = Some(m.on.step.view);
                             m.on.block_hash
                         }
                         _ => None,
