@@ -112,20 +112,13 @@ impl<'db> ShardLevelState<'db> {
                 approver,
                 administrator,
                 allowed_script_hashes,
-                output:
-                    AssetMintOutput {
-                        lock_script_hash,
-                        supply,
-                        parameters,
-                    },
+                output,
                 ..
             } => {
                 self.mint_asset(
                     transaction.tracker(),
                     metadata,
-                    lock_script_hash,
-                    &parameters,
-                    supply,
+                    output,
                     approver,
                     approvers,
                     administrator,
@@ -216,9 +209,7 @@ impl<'db> ShardLevelState<'db> {
         &mut self,
         transaction_tracker: H256,
         metadata: &str,
-        lock_script_hash: &H160,
-        parameters: &[Bytes],
-        supply: &Option<u64>,
+        output: &AssetMintOutput,
         approver: &Option<Address>,
         approvers: &[Address],
         administrator: &Option<Address>,
@@ -243,12 +234,11 @@ impl<'db> ShardLevelState<'db> {
             }
             .into())
         }
-        let supply = supply.unwrap_or(::std::u64::MAX);
         let asset_scheme = self.create_asset_scheme(
             self.shard_id,
             asset_type,
             metadata.to_string(),
-            supply,
+            output.supply,
             *approver,
             *administrator,
             allowed_script_hashes.to_vec(),
@@ -257,7 +247,15 @@ impl<'db> ShardLevelState<'db> {
 
         ctrace!(TX, "{:?} is minted on {}:{:?}", asset_scheme, self.shard_id, asset_type);
 
-        self.create_asset(transaction_tracker, 0, asset_type, *lock_script_hash, parameters.to_vec(), supply, None)?;
+        self.create_asset(
+            transaction_tracker,
+            0,
+            asset_type,
+            output.lock_script_hash,
+            output.parameters.clone(),
+            output.supply,
+            None,
+        )?;
         ctrace!(TX, "Created asset on {}:{}:{}", self.shard_id, transaction_tracker, 0);
         Ok(())
     }
@@ -430,21 +428,20 @@ impl<'db> ShardLevelState<'db> {
         }
 
         // This assertion should be filtered while verifying action.
-        assert!(output.supply > Some(0), "Supply increasing quantity must be specified and greater than 0");
-        let additional_supply = output.supply.unwrap();
+        assert!(output.supply > 0, "Supply increasing quantity must be specified and greater than 0");
 
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, *asset_type)?;
-        let previous_supply = asset_scheme.increase_supply(additional_supply)?;
+        let previous_supply = asset_scheme.increase_supply(output.supply)?;
         self.create_asset(
             transaction_tracker,
             index,
             *asset_type,
             output.lock_script_hash,
             output.parameters.clone(),
-            additional_supply,
+            output.supply,
             None,
         )?;
-        ctrace!(TX, "Increased asset supply {:?} {:?} {:?}", asset_type, previous_supply, additional_supply);
+        ctrace!(TX, "Increased asset supply {:?} {:?} {:?}", asset_type, previous_supply, output.supply);
         ctrace!(TX, "Created asset on {}:{}:{}", self.shard_id, transaction_tracker, index);
 
         Ok(())
@@ -637,9 +634,7 @@ impl<'db> ShardLevelState<'db> {
         self.mint_asset(
             transaction.tracker(),
             metadata,
-            &output.lock_script_hash,
-            &output.parameters,
-            &output.supply,
+            output,
             approver,
             approvers,
             administrator,
@@ -2353,7 +2348,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![],
-                supply: Some(new_supply),
+                supply: new_supply,
             },
         };
         let supply_tracker = increase_supply.tracker();

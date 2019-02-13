@@ -561,12 +561,6 @@ impl TendermintInner {
             return
         }
 
-        self.votes.throw_out_old(&VoteStep {
-            height: (proposal.number() - 1) as usize,
-            view: 0,
-            step: Step::Propose,
-        });
-
         let height = proposal.number() as Height;
         let prev_block_view = previous_block_view(proposal).expect("The proposal is verified");
         let on = VoteOn {
@@ -584,6 +578,14 @@ impl TendermintInner {
                 self.votes.vote(message);
             }
         }
+
+        // Since the votes needs at least one vote to check the old votes,
+        // we should remove old votes after inserting current votes.
+        self.votes.throw_out_old(&VoteStep {
+            height: (proposal.number() - 1) as usize,
+            view: 0,
+            step: Step::Propose,
+        });
 
         let proposal_view = consensus_view(proposal).unwrap();
         let current_height = self.height;

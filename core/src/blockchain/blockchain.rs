@@ -287,7 +287,7 @@ impl BlockChain {
         let best_block_header = self.block_header_data(&best_block_hash).expect("Best block always exists");
 
         let best_proposal_block_detail =
-            self.block_details(&best_proposal_block_hash).expect("Highest block always exists");
+            self.block_details(&best_proposal_block_hash).expect("Best proposal block always exists");
 
         BlockChainInfo {
             best_score: best_block_detail.total_score,

@@ -719,7 +719,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: Default::default(),
                 parameters: vec![],
-                supply: Some(1.into()),
+                supply: 1.into(),
             }
             .into(),
 
@@ -746,7 +746,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: Default::default(),
                 parameters: vec![],
-                supply: Some(1.into()),
+                supply: 1.into(),
             }
             .into(),
 
@@ -770,7 +770,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: Default::default(),
                 parameters: vec![],
-                supply: Some(1.into()),
+                supply: 1.into(),
             }
             .into(),
 
@@ -792,7 +792,7 @@ mod tests {
             output: AssetMintOutput {
                 lock_script_hash: Default::default(),
                 parameters: vec![],
-                supply: Some(1.into()),
+                supply: 1.into(),
             }
             .into(),
 

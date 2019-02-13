@@ -382,11 +382,7 @@ impl PartialHashing for ShardTransaction {
                 let new_output = if tag.sign_all_outputs {
                     output.clone()
                 } else {
-                    AssetMintOutput {
-                        lock_script_hash: H160::default(),
-                        parameters: Vec::new(),
-                        supply: None,
-                    }
+                    AssetMintOutput::default()
                 };
 
                 Ok(blake256_with_key(
