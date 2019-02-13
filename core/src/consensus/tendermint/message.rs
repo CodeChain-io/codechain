@@ -93,6 +93,7 @@ pub enum TendermintMessage {
     StepState {
         vote_step: VoteStep,
         proposal: Option<H256>,
+        lock_view: Option<View>,
         known_votes: BitSet,
     },
     RequestMessage {
@@ -125,12 +126,14 @@ impl Encodable for TendermintMessage {
             TendermintMessage::StepState {
                 vote_step,
                 proposal,
+                lock_view,
                 known_votes,
             } => {
-                s.begin_list(4);
+                s.begin_list(5);
                 s.append(&MESSAGE_ID_STEP_STATE);
                 s.append(vote_step);
                 s.append(proposal);
+                s.append(lock_view);
                 s.append(known_votes);
             }
             TendermintMessage::RequestMessage {
@@ -178,15 +181,17 @@ impl Decodable for TendermintMessage {
                 }
             }
             MESSAGE_ID_STEP_STATE => {
-                if rlp.item_count()? != 4 {
+                if rlp.item_count()? != 5 {
                     return Err(DecoderError::RlpIncorrectListLen)
                 }
                 let vote_step = rlp.at(1)?.as_val()?;
                 let proposal = rlp.at(2)?.as_val()?;
-                let known_votes = rlp.at(3)?.as_val()?;
+                let lock_view = rlp.at(3)?.as_val()?;
+                let known_votes = rlp.at(4)?.as_val()?;
                 TendermintMessage::StepState {
                     vote_step,
                     proposal,
+                    lock_view,
                     known_votes,
                 }
             }
@@ -361,6 +366,7 @@ mod tests {
         rlp_encode_and_decode_test!(TendermintMessage::StepState {
             vote_step: VoteStep::new(10, 123, Step::Prevote),
             proposal: Some(Default::default()),
+            lock_view: Some(2),
             known_votes: bit_set
         });
     }
