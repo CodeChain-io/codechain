@@ -124,8 +124,7 @@ impl NetworkExtension for Extension {
                             .take(::std::cmp::min(self.config.bucket_size, len) as usize)
                             .collect()
                     } else {
-                        let mut addresses =
-                            routing_table.reachable_addresses(&node.into_addr()).into_iter().collect::<Vec<_>>();
+                        let mut addresses = routing_table.reachable_addresses(&node.into_addr());
                         addresses.shuffle(&mut thread_rng());
                         addresses.into_iter().take(::std::cmp::min(self.config.bucket_size, len) as usize).collect()
                     };
@@ -138,9 +137,7 @@ impl NetworkExtension for Extension {
                 match routing_table.as_ref() {
                     None => cwarn!(DISCOVERY, "No routing table"),
                     Some(routing_table) => {
-                        for address in addresses.into_iter() {
-                            routing_table.add_candidate(address);
-                        }
+                        routing_table.touch_addresses(addresses);
                     }
                 }
             }

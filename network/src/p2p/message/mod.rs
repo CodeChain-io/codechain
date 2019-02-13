@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod extension;
-mod handshake;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod message;
 mod negotiation;
@@ -24,102 +23,51 @@ mod signed_message;
 use primitives::H256;
 
 pub use self::extension::Message as ExtensionMessage;
-pub use self::handshake::Message as HandshakeMessage;
 pub use self::message::Message;
-pub use self::negotiation::{Body as NegotiationBody, Message as NegotiationMessage};
+pub use self::negotiation::Message as NegotiationMessage;
 pub use self::signed_message::SignedMessage;
 pub use crate::session::Nonce;
 
 pub type Version = u64;
-pub type ProtocolId = u64;
-pub type Seq = u64;
 pub type Signature = H256;
 
-pub const SYNC_ID: ProtocolId = 0x00;
-pub const ACK_ID: ProtocolId = 0x01;
-pub const REQUEST_ID: ProtocolId = 0x02;
-pub const ALLOWED_ID: ProtocolId = 0x03;
-pub const DENIED_ID: ProtocolId = 0x04;
-pub const ENCRYPTED_ID: ProtocolId = 0x05;
-pub const UNENCRYPTED_ID: ProtocolId = 0x06;
+pub const REQUEST_ID: u8 = 0x05;
+pub const RESPONSE_ID: u8 = 0x06;
+pub const ENCRYPTED_ID: u8 = 0x07;
+pub const UNENCRYPTED_ID: u8 = 0x08;
 
 #[cfg(test)]
 mod tests {
-    use super::ACK_ID;
-    use super::ALLOWED_ID;
-    use super::DENIED_ID;
     use super::ENCRYPTED_ID;
     use super::REQUEST_ID;
-    use super::SYNC_ID;
+    use super::RESPONSE_ID;
     use super::UNENCRYPTED_ID;
 
     #[test]
-    fn sync_id_is_a_unique() {
-        assert_ne!(SYNC_ID, ACK_ID);
-        assert_ne!(SYNC_ID, REQUEST_ID);
-        assert_ne!(SYNC_ID, ALLOWED_ID);
-        assert_ne!(SYNC_ID, DENIED_ID);
-        assert_ne!(SYNC_ID, ENCRYPTED_ID);
-        assert_ne!(SYNC_ID, UNENCRYPTED_ID);
-    }
-
-    #[test]
-    fn ack_id_is_a_unique() {
-        assert_ne!(ACK_ID, SYNC_ID);
-        assert_ne!(ACK_ID, REQUEST_ID);
-        assert_ne!(ACK_ID, ALLOWED_ID);
-        assert_ne!(ACK_ID, DENIED_ID);
-        assert_ne!(ACK_ID, ENCRYPTED_ID);
-        assert_ne!(ACK_ID, UNENCRYPTED_ID);
-    }
-
-    #[test]
     fn request_id_is_a_unique() {
-        assert_ne!(REQUEST_ID, SYNC_ID);
-        assert_ne!(REQUEST_ID, ACK_ID);
-        assert_ne!(REQUEST_ID, ALLOWED_ID);
-        assert_ne!(REQUEST_ID, DENIED_ID);
+        assert_ne!(REQUEST_ID, RESPONSE_ID);
         assert_ne!(REQUEST_ID, ENCRYPTED_ID);
         assert_ne!(REQUEST_ID, UNENCRYPTED_ID);
     }
 
     #[test]
-    fn allowed_id_is_a_unique() {
-        assert_ne!(ALLOWED_ID, SYNC_ID);
-        assert_ne!(ALLOWED_ID, ACK_ID);
-        assert_ne!(ALLOWED_ID, REQUEST_ID);
-        assert_ne!(ALLOWED_ID, DENIED_ID);
-        assert_ne!(ALLOWED_ID, ENCRYPTED_ID);
-        assert_ne!(ALLOWED_ID, UNENCRYPTED_ID);
-    }
-
-    #[test]
-    fn denied_id_is_a_unique() {
-        assert_ne!(DENIED_ID, SYNC_ID);
-        assert_ne!(DENIED_ID, ACK_ID);
-        assert_ne!(DENIED_ID, REQUEST_ID);
-        assert_ne!(DENIED_ID, ALLOWED_ID);
-        assert_ne!(DENIED_ID, ENCRYPTED_ID);
-        assert_ne!(DENIED_ID, UNENCRYPTED_ID);
+    fn response_id_is_a_unique() {
+        assert_ne!(RESPONSE_ID, REQUEST_ID);
+        assert_ne!(RESPONSE_ID, ENCRYPTED_ID);
+        assert_ne!(RESPONSE_ID, UNENCRYPTED_ID);
     }
 
     #[test]
     fn encrypted_id_is_a_unique() {
-        assert_ne!(ENCRYPTED_ID, SYNC_ID);
-        assert_ne!(ENCRYPTED_ID, ACK_ID);
         assert_ne!(ENCRYPTED_ID, REQUEST_ID);
-        assert_ne!(ENCRYPTED_ID, ALLOWED_ID);
-        assert_ne!(ENCRYPTED_ID, DENIED_ID);
+        assert_ne!(ENCRYPTED_ID, RESPONSE_ID);
         assert_ne!(ENCRYPTED_ID, UNENCRYPTED_ID);
     }
 
     #[test]
     fn unencrypted_id_is_a_unique() {
-        assert_ne!(UNENCRYPTED_ID, SYNC_ID);
-        assert_ne!(UNENCRYPTED_ID, ACK_ID);
         assert_ne!(UNENCRYPTED_ID, REQUEST_ID);
-        assert_ne!(UNENCRYPTED_ID, ALLOWED_ID);
-        assert_ne!(UNENCRYPTED_ID, DENIED_ID);
+        assert_ne!(UNENCRYPTED_ID, RESPONSE_ID);
         assert_ne!(UNENCRYPTED_ID, ENCRYPTED_ID);
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -50,8 +50,6 @@ mod filters;
 mod node_id;
 mod routing_table;
 mod service;
-mod session_initiator;
-mod socket;
 mod stream;
 mod test;
 
