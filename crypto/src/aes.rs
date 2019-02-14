@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use error::SymmError;
-use primitives::{H128, H256};
+use primitives::H256;
 use rcrypto::aes::KeySize::KeySize256;
 use rcrypto::aes::{cbc_decryptor, cbc_encryptor};
 use rcrypto::aessafe::AesSafe128Encryptor;
@@ -32,8 +32,8 @@ fn is_underflow(result: BufferResult) -> bool {
 }
 
 // AES-256/CBC/Pkcs encryption.
-pub fn encrypt(data: &[u8], key: &H256, iv: &H128) -> Result<Vec<u8>, SymmetricCipherError> {
-    let mut encryptor = cbc_encryptor(KeySize256, key, iv, PkcsPadding);
+pub fn encrypt(data: &[u8], key: &H256, iv: &u128) -> Result<Vec<u8>, SymmetricCipherError> {
+    let mut encryptor = cbc_encryptor(KeySize256, key, &iv.to_be_bytes(), PkcsPadding);
 
     let mut final_result = Vec::<u8>::new();
     let mut read_buffer = RefReadBuffer::new(data);
@@ -51,8 +51,8 @@ pub fn encrypt(data: &[u8], key: &H256, iv: &H128) -> Result<Vec<u8>, SymmetricC
 }
 
 // AES-256/CBC/Pkcs decryption.
-pub fn decrypt(encrypted_data: &[u8], key: &H256, iv: &H128) -> Result<Vec<u8>, SymmetricCipherError> {
-    let mut decryptor = cbc_decryptor(KeySize256, key, iv, PkcsPadding);
+pub fn decrypt(encrypted_data: &[u8], key: &H256, iv: &u128) -> Result<Vec<u8>, SymmetricCipherError> {
+    let mut decryptor = cbc_decryptor(KeySize256, key, &iv.to_be_bytes(), PkcsPadding);
 
     let mut final_result = Vec::<u8>::new();
     let mut read_buffer = RefReadBuffer::new(encrypted_data);
@@ -90,13 +90,11 @@ pub fn decrypt_128_ctr(k: &[u8], iv: &[u8], encrypted: &[u8], dest: &mut [u8]) -
 
 #[cfg(test)]
 mod tests {
-    extern crate rand;
+    use super::*;
 
-    use primitives::{H128, H256};
-
-    use self::rand::rngs::OsRng;
-    use self::rand::RngCore;
-    use super::{decrypt, encrypt};
+    use rand::rngs::OsRng;
+    use rand::Rng;
+    use rand::RngCore;
 
     #[test]
     fn aes256_with_random_key_and_iv() {
@@ -116,7 +114,6 @@ mod tests {
                        0123456789abcdefghijklmnopqrstubewxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
         let mut key = H256([0; 32]);
-        let mut iv = H128([0; 16]);
 
         // In a real program, the key and iv may be determined
         // using some other mechanism. If a password is to be used
@@ -126,7 +123,7 @@ mod tests {
         // iv are just random values.
         let mut rng = OsRng::new().ok().unwrap();
         rng.fill_bytes(&mut key);
-        rng.fill_bytes(&mut iv);
+        let iv = rng.gen();
 
         let encrypted_data = encrypt(message.as_bytes(), &key, &iv).ok().unwrap();
         let decrypted_data = decrypt(&encrypted_data[..], &key, &iv).ok().unwrap();
@@ -139,11 +136,10 @@ mod tests {
         let input = vec![130, 39, 16];
 
         let mut key = H256([0; 32]);
-        let mut iv = H128([0; 16]);
 
         let mut rng = OsRng::new().unwrap();
         rng.fill_bytes(&mut key);
-        rng.fill_bytes(&mut iv);
+        let iv = rng.gen();
 
         let encrypted = encrypt(&input, &key, &iv).unwrap();
         let decrypted = decrypt(&encrypted, &key, &iv).unwrap();
