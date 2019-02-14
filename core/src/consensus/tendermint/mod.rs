@@ -991,9 +991,9 @@ impl TendermintInner {
             let prev_height = (message.on.step.height - 1) as u64;
             if message.on.step.height > self.height {
                 // Because the members of the committee could change in future height, we could not verify future height's message.
-                return Err(EngineError::ValidatorNotExist {
-                    height: prev_height,
-                    index: signer_index,
+                return Err(EngineError::FutureMessage {
+                    future_height: message.on.step.height as u64,
+                    current_height: self.height as u64,
                 })
             }
 
@@ -1854,6 +1854,24 @@ impl NetworkExtension for TendermintExtension {
         let m = UntrustedRlp::new(data);
         match m.as_val() {
             Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {
+                match t.handle_message(bytes, false) {
+                    Err(EngineError::FutureMessage {
+                        future_height,
+                        current_height,
+                    }) => {
+                        cdebug!(
+                            ENGINE,
+                            "Could not handle future message from {}, in height {}",
+                            future_height,
+                            current_height
+                        );
+                    }
+                    Err(e) => {
+                        cinfo!(ENGINE, "Failed to handle message {:?}", e);
+                    }
+                    Ok(_) => {}
+                }
+
                 if let Err(e) = t.handle_message(bytes, false) {
                     cinfo!(ENGINE, "Failed to handle message {:?}", e);
                 }
