@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::aes::{self, SymmetricCipherError};
-use primitives::h128_from_u128;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::ProtocolId;
@@ -57,7 +56,7 @@ impl Message {
         unencrypted_data: &[u8],
         session: &Session,
     ) -> Result<Self, SymmetricCipherError> {
-        let data = Data::Encrypted(aes::encrypt(unencrypted_data, session.secret(), &h128_from_u128(session.nonce()))?);
+        let data = Data::Encrypted(aes::encrypt(unencrypted_data, session.secret(), &session.nonce())?);
         Ok(Self {
             version: 0,
             extension_name,
@@ -83,7 +82,7 @@ impl Message {
 
     pub fn unencrypted_data(&self, session: &Session) -> Result<Vec<u8>, SymmetricCipherError> {
         match self.data {
-            Data::Encrypted(ref data) => aes::decrypt(&data, session.secret(), &h128_from_u128(session.nonce())),
+            Data::Encrypted(ref data) => aes::decrypt(&data, session.secret(), &session.nonce()),
             Data::Unencrypted(ref data) => Ok(data.clone()),
         }
     }
