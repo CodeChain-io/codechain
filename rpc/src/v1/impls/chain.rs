@@ -278,6 +278,10 @@ where
             .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 
+    fn get_block_transaction_count_by_hash(&self, block_hash: H256) -> Result<Option<usize>> {
+        Ok(self.client.block(&BlockId::Hash(block_hash)).map(|block| block.transactions_count()))
+    }
+
     fn get_pending_transactions(&self) -> Result<Vec<Transaction>> {
         Ok(self.client.ready_transactions().into_iter().map(|signed| signed.into()).collect())
     }

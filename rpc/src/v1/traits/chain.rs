@@ -131,6 +131,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getBlockByHash")]
         fn get_block_by_hash(&self, H256) -> Result<Option<Block>>;
 
+        ///Gets the count of transactions in a block with given hash.
+         # [rpc(name = "chain_getBlockTransactionCountByHash")]
+        fn get_block_transaction_count_by_hash(&self, H256) -> Result<Option<usize>>;
+
         /// Gets transactions in the current mem pool.
         # [rpc(name = "chain_getPendingTransactions")]
         fn get_pending_transactions(&self) -> Result<Vec<Transaction>>;
