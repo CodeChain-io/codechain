@@ -189,6 +189,14 @@ where
         Ok(self.client.balance(address, block_id.into()).map(Into::into))
     }
 
+    fn get_error_hint(&self, transaction_hash: H256) -> Result<Option<String>> {
+        if let Some(Invoice::Failure(error_string)) = self.client.parcel_invoice(&transaction_hash.into()) {
+            Ok(Some(error_string))
+        } else {
+            Ok(None)
+        }
+    }
+
     fn get_regular_key(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<Public>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let address = address.try_address().map_err(errors::core)?;

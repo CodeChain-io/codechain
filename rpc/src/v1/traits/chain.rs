@@ -75,6 +75,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getBalance")]
         fn get_balance(&self, PlatformAddress, Option<u64>) -> Result<Option<Uint>>;
 
+        /// Gets a hint to find out why the transaction failed.
+        # [rpc(name = "chain_getErrorHint")]
+        fn get_error_hint(&self, H256) -> Result<Option<String>>;
+
         /// Gets regular key with given account
         # [rpc(name = "chain_getRegularKey")]
         fn get_regular_key(&self, PlatformAddress, Option<u64>) -> Result<Option<Public>>;

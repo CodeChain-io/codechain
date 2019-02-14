@@ -95,7 +95,7 @@ struct TendermintInner {
     /// Message for the last PoLC.
     lock_change: Option<ConsensusMessage>,
     /// Last lock view.
-    last_lock: View,
+    last_lock: Option<View>,
     /// hash of the proposed block, used for seal submission.
     proposal: Option<H256>,
     /// The last confirmed view from the commit step.
@@ -154,7 +154,7 @@ impl TendermintInner {
             votes: Default::default(),
             signer: Default::default(),
             lock_change: None,
-            last_lock: 0,
+            last_lock: None,
             proposal: None,
             last_confirmed_view: 0,
             validators: our_params.validators,
@@ -320,8 +320,8 @@ impl TendermintInner {
         self.extension().broadcast_message(message);
     }
 
-    fn broadcast_state(&self, vote_step: &VoteStep, proposal: Option<H256>, votes: BitSet) {
-        self.extension().broadcast_state(vote_step, proposal, votes);
+    fn broadcast_state(&self, vote_step: &VoteStep, proposal: Option<H256>, lock_view: Option<View>, votes: BitSet) {
+        self.extension().broadcast_state(vote_step, proposal, lock_view, votes);
     }
 
     fn request_all_votes(&self, vote_step: &VoteStep) {
@@ -348,13 +348,13 @@ impl TendermintInner {
     }
 
     fn should_unlock(&self, lock_change_view: View) -> bool {
-        self.last_lock < lock_change_view && lock_change_view < self.view
+        self.last_lock.unwrap_or(0) < lock_change_view && lock_change_view < self.view
     }
 
     fn move_to_height(&mut self, height: Height) {
         assert!(height > self.height, "{} < {}", height, self.height);
         cdebug!(ENGINE, "Transitioning to height {}.", height);
-        self.last_lock = 0;
+        self.last_lock = None;
         self.height = height;
         self.view = 0;
         self.lock_change = None;
@@ -379,7 +379,7 @@ impl TendermintInner {
         }
 
         // need to reset vote
-        self.broadcast_state(&vote_step, self.proposal, self.votes_received);
+        self.broadcast_state(&vote_step, self.proposal, self.last_lock, self.votes_received);
         match step {
             Step::Propose => {
                 ctrace!(ENGINE, "move_to_step: Propose.");
@@ -424,7 +424,7 @@ impl TendermintInner {
                     let block_hash = match self.lock_change {
                         Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
                             ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
-                            self.last_lock = m.on.step.view;
+                            self.last_lock = Some(m.on.step.view);
                             m.on.block_hash
                         }
                         _ => None,
@@ -553,7 +553,7 @@ impl TendermintInner {
 
         // self.move_to_step() calls self.broadcast_state()
         // If self.move_to_step() is not called, call self.broadcast_state() in here.
-        self.broadcast_state(&self.vote_step(), self.proposal, self.votes_received);
+        self.broadcast_state(&self.vote_step(), self.proposal, self.last_lock, self.votes_received);
     }
 
     pub fn on_imported_proposal(&mut self, proposal: &Header) {
@@ -1496,12 +1496,13 @@ impl TendermintExtension {
         self.api.send(token, &message);
     }
 
-    fn broadcast_state(&self, vote_step: &VoteStep, proposal: Option<H256>, votes: BitSet) {
+    fn broadcast_state(&self, vote_step: &VoteStep, proposal: Option<H256>, lock_view: Option<View>, votes: BitSet) {
         ctrace!(ENGINE, "Broadcast state {:?} {:?} {:?}", vote_step, proposal, votes);
         let tokens = self.select_random_peers();
         let message = TendermintMessage::StepState {
             vote_step: *vote_step,
             proposal,
+            lock_view,
             known_votes: votes,
         }
         .rlp_bytes()
@@ -1696,6 +1697,7 @@ impl TendermintExtension {
         token: &NodeId,
         peer_vote_step: VoteStep,
         peer_proposal: Option<H256>,
+        peer_lock_view: Option<View>,
         peer_known_votes: BitSet,
     ) {
         ctrace!(
@@ -1755,6 +1757,38 @@ impl TendermintExtension {
             let difference = &peer_known_votes - &current_votes;
             if !difference.is_empty() {
                 self.request_messages(token, current_vote_step, difference);
+            }
+        }
+
+        if peer_vote_step.height == tendermint.height {
+            match (tendermint.last_lock, peer_lock_view) {
+                (None, Some(peer_lock_view)) => {
+                    self.request_messages(
+                        token,
+                        VoteStep {
+                            height: tendermint.height,
+                            view: peer_lock_view,
+                            step: Step::Prevote,
+                        },
+                        BitSet::all_set(),
+                    );
+                }
+                (Some(my_lock_view), Some(peer_lock_view))
+                    if my_lock_view < peer_lock_view && peer_lock_view < tendermint.view =>
+                {
+                    self.request_messages(
+                        token,
+                        VoteStep {
+                            height: tendermint.height,
+                            view: peer_lock_view,
+                            step: Step::Prevote,
+                        },
+                        BitSet::all_set(),
+                    );
+                }
+                _ => {
+                    // Do nothing
+                }
             }
         }
     }
@@ -1833,9 +1867,10 @@ impl NetworkExtension for TendermintExtension {
             Ok(TendermintMessage::StepState {
                 vote_step,
                 proposal,
+                lock_view,
                 known_votes,
             }) => {
-                self.on_step_state_message(&t, token, vote_step, proposal, known_votes);
+                self.on_step_state_message(&t, token, vote_step, proposal, lock_view, known_votes);
             }
             Ok(TendermintMessage::RequestProposal {
                 height,
