@@ -363,7 +363,12 @@ pub enum EngineError {
         signer_index: usize,
         address: Address,
     },
-    /// The validator on the given height and index is from the future or does not exist.
+    /// The vote for the future height couldn't be verified
+    FutureMessage {
+        future_height: u64,
+        current_height: u64,
+    },
+    /// The validator on the given height and index is exist(index >= validator set size)
     ValidatorNotExist {
         height: u64,
         index: usize,
@@ -390,13 +395,14 @@ impl fmt::Display for EngineError {
                 signer_index,
                 address,
             } => format!("The {}th validator({}) on height {} is not authorized.", signer_index, address, height),
+            FutureMessage {
+                future_height,
+                current_height,
+            } => format!("The message is from height {} but the current height is {}", future_height, current_height),
             ValidatorNotExist {
                 height,
                 index,
-            } => format!(
-                "The {}th validator on height {} does not exist. (out of bound or from the future)",
-                index, height
-            ),
+            } => format!("The {}th validator on height {} does not exist. (out of bound)", index, height),
             DoubleVote(address) => format!("Author {} issued too many blocks.", address),
             NotProposer(mis) => format!("Author is not a current proposer: {}", mis),
             UnexpectedMessage => "This Engine should not be fed messages.".into(),
