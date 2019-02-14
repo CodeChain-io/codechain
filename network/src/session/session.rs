@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,7 @@
 use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::Blake;
 use ckey::Secret;
-use primitives::{h128_from_u128, H256};
+use primitives::H256;
 
 use super::Nonce;
 
@@ -54,11 +54,11 @@ impl Session {
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        Ok(aes::encrypt(&data, &self.secret, &h128_from_u128(self.nonce()))?)
+        Ok(aes::encrypt(&data, &self.secret, &self.nonce())?)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        Ok(aes::decrypt(&data, &self.secret, &h128_from_u128(self.nonce()))?)
+        Ok(aes::decrypt(&data, &self.secret, &self.nonce())?)
     }
 
     pub fn sign(&self, data: &[u8]) -> H256 {

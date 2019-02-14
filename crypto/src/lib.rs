@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,8 @@ extern crate crypto as rcrypto;
 extern crate primitives;
 #[macro_use]
 extern crate quick_error;
+#[cfg(test)]
+extern crate rand;
 extern crate ring;
 
 pub mod aes;
