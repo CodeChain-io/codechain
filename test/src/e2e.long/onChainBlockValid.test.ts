@@ -115,7 +115,7 @@ describe("Test onChain block communication", async function() {
 
         nodeA = new CodeChain({ base: BASE });
         await nodeA.start();
-        TH = new TestHelper("0.0.0.0", nodeA.port);
+        TH = new TestHelper("0.0.0.0", nodeA.port, "tc");
         await TH.establish();
     });
 

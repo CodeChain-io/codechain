@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
-import { H160, H256, U256 } from "codechain-primitives/lib";
+import { H160, H256, U256 } from "codechain-primitives";
 import { Block } from "codechain-sdk/lib/core/Block";
 import { Header } from "codechain-test-helper/lib/cHeader";
 import { TestHelper } from "codechain-test-helper/lib/testHelper";
@@ -91,7 +91,7 @@ async function setup(base: number): Promise<[Header, Block, Header]> {
 async function setupEach(base: number): Promise<[CodeChain, TestHelper]> {
     const node = new CodeChain({ base });
     await node.start();
-    const TH = new TestHelper("0.0.0.0", node.port);
+    const TH = new TestHelper("0.0.0.0", node.port, "tc");
     await TH.establish();
     return [node, TH];
 }
@@ -123,7 +123,7 @@ async function testBody(
         tstateRoot?: H256;
         tinvoiceRoot?: H256;
         tscore?: U256;
-        tseal?: Buffer[];
+        tseal?: number[][];
     }
 ) {
     const {
