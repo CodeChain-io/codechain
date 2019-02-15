@@ -22,6 +22,7 @@
 //! extern crate codechain_io as cio;
 //! use cio::*;
 //! use std::sync::Arc;
+//! use std::time::Duration;
 //!
 //! struct MyHandler;
 //!
@@ -31,7 +32,7 @@
 //!
 //! impl IoHandler<MyMessage> for MyHandler {
 //! 	fn initialize(&self, io: &IoContext<MyMessage>) -> IoHandlerResult<()> {
-//!			io.register_timer(0, 1000);
+//!			io.register_timer(0, Duration::from_secs(1));
 //!			Ok(())
 //!		}
 //!
@@ -204,6 +205,7 @@ pub use service::TOKENS_PER_HANDLER;
 mod tests {
     use super::*;
     use std::sync::Arc;
+    use std::time::Duration;
 
     struct MyHandler;
 
@@ -213,7 +215,7 @@ mod tests {
 
     impl IoHandler<MyMessage> for MyHandler {
         fn initialize(&self, io: &IoContext<MyMessage>) -> IoHandlerResult<()> {
-            io.register_timer(0, 1000);
+            io.register_timer(0, Duration::from_secs(1));
             Ok(())
         }
 

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -16,6 +16,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
@@ -43,7 +44,8 @@ const FIRST_CONNECTION_TOKEN: TimerToken = ACCEPT_TOKEN + 1;
 const LAST_CONNECTION_TOKEN: TimerToken = FIRST_CONNECTION_TOKEN + MAX_CONNECTIONS;
 
 const CREATE_CONNECTIONS_TOKEN: TimerToken = 0;
-const PULL_CONNECTIONS_MS: u64 = 10 * 1000;
+const PULL_CONNECTIONS: Duration = Duration::from_secs(10);
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum IgnoreConnectionLimit {
@@ -179,8 +181,8 @@ impl Handler {
                     tokens.restore(token);
                     return Err(format!("Cannot create connection to {}", socket_address).into())
                 }
-                const CONNECTION_TIMEOUT_MS: u64 = 3_000;
-                io.register_timer_once(token as TimerToken, CONNECTION_TIMEOUT_MS);
+                const CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
+                io.register_timer_once(token as TimerToken, CONNECTION_TIMEOUT);
                 self.routing_table.set_establishing(socket_address);
                 Some(token)
             }
@@ -312,7 +314,7 @@ impl Handler {
 impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
         io.register_stream(ACCEPT_TOKEN);
-        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS);
+        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS);
         Ok(())
     }
 
@@ -322,7 +324,7 @@ impl IoHandler<Message> for Handler {
                 let register_new_timer = AtomicBool::new(false);
                 let _f = finally(|| {
                     if register_new_timer.load(Ordering::SeqCst) {
-                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS);
+                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS);
                     }
                 });
                 let number_of_connections = self.connections.len();
@@ -425,7 +427,7 @@ impl IoHandler<Message> for Handler {
                 let register_new_timer = AtomicBool::new(false);
                 let _f = finally(|| {
                     if register_new_timer.load(Ordering::SeqCst) {
-                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS_MS);
+                        io.register_timer_once(CREATE_CONNECTIONS_TOKEN, PULL_CONNECTIONS);
                     }
                 });
                 if self.connections.len() < self.min_peers {

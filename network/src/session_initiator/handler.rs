@@ -17,6 +17,7 @@
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::sync::Arc;
+use std::time::Duration;
 
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoChannel, IoContext, IoError as CIoError, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
@@ -134,7 +135,7 @@ pub enum Message {
     RequestSession(usize),
 }
 
-const MESSAGE_TIMEOUT_MS: u64 = 3_000;
+const MESSAGE_TIMEOUT: Duration = Duration::from_secs(3);
 
 impl SessionInitiator {
     fn bind(
@@ -179,7 +180,7 @@ impl SessionInitiator {
 
     fn create_new_connection(&mut self, target: &SocketAddr, io: &IoContext<Message>) -> IoHandlerResult<()> {
         let seq = self.requests.gen(*target)?;
-        io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
+        io.register_timer_once(seq, MESSAGE_TIMEOUT);
 
         let message = if self.routing_table.is_secret_shared(target) {
             let encrypted_nonce = self.routing_table.request_session(target).ok_or("Cannot generate nonce")?;
@@ -223,7 +224,7 @@ impl SessionInitiator {
                 let encrypted_nonce = self.routing_table.request_session(&from).ok_or("Cannot generate nonce")?;
 
                 let seq = self.requests.gen(from)?;
-                io.register_timer_once(seq, MESSAGE_TIMEOUT_MS);
+                io.register_timer_once(seq, MESSAGE_TIMEOUT);
 
                 let message = message::Message::nonce_request(seq as u64, encrypted_nonce);
                 self.socket.send(message, from).map_err(|e| format!("{:?}", e))?;
@@ -297,7 +298,7 @@ const RECEIVE_TOKEN: usize = 0;
 impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
         io.register_stream(RECEIVE_TOKEN);
-        io.register_timer(REFRESH_TIMER_TOKEN, 10_000);
+        io.register_timer(REFRESH_TIMER_TOKEN, Duration::from_secs(10));
         Ok(())
     }
 
