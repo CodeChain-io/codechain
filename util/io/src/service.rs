@@ -265,27 +265,6 @@ where
         }
     }
 
-    fn timeout(&mut self, event_loop: &mut EventLoop<Self>, token: Token) {
-        if let Some(handler) = &*self.handler.read() {
-            let maybe_timer = self.timers.read().get(&token.0).cloned();
-            if let Some(timer) = maybe_timer {
-                if timer.once {
-                    self.timers.write().remove(&token.0);
-                    event_loop.clear_timeout(&timer.timeout);
-                } else {
-                    event_loop.timeout(token, timer.delay).expect("Error re-registering user timer");
-                }
-                let token = token.0;
-                self.worker_channel.push(Work {
-                    work_type: WorkType::Timeout,
-                    token,
-                    handler: Arc::clone(&handler),
-                });
-                self.work_ready.notify_all();
-            }
-        }
-    }
-
     fn notify(&mut self, event_loop: &mut EventLoop<Self>, msg: Self::Message) {
         match msg {
             IoMessage::Shutdown => {
@@ -354,6 +333,27 @@ where
                         handler,
                     });
                 }
+                self.work_ready.notify_all();
+            }
+        }
+    }
+
+    fn timeout(&mut self, event_loop: &mut EventLoop<Self>, token: Token) {
+        if let Some(handler) = &*self.handler.read() {
+            let maybe_timer = self.timers.read().get(&token.0).cloned();
+            if let Some(timer) = maybe_timer {
+                if timer.once {
+                    self.timers.write().remove(&token.0);
+                    event_loop.clear_timeout(&timer.timeout);
+                } else {
+                    event_loop.timeout(token, timer.delay).expect("Error re-registering user timer");
+                }
+                let token = token.0;
+                self.worker_channel.push(Work {
+                    work_type: WorkType::Timeout,
+                    token,
+                    handler: Arc::clone(&handler),
+                });
                 self.work_ready.notify_all();
             }
         }
