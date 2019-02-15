@@ -591,8 +591,8 @@ impl TendermintInner {
         let current_height = self.height;
         if current_height == height && self.view == proposal_view {
             self.proposal = Some(proposal.hash());
-            let prev_step = mem::replace(&mut self.step, TendermintState::Propose);
-            match prev_step {
+            let current_step = self.step.clone();
+            match current_step {
                 TendermintState::Propose => {
                     self.move_to_step(Step::Prevote, false);
                 }
