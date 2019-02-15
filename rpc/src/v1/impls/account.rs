@@ -82,7 +82,10 @@ where
 
     fn sign(&self, message_digest: H256, address: PlatformAddress, passphrase: Option<Password>) -> Result<Signature> {
         let address = address.try_into_address().map_err(errors::core)?;
-        self.account_provider.sign(address, passphrase, message_digest).map_err(account_provider)
+        self.account_provider
+            .get_account(&address, passphrase.as_ref())
+            .and_then(|account| Ok(account.sign(&message_digest)?))
+            .map_err(account_provider)
     }
 
     fn send_transaction(

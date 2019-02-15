@@ -609,7 +609,7 @@ impl MinerService for Miner {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set author to {:?}", address);
                 // Sign test message
-                ap.sign(address, None, Default::default())?;
+                ap.get_unlocked_account(&address)?.sign(&Default::default())?;
                 // Limit the scope of the locks.
                 {
                     let mut sealing_work = self.sealing_work.lock();
@@ -950,7 +950,7 @@ impl MinerService for Miner {
         };
         let tx = tx.complete(seq);
         let tx_hash = tx.hash();
-        let sig = account_provider.sign(address, passphrase, tx_hash)?;
+        let sig = account_provider.get_account(&address, passphrase.as_ref())?.sign(&tx_hash)?;
         let unverified = UnverifiedTransaction::new(tx, sig);
         let signed = SignedTransaction::try_new(unverified)?;
         let hash = signed.hash();

@@ -32,10 +32,10 @@
 
 use std::path::PathBuf;
 
-use ckey::{Address, Message, Password, Public, SchnorrSignature, Secret, Signature};
+use ckey::{Address, Password, Secret};
 
 use crate::json::{OpaqueKeyFile, Uuid};
-use crate::{Error, OpaqueSecret};
+use crate::{DecryptedAccount, Error};
 
 
 /// Simple Secret Store API
@@ -53,27 +53,12 @@ pub trait SimpleSecretStore: Send + Sync {
         -> Result<(), Error>;
     /// Exports key details for account.
     fn export_account(&self, account: &Address, password: &Password) -> Result<OpaqueKeyFile, Error>;
-    /// Sign a message with given account.
-    fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error>;
-    /// Sign a message with given account with Schnorr scheme.
-    fn sign_schnorr(
-        &self,
-        account: &Address,
-        password: &Password,
-        message: &Message,
-    ) -> Result<SchnorrSignature, Error>;
+    /// Returns a raw opaque Account that can be later used to sign a message.
+    fn decrypt_account(&self, account: &Address, password: &Password) -> Result<DecryptedAccount, Error>;
 }
 
 /// Secret Store API
 pub trait SecretStore: SimpleSecretStore {
-    /// Returns a raw opaque Secret that can be later used to sign a message.
-    fn raw_secret(&self, account: &Address, password: &Password) -> Result<OpaqueSecret, Error>;
-
-    /// Signs a message with raw secret.
-    fn sign_with_secret(&self, secret: &OpaqueSecret, message: &Message) -> Result<Signature, Error> {
-        Ok(::ckey::sign(&secret.0.into(), message)?)
-    }
-
     /// Imports existing JSON wallet
     fn import_wallet(&self, json: &[u8], password: &Password, gen_id: bool) -> Result<Address, Error>;
 
@@ -88,9 +73,6 @@ pub trait SecretStore: SimpleSecretStore {
         password: &Password,
         new_password: &Password,
     ) -> Result<(), Error>;
-
-    /// Returns a public key for given account.
-    fn public(&self, account: &Address, password: &Password) -> Result<Public, Error>;
 
     /// Returns uuid of an account.
     fn uuid(&self, account: &Address) -> Result<Uuid, Error>;

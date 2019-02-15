@@ -20,14 +20,14 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use ccrypto::KEY_ITERATIONS;
-use ckey::{Address, KeyPair, Message, Password, Public, SchnorrSignature, Secret, Signature};
+use ckey::{Address, KeyPair, Password, Secret};
 use parking_lot::{Mutex, RwLock};
 
-use crate::account::SafeAccount;
+use crate::account::{DecryptedAccount, SafeAccount};
 use crate::accounts_dir::KeyDirectory;
 use crate::json::{self, OpaqueKeyFile, Uuid};
 use crate::random::Random;
-use crate::{Error, OpaqueSecret, SecretStore, SimpleSecretStore};
+use crate::{Error, SecretStore, SimpleSecretStore};
 
 /// Accounts store.
 pub struct KeyStore {
@@ -55,11 +55,6 @@ impl KeyStore {
     /// By default refreshing is disabled, so only accounts created using this instance of `KeyStore` are taken into account.
     pub fn set_refresh_time(&self, time: Duration) {
         self.store.set_refresh_time(time)
-    }
-
-    fn get(&self, account: &Address) -> Result<SafeAccount, Error> {
-        let mut accounts = self.store.get_accounts(account)?.into_iter();
-        accounts.next().ok_or(Error::InvalidAccount)
     }
 }
 
@@ -98,25 +93,12 @@ impl SimpleSecretStore for KeyStore {
         self.store.export_account(account, password)
     }
 
-    fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error> {
-        self.get(account)?.sign(password, message)
-    }
-
-    fn sign_schnorr(
-        &self,
-        account: &Address,
-        password: &Password,
-        message: &Message,
-    ) -> Result<SchnorrSignature, Error> {
-        self.get(account)?.sign_schnorr(password, message)
+    fn decrypt_account(&self, account: &Address, password: &Password) -> Result<DecryptedAccount, Error> {
+        self.store.decrypt_account(account, password)
     }
 }
 
 impl SecretStore for KeyStore {
-    fn raw_secret(&self, account: &Address, password: &Password) -> Result<OpaqueSecret, Error> {
-        Ok(OpaqueSecret(self.get(account)?.crypto.secret(password)?))
-    }
-
     fn import_wallet(&self, json: &[u8], password: &Password, gen_id: bool) -> Result<Address, Error> {
         let json_keyfile =
             json::KeyFile::load(json).map_err(|err| Error::InvalidKeyFile(format!("Invalid JSON format: {}", err)))?;
@@ -132,8 +114,11 @@ impl SecretStore for KeyStore {
     }
 
     fn test_password(&self, account: &Address, password: &Password) -> Result<bool, Error> {
-        let account = self.get(account)?;
-        Ok(account.check_password(password))
+        match self.store.get_verified_account(account, password) {
+            Ok(_) => Ok(true),
+            Err(Error::InvalidPassword) => Ok(false),
+            Err(err) => Err(err),
+        }
     }
 
     fn copy_account(
@@ -143,29 +128,23 @@ impl SecretStore for KeyStore {
         password: &Password,
         new_password: &Password,
     ) -> Result<(), Error> {
-        let account = self.get(account)?;
-        let secret = account.crypto.secret(password)?;
+        let secret = self.store.get_verified_account(account, password)?.secret;
         new_store.insert_account(secret, new_password)?;
         Ok(())
     }
 
-    fn public(&self, account: &Address, password: &Password) -> Result<Public, Error> {
-        let account = self.get(account)?;
-        account.public(password)
-    }
-
     fn uuid(&self, account: &Address) -> Result<Uuid, Error> {
-        let account = self.get(account)?;
+        let account = self.store.get_safe_account(account)?;
         Ok(account.id.into())
     }
 
     fn meta(&self, account: &Address) -> Result<String, Error> {
-        let account = self.get(account)?;
+        let account = self.store.get_safe_account(account)?;
         Ok(account.meta.clone())
     }
 
     fn set_meta(&self, account_ref: &Address, meta: String) -> Result<(), Error> {
-        let old = self.get(account_ref)?;
+        let old = self.store.get_safe_account(account_ref)?;
         let mut safe_account = old.clone();
         safe_account.meta = meta;
 
@@ -254,31 +233,51 @@ impl KeyMultiStore {
         Ok(())
     }
 
-    fn get_accounts(&self, account: &Address) -> Result<Vec<SafeAccount>, Error> {
+    fn get_safe_accounts(&self, account: &Address) -> Result<Vec<SafeAccount>, Error> {
         let from_cache = |account| {
             let cache = self.cache.read();
-            if let Some(accounts) = cache.get(account) {
-                if !accounts.is_empty() {
-                    return Some(accounts.clone())
-                }
-            }
 
-            None
+            match cache.get(account) {
+                Some(accounts) if !accounts.is_empty() => Some(accounts.clone()),
+                _ => None,
+            }
         };
 
-        match from_cache(account) {
+        let result = match from_cache(account) {
             Some(accounts) => Ok(accounts),
             None => {
                 self.reload_if_changed()?;
                 from_cache(account).ok_or(Error::InvalidAccount)
             }
-        }
+        };
+
+        assert!(if let Ok(ref result) = result {
+            !result.is_empty()
+        } else {
+            true
+        });
+        result
     }
 
-    fn get_matching(&self, account: &Address, password: &Password) -> Result<Vec<SafeAccount>, Error> {
-        let accounts = self.get_accounts(account)?;
+    fn get_safe_account(&self, account: &Address) -> Result<SafeAccount, Error> {
+        let accounts = self.get_safe_accounts(account)?;
+        Ok(accounts[0].clone())
+    }
 
-        Ok(accounts.into_iter().filter(|acc| acc.check_password(password)).collect())
+    fn get_verified_account(&self, account: &Address, password: &Password) -> Result<VerifiedAccount, Error> {
+        for account in self.get_safe_accounts(account)?.into_iter() {
+            match account.crypto.secret(password) {
+                Ok(secret) => {
+                    return Ok(VerifiedAccount {
+                        account,
+                        secret,
+                    })
+                }
+                Err(Error::InvalidPassword) => continue,
+                Err(err) => return Err(err),
+            }
+        }
+        Err(Error::InvalidPassword)
     }
 
     fn import(&self, account: SafeAccount) -> Result<Address, Error> {
@@ -346,7 +345,7 @@ impl SimpleSecretStore for KeyMultiStore {
     }
 
     fn has_account(&self, account: &Address) -> Result<bool, Error> {
-        match self.get_accounts(account) {
+        match self.get_safe_accounts(account) {
             Ok(_) => Ok(true),
             Err(Error::InvalidAccount) => Ok(false),
             Err(e) => Err(e),
@@ -354,7 +353,7 @@ impl SimpleSecretStore for KeyMultiStore {
     }
 
     fn remove_account(&self, account_ref: &Address) -> Result<(), Error> {
-        let accounts = self.get_accounts(account_ref)?;
+        let accounts = self.get_safe_accounts(account_ref)?;
 
         for account in accounts {
             self.remove_safe_account(account_ref, &account)?;
@@ -369,45 +368,36 @@ impl SimpleSecretStore for KeyMultiStore {
         old_password: &Password,
         new_password: &Password,
     ) -> Result<(), Error> {
-        let accounts = self.get_matching(account_ref, old_password)?;
-
-        if accounts.is_empty() {
-            return Err(Error::InvalidPassword)
-        }
-
-        for account in accounts {
-            // Change password
-            let new_account = account.change_password(old_password, new_password, self.iterations)?;
+        let mut changed_any = false;
+        for account in self.get_safe_accounts(account_ref)? {
+            let new_account = match account.change_password(old_password, new_password, self.iterations) {
+                Ok(new_account) => new_account,
+                Err(Error::InvalidPassword) => continue,
+                Err(err) => return Err(err),
+            };
             self.update(account_ref, &account, new_account)?;
+            changed_any = true
         }
 
-        Ok(())
+        if changed_any {
+            Ok(())
+        } else {
+            Err(Error::InvalidPassword)
+        }
     }
 
     fn export_account(&self, account_ref: &Address, password: &Password) -> Result<OpaqueKeyFile, Error> {
-        self.get_matching(account_ref, password)?.into_iter().nth(0).map(Into::into).ok_or(Error::InvalidPassword)
+        Ok(self.get_verified_account(account_ref, password)?.account.into())
     }
 
-    fn sign(&self, account: &Address, password: &Password, message: &Message) -> Result<Signature, Error> {
-        let accounts = self.get_matching(account, password)?;
-        match accounts.first() {
-            Some(ref account) => account.sign(password, message),
-            None => Err(Error::InvalidPassword),
-        }
+    fn decrypt_account(&self, account: &Address, password: &Password) -> Result<DecryptedAccount, Error> {
+        Ok(DecryptedAccount::new(self.get_verified_account(account, password)?.secret))
     }
+}
 
-    fn sign_schnorr(
-        &self,
-        account: &Address,
-        password: &Password,
-        message: &Message,
-    ) -> Result<SchnorrSignature, Error> {
-        let accounts = self.get_matching(account, password)?;
-        match accounts.first() {
-            Some(ref account) => account.sign_schnorr(password, message),
-            None => Err(Error::InvalidPassword),
-        }
-    }
+struct VerifiedAccount {
+    account: SafeAccount,
+    secret: Secret,
 }
 
 #[cfg(test)]
@@ -443,7 +433,7 @@ mod tests {
 
         // then
         assert_eq!(address, keypair.address());
-        assert!(store.get(&address).is_ok(), "Should contain account.");
+        assert_eq!(Some(true), store.has_account(&address).ok(), "Should contain account.");
         assert_eq!(store.accounts().unwrap().len(), 1, "Should have one account.");
     }
 
@@ -527,7 +517,10 @@ mod tests {
         // then
         assert!(store.test_password(&address, &"test".into()).unwrap(), "First password should work for store.");
         assert!(
-            multi_store.sign(&address, &"xyz".into(), &Default::default()).is_ok(),
+            multi_store
+                .decrypt_account(&address, &"xyz".into())
+                .map(|account| account.sign(&Default::default()))
+                .is_ok(),
             "Second password should work for second store."
         );
         assert_eq!(multi_store.accounts().unwrap().len(), 1);

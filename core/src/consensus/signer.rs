@@ -39,7 +39,10 @@ impl Default for EngineSigner {
 impl EngineSigner {
     /// Set up the signer to sign with given address and password.
     pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address) {
-        let public = ap.public(&address, None).expect("The address must be registered in AccountProvier");
+        let public = {
+            let account = ap.get_unlocked_account(&address).expect("The address must be registered in AccountProvier");
+            account.public().expect("Cannot get public from account")
+        };
         self.account_provider = ap;
         self.signer = Some((address, public));
         cdebug!(ENGINE, "Setting Engine signer to {}", address);
@@ -47,11 +50,10 @@ impl EngineSigner {
 
     /// Sign a consensus message hash.
     pub fn sign(&self, hash: H256) -> Result<SchnorrSignature, SignError> {
-        self.account_provider.sign_schnorr(
-            self.signer.map(|(address, _public)| address).unwrap_or_else(Default::default),
-            None,
-            hash,
-        )
+        let address = self.signer.map(|(address, _public)| address).unwrap_or_else(Default::default);
+        let account = self.account_provider.get_unlocked_account(&address)?;
+        let result = account.sign_schnorr(&hash)?;
+        Ok(result)
     }
 
     /// Public Key of signer.

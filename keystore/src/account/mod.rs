@@ -16,12 +16,14 @@
 
 mod cipher;
 mod crypto;
+mod decrypted_account;
 mod kdf;
 mod safe_account;
 mod version;
 
 pub use self::cipher::{Aes128Ctr, Cipher};
 pub use self::crypto::Crypto;
+pub use self::decrypted_account::DecryptedAccount;
 pub use self::kdf::{Kdf, Pbkdf2, Prf, Scrypt};
 pub use self::safe_account::SafeAccount;
 pub use self::version::Version;
