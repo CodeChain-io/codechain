@@ -29,6 +29,7 @@ use crate::error::Error;
 pub type Height = usize;
 pub type View = usize;
 
+#[derive(Clone)]
 pub enum TendermintState {
     Propose,
     ProposeWaitBlockGeneration {
