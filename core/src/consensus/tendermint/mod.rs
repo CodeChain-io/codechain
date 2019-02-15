@@ -2012,7 +2012,7 @@ mod tests {
         header.set_parent_hash(Default::default());
 
         let vote_info = message_info_rlp(VoteStep::new(3, 0, Step::Precommit), Some(*header.parent_hash()));
-        let signature0 = tap.sign_schnorr(proposer, None, blake256(&vote_info)).unwrap();
+        let signature0 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
@@ -2031,9 +2031,9 @@ mod tests {
         }
 
         let voter = insert_and_unlock(&tap, "1");
-        let signature1 = tap.sign_schnorr(voter, None, blake256(&vote_info)).unwrap();
+        let signature1 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
         let voter = insert_and_unlock(&tap, "2");
-        let signature2 = tap.sign_schnorr(voter, None, blake256(&vote_info)).unwrap();
+        let signature2 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
@@ -2048,7 +2048,7 @@ mod tests {
         assert!(engine.verify_block_external(&header).is_ok());
 
         let bad_voter = insert_and_unlock(&tap, "101");
-        let bad_signature = tap.sign_schnorr(bad_voter, None, blake256(vote_info)).unwrap();
+        let bad_signature = tap.get_account(&bad_voter, None).unwrap().sign_schnorr(&blake256(vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,

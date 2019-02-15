@@ -15,11 +15,12 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use ccrypto;
-use ckey::{sign, sign_schnorr, Address, KeyPair, Message, Password, Public, SchnorrSignature, Signature};
+use ckey::{Address, KeyPair, Password};
 
 use super::crypto::Crypto;
 use crate::account::Version;
 use crate::{json, Error};
+use DecryptedAccount;
 
 /// Account representation.
 #[derive(Debug, PartialEq, Clone)]
@@ -103,24 +104,6 @@ impl SafeAccount {
         })
     }
 
-    /// Sign a message.
-    pub fn sign(&self, password: &Password, message: &Message) -> Result<Signature, Error> {
-        let secret = self.crypto.secret(password)?;
-        sign(&secret.into(), message).map_err(From::from)
-    }
-
-    /// Sign a message with Schnorr scheme.
-    pub fn sign_schnorr(&self, password: &Password, message: &Message) -> Result<SchnorrSignature, Error> {
-        let secret = self.crypto.secret(password)?;
-        sign_schnorr(&secret.into(), message).map_err(From::from)
-    }
-
-    /// Derive public key.
-    pub fn public(&self, password: &Password) -> Result<Public, Error> {
-        let secret = self.crypto.secret(password)?;
-        Ok(*KeyPair::from_private(secret.into())?.public())
-    }
-
     /// Change account's password.
     pub fn change_password(
         &self,
@@ -142,7 +125,11 @@ impl SafeAccount {
 
     /// Check if password matches the account.
     pub fn check_password(&self, password: &Password) -> bool {
-        self.crypto.secret(password).is_ok()
+        self.decrypt(password).is_ok()
+    }
+
+    pub fn decrypt(&self, password: &Password) -> Result<DecryptedAccount, Error> {
+        Ok(DecryptedAccount::new(self.crypto.secret(password)?))
     }
 }
 
@@ -150,7 +137,7 @@ impl SafeAccount {
 mod tests {
     use std::str::FromStr;
 
-    use ckey::{verify, Generator, Random};
+    use ckey::{verify, Generator, Message, Random};
 
     use crate::json;
     use crate::json::{Aes128Ctr, Cipher, Crypto, Kdf, KeyFile, Scrypt, Uuid};
@@ -162,8 +149,9 @@ mod tests {
         let keypair = Random.generate().unwrap();
         let password = &"hello world".into();
         let message = Message::default();
-        let account = SafeAccount::create(&keypair, [0u8; 16], password, 10240, "{\"name\":\"Test\"}".to_string());
-        let signature = account.unwrap().sign(password, &message).unwrap();
+        let account =
+            SafeAccount::create(&keypair, [0u8; 16], password, 10240, "{\"name\":\"Test\"}".to_string()).unwrap();
+        let signature = account.decrypt(password).unwrap().sign(&message).unwrap();
         assert!(verify(keypair.public(), &signature, &message).unwrap());
     }
 
@@ -173,14 +161,13 @@ mod tests {
         let first_password = &"hello world".into();
         let sec_password = &"this is sparta".into();
         let i = 10240;
-        let message = Message::default();
         let account =
             SafeAccount::create(&keypair, [0u8; 16], first_password, i, "{\"name\":\"Test\"}".to_string()).unwrap();
         let new_account = account.change_password(first_password, sec_password, i).unwrap();
-        assert!(account.sign(first_password, &message).is_ok());
-        assert!(account.sign(sec_password, &message).is_err());
-        assert!(new_account.sign(first_password, &message).is_err());
-        assert!(new_account.sign(sec_password, &message).is_ok());
+        assert!(account.check_password(first_password));
+        assert!(!account.check_password(sec_password));
+        assert!(!new_account.check_password(first_password));
+        assert!(new_account.check_password(sec_password));
     }
 
     #[test]

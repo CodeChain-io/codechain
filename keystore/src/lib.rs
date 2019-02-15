@@ -71,13 +71,10 @@ mod keystore;
 mod random;
 mod secret_store;
 
-pub use crate::account::{Crypto, SafeAccount};
+pub use crate::account::{Crypto, DecryptedAccount, SafeAccount};
 pub use crate::error::Error;
 pub use crate::import::{import_account, import_accounts};
 pub use crate::json::OpaqueKeyFile as KeyFile;
 pub use crate::keystore::{KeyMultiStore, KeyStore};
 pub use crate::random::random_string;
 pub use crate::secret_store::{SecretStore, SimpleSecretStore};
-
-/// An opaque wrapper for secret.
-pub struct OpaqueSecret(::ckey::Secret);

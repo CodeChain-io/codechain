@@ -16,15 +16,14 @@
 
 use std::collections::HashMap;
 use std::fmt;
+use std::marker::PhantomData;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use ckey::{
-    public_to_address, Address, Error as KeyError, Generator, KeyPair, Message, Password, Private, Public, Random,
-    SchnorrSignature, Signature,
-};
+use ckey::{public_to_address, Address, Error as KeyError, Generator, KeyPair, Password, Private, Public, Random};
 use ckeystore::accounts_dir::MemoryDirectory;
-use ckeystore::{Error as KeystoreError, KeyStore, SecretStore, SimpleSecretStore};
+use ckeystore::{DecryptedAccount, Error as KeystoreError, KeyStore, SecretStore, SimpleSecretStore};
 use parking_lot::RwLock;
 
 /// Type of unlock.
@@ -41,7 +40,7 @@ enum Unlock {
 
 /// Data associated with account.
 #[derive(Clone)]
-struct AccountData {
+struct UnlockedPassword {
     unlock: Unlock,
     password: Password,
 }
@@ -86,7 +85,7 @@ pub type Error = KeystoreError;
 
 pub struct AccountProvider {
     /// Unlocked account data.
-    unlocked: RwLock<HashMap<Address, AccountData>>,
+    unlocked: RwLock<HashMap<Address, UnlockedPassword>>,
     keystore: RwLock<KeyStore>,
 }
 
@@ -128,26 +127,6 @@ impl AccountProvider {
     pub fn remove_account(&self, address: Address) -> Result<(), SignError> {
         self.keystore.write().remove_account(&address)?;
         Ok(())
-    }
-
-    pub fn sign(&self, address: Address, password: Option<Password>, message: Message) -> Result<Signature, SignError> {
-        let password = password.map(Ok).unwrap_or_else(|| self.password(&address))?;
-        Ok(self.keystore.read().sign(&address, &password, &message)?)
-    }
-
-    pub fn sign_schnorr(
-        &self,
-        address: Address,
-        password: Option<Password>,
-        message: Message,
-    ) -> Result<SchnorrSignature, SignError> {
-        let password = password.map(Ok).unwrap_or_else(|| self.password(&address))?;
-        Ok(self.keystore.read().sign_schnorr(&address, &password, &message)?)
-    }
-
-    pub fn public(&self, address: &Address, password: Option<Password>) -> Result<Public, SignError> {
-        let password = password.map(Ok).unwrap_or_else(|| self.password(address))?;
-        Ok(self.keystore.read().public(&address, &password)?)
     }
 
     pub fn has_account(&self, address: &Address) -> Result<bool, SignError> {
@@ -205,20 +184,20 @@ impl AccountProvider {
             }
         }
 
-        // verify password by signing dump message
-        // result may be discarded
-        let _ = self.keystore.read().sign(&address, &password, &Default::default())?;
+        if !self.keystore.read().test_password(&address, &password)? {
+            return Err(KeystoreError::InvalidPassword)
+        }
 
-        let data = AccountData {
+        let unlocked_account = UnlockedPassword {
             unlock,
             password,
         };
 
-        unlocked.insert(address, data);
+        unlocked.insert(address, unlocked_account);
         Ok(())
     }
 
-    fn password(&self, address: &Address) -> Result<Password, SignError> {
+    pub fn get_unlocked_account(&self, address: &Address) -> Result<ScopedAccount, SignError> {
         let mut unlocked = self.unlocked.write();
         let data = unlocked.get(address).ok_or(SignError::NotUnlocked)?.clone();
         if let Unlock::OneTime = data.unlock {
@@ -230,7 +209,43 @@ impl AccountProvider {
                 return Err(SignError::NotUnlocked)
             }
         }
-        Ok(data.password)
+
+        let decrypted = self.decrypt_account(address, &data.password)?;
+        Ok(ScopedAccount::from(decrypted))
+    }
+
+    fn decrypt_account(&self, address: &Address, password: &Password) -> Result<DecryptedAccount, KeystoreError> {
+        self.keystore.read().decrypt_account(address, password)
+    }
+
+    pub fn get_account(&self, address: &Address, password: Option<&Password>) -> Result<ScopedAccount, SignError> {
+        match password {
+            Some(password) => Ok(ScopedAccount::from(self.decrypt_account(address, password)?)),
+            None => self.get_unlocked_account(address),
+        }
+    }
+}
+
+// UnlockedAccount should have limited lifetime
+pub struct ScopedAccount<'a> {
+    decrypted: DecryptedAccount,
+    phantom: PhantomData<&'a ()>,
+}
+
+impl<'a> Deref for ScopedAccount<'a> {
+    type Target = DecryptedAccount;
+
+    fn deref(&self) -> &DecryptedAccount {
+        &self.decrypted
+    }
+}
+
+impl<'a> ScopedAccount<'a> {
+    fn from(decrypted: DecryptedAccount) -> ScopedAccount<'a> {
+        ScopedAccount {
+            decrypted,
+            phantom: PhantomData::default(),
+        }
     }
 }
 
@@ -247,8 +262,8 @@ mod tests {
         assert!(ap.insert_account(*kp.private(), &"test".into()).is_ok());
         assert!(ap.unlock_account_temporarily(kp.address(), "test1".into()).is_err());
         assert!(ap.unlock_account_temporarily(kp.address(), "test".into()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_err());
+        assert!(ap.get_account(&kp.address(), None).is_ok());
+        assert!(ap.get_account(&kp.address(), None).is_err());
     }
 
     #[test]
@@ -258,10 +273,10 @@ mod tests {
         assert!(ap.insert_account(*kp.private(), &"test".into()).is_ok());
         assert!(ap.unlock_account_permanently(kp.address(), "test1".into()).is_err());
         assert!(ap.unlock_account_permanently(kp.address(), "test".into()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
+        assert!(ap.get_account(&kp.address(), None).is_ok());
+        assert!(ap.get_account(&kp.address(), None).is_ok());
         assert!(ap.unlock_account_temporarily(kp.address(), "test".into()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
-        assert!(ap.sign(kp.address(), None, Default::default()).is_ok());
+        assert!(ap.get_account(&kp.address(), None).is_ok());
+        assert!(ap.get_account(&kp.address(), None).is_ok());
     }
 }
