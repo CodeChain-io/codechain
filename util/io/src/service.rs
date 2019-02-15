@@ -1,3 +1,19 @@
+// Copyright 2019 Kodebox, Inc.
+// This file is part of CodeChain.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 // Copyright 2015-2017 Parity Technologies (UK) Ltd.
 // This file is part of Parity.
 
@@ -14,16 +30,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use crossbeam::deque;
-use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
-use mio::timer::Timeout;
-use mio::*;
-use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 use std::sync::{Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
+
+use crossbeam::deque;
+use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
+use mio::timer::Timeout;
+use mio::*;
+use parking_lot::{Mutex, RwLock};
 use worker::{Work, WorkType, Worker};
 
 use super::{IoError, IoHandler};
@@ -46,7 +63,7 @@ where
     Shutdown,
     AddTimer {
         token: TimerToken,
-        delay: u64,
+        delay: Duration,
         once: bool,
     },
     RemoveTimer {
@@ -84,22 +101,22 @@ where
     }
 
     /// Register a new recurring IO timer. 'IoHandler::timeout' will be called with the token.
-    pub fn register_timer(&self, token: TimerToken, ms: u64) {
+    pub fn register_timer(&self, token: TimerToken, delay: Duration) {
         self.channel
             .send_io(IoMessage::AddTimer {
                 token,
-                delay: ms,
+                delay,
                 once: false,
             })
             .unwrap();
     }
 
     /// Register a new IO timer once. 'IoHandler::timeout' will be called with the token.
-    pub fn register_timer_once(&self, token: TimerToken, ms: u64) {
+    pub fn register_timer_once(&self, token: TimerToken, delay: Duration) {
         self.channel
             .send_io(IoMessage::AddTimer {
                 token,
-                delay: ms,
+                delay,
                 once: true,
             })
             .unwrap();
@@ -154,7 +171,7 @@ where
 
 #[derive(Clone)]
 struct UserTimer {
-    delay: u64,
+    delay: Duration,
     timeout: Timeout,
     once: bool,
 }
@@ -248,29 +265,6 @@ where
         }
     }
 
-    fn timeout(&mut self, event_loop: &mut EventLoop<Self>, token: Token) {
-        if let Some(handler) = &*self.handler.read() {
-            let maybe_timer = self.timers.read().get(&token.0).cloned();
-            if let Some(timer) = maybe_timer {
-                if timer.once {
-                    self.timers.write().remove(&token.0);
-                    event_loop.clear_timeout(&timer.timeout);
-                } else {
-                    event_loop
-                        .timeout(token, Duration::from_millis(timer.delay))
-                        .expect("Error re-registering user timer");
-                }
-                let token = token.0;
-                self.worker_channel.push(Work {
-                    work_type: WorkType::Timeout,
-                    token,
-                    handler: Arc::clone(&handler),
-                });
-                self.work_ready.notify_all();
-            }
-        }
-    }
-
     fn notify(&mut self, event_loop: &mut EventLoop<Self>, msg: Self::Message) {
         match msg {
             IoMessage::Shutdown => {
@@ -282,9 +276,7 @@ where
                 delay,
                 once,
             } => {
-                let timeout = event_loop
-                    .timeout(Token(token), Duration::from_millis(delay))
-                    .expect("Error registering user timer");
+                let timeout = event_loop.timeout(Token(token), delay).expect("Error registering user timer");
                 self.timers.write().insert(
                     token,
                     UserTimer {
@@ -341,6 +333,27 @@ where
                         handler,
                     });
                 }
+                self.work_ready.notify_all();
+            }
+        }
+    }
+
+    fn timeout(&mut self, event_loop: &mut EventLoop<Self>, token: Token) {
+        if let Some(handler) = &*self.handler.read() {
+            let maybe_timer = self.timers.read().get(&token.0).cloned();
+            if let Some(timer) = maybe_timer {
+                if timer.once {
+                    self.timers.write().remove(&token.0);
+                    event_loop.clear_timeout(&timer.timeout);
+                } else {
+                    event_loop.timeout(token, timer.delay).expect("Error re-registering user timer");
+                }
+                let token = token.0;
+                self.worker_channel.push(Work {
+                    work_type: WorkType::Timeout,
+                    token,
+                    handler: Arc::clone(&handler),
+                });
                 self.work_ready.notify_all();
             }
         }
