@@ -94,6 +94,9 @@ describe("network2 nodes", function() {
         it("disconnect", async function() {
             expect(await nodeA.sdk.rpc.network.disconnect(address, nodeB.port))
                 .to.be.null;
+
+            expect(await nodeA.sdk.rpc.network.getPeerCount()).to.equal(0);
+            expect(await nodeB.sdk.rpc.network.getPeerCount()).to.equal(0);
         });
 
         it("getPeerCount", async function() {
