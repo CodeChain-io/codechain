@@ -30,12 +30,22 @@ describeSkippedInTravis("discovery5 nodes", function() {
         nodes = [new CodeChain({ base: BASE })];
         bootstrapNode = nodes[0];
 
+        const startBootstrap = bootstrapNode.start([
+            "--discovery-refresh",
+            "50"
+        ]);
+
+        const nonBootstrapNodes = [];
         for (let i = 1; i < numOfNodes; i++) {
-            nodes.push(new CodeChain({ base: BASE }));
+            const node = new CodeChain({ base: BASE });
+            nodes.push(node);
+            nonBootstrapNodes.push(node);
         }
 
+        await startBootstrap;
+
         await Promise.all(
-            nodes.map(node =>
+            nonBootstrapNodes.map(node =>
                 node.start([
                     "--bootstrap-addresses",
                     `127.0.0.1:${bootstrapNode.port}`,
