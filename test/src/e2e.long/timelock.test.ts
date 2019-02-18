@@ -371,7 +371,7 @@ describe("Timelock", function() {
                 assets[0].createTransferInput({
                     timelock: {
                         type: "time",
-                        value: Math.ceil(Date.now() / 1000) + 3
+                        value: Math.floor(Date.now() / 1000) + 3
                     }
                 }),
                 assets[1].createTransferInput({
