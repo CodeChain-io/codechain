@@ -109,12 +109,14 @@ impl<'db> ShardLevelState<'db> {
         match transaction {
             ShardTransaction::MintAsset {
                 metadata,
+                shard_id,
                 approver,
                 administrator,
                 allowed_script_hashes,
                 output,
                 ..
             } => {
+                assert_eq!(*shard_id, self.shard_id);
                 self.mint_asset(
                     transaction.tracker(),
                     metadata,
@@ -140,26 +142,34 @@ impl<'db> ShardLevelState<'db> {
                 self.transfer_asset(&transaction, sender, approvers, burns, inputs, outputs, orders, client)
             }
             ShardTransaction::ChangeAssetScheme {
+                shard_id,
                 asset_type,
                 metadata,
                 approver,
                 administrator,
                 allowed_script_hashes,
                 ..
-            } => self.change_asset_scheme(
-                sender,
-                approvers,
-                asset_type,
-                metadata,
-                approver,
-                administrator,
-                allowed_script_hashes,
-            ),
+            } => {
+                assert_eq!(*shard_id, self.shard_id);
+                self.change_asset_scheme(
+                    sender,
+                    approvers,
+                    asset_type,
+                    metadata,
+                    approver,
+                    administrator,
+                    allowed_script_hashes,
+                )
+            }
             ShardTransaction::IncreaseAssetSupply {
+                shard_id,
                 asset_type,
                 output,
                 ..
-            } => self.increase_asset_supply(transaction.tracker(), sender, approvers, asset_type, output),
+            } => {
+                assert_eq!(*shard_id, self.shard_id);
+                self.increase_asset_supply(transaction.tracker(), sender, approvers, asset_type, output)
+            }
             ShardTransaction::ComposeAsset {
                 metadata,
                 approver,
@@ -191,7 +201,10 @@ impl<'db> ShardLevelState<'db> {
             ShardTransaction::UnwrapCCC {
                 burn,
                 ..
-            } => self.unwrap_ccc(&transaction, sender, burn, client),
+            } => {
+                assert_eq!(burn.prev_out.shard_id, self.shard_id);
+                self.unwrap_ccc(&transaction, sender, burn, client)
+            }
             ShardTransaction::WrapCCC {
                 tx_hash,
                 output:
@@ -200,8 +213,12 @@ impl<'db> ShardLevelState<'db> {
                         quantity,
                         parameters,
                     },
+                shard_id,
                 ..
-            } => self.wrap_ccc(tx_hash, lock_script_hash, &parameters, *quantity),
+            } => {
+                assert_eq!(*shard_id, self.shard_id);
+                self.wrap_ccc(tx_hash, lock_script_hash, &parameters, *quantity)
+            }
         }
     }
 

@@ -2564,6 +2564,68 @@ mod tests_tx {
     }
 
     #[test]
+    fn transfer_failed_if_the_input_amount_is_not_valid() {
+        let shard_id = 0;
+
+        let mint_tracker1 = H256::random();
+        let mint_tracker2 = H256::random();
+        let asset_type1 = Blake::blake(mint_tracker1);
+        let asset_type2 = Blake::blake(mint_tracker2);
+
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
+
+        let (sender, signer_public, _) = address();
+
+        let mut state = get_temp_state();
+        set_top_level_state!(state, [
+            (shard: shard_id => owners: [address().0]),
+            (metadata: shards: 1),
+            (account: sender => balance: 25),
+            (scheme: (shard_id, asset_type1) => { supply: 10, metadata: format!("asset on shard {}", shard_id) }),
+            (scheme: (shard_id, asset_type2) => { supply: 20, metadata: format!("asset on shard {}", shard_id) }),
+            (asset: (shard_id, mint_tracker1, 0) => { asset_type: asset_type1, quantity: 10, lock_script_hash: lock_script_hash }),
+            (asset: (shard_id, mint_tracker2, 0) => { asset_type: asset_type2, quantity: 20, lock_script_hash: lock_script_hash })
+        ]);
+
+        let transfer = transfer_asset!(
+            inputs:
+                asset_transfer_inputs![
+                    (asset_out_point!(mint_tracker1, 0, asset_type1, shard_id, 10), vec![0x30, 0x01]),
+                    (asset_out_point!(mint_tracker2, 0, asset_type2, shard_id, 10), vec![0x30, 0x01])
+                ],
+            asset_transfer_outputs![
+                (lock_script_hash, vec![vec![1]], asset_type1, shard_id, 10),
+                (lock_script_hash, vec![vec![1]], asset_type2, shard_id, 10)
+            ]
+        );
+        let transfer_tracker = transfer.tracker().unwrap();
+        let transfer_tx = transaction!(seq: 0, fee: 11, transfer);
+
+        assert_eq!(
+            Ok(Invoice::Failure(
+                RuntimeError::InvalidAssetQuantity {
+                    shard_id,
+                    tracker: mint_tracker2,
+                    index: 0,
+                    expected: 20,
+                    got: 10,
+                }
+                .to_string()
+            )),
+            state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client())
+        );
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 25 - 11)),
+            (scheme: (shard_id, asset_type1) => { supply: 10 }),
+            (scheme: (shard_id, asset_type2) => { supply: 20 }),
+            (asset: (mint_tracker1, 0, shard_id) => { asset_type: asset_type1, quantity: 10 }),
+            (asset: (mint_tracker2, 0, shard_id) => { asset_type: asset_type2, quantity: 20 }),
+            (asset: (transfer_tracker, 0, shard_id)),
+            (asset: (transfer_tracker, 1, shard_id))
+        ]);
+    }
+
+    #[test]
     fn multi_shard_transfer() {
         let shard3 = 3;
         let shard4 = 4;

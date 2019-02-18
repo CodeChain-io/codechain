@@ -151,7 +151,7 @@ export default class CodeChain {
 
     public async start(
         argv: string[] = [],
-        logLevel = "trace,mio=warn,tokio=warn,hyper=warn",
+        logLevel = "trace,mio=warn,tokio=warn,hyper=warn,timer=warn",
         disableLog = false
     ) {
         if (this.keyFileMovePromise) {
