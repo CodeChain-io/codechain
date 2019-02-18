@@ -21,19 +21,20 @@ import CodeChain from "../helper/spawn";
 describe("sync 3 nodes", function() {
     const BASE = 650;
     const NUM_NODES = 3;
-    let nodes: CodeChain[] = [];
+    let nodes: CodeChain[];
 
     beforeEach(async function() {
         this.timeout(5000 + 5000 * NUM_NODES);
 
+        nodes = [];
         for (let i = 0; i < NUM_NODES; i++) {
             const node = new CodeChain({
                 argv: ["--no-discovery"],
                 base: BASE
             });
             nodes.push(node);
-            await node.start();
         }
+        await Promise.all(nodes.map(node => node.start()));
     });
 
     describe("Connected in a line", function() {
