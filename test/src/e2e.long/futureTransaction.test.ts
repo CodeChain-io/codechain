@@ -44,6 +44,7 @@ describe("Handle future transactions", function() {
         let nodeB: CodeChain;
 
         beforeEach(async function() {
+            this.timeout(60_000);
             nodeB = new CodeChain({
                 base: BASE
             });

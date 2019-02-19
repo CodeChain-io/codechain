@@ -18,9 +18,7 @@ import { expect } from "chai";
 import "mocha";
 import CodeChain from "../helper/spawn";
 
-const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
-
-describeSkippedInTravis("discovery5 nodes", function() {
+describe("discovery5 nodes", function() {
     const BASE = 100;
     const numOfNodes = 5;
     let nodes: CodeChain[];
