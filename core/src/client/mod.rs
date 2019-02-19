@@ -300,13 +300,7 @@ pub trait DatabaseClient {
 pub trait AssetClient {
     fn get_asset_scheme(&self, asset_type: H160, shard_id: ShardId, id: BlockId) -> TrieResult<Option<AssetScheme>>;
 
-    fn get_asset(
-        &self,
-        transaction_hash: H256,
-        index: usize,
-        shard_id: ShardId,
-        id: BlockId,
-    ) -> TrieResult<Option<OwnedAsset>>;
+    fn get_asset(&self, tracker: H256, index: usize, shard_id: ShardId, id: BlockId) -> TrieResult<Option<OwnedAsset>>;
 
     fn is_asset_spent(
         &self,
