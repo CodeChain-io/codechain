@@ -56,17 +56,17 @@ export const ERROR = {
     },
     INVALID_RLP_TOO_BIG: {
         code: -32009,
-        data: "RlpIsTooBig",
+        data: $containsWord("RlpIsTooBig"),
         message: $anything
     },
     INVALID_RLP_TOO_SHORT: {
         code: -32009,
-        data: "RlpIsTooShort",
+        data: $containsWord("RlpIsTooShort"),
         message: $anything
     },
     INVALID_RLP_INVALID_LENGTH: {
         code: -32009,
-        data: "RlpInvalidLength",
+        data: $containsWord("RlpInvalidLength"),
         message: $anything
     },
     INVALID_RLP_UNEXPECTED_ACTION_PREFIX: {
@@ -76,7 +76,7 @@ export const ERROR = {
     },
     INVALID_RLP_INCORRECT_LIST_LEN: {
         code: -32009,
-        data: "RlpIncorrectListLen",
+        data: $containsWord("RlpIncorrectListLen"),
         message: $anything
     },
     TOO_LOW_FEE: {
