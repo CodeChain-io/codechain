@@ -20,7 +20,7 @@ use ckey::{Address, Public, SchnorrSignature};
 use ckeystore::DecryptedAccount;
 use primitives::H256;
 
-use crate::account_provider::{AccountProvider, SignError};
+use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 
 /// Everything that an Engine needs to sign messages.
 pub struct EngineSigner {
@@ -65,7 +65,7 @@ impl EngineSigner {
     }
 
     /// Sign a consensus message hash.
-    pub fn sign(&self, hash: H256) -> Result<SchnorrSignature, SignError> {
+    pub fn sign(&self, hash: H256) -> Result<SchnorrSignature, AccountProviderError> {
         let address = self.signer.map(|(address, _public)| address).unwrap_or_else(Default::default);
         let result = match &self.decrypted_account {
             Some(account) => account.sign_schnorr(&hash)?,

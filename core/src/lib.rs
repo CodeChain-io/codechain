@@ -77,7 +77,7 @@ mod views;
 #[cfg(test)]
 mod tests;
 
-pub use crate::account_provider::{AccountProvider, SignError as AccountProviderError};
+pub use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 pub use crate::block::Block;
 pub use crate::client::Error::Database;
 pub use crate::client::{
