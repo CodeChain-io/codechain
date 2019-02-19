@@ -184,11 +184,23 @@ impl TendermintInner {
 
     /// Get previous block hash to determine validator set
     fn prev_block_hash(&self) -> H256 {
-        let prev_height = (self.height - 1) as u64;
+        self.prev_block_of_height(self.height).hash()
+    }
+
+    /// Get the proposer of previous block to check new proposer is valid.
+    fn prev_block_proposer_idx(&self, height: Height) -> usize {
+        let prev_proposer = self.prev_block_of_height(height).author();
+        self.validators
+            .get_index_by_address(&self.prev_block_hash(), &prev_proposer)
+            .expect("The proposer must be in the validator set")
+    }
+
+    /// Get previous block of given height
+    fn prev_block_of_height(&self, height: Height) -> encoded::Header {
+        let prev_height = (height - 1) as u64;
         self.client()
             .block_header(&BlockId::Number(prev_height))
             .expect("Height is increased when previous block is imported")
-            .hash()
     }
 
     /// Check the committed block of the current height is imported to the canonical chain
@@ -204,7 +216,7 @@ impl TendermintInner {
 
     /// Find the designated for the given view.
     fn view_proposer(&self, bh: &H256, height: Height, view: View) -> Address {
-        let proposer_nonce = height + view;
+        let proposer_nonce = self.prev_block_proposer_idx(height) + 1 + view;
         ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
         self.validators.get_address(bh, proposer_nonce)
     }
