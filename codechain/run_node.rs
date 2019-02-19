@@ -127,12 +127,12 @@ fn new_miner(
         match miner.engine_type() {
             EngineType::PoW => match &config.mining.author {
                 Some(ref author) => {
-                    miner.set_author((*author).into_address(), None).expect("set_author never fails when PoW is used")
+                    miner.set_author((*author).into_address()).expect("set_author never fails when PoW is used")
                 }
                 None => return Err("The author is missing. Specify the author using --author option.".to_string()),
             },
             EngineType::PBFT | EngineType::PoA => match &config.mining.engine_signer {
-                Some(ref engine_signer) => match miner.set_author((*engine_signer).into_address(), None) {
+                Some(ref engine_signer) => match miner.set_author((*engine_signer).into_address()) {
                     Err(AccountProviderError::NotUnlocked) => {
                         return Err(
                             "The account is not unlocked. Specify the password path using --password-path option."
@@ -148,7 +148,7 @@ fn new_miner(
                 }
             },
             EngineType::Solo => miner
-                .set_author(config.mining.author.map_or(Address::default(), |a| a.into_address()), None)
+                .set_author(config.mining.author.map_or(Address::default(), |a| a.into_address()))
                 .expect("set_author never fails when Solo is used"),
         }
     }

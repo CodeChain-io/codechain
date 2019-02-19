@@ -28,7 +28,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover_schnorr, verify_schnorr, Address, Message, Password, Public, SchnorrSignature};
+use ckey::{public_to_address, recover_schnorr, verify_schnorr, Address, Message, Public, SchnorrSignature};
 use cnetwork::{Api, NetworkExtension, NetworkService, NodeId};
 use cstate::ActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
@@ -1096,8 +1096,8 @@ impl TendermintInner {
         }
     }
 
-    fn set_signer(&mut self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
-        self.signer.set(ap, address, password);
+    fn set_signer(&mut self, ap: Arc<AccountProvider>, address: Address) {
+        self.signer.set(ap, address);
     }
 
     fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
@@ -1248,9 +1248,9 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         guard.is_proposal(header)
     }
 
-    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
+    fn set_signer(&self, ap: Arc<AccountProvider>, address: Address) {
         let mut guard = self.inner.lock();
-        guard.set_signer(ap, address, password)
+        guard.set_signer(ap, address)
     }
 
     fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
@@ -1962,7 +1962,7 @@ mod tests {
 
     fn insert_and_register(tap: &Arc<AccountProvider>, engine: &CodeChainEngine, acc: &str) -> Address {
         let addr = insert_and_unlock(tap, acc);
-        engine.set_signer(tap.clone(), addr, Some(acc.into()));
+        engine.set_signer(tap.clone(), addr);
         addr
     }
 

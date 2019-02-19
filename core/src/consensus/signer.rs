@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ckey::{Address, Password, Public, SchnorrSignature};
+use ckey::{Address, Public, SchnorrSignature};
 use primitives::H256;
 
 use crate::account_provider::{AccountProvider, SignError};
@@ -25,7 +25,6 @@ use crate::account_provider::{AccountProvider, SignError};
 pub struct EngineSigner {
     account_provider: Arc<AccountProvider>,
     signer: Option<(Address, Public)>,
-    password: Option<Password>,
 }
 
 impl Default for EngineSigner {
@@ -33,18 +32,16 @@ impl Default for EngineSigner {
         EngineSigner {
             account_provider: AccountProvider::transient_provider(),
             signer: Default::default(),
-            password: Default::default(),
         }
     }
 }
 
 impl EngineSigner {
     /// Set up the signer to sign with given address and password.
-    pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address, password: Option<Password>) {
-        let public = ap.public(&address, password.clone()).expect("The address must be registered in AccountProvier");
+    pub fn set(&mut self, ap: Arc<AccountProvider>, address: Address) {
+        let public = ap.public(&address, None).expect("The address must be registered in AccountProvier");
         self.account_provider = ap;
         self.signer = Some((address, public));
-        self.password = password;
         cdebug!(ENGINE, "Setting Engine signer to {}", address);
     }
 
@@ -52,7 +49,7 @@ impl EngineSigner {
     pub fn sign(&self, hash: H256) -> Result<SchnorrSignature, SignError> {
         self.account_provider.sign_schnorr(
             self.signer.map(|(address, _public)| address).unwrap_or_else(Default::default),
-            self.password.clone(),
+            None,
             hash,
         )
     }

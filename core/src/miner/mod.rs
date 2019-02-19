@@ -54,7 +54,7 @@ pub trait MinerService: Send + Sync {
     fn authoring_params(&self) -> AuthoringParams;
 
     /// Set the author that we will seal blocks as.
-    fn set_author(&self, author: Address, password: Option<Password>) -> Result<(), SignError>;
+    fn set_author(&self, author: Address) -> Result<(), SignError>;
 
     /// Set the extra_data that we will seal blocks with.
     fn set_extra_data(&self, extra_data: Bytes);
