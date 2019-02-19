@@ -602,20 +602,20 @@ impl MinerService for Miner {
         self.params.read().clone()
     }
 
-    fn set_author(&self, address: Address, password: Option<Password>) -> Result<(), SignError> {
+    fn set_author(&self, address: Address) -> Result<(), SignError> {
         self.params.write().author = address;
 
         if self.engine_type().need_signer_key() && self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
                 ctrace!(MINER, "Set author to {:?}", address);
                 // Sign test message
-                ap.sign(address, password.clone(), Default::default())?;
+                ap.sign(address, None, Default::default())?;
                 // Limit the scope of the locks.
                 {
                     let mut sealing_work = self.sealing_work.lock();
                     sealing_work.enabled = true;
                 }
-                self.engine.set_signer(ap.clone(), address, password);
+                self.engine.set_signer(ap.clone(), address);
                 Ok(())
             } else {
                 cwarn!(MINER, "No account provider");
