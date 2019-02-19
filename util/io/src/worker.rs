@@ -120,22 +120,22 @@ impl Worker {
         match work.work_type {
             WorkType::Readable => {
                 if let Err(err) = work.handler.stream_readable(&IoContext::new(channel), work.token) {
-                    cwarn!(IO, "Error in stream_readable {:?}", err);
+                    cwarn!(IO, "Error in stream_readable {}: {:?}", work.token, err);
                 }
             }
             WorkType::Writable => {
                 if let Err(err) = work.handler.stream_writable(&IoContext::new(channel), work.token) {
-                    cwarn!(IO, "Error in stream_writable {:?}", err);
+                    cwarn!(IO, "Error in stream_writable {}: {:?}", work.token, err);
                 }
             }
             WorkType::Hup => {
                 if let Err(err) = work.handler.stream_hup(&IoContext::new(channel), work.token) {
-                    cwarn!(IO, "Error in stream_hup {:?}", err);
+                    cwarn!(IO, "Error in stream_hup {}: {:?}", work.token, err);
                 }
             }
             WorkType::Timeout => {
                 if let Err(err) = work.handler.timeout(&IoContext::new(channel), work.token) {
-                    cwarn!(IO, "Error in timeout {:?}", err);
+                    cwarn!(IO, "Error in timeout {}: {:?}", work.token, err);
                 }
             }
             WorkType::Message(message) => {
