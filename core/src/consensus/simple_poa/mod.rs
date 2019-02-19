@@ -18,10 +18,9 @@ mod params;
 
 use std::sync::{Arc, Weak};
 
-use ckey::{public_to_address, recover, Address, Public, SchnorrSignature, Signature};
+use ckey::{public_to_address, recover, Address, Signature};
 use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
-use primitives::H256;
 
 use self::params::SimplePoAParams;
 use super::signer::EngineSigner;
@@ -112,7 +111,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
         let author = header.author();
         if self.validators.contains_address(header.parent_hash(), author) {
             // account should be permanently unlocked, otherwise sealing will fail
-            if let Ok(signature) = self.sign(header.bare_hash()) {
+            if let Ok(signature) = self.signer.read().sign(header.bare_hash()) {
                 return Seal::SimplePoA(signature)
             } else {
                 ctrace!(ENGINE, "generate_seal: FAIL: accounts secret key unavailable");
@@ -191,14 +190,6 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
     /// Register an account which signs consensus messages.
     fn set_signer(&self, ap: Arc<AccountProvider>, address: Address) {
         self.signer.write().set(ap, address);
-    }
-
-    fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
-        self.signer.read().sign(hash).map_err(Into::into)
-    }
-
-    fn signer_public(&self) -> Option<Public> {
-        self.signer.read().public().cloned()
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {
