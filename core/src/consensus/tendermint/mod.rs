@@ -788,7 +788,7 @@ impl TendermintInner {
             return Err(BlockError::InvalidSeal.into())
         }
 
-        if bitset_count < precommits_count {
+        if bitset_count > precommits_count {
             cwarn!(
                 ENGINE,
                 "verify_block_external: The header({})'s bitset count is greater than the precommits count",
