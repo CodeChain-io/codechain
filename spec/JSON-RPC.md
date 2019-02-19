@@ -930,10 +930,10 @@ Errors: `KVDB Error`, `Invalid Params`
 [Back to **List of methods**](#list-of-methods)
 
 ## chain_getAsset
-Gets an asset with the given transaction hash and the index.
+Gets an asset with the given tracker of previous input transaction and the index.
 
 ### Params
- 1. transaction id - `H256`
+ 1. tracker - `H256`
  2. index - `number`
  3. shard id - `number`
  4. block number: `number` | `null`
