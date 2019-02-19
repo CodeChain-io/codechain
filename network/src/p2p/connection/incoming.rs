@@ -48,17 +48,15 @@ impl IncomingConnection {
         Ready::writable() | Ready::readable() | UnixReady::hup()
     }
 
-    pub fn send_ack(&mut self, recipient_pub_key: Public, encrypted_nonce: Bytes) -> Result<()> {
+    pub fn send_ack(&mut self, recipient_pub_key: Public, encrypted_nonce: Bytes) {
         self.stream.write(&IncomingMessage::Ack {
             recipient_pub_key,
             encrypted_nonce,
-        })?;
-        Ok(())
+        });
     }
 
-    pub fn send_nack(&mut self) -> Result<()> {
-        self.stream.write(&IncomingMessage::Nack)?;
-        Ok(())
+    pub fn send_nack(&mut self) {
+        self.stream.write(&IncomingMessage::Nack);
     }
 
     pub fn flush(&mut self) -> Result<()> {
