@@ -84,7 +84,7 @@ impl fmt::Display for Error {
 pub struct AccountProvider {
     /// Unlocked account data.
     unlocked: RwLock<HashMap<Address, UnlockedPassword>>,
-    keystore: RwLock<KeyStore>,
+    keystore: KeyStore,
 }
 
 impl AccountProvider {
@@ -92,7 +92,7 @@ impl AccountProvider {
     pub fn new(keystore: KeyStore) -> Arc<Self> {
         Arc::new(Self {
             unlocked: RwLock::new(HashMap::new()),
-            keystore: RwLock::new(keystore),
+            keystore,
         })
     }
 
@@ -100,7 +100,7 @@ impl AccountProvider {
     pub fn transient_provider() -> Arc<Self> {
         Arc::new(Self {
             unlocked: RwLock::new(HashMap::new()),
-            keystore: RwLock::new(KeyStore::open(Box::new(MemoryDirectory::default())).unwrap()),
+            keystore: KeyStore::open(Box::new(MemoryDirectory::default())).unwrap(),
         })
     }
 
@@ -118,33 +118,33 @@ impl AccountProvider {
         let private = *acc.private();
         let public = *acc.public();
         let address = public_to_address(&public);
-        self.keystore.write().insert_account(*private, password)?;
+        self.keystore.insert_account(*private, password)?;
         Ok((address, public))
     }
 
     pub fn remove_account(&self, address: Address) -> Result<(), Error> {
-        self.keystore.write().remove_account(&address)?;
+        self.keystore.remove_account(&address)?;
         Ok(())
     }
 
     pub fn has_account(&self, address: &Address) -> Result<bool, Error> {
-        let has = self.keystore.read().has_account(address)?;
+        let has = self.keystore.has_account(address)?;
         Ok(has)
     }
 
     pub fn has_public(&self, public: &Public) -> Result<bool, Error> {
         let address = public_to_address(public);
-        let has = self.keystore.read().has_account(&address)?;
+        let has = self.keystore.has_account(&address)?;
         Ok(has)
     }
 
     pub fn get_list(&self) -> Result<Vec<Address>, Error> {
-        let addresses = self.keystore.read().accounts()?;
+        let addresses = self.keystore.accounts()?;
         Ok(addresses)
     }
 
     pub fn import_wallet(&self, json: &[u8], password: &Password) -> Result<Address, Error> {
-        Ok(self.keystore.write().import_wallet(json, password, false)?)
+        Ok(self.keystore.import_wallet(json, password, false)?)
     }
 
     pub fn change_password(
@@ -153,7 +153,7 @@ impl AccountProvider {
         old_password: &Password,
         new_password: &Password,
     ) -> Result<(), Error> {
-        self.keystore.read().change_password(&address, &old_password, &new_password)?;
+        self.keystore.change_password(&address, &old_password, &new_password)?;
         Ok(())
     }
 
@@ -187,7 +187,7 @@ impl AccountProvider {
             }
         }
 
-        if !self.keystore.read().test_password(&address, &password)? {
+        if !self.keystore.test_password(&address, &password)? {
             return Err(KeystoreError::InvalidPassword)
         }
 
@@ -218,7 +218,7 @@ impl AccountProvider {
     }
 
     fn decrypt_account(&self, address: &Address, password: &Password) -> Result<DecryptedAccount, KeystoreError> {
-        self.keystore.read().decrypt_account(address, password)
+        self.keystore.decrypt_account(address, password)
     }
 
     pub fn get_account(&self, address: &Address, password: Option<&Password>) -> Result<ScopedAccount, Error> {
