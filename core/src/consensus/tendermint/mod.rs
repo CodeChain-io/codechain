@@ -1097,7 +1097,7 @@ impl TendermintInner {
     }
 
     fn set_signer(&mut self, ap: Arc<AccountProvider>, address: Address) {
-        self.signer.set(ap, address);
+        self.signer.set_to_keep_decrypted_account(ap, address);
     }
 
     fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {

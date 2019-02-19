@@ -247,6 +247,10 @@ impl<'a> ScopedAccount<'a> {
             phantom: PhantomData::default(),
         }
     }
+
+    pub fn disclose(self) -> DecryptedAccount {
+        self.decrypted
+    }
 }
 
 #[cfg(test)]
