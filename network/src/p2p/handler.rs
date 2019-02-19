@@ -302,7 +302,7 @@ impl IoHandler<Message> for Handler {
                 if let Some(con) = outgoing_connections.get_mut(&stream) {
                     let target = *con.peer_addr();
                     let maybe_remote_public = self.routing_table.try_establish(target)?;
-                    con.send_sync(maybe_remote_public)?;
+                    con.send_sync(maybe_remote_public);
                     io.register_timer_once(wait_ack_timer(stream), RTT);
                     io.update_registration(stream);
                 } else {
@@ -416,9 +416,7 @@ impl IoHandler<Message> for Handler {
                     assert_eq!(None, self.remote_node_ids_reverse.lock().insert(remote_node_id, token));
 
                     for (name, versions) in self.client.extension_versions() {
-                        if let Err(err) = connection.enqueue_negotiation_request(name.clone(), versions) {
-                            cwarn!(NETWORK, "Cannot send negotiation message to {} for {}: {}", peer_addr, name, err);
-                        }
+                        connection.enqueue_negotiation_request(name.clone(), versions);
                     }
                     let t = outbound_connections.insert(token, connection);
                     assert!(t.is_none());
@@ -550,7 +548,7 @@ impl IoHandler<Message> for Handler {
                                 unreachable!("Node id for {}:{} must exist", stream_token, con.peer_addr())
                             });
                             self.client.on_node_added(&extension_name, &remote_node_id, version);
-                            con.enqueue_negotiation_response(extension_name, version)?;
+                            con.enqueue_negotiation_response(extension_name, version);
                         }
                         Some(NetworkMessage::Negotiation(NegotiationMessage::Response {
                             ..
@@ -641,7 +639,7 @@ impl IoHandler<Message> for Handler {
                                 self.routing_table.set_recipient_establish1(from, initiator_pub_key)?
                             {
                                 cinfo!(NETWORK, "Send ack to {}", from);
-                                con.send_ack(local_public, encrypted_nonce)?;
+                                con.send_ack(local_public, encrypted_nonce);
                                 let t = self
                                     .establishing_incoming_session
                                     .lock()
@@ -652,7 +650,7 @@ impl IoHandler<Message> for Handler {
                                 io.deregister_stream(stream_token);
                             } else {
                                 cinfo!(NETWORK, "Send nack to {}", from);
-                                con.send_nack()?;
+                                con.send_nack();
                                 io.clear_timer(wait_sync_timer(stream_token));
                             }
                         }
@@ -672,7 +670,7 @@ impl IoHandler<Message> for Handler {
                                 .routing_table
                                 .set_recipient_establish2(from, recipient_pub_key, initiator_pub_key)?
                             {
-                                con.send_ack(local_public, encrypted_nonce)?;
+                                con.send_ack(local_public, encrypted_nonce);
                                 let t = self
                                     .establishing_incoming_session
                                     .lock()
@@ -683,7 +681,7 @@ impl IoHandler<Message> for Handler {
                                 io.deregister_stream(stream_token);
                             } else {
                                 io.clear_timer(wait_sync_timer(stream_token));
-                                con.send_nack()?;
+                                con.send_nack();
                             }
                         }
                         None => {

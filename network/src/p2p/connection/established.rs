@@ -42,19 +42,16 @@ impl EstablishedConnection {
         }
     }
 
-    fn write(&mut self, message: &Message) -> Result<()> {
-        self.stream.write(message)?;
-        Ok(())
+    fn write(&mut self, message: &Message) {
+        self.stream.write(message);
     }
 
-    pub fn enqueue_negotiation_request(&mut self, name: String, extension_versions: Vec<Version>) -> Result<()> {
-        self.write(&Message::Negotiation(NegotiationMessage::request(name, extension_versions)))?;
-        Ok(())
+    pub fn enqueue_negotiation_request(&mut self, name: String, extension_versions: Vec<Version>) {
+        self.write(&Message::Negotiation(NegotiationMessage::request(name, extension_versions)));
     }
 
-    pub fn enqueue_negotiation_response(&mut self, name: String, version: u64) -> Result<()> {
-        self.write(&Message::Negotiation(NegotiationMessage::allowed(name, version)))?;
-        Ok(())
+    pub fn enqueue_negotiation_response(&mut self, name: String, version: u64) {
+        self.write(&Message::Negotiation(NegotiationMessage::allowed(name, version)));
     }
 
     pub fn enqueue_extension_message(
@@ -68,7 +65,7 @@ impl EstablishedConnection {
         } else {
             ExtensionMessage::unencrypted(extension_name, message)
         };
-        self.write(&Message::Extension(message))?;
+        self.write(&Message::Extension(message));
         Ok(())
     }
 
