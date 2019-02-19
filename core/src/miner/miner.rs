@@ -34,7 +34,7 @@ use super::mem_pool_types::{AccountDetails, MemPoolInput, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, TransactionImportResult};
-use crate::account_provider::{AccountProvider, SignError};
+use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use crate::block::{Block, ClosedBlock, IsBlock};
 use crate::client::{
     AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
@@ -602,7 +602,7 @@ impl MinerService for Miner {
         self.params.read().clone()
     }
 
-    fn set_author(&self, address: Address) -> Result<(), SignError> {
+    fn set_author(&self, address: Address) -> Result<(), AccountProviderError> {
         self.params.write().author = address;
 
         if self.engine_type().need_signer_key() && self.engine.seals_internally().is_some() {
@@ -619,7 +619,7 @@ impl MinerService for Miner {
                 Ok(())
             } else {
                 cwarn!(MINER, "No account provider");
-                Err(SignError::NotFound)
+                Err(AccountProviderError::NotFound)
             }
         } else {
             Ok(())

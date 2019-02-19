@@ -27,7 +27,7 @@ use primitives::{H256, U256};
 
 use util_error::UtilError;
 
-use crate::account_provider::SignError as AccountsError;
+use crate::account_provider::Error as AccountProviderError;
 use crate::client::Error as ClientError;
 use crate::consensus::EngineError;
 
@@ -188,7 +188,7 @@ pub enum Error {
     PowInvalid,
     Scheme(SchemeError),
     /// Account Provider error.
-    AccountProvider(AccountsError),
+    AccountProvider(AccountProviderError),
     Trie(TrieError),
     Runtime(RuntimeError),
     History(HistoryError),
@@ -281,8 +281,8 @@ impl From<BlockImportError> for Error {
     }
 }
 
-impl From<AccountsError> for Error {
-    fn from(err: AccountsError) -> Error {
+impl From<AccountProviderError> for Error {
+    fn from(err: AccountProviderError) -> Error {
         Error::AccountProvider(err)
     }
 }
