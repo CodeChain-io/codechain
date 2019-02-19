@@ -93,12 +93,10 @@ impl SignedStream {
         }
     }
 
-    pub fn write<M>(&mut self, message: &M) -> Result<()>
+    pub fn write<M>(&mut self, message: &M)
     where
         M: Encodable, {
-        let signed_message = SignedMessage::new(message, &self.session);
-        self.stream.write(&signed_message)?;
-        Ok(())
+        self.stream.write(&SignedMessage::new(message, &self.session));
     }
 
     pub fn flush(&mut self) -> Result<()> {
