@@ -79,8 +79,12 @@ impl RequestMessage {
     pub fn decode(id: u8, rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let message = match id {
             super::MESSAGE_ID_GET_HEADERS => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 2,
+                    })
                 }
                 RequestMessage::Headers {
                     start_number: rlp.val_at(0)?,
@@ -89,14 +93,22 @@ impl RequestMessage {
             }
             super::MESSAGE_ID_GET_BODIES => RequestMessage::Bodies(rlp.as_list()?),
             super::MESSAGE_ID_GET_STATE_HEAD => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 1 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 1,
+                    })
                 }
                 RequestMessage::StateHead(rlp.val_at(0)?)
             }
             super::MESSAGE_ID_GET_STATE_CHUNK => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 2,
+                    })
                 }
                 RequestMessage::StateChunk {
                     block_hash: rlp.val_at(0)?,

@@ -163,15 +163,23 @@ impl Decodable for TendermintMessage {
         let id = rlp.val_at(0)?;
         Ok(match id {
             MESSAGE_ID_CONSENSUS_MESSAGE => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 2,
+                    })
                 }
                 let bytes = rlp.at(1)?;
                 TendermintMessage::ConsensusMessage(bytes.as_val()?)
             }
             MESSAGE_ID_PROPOSAL_BLOCK => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 let signature = rlp.at(1)?;
                 let message = rlp.at(2)?;
@@ -181,8 +189,12 @@ impl Decodable for TendermintMessage {
                 }
             }
             MESSAGE_ID_STEP_STATE => {
-                if rlp.item_count()? != 5 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 5 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 5,
+                    })
                 }
                 let vote_step = rlp.at(1)?.as_val()?;
                 let proposal = rlp.at(2)?.as_val()?;
@@ -196,8 +208,12 @@ impl Decodable for TendermintMessage {
                 }
             }
             MESSAGE_ID_REQUEST_MESSAGE => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 let vote_step = rlp.at(1)?.as_val()?;
                 let requested_votes = rlp.at(2)?.as_val()?;
@@ -207,8 +223,12 @@ impl Decodable for TendermintMessage {
                 }
             }
             MESSAGE_ID_REQUEST_PROPOSAL => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 let height = rlp.at(1)?.as_val()?;
                 let view = rlp.at(2)?.as_val()?;

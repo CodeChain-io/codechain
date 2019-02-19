@@ -249,10 +249,18 @@ impl Encodable for BitSet {
 impl Decodable for BitSet {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| {
-            if bytes.len() > BITSET_SIZE {
-                Err(DecoderError::RlpIsTooBig)
-            } else if bytes.len() < BITSET_SIZE {
-                Err(DecoderError::RlpIsTooShort)
+            let expected = BITSET_SIZE;
+            let got = bytes.len();
+            if got > expected {
+                Err(DecoderError::RlpIsTooBig {
+                    expected,
+                    got,
+                })
+            } else if got < expected {
+                Err(DecoderError::RlpIsTooShort {
+                    expected,
+                    got,
+                })
             } else {
                 let mut bit_set = BitSet::new();
                 bit_set.0.copy_from_slice(bytes);

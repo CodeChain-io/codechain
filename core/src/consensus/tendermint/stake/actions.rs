@@ -43,8 +43,12 @@ impl Decodable for Action {
         let tag = rlp.val_at(0)?;
         match tag {
             ACTION_TAG_TRANSFER_CCS => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpInvalidLength)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpInvalidLength {
+                        expected: 3,
+                        got: item_count,
+                    })
                 }
                 Ok(Action::TransferCCS {
                     address: rlp.val_at(1)?,

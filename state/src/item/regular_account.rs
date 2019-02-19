@@ -65,8 +65,12 @@ impl Encodable for RegularAccount {
 
 impl Decodable for RegularAccount {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpInvalidLength)
+        let item_count = rlp.item_count()?;
+        if item_count != 2 {
+            return Err(DecoderError::RlpInvalidLength {
+                got: item_count,
+                expected: 2,
+            })
         }
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {

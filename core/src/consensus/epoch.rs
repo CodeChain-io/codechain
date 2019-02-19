@@ -65,8 +65,12 @@ impl Encodable for Transition {
 
 impl Decodable for Transition {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 3 {
-            return Err(DecoderError::RlpInvalidLength)
+        let item_count = rlp.item_count()?;
+        if item_count != 3 {
+            return Err(DecoderError::RlpInvalidLength {
+                expected: 3,
+                got: item_count,
+            })
         }
         Ok(Transition {
             block_hash: rlp.val_at(0)?,

@@ -54,11 +54,26 @@ impl Block {
 
 impl Decodable for Block {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.as_raw().len() != rlp.payload_info()?.total() {
-            return Err(DecoderError::RlpIsTooBig)
+        let got = rlp.as_raw().len();
+        let expected = rlp.payload_info()?.total();
+        if got > expected {
+            return Err(DecoderError::RlpIsTooBig {
+                expected,
+                got,
+            })
         }
+        if got < expected {
+            return Err(DecoderError::RlpIsTooShort {
+                expected,
+                got,
+            })
+        }
+        let item_count = rlp.item_count()?;
         if rlp.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen)
+            return Err(DecoderError::RlpIncorrectListLen {
+                expected: 2,
+                got: item_count,
+            })
         }
         Ok(Block {
             header: rlp.val_at(0)?,

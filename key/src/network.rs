@@ -66,7 +66,13 @@ impl Encodable for NetworkId {
 impl Decodable for NetworkId {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let network_id = String::decode(rlp)?;
-        network_id.parse().map_err(|_| DecoderError::RlpInvalidLength)
+        if network_id.len() != 2 {
+            return Err(DecoderError::RlpInvalidLength {
+                expected: 2,
+                got: network_id.len(),
+            })
+        }
+        Ok(network_id.parse().expect("The length of network id is already checked"))
     }
 }
 

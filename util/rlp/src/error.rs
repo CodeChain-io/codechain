@@ -13,15 +13,24 @@ use std::fmt;
 /// Error concerning the RLP decoder.
 pub enum DecoderError {
     /// Data has additional bytes at the end of the valid RLP fragment.
-    RlpIsTooBig,
+    RlpIsTooBig {
+        expected: usize,
+        got: usize,
+    },
     /// Data has too few bytes for valid RLP.
-    RlpIsTooShort,
+    RlpIsTooShort {
+        expected: usize,
+        got: usize,
+    },
     /// Expect an encoded list, RLP was something else.
     RlpExpectedToBeList,
     /// Expect encoded data, RLP was something else.
     RlpExpectedToBeData,
     /// Expected a different size list.
-    RlpIncorrectListLen,
+    RlpIncorrectListLen {
+        expected: usize,
+        got: usize,
+    },
     /// Data length number has a prefixed zero byte, invalid for numbers.
     RlpDataLenWithZeroPrefix,
     /// List length number has a prefixed zero byte, invalid for numbers.
@@ -29,9 +38,15 @@ pub enum DecoderError {
     /// Non-canonical (longer than necessary) representation used for data or list.
     RlpInvalidIndirection,
     /// Declared length is inconsistent with data specified after.
-    RlpInconsistentLengthAndData,
+    RlpInconsistentLengthAndData {
+        max: usize,
+        index: usize,
+    },
     /// Declared length is invalid and results in overflow
-    RlpInvalidLength,
+    RlpInvalidLength {
+        expected: usize,
+        got: usize,
+    },
     /// A string MUST NOT be null terminated.
     RlpNullTerminatedString,
     /// Custom rlp decoding error.

@@ -74,14 +74,22 @@ impl ResponseMessage {
                 ResponseMessage::Bodies(bodies)
             }
             super::MESSAGE_ID_STATE_HEAD => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 1 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 1,
+                    })
                 }
                 ResponseMessage::StateHead(rlp.val_at(0)?)
             }
             super::MESSAGE_ID_STATE_CHUNK => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 1 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 1,
+                    })
                 }
                 ResponseMessage::StateChunk(rlp.val_at(0)?)
             }

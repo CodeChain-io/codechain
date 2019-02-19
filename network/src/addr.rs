@@ -201,7 +201,10 @@ impl Decodable for SocketAddr {
                 Ok(SocketAddr::v4(ip0, ip1, ip2, ip3, port))
             }
             17 => unimplemented!(),
-            _ => Err(DecoderError::RlpIncorrectListLen),
+            got => Err(DecoderError::RlpIncorrectListLen {
+                expected: 5,
+                got,
+            }),
         }
     }
 }

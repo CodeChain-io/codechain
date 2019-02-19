@@ -47,10 +47,22 @@ fn rlp_at_err() {
         assert!(rlp.is_list());
 
         let cat_err = rlp.at(0).unwrap_err();
-        assert_eq!(cat_err, DecoderError::RlpIsTooShort);
+        assert_eq!(
+            cat_err,
+            DecoderError::RlpIsTooShort {
+                expected: 1,
+                got: 0
+            }
+        );
 
         let dog_err = rlp.at(1).unwrap_err();
-        assert_eq!(dog_err, DecoderError::RlpIsTooShort);
+        assert_eq!(
+            dog_err,
+            DecoderError::RlpIsTooShort {
+                expected: 1,
+                got: 0
+            }
+        );
     }
 }
 
@@ -433,7 +445,13 @@ fn rlp_data_length_check() {
     let rlp = UntrustedRlp::new(&data);
 
     let as_val: Result<String, DecoderError> = rlp.as_val();
-    assert_eq!(Err(DecoderError::RlpInconsistentLengthAndData), as_val);
+    assert_eq!(
+        Err(DecoderError::RlpInconsistentLengthAndData {
+            max: 4,
+            index: 5
+        }),
+        as_val
+    );
 }
 
 #[test]
@@ -446,7 +464,13 @@ fn rlp_long_data_length_check() {
     let rlp = UntrustedRlp::new(&data);
 
     let as_val: Result<String, DecoderError> = rlp.as_val();
-    assert_eq!(Err(DecoderError::RlpInconsistentLengthAndData), as_val);
+    assert_eq!(
+        Err(DecoderError::RlpInconsistentLengthAndData {
+            max: 255,
+            index: 257
+        }),
+        as_val
+    );
 }
 
 #[test]
@@ -480,7 +504,13 @@ fn rlp_2bytes_data_length_check() {
     let rlp = UntrustedRlp::new(&data);
 
     let as_val: Result<String, DecoderError> = rlp.as_val();
-    assert_eq!(Err(DecoderError::RlpInconsistentLengthAndData), as_val);
+    assert_eq!(
+        Err(DecoderError::RlpInconsistentLengthAndData {
+            max: 703,
+            index: 770
+        }),
+        as_val
+    );
 }
 
 #[test]
@@ -496,7 +526,13 @@ fn rlp_list_length_overflow() {
     let data: Vec<u8> = vec![0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00];
     let rlp = UntrustedRlp::new(&data);
     let as_val: Result<String, DecoderError> = rlp.val_at(0);
-    assert_eq!(Err(DecoderError::RlpIsTooShort), as_val);
+    assert_eq!(
+        Err(DecoderError::RlpIsTooShort {
+            expected: 1,
+            got: 0
+        }),
+        as_val
+    );
 }
 
 #[test]

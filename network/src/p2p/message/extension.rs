@@ -120,8 +120,12 @@ impl Encodable for Message {
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 5 {
-            return Err(DecoderError::RlpInvalidLength)
+        let item_count = rlp.item_count()?;
+        if item_count != 5 {
+            return Err(DecoderError::RlpInvalidLength {
+                expected: 5,
+                got: item_count,
+            })
         }
         let version: Version = rlp.val_at(0)?;
         let protocol_id: ProtocolId = rlp.val_at(1)?;

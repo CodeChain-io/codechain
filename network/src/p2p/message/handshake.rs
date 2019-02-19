@@ -87,8 +87,12 @@ impl Decodable for Message {
         let protocol_id: ProtocolId = rlp.val_at(1)?;
         match protocol_id {
             SYNC_ID => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 Ok(Message::Sync {
                     version,
@@ -96,8 +100,12 @@ impl Decodable for Message {
                 })
             }
             ACK_ID => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 2,
+                    })
                 }
                 Ok(Message::Ack(version))
             }

@@ -59,14 +59,22 @@ impl Invoice {
         let rlp = UntrustedRlp::new(bytes);
         match rlp.val_at::<u8>(0)? {
             INVOICE_ID_SINGLE_SUCCESS => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpInvalidLength)
+                let item_count = rlp.item_count()?;
+                if item_count != 1 {
+                    return Err(DecoderError::RlpInvalidLength {
+                        got: item_count,
+                        expected: 1,
+                    })
                 }
                 Ok(Invoice::Success)
             }
             INVOICE_ID_SINGLE_FAIL => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpInvalidLength)
+                let item_count = rlp.item_count()?;
+                if item_count != 2 {
+                    return Err(DecoderError::RlpInvalidLength {
+                        got: item_count,
+                        expected: 2,
+                    })
                 }
                 Ok(Invoice::Failure(rlp.val_at(1)?))
             }

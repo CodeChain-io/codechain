@@ -54,8 +54,12 @@ impl From<UnverifiedTransaction> for Transaction {
 
 impl rlp::Decodable for UnverifiedTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 5 {
-            return Err(DecoderError::RlpIncorrectListLen)
+        let item_count = d.item_count()?;
+        if item_count != 5 {
+            return Err(DecoderError::RlpIncorrectListLen {
+                expected: 5,
+                got: item_count,
+            })
         }
         let hash = blake256(d.as_raw());
         Ok(UnverifiedTransaction {

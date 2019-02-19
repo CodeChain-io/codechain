@@ -156,8 +156,13 @@ impl Decodable for Message {
             },
             _ => return Err(DecoderError::Custom("invalid protocol id")),
         };
-        if rlp.item_count()? != message.item_count() {
-            return Err(DecoderError::RlpInvalidLength)
+        let item_count = rlp.item_count()?;
+        let expected = message.item_count();
+        if item_count != expected {
+            return Err(DecoderError::RlpInvalidLength {
+                expected,
+                got: item_count,
+            })
         }
         Ok(message)
     }

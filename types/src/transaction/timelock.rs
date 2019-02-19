@@ -45,8 +45,12 @@ impl Encodable for Timelock {
 
 impl Decodable for Timelock {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if d.item_count()? != 2 {
-            return Err(DecoderError::RlpIncorrectListLen)
+        let item_count = d.item_count()?;
+        if item_count != 2 {
+            return Err(DecoderError::RlpIncorrectListLen {
+                got: item_count,
+                expected: 2,
+            })
         }
         match d.val_at(0)? {
             BLOCK => Ok(Timelock::Block(d.val_at(1)?)),

@@ -89,8 +89,12 @@ impl Encodable for Shard {
 
 impl Decodable for Shard {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 4 {
-            return Err(DecoderError::RlpInvalidLength)
+        let item_count = rlp.item_count()?;
+        if item_count != 4 {
+            return Err(DecoderError::RlpInvalidLength {
+                expected: 4,
+                got: item_count,
+            })
         }
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {

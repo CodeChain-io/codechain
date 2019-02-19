@@ -481,8 +481,12 @@ impl Decodable for ShardTransaction {
     fn decode(d: &UntrustedRlp) -> Result<Self, DecoderError> {
         match d.val_at(0)? {
             ASSET_MINT_ID => {
-                if d.item_count()? != 10 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = d.item_count()?;
+                if item_count != 10 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 10,
+                    })
                 }
                 Ok(ShardTransaction::MintAsset {
                     network_id: d.val_at(1)?,
@@ -499,8 +503,12 @@ impl Decodable for ShardTransaction {
                 })
             }
             ASSET_TRANSFER_ID => {
-                if d.item_count()? != 6 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = d.item_count()?;
+                if item_count != 6 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 6,
+                    })
                 }
                 Ok(ShardTransaction::TransferAsset {
                     network_id: d.val_at(1)?,
@@ -511,8 +519,12 @@ impl Decodable for ShardTransaction {
                 })
             }
             ASSET_SCHEME_CHANGE_ID => {
-                if d.item_count()? != 8 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = d.item_count()?;
+                if item_count != 8 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 8,
+                    })
                 }
                 Ok(ShardTransaction::ChangeAssetScheme {
                     network_id: d.val_at(1)?,
@@ -525,8 +537,12 @@ impl Decodable for ShardTransaction {
                 })
             }
             ASSET_INCREASE_SUPPLY_ID => {
-                if d.item_count()? != 7 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = d.item_count()?;
+                if item_count != 7 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 7,
+                    })
                 }
                 Ok(ShardTransaction::IncreaseAssetSupply {
                     network_id: d.val_at(1)?,
@@ -540,8 +556,12 @@ impl Decodable for ShardTransaction {
                 })
             }
             ASSET_COMPOSE_ID => {
-                if d.item_count()? != 11 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = d.item_count()?;
+                if item_count != 11 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 11,
+                    })
                 }
                 Ok(ShardTransaction::ComposeAsset {
                     network_id: d.val_at(1)?,
@@ -559,8 +579,12 @@ impl Decodable for ShardTransaction {
                 })
             }
             ASSET_DECOMPOSE_ID => {
-                if d.item_count()? != 4 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = d.item_count()?;
+                if item_count != 4 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 4,
+                    })
                 }
                 Ok(ShardTransaction::DecomposeAsset {
                     network_id: d.val_at(1)?,
@@ -569,8 +593,12 @@ impl Decodable for ShardTransaction {
                 })
             }
             ASSET_UNWRAP_CCC_ID => {
-                if d.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = d.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 Ok(ShardTransaction::UnwrapCCC {
                     network_id: d.val_at(1)?,

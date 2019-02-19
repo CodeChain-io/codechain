@@ -14,8 +14,9 @@ use traits::{Decodable, Encodable};
 use {DecoderError, UntrustedRlp};
 
 pub fn decode_usize(bytes: &[u8]) -> Result<usize, DecoderError> {
+    let expected = mem::size_of::<usize>();
     match bytes.len() {
-        l if l <= mem::size_of::<usize>() => {
+        l if l <= expected => {
             if bytes[0] == 0 {
                 return Err(DecoderError::RlpInvalidIndirection)
             }
@@ -26,7 +27,10 @@ pub fn decode_usize(bytes: &[u8]) -> Result<usize, DecoderError> {
             }
             Ok(res)
         }
-        _ => Err(DecoderError::RlpIsTooBig),
+        got => Err(DecoderError::RlpIsTooBig {
+            expected,
+            got,
+        }),
     }
 }
 
@@ -45,7 +49,10 @@ impl Decodable for bool {
         rlp.decoder().decode_value(|bytes| match bytes.len() {
             0 => Ok(false),
             1 => Ok(bytes[0] != 0),
-            _ => Err(DecoderError::RlpIsTooBig),
+            got => Err(DecoderError::RlpIsTooBig {
+                expected: 1,
+                got,
+            }),
         })
     }
 }
@@ -109,7 +116,10 @@ where
         match items {
             1 => rlp.val_at(0).map(Some),
             0 => Ok(None),
-            _ => Err(DecoderError::RlpIncorrectListLen),
+            got => Err(DecoderError::RlpIncorrectListLen {
+                expected: 1,
+                got,
+            }),
         }
     }
 }
@@ -130,7 +140,10 @@ impl Decodable for u8 {
             1 if bytes[0] != 0 => Ok(bytes[0]),
             0 => Ok(0),
             1 => Err(DecoderError::RlpInvalidIndirection),
-            _ => Err(DecoderError::RlpIsTooBig),
+            got => Err(DecoderError::RlpIsTooBig {
+                expected: 1,
+                got,
+            }),
         })
     }
 }
@@ -164,7 +177,10 @@ macro_rules! impl_decodable_for_u {
                         }
                         Ok(res)
                     }
-                    _ => Err(DecoderError::RlpIsTooBig),
+                    got => Err(DecoderError::RlpIsTooBig {
+                        expected: mem::size_of::<$name>(),
+                        got,
+                    }),
                 })
             }
         }
@@ -191,7 +207,10 @@ impl Encodable for i32 {
 impl Decodable for i32 {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| match bytes.len() {
-            0...3 => Err(DecoderError::RlpIsTooShort),
+            got @ 0...3 => Err(DecoderError::RlpIsTooShort {
+                expected: 4,
+                got,
+            }),
             4 => {
                 // FIXME: I don't think it's the best way to make an array from a slice.
                 let array = unsafe {
@@ -201,7 +220,10 @@ impl Decodable for i32 {
                 };
                 Ok(Self::from_be_bytes(array))
             }
-            _ => Err(DecoderError::RlpIsTooBig),
+            got => Err(DecoderError::RlpIsTooBig {
+                expected: 4,
+                got,
+            }),
         })
     }
 }
@@ -216,7 +238,10 @@ impl Encodable for i64 {
 impl Decodable for i64 {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         rlp.decoder().decode_value(|bytes| match bytes.len() {
-            0...7 => Err(DecoderError::RlpIsTooShort),
+            got @ 0...7 => Err(DecoderError::RlpIsTooShort {
+                expected: 8,
+                got,
+            }),
             8 => {
                 // FIXME: I don't think it's the best way to make an array from a slice.
                 let array = unsafe {
@@ -226,7 +251,10 @@ impl Decodable for i64 {
                 };
                 Ok(Self::from_be_bytes(array))
             }
-            _ => Err(DecoderError::RlpIsTooBig),
+            got => Err(DecoderError::RlpIsTooBig {
+                expected: 8,
+                got,
+            }),
         })
     }
 }
@@ -258,8 +286,14 @@ macro_rules! impl_decodable_for_hash {
         impl Decodable for $name {
             fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
                 rlp.decoder().decode_value(|bytes| match bytes.len().cmp(&$size) {
-                    cmp::Ordering::Less => Err(DecoderError::RlpIsTooShort),
-                    cmp::Ordering::Greater => Err(DecoderError::RlpIsTooBig),
+                    cmp::Ordering::Less => Err(DecoderError::RlpIsTooShort {
+                        expected: $size,
+                        got: bytes.len(),
+                    }),
+                    cmp::Ordering::Greater => Err(DecoderError::RlpIsTooBig {
+                        expected: $size,
+                        got: bytes.len(),
+                    }),
                     cmp::Ordering::Equal => {
                         let mut t = [0u8; $size];
                         t.copy_from_slice(bytes);
@@ -306,7 +340,10 @@ macro_rules! impl_decodable_for_uint {
                     } else if bytes.len() <= $size {
                         Ok($name::from(bytes))
                     } else {
-                        Err(DecoderError::RlpIsTooBig)
+                        Err(DecoderError::RlpIsTooBig {
+                            expected: $size,
+                            got: bytes.len(),
+                        })
                     }
                 })
             }

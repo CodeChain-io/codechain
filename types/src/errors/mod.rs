@@ -34,8 +34,13 @@ trait TaggedRlp {
     }
 
     fn check_size(rlp: &UntrustedRlp, tag: Self::Tag) -> Result<(), DecoderError> {
-        if rlp.item_count()? != Self::length_of(tag)? {
-            return Err(DecoderError::RlpInvalidLength)
+        let item_count = rlp.item_count()?;
+        let expected = Self::length_of(tag)?;
+        if item_count != expected {
+            return Err(DecoderError::RlpInvalidLength {
+                expected,
+                got: item_count,
+            })
         }
         Ok(())
     }

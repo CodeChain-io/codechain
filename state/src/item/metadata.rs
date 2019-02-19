@@ -95,8 +95,12 @@ impl Encodable for Metadata {
 
 impl Decodable for Metadata {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 4 {
-            return Err(DecoderError::RlpInvalidLength)
+        let item_count = rlp.item_count()?;
+        if item_count != 4 {
+            return Err(DecoderError::RlpInvalidLength {
+                got: item_count,
+                expected: 4,
+            })
         }
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {

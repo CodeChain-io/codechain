@@ -717,8 +717,12 @@ impl Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
             MINT_ASSET => {
-                if rlp.item_count()? != 11 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 11 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 11,
+                    })
                 }
                 Ok(Action::MintAsset {
                     network_id: rlp.val_at(1)?,
@@ -736,8 +740,12 @@ impl Decodable for Action {
                 })
             }
             TRANSFER_ASSET => {
-                if rlp.item_count()? != 9 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 9 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 9,
+                    })
                 }
                 Ok(Action::TransferAsset {
                     network_id: rlp.val_at(1)?,
@@ -751,8 +759,12 @@ impl Decodable for Action {
                 })
             }
             CHANGE_ASSET_SCHEME => {
-                if rlp.item_count()? != 9 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 9 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 9,
+                    })
                 }
                 Ok(Action::ChangeAssetScheme {
                     network_id: rlp.val_at(1)?,
@@ -766,8 +778,12 @@ impl Decodable for Action {
                 })
             }
             INCREASE_ASSET_SUPPLY => {
-                if rlp.item_count()? != 8 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 8 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 8,
+                    })
                 }
                 Ok(Action::IncreaseAssetSupply {
                     network_id: rlp.val_at(1)?,
@@ -782,8 +798,12 @@ impl Decodable for Action {
                 })
             }
             COMPOSE_ASSET => {
-                if rlp.item_count()? != 12 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 12 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 12,
+                    })
                 }
                 Ok(Action::ComposeAsset {
                     network_id: rlp.val_at(1)?,
@@ -802,8 +822,12 @@ impl Decodable for Action {
                 })
             }
             DECOMPOSE_ASSET => {
-                if rlp.item_count()? != 5 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 5 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 5,
+                    })
                 }
                 Ok(Action::DecomposeAsset {
                     network_id: rlp.val_at(1)?,
@@ -813,8 +837,12 @@ impl Decodable for Action {
                 })
             }
             UNWRAP_CCC => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 Ok(Action::UnwrapCCC {
                     network_id: rlp.val_at(1)?,
@@ -822,8 +850,12 @@ impl Decodable for Action {
                 })
             }
             PAY => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 Ok(Action::Pay {
                     receiver: rlp.val_at(1)?,
@@ -831,22 +863,34 @@ impl Decodable for Action {
                 })
             }
             SET_REGULAR_KEY => {
-                if rlp.item_count()? != 2 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 2,
+                    })
                 }
                 Ok(Action::SetRegularKey {
                     key: rlp.val_at(1)?,
                 })
             }
             CREATE_SHARD => {
-                if rlp.item_count()? != 1 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 1 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 1,
+                    })
                 }
                 Ok(Action::CreateShard)
             }
             SET_SHARD_OWNERS => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 Ok(Action::SetShardOwners {
                     shard_id: rlp.val_at(1)?,
@@ -854,8 +898,12 @@ impl Decodable for Action {
                 })
             }
             SET_SHARD_USERS => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 Ok(Action::SetShardUsers {
                     shard_id: rlp.val_at(1)?,
@@ -863,8 +911,12 @@ impl Decodable for Action {
                 })
             }
             WRAP_CCC => {
-                if rlp.item_count()? != 6 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 6 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 6,
+                    })
                 }
                 Ok(Action::WrapCCC {
                     shard_id: rlp.val_at(1)?,
@@ -875,8 +927,12 @@ impl Decodable for Action {
                 })
             }
             STORE => {
-                if rlp.item_count()? != 4 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 4 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 4,
+                    })
                 }
                 Ok(Action::Store {
                     content: rlp.val_at(1)?,
@@ -885,8 +941,12 @@ impl Decodable for Action {
                 })
             }
             REMOVE => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 Ok(Action::Remove {
                     hash: rlp.val_at(1)?,
@@ -894,8 +954,12 @@ impl Decodable for Action {
                 })
             }
             CUSTOM => {
-                if rlp.item_count()? != 3 {
-                    return Err(DecoderError::RlpIncorrectListLen)
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
                 }
                 Ok(Action::Custom {
                     handler_id: rlp.val_at(1)?,

@@ -51,11 +51,19 @@ fn calculate_payload_info(header_bytes: &[u8], len_of_len: usize) -> Result<Payl
     let header_len = 1 + len_of_len;
     match header_bytes.get(1) {
         Some(&0) => return Err(DecoderError::RlpDataLenWithZeroPrefix),
-        None => return Err(DecoderError::RlpIsTooShort),
+        None => {
+            return Err(DecoderError::RlpIsTooShort {
+                expected: 1,
+                got: 0,
+            })
+        }
         _ => (),
     }
     if header_bytes.len() < header_len {
-        return Err(DecoderError::RlpIsTooShort)
+        return Err(DecoderError::RlpIsTooShort {
+            expected: header_len,
+            got: header_bytes.len(),
+        })
     }
     let value_len = decode_usize(&header_bytes[1..header_len])?;
     Ok(PayloadInfo::new(header_len, value_len))
@@ -77,7 +85,10 @@ impl PayloadInfo {
     /// Create a new object from the given bytes RLP. The bytes
     pub fn from(header_bytes: &[u8]) -> Result<PayloadInfo, DecoderError> {
         match header_bytes.first().cloned() {
-            None => Err(DecoderError::RlpIsTooShort),
+            None => Err(DecoderError::RlpIsTooShort {
+                expected: 1,
+                got: 0,
+            }),
             Some(0...0x7f) => Ok(PayloadInfo::new(0, 1)),
             Some(l @ 0x80...0xb7) => Ok(PayloadInfo::new(1, l as usize - 0x80)),
             Some(l @ 0xb8...0xbf) => {
@@ -220,7 +231,10 @@ where
         // self.data.len() can be greater than byte length from payload's length
         // But you should not read the data which is lied after payload's length
         if new_offset > offset_max {
-            return Err(DecoderError::RlpIsTooShort)
+            return Err(DecoderError::RlpIsTooShort {
+                expected: new_offset,
+                got: offset_max,
+            })
         }
 
         // update the cache
@@ -316,7 +330,10 @@ where
         if bytes.len() >= len {
             Ok(&bytes[len..])
         } else {
-            Err(DecoderError::RlpIsTooShort)
+            Err(DecoderError::RlpIsTooShort {
+                expected: len,
+                got: bytes.len(),
+            })
         }
     }
 }
@@ -371,7 +388,10 @@ impl<'a> BasicDecoder<'a> {
         let item = PayloadInfo::from(bytes)?;
         match item.header_len.checked_add(item.value_len) {
             Some(x) if x <= bytes.len() => Ok(item),
-            _ => Err(DecoderError::RlpIsTooShort),
+            _ => Err(DecoderError::RlpIsTooShort {
+                expected: 1,
+                got: 0,
+            }),
         }
     }
 
@@ -382,14 +402,20 @@ impl<'a> BasicDecoder<'a> {
 
         match bytes.first().cloned() {
             // RLP is too short.
-            None => Err(DecoderError::RlpIsTooShort),
+            None => Err(DecoderError::RlpIsTooShort {
+                expected: 1,
+                got: 0,
+            }),
             // Single byte value.
             Some(l @ 0...0x7f) => Ok(f(&[l])?),
             // 0-55 bytes
             Some(l @ 0x80...0xb7) => {
                 let last_index_of = 1 + l as usize - 0x80;
                 if bytes.len() < last_index_of {
-                    return Err(DecoderError::RlpInconsistentLengthAndData)
+                    return Err(DecoderError::RlpInconsistentLengthAndData {
+                        max: bytes.len(),
+                        index: last_index_of,
+                    })
                 }
                 let d = &bytes[1..last_index_of];
                 if l == 0x81 && d[0] < 0x80 {
@@ -402,13 +428,22 @@ impl<'a> BasicDecoder<'a> {
                 let len_of_len = l as usize - 0xb7;
                 let begin_of_value = 1 as usize + len_of_len;
                 if bytes.len() < begin_of_value {
-                    return Err(DecoderError::RlpInconsistentLengthAndData)
+                    return Err(DecoderError::RlpInconsistentLengthAndData {
+                        max: bytes.len(),
+                        index: begin_of_value,
+                    })
                 }
                 let len = decode_usize(&bytes[1..begin_of_value])?;
 
-                let last_index_of_value = begin_of_value.checked_add(len).ok_or(DecoderError::RlpInvalidLength)?;
+                let last_index_of_value = begin_of_value.checked_add(len).ok_or(DecoderError::RlpInvalidLength {
+                    expected: usize::max_value(),
+                    got: usize::max_value(),
+                })?;
                 if bytes.len() < last_index_of_value {
-                    return Err(DecoderError::RlpInconsistentLengthAndData)
+                    return Err(DecoderError::RlpInconsistentLengthAndData {
+                        max: bytes.len(),
+                        index: last_index_of_value,
+                    })
                 }
                 Ok(f(&bytes[begin_of_value..last_index_of_value])?)
             }
@@ -437,7 +472,13 @@ mod tests {
         let bs = [0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xe5];
         let rlp = UntrustedRlp::new(&bs);
         let res: Result<u8, DecoderError> = rlp.as_val();
-        assert_eq!(Err(DecoderError::RlpInvalidLength), res);
+        assert_eq!(
+            Err(DecoderError::RlpInvalidLength {
+                expected: usize::max_value(),
+                got: usize::max_value()
+            }),
+            res
+        );
     }
 
     #[test]
@@ -448,7 +489,13 @@ mod tests {
         assert_eq!(Ok(vec![3]), first_element);
 
         let fourth_element: Result<Vec<u8>, _> = rlp.at(3).and_then(|elem| elem.as_val());
-        assert_eq!(Err(DecoderError::RlpIsTooShort), fourth_element);
+        assert_eq!(
+            Err(DecoderError::RlpIsTooShort {
+                expected: 7,
+                got: 6
+            }),
+            fourth_element
+        );
     }
 
 
@@ -461,7 +508,13 @@ mod tests {
         assert_eq!(Ok(3), first_element);
 
         let fourth_element: Result<u8, _> = rlp.at(3).and_then(|elem| elem.as_val());
-        assert_eq!(Err(DecoderError::RlpIsTooShort), fourth_element);
+        assert_eq!(
+            Err(DecoderError::RlpIsTooShort {
+                expected: 4,
+                got: 3
+            }),
+            fourth_element
+        );
     }
 
     #[test]

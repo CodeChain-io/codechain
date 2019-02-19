@@ -80,13 +80,21 @@ impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let id = rlp.val_at(0)?;
         if id == MESSAGE_ID_STATUS {
-            if rlp.item_count()? != 2 {
-                return Err(DecoderError::RlpIncorrectListLen)
+            let item_count = rlp.item_count()?;
+            if item_count != 2 {
+                return Err(DecoderError::RlpIncorrectListLen {
+                    got: item_count,
+                    expected: 2,
+                })
             }
             let message = rlp.at(1)?;
 
-            if message.item_count()? != 3 {
-                return Err(DecoderError::RlpIncorrectListLen)
+            let message_item_count = message.item_count()?;
+            if message_item_count != 3 {
+                return Err(DecoderError::RlpIncorrectListLen {
+                    expected: 3,
+                    got: message_item_count,
+                })
             }
 
             Ok(Message::Status {
@@ -95,8 +103,12 @@ impl Decodable for Message {
                 genesis_hash: message.val_at(2)?,
             })
         } else {
-            if rlp.item_count()? != 3 {
-                return Err(DecoderError::RlpIncorrectListLen)
+            let item_count = rlp.item_count()?;
+            if item_count != 3 {
+                return Err(DecoderError::RlpIncorrectListLen {
+                    got: item_count,
+                    expected: 3,
+                })
             }
             let request_id = rlp.val_at(1)?;
             let message = rlp.at(2)?;
