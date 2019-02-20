@@ -103,6 +103,14 @@ build_rpc_trait! {
         # [rpc(name = "chain_getShardRoot")]
         fn get_shard_root(&self, ShardId, Option<u64>) -> Result<Option<H256>>;
 
+        /// Gets shard owners
+        # [rpc(name = "chain_getShardOwners")]
+        fn get_shard_owners(&self, ShardId, Option<u64>) -> Result<Option<Vec<PlatformAddress>>>;
+
+        /// Gets shard users
+        # [rpc(name = "chain_getShardUsers")]
+        fn get_shard_users(&self, ShardId, Option<u64>) -> Result<Option<Vec<PlatformAddress>>>;
+
         /// Gets number of best block.
         # [rpc(name = "chain_getBestBlockNumber")]
         fn get_best_block_number(&self) -> Result<BlockNumber>;

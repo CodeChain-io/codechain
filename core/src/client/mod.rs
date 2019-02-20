@@ -192,6 +192,9 @@ pub trait Shard {
 
     fn shard_id_by_hash(&self, create_shard_tx_hash: &H256, state: StateOrBlock) -> Option<ShardId>;
     fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256>;
+
+    fn shard_owners(&self, shard_id: ShardId, state: StateOrBlock) -> Option<Vec<Address>>;
+    fn shard_users(&self, shard_id: ShardId, state: StateOrBlock) -> Option<Vec<Address>>;
 }
 
 /// Provides a timer API for reseal_min_period/reseal_max_period on miner client

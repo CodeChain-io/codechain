@@ -16,7 +16,12 @@
 
 import { expect } from "chai";
 import "mocha";
-import { faucetAddress, faucetSecret } from "../helper/constants";
+import {
+    aliceAddress,
+    bobAddress,
+    faucetAddress,
+    faucetSecret
+} from "../helper/constants";
 import CodeChain from "../helper/spawn";
 
 describe("CreateShard", function() {
@@ -35,6 +40,7 @@ describe("CreateShard", function() {
             "chain_getShardIdByHash",
             [tx.hash(), null]
         );
+        const beforeBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
         expect(beforeShardId).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx);
         const invoice = (await node.sdk.rpc.chain.getInvoice(tx.hash(), {
@@ -47,6 +53,76 @@ describe("CreateShard", function() {
             [tx.hash(), null]
         );
         expect(afterShardId).not.to.be.null;
+
+        const shardOwners = await node.sdk.rpc.sendRpcRequest(
+            "chain_getShardOwners",
+            [afterShardId, null]
+        );
+        expect(shardOwners).to.deep.equal([faucetAddress.value]); // The creator becomes the owner.
+        const shardUsers = await node.sdk.rpc.sendRpcRequest(
+            "chain_getShardUsers",
+            [afterShardId, null]
+        );
+        expect(shardUsers).to.deep.equal([]); // There are no users at default.
+
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getShardOwners", [
+                afterShardId,
+                beforeBlockNumber
+            ])
+        ).to.be.null;
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getShardUsers", [
+                afterShardId,
+                beforeBlockNumber
+            ])
+        ).to.be.null;
+    });
+
+    it("setShardUsers", async function() {
+        const seq: number = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
+        const tx = node.sdk.core
+            .createCreateShardTransaction()
+            .sign({ secret: faucetSecret, seq, fee: 10 });
+        await node.sdk.rpc.chain.sendSignedTransaction(tx);
+        const shardId = await node.sdk.rpc.sendRpcRequest(
+            "chain_getShardIdByHash",
+            [tx.hash(), null]
+        );
+
+        const users = [aliceAddress, bobAddress];
+        const setShardUsers = node.sdk.core
+            .createSetShardUsersTransaction({ shardId, users })
+            .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 });
+        await node.sdk.rpc.chain.sendSignedTransaction(setShardUsers);
+        const shardUsers = await node.sdk.rpc.sendRpcRequest(
+            "chain_getShardUsers",
+            [shardId, null]
+        );
+        expect(shardUsers).to.deep.equal(users.map(user => user.value));
+    });
+
+    it("setShardOwners", async function() {
+        const seq: number = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
+        const tx = node.sdk.core
+            .createCreateShardTransaction()
+            .sign({ secret: faucetSecret, seq, fee: 10 });
+        await node.sdk.rpc.chain.sendSignedTransaction(tx);
+        const shardId = await node.sdk.rpc.sendRpcRequest(
+            "chain_getShardIdByHash",
+            [tx.hash(), null]
+        );
+
+        const owners = [aliceAddress, faucetAddress, bobAddress];
+        const setShardOwners = node.sdk.core
+            .createSetShardOwnersTransaction({ shardId, owners })
+            .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 });
+        await node.sdk.rpc.chain.sendSignedTransaction(setShardOwners);
+        const shardOwners = await node.sdk.rpc.sendRpcRequest(
+            "chain_getShardOwners",
+            [shardId, null]
+        );
+        expect(shardOwners).to.deep.equal(owners.map(owner => owner.value));
     });
 
     it("Create 2 shards", async function() {
