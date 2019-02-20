@@ -89,15 +89,10 @@ describe("store & remove", function() {
 
     it("storing with wrong certifier fails", async function() {
         const wrongPrivKey = node.sdk.util.generatePrivateKey();
-        const { r, s, v } = signEcdsa(
+        const signature = signEcdsa(
             blake256(RLP.encode(content)),
             wrongPrivKey
         );
-        const signature = `${_.padStart(r, 64, "0")}${_.padStart(
-            s,
-            64,
-            "0"
-        )}${_.padStart(v.toString(16), 2, "0")}`;
 
         const store = node.sdk.core
             .createStoreTransaction({

@@ -18,6 +18,13 @@
     esutils "^2.0.2"
     js-tokens "^4.0.0"
 
+"@types/bn.js@*":
+  version "4.11.4"
+  resolved "https://registry.yarnpkg.com/@types/bn.js/-/bn.js-4.11.4.tgz#a7bed5bdef9f16b25c92ba27745ab261374787d7"
+  integrity sha512-AO8WW+aRcKWKQAYTfKLzwnpL6U+TfPqS+haRrhCy5ff04Da8WZud3ZgVjspQXaEXJDcTlsjUEVvL39wegDek5w==
+  dependencies:
+    "@types/node" "*"
+
 "@types/chai-as-promised@^7.1.0":
   version "7.1.0"
   resolved "https://registry.yarnpkg.com/@types/chai-as-promised/-/chai-as-promised-7.1.0.tgz#010b04cde78eacfb6e72bfddb3e58fe23c2e78b9"
@@ -34,6 +41,13 @@
   version "3.1.43"
   resolved "https://registry.yarnpkg.com/@types/crypto-js/-/crypto-js-3.1.43.tgz#b859347d6289ba13e347c335a4c9efa63337a748"
   integrity sha512-EHe/YKctU3IYNBsDmSOPX/7jLHPRlx8WaiDKSY9JCTnJ8XJeM4c0ZJvx+9Gxmr2s2ihI92R+3U/gNL1sq5oRuQ==
+
+"@types/elliptic@^6.4.4":
+  version "6.4.4"
+  resolved "https://registry.yarnpkg.com/@types/elliptic/-/elliptic-6.4.4.tgz#7ec05c056c8928ff387dd516f19b66ef2dbdb752"
+  integrity sha512-9zr/VJWgaUbeIIBMN/XxeDr4/wVkkiMk4TBfW972NYK0I1z28SxGyj/aFfey45HUR4bFUZZ8orC1zDCfYaaAtg==
+  dependencies:
+    "@types/bn.js" "*"
 
 "@types/lodash@^4.14.118":
   version "4.14.119"
@@ -859,10 +873,10 @@ codechain-primitives@^0.3.0:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-codechain-primitives@^0.4.4:
-  version "0.4.4"
-  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.4.tgz#3930367fad8d9af25ce56e4900d95c5120d09756"
-  integrity sha512-DwZ7I5dQTTQruFq0DTkFbU66XGzqXfGL5vAvN/p3Y+F8Em9Diy8ew3I+wmDaOi5taAJWdDwmWKCoyMTutkPTwA==
+codechain-primitives@^0.4.6:
+  version "0.4.7"
+  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.7.tgz#4263b1dc550f793b1c1347c4a2d7236bb7327920"
+  integrity sha512-au4G3YfFsDdUl+35qBBwWOee9QvwV77mImOz8devKPzPu0+ssSeNortrPlY5VpqUkFNBUQsOpTtDe2IGdSeH6A==
   dependencies:
     bignumber.js "^7.2.1"
     blakejs "^1.1.0"
@@ -875,56 +889,29 @@ codechain-primitives@^0.4.4:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-codechain-primitives@^0.4.5:
-  version "0.4.5"
-  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.5.tgz#b4ee1a86238d4a5197a12f65d2b990ee9c590c03"
-  integrity sha512-FZD+dxXwTCli87HOlXatQvUcl0fgdQfg6T9tE9J4QptWDTkl5ZEJoOx1R0NMHkVxquIfuvTaiCJIsyJJCC7xPQ==
-  dependencies:
-    bignumber.js "^7.2.1"
-    blakejs "^1.1.0"
-    bn.js "^4.11.8"
-    buffer "^5.2.1"
-    elliptic "^6.4.1"
-    hmac-drbg "^1.0.1"
-    lodash "^4.17.11"
-    node-forge "^0.7.6"
-    ripemd160 "^2.0.2"
-    rlp "^2.1.0"
-
-"codechain-sdk@https://github.com/foriequal0/codechain-sdk-js.git#build/mandatory-supply":
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#rpc-lib":
   version "0.5.1"
-  resolved "https://github.com/foriequal0/codechain-sdk-js.git#e4a61b4dc69733c3b0efe9baff378fffa9e3fe3f"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#292c2f61da908d60c74d2290ff750e65aa392c1d"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"
-    codechain-primitives "^0.4.4"
+    codechain-primitives "^0.4.6"
     jayson "^2.0.6"
     lodash "^4.17.10"
     node-fetch "^2.1.2"
+    request "^2.88.0"
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#refac-lib":
-  version "0.5.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#89faa293e8d49a5381017ecccfc8ed57ed284f69"
-  dependencies:
-    buffer "5.1.0"
-    codechain-keystore "^0.6.0"
-    codechain-primitives "^0.4.4"
-    jayson "^2.0.6"
-    lodash "^4.17.10"
-    node-fetch "^2.1.2"
-    request-promise "^4.2.2"
-    rlp "^2.0.0"
-
-"codechain-test-helper@https://github.com/sgkim126/codechain-test-helper-js.git#rename-lib":
+"codechain-test-helper@https://github.com/sgkim126/codechain-test-helper-js.git#net-lib":
   version "1.0.0"
-  resolved "https://github.com/sgkim126/codechain-test-helper-js.git#ca7851b9e64ce7053c7065987295cd7e6c57cd9f"
+  resolved "https://github.com/sgkim126/codechain-test-helper-js.git#2f338e26d6baa0f0a06c0d7c04c8e143ed2432c5"
   dependencies:
     "@types/crypto-js" "^3.1.43"
+    "@types/elliptic" "^6.4.4"
     blakejs "^1.1.0"
-    codechain-primitives "^0.4.5"
-    codechain-sdk "https://github.com/sgkim126/codechain-sdk-js.git#refac-lib"
+    codechain-primitives "^0.4.6"
+    codechain-sdk "https://github.com/sgkim126/codechain-sdk-js.git#rpc-lib"
     crypto "^1.0.1"
     dgram "^1.0.1"
     elliptic "^6.4.1"

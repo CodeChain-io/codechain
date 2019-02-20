@@ -31,6 +31,7 @@ describe("network2 nodes", function() {
 
     describe("Not connected", function() {
         beforeEach(async function() {
+            this.timeout(60_000);
             // ensure disconnected
             if (
                 !(await nodeA.sdk.rpc.network.isConnected(address, nodeB.port))
@@ -39,12 +40,9 @@ describe("network2 nodes", function() {
             }
             await nodeA.sdk.rpc.network.disconnect(address, nodeB.port);
             while (
-                (await nodeA.sdk.rpc.network.isConnected(
-                    address,
-                    nodeB.port
-                )) === true
+                await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)
             ) {
-                await wait(100);
+                await wait(500);
             }
         });
 
@@ -68,6 +66,7 @@ describe("network2 nodes", function() {
 
     describe("1 connected", function() {
         beforeEach(async function() {
+            this.timeout(60_000);
             // ensure connected
             if (await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)) {
                 return;
@@ -77,12 +76,9 @@ describe("network2 nodes", function() {
                 nodeB.port
             );
             while (
-                (await nodeA.sdk.rpc.network.isConnected(
-                    address,
-                    nodeB.port
-                )) === false
+                !(await nodeA.sdk.rpc.network.isConnected(address, nodeB.port))
             ) {
-                await wait(100);
+                await wait(500);
             }
         });
 

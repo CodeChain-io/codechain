@@ -91,15 +91,16 @@ describe("account", function() {
             });
 
             it("Ok", async function() {
-                const { r, s, v } = node.sdk.util.signEcdsa(message, secret);
+                const calculatedSignature = node.sdk.util.signEcdsa(
+                    message,
+                    secret
+                );
                 const signature = await node.sdk.rpc.account.sign(
                     message,
                     address,
                     "my-password"
                 );
-                expect(signature).to.include(r);
-                expect(signature).to.include(s);
-                expect(signature).to.include(v);
+                expect(signature).to.equal(`0x${calculatedSignature}`);
             });
 
             it("WrongPassword", async function() {
