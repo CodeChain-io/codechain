@@ -176,7 +176,7 @@ describe("account", function() {
                             } = accountListWithSecret[randomIdx];
                             const message = makeRandomH256();
 
-                            const { r, s, v } = node.sdk.util.signEcdsa(
+                            const calculatedSignature = node.sdk.util.signEcdsa(
                                 message,
                                 secret!
                             );
@@ -185,9 +185,9 @@ describe("account", function() {
                                 address,
                                 passphrase
                             );
-                            expect(signature).to.include(r);
-                            expect(signature).to.include(s);
-                            expect(signature).to.include(v);
+                            expect(signature).to.equal(
+                                `0x${calculatedSignature}`
+                            );
                         }
                         break;
                     case Action.ChangePassword:

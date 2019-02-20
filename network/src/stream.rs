@@ -231,10 +231,8 @@ impl<Stream: TryRead + TryWrite + PeerAddr + Shutdown> TryStream<Stream> {
         }
     }
 
-    fn write_bytes(&mut self, bytes_to_send: Vec<u8>) -> Result<()> {
+    fn write_bytes(&mut self, bytes_to_send: Vec<u8>) {
         self.write.push_back(bytes_to_send);
-        self.flush()?;
-        Ok(())
     }
 
     fn flush(&mut self) -> Result<()> {
@@ -283,6 +281,7 @@ impl Stream {
     pub fn connect(socket_address: &net::SocketAddr) -> Result<Option<Self>> {
         Ok(match TcpStream::connect(socket_address) {
             Ok(stream) => Some(Self::from(stream)),
+            Err(ref e) if e.kind() == io::ErrorKind::NotConnected => None,
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
             Err(e) => Err(e)?,
         })
@@ -301,12 +300,10 @@ impl Stream {
         }
     }
 
-    pub fn write<M>(&mut self, message: &M) -> Result<()>
+    pub fn write<M>(&mut self, message: &M)
     where
         M: Encodable, {
-        let bytes = message.rlp_bytes();
-        self.try_stream.write_bytes(bytes.to_vec())?;
-        Ok(())
+        self.try_stream.write_bytes(message.rlp_bytes().to_vec());
     }
 
     pub fn flush(&mut self) -> Result<()> {

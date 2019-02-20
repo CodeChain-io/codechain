@@ -17,8 +17,6 @@
 use ccrypto::aes::{self, SymmetricCipherError};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::ProtocolId;
-use super::Version;
 use crate::session::Session;
 
 use super::ENCRYPTED_ID;
@@ -26,123 +24,121 @@ use super::UNENCRYPTED_ID;
 
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct Message {
-    version: Version,
-    extension_name: String,
-    extension_version: Version,
-    data: Data,
-}
-
-#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-enum Data {
-    Encrypted(Vec<u8>),
-    Unencrypted(Vec<u8>),
+pub enum Message {
+    Encrypted {
+        extension_name: String,
+        encrypted: Vec<u8>,
+    },
+    Unencrypted {
+        extension_name: String,
+        data: Vec<u8>,
+    },
 }
 
 impl Message {
-    #[allow(dead_code)]
-    pub fn encrypted(extension_name: String, extension_version: Version, data: &[u8]) -> Self {
-        Self {
-            version: 0,
+    pub fn encrypted(extension_name: String, encrypted: Vec<u8>) -> Self {
+        Message::Encrypted {
             extension_name,
-            extension_version,
-            data: Data::Encrypted(data.to_vec()),
+            encrypted,
         }
     }
 
     pub fn encrypted_from_unencrypted_data(
         extension_name: String,
-        extension_version: Version,
         unencrypted_data: &[u8],
         session: &Session,
     ) -> Result<Self, SymmetricCipherError> {
-        let data = Data::Encrypted(aes::encrypt(unencrypted_data, session.secret(), &session.nonce())?);
-        Ok(Self {
-            version: 0,
-            extension_name,
-            extension_version,
-            data,
-        })
+        let encrypted = aes::encrypt(unencrypted_data, session.secret(), &session.nonce())?;
+        Ok(Self::encrypted(extension_name, encrypted))
     }
-    pub fn unencrypted(extension_name: String, extension_version: Version, data: Vec<u8>) -> Self {
-        Self {
-            version: 0,
+
+    pub fn unencrypted(extension_name: String, data: Vec<u8>) -> Self {
+        Message::Unencrypted {
             extension_name,
-            extension_version,
-            data: Data::Unencrypted(data),
+            data,
         }
     }
 
-    pub fn data(&self) -> &[u8] {
-        match self.data {
-            Data::Encrypted(ref data) => &data,
-            Data::Unencrypted(ref data) => &data,
+    #[cfg(test)]
+    fn data(&self) -> &[u8] {
+        match self {
+            Message::Encrypted {
+                encrypted,
+                ..
+            } => &encrypted,
+            Message::Unencrypted {
+                data,
+                ..
+            } => &data,
         }
     }
 
     pub fn unencrypted_data(&self, session: &Session) -> Result<Vec<u8>, SymmetricCipherError> {
-        match self.data {
-            Data::Encrypted(ref data) => aes::decrypt(&data, session.secret(), &session.nonce()),
-            Data::Unencrypted(ref data) => Ok(data.clone()),
+        match self {
+            Message::Encrypted {
+                encrypted,
+                ..
+            } => aes::decrypt(encrypted, session.secret(), &session.nonce()),
+            Message::Unencrypted {
+                data,
+                ..
+            } => Ok(data.clone()),
         }
     }
 
-    pub fn version(&self) -> Version {
-        self.version
-    }
-
-    pub fn protocol_id(&self) -> ProtocolId {
-        match self.data {
-            Data::Encrypted(_) => ENCRYPTED_ID,
-            Data::Unencrypted(_) => UNENCRYPTED_ID,
+    pub fn extension_name(&self) -> &str {
+        match self {
+            Message::Encrypted {
+                extension_name,
+                ..
+            } => &extension_name,
+            Message::Unencrypted {
+                extension_name,
+                ..
+            } => &extension_name,
         }
-    }
-
-    pub fn extension_name(&self) -> &String {
-        &self.extension_name
-    }
-
-    pub fn extension_version(&self) -> Version {
-        self.extension_version
     }
 }
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(5)
-            .append(&self.version())
-            .append(&self.protocol_id())
-            .append(self.extension_name())
-            .append(&self.extension_version())
-            .append(&self.data());
+        match self {
+            Message::Encrypted {
+                extension_name,
+                encrypted,
+            } => {
+                s.begin_list(3).append(&ENCRYPTED_ID).append(extension_name).append(encrypted);
+            }
+            Message::Unencrypted {
+                extension_name,
+                data,
+            } => {
+                s.begin_list(3).append(&UNENCRYPTED_ID).append(extension_name).append(data);
+            }
+        }
     }
 }
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let item_count = rlp.item_count()?;
-        if item_count != 5 {
+        if item_count != 3 {
             return Err(DecoderError::RlpInvalidLength {
                 expected: 5,
                 got: item_count,
             })
         }
-        let version: Version = rlp.val_at(0)?;
-        let protocol_id: ProtocolId = rlp.val_at(1)?;
-        let extension_name: String = rlp.val_at(2)?;
-        let extension_version: Version = rlp.val_at(3)?;
-        let data: Vec<u8> = rlp.val_at(4)?;
-        let data = match protocol_id {
-            ENCRYPTED_ID => Data::Encrypted(data),
-            UNENCRYPTED_ID => Data::Unencrypted(data),
-            _ => return Err(DecoderError::Custom("invalid protocol id")),
-        };
-        Ok(Self {
-            version,
-            extension_name,
-            extension_version,
-            data,
-        })
+        match rlp.val_at(0)? {
+            ENCRYPTED_ID => Ok(Message::Encrypted {
+                extension_name: rlp.val_at(1)?,
+                encrypted: rlp.val_at(2)?,
+            }),
+            UNENCRYPTED_ID => Ok(Message::Unencrypted {
+                extension_name: rlp.val_at(1)?,
+                data: rlp.val_at(2)?,
+            }),
+            _ => Err(DecoderError::Custom("Invalid id in extension message")),
+        }
     }
 }
 
@@ -151,24 +147,14 @@ mod tests {
     use ckey::Secret;
     use rand::rngs::OsRng;
     use rand::Rng;
+    use rlp::rlp_encode_and_decode_test;
 
     use super::super::super::message::Nonce;
     use super::*;
 
     #[test]
-    fn encrypted_id_is_5() {
-        assert_eq!(5, super::ENCRYPTED_ID)
-    }
-
-    #[test]
-    fn unencrypted_id_is_6() {
-        assert_eq!(6, super::UNENCRYPTED_ID)
-    }
-
-    #[test]
     fn encrypted_with_unencrypted_data_function_internally_encrypts() {
         let extension_name = "encrypt".to_string();
-        let extension_version = 3;
         let unencrypted_data = b"this data must be encrypted";
         let shared_secret = Secret::random();
 
@@ -176,10 +162,18 @@ mod tests {
         let nonce: Nonce = rng.gen();
 
         let session = Session::new(shared_secret, nonce);
-        let encrypted =
-            Message::encrypted_from_unencrypted_data(extension_name, extension_version, unencrypted_data, &session)
-                .unwrap();
+        let encrypted = Message::encrypted_from_unencrypted_data(extension_name, unencrypted_data, &session).unwrap();
         assert_ne!(unencrypted_data, encrypted.data());
         assert_eq!(unencrypted_data, encrypted.unencrypted_data(&session).unwrap().as_slice());
+    }
+
+    #[test]
+    fn encode_and_decode_encrypted() {
+        rlp_encode_and_decode_test!(Message::encrypted("a".to_string(), vec![1, 2, 3, 4]));
+    }
+
+    #[test]
+    fn encode_and_decode_unencrypted() {
+        rlp_encode_and_decode_test!(Message::unencrypted("a".to_string(), vec![1, 2, 3, 4]));
     }
 }

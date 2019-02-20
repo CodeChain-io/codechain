@@ -15,14 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod connection;
-mod connections;
 mod handler;
 mod listener;
 mod message;
 mod stream;
 
-pub use self::handler::{Handler, IgnoreConnectionLimit, Message};
-use self::message::ExtensionMessage;
-use self::message::NegotiationBody;
-use self::message::NegotiationMessage;
-use self::message::SignedMessage;
+pub use self::handler::{Handler, Message};
+use self::message::{ExtensionMessage, Message as NetworkMessage, NegotiationMessage, SignedMessage};
