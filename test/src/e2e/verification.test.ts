@@ -129,7 +129,8 @@ describe("solo - 1 node", function() {
             { actionType: 2, actionLength: 4 },
             { actionType: 3, actionLength: 1 }, // SetRegularKey
             { actionType: 3, actionLength: 3 },
-            { actionType: 4, actionLength: 2 }, // CreateShard
+            { actionType: 4, actionLength: 1 }, // CreateShard
+            { actionType: 4, actionLength: 3 },
             { actionType: 5, actionLength: 2 }, // SetShardOwners
             { actionType: 5, actionLength: 4 },
             { actionType: 6, actionLength: 2 }, // SetShardUsers

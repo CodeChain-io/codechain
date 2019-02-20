@@ -116,6 +116,10 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - type: "setRegularKey"
  - key: `H512`
 
+### CreateShard Action
+ - type: "createShard"
+ - users: `PlatformAddress[]`
+
 ### SetShardOwners Action
 
  - type: "setShardOwners"

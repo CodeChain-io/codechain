@@ -903,6 +903,20 @@ codechain-primitives@^0.4.6:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#shard-lib":
+  version "0.5.1"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#9e89f1823bbb08732715cc1ac89e4eae96ac4005"
+  dependencies:
+    buffer "5.1.0"
+    codechain-keystore "^0.6.0"
+    codechain-primitives "^0.4.6"
+    jayson "^2.0.6"
+    lodash "^4.17.10"
+    node-fetch "^2.1.2"
+    request "^2.88.0"
+    request-promise "^4.2.2"
+    rlp "^2.0.0"
+
 "codechain-test-helper@https://github.com/sgkim126/codechain-test-helper-js.git#net-lib":
   version "1.0.0"
   resolved "https://github.com/sgkim126/codechain-test-helper-js.git#2f338e26d6baa0f0a06c0d7c04c8e143ed2432c5"

@@ -111,7 +111,9 @@ pub enum Action {
     SetRegularKey {
         key: Public,
     },
-    CreateShard,
+    CreateShard {
+        users: Vec<Address>,
+    },
     SetShardOwners {
         shard_id: ShardId,
         owners: Vec<Address>,
@@ -643,9 +645,12 @@ impl Encodable for Action {
                 s.append(&SET_REGULAR_KEY);
                 s.append(key);
             }
-            Action::CreateShard => {
-                s.begin_list(1);
+            Action::CreateShard {
+                users,
+            } => {
+                s.begin_list(2);
                 s.append(&CREATE_SHARD);
+                s.append_list(users);
             }
             Action::SetShardOwners {
                 shard_id,
@@ -876,13 +881,15 @@ impl Decodable for Action {
             }
             CREATE_SHARD => {
                 let item_count = rlp.item_count()?;
-                if item_count != 1 {
+                if item_count != 2 {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
-                        expected: 1,
+                        expected: 2,
                     })
                 }
-                Ok(Action::CreateShard)
+                Ok(Action::CreateShard {
+                    users: rlp.list_at(1)?,
+                })
             }
             SET_SHARD_OWNERS => {
                 let item_count = rlp.item_count()?;
