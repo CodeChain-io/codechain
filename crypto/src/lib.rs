@@ -26,6 +26,7 @@ pub mod aes;
 mod blake;
 pub mod error;
 mod hash;
+mod password;
 pub mod pbkdf2;
 pub mod scrypt;
 
@@ -38,10 +39,11 @@ pub const KEY_ITERATIONS: usize = 10240;
 pub const KEY_LENGTH_AES: usize = KEY_LENGTH / 2;
 
 pub use crate::blake::*;
-
 pub use crate::hash::{keccak256, ripemd160, sha1, sha256};
+pub use crate::password::Password;
 
-pub fn derive_key_iterations(password: &str, salt: &[u8; 32], c: NonZeroU32) -> (Vec<u8>, Vec<u8>) {
+// Do not move Password. It will make debugger print the password.
+pub fn derive_key_iterations(password: &Password, salt: &[u8; 32], c: NonZeroU32) -> (Vec<u8>, Vec<u8>) {
     let mut derived_key = [0u8; KEY_LENGTH];
     pbkdf2::sha256(c, &pbkdf2::Salt(salt), &pbkdf2::Secret(password.as_bytes()), &mut derived_key);
     let derived_right_bits = &derived_key[0..KEY_LENGTH_AES];

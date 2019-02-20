@@ -83,7 +83,7 @@ impl Crypto {
             // two parts of derived key
             // DK = [ DK[0..15] DK[16..31] ] = [derived_left_bits, derived_right_bits]
             let (derived_left_bits, derived_right_bits) =
-                ccrypto::derive_key_iterations(password.as_str(), &salt, non_zero_iterations);
+                ccrypto::derive_key_iterations(&password.as_crypto_password(), &salt, non_zero_iterations);
 
             // preallocated (on-stack in case of `Secret`) buffer to hold cipher
             // length = length(plain) as we are using CTR-approach
@@ -136,12 +136,13 @@ impl Crypto {
 
     fn do_decrypt(&self, password: &Password, expected_len: usize) -> Result<Vec<u8>, Error> {
         let (derived_left_bits, derived_right_bits) = match self.kdf {
-            Kdf::Pbkdf2(ref params) => NonZeroU32::new(params.c)
-                .map_or(Err(ccrypto::Error::ZeroIterations), |non_zero_c| {
-                    Ok(ccrypto::derive_key_iterations(password.as_str(), &params.salt, non_zero_c))
-                })?,
+            Kdf::Pbkdf2(ref params) => {
+                NonZeroU32::new(params.c).map_or(Err(ccrypto::Error::ZeroIterations), |non_zero_c| {
+                    Ok(ccrypto::derive_key_iterations(&password.as_crypto_password(), &params.salt, non_zero_c))
+                })?
+            }
             Kdf::Scrypt(ref params) => {
-                ccrypto::scrypt::derive_key(password.as_str(), &params.salt, params.n, params.p, params.r)?
+                ccrypto::scrypt::derive_key(&password.as_crypto_password(), &params.salt, params.n, params.p, params.r)?
             }
         };
 

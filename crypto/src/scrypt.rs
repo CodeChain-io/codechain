@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::error::ScryptError;
-use crate::{KEY_LENGTH, KEY_LENGTH_AES};
 use rcrypto::scrypt::{scrypt, ScryptParams};
 
-pub fn derive_key(pass: &str, salt: &[u8; 32], n: u32, p: u32, r: u32) -> Result<(Vec<u8>, Vec<u8>), ScryptError> {
+use crate::error::ScryptError;
+use crate::{Password, KEY_LENGTH, KEY_LENGTH_AES};
+
+// Do not move Password. It will make debugger print the password.
+pub fn derive_key(pass: &Password, salt: &[u8; 32], n: u32, p: u32, r: u32) -> Result<(Vec<u8>, Vec<u8>), ScryptError> {
     // sanity checks
     let log_n = (32 - n.leading_zeros() - 1) as u8;
     if u32::from(log_n) >= r * 16 {

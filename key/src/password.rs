@@ -17,6 +17,7 @@
 use std::str::FromStr;
 use std::{fmt, ptr};
 
+use crypto::Password as CryptoPassword;
 use never::Never;
 
 #[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,12 +30,8 @@ impl fmt::Debug for Password {
 }
 
 impl Password {
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
+    pub fn as_crypto_password(&self) -> CryptoPassword {
+        CryptoPassword(self.0.as_str())
     }
 }
 
