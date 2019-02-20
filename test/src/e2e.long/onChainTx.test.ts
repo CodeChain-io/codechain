@@ -63,10 +63,8 @@ describe("Test onChain transaction communication", function() {
         }
     ];
 
-    const BASE = 400;
-
     beforeEach(async function() {
-        nodeA = new CodeChain({ base: BASE });
+        nodeA = new CodeChain();
         await nodeA.start();
     });
 

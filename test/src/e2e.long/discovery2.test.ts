@@ -18,13 +18,12 @@ import "mocha";
 import CodeChain from "../helper/spawn";
 
 describe("discovery2 nodes", function() {
-    const BASE = 150;
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 
     beforeEach(async function() {
-        nodeA = new CodeChain({ base: BASE });
-        nodeB = new CodeChain({ base: BASE });
+        nodeA = new CodeChain();
+        nodeB = new CodeChain();
         await Promise.all([nodeA.start(), nodeB.start()]);
     });
 

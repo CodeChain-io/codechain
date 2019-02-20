@@ -45,9 +45,8 @@ import CodeChain from "../helper/spawn";
 
 describe("transactions", function() {
     let node: CodeChain;
-    const BASE = 700;
     before(async function() {
-        node = new CodeChain({ base: BASE });
+        node = new CodeChain();
         await node.start();
     });
 

@@ -23,14 +23,13 @@ const describeSkippedInTravis =
     process.env.TRAVIS_OS_NAME === "osx" ? describe.skip : describe;
 
 describeSkippedInTravis("sync 2 nodes", function() {
-    const BASE = 600;
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 
     describe("2 nodes", function() {
         beforeEach(async function() {
-            nodeA = new CodeChain({ base: BASE });
-            nodeB = new CodeChain({ base: BASE });
+            nodeA = new CodeChain();
+            nodeB = new CodeChain();
 
             await Promise.all([nodeA.start(), nodeB.start()]);
         });
@@ -315,8 +314,8 @@ describeSkippedInTravis("sync 2 nodes", function() {
         const testSize: number = 5;
 
         beforeEach(async function() {
-            nodeA = new CodeChain({ base: BASE });
-            nodeB = new CodeChain({ base: BASE });
+            nodeA = new CodeChain();
+            nodeB = new CodeChain();
 
             await Promise.all([
                 nodeA.start(["--no-tx-relay"]),

@@ -38,7 +38,6 @@ const RLP = require("rlp");
 
 describeSkippedInTravis("Tendermint ", function() {
     const promiseExpect = new PromiseExpect();
-    const BASE = 800;
     let nodes: CodeChain[];
 
     beforeEach(async function() {
@@ -61,7 +60,6 @@ describeSkippedInTravis("Tendermint ", function() {
                     "--force-sealing",
                     "--no-discovery"
                 ],
-                base: BASE,
                 additionalKeysPath: "tendermint/keys"
             });
         });
@@ -357,7 +355,6 @@ describeSkippedInTravis("Tendermint ", function() {
                     "test/tendermint/password.json",
                     "--no-discovery"
                 ],
-                base: BASE,
                 additionalKeysPath: "tendermint/keys"
             });
         }

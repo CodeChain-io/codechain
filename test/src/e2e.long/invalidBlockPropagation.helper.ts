@@ -23,10 +23,9 @@ import "mocha";
 import Test = Mocha.Test;
 import CodeChain from "../helper/spawn";
 
-async function setup(base: number): Promise<[Header, Block, Header]> {
+async function setup(): Promise<[Header, Block, Header]> {
     const temporaryNode = new CodeChain({
-        argv: ["--force-sealing"],
-        base
+        argv: ["--force-sealing"]
     });
     await temporaryNode.start();
 
@@ -88,8 +87,8 @@ async function setup(base: number): Promise<[Header, Block, Header]> {
     return [header0, block1, header2];
 }
 
-async function setupEach(base: number): Promise<[CodeChain, TestHelper]> {
-    const node = new CodeChain({ base });
+async function setupEach(): Promise<[CodeChain, TestHelper]> {
+    const node = new CodeChain();
     await node.start();
     const TH = new TestHelper("0.0.0.0", node.port, "tc");
     await TH.establish();
@@ -211,18 +210,16 @@ export function createTestSuite(
         let block1: Block;
         let header2: Header;
 
-        const BASE = 300 + testNumber * 5;
-
         // tslint:disable only-arrow-functions
         before(async function() {
             // tslint:enable only-arrow-functions
-            [header0, block1, header2] = await setup(BASE);
+            [header0, block1, header2] = await setup();
         });
 
         // tslint:disable only-arrow-functions
         beforeEach(async function() {
             // tslint:enable only-arrow-functions
-            [node, TH] = await setupEach(BASE);
+            [node, TH] = await setupEach();
         });
 
         afterEach(async function() {
