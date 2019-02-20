@@ -22,7 +22,6 @@ const describeSkippedInTravis =
     process.env.TRAVIS_OS_NAME === "osx" ? describe.skip : describe;
 
 describeSkippedInTravis("sync 5 nodes", function() {
-    const BASE = 900;
     const NUM_NODES = 5;
     let nodes: CodeChain[];
 
@@ -32,8 +31,7 @@ describeSkippedInTravis("sync 5 nodes", function() {
         nodes = [];
         for (let i = 0; i < NUM_NODES; i++) {
             const node = new CodeChain({
-                argv: ["--no-discovery"],
-                base: BASE
+                argv: ["--no-discovery"]
             });
             nodes.push(node);
         }

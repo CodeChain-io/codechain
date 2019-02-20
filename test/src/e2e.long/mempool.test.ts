@@ -20,16 +20,13 @@ import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 import { SignedTransaction } from "codechain-sdk/lib/core/classes";
 
-const BASE = 200;
-
 describe("Memory pool size test", function() {
     let nodeA: CodeChain;
     const sizeLimit: number = 4;
 
     beforeEach(async function() {
         nodeA = new CodeChain({
-            argv: ["--mem-pool-size", sizeLimit.toString()],
-            base: BASE
+            argv: ["--mem-pool-size", sizeLimit.toString()]
         });
         await nodeA.start();
         await nodeA.sdk.rpc.devel.stopSealing();
@@ -55,8 +52,7 @@ describe("Memory pool size test", function() {
                     sizeLimit.toString(),
                     "--bootstrap-addresses",
                     `127.0.0.1:${nodeA.port}`
-                ],
-                base: BASE
+                ]
             });
             await nodeB.start();
             await nodeB.sdk.rpc.devel.stopSealing();
@@ -161,8 +157,7 @@ describe("Memory pool memory limit test", function() {
     beforeEach(async function() {
         nodeA = new CodeChain({
             chain: `${__dirname}/../scheme/mempool.json`,
-            argv: ["--mem-pool-mem-limit", memoryLimit.toString()],
-            base: BASE
+            argv: ["--mem-pool-mem-limit", memoryLimit.toString()]
         });
         await nodeA.start();
         await nodeA.sdk.rpc.devel.stopSealing();
@@ -183,8 +178,7 @@ describe("Memory pool memory limit test", function() {
             this.timeout(60_000);
             nodeB = new CodeChain({
                 chain: `${__dirname}/../scheme/mempool.json`,
-                argv: ["--mem-pool-mem-limit", memoryLimit.toString()],
-                base: BASE
+                argv: ["--mem-pool-mem-limit", memoryLimit.toString()]
             });
             await nodeB.start();
             await nodeB.sdk.rpc.devel.stopSealing();

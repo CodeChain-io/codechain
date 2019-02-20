@@ -22,12 +22,11 @@ import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
 import CodeChain from "../helper/spawn";
 
 describe("account unlock", function() {
-    const BASE = 50;
     let node: CodeChain;
     const unlockTestSize = 15;
 
     beforeEach(async function() {
-        node = new CodeChain({ base: BASE });
+        node = new CodeChain();
         await node.start();
     });
 

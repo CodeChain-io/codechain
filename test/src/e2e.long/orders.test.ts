@@ -32,11 +32,10 @@ import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
 
 describe("orders", function() {
-    const BASE = 750;
     let node: CodeChain;
 
     before(async function() {
-        node = new CodeChain({ base: BASE });
+        node = new CodeChain();
         await node.start();
     });
 

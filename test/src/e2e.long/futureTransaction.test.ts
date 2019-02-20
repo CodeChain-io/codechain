@@ -18,16 +18,12 @@ import "mocha";
 import { PromiseExpect } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
-const BASE = 1100;
-
 describe("Handle future transactions", function() {
     let nodeA: CodeChain;
     const promiseExpect = new PromiseExpect();
 
     beforeEach(async function() {
-        nodeA = new CodeChain({
-            base: BASE
-        });
+        nodeA = new CodeChain();
 
         await nodeA.start(["--no-tx-relay"]);
     });
@@ -45,9 +41,7 @@ describe("Handle future transactions", function() {
 
         beforeEach(async function() {
             this.timeout(60_000);
-            nodeB = new CodeChain({
-                base: BASE
-            });
+            nodeB = new CodeChain();
             await nodeB.start(["--no-tx-relay"]);
             await promiseExpect.shouldFulfill("connect", nodeB.connect(nodeA));
         });

@@ -27,7 +27,6 @@ import { makeRandomH256 } from "../helper/random";
 import CodeChain from "../helper/spawn";
 
 (async () => {
-    const BASE = 1000;
     let nodes: CodeChain[];
 
     const validatorAddresses = [
@@ -48,7 +47,6 @@ import CodeChain from "../helper/spawn";
                 "--no-discovery",
                 "--enable-devel-api"
             ],
-            base: BASE,
             additionalKeysPath: "tendermint/keys"
         });
     });
