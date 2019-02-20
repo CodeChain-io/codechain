@@ -296,6 +296,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getRegularKeyOwner](#chain_getregularkeyowner)
  * [chain_getGenesisAccounts](#chain_getgenesisaccounts)
  * [chain_getNumberOfShards](#chain_getnumberofshards)
+ * [chain_getShardIdByHash](#chain_getshardidbyhash)
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getPendingTransactions](#chain_getpendingtransactions)
  * [chain_getPendingTransactionsCount](#chain_getpendingtransactionscount)
