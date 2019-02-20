@@ -17,9 +17,7 @@
 import "mocha";
 import CodeChain from "../helper/spawn";
 
-const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
-
-describeSkippedInTravis("discovery2 nodes", function() {
+describe("discovery2 nodes", function() {
     const BASE = 150;
     let nodeA: CodeChain;
     let nodeB: CodeChain;

@@ -50,13 +50,16 @@ describe("Memory pool size test", function() {
 
         beforeEach(async function() {
             nodeB = new CodeChain({
-                argv: ["--mem-pool-size", sizeLimit.toString()],
+                argv: [
+                    "--mem-pool-size",
+                    sizeLimit.toString(),
+                    "--bootstrap-addresses",
+                    `127.0.0.1:${nodeA.port}`
+                ],
                 base: BASE
             });
             await nodeB.start();
             await nodeB.sdk.rpc.devel.stopSealing();
-
-            await nodeA.connect(nodeB);
         });
 
         it("More than limit", async function() {
@@ -67,19 +70,16 @@ describe("Memory pool size test", function() {
                 });
             }
 
-            let counter = 0;
             while (
                 (await nodeB.sdk.rpc.chain.getPendingTransactions()).length <
                 sizeLimit
             ) {
                 await wait(500);
-                counter += 1;
             }
-            await wait(500 * (counter + 1));
 
             const pendingTransactions = await nodeB.sdk.rpc.chain.getPendingTransactions();
             expect(pendingTransactions.length).to.equal(sizeLimit);
-        }).timeout(20_000);
+        }).timeout(60_000);
 
         it("Rejected by limit and reaccepted", async function() {
             const sent = [];
@@ -140,12 +140,12 @@ describe("Memory pool size test", function() {
                         )
                     ).to.true
             );
-        }).timeout(20_000);
+        }).timeout(60_000);
 
         afterEach(async function() {
             await nodeB.clean();
         });
-    });
+    }).timeout(60_000);
 
     afterEach(async function() {
         await nodeA.clean();
@@ -180,6 +180,7 @@ describe("Memory pool memory limit test", function() {
         let nodeB: CodeChain;
 
         beforeEach(async function() {
+            this.timeout(60_000);
             nodeB = new CodeChain({
                 chain: `${__dirname}/../scheme/mempool.json`,
                 argv: ["--mem-pool-mem-limit", memoryLimit.toString()],
@@ -220,7 +221,7 @@ describe("Memory pool memory limit test", function() {
             expect(await nodeB.sdk.rpc.chain.getBestBlockNumber()).to.equal(
                 bBlockNumber
             );
-        }).timeout(50_000);
+        }).timeout(60_000);
 
         afterEach(async function() {
             await nodeB.clean();

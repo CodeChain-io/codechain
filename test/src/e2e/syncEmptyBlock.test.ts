@@ -26,6 +26,7 @@ describe("syncEmptyBlock", function() {
         let nodeB: CodeChain;
 
         beforeEach(async function() {
+            this.timeout(60_000);
             nodeA = new CodeChain({ argv: ["--force-sealing"] });
             nodeB = new CodeChain({ argv: ["--force-sealing"] });
             await Promise.all([nodeA.start(), nodeB.start()]);
@@ -40,7 +41,7 @@ describe("syncEmptyBlock", function() {
             expect(await nodeA.getBestBlockHash()).to.deep.equal(
                 await nodeB.getBestBlockHash()
             );
-        });
+        }).timeout(30_000);
 
         it("nodeA creates 3 empty blocks", async function() {
             await Promise.all([
@@ -55,7 +56,7 @@ describe("syncEmptyBlock", function() {
             expect(await nodeA.getBestBlockHash()).to.deep.equal(
                 await nodeB.getBestBlockHash()
             );
-        });
+        }).timeout(30_000);
 
         afterEach(async function() {
             if (this.currentTest!.state === "failed") {
