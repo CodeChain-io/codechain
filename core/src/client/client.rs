@@ -749,6 +749,16 @@ impl Shard for Client {
         let state = self.state_info(state)?;
         state.shard_root(shard_id).ok()?
     }
+
+    fn shard_owners(&self, shard_id: u16, state: StateOrBlock) -> Option<Vec<Address>> {
+        let state = self.state_info(state)?;
+        state.shard_owners(shard_id).ok()?
+    }
+
+    fn shard_users(&self, shard_id: u16, state: StateOrBlock) -> Option<Vec<Address>> {
+        let state = self.state_info(state)?;
+        state.shard_users(shard_id).ok()?
+    }
 }
 
 impl ReopenBlock for Client {
