@@ -108,7 +108,9 @@ pub enum Action {
     SetRegularKey {
         key: Public,
     },
-    CreateShard,
+    CreateShard {
+        users: Vec<PlatformAddress>,
+    },
     #[serde(rename_all = "camelCase")]
     SetShardOwners {
         shard_id: ShardId,
@@ -239,7 +241,9 @@ pub enum ActionWithTracker {
     SetRegularKey {
         key: Public,
     },
-    CreateShard,
+    CreateShard {
+        users: Vec<PlatformAddress>,
+    },
     #[serde(rename_all = "camelCase")]
     SetShardOwners {
         shard_id: ShardId,
@@ -407,7 +411,14 @@ impl ActionWithTracker {
             } => ActionWithTracker::SetRegularKey {
                 key,
             },
-            ActionType::CreateShard => ActionWithTracker::CreateShard,
+            ActionType::CreateShard {
+                users,
+            } => {
+                let users = users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect();
+                ActionWithTracker::CreateShard {
+                    users,
+                }
+            }
             ActionType::SetShardOwners {
                 shard_id,
                 owners,
@@ -637,7 +648,14 @@ impl From<Action> for Result<ActionType, ConversionError> {
             } => ActionType::SetRegularKey {
                 key,
             },
-            Action::CreateShard => ActionType::CreateShard,
+            Action::CreateShard {
+                users,
+            } => {
+                let users = users.into_iter().map(PlatformAddress::try_into_address).collect::<Result<_, _>>()?;
+                ActionType::CreateShard {
+                    users,
+                }
+            }
             Action::SetShardOwners {
                 shard_id,
                 owners,

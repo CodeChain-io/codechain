@@ -276,7 +276,9 @@ mod tests {
             unsigned: Transaction {
                 seq: 0,
                 fee: 10,
-                action: Action::CreateShard,
+                action: Action::CreateShard {
+                    users: vec![Address::random(), Address::random()]
+                },
                 network_id: "tc".into(),
             },
             sig: Signature::default(),
@@ -327,7 +329,9 @@ mod tests {
                 seq: 30,
                 fee: 40,
                 network_id: "tc".into(),
-                action: Action::CreateShard,
+                action: Action::CreateShard {
+                    users: vec![]
+                },
             },
             sig: Signature::default(),
             hash: H256::default(),

@@ -235,7 +235,9 @@ impl CodeChainMachine {
             Action::SetRegularKey {
                 ..
             } => self.params.min_set_regular_key_tranasction_cost,
-            Action::CreateShard => self.params.min_create_shard_transaction_cost,
+            Action::CreateShard {
+                ..
+            } => self.params.min_create_shard_transaction_cost,
             Action::SetShardOwners {
                 ..
             } => self.params.min_set_shard_owners_transaction_cost,

@@ -164,7 +164,7 @@ pub trait TopState {
     /// Set the regular key of account `owner_public`
     fn set_regular_key(&mut self, owner_public: &Public, key: &Public) -> StateResult<()>;
 
-    fn create_shard(&mut self, fee_payer: &Address, tx_hash: H256) -> StateResult<()>;
+    fn create_shard(&mut self, fee_payer: &Address, tx_hash: H256, users: Vec<Address>) -> StateResult<()>;
     fn change_shard_owners(&mut self, shard_id: ShardId, owners: &[Address], sender: &Address) -> StateResult<()>;
     fn change_shard_users(&mut self, shard_id: ShardId, users: &[Address], sender: &Address) -> StateResult<()>;
 
