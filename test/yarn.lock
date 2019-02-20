@@ -891,18 +891,21 @@ codechain-primitives@^0.4.5:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-"codechain-sdk@https://github.com/foriequal0/codechain-sdk-js.git#build/mandatory-supply":
-  version "0.5.1"
-  resolved "https://github.com/foriequal0/codechain-sdk-js.git#e4a61b4dc69733c3b0efe9baff378fffa9e3fe3f"
+codechain-primitives@^0.4.6:
+  version "0.4.7"
+  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.7.tgz#4263b1dc550f793b1c1347c4a2d7236bb7327920"
+  integrity sha512-au4G3YfFsDdUl+35qBBwWOee9QvwV77mImOz8devKPzPu0+ssSeNortrPlY5VpqUkFNBUQsOpTtDe2IGdSeH6A==
   dependencies:
-    buffer "5.1.0"
-    codechain-keystore "^0.6.0"
-    codechain-primitives "^0.4.4"
-    jayson "^2.0.6"
-    lodash "^4.17.10"
-    node-fetch "^2.1.2"
-    request-promise "^4.2.2"
-    rlp "^2.0.0"
+    bignumber.js "^7.2.1"
+    blakejs "^1.1.0"
+    bn.js "^4.11.8"
+    buffer "^5.2.1"
+    elliptic "^6.4.1"
+    hmac-drbg "^1.0.1"
+    lodash "^4.17.11"
+    node-forge "^0.7.6"
+    ripemd160 "^2.0.2"
+    rlp "^2.1.0"
 
 "codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#refac-lib":
   version "0.5.1"
@@ -914,6 +917,20 @@ codechain-primitives@^0.4.5:
     jayson "^2.0.6"
     lodash "^4.17.10"
     node-fetch "^2.1.2"
+    request-promise "^4.2.2"
+    rlp "^2.0.0"
+
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#rpc-lib":
+  version "0.5.1"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#292c2f61da908d60c74d2290ff750e65aa392c1d"
+  dependencies:
+    buffer "5.1.0"
+    codechain-keystore "^0.6.0"
+    codechain-primitives "^0.4.6"
+    jayson "^2.0.6"
+    lodash "^4.17.10"
+    node-fetch "^2.1.2"
+    request "^2.88.0"
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
