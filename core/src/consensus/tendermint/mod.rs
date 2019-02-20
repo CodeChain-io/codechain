@@ -2045,7 +2045,7 @@ mod tests {
     }
 
     #[test]
-    fn seal_signatures_checking() {
+    fn parent_block_existence_checking() {
         let (spec, tap, _c) = setup();
         let engine = spec.engine;
 
@@ -2056,13 +2056,47 @@ mod tests {
         header.set_parent_hash(Default::default());
 
         let vote_info = message_info_rlp(VoteStep::new(3, 0, Step::Precommit), Some(*header.parent_hash()));
-        let signature0 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let signature2 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
             cur_view: 0,
-            precommits: vec![signature0],
-            precommit_bitset: BitSet::new_with_indices(&[0]),
+            precommits: vec![signature2],
+            precommit_bitset: BitSet::new_with_indices(&[2]),
+        }
+        .seal_fields()
+        .unwrap();
+        header.set_seal(seal);
+
+        assert!(engine.verify_block_external(&header).is_err());
+    }
+
+    #[test]
+    fn seal_signatures_checking() {
+        let (spec, tap, c) = setup();
+        let engine = spec.engine;
+
+        let validator0 = insert_and_unlock(&tap, "0");
+        let validator1 = insert_and_unlock(&tap, "1");
+        let validator2 = insert_and_unlock(&tap, "2");
+        let validator3 = insert_and_unlock(&tap, "3");
+
+        c.add_block_with_author(Some(validator1), 1, 1);
+
+        let mut header = Header::default();
+        header.set_number(2);
+        let proposer = validator2;
+        header.set_author(proposer);
+        header.set_parent_hash(Default::default());
+
+        let vote_info = message_info_rlp(VoteStep::new(1, 0, Step::Precommit), Some(*header.parent_hash()));
+        let signature2 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+
+        let seal = Seal::Tendermint {
+            prev_view: 0,
+            cur_view: 0,
+            precommits: vec![signature2],
+            precommit_bitset: BitSet::new_with_indices(&[2]),
         }
         .seal_fields()
         .unwrap();
@@ -2074,16 +2108,16 @@ mod tests {
             _ => panic!(),
         }
 
-        let voter = insert_and_unlock(&tap, "1");
-        let signature1 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
-        let voter = insert_and_unlock(&tap, "2");
-        let signature2 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let voter = validator3;
+        let signature3 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let voter = validator0;
+        let signature0 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
             cur_view: 0,
-            precommits: vec![signature0, signature1, signature2],
-            precommit_bitset: BitSet::new_with_indices(&[0, 1, 2]),
+            precommits: vec![signature0, signature2, signature3],
+            precommit_bitset: BitSet::new_with_indices(&[0, 2, 3]),
         }
         .seal_fields()
         .unwrap();
@@ -2097,8 +2131,8 @@ mod tests {
         let seal = Seal::Tendermint {
             prev_view: 0,
             cur_view: 0,
-            precommits: vec![signature0, signature1, bad_signature],
-            precommit_bitset: BitSet::new_with_indices(&[0, 1, 2]),
+            precommits: vec![signature0, signature2, bad_signature],
+            precommit_bitset: BitSet::new_with_indices(&[0, 2, 3]),
         }
         .seal_fields()
         .unwrap();
