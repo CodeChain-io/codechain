@@ -17,15 +17,17 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
 
+use cidr::{Cidr, IpCidr};
+
 #[derive(Default)]
 pub struct Filter {
     enabled: bool,
-    list: HashMap<IpAddr, String>,
+    list: HashMap<IpCidr, String>,
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct FilterEntry {
-    pub addr: IpAddr,
+    pub cidr: IpCidr,
     pub tag: String,
 }
 
@@ -33,11 +35,11 @@ impl Filter {
     pub fn new(input_vector: Vec<FilterEntry>) -> Self {
         Self {
             enabled: !input_vector.is_empty(),
-            list: input_vector.into_iter().map(|x| (x.addr, x.tag)).collect(),
+            list: input_vector.into_iter().map(|x| (x.cidr, x.tag)).collect(),
         }
     }
 
-    pub fn add(&mut self, addr: IpAddr, tag: Option<String>) {
+    pub fn add(&mut self, addr: IpCidr, tag: Option<String>) {
         match tag {
             Some(tag) => {
                 self.list.insert(addr, tag);
@@ -48,7 +50,7 @@ impl Filter {
         };
     }
 
-    pub fn remove(&mut self, addr: &IpAddr) {
+    pub fn remove(&mut self, addr: &IpCidr) {
         self.list.remove(&addr);
     }
 
@@ -65,7 +67,7 @@ impl Filter {
             .list
             .iter()
             .map(|(a, b)| FilterEntry {
-                addr: *a,
+                cidr: a.clone(),
                 tag: b.clone(),
             })
             .collect();
@@ -84,23 +86,15 @@ impl Filter {
     }
 }
 
-fn is_filtered(target: &IpAddr, filter: &IpAddr) -> bool {
-    match (target, filter) {
-        (IpAddr::V4(target), IpAddr::V4(filter)) => {
-            debug_assert!(!target.is_unspecified(), "{:?}", target);
-            debug_assert!(!target.is_broadcast(), "{:?}", target);
-            match (target.octets(), filter.octets()) {
-                (_, [0, 0, 0, 0]) => true,
-                ([a0, _, _, _], [f0, 0, 0, 0]) => a0 == f0,
-                ([a0, a1, _, _], [f0, f1, 0, 0]) => a0 == f0 && a1 == f1,
-                ([a0, a1, a2, _], [f0, f1, f2, 0]) => a0 == f0 && a1 == f1 && a2 == f2,
-                ([a0, a1, a2, a3], [f0, f1, f2, f3]) => a0 == f0 && a1 == f1 && a2 == f2 && a3 == f3,
-            }
-        }
-        (IpAddr::V6(_), _) => unreachable!(),
-        (_, IpAddr::V6(_)) => unreachable!(),
+pub fn is_filtered(target: &IpAddr, filter: &IpCidr) -> bool {
+    debug_assert!(!target.is_unspecified(), "{:?}", target);
+    if let IpAddr::V4(target_inner) = target {
+        debug_assert!(!target_inner.is_broadcast(), "{:?}", target);
     }
+
+    filter.contains(target)
 }
+
 
 #[cfg(test)]
 mod tests_is_filtered {
@@ -111,7 +105,7 @@ mod tests_is_filtered {
     #[test]
     fn same_ip_is_filtered() {
         let ip = IpAddr::from_str("1.2.3.4").unwrap();
-        let filter = IpAddr::from_str("1.2.3.4").unwrap();
+        let filter = IpCidr::from_str("1.2.3.4").unwrap();
         assert!(is_filtered(&ip, &filter));
     }
 
@@ -122,7 +116,7 @@ mod tests_is_filtered {
         let ip2 = IpAddr::from_str("1.2.3.4").unwrap();
         let ip3 = IpAddr::from_str("1.2.7.4").unwrap();
         let ip4 = IpAddr::from_str("1.2.8.9").unwrap();
-        let filter = IpAddr::from_str("1.2.0.0").unwrap();
+        let filter = IpCidr::from_str("1.2.0.0/16").unwrap();
         assert!(is_filtered(&ip0, &filter));
         assert!(is_filtered(&ip1, &filter));
         assert!(is_filtered(&ip2, &filter));
@@ -137,7 +131,7 @@ mod tests_is_filtered {
         let ip2 = IpAddr::from_str("7.8.3.4").unwrap();
         let ip3 = IpAddr::from_str("100.2.7.4").unwrap();
         let ip4 = IpAddr::from_str("1.21.8.9").unwrap();
-        let filter = IpAddr::from_str("1.2.0.0").unwrap();
+        let filter = IpCidr::from_str("1.2.0.0/16").unwrap().into();
         assert!(!is_filtered(&ip0, &filter));
         assert!(!is_filtered(&ip1, &filter));
         assert!(!is_filtered(&ip2, &filter));
@@ -159,7 +153,7 @@ mod tests {
         filter.enable();
         assert!(filter.is_enabled());
 
-        filter.add(IpAddr::from_str("100.2.7.4").unwrap(), None);
+        filter.add(IpCidr::from_str("100.2.7.4").unwrap(), None);
 
         assert!(filter.contains(&IpAddr::from_str("100.2.7.4").unwrap()));
         assert!(!filter.contains(&IpAddr::from_str("100.2.7.3").unwrap()));
@@ -172,12 +166,12 @@ mod tests {
         filter.enable();
         assert!(filter.is_enabled());
 
-        filter.add(IpAddr::from_str("100.2.7.4").unwrap(), None);
-        filter.add(IpAddr::from_str("100.2.7.4").unwrap(), Some("ABC".to_string()));
+        filter.add(IpCidr::from_str("100.2.7.4").unwrap(), None);
+        filter.add(IpCidr::from_str("100.2.7.4").unwrap(), Some("ABC".to_string()));
 
         assert!(filter.contains(&IpAddr::from_str("100.2.7.4").unwrap()));
 
-        filter.remove(&IpAddr::from_str("100.2.7.4").unwrap());
+        filter.remove(&IpCidr::from_str("100.2.7.4").unwrap());
         assert!(!filter.contains(&IpAddr::from_str("100.2.7.4").unwrap()));
     }
 }

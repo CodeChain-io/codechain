@@ -17,6 +17,7 @@
 use std::net::IpAddr;
 use std::sync::Arc;
 
+use cidr::IpCidr;
 use parking_lot::RwLock;
 
 use super::control::Control;
@@ -42,25 +43,25 @@ impl Filters {
 }
 
 impl Control for Filters {
-    fn add_to_whitelist(&self, addr: IpAddr, tag: Option<String>) {
+    fn add_to_whitelist(&self, addr: IpCidr, tag: Option<String>) {
         let mut whitelist = self.whitelist.write();
-        whitelist.add(addr, tag);
+        whitelist.add(addr.clone(), tag);
         cinfo!(NETFILTER, "{:?} is added to the whitelist", addr);
     }
 
-    fn remove_from_whitelist(&self, addr: &IpAddr) {
+    fn remove_from_whitelist(&self, addr: &IpCidr) {
         let mut whitelist = self.whitelist.write();
         whitelist.remove(&addr);
         cinfo!(NETFILTER, "{:?} is removed from the whitelist", addr);
     }
 
-    fn add_to_blacklist(&self, addr: IpAddr, tag: Option<String>) {
+    fn add_to_blacklist(&self, addr: IpCidr, tag: Option<String>) {
         let mut blacklist = self.blacklist.write();
-        blacklist.add(addr, tag);
+        blacklist.add(addr.clone(), tag);
         cinfo!(NETFILTER, "{:?} is added to the blacklist", addr);
     }
 
-    fn remove_from_blacklist(&self, addr: &IpAddr) {
+    fn remove_from_blacklist(&self, addr: &IpCidr) {
         let mut blacklist = self.blacklist.write();
         blacklist.remove(&addr);
         cinfo!(NETFILTER, "{:?} is removed from the blacklist", addr);

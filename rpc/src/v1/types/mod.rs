@@ -47,7 +47,7 @@ use serde::de::{self, Deserialize, Deserializer};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FilterStatus {
-    pub list: Vec<(::std::net::IpAddr, String)>,
+    pub list: Vec<(::cidr::IpCidr, String)>,
     pub enabled: bool,
 }
 

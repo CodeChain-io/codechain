@@ -26,6 +26,7 @@ extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;
 
+extern crate cidr;
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_io as cio;
 extern crate codechain_key as ckey;

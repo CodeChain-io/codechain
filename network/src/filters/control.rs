@@ -16,14 +16,16 @@
 
 use std::net::IpAddr;
 
+use cidr::IpCidr;
+
 use super::filter::FilterEntry;
 
 pub trait Control: Send + Sync {
-    fn add_to_whitelist(&self, addr: IpAddr, tag: Option<String>);
-    fn remove_from_whitelist(&self, addr: &IpAddr);
+    fn add_to_whitelist(&self, addr: IpCidr, tag: Option<String>);
+    fn remove_from_whitelist(&self, addr: &IpCidr);
 
-    fn add_to_blacklist(&self, addr: IpAddr, tag: Option<String>);
-    fn remove_from_blacklist(&self, addr: &IpAddr);
+    fn add_to_blacklist(&self, addr: IpCidr, tag: Option<String>);
+    fn remove_from_blacklist(&self, addr: &IpCidr);
 
     fn enable_whitelist(&self);
     fn disable_whitelist(&self);

@@ -17,6 +17,7 @@
 use std::net::{self, IpAddr};
 use std::sync::Arc;
 
+use cidr::IpCidr;
 use ckey::Public;
 use cnetwork::{NetworkControl, SocketAddr};
 use jsonrpc_core::Result;
@@ -78,19 +79,19 @@ impl Net for NetClient {
         Ok(peers.into_iter().map(Into::into).collect())
     }
 
-    fn add_to_whitelist(&self, addr: IpAddr, tag: Option<String>) -> Result<()> {
+    fn add_to_whitelist(&self, addr: IpCidr, tag: Option<String>) -> Result<()> {
         self.network_control.add_to_whitelist(addr, tag).map_err(|e| errors::network_control(&e))
     }
 
-    fn remove_from_whitelist(&self, addr: IpAddr) -> Result<()> {
+    fn remove_from_whitelist(&self, addr: IpCidr) -> Result<()> {
         self.network_control.remove_from_whitelist(&addr).map_err(|e| errors::network_control(&e))
     }
 
-    fn add_to_blacklist(&self, addr: IpAddr, tag: Option<String>) -> Result<()> {
+    fn add_to_blacklist(&self, addr: IpCidr, tag: Option<String>) -> Result<()> {
         self.network_control.add_to_blacklist(addr, tag).map_err(|e| errors::network_control(&e))
     }
 
-    fn remove_from_blacklist(&self, addr: IpAddr) -> Result<()> {
+    fn remove_from_blacklist(&self, addr: IpCidr) -> Result<()> {
         self.network_control.remove_from_blacklist(&addr).map_err(|e| errors::network_control(&e))
     }
 
@@ -113,7 +114,7 @@ impl Net for NetClient {
     fn get_whitelist(&self) -> Result<FilterStatus> {
         let (list, enabled) = self.network_control.get_whitelist().map_err(|e| errors::network_control(&e))?;
         Ok(FilterStatus {
-            list: list.into_iter().map(|x| (x.addr, x.tag)).collect(),
+            list: list.into_iter().map(|x| (x.cidr, x.tag)).collect(),
             enabled,
         })
     }
@@ -121,7 +122,7 @@ impl Net for NetClient {
     fn get_blacklist(&self) -> Result<FilterStatus> {
         let (list, enabled) = self.network_control.get_blacklist().map_err(|e| errors::network_control(&e))?;
         Ok(FilterStatus {
-            list: list.into_iter().map(|x| (x.addr, x.tag)).collect(),
+            list: list.into_iter().map(|x| (x.cidr, x.tag)).collect(),
             enabled,
         })
     }

@@ -45,6 +45,7 @@ extern crate rustc_serialize;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate cidr;
 extern crate serde_json;
 extern crate time;
 extern crate tokio_core;
