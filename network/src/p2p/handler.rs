@@ -202,7 +202,8 @@ impl Handler {
             let mut outgoing_connections = self.outgoing_connections.write();
             // Please make sure there is no early return after it.
             let initiator_port = self.socket_address.port();
-            let con = OutgoingConnection::new(stream, initiator_pub_key, self.network_id, initiator_port)?;
+            let con =
+                OutgoingConnection::new(stream, initiator_pub_key, self.network_id, initiator_port, socket_address)?;
             let token = outgoing_tokens.gen().ok_or("Too many outgoing connections")?;
             let t = outgoing_connections.insert(token, con);
             assert!(t.is_none());
