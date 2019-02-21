@@ -40,7 +40,9 @@ use std::sync::{Arc, Weak};
 use ckey::{Address, SchnorrSignature};
 use cnetwork::NetworkService;
 use cstate::ActionHandler;
+use ctypes::errors::SyntaxError;
 use ctypes::machine::Machine;
+use ctypes::transaction::Action;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
 
@@ -304,6 +306,10 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
         &[]
     }
+
+    fn find_action_handler_for(&self, id: u64) -> Option<&Arc<ActionHandler>> {
+        self.action_handlers().iter().find(|handler| handler.handler_id() == id)
+    }
 }
 
 /// Results of a query of whether an epoch change occurred at the given block.
@@ -433,6 +439,15 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
 
     /// Additional verification for transactions in blocks.
     fn verify_transaction_basic(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+        if let Action::Custom {
+            handler_id,
+            ..
+        } = &tx.action
+        {
+            if self.find_action_handler_for(*handler_id).is_none() {
+                return Err(SyntaxError::InvalidCustomAction.into())
+            }
+        }
         self.machine().verify_transaction_basic(tx, header)
     }
 

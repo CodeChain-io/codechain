@@ -844,6 +844,6 @@ impl ChainTimeInfo for Client {
 
 impl FindActionHandler for Client {
     fn find_action_handler_for(&self, id: u64) -> Option<&Arc<ActionHandler>> {
-        self.engine.action_handlers().iter().find(|handler| handler.handler_id() == id)
+        self.engine.find_action_handler_for(id)
     }
 }
