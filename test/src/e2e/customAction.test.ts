@@ -107,6 +107,47 @@ describe("customAction", function() {
                 expect(e).similarTo(ERROR.ACTION_DATA_HANDLER_NOT_FOUND);
             }
         });
+
+        it("should throw handler not found on sendCustomTransaction", async function() {
+            try {
+                await node.sdk.rpc.chain.sendSignedTransaction(
+                    node.sdk.core
+                        .createCustomTransaction({
+                            handlerId: 99999,
+                            bytes: RLP.encode([11])
+                        })
+                        .sign({
+                            secret: faucetSecret,
+                            seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                            fee: 10
+                        })
+                );
+                fail();
+            } catch (e) {
+                expect(e).similarTo(ERROR.ACTION_DATA_HANDLER_NOT_FOUND);
+            }
+        });
+
+        it("should fail on handling error", async function() {
+            const hash = await node.sdk.rpc.chain.sendSignedTransaction(
+                node.sdk.core
+                    .createCustomTransaction({
+                        handlerId: hitActionHandlerId,
+                        bytes: RLP.encode(["wrong", "format", "of", "message"])
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                        fee: 10
+                    })
+            );
+
+            expect(
+                await node.sdk.rpc.chain.getTransactionResult(hash, {
+                    timeout: 120 * 1000
+                })
+            ).to.be.false;
+        });
     });
 
     afterEach(function() {
