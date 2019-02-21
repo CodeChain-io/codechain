@@ -52,6 +52,7 @@ pub enum Error {
     InvalidComposedOutputAmount {
         got: u64,
     },
+    InvalidCustomAction,
     InvalidDecomposedInputAmount {
         asset_type: H160,
         shard_id: ShardId,
@@ -115,6 +116,7 @@ const ERROR_ID_ZERO_QUANTITY: u8 = 26;
 const ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME: u8 = 27;
 const ERROR_ID_DISABLED_TRANSACTION: u8 = 28;
 const ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC: u8 = 29;
+const ERROR_ID_INVALID_CUSTOM_ACTION: u8 = 30;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -131,6 +133,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_INSUFFICIENT_FEE => 3,
             ERROR_ID_INVALID_ASSET_TYPE => 2,
             ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT => 2,
+            ERROR_ID_INVALID_CUSTOM_ACTION => 1,
             ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT => 4,
             ERROR_ID_INVALID_NETWORK_ID => 2,
             ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => 4,
@@ -179,6 +182,7 @@ impl Encodable for Error {
             Error::InvalidComposedOutputAmount {
                 got,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT).append(got),
+            Error::InvalidCustomAction => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_CUSTOM_ACTION),
             Error::InvalidDecomposedInputAmount {
                 asset_type,
                 shard_id,
@@ -245,6 +249,7 @@ impl Decodable for Error {
             ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT => Error::InvalidComposedOutputAmount {
                 got: rlp.val_at(1)?,
             },
+            ERROR_ID_INVALID_CUSTOM_ACTION => Error::InvalidCustomAction,
             ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT => Error::InvalidDecomposedInputAmount {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
@@ -298,6 +303,7 @@ impl Display for Error {
             Error::InvalidComposedOutputAmount {
                 got,
             } => write!(f, "The composed output is note valid. The supply must be 1, but {}.", got),
+            Error::InvalidCustomAction => write!(f, "CustomAction handlerId is invalid"),
             Error::InvalidDecomposedInputAmount {
                 asset_type,
                 shard_id,
