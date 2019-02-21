@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::num::NonZeroU32;
 use std::str;
 
 use ccrypto;
@@ -78,34 +79,38 @@ impl Crypto {
         let salt: [u8; 32] = Random::random();
         let iv: [u8; 16] = Random::random();
 
-        // two parts of derived key
-        // DK = [ DK[0..15] DK[16..31] ] = [derived_left_bits, derived_right_bits]
-        let (derived_left_bits, derived_right_bits) =
-            ccrypto::derive_key_iterations(password.as_str(), &salt, iterations);
+        if let Some(non_zero_iterations) = NonZeroU32::new(iterations) {
+            // two parts of derived key
+            // DK = [ DK[0..15] DK[16..31] ] = [derived_left_bits, derived_right_bits]
+            let (derived_left_bits, derived_right_bits) =
+                ccrypto::derive_key_iterations(password.as_str(), &salt, non_zero_iterations);
 
-        // preallocated (on-stack in case of `Secret`) buffer to hold cipher
-        // length = length(plain) as we are using CTR-approach
-        let plain_len = plain.len();
-        let mut ciphertext: SmallVec<[u8; 32]> = SmallVec::from_vec(vec![0; plain_len]);
+            // preallocated (on-stack in case of `Secret`) buffer to hold cipher
+            // length = length(plain) as we are using CTR-approach
+            let plain_len = plain.len();
+            let mut ciphertext: SmallVec<[u8; 32]> = SmallVec::from_vec(vec![0; plain_len]);
 
-        // aes-128-ctr with initial vector of iv
-        ccrypto::aes::encrypt_128_ctr(&derived_left_bits, &iv, plain, &mut *ciphertext)?;
+            // aes-128-ctr with initial vector of iv
+            ccrypto::aes::encrypt_128_ctr(&derived_left_bits, &iv, plain, &mut *ciphertext)?;
 
-        let mac = ccrypto::blake256(ccrypto::derive_mac(&derived_right_bits, &*ciphertext));
+            let mac = ccrypto::blake256(ccrypto::derive_mac(&derived_right_bits, &*ciphertext));
 
-        Ok(Crypto {
-            cipher: Cipher::Aes128Ctr(Aes128Ctr {
-                iv,
-            }),
-            ciphertext: ciphertext.into_vec(),
-            kdf: Kdf::Pbkdf2(Pbkdf2 {
-                dklen: ccrypto::KEY_LENGTH as u32,
-                salt,
-                c: iterations,
-                prf: Prf::HmacSha256,
-            }),
-            mac: mac.into(),
-        })
+            Ok(Crypto {
+                cipher: Cipher::Aes128Ctr(Aes128Ctr {
+                    iv,
+                }),
+                ciphertext: ciphertext.into_vec(),
+                kdf: Kdf::Pbkdf2(Pbkdf2 {
+                    dklen: ccrypto::KEY_LENGTH as u32,
+                    salt,
+                    c: iterations,
+                    prf: Prf::HmacSha256,
+                }),
+                mac: mac.into(),
+            })
+        } else {
+            Err(ccrypto::Error::ZeroIterations)
+        }
     }
 
     /// Try to decrypt and convert result to account secret
@@ -131,7 +136,10 @@ impl Crypto {
 
     fn do_decrypt(&self, password: &Password, expected_len: usize) -> Result<Vec<u8>, Error> {
         let (derived_left_bits, derived_right_bits) = match self.kdf {
-            Kdf::Pbkdf2(ref params) => ccrypto::derive_key_iterations(password.as_str(), &params.salt, params.c),
+            Kdf::Pbkdf2(ref params) => NonZeroU32::new(params.c)
+                .map_or(Err(ccrypto::Error::ZeroIterations), |non_zero_c| {
+                    Ok(ccrypto::derive_key_iterations(password.as_str(), &params.salt, non_zero_c))
+                })?,
             Kdf::Scrypt(ref params) => {
                 ccrypto::scrypt::derive_key(password.as_str(), &params.salt, params.n, params.p, params.r)?
             }

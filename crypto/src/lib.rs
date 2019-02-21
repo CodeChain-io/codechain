@@ -29,6 +29,8 @@ mod hash;
 pub mod pbkdf2;
 pub mod scrypt;
 
+use std::num::NonZeroU32;
+
 pub use crate::error::Error;
 
 pub const KEY_LENGTH: usize = 32;
@@ -39,7 +41,7 @@ pub use crate::blake::*;
 
 pub use crate::hash::{keccak256, ripemd160, sha1, sha256};
 
-pub fn derive_key_iterations(password: &str, salt: &[u8; 32], c: u32) -> (Vec<u8>, Vec<u8>) {
+pub fn derive_key_iterations(password: &str, salt: &[u8; 32], c: NonZeroU32) -> (Vec<u8>, Vec<u8>) {
     let mut derived_key = [0u8; KEY_LENGTH];
     pbkdf2::sha256(c, &pbkdf2::Salt(salt), &pbkdf2::Secret(password.as_bytes()), &mut derived_key);
     let derived_right_bits = &derived_key[0..KEY_LENGTH_AES];
