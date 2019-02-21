@@ -29,7 +29,7 @@ use ctypes::invoice::Invoice;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H160, H256};
-use rlp::{DecoderError, UntrustedRlp};
+use rlp::UntrustedRlp;
 
 use jsonrpc_core::Result;
 
@@ -90,7 +90,7 @@ where
                 } = &tx.action
                 {
                     if self.client.find_action_handler_for(*handler_id).is_none() {
-                        return Err(errors::rlp(&DecoderError::Custom("Invalid custom action!")))
+                        return Err(errors::action_handler_not_found())
                     }
                 }
                 Ok(tx)
