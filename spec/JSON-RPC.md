@@ -284,6 +284,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getBlockHash](#chain_getblockhash)
  * [chain_getBlockByNumber](#chain_getblockbynumber)
  * [chain_getBlockByHash](#chain_getblockbyhash)
+ * [chain_getBlockTransactionCountByHash](#chain_getblocktransactioncountbyhash)
  * [chain_sendSignedTransaction](#chain_sendsignedtransaction)
  * [chain_getTransaction](#chain_gettransaction)
  * [chain_getInvoice](#chain_getinvoice)
@@ -508,7 +509,7 @@ Gets the hash of the block with given number.
 
 Errors: `Invalid Params`
 
-### Request Example:
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -538,7 +539,7 @@ Gets the block with the given number.
 
 Errors: `Invalid Params`
 
-### Request Example:
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -546,7 +547,7 @@ Errors: `Invalid Params`
     http://localhost:8080
 ```
 
-### Response Example:
+### Response Example
 ```
 {
   "jsonrpc":"2.0",
@@ -601,7 +602,7 @@ Gets the block with the given hash.
 
 Errors: `Invalid Params`
 
-### Request Example:
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
@@ -653,6 +654,32 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
+## chain_getBlockTransactionCountByHash
+Gets the number of transactions within a block that corresponds with the given hash.
+
+### Params
+ 1. hash: `H256`
+
+### Returns
+`null` | `number`
+
+Errors: `Invalid Params`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getBlockTransactionCountByHash", "params": ["0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50"], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{"jsonrpc":"2.0","result":1,"id":null}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_sendSignedTransaction
 Sends a signed transaction, returning its hash.
 
@@ -664,7 +691,7 @@ Sends a signed transaction, returning its hash.
 
 Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Seq`, `Invalid Params`, `Invalid NetworkId`
 
-### Request Example:
+### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
