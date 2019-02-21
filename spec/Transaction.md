@@ -24,7 +24,7 @@ enum Action {
     DecomposeAsset { ..., },
     Pay { ..., },
     SetRegularKey { ..., },
-    CreateShard,
+    CreateShard { ..., },
     SetShardOwners { ..., },
     SetShardUsers { ..., },
     WrapCCC { ..., },
@@ -209,7 +209,9 @@ It creates a new shard.
 The payer becomes the owner of the shard.
 
 ```rust
-CreateShard
+CreateShard {
+    users: Vec<Address>,
+}
 ```
 
 ## SetShardOwners
