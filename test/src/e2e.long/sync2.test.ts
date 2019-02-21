@@ -19,10 +19,7 @@ import "mocha";
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
-const describeSkippedInTravis =
-    process.env.TRAVIS_OS_NAME === "osx" ? describe.skip : describe;
-
-describeSkippedInTravis("sync 2 nodes", function() {
+describe("sync 2 nodes", function() {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 
