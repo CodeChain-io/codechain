@@ -21,6 +21,7 @@ use std::str::{self, FromStr};
 use std::time::Duration;
 
 use ccore::{MinerOptions, StratumConfig};
+use cidr::IpCidr;
 use ckey::PlatformAddress;
 use clap;
 use cnetwork::{FilterEntry, NetworkConfig, SocketAddr};
@@ -141,8 +142,7 @@ impl Config {
                             .filter(|(s, _)| !s.is_empty())
                             .map(|(addr, tag)| {
                                 Ok(FilterEntry {
-                                    addr: addr
-                                        .parse()
+                                    cidr: IpCidr::from_str(addr)
                                         .map_err(|e| format!("Cannot parse IP address {}: {:?}", addr, e))?,
                                     tag,
                                 })
