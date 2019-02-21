@@ -522,7 +522,7 @@ impl TopLevelState {
                 bytes,
             } => {
                 let handler = client.find_action_handler_for(*handler_id).expect("Unknown custom parsel applied!");
-                let invoice = handler.execute(bytes, self, fee_payer).expect("Custom action handler execution failed");
+                let invoice = handler.execute(bytes, self, fee_payer)?;
                 Ok(invoice)
             }
         }

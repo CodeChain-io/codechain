@@ -84,7 +84,7 @@ where
         match handler.query(&key_fragment, &state) {
             Ok(Some(action_data)) => Ok(Some(Bytes::new(action_data).into_without_prefix())),
             Ok(None) => Ok(None),
-            Err(e) => Err(errors::action_data_handler_error(e)),
+            Err(e) => Err(errors::transaction_core(e)),
         }
     }
 }
