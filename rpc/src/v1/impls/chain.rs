@@ -104,7 +104,11 @@ where
     }
 
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
-        Ok(self.client.transaction(&transaction_hash.into()).map(|tx| tx.into()))
+        let id = transaction_hash.into();
+        Ok(self.client.transaction(&id).map(|tx| {
+            let invoice = self.client.invoice(&id).expect("Invoice most exist when transaction exists");
+            Transaction::from(tx, invoice.to_bool())
+        }))
     }
 
     fn get_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
@@ -112,7 +116,11 @@ where
     }
 
     fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
-        Ok(self.client.transaction_by_tracker(&tracker).map(Into::into))
+        Ok(self.client.transaction_by_tracker(&tracker).map(|tx| {
+            let transaction_id = tx.hash().into();
+            let invoice = self.client.invoice(&transaction_id).expect("Invoice most exist when transaction exists");
+            Transaction::from(tx, invoice.to_bool())
+        }))
     }
 
     fn get_invoices_by_tracker(&self, tracker: H256) -> Result<Vec<Invoice>> {
@@ -265,17 +273,39 @@ where
     }
 
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {
-        Ok(self
-            .client
-            .block(&BlockId::Number(block_number))
-            .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
+        let id = BlockId::Number(block_number);
+        Ok(self.client.block(&id).map(|block| {
+            let invoices: Vec<_> = self
+                .client
+                .block_invoices(&id)
+                .unwrap_or_else(|| {
+                    assert_eq!(0, block_number);
+                    Default::default()
+                })
+                .invoices
+                .into_iter()
+                .map(|invoice| invoice.to_bool())
+                .collect();
+            Block::from_core(block.decode(), self.client.common_params().network_id, &invoices)
+        }))
     }
 
     fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
-        Ok(self
-            .client
-            .block(&BlockId::Hash(block_hash))
-            .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
+        let id = BlockId::Hash(block_hash);
+        Ok(self.client.block(&id).map(|block| {
+            let invoices: Vec<_> = self
+                .client
+                .block_invoices(&id)
+                .unwrap_or_else(|| {
+                    assert_eq!(0, block.number());
+                    Default::default()
+                })
+                .invoices
+                .into_iter()
+                .map(|invoice| invoice.to_bool())
+                .collect();
+            Block::from_core(block.decode(), self.client.common_params().network_id, &invoices)
+        }))
     }
 
     fn get_block_transaction_count_by_hash(&self, block_hash: H256) -> Result<Option<usize>> {
