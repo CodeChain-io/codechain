@@ -71,8 +71,8 @@ pub enum ClientIoMessage {
     BlockVerified,
     /// A header is ready
     HeaderVerified,
-    /// New parcel RLPs are ready to be imported
-    NewParcels(Vec<Bytes>, NodeId),
+    /// New transaction RLPs are ready to be imported
+    NewTransactions(Vec<Bytes>, NodeId),
     /// Block generation is required
     NewBlockRequired {
         parent_block: BlockId,
@@ -97,8 +97,8 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
             ClientIoMessage::HeaderVerified => {
                 self.client.import_verified_headers();
             }
-            ClientIoMessage::NewParcels(parcels, peer_id) => {
-                self.client.import_queued_parcels(&parcels, peer_id);
+            ClientIoMessage::NewTransactions(transactions, peer_id) => {
+                self.client.import_queued_transactions(&transactions, peer_id);
             }
             ClientIoMessage::NewBlockRequired {
                 parent_block,
