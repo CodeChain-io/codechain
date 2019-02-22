@@ -188,7 +188,6 @@ impl Handler {
     fn connect(&self, io: &IoContext<Message>, socket_address: SocketAddr) -> IoHandlerResult<()> {
         let ip = socket_address.ip();
         if !self.filters.is_allowed(&ip) {
-            self.routing_table.remove(&socket_address);
             return Err(format!("New connection to {} is requested. But it's not allowed", ip).into())
         }
 
@@ -203,7 +202,8 @@ impl Handler {
             let mut outgoing_connections = self.outgoing_connections.write();
             // Please make sure there is no early return after it.
             let initiator_port = self.socket_address.port();
-            let con = OutgoingConnection::new(stream, initiator_pub_key, self.network_id, initiator_port)?;
+            let con =
+                OutgoingConnection::new(stream, initiator_pub_key, self.network_id, initiator_port, socket_address)?;
             let token = outgoing_tokens.gen().ok_or("Too many outgoing connections")?;
             let t = outgoing_connections.insert(token, con);
             assert!(t.is_none());
@@ -282,6 +282,7 @@ impl IoHandler<Message> for Handler {
                 candidates.shuffle(&mut *self.rng.lock());
                 for addr in candidates.into_iter().take(self.min_peers - current_connections) {
                     if let Err(err) = self.connect(io, addr) {
+                        self.routing_table.remove(&addr);
                         cwarn!(NETWORK, "Cannot connect to {}: {:?}", addr, err);
                     }
                 }
@@ -328,7 +329,10 @@ impl IoHandler<Message> for Handler {
                 }
 
                 ctrace!(NETWORK, "Connecting to {}", socket_address);
-                self.connect(io, socket_address)?;
+                if let Err(err) = self.connect(io, socket_address) {
+                    self.routing_table.remove(&socket_address);
+                    return Err(err)
+                }
             }
             Message::SendExtensionMessage {
                 node_id,

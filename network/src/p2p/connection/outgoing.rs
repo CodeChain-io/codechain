@@ -36,8 +36,13 @@ pub struct OutgoingConnection {
 }
 
 impl OutgoingConnection {
-    pub fn new(stream: Stream, initiator_pub_key: Public, network_id: NetworkId, initiator_port: u16) -> Result<Self> {
-        let peer_addr = stream.peer_addr()?;
+    pub fn new(
+        stream: Stream,
+        initiator_pub_key: Public,
+        network_id: NetworkId,
+        initiator_port: u16,
+        peer_addr: SocketAddr,
+    ) -> Result<Self> {
         Ok(Self {
             stream,
             initiator_pub_key,

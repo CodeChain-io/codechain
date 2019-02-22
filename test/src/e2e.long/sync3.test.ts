@@ -18,10 +18,7 @@ import { expect } from "chai";
 import "mocha";
 import CodeChain from "../helper/spawn";
 
-const describeSkippedInTravis =
-    process.env.TRAVIS_OS_NAME === "osx" ? describe.skip : describe;
-
-describeSkippedInTravis("sync 3 nodes", function() {
+describe("sync 3 nodes", function() {
     const NUM_NODES = 3;
     let nodes: CodeChain[];
 
