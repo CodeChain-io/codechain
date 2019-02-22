@@ -24,18 +24,14 @@ describe("reward2", function() {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 
-    const BASE = 500;
-
     beforeEach(async function() {
         nodeA = new CodeChain({
             chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
-            argv: ["--author", aliceAddress.toString(), "--force-sealing"],
-            base: BASE
+            argv: ["--author", aliceAddress.toString(), "--force-sealing"]
         });
         nodeB = new CodeChain({
             chain: `${__dirname}/../scheme/solo-block-reward-50.json`,
-            argv: ["--author", bobAddress.toString(), "--force-sealing"],
-            base: BASE
+            argv: ["--author", bobAddress.toString(), "--force-sealing"]
         });
 
         await Promise.all([nodeA.start(), nodeB.start()]);
@@ -53,7 +49,7 @@ describe("reward2", function() {
         expect(
             await nodeB.sdk.rpc.chain.getBalance(aliceAddress)
         ).to.deep.equal(new U64(50));
-    });
+    }).timeout(30_000);
 
     it("alice creates one block and bob creates two blocks in parallel. And then, sync", async function() {
         await nodeA.sdk.rpc.devel.startSealing();
@@ -76,7 +72,7 @@ describe("reward2", function() {
         expect(await nodeA.sdk.rpc.chain.getBalance(bobAddress)).to.deep.equal(
             new U64(100)
         );
-    });
+    }).timeout(30_000);
 
     it("A reorganization of block rewards and payments", async function() {
         // nodeA creates a block
@@ -172,7 +168,7 @@ describe("reward2", function() {
                 await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
             ).to.deep.equal(new U64(225 + 1060));
         }
-    }).timeout(7_000);
+    }).timeout(120_000);
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {

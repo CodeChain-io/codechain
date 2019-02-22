@@ -19,7 +19,7 @@ use std::net::IpAddr;
 use std::sync::Arc;
 
 use cio::{IoError, IoService};
-use ckey::Public;
+use ckey::{NetworkId, Public};
 use ctimer::TimerLoop;
 
 use crate::client::Client;
@@ -27,12 +27,10 @@ use crate::control::{Control, Error as ControlError};
 use crate::filters::{FilterEntry, FiltersControl};
 use crate::p2p;
 use crate::routing_table::RoutingTable;
-use crate::session_initiator;
 use crate::DiscoveryApi;
 use crate::{Api, NetworkExtension, SocketAddr};
 
 pub struct Service {
-    session_initiator: IoService<session_initiator::Message>,
     p2p: IoService<p2p::Message>,
     client: Arc<Client>,
     routing_table: Arc<RoutingTable>,
@@ -42,6 +40,7 @@ pub struct Service {
 
 impl Service {
     pub fn start(
+        network_id: NetworkId,
         timer_loop: TimerLoop,
         address: SocketAddr,
         min_peers: usize,
@@ -49,13 +48,14 @@ impl Service {
         filters_control: Arc<FiltersControl>,
     ) -> Result<Arc<Self>, Error> {
         let p2p = IoService::start("P2P")?;
-        let session_initiator = IoService::start("SessionInitiator")?;
 
         let routing_table = RoutingTable::new();
 
         let client = Client::new(p2p.channel(), timer_loop);
 
         let p2p_handler = Arc::new(p2p::Handler::try_new(
+            p2p.channel(),
+            network_id,
             address,
             Arc::clone(&client),
             Arc::clone(&routing_table),
@@ -65,16 +65,7 @@ impl Service {
         )?);
         p2p.register_handler(p2p_handler.clone())?;
 
-        let session_initiator_handler = Arc::new(session_initiator::Handler::new(
-            address,
-            Arc::clone(&routing_table),
-            p2p.channel(),
-            Arc::clone(&filters_control),
-        ));
-        session_initiator.register_handler(session_initiator_handler.clone())?;
-
         Ok(Arc::new(Self {
-            session_initiator,
             p2p,
             client,
             routing_table,
@@ -91,11 +82,8 @@ impl Service {
     }
 
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {
-        if let Err(err) = self.session_initiator.send_message(session_initiator::Message::ConnectTo(address)) {
-            return Err(format!("{:?}", err))
-        } else {
-            Ok(())
-        }
+        self.p2p.send_message(p2p::Message::RequestConnection(address)).map_err(|e| format!("{:?}", e))?;
+        Ok(())
     }
 
     pub fn set_routing_table(&self, disc: &DiscoveryApi) {
@@ -105,10 +93,7 @@ impl Service {
 
 impl Control for Service {
     fn local_key_for(&self, address: IpAddr, port: u16) -> Result<Public, ControlError> {
-        Ok(self
-            .routing_table
-            .register_key_pair_for_secret(SocketAddr::new(address, port))
-            .ok_or_else(|| ControlError::NotConnected)?)
+        self.routing_table.touch(SocketAddr::new(address, port)).ok_or(ControlError::NotConnected)
     }
 
     fn register_remote_key_for(
@@ -117,22 +102,20 @@ impl Control for Service {
         port: u16,
         remote_pub_key: Public,
     ) -> Result<Public, ControlError> {
-        Ok(self
-            .routing_table
-            .share_secret(SocketAddr::new(address, port), remote_pub_key)
-            .ok_or_else(|| ControlError::NotConnected)?)
+        self.routing_table
+            .register_remote_public(SocketAddr::new(address, port), remote_pub_key)
+            .ok_or(ControlError::NotConnected)
     }
 
     fn connect(&self, addr: SocketAddr) -> Result<(), ControlError> {
-        let message = session_initiator::Message::ManuallyConnectTo(addr);
-        if let Err(err) = self.session_initiator.send_message(message) {
-            cerror!(NETWORK, "Error occurred while sending message ManuallyConnectTo: {:?}", err);
-        }
-        Ok(())
+        self.connect_to(addr).map_err(|e| {
+            cwarn!(NETWORK, "Cannot connect to {}: {}", addr, e);
+            ControlError::NotConnected
+        })
     }
 
     fn disconnect(&self, addr: SocketAddr) -> Result<(), ControlError> {
-        if !self.routing_table.is_connected(&addr) {
+        if !self.routing_table.is_established(&addr) {
             return Err(ControlError::NotConnected)
         }
         if let Err(err) = self.p2p.send_message(p2p::Message::Disconnect(addr)) {
@@ -142,7 +125,7 @@ impl Control for Service {
     }
 
     fn is_connected(&self, addr: &SocketAddr) -> Result<bool, ControlError> {
-        Ok(self.routing_table.is_connected(addr))
+        Ok(self.routing_table.is_established(addr))
     }
 
     fn get_port(&self) -> Result<u16, ControlError> {

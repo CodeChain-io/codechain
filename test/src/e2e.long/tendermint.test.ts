@@ -38,7 +38,6 @@ const RLP = require("rlp");
 
 describeSkippedInTravis("Tendermint ", function() {
     const promiseExpect = new PromiseExpect();
-    const BASE = 800;
     let nodes: CodeChain[];
 
     beforeEach(async function() {
@@ -61,7 +60,6 @@ describeSkippedInTravis("Tendermint ", function() {
                     "--force-sealing",
                     "--no-discovery"
                 ],
-                base: BASE,
                 additionalKeysPath: "tendermint/keys"
             });
         });
@@ -252,7 +250,7 @@ describeSkippedInTravis("Tendermint ", function() {
                 nodes[0].sdk.rpc.chain.getBestBlockNumber()
             )
         ).to.eventually.greaterThan(1);
-    }).timeout(20_000);
+    }).timeout(60_000);
 
     it("Block sync", async function() {
         await promiseExpect.shouldFulfill(
@@ -357,7 +355,6 @@ describeSkippedInTravis("Tendermint ", function() {
                     "test/tendermint/password.json",
                     "--no-discovery"
                 ],
-                base: BASE,
                 additionalKeysPath: "tendermint/keys"
             });
         }
@@ -400,6 +397,7 @@ describeSkippedInTravis("Tendermint ", function() {
     }).timeout(30_000);
 
     describe("Staking", function() {
+        this.timeout(60_000);
         async function getAllStakingInfo() {
             const validatorAddresses = [
                 faucetAddress,
@@ -519,7 +517,7 @@ describeSkippedInTravis("Tendermint ", function() {
                     )
                 )
             );
-        }).timeout(20_000);
+        }).timeout(60_000);
     });
 
     afterEach(async function() {

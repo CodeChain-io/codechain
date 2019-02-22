@@ -110,12 +110,11 @@ export default class CodeChain {
             chain?: ChainType;
             argv?: string[];
             additionalKeysPath?: string;
-            base?: number;
             rpcPort?: number;
         } = {}
     ) {
-        const { chain, argv, additionalKeysPath, base = 0 } = options;
-        this._id = base + CodeChain.idCounter++;
+        const { chain, argv, additionalKeysPath } = options;
+        this._id = CodeChain.idCounter++;
 
         const { rpcPort = 8081 + this.id } = options;
         this._rpcPort = rpcPort;

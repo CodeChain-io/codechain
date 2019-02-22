@@ -21,14 +21,13 @@ import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
 import CodeChain from "../helper/spawn";
 
 describe("account", function() {
-    const BASE = 0;
     describe("account scenario test", function() {
         let node: CodeChain;
         const testSize = 30;
         const randomTestSize = 100;
 
         beforeEach(async function() {
-            node = new CodeChain({ base: BASE });
+            node = new CodeChain();
             await node.start();
         });
 
@@ -176,7 +175,7 @@ describe("account", function() {
                             } = accountListWithSecret[randomIdx];
                             const message = makeRandomH256();
 
-                            const { r, s, v } = node.sdk.util.signEcdsa(
+                            const calculatedSignature = node.sdk.util.signEcdsa(
                                 message,
                                 secret!
                             );
@@ -185,9 +184,9 @@ describe("account", function() {
                                 address,
                                 passphrase
                             );
-                            expect(signature).to.include(r);
-                            expect(signature).to.include(s);
-                            expect(signature).to.include(v);
+                            expect(signature).to.equal(
+                                `0x${calculatedSignature}`
+                            );
                         }
                         break;
                     case Action.ChangePassword:

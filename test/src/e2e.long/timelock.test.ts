@@ -25,15 +25,12 @@ import "mocha";
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
-const BASE = 250;
-
 describe("Timelock", function() {
     let node: CodeChain;
 
     beforeEach(async function() {
         node = new CodeChain({
-            argv: ["--force-sealing", "--no-reseal-timer"],
-            base: BASE
+            argv: ["--force-sealing", "--no-reseal-timer"]
         });
         await node.start();
     });

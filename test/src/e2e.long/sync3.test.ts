@@ -19,18 +19,16 @@ import "mocha";
 import CodeChain from "../helper/spawn";
 
 describe("sync 3 nodes", function() {
-    const BASE = 650;
     const NUM_NODES = 3;
     let nodes: CodeChain[];
 
     beforeEach(async function() {
-        this.timeout(5000 + 5000 * NUM_NODES);
+        this.timeout(15_000 + 10_000 * NUM_NODES);
 
         nodes = [];
         for (let i = 0; i < NUM_NODES; i++) {
             const node = new CodeChain({
-                argv: ["--no-discovery"],
-                base: BASE
+                argv: ["--no-discovery"]
             });
             nodes.push(node);
         }
@@ -40,7 +38,7 @@ describe("sync 3 nodes", function() {
     describe("Connected in a line", function() {
         describe("All connected", function() {
             beforeEach(async function() {
-                this.timeout(5000 + 5000 * NUM_NODES);
+                this.timeout(15_000 + 10_000 * NUM_NODES);
 
                 const connects = [];
                 for (let i = 0; i < NUM_NODES - 1; i++) {
@@ -59,7 +57,7 @@ describe("sync 3 nodes", function() {
                         transaction.blockHash
                     );
                 }
-            }).timeout(5000 + 10000 * NUM_NODES);
+            }).timeout(15_000 + 10_000 * NUM_NODES);
 
             describe("All diverged by both end nodes", function() {
                 beforeEach(async function() {
@@ -81,7 +79,7 @@ describe("sync 3 nodes", function() {
                         waits.push(nodes[i].waitBlockNumberSync(nodes[0]));
                     }
                     await Promise.all(waits);
-                }).timeout(5000 + 5000 * NUM_NODES);
+                }).timeout(15_000 + 10_000 * NUM_NODES);
 
                 it("It should be synced when the first node becomes ahead", async function() {
                     await nodes[0].sendPayTx();
@@ -91,7 +89,7 @@ describe("sync 3 nodes", function() {
                             await nodes[0].getBestBlockHash()
                         );
                     }
-                }).timeout(5000 + 10000 * NUM_NODES);
+                }).timeout(15_000 + 10_000 * NUM_NODES);
             });
         });
 
@@ -108,15 +106,15 @@ describe("sync 3 nodes", function() {
                         await nodes[i + 1].getBestBlockHash()
                     );
                 }
-            }).timeout(5000 + 15000 * NUM_NODES);
+            }).timeout(15_000 + 15_000 * NUM_NODES);
         });
-    });
+    }).timeout(NUM_NODES * 60_000);
 
     describe("Connected in a circle", function() {
         const numHalf: number = Math.floor(NUM_NODES / 2);
 
         beforeEach(async function() {
-            this.timeout(5000 + 5000 * NUM_NODES);
+            this.timeout(15_000 + 10_000 * NUM_NODES);
 
             const connects = [];
             for (let i = 0; i < NUM_NODES; i++) {
@@ -138,7 +136,7 @@ describe("sync 3 nodes", function() {
                     await nodes[NUM_NODES - i - 1].getBestBlockHash()
                 ).to.deep.equal(transaction.blockHash);
             }
-        }).timeout(5000 + 5000 * NUM_NODES);
+        }).timeout(15_000 + 10_000 * NUM_NODES);
 
         describe("All diverged by two nodes in the opposite", function() {
             beforeEach(async function() {
@@ -160,7 +158,7 @@ describe("sync 3 nodes", function() {
                     waits.push(nodes[i].waitBlockNumberSync(nodes[0]));
                 }
                 await Promise.all(waits);
-            }).timeout(5000 + 5000 * NUM_NODES);
+            }).timeout(15_000 + 10_000 * NUM_NODES);
 
             it("It should be synced when the first node becomes ahead", async function() {
                 await nodes[0].sendPayTx();
@@ -170,13 +168,11 @@ describe("sync 3 nodes", function() {
                         await nodes[0].getBestBlockHash()
                     );
                 }
-            }).timeout(5000 + 10000 * NUM_NODES);
+            }).timeout(15_000 + 10_000 * NUM_NODES);
         });
-    });
+    }).timeout(NUM_NODES * 60_000);
 
     afterEach(async function() {
-        this.timeout(5000 + 3000 * NUM_NODES);
-
         if (this.currentTest!.state === "failed") {
             nodes.map(node => node.testFailed(this.currentTest!.fullTitle()));
         }

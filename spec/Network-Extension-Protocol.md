@@ -2,7 +2,6 @@ All p2p communications, including block propagation and consensus, which are ind
 
 * [System Extension](System-Extension.md)
 * [Operate Extension](Operate-Extension.md)
-* [Key Share Extension](Key-Share-Extension.md)
 * Discovery
   * [Kademlia Extension](Kademlia-Extension.md)
 * [Block Synchronization Extension](Block-Synchronization-Extension.md)

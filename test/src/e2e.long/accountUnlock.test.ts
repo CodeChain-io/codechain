@@ -22,12 +22,11 @@ import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
 import CodeChain from "../helper/spawn";
 
 describe("account unlock", function() {
-    const BASE = 50;
     let node: CodeChain;
     const unlockTestSize = 15;
 
     beforeEach(async function() {
-        node = new CodeChain({ base: BASE });
+        node = new CodeChain();
         await node.start();
     });
 
@@ -43,7 +42,10 @@ describe("account unlock", function() {
 
         for (let i = 0; i < unlockTestSize; i++) {
             const message = makeRandomH256();
-            const { r, s, v } = node.sdk.util.signEcdsa(message, secret);
+            const calculatedSignature = node.sdk.util.signEcdsa(
+                message,
+                secret
+            );
             await node.sdk.rpc.account.unlock(address, passphrase, 1);
 
             for (let j = 0; j <= 2; j++) {
@@ -52,11 +54,9 @@ describe("account unlock", function() {
                         message,
                         address
                     );
-                    expect(signature).to.include(r);
-                    expect(signature).to.include(s);
-                    expect(signature).to.include(v);
+                    expect(signature).to.equal(`0x${calculatedSignature}`);
                 } catch (e) {
-                    expect.fail();
+                    expect.fail(e);
                 }
                 await wait(100);
             }

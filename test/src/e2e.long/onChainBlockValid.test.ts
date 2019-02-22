@@ -42,12 +42,9 @@ describe("Test onChain block communication", async function() {
         "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0"
     );
 
-    const BASE = 350;
-
     before(async function() {
         const node = new CodeChain({
-            argv: ["--force-sealing"],
-            base: BASE
+            argv: ["--force-sealing"]
         });
         await node.start();
 
@@ -113,9 +110,9 @@ describe("Test onChain block communication", async function() {
         VALID_STATEROOT = block1.stateRoot;
         VALID_INVOICEROOT = block1.invoicesRoot;
 
-        nodeA = new CodeChain({ base: BASE });
+        nodeA = new CodeChain();
         await nodeA.start();
-        TH = new TestHelper("0.0.0.0", nodeA.port);
+        TH = new TestHelper("0.0.0.0", nodeA.port, "tc");
         await TH.establish();
     });
 

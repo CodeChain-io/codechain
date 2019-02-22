@@ -63,10 +63,8 @@ describe("Test onChain transaction communication", function() {
         }
     ];
 
-    const BASE = 400;
-
     beforeEach(async function() {
-        nodeA = new CodeChain({ base: BASE });
+        nodeA = new CodeChain();
         await nodeA.start();
     });
 
@@ -78,7 +76,7 @@ describe("Test onChain transaction communication", function() {
     });
 
     it("OnChain Pay propagation test", async function() {
-        const TH = new TestHelper("0.0.0.0", nodeA.port);
+        const TH = new TestHelper("0.0.0.0", nodeA.port, "tc");
         await TH.establish();
 
         const sdk = nodeA.sdk;
@@ -112,7 +110,7 @@ describe("Test onChain transaction communication", function() {
         }) {
             const { testName, tfee, tseq, tnetworkId, tsig } = params;
             it(testName, async function() {
-                const TH = new TestHelper("0.0.0.0", nodeA.port);
+                const TH = new TestHelper("0.0.0.0", nodeA.port, "tc");
                 await TH.establish();
 
                 const sdk = nodeA.sdk;

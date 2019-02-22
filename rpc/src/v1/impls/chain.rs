@@ -155,14 +155,13 @@ where
 
     fn get_asset(
         &self,
-        transaction_hash: H256,
+        tracker: H256,
         index: usize,
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<OwnedAsset>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        let asset =
-            self.client.get_asset(transaction_hash, index, shard_id, block_id).map_err(errors::transaction_state)?;
+        let asset = self.client.get_asset(tracker, index, shard_id, block_id).map_err(errors::transaction_state)?;
         Ok(asset.map(From::from))
     }
 
@@ -231,6 +230,24 @@ where
         Ok(self.client.shard_root(shard_id, block_id.into()))
     }
 
+    fn get_shard_owners(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        let network_id = self.client.common_params().network_id;
+        Ok(self
+            .client
+            .shard_owners(shard_id, block_id.into())
+            .map(|owners| owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect()))
+    }
+
+    fn get_shard_users(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        let network_id = self.client.common_params().network_id;
+        Ok(self
+            .client
+            .shard_users(shard_id, block_id.into())
+            .map(|users| users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect()))
+    }
+
     fn get_best_block_number(&self) -> Result<BlockNumber> {
         Ok(self.client.chain_info().best_block_number)
     }
@@ -259,6 +276,10 @@ where
             .client
             .block(&BlockId::Hash(block_hash))
             .map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
+    }
+
+    fn get_block_transaction_count_by_hash(&self, block_hash: H256) -> Result<Option<usize>> {
+        Ok(self.client.block(&BlockId::Hash(block_hash)).map(|block| block.transactions_count()))
     }
 
     fn get_pending_transactions(&self) -> Result<Vec<Transaction>> {

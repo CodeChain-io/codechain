@@ -16,155 +16,79 @@
 
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::ProtocolId;
-use super::Seq;
 use super::Version;
 
-use super::ALLOWED_ID;
-use super::DENIED_ID;
 use super::REQUEST_ID;
+use super::RESPONSE_ID;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct Message {
-    version: Version,
-    seq: Seq,
-    body: Body,
-}
-
-#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum Body {
+pub enum Message {
     Request {
         extension_name: String,
         extension_versions: Vec<Version>,
     },
-    Allowed(Version),
-    Denied,
+    Response {
+        extension_name: String,
+        allowed_version: Version,
+    },
 }
 
-const COMMON: usize = 3;
-
 impl Message {
-    pub fn request(seq: Seq, extension_name: String, extension_versions: Vec<Version>) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::Request {
-                extension_name,
-                extension_versions,
-            },
+    pub fn request(extension_name: String, extension_versions: Vec<Version>) -> Self {
+        Message::Request {
+            extension_name,
+            extension_versions,
         }
     }
 
-    pub fn allowed(seq: Seq, version: Version) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::Allowed(version),
+    pub fn allowed(extension_name: String, allowed_version: Version) -> Self {
+        Message::Response {
+            extension_name,
+            allowed_version,
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn denied(seq: Seq) -> Self {
-        Self {
-            version: 0,
-            seq,
-            body: Body::Denied,
-        }
-    }
-
-    pub fn version(&self) -> Version {
-        self.version
-    }
-
-    pub fn seq(&self) -> Seq {
-        self.seq
-    }
-
-    pub fn protocol_id(&self) -> ProtocolId {
-        match self.body {
-            Body::Request {
-                ..
-            } => REQUEST_ID,
-            Body::Allowed(_) => ALLOWED_ID,
-            Body::Denied => DENIED_ID,
-        }
-    }
-
-    fn item_count(&self) -> usize {
-        match self.body {
-            Body::Request {
-                ..
-            } => COMMON + 2,
-            Body::Allowed(_) => COMMON + 1,
-            Body::Denied => COMMON,
-        }
-    }
-
-    pub fn body(&self) -> &Body {
-        &self.body
     }
 }
 
 
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(self.item_count()).append(&self.version()).append(&self.protocol_id()).append(&self.seq());
-
-        match &self.body {
-            Body::Request {
+        match self {
+            Message::Request {
                 extension_name,
                 extension_versions,
-                ..
             } => {
-                s.append(extension_name).append_list(extension_versions);
+                s.begin_list(3).append(&REQUEST_ID).append(extension_name).append_list(extension_versions);
             }
-            Body::Allowed(version) => {
-                s.append(version);
+            Message::Response {
+                extension_name,
+                allowed_version,
+            } => {
+                s.begin_list(3).append(&RESPONSE_ID).append(extension_name).append(allowed_version);
             }
-            Body::Denied => {}
         }
     }
 }
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let version: Version = rlp.val_at(0)?;
-        let protocol_id: ProtocolId = rlp.val_at(1)?;
-        let seq: Seq = rlp.val_at(2)?;
-        let message = match protocol_id {
-            REQUEST_ID => {
-                let extension_name: String = rlp.val_at(COMMON)?;
-                let extension_versions: Vec<Version> = rlp.list_at(COMMON + 1)?;
-                Message {
-                    version,
-                    seq,
-                    body: Body::Request {
-                        extension_name,
-                        extension_versions,
-                    },
-                }
-            }
-            ALLOWED_ID => Message {
-                version,
-                seq,
-                body: Body::Allowed(rlp.val_at(COMMON)?),
-            },
-            DENIED_ID => Message {
-                version,
-                seq,
-                body: Body::Denied,
-            },
-            _ => return Err(DecoderError::Custom("invalid protocol id")),
-        };
         let item_count = rlp.item_count()?;
-        let expected = message.item_count();
-        if item_count != expected {
+        if item_count != 3 {
             return Err(DecoderError::RlpInvalidLength {
-                expected,
+                expected: 3,
                 got: item_count,
             })
         }
-        Ok(message)
+        match rlp.val_at(0)? {
+            REQUEST_ID => Ok(Message::Request {
+                extension_name: rlp.val_at(1)?,
+                extension_versions: rlp.list_at(2)?,
+            }),
+            RESPONSE_ID => Ok(Message::Response {
+                extension_name: rlp.val_at(1)?,
+                allowed_version: rlp.val_at(2)?,
+            }),
+            _ => Err(DecoderError::Custom("Invalid id in negotiation message")),
+        }
     }
 }
 
@@ -175,37 +99,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn protocol_id_of_request_is_2() {
-        assert_eq!(0x02, Message::request(Default::default(), Default::default(), Default::default()).protocol_id());
-    }
-
-    #[test]
-    fn protocol_id_of_allowed_is_3() {
-        assert_eq!(0x03, Message::allowed(Default::default(), Default::default()).protocol_id());
-    }
-
-    #[test]
-    fn protocol_id_of_denied_is_4() {
-        assert_eq!(0x04, Message::denied(Default::default()).protocol_id());
-    }
-
-    #[test]
     fn encode_and_decode_request() {
-        const SEQ: Seq = 0x5432;
         let extension_name = "some-extension".to_string();
-        rlp_encode_and_decode_test!(Message::request(SEQ, extension_name, vec![1, 2, 3]));
+        rlp_encode_and_decode_test!(Message::request(extension_name, vec![1, 2, 3]));
     }
 
     #[test]
     fn encode_and_decode_allowed() {
-        const SEQ: Seq = 0x0071_6216_a8b1;
-        const VERSION: Version = 2;
-        rlp_encode_and_decode_test!(Message::allowed(SEQ, VERSION));
-    }
-
-    #[test]
-    fn encode_and_decode_denied() {
-        const SEQ: Seq = 0x3712;
-        rlp_encode_and_decode_test!(Message::denied(SEQ));
+        let extension_name = "some-extension".to_string();
+        rlp_encode_and_decode_test!(Message::allowed(extension_name, 2));
     }
 }

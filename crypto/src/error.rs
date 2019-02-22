@@ -28,6 +28,9 @@ quick_error! {
             cause(e)
             from()
         }
+        ZeroIterations {
+            description("Iterations' value should not be zero")
+        }
     }
 }
 

@@ -192,6 +192,9 @@ pub trait Shard {
 
     fn shard_id_by_hash(&self, create_shard_tx_hash: &H256, state: StateOrBlock) -> Option<ShardId>;
     fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256>;
+
+    fn shard_owners(&self, shard_id: ShardId, state: StateOrBlock) -> Option<Vec<Address>>;
+    fn shard_users(&self, shard_id: ShardId, state: StateOrBlock) -> Option<Vec<Address>>;
 }
 
 /// Provides a timer API for reseal_min_period/reseal_max_period on miner client
@@ -300,13 +303,7 @@ pub trait DatabaseClient {
 pub trait AssetClient {
     fn get_asset_scheme(&self, asset_type: H160, shard_id: ShardId, id: BlockId) -> TrieResult<Option<AssetScheme>>;
 
-    fn get_asset(
-        &self,
-        transaction_hash: H256,
-        index: usize,
-        shard_id: ShardId,
-        id: BlockId,
-    ) -> TrieResult<Option<OwnedAsset>>;
+    fn get_asset(&self, tracker: H256, index: usize, shard_id: ShardId, id: BlockId) -> TrieResult<Option<OwnedAsset>>;
 
     fn is_asset_spent(
         &self,

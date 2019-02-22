@@ -21,11 +21,11 @@ use std::sync::{Arc, Weak};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccore::{
-    AccountProvider, AccountProviderError, ChainNotify, Client, ClientConfig, ClientService, EngineType, Miner,
-    MinerService, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
+    AccountProvider, AccountProviderError, ChainNotify, Client, ClientConfig, ClientService, EngineInfo, EngineType,
+    Miner, MinerService, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
 };
 use cdiscovery::{Config, Discovery};
-use ckey::Address;
+use ckey::{Address, NetworkId};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -48,13 +48,15 @@ use crate::json::PasswordFile;
 use crate::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
 use crate::rpc_apis::ApiDependencies;
 
-fn network_start(timer_loop: TimerLoop, cfg: &NetworkConfig) -> Result<Arc<NetworkService>, String> {
-    cinfo!(NETWORK, "Handshake Listening on {}:{}", cfg.address, cfg.port);
-
+fn network_start(
+    network_id: NetworkId,
+    timer_loop: TimerLoop,
+    cfg: &NetworkConfig,
+) -> Result<Arc<NetworkService>, String> {
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
     let filters = Filters::new(cfg.whitelist.clone(), cfg.blacklist.clone());
-    let service = NetworkService::start(timer_loop, sockaddress, cfg.min_peers, cfg.max_peers, filters)
+    let service = NetworkService::start(network_id, timer_loop, sockaddress, cfg.min_peers, cfg.max_peers, filters)
         .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
@@ -264,7 +266,8 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     let network_service: Arc<NetworkControl> = {
         if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
-            let service = network_start(timer_loop, &network_config)?;
+            let network_id = client.client().common_params().network_id;
+            let service = network_start(network_id, timer_loop, &network_config)?;
 
             if config.network.discovery.unwrap() {
                 discovery_start(&service, &config.network)?;

@@ -17,16 +17,13 @@
 import "mocha";
 import CodeChain from "../helper/spawn";
 
-const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
-
-describeSkippedInTravis("discovery2 nodes", function() {
-    const BASE = 150;
+describe("discovery2 nodes", function() {
     let nodeA: CodeChain;
     let nodeB: CodeChain;
 
     beforeEach(async function() {
-        nodeA = new CodeChain({ base: BASE });
-        nodeB = new CodeChain({ base: BASE });
+        nodeA = new CodeChain();
+        nodeB = new CodeChain();
         await Promise.all([nodeA.start(), nodeB.start()]);
     });
 
