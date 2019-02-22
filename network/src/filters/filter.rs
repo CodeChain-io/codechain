@@ -103,14 +103,18 @@ mod tests_is_filtered {
     use super::*;
 
     #[test]
-    fn same_ip_is_filtered() {
-        let ip = IpAddr::from_str("1.2.3.4").unwrap();
+    fn cidr_without_prefix_filter_single_address() {
+        let ip0 = IpAddr::from_str("1.2.3.4").unwrap();
+        let ip1 = IpAddr::from_str("1.2.3.3").unwrap();
+        let ip2 = IpAddr::from_str("1.2.3.5").unwrap();
         let filter = IpCidr::from_str("1.2.3.4").unwrap();
-        assert!(is_filtered(&ip, &filter));
+        assert!(is_filtered(&ip0, &filter));
+        assert!(!is_filtered(&ip1, &filter));
+        assert!(!is_filtered(&ip2, &filter));
     }
 
     #[test]
-    fn broadcast_filters_the_same_prefix() {
+    fn cidr_with_suffix_filters_the_same_prefix() {
         let ip0 = IpAddr::from_str("1.2.3.4").unwrap();
         let ip1 = IpAddr::from_str("1.2.4.4").unwrap();
         let ip2 = IpAddr::from_str("1.2.3.4").unwrap();
@@ -125,13 +129,28 @@ mod tests_is_filtered {
     }
 
     #[test]
-    fn broadcast_does_not_filter_the_different_prefix() {
+    fn cidr_with_suffix_partial_cover() {
+        let ip0 = IpAddr::from_str("1.2.3.3").unwrap();
+        let ip1 = IpAddr::from_str("1.2.3.255").unwrap();
+        let ip2 = IpAddr::from_str("1.2.4.7").unwrap();
+        let ip3 = IpAddr::from_str("1.2.7.4").unwrap();
+        let ip4 = IpAddr::from_str("1.2.8.9").unwrap();
+        let filter = IpCidr::from_str("1.2.0.0/22").unwrap();
+        assert!(is_filtered(&ip0, &filter));
+        assert!(is_filtered(&ip1, &filter));
+        assert!(!is_filtered(&ip2, &filter));
+        assert!(!is_filtered(&ip3, &filter));
+        assert!(!is_filtered(&ip4, &filter));
+    }
+
+    #[test]
+    fn cidr_with_suffix_does_not_filter_the_different_prefix() {
         let ip0 = IpAddr::from_str("4.2.3.4").unwrap();
         let ip1 = IpAddr::from_str("1.6.4.4").unwrap();
         let ip2 = IpAddr::from_str("7.8.3.4").unwrap();
         let ip3 = IpAddr::from_str("100.2.7.4").unwrap();
         let ip4 = IpAddr::from_str("1.21.8.9").unwrap();
-        let filter = IpCidr::from_str("1.2.0.0/16").unwrap().into();
+        let filter = IpCidr::from_str("1.2.0.0/16").unwrap();
         assert!(!is_filtered(&ip0, &filter));
         assert!(!is_filtered(&ip1, &filter));
         assert!(!is_filtered(&ip2, &filter));
