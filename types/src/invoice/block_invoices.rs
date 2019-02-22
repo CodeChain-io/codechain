@@ -18,7 +18,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::invoice::Invoice;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct BlockInvoices {
     pub invoices: Vec<Invoice>,
 }

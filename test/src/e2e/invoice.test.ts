@@ -59,6 +59,16 @@ describe("invoice", function() {
         ))!;
         expect(mintInvoice).not.to.be.null;
         expect(mintInvoice).to.be.true;
+
+        expect(
+            (await node.sdk.rpc.chain.getTransaction(signedMint.hash()))!
+                .invoice
+        ).to.be.true;
+
+        const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        const bestBlock = (await node.sdk.rpc.chain.getBlock(bestBlockNumber))!;
+        expect(bestBlock).not.to.be.null;
+        expect(bestBlock.transactions[0].invoice).to.be.true;
     });
 
     it("Invoice of Transfer Asset", async function() {
@@ -132,18 +142,49 @@ describe("invoice", function() {
         ))!;
         expect(transfer1Invoice).not.to.be.null;
         expect(transfer1Invoice).to.be.false;
+        expect(
+            (await node.sdk.rpc.chain.getTransaction(signedTransfer1.hash()))!
+                .invoice
+        ).to.be.false;
 
         const mintInvoice = (await node.sdk.rpc.chain.getInvoice(
             signedMint.hash()
         ))!;
         expect(mintInvoice).not.to.be.null;
         expect(mintInvoice).to.be.true;
+        expect(
+            (await node.sdk.rpc.chain.getTransaction(signedMint.hash()))!
+                .invoice
+        ).to.be.true;
 
         const transfer2Invoice = (await node.sdk.rpc.chain.getInvoice(
             signedTransfer2.hash()
         ))!;
         expect(transfer2Invoice).not.to.be.null;
         expect(transfer2Invoice).to.be.true;
+        expect(
+            (await node.sdk.rpc.chain.getTransaction(signedTransfer2.hash()))!
+                .invoice
+        ).to.be.true;
+
+        const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        const transferBlock1 = (await node.sdk.rpc.chain.getBlock(
+            bestBlockNumber - 2
+        ))!;
+        expect(transferBlock1).not.to.be.null;
+        expect(transferBlock1.transactions[0].invoice).to.be.false;
+
+        const mintBlock = (await node.sdk.rpc.chain.getBlock(
+            bestBlockNumber - 1
+        ))!;
+        expect(mintBlock).not.to.be.null;
+        expect(mintBlock.transactions[0].invoice).to.be.true;
+
+        const transferBlock2 = (await node.sdk.rpc.chain.getBlock(
+            bestBlockNumber
+        ))!;
+        expect(transferBlock2).not.to.be.null;
+        expect(transferBlock2.transactions[0].invoice).to.be.true;
     });
 
     describe("In the same block", async function() {
@@ -223,18 +264,32 @@ describe("invoice", function() {
             ))!;
             expect(transfer1Invoice).not.to.be.null;
             expect(transfer1Invoice).to.be.false;
+            expect(
+                (await node.sdk.rpc.chain.getTransaction(
+                    signedTransfer1.hash()
+                ))!.invoice
+            ).to.be.false;
 
             const mintInvoice = (await node.sdk.rpc.chain.getInvoice(
                 signedMint.hash()
             ))!;
             expect(mintInvoice).not.to.be.null;
             expect(mintInvoice).to.be.true;
+            expect(
+                (await node.sdk.rpc.chain.getTransaction(signedMint.hash()))!
+                    .invoice
+            ).to.be.true;
 
             const transfer2Invoice = (await node.sdk.rpc.chain.getInvoice(
                 signedTransfer2.hash()
             ))!;
             expect(transfer2Invoice).not.to.be.null;
             expect(transfer2Invoice).to.be.true;
+            expect(
+                (await node.sdk.rpc.chain.getTransaction(
+                    signedTransfer2.hash()
+                ))!.invoice
+            ).to.be.true;
 
             const block = (await node.sdk.rpc.chain.getBlock(
                 blockNumberBeforeTx + 1
@@ -250,6 +305,9 @@ describe("invoice", function() {
             expect(block.transactions[2].hash().value).to.equal(
                 signedTransfer2.hash().value
             );
+            expect(block.transactions[0].invoice).to.be.false;
+            expect(block.transactions[1].invoice).to.be.true;
+            expect(block.transactions[2].invoice).to.be.true;
         });
         after(async function() {
             await node.sdk.rpc.devel.startSealing();

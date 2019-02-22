@@ -889,9 +889,9 @@ codechain-primitives@^0.4.6:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#rpc-lib":
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#invoice-lib":
   version "0.5.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#292c2f61da908d60c74d2290ff750e65aa392c1d"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#36bf488a3fff295ff5e9f3eacdc94c6fbbdc46cc"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"
@@ -903,9 +903,9 @@ codechain-primitives@^0.4.6:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#shard-lib":
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#rpc-lib":
   version "0.5.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#9e89f1823bbb08732715cc1ac89e4eae96ac4005"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#292c2f61da908d60c74d2290ff750e65aa392c1d"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"

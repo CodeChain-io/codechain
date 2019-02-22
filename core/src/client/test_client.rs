@@ -40,7 +40,7 @@ use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{FindActionHandler, StateDB};
 use ctimer::{TimeoutHandler, TimerToken};
-use ctypes::invoice::Invoice;
+use ctypes::invoice::{BlockInvoices, Invoice};
 use ctypes::transaction::{Action, Transaction};
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
@@ -399,6 +399,10 @@ impl BlockInfo for TestBlockChainClient {
 
     fn block(&self, id: &BlockId) -> Option<encoded::Block> {
         self.block_hash(id).and_then(|hash| self.blocks.read().get(&hash).cloned()).map(encoded::Block::new)
+    }
+
+    fn block_invoices(&self, _id: &BlockId) -> Option<BlockInvoices> {
+        unimplemented!()
     }
 }
 

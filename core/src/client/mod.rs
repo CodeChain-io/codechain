@@ -35,7 +35,7 @@ use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, Text, TopLevelState, TopStateView};
-use ctypes::invoice::Invoice;
+use ctypes::invoice::{BlockInvoices, Invoice};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::ChainTimeInfo;
@@ -74,6 +74,8 @@ pub trait BlockInfo {
 
     /// Get raw block data by block header hash.
     fn block(&self, id: &BlockId) -> Option<encoded::Block>;
+
+    fn block_invoices(&self, id: &BlockId) -> Option<BlockInvoices>;
 }
 
 /// Provides various information on a transaction by it's ID
