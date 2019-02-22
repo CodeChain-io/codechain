@@ -347,7 +347,7 @@ where
         while !self.client.is_pending_queue_empty() {
             thread::sleep(Duration::from_millis(50));
         }
-        while self.client.parcel_invoice(&last_hash.into()).is_none() {}
+        while self.client.invoice(&last_hash.into()).is_none() {}
 
         let end_time = PreciseTime::now();
         Ok(tps(count, start_time.unwrap(), end_time))

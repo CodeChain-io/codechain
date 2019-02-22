@@ -104,19 +104,19 @@ where
     }
 
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
-        Ok(self.client.parcel(&transaction_hash.into()).map(|tx| tx.into()))
+        Ok(self.client.transaction(&transaction_hash.into()).map(|tx| tx.into()))
     }
 
     fn get_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
-        Ok(self.client.parcel_invoice(&transaction_hash.into()))
+        Ok(self.client.invoice(&transaction_hash.into()))
     }
 
     fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
-        Ok(self.client.transaction(&tracker).map(Into::into))
+        Ok(self.client.transaction_by_tracker(&tracker).map(Into::into))
     }
 
     fn get_invoices_by_tracker(&self, tracker: H256) -> Result<Vec<Invoice>> {
-        Ok(self.client.transaction_invoices(&tracker))
+        Ok(self.client.invoices_by_tracker(&tracker))
     }
 
     fn get_asset_scheme_by_tracker(
@@ -189,7 +189,7 @@ where
     }
 
     fn get_error_hint(&self, transaction_hash: H256) -> Result<Option<String>> {
-        if let Some(Invoice::Failure(error_string)) = self.client.parcel_invoice(&transaction_hash.into()) {
+        if let Some(Invoice::Failure(error_string)) = self.client.invoice(&transaction_hash.into()) {
             Ok(Some(error_string))
         } else {
             Ok(None)

@@ -26,7 +26,7 @@ use rlp::RlpStream;
 use rlp_compress::{blocks_swapper, compress, decompress};
 
 use super::block_info::BestBlockChanged;
-use super::extras::{ParcelAddress, TransactionAddress};
+use super::extras::{TransactionAddress, TransactionAddresses};
 use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 use crate::views::BlockView;
 use crate::{encoded, UnverifiedTransaction};
@@ -34,16 +34,16 @@ use crate::{encoded, UnverifiedTransaction};
 pub struct BodyDB {
     // block cache
     body_cache: RwLock<HashMap<H256, Bytes>>,
-    parcel_address_cache: RwLock<HashMap<H256, ParcelAddress>>,
-    pending_parcel_addresses: RwLock<HashMap<H256, Option<ParcelAddress>>>,
+    parcel_address_cache: RwLock<HashMap<H256, TransactionAddress>>,
+    pending_parcel_addresses: RwLock<HashMap<H256, Option<TransactionAddress>>>,
 
-    transaction_address_cache: RwLock<HashMap<H256, TransactionAddress>>,
-    pending_transaction_addresses: RwLock<HashMap<H256, Option<TransactionAddress>>>,
+    transaction_address_cache: RwLock<HashMap<H256, TransactionAddresses>>,
+    pending_transaction_addresses: RwLock<HashMap<H256, Option<TransactionAddresses>>>,
 
     db: Arc<KeyValueDB>,
 }
 
-type TransactionHashAndAddress = (H256, TransactionAddress);
+type TransactionHashAndAddress = (H256, TransactionAddresses);
 
 impl BodyDB {
     /// Create new instance of blockchain from given Genesis.
@@ -138,7 +138,7 @@ impl BodyDB {
     fn new_parcel_address_entries(
         &self,
         best_block_changed: &BestBlockChanged,
-    ) -> HashMap<H256, Option<ParcelAddress>> {
+    ) -> HashMap<H256, Option<TransactionAddress>> {
         let block_hash = if let Some(best_block_hash) = best_block_changed.new_best_hash() {
             best_block_hash
         } else {
@@ -182,7 +182,7 @@ impl BodyDB {
     fn new_transaction_address_entries(
         &self,
         best_block_changed: &BestBlockChanged,
-    ) -> HashMap<H256, Option<TransactionAddress>> {
+    ) -> HashMap<H256, Option<TransactionAddresses>> {
         let block_hash = if let Some(best_block_hash) = best_block_changed.new_best_hash() {
             best_block_hash
         } else {
@@ -226,8 +226,8 @@ impl BodyDB {
             BestBlockChanged::None => return Default::default(),
         };
 
-        let mut added_addresses: HashMap<H256, TransactionAddress> = Default::default();
-        let mut removed_addresses: HashMap<H256, TransactionAddress> = Default::default();
+        let mut added_addresses: HashMap<H256, TransactionAddresses> = Default::default();
+        let mut removed_addresses: HashMap<H256, TransactionAddresses> = Default::default();
         let mut hashes: HashSet<H256> = Default::default();
         for (hash, address) in added {
             hashes.insert(hash);
@@ -237,9 +237,9 @@ impl BodyDB {
             hashes.insert(hash);
             *removed_addresses.entry(hash).or_insert_with(Default::default) += address;
         }
-        let mut inserted_address: HashMap<H256, TransactionAddress> = Default::default();
+        let mut inserted_address: HashMap<H256, TransactionAddresses> = Default::default();
         for hash in hashes.into_iter() {
-            let address: TransactionAddress = self.db.read(db::COL_EXTRA, &hash).unwrap_or_default();
+            let address: TransactionAddresses = self.db.read(db::COL_EXTRA, &hash).unwrap_or_default();
             inserted_address.insert(hash, address);
         }
 
@@ -281,9 +281,9 @@ pub trait BodyProvider {
     fn is_known_body(&self, hash: &H256) -> bool;
 
     /// Get the address of parcel with given hash.
-    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress>;
+    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress>;
 
-    fn transaction_address(&self, tracker: &H256) -> Option<TransactionAddress>;
+    fn transaction_addresses_by_tracker(&self, tracker: &H256) -> Option<TransactionAddresses>;
 
     /// Get the block body (uncles and parcels).
     fn block_body(&self, hash: &H256) -> Option<encoded::Body>;
@@ -295,12 +295,12 @@ impl BodyProvider for BodyDB {
     }
 
     /// Get the address of parcel with given hash.
-    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
+    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
         let result = self.db.read_with_cache(db::COL_EXTRA, &self.parcel_address_cache, hash)?;
         Some(result)
     }
 
-    fn transaction_address(&self, tracker: &H256) -> Option<TransactionAddress> {
+    fn transaction_addresses_by_tracker(&self, tracker: &H256) -> Option<TransactionAddresses> {
         Some(self.db.read_with_cache(db::COL_EXTRA, &self.transaction_address_cache, tracker)?)
     }
 
@@ -329,11 +329,11 @@ impl BodyProvider for BodyDB {
 fn parcel_address_entries(
     block_hash: H256,
     parcel_hashes: impl IntoIterator<Item = H256>,
-) -> impl Iterator<Item = (H256, Option<ParcelAddress>)> {
+) -> impl Iterator<Item = (H256, Option<TransactionAddress>)> {
     parcel_hashes.into_iter().enumerate().map(move |(index, parcel_hash)| {
         (
             parcel_hash,
-            Some(ParcelAddress {
+            Some(TransactionAddress {
                 block_hash,
                 index,
             }),
@@ -349,7 +349,7 @@ fn transaction_address_entries(
         Option::<ShardTransaction>::from(parcel.action.clone()).map(|tx| {
             (
                 tx.tracker(),
-                TransactionAddress::new(ParcelAddress {
+                TransactionAddresses::new(TransactionAddress {
                     block_hash,
                     index: parcel_index,
                 }),
