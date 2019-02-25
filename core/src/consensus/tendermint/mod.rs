@@ -1688,10 +1688,11 @@ impl TendermintExtension {
     ) {
         ctrace!(
             ENGINE,
-            "Peer state update step: {:?} proposal {:?} known_votes {:?}",
+            "Peer state update step: {:?} proposal {:?} peer_lock_view {:?} known_votes {:?}",
             peer_vote_step,
             peer_proposal,
-            peer_known_votes
+            peer_lock_view,
+            peer_known_votes,
         );
         self.update_peer_state(token, peer_vote_step, peer_proposal, peer_known_votes);
 
