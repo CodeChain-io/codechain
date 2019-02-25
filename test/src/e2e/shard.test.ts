@@ -35,9 +35,16 @@ describe("CreateShard", function() {
 
     it("Create 1 shard", async function() {
         const seq: number = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
+
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: aliceAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq, fee: 10 })
+        );
+
         const tx = node.sdk.core
             .createCreateShardTransaction({ users: [aliceAddress] })
-            .sign({ secret: faucetSecret, seq, fee: 10 });
+            .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 });
         const beforeShardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
             [tx.hash(), null]
@@ -83,9 +90,20 @@ describe("CreateShard", function() {
 
     it("setShardUsers", async function() {
         const seq: number = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: aliceAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq, fee: 10 })
+        );
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: bobAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 })
+        );
+
         const tx = node.sdk.core
             .createCreateShardTransaction({ users: [aliceAddress] })
-            .sign({ secret: faucetSecret, seq, fee: 10 });
+            .sign({ secret: faucetSecret, seq: seq + 2, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(tx);
         const shardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
@@ -95,7 +113,7 @@ describe("CreateShard", function() {
         const users = [aliceAddress, bobAddress];
         const setShardUsers = node.sdk.core
             .createSetShardUsersTransaction({ shardId, users })
-            .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 });
+            .sign({ secret: faucetSecret, seq: seq + 3, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(setShardUsers);
         const shardUsers = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardUsers",
@@ -106,9 +124,19 @@ describe("CreateShard", function() {
 
     it("setShardOwners", async function() {
         const seq: number = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: aliceAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq, fee: 10 })
+        );
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: bobAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 })
+        );
         const tx = node.sdk.core
             .createCreateShardTransaction({ users: [aliceAddress, bobAddress] })
-            .sign({ secret: faucetSecret, seq, fee: 10 });
+            .sign({ secret: faucetSecret, seq: seq + 2, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(tx);
         const shardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
@@ -118,7 +146,7 @@ describe("CreateShard", function() {
         const owners = [aliceAddress, faucetAddress, bobAddress];
         const setShardOwners = node.sdk.core
             .createSetShardOwnersTransaction({ shardId, owners })
-            .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 });
+            .sign({ secret: faucetSecret, seq: seq + 3, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(setShardOwners);
         const shardOwners = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardOwners",
@@ -129,9 +157,19 @@ describe("CreateShard", function() {
 
     it("Create 2 shards", async function() {
         const seq: number = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: aliceAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq, fee: 10 })
+        );
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: bobAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 })
+        );
         const tx1 = node.sdk.core
             .createCreateShardTransaction({ users: [aliceAddress, bobAddress] })
-            .sign({ secret: faucetSecret, seq, fee: 10 });
+            .sign({ secret: faucetSecret, seq: seq + 2, fee: 10 });
         const beforeShardId1 = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
             [tx1.hash(), null]
@@ -151,7 +189,7 @@ describe("CreateShard", function() {
 
         const tx2 = node.sdk.core
             .createCreateShardTransaction({ users: [aliceAddress, bobAddress] })
-            .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 });
+            .sign({ secret: faucetSecret, seq: seq + 3, fee: 10 });
         const beforeShardId2 = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
             [tx2.hash(), null]
@@ -174,9 +212,19 @@ describe("CreateShard", function() {
         const faucetSeq: number = (await node.sdk.rpc.chain.getSeq(
             faucetAddress
         ))!;
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: aliceAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq: faucetSeq, fee: 10 })
+        );
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: bobAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq: faucetSeq + 1, fee: 10 })
+        );
         const createShard = node.sdk.core
             .createCreateShardTransaction({ users: [aliceAddress] })
-            .sign({ secret: faucetSecret, seq: faucetSeq, fee: 10 });
+            .sign({ secret: faucetSecret, seq: faucetSeq + 2, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(createShard);
         const shardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
@@ -188,7 +236,7 @@ describe("CreateShard", function() {
                     recipient: bobAddress,
                     quantity: 100
                 })
-                .sign({ secret: faucetSecret, seq: faucetSeq + 1, fee: 10 })
+                .sign({ secret: faucetSecret, seq: faucetSeq + 3, fee: 10 })
         );
 
         const bobSeq: number = (await node.sdk.rpc.chain.getSeq(bobAddress))!;

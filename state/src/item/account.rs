@@ -52,6 +52,10 @@ impl Account {
         }
     }
 
+    pub fn is_active(&self) -> bool {
+        !self.is_null()
+    }
+
     /// return the balance associated with this account.
     pub fn balance(&self) -> u64 {
         self.balance
@@ -87,6 +91,11 @@ impl Account {
     #[cfg(test)]
     pub fn set_balance(&mut self, x: u64) {
         self.balance = x;
+    }
+
+    #[cfg(test)]
+    pub fn set_seq(&mut self, x: u64) {
+        self.seq = x;
     }
 
     /// Set the regular key of the account.

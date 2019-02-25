@@ -481,6 +481,11 @@ macro_rules! set_top_level_state {
 
         set_top_level_state!($state, [$($x),*]);
     };
+    ($state:expr, [(account: $addr:expr => seq: $seq:expr) $(,$x:tt)*]) => {
+        assert_eq!(Ok(()), $state.set_seq(&$addr, $seq));
+
+        set_top_level_state!($state, [$($x),*]);
+    };
     ($state:expr, [(shard: $shard_id:expr => owners: [$($owner:expr),*]) $(,$x:tt)*]) => {
         set_top_level_state!($state, [(shard: $shard_id => owners: [$($owner),*], users: Vec::new()) $(,$x)*]);
     };

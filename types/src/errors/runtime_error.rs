@@ -101,6 +101,10 @@ pub enum Error {
     TextVerificationFail(String),
     /// Tried to use master key even register key is registered
     CannotUseMasterKey,
+    NonActiveAccount {
+        address: Address,
+        name: String,
+    },
 }
 
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 1;
@@ -130,6 +134,7 @@ const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 26;
 const ERROR_ID_INVALID_SCRIPT: u8 = 27;
 const ERROR_ID_INVALID_SEQ: u8 = 28;
 const ERROR_ID_ASSET_SUPPLY_OVERFLOW: u8 = 29;
+const ERROR_ID_NON_ACTIVE_ACCOUNT: u8 = 30;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -164,6 +169,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_TEXT_NOT_EXIST => 1,
             ERROR_ID_TEXT_VERIFICATION_FAIL => 2,
             ERROR_ID_CANNOT_USE_MASTER_KEY => 1,
+            ERROR_ID_NON_ACTIVE_ACCOUNT => 3,
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         })
     }
@@ -264,6 +270,10 @@ impl Encodable for Error {
                 RlpHelper::new_tagged_list(s, ERROR_ID_TEXT_VERIFICATION_FAIL).append(err)
             }
             Error::CannotUseMasterKey => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_USE_MASTER_KEY),
+            Error::NonActiveAccount {
+                address,
+                name,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_NON_ACTIVE_ACCOUNT).append(address).append(name),
         };
     }
 }
@@ -333,6 +343,10 @@ impl Decodable for Error {
             ERROR_ID_TEXT_NOT_EXIST => Error::TextNotExist,
             ERROR_ID_TEXT_VERIFICATION_FAIL => Error::TextVerificationFail(rlp.val_at(1)?),
             ERROR_ID_CANNOT_USE_MASTER_KEY => Error::CannotUseMasterKey,
+            ERROR_ID_NON_ACTIVE_ACCOUNT => Error::NonActiveAccount {
+                address: rlp.val_at(1)?,
+                name: rlp.val_at(2)?,
+            },
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -414,6 +428,11 @@ impl Display for Error {
             Error::TextVerificationFail(err) => write!(f, "Text verification has failed: {}", err),
             Error::CannotUseMasterKey => {
                 write!(f, "Cannot use the master key because a regular key is already registered")
+            }
+            Error::NonActiveAccount {
+                name, address,
+            } => {
+                write!(f, "Non active account({}) cannot be {}", address, name)
             }
         }
     }
