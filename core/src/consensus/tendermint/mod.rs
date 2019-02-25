@@ -1753,7 +1753,7 @@ impl TendermintExtension {
 
         if peer_vote_step.height == tendermint.height {
             match (tendermint.last_lock, peer_lock_view) {
-                (None, Some(peer_lock_view)) => {
+                (None, Some(peer_lock_view)) if peer_lock_view < tendermint.view => {
                     ctrace!(
                         ENGINE,
                         "Peer has a lock on {}-{} but I don't have it",
