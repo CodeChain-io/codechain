@@ -19,14 +19,14 @@ import { H256 } from "codechain-primitives/lib";
 import "mocha";
 import { createTestSuite } from "./invalidBlockPropagation.helper";
 
-const INVALID_INVOICEROOT = new H256(
+const INVALID_RESULTS_ROOT = new H256(
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 );
 const params = {
-    tinvoiceRoot: INVALID_INVOICEROOT
+    tResultsRoot: INVALID_RESULTS_ROOT
 };
 createTestSuite(
     7,
-    "OnChain invalid invoiceRoot block propagation test",
+    "OnChain invalid resultsRoot block propagation test",
     params
 );

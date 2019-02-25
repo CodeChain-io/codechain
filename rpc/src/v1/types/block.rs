@@ -33,7 +33,7 @@ pub struct Block {
 
     transactions_root: H256,
     state_root: H256,
-    invoices_root: H256,
+    results_root: H256,
 
     score: U256,
     seal: Vec<Vec<u8>>,
@@ -43,8 +43,8 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn from_core(block: CoreBlock, network_id: NetworkId, invoices: &[bool]) -> Self {
-        assert_eq!(invoices.len(), block.transactions.len());
+    pub fn from_core(block: CoreBlock, network_id: NetworkId, results: &[bool]) -> Self {
+        assert_eq!(results.len(), block.transactions.len());
         let block_number = block.header.number();
         let block_hash = block.header.hash();
         let transactions =
@@ -65,13 +65,13 @@ impl Block {
 
             transactions_root: *block.header.transactions_root(),
             state_root: *block.header.state_root(),
-            invoices_root: *block.header.invoices_root(),
+            results_root: *block.header.results_root(),
 
             score: *block.header.score(),
             seal: block.header.seal().to_vec(),
 
             hash: block.header.hash(),
-            transactions: transactions.enumerate().map(|(index, tx)| Transaction::from(tx, invoices[index])).collect(),
+            transactions: transactions.enumerate().map(|(index, tx)| Transaction::from(tx, results[index])).collect(),
         }
     }
 }

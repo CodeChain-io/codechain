@@ -69,7 +69,7 @@ describe("TransferAsset expiration test", function() {
                 await node.signTransactionInput(tx, 0);
                 await node.sendAssetTransaction(tx, {
                     seq: seq + i,
-                    awaitInvoice: false
+                    awaitResult: false
                 });
 
                 trackers.push(tx.tracker());
@@ -88,15 +88,15 @@ describe("TransferAsset expiration test", function() {
             let bestBlockTimestamp = bestBlock!.timestamp;
 
             for (let i = 0; i < numTx; i++) {
-                let invoices = await node.sdk.rpc.chain.getInvoicesByTracker(
+                const results = await node.sdk.rpc.chain.getTransactionResultsByTracker(
                     trackers[i]
                 );
-                expect(invoices).not.to.be.null;
-                expect(invoices!.length).to.be.below(2);
+                expect(results).not.to.be.null;
+                expect(results!.length).to.be.below(2);
 
-                let IsInvoiceEmpty = invoices!.length === 0;
-                let IsExpired = bestBlockTimestamp > startTime + numTx - i;
-                expect(IsInvoiceEmpty).to.be.equal(IsExpired);
+                const isResultsEmpty = results!.length === 0;
+                const isExpired = bestBlockTimestamp > startTime + numTx - i;
+                expect(isResultsEmpty).to.be.equal(isExpired);
             }
         }).timeout(10_000);
     });

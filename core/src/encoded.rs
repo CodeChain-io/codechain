@@ -97,8 +97,8 @@ impl Header {
     }
 
     /// Returns the invoices trie root
-    pub fn invoices_root(&self) -> H256 {
-        self.view().invoices_root()
+    pub fn results_root(&self) -> H256 {
+        self.view().results_root()
     }
 
     /// Score of this block
@@ -261,8 +261,8 @@ impl Block {
     }
 
     /// Returns the invoices trie root
-    pub fn invoices_root(&self) -> H256 {
-        self.header_view().invoices_root()
+    pub fn results_root(&self) -> H256 {
+        self.header_view().results_root()
     }
 
     /// Score of this block

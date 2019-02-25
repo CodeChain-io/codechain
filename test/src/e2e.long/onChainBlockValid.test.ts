@@ -38,7 +38,7 @@ describe("Test onChain block communication", async function() {
     let VALID_STATEROOT = new H256(
         "2f6b19afc38f6f1464af20dde08d8bebd6a6aec0a95aaf7ef2fb729c3b88dc5b"
     );
-    let VALID_INVOICEROOT = new H256(
+    let VALID_RESULTS_ROOT = new H256(
         "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0"
     );
 
@@ -75,7 +75,7 @@ describe("Test onChain block communication", async function() {
             Buffer.from(genesisBlock.extraData),
             genesisBlock.transactionsRoot,
             genesisBlock.stateRoot,
-            genesisBlock.invoicesRoot,
+            genesisBlock.resultsRoot,
             genesisBlock.score,
             genesisBlock.seal
         );
@@ -87,7 +87,7 @@ describe("Test onChain block communication", async function() {
             Buffer.from(block1.extraData),
             block1.transactionsRoot,
             block1.stateRoot,
-            block1.invoicesRoot,
+            block1.resultsRoot,
             new U256(2222222222222),
             block1.seal
         );
@@ -99,7 +99,7 @@ describe("Test onChain block communication", async function() {
             Buffer.from(block2.extraData),
             block2.transactionsRoot,
             block2.stateRoot,
-            block2.invoicesRoot,
+            block2.resultsRoot,
             new U256(33333333333333),
             block2.seal
         );
@@ -108,7 +108,7 @@ describe("Test onChain block communication", async function() {
         VALID_AUTHOR = block1.author.accountId;
         VALID_TRANSACTIONS_ROOT = block1.transactionsRoot;
         VALID_STATEROOT = block1.stateRoot;
-        VALID_INVOICEROOT = block1.invoicesRoot;
+        VALID_RESULTS_ROOT = block1.resultsRoot;
 
         nodeA = new CodeChain();
         await nodeA.start();

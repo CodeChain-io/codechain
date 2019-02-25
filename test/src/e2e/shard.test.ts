@@ -45,18 +45,19 @@ describe("CreateShard", function() {
         const tx = node.sdk.core
             .createCreateShardTransaction({ users: [aliceAddress] })
             .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 });
-        const beforeShardId = await node.sdk.rpc.sendRpcRequest(
-            "chain_getShardIdByHash",
-            [tx.hash(), null]
-        );
         const beforeBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
-        expect(beforeShardId).to.be.null;
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
+                tx.hash(),
+                null
+            ])
+        ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx);
-        const invoice = (await node.sdk.rpc.chain.getInvoice(tx.hash(), {
-            timeout: 300 * 1000
-        }))!;
-        expect(invoice).not.to.be.null;
-        expect(invoice).to.be.true;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(tx.hash(), {
+                timeout: 300 * 1000
+            })
+        ).to.be.true;
         const afterShardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
             [tx.hash(), null]
@@ -170,42 +171,46 @@ describe("CreateShard", function() {
         const tx1 = node.sdk.core
             .createCreateShardTransaction({ users: [aliceAddress, bobAddress] })
             .sign({ secret: faucetSecret, seq: seq + 2, fee: 10 });
-        const beforeShardId1 = await node.sdk.rpc.sendRpcRequest(
-            "chain_getShardIdByHash",
-            [tx1.hash(), null]
-        );
-        expect(beforeShardId1).to.be.null;
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
+                tx1.hash(),
+                null
+            ])
+        ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx1);
-        const invoice1 = (await node.sdk.rpc.chain.getInvoice(tx1.hash(), {
-            timeout: 300 * 1000
-        }))!;
-        expect(invoice1).not.to.be.null;
-        expect(invoice1).to.be.true;
-        const shardId1 = await node.sdk.rpc.sendRpcRequest(
-            "chain_getShardIdByHash",
-            [tx1.hash(), null]
-        );
-        expect(shardId1).not.to.be.null;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(tx1.hash(), {
+                timeout: 300 * 1000
+            })
+        ).to.be.true;
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
+                tx1.hash(),
+                null
+            ])
+        ).not.to.be.null;
 
         const tx2 = node.sdk.core
             .createCreateShardTransaction({ users: [aliceAddress, bobAddress] })
             .sign({ secret: faucetSecret, seq: seq + 3, fee: 10 });
-        const beforeShardId2 = await node.sdk.rpc.sendRpcRequest(
-            "chain_getShardIdByHash",
-            [tx2.hash(), null]
-        );
-        expect(beforeShardId2).to.be.null;
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
+                tx2.hash(),
+                null
+            ])
+        ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx2);
-        const invoice2 = (await node.sdk.rpc.chain.getInvoice(tx2.hash(), {
-            timeout: 300 * 1000
-        }))!;
-        expect(invoice2).not.to.be.null;
-        expect(invoice2).to.be.true;
-        const shardId2 = await node.sdk.rpc.sendRpcRequest(
-            "chain_getShardIdByHash",
-            [tx2.hash(), null]
-        );
-        expect(shardId2).not.to.be.null;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(tx2.hash(), {
+                timeout: 300 * 1000
+            })
+        ).to.be.true;
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
+                tx2.hash(),
+                null
+            ])
+        ).not.to.be.null;
     });
 
     it("non-user cannot mint", async function() {
@@ -252,7 +257,8 @@ describe("CreateShard", function() {
             .sign({ secret: bobSecret, seq: bobSeq, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(mint);
 
-        expect(await node.sdk.rpc.chain.getInvoice(mint.hash())).to.be.false;
+        expect(await node.sdk.rpc.chain.getTransactionResult(mint.hash())).to.be
+            .false;
         const hint = await node.sdk.rpc.chain.getErrorHint(mint.hash());
         expect(hint).includes("permission");
     });
@@ -293,7 +299,8 @@ describe("CreateShard", function() {
             .sign({ secret: aliceSecret, seq: aliceSeq, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(mint);
 
-        expect(await node.sdk.rpc.chain.getInvoice(mint.hash())).to.be.true;
+        expect(await node.sdk.rpc.chain.getTransactionResult(mint.hash())).to.be
+            .true;
         const hint = await node.sdk.rpc.chain.getErrorHint(mint.hash());
         expect(hint).to.be.null;
     });
@@ -336,10 +343,13 @@ describe("CreateShard", function() {
         });
         await node.sdk.rpc.chain.sendSignedTransaction(signedMint1);
 
-        expect(await node.sdk.rpc.chain.getInvoice(signedMint1.hash())).to.be
-            .false;
         expect(
-            await node.sdk.rpc.chain.getInvoicesByTracker(mint1.tracker())
+            await node.sdk.rpc.chain.getTransactionResult(signedMint1.hash())
+        ).to.be.false;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResultsByTracker(
+                mint1.tracker()
+            )
         ).deep.equal([false]);
         const hint = await node.sdk.rpc.chain.getErrorHint(signedMint1.hash());
         expect(hint).includes("permission");
@@ -371,10 +381,13 @@ describe("CreateShard", function() {
         });
         await node.sdk.rpc.chain.sendSignedTransaction(signedMint2);
 
-        expect(await node.sdk.rpc.chain.getInvoice(signedMint2.hash())).to.be
-            .true;
         expect(
-            await node.sdk.rpc.chain.getInvoicesByTracker(mint2.tracker())
+            await node.sdk.rpc.chain.getTransactionResult(signedMint2.hash())
+        ).to.be.true;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResultsByTracker(
+                mint2.tracker()
+            )
         ).deep.equal([false, true]);
         expect(await node.sdk.rpc.chain.getErrorHint(signedMint2.hash())).to.be
             .null;

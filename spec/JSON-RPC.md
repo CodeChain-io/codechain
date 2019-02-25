@@ -32,7 +32,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - author: `PlatformAddress`
  - extraData: `any[]`
  - hash: `H256`
- - invoicesRoot: `H256`
+ - resultsRoot: `H256`
  - number: `number`
  - transactions: `Transaction[]`
  - transactionsRoot: `H256`
@@ -287,9 +287,9 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getBlockTransactionCountByHash](#chain_getblocktransactioncountbyhash)
  * [chain_sendSignedTransaction](#chain_sendsignedtransaction)
  * [chain_getTransaction](#chain_gettransaction)
- * [chain_getInvoice](#chain_getinvoice)
+ * [chain_getTransactionResult](#chain_gettransactionresult)
  * [chain_getTransactionByTracker](#chain_gettransactionbytracker)
- * [chain_getInvoicesByTracker](#chain_getinvoicesbytracker)
+ * [chain_getTransactionResultsByTracker](#chain_getTransactionResultsByTracker)
  * [chain_getAssetSchemeByTracker](#chain_getassetschemebytracker)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
@@ -557,7 +557,7 @@ Errors: `Invalid Params`
 
     ],
     "hash":"0x0e9cbbe0ecc774de3b5d05827ffb5c541bc7b7ff63de253d17272cf0fea1b7af",
-    "invoicesRoot":"0x6db236c944eda064237e88be9cddf7766ce877fe0c4414ac5999f4f5429750fd",
+    "resultsRoot":"0x6db236c944eda064237e88be9cddf7766ce877fe0c4414ac5999f4f5429750fd",
     "number":5,
     "transactions":[
       {
@@ -620,7 +620,7 @@ Errors: `Invalid Params`
 
     ],
     "hash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
-    "invoicesRoot":"0x3a14d04383882243a684a6b0e779905f7883b12b5fb3ebf738facfcd2095b77a",
+    "resultsRoot":"0x3a14d04383882243a684a6b0e779905f7883b12b5fb3ebf738facfcd2095b77a",
     "number":5,
     "transactions":[
       {
@@ -754,8 +754,8 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getInvoice
-Gets a transaction invoice with the given hash.
+## chain_getTransactionResult
+Gets a transaction result with the given hash.
 
 ### Params
  1. transaction hash - `H256`
@@ -769,7 +769,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getInvoice", "params": ["0xad708d48755ac36685280a45ec213941e21c41644c781bf2f487fd6c7e4b2ebb"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionResult", "params": ["0xad708d48755ac36685280a45ec213941e21c41644c781bf2f487fd6c7e4b2ebb"], "id": null}' \
     localhost:8080
 ```
 
@@ -861,8 +861,8 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getInvoicesByTracker
-Gets transaction invoices with the given tracker.
+## chain_getTransactionResultsByTracker
+Gets transaction results with the given tracker.
 
 ### Params
  1. tracker - `H256`
@@ -876,7 +876,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getInvoicesByTracker", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionResultsByTracker", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
     localhost:8080
 ```
 

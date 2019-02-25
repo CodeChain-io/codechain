@@ -55,11 +55,11 @@ describe("store & remove", function() {
             });
 
         const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
-        const invoice1 = await node.sdk.rpc.chain.getInvoice(storeHash, {
-            timeout: 300 * 1000
-        });
-        expect(invoice1).not.to.be.null;
-        expect(invoice1).to.be.true;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(storeHash, {
+                timeout: 300 * 1000
+            })
+        ).to.be.true;
 
         const text = await node.sdk.rpc.chain.getText(storeHash);
         expect(text).not.to.be.null;
@@ -80,11 +80,11 @@ describe("store & remove", function() {
         const removeHash = await node.sdk.rpc.chain.sendSignedTransaction(
             remove
         );
-        const invoice2 = await node.sdk.rpc.chain.getInvoice(removeHash, {
-            timeout: 300 * 1000
-        });
-        expect(invoice2).not.to.be.null;
-        expect(invoice2).to.be.true;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(removeHash, {
+                timeout: 300 * 1000
+            })
+        ).to.be.true;
     });
 
     it("storing with wrong certifier fails", async function() {
@@ -106,10 +106,11 @@ describe("store & remove", function() {
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
         const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
-        const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
-            timeout: 1000
-        });
-        expect(invoice).to.be.false;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(storeHash, {
+                timeout: 1000
+            })
+        ).to.be.false;
     });
 
     it("storing with invalid signature fails", async function() {
@@ -126,10 +127,11 @@ describe("store & remove", function() {
             });
 
         const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
-        const invoice = await node.sdk.rpc.chain.getInvoice(storeHash, {
-            timeout: 1000
-        });
-        expect(invoice).to.be.false;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(storeHash, {
+                timeout: 1000
+            })
+        ).to.be.false;
     });
 
     it("removal on nothing fails", async function() {
@@ -147,10 +149,11 @@ describe("store & remove", function() {
         const removeHash = await node.sdk.rpc.chain.sendSignedTransaction(
             remove
         );
-        const invoice = await node.sdk.rpc.chain.getInvoice(removeHash, {
-            timeout: 300 * 1000
-        });
-        expect(invoice).to.be.false;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(removeHash, {
+                timeout: 300 * 1000
+            })
+        ).to.be.false;
     });
 
     afterEach(async function() {
