@@ -91,6 +91,7 @@ impl Extension {
 
     fn send_header_request(&self, id: &NodeId, request: RequestMessage) {
         if let Some(requests) = self.requests.write().get_mut(id) {
+            ctrace!(SYNC, "Send header request to {}", id);
             let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
             requests.push((request_id, request.clone()));
             self.api.send(id, &Message::Request(request_id, request).rlp_bytes());
@@ -99,6 +100,7 @@ impl Extension {
 
     fn send_body_request(&self, id: &NodeId) {
         if let Some(requests) = self.requests.write().get_mut(id) {
+            ctrace!(SYNC, "Send body request to {}", id);
             let have_body_request = {
                 requests.iter().any(|r| match r {
                     (_, RequestMessage::Bodies(..)) => true,
@@ -399,8 +401,14 @@ impl Extension {
             RequestMessage::Headers {
                 start_number,
                 max_count,
-            } => self.create_headers_response(start_number, max_count),
-            RequestMessage::Bodies(hashes) => self.create_bodies_response(hashes),
+            } => {
+                ctrace!(SYNC, "Received header request from {}", from);
+                self.create_headers_response(start_number, max_count)
+            }
+            RequestMessage::Bodies(hashes) => {
+                ctrace!(SYNC, "Received body request from {}", from);
+                self.create_bodies_response(hashes)
+            }
             RequestMessage::StateHead(hash) => self.create_state_head_response(hash),
             RequestMessage::StateChunk {
                 block_hash,
@@ -531,6 +539,8 @@ impl Extension {
                     let parent = &neighbors[0];
                     let child = &neighbors[1];
                     if child.number() != parent.number() + 1 || *child.parent_hash() != parent.hash() {
+                        ctrace!(SYNC, "Received headers are not a chain:\n  parent: (height: {}, hash: {}, parent: {}),\n  child: (height: {}, hash: {}, parent: {})",
+                        parent.number(), parent.hash(), parent.parent_hash(), child.number(), child.hash(), child.parent_hash());
                         return false
                     }
                 }
@@ -539,6 +549,12 @@ impl Extension {
             }
             (RequestMessage::Bodies(hashes), ResponseMessage::Bodies(bodies)) => {
                 if hashes.len() != bodies.len() {
+                    ctrace!(
+                        SYNC,
+                        "Received bodies' length({}) is not same with the requested hashes({})",
+                        bodies.len(),
+                        hashes.len()
+                    );
                     return false
                 }
                 for body in bodies {
@@ -551,6 +567,7 @@ impl Extension {
                             _ => true,
                         };
                         if !is_valid {
+                            ctrace!(SYNC, "Received transaction has some invalid actions");
                             return false
                         }
                     }
@@ -564,11 +581,15 @@ impl Extension {
                 },
                 ResponseMessage::StateChunk(..),
             ) => unimplemented!(),
-            _ => false,
+            _ => {
+                ctrace!(SYNC, "Invalid response type");
+                false
+            }
         }
     }
 
     fn on_header_response(&self, from: &NodeId, headers: &[Header]) {
+        ctrace!(SYNC, "Received header response from({}) with length({})", from, headers.len());
         let mut completed = if let Some(peer) = self.header_downloaders.write().get_mut(from) {
             let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
             peer.import_headers(&encoded);
@@ -600,6 +621,7 @@ impl Extension {
     }
 
     fn on_body_response(&self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedTransaction>>) {
+        ctrace!(SYNC, "Received body response with lenth({})", hashes.len());
         {
             let mut body_downloader = self.body_downloader.lock();
             body_downloader.import_bodies(hashes, bodies);
