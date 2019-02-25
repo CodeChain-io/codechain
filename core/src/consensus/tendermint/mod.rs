@@ -1708,7 +1708,7 @@ impl TendermintExtension {
             tendermint.vote_step()
         };
 
-        if current_vote_step > peer_vote_step {
+        if tendermint.height > peer_vote_step.height {
             // no messages to receive
             return
         }
@@ -1733,11 +1733,15 @@ impl TendermintExtension {
         if current_step == Step::Prevote || current_step == Step::Precommit {
             let peer_known_votes = if current_vote_step == peer_vote_step {
                 peer_known_votes
-            } else {
+            } else if current_vote_step < peer_vote_step {
                 // We don't know which votes peer has.
                 // However the peer knows more than 2/3 of votes.
                 // So request all votes.
                 BitSet::all_set()
+            } else {
+                // If peer's state is less than my state,
+                // the peer does not know any useful votes.
+                BitSet::new()
             };
 
             let current_votes = tendermint.votes_received;
@@ -1750,6 +1754,12 @@ impl TendermintExtension {
         if peer_vote_step.height == tendermint.height {
             match (tendermint.last_lock, peer_lock_view) {
                 (None, Some(peer_lock_view)) => {
+                    ctrace!(
+                        ENGINE,
+                        "Peer has a lock on {}-{} but I don't have it",
+                        peer_vote_step.height,
+                        peer_lock_view
+                    );
                     self.request_messages(
                         token,
                         VoteStep {
@@ -1763,6 +1773,13 @@ impl TendermintExtension {
                 (Some(my_lock_view), Some(peer_lock_view))
                     if my_lock_view < peer_lock_view && peer_lock_view < tendermint.view =>
                 {
+                    ctrace!(
+                        ENGINE,
+                        "Peer has a lock on {}-{} which is newer than mine {}",
+                        peer_vote_step.height,
+                        peer_lock_view,
+                        my_lock_view
+                    );
                     self.request_messages(
                         token,
                         VoteStep {
