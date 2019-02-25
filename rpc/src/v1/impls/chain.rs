@@ -106,25 +106,25 @@ where
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
         let id = transaction_hash.into();
         Ok(self.client.transaction(&id).map(|tx| {
-            let invoice = self.client.invoice(&id).expect("Invoice most exist when transaction exists");
+            let invoice = self.client.invoice(&id).expect("Invoice must exist when transaction exists");
             Transaction::from(tx, invoice.to_bool())
         }))
     }
 
-    fn get_invoice(&self, transaction_hash: H256) -> Result<Option<Invoice>> {
-        Ok(self.client.invoice(&transaction_hash.into()))
+    fn get_transaction_result(&self, transaction_hash: H256) -> Result<Option<bool>> {
+        Ok(self.client.invoice(&transaction_hash.into()).map(|invoice| invoice.to_bool()))
     }
 
     fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
         Ok(self.client.transaction_by_tracker(&tracker).map(|tx| {
             let transaction_id = tx.hash().into();
-            let invoice = self.client.invoice(&transaction_id).expect("Invoice most exist when transaction exists");
+            let invoice = self.client.invoice(&transaction_id).expect("Invoice must exist when transaction exists");
             Transaction::from(tx, invoice.to_bool())
         }))
     }
 
-    fn get_invoices_by_tracker(&self, tracker: H256) -> Result<Vec<Invoice>> {
-        Ok(self.client.invoices_by_tracker(&tracker))
+    fn get_transaction_results_by_tracker(&self, tracker: H256) -> Result<Vec<bool>> {
+        Ok(self.client.invoices_by_tracker(&tracker).into_iter().map(|invoice| invoice.to_bool()).collect())
     }
 
     fn get_asset_scheme_by_tracker(

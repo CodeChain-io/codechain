@@ -204,7 +204,7 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Turn this into a `ClosedBlock`.
-    pub fn close(mut self, parent_transactions_root: H256, parent_invoices_root: H256) -> Result<ClosedBlock, Error> {
+    pub fn close(mut self, parent_transactions_root: H256, parent_results_root: H256) -> Result<ClosedBlock, Error> {
         let unclosed_state = self.block.state.clone();
 
         if let Err(e) = self.engine.on_close_block(&mut self.block) {
@@ -220,8 +220,8 @@ impl<'x> OpenBlock<'x> {
             self.block.transactions.iter().map(|e| e.rlp_bytes()),
         ));
         self.block.header.set_state_root(state_root);
-        self.block.header.set_invoices_root(skewed_merkle_root(
-            parent_invoices_root,
+        self.block.header.set_results_root(skewed_merkle_root(
+            parent_results_root,
             self.block.invoices.iter().map(|invoice| invoice.to_bool().rlp_bytes()),
         ));
 
@@ -235,7 +235,7 @@ impl<'x> OpenBlock<'x> {
     pub fn close_and_lock(
         mut self,
         parent_transactions_root: H256,
-        parent_invoices_root: H256,
+        parent_results_root: H256,
     ) -> Result<LockedBlock, Error> {
         if let Err(e) = self.engine.on_close_block(&mut self.block) {
             warn!("Encountered error on closing the block: {}", e);
@@ -256,15 +256,15 @@ impl<'x> OpenBlock<'x> {
             self.block.header.transactions_root(),
             &skewed_merkle_root(parent_transactions_root, self.block.transactions.iter().map(Encodable::rlp_bytes),)
         );
-        if self.block.header.invoices_root().is_zero() || self.block.header.invoices_root() == &BLAKE_NULL_RLP {
-            self.block.header.set_invoices_root(skewed_merkle_root(
-                parent_invoices_root,
+        if self.block.header.results_root().is_zero() || self.block.header.results_root() == &BLAKE_NULL_RLP {
+            self.block.header.set_results_root(skewed_merkle_root(
+                parent_results_root,
                 self.block.invoices.iter().map(|i| i.to_bool().rlp_bytes()),
             ));
         }
         debug_assert_eq!(
-            self.block.header.invoices_root(),
-            &skewed_merkle_root(parent_invoices_root, self.block.invoices.iter().map(|i| i.to_bool().rlp_bytes()),)
+            self.block.header.results_root(),
+            &skewed_merkle_root(parent_results_root, self.block.invoices.iter().map(|i| i.to_bool().rlp_bytes()),)
         );
         self.block.header.set_state_root(state_root);
 
@@ -449,7 +449,7 @@ pub fn enact<C: ChainTimeInfo + FindActionHandler>(
     b.populate_from(header);
     b.push_transactions(transactions, client)?;
 
-    b.close_and_lock(*parent.transactions_root(), *parent.invoices_root())
+    b.close_and_lock(*parent.transactions_root(), *parent.results_root())
 }
 
 #[cfg(test)]
@@ -466,8 +466,8 @@ mod tests {
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, Address::default(), vec![], false).unwrap();
         let parent_transactions_root = *genesis_header.transactions_root();
-        let parent_invoices_root = *genesis_header.invoices_root();
-        let b = b.close_and_lock(parent_transactions_root, parent_invoices_root).unwrap();
+        let parent_results_root = *genesis_header.results_root();
+        let b = b.close_and_lock(parent_transactions_root, parent_results_root).unwrap();
         let _ = b.seal(&*scheme.engine, vec![]);
     }
 }

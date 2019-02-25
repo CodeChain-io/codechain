@@ -73,19 +73,19 @@ describe("reward1", function() {
             quantity: 10,
             fee: 123,
             seq,
-            awaitInvoice: false
+            awaitResult: false
         });
         await node.sendPayTx({
             quantity: 10,
             fee: 456,
             seq: seq + 1,
-            awaitInvoice: false
+            awaitResult: false
         });
         await node.sendPayTx({
             quantity: 10,
             fee: 321,
             seq: seq + 2,
-            awaitInvoice: false
+            awaitResult: false
         });
         await node.sdk.rpc.devel.startSealing();
         const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();

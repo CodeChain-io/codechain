@@ -87,11 +87,12 @@ describe("solo - 1 node", function() {
         }
 
         await node.setRegularKey(pubKey);
-        const tx = await node.sendPayTx({ awaitInvoice: false });
-        const invoice = (await node.sdk.rpc.chain.getInvoice(tx.hash(), {
-            timeout: 300 * 1000
-        }))!;
-        expect(invoice).to.be.false;
+        const tx = await node.sendPayTx({ awaitResult: false });
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(tx.hash(), {
+                timeout: 300 * 1000
+            })
+        ).to.be.false;
     });
 
     it("Try to use the key of another account as its regular key", async function() {
@@ -102,8 +103,7 @@ describe("solo - 1 node", function() {
         ).toString();
 
         await node.sendPayTx({ quantity: 5, recipient: address });
-        const invoice = (await node.setRegularKey(pubKey))!;
-        expect(invoice).to.be.false;
+        expect(await node.setRegularKey(pubKey)).to.be.false;
     }).timeout(10_000);
 
     it("Try to use the regulary key already used in another account", async function() {
@@ -116,13 +116,13 @@ describe("solo - 1 node", function() {
 
         await node.sendPayTx({ quantity: 100, recipient: address });
         const seq = await node.sdk.rpc.chain.getSeq(address);
-        let invoice = (await node.setRegularKey(pubKey, {
-            seq,
-            secret: newPrivKey
-        }))!;
-        expect(invoice).to.be.true;
-        invoice = (await node.setRegularKey(pubKey))!;
-        expect(invoice).to.be.false;
+        expect(
+            await node.setRegularKey(pubKey, {
+                seq,
+                secret: newPrivKey
+            })
+        ).to.be.true;
+        expect(await node.setRegularKey(pubKey)).to.be.false;
     });
 
     afterEach(async function() {

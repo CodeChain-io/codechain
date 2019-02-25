@@ -131,7 +131,7 @@ pub struct Scheme {
     /// Transactions root of the genesis block. Should be BLAKE_NULL_RLP.
     pub transactions_root: H256,
     /// Invoices root of the genesis block. Should be BLAKE_NULL_RLP.
-    pub invoices_root: H256,
+    pub results_root: H256,
     /// The genesis block's extra data field.
     pub extra_data: Bytes,
     /// Each seal field, expressed as RLP, concatenated.
@@ -363,7 +363,7 @@ impl Scheme {
         header.set_transactions_root(self.transactions_root);
         header.set_extra_data(blake256(&self.params().rlp_bytes()).to_vec());
         header.set_state_root(self.state_root());
-        header.set_invoices_root(self.invoices_root);
+        header.set_results_root(self.results_root);
         header.set_score(self.score);
         header.set_seal({
             let r = Rlp::new(&self.seal_rlp);
@@ -403,7 +403,7 @@ fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
         nodes: s.nodes.unwrap_or_else(Vec::new),
         parent_hash: g.parent_hash,
         transactions_root: g.transactions_root,
-        invoices_root: g.invoices_root,
+        results_root: g.results_root,
         author: g.author,
         score: g.score,
         timestamp: g.timestamp,

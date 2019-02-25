@@ -35,17 +35,17 @@ build_rpc_trait! {
         # [rpc(name = "chain_getTransaction")]
         fn get_transaction(&self, H256) -> Result<Option<Transaction>>;
 
-        /// Gets transaction invoice with given transaction hash.
-        # [rpc(name = "chain_getInvoice")]
-        fn get_invoice(&self, H256) -> Result<Option<Invoice>>;
+        /// Gets transaction result with given transaction hash.
+        # [rpc(name = "chain_getTransactionResult")]
+        fn get_transaction_result(&self, H256) -> Result<Option<bool>>;
 
         /// Gets transaction with given transaction tracker.
         # [rpc(name = "chain_getTransactionByTracker")]
         fn get_transaction_by_tracker(&self, H256) -> Result<Option<Transaction>>;
 
-        /// Gets transaction invoices with given transaction tracker.
-        # [rpc(name = "chain_getInvoicesByTracker")]
-        fn get_invoices_by_tracker(&self, H256) -> Result<Vec<Invoice>>;
+        /// Gets transaction results with given transaction tracker.
+        # [rpc(name = "chain_getTransactionResultsByTracker")]
+        fn get_transaction_results_by_tracker(&self, H256) -> Result<Vec<bool>>;
 
         /// Gets asset scheme with given transaction tracker.
         # [rpc(name = "chain_getAssetSchemeByTracker")]

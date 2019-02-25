@@ -56,7 +56,7 @@ async function setup(): Promise<[Header, Block, Header]> {
         Buffer.from(block0.extraData),
         block0.transactionsRoot,
         block0.stateRoot,
-        block0.invoicesRoot,
+        block0.resultsRoot,
         block0.score,
         block0.seal
     );
@@ -68,7 +68,7 @@ async function setup(): Promise<[Header, Block, Header]> {
         Buffer.from(block1.extraData),
         block1.transactionsRoot,
         block1.stateRoot,
-        block1.invoicesRoot,
+        block1.resultsRoot,
         new U256(2222222222222),
         block1.seal
     );
@@ -80,7 +80,7 @@ async function setup(): Promise<[Header, Block, Header]> {
         Buffer.from(block2.extraData),
         block2.transactionsRoot,
         block2.stateRoot,
-        block2.invoicesRoot,
+        block2.resultsRoot,
         new U256(33333333333333),
         block2.seal
     );
@@ -120,7 +120,7 @@ async function testBody(
         textraData?: Buffer;
         ttransactionRoot?: H256;
         tstateRoot?: H256;
-        tinvoiceRoot?: H256;
+        tResultsRoot?: H256;
         tscore?: U256;
         tseal?: number[][];
     }
@@ -133,7 +133,7 @@ async function testBody(
         tauthor,
         ttransactionRoot,
         tstateRoot,
-        tinvoiceRoot,
+        tResultsRoot,
         tseal
     } = params;
 
@@ -148,7 +148,7 @@ async function testBody(
         Buffer.from(block1.extraData),
         block1.transactionsRoot,
         block1.stateRoot,
-        block1.invoicesRoot,
+        block1.resultsRoot,
         new U256(2222222222222),
         block1.seal
     );
@@ -171,8 +171,8 @@ async function testBody(
     if (tstateRoot != null) {
         header.setStateRoot(tstateRoot);
     }
-    if (tinvoiceRoot != null) {
-        header.setInvoiceRoot(tinvoiceRoot);
+    if (tResultsRoot != null) {
+        header.setResultsRoot(tResultsRoot);
     }
     if (tscore != null) {
         header.setScore(tscore);

@@ -139,7 +139,7 @@ describe("chain", function() {
         expect(pending.length).to.equal(0);
     });
 
-    it("sendPayTx, getInvoice, getTransaction", async function() {
+    it("sendPayTx, getTransactionResult, getTransaction", async function() {
         const tx = node.sdk.core.createPayTransaction({
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             quantity: 0
@@ -152,8 +152,7 @@ describe("chain", function() {
                 seq
             })
         );
-        const invoice = (await node.sdk.rpc.chain.getInvoice(hash))!;
-        expect(invoice).to.be.true;
+        expect(await node.sdk.rpc.chain.getTransactionResult(hash)).to.be.true;
         const signed = await node.sdk.rpc.chain.getTransaction(hash);
         if (signed == null) {
             throw Error("Cannot get the transaction");
@@ -252,12 +251,12 @@ describe("chain", function() {
             ).to.be.null;
         });
 
-        it("getInvoicesByTracker", async function() {
-            const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(
-                tx.tracker()
-            );
-            expect(invoices!.length).to.equal(1);
-            expect(invoices[0]).to.be.true;
+        it("getTransactionResultsByTracker", async function() {
+            expect(
+                await node.sdk.rpc.chain.getTransactionResultsByTracker(
+                    tx.tracker()
+                )
+            ).deep.equal([true]);
         });
 
         it("getAsset", async function() {
@@ -384,9 +383,7 @@ describe("chain", function() {
             quantity: "0xa"
         });
         await node.signTransactionInput(tx, 0);
-        const invoices = await node.sendAssetTransaction(tx);
-        expect(invoices!.length).to.equal(1);
-        expect(invoices![0]).to.be.true;
+        expect(await node.sendAssetTransaction(tx)).deep.equal([true]);
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.tracker,

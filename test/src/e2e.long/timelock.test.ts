@@ -50,17 +50,19 @@ describe("Timelock", function() {
             recipient: await node.createP2PKHAddress()
         });
         await node.signTransactionInput(tx, 0);
-        await node.sendAssetTransaction(tx, { awaitInvoice: false });
+        await node.sendAssetTransaction(tx, { awaitResult: false });
         return tx.tracker();
     }
 
     async function checkTx(tracker: H256, shouldBeConfirmed: boolean) {
-        const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(tracker);
+        const results = await node.sdk.rpc.chain.getTransactionResultsByTracker(
+            tracker
+        );
         if (shouldBeConfirmed) {
-            expect(invoices.length).to.equal(1);
-            expect(invoices[0]).to.be.true;
+            expect(results.length).to.equal(1);
+            expect(results[0]).to.be.true;
         } else {
-            expect(invoices.length).to.equal(0);
+            expect(results.length).to.equal(0);
         }
     }
 
@@ -112,9 +114,9 @@ describe("Timelock", function() {
             shardId: asset.shardId,
             recipient: await node.createP2PKHAddress()
         });
-        const invoices1 = await node.sendAssetTransaction(failedTx);
-        expect(invoices1!.length).to.equal(1);
-        expect(invoices1![0]).to.be.false;
+        const results1 = await node.sendAssetTransaction(failedTx);
+        expect(results1!.length).to.equal(1);
+        expect(results1![0]).to.be.false;
 
         const output0 = failedTx.getTransferredAsset(0);
         const tx = node.sdk.core.createTransferAssetTransaction();
@@ -134,7 +136,7 @@ describe("Timelock", function() {
         });
         await node.signTransactionInput(tx, 0);
         try {
-            await node.sendAssetTransaction(tx, { awaitInvoice: false });
+            await node.sendAssetTransaction(tx, { awaitResult: false });
             expect.fail();
         } catch (e) {
             expect(e.data).to.have.string("Timelocked");
@@ -205,7 +207,7 @@ describe("Timelock", function() {
         });
         await node.signTransactionInput(tx, 0);
         const { fee } = options;
-        await node.sendAssetTransaction(tx, { awaitInvoice: false, fee });
+        await node.sendAssetTransaction(tx, { awaitResult: false, fee });
         return tx.tracker();
     }
 
@@ -275,7 +277,7 @@ describe("Timelock", function() {
             tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
-            await node.sendAssetTransaction(tx, { awaitInvoice: false });
+            await node.sendAssetTransaction(tx, { awaitResult: false });
 
             expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.tracker(), false);
@@ -312,7 +314,7 @@ describe("Timelock", function() {
             tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
-            await node.sendAssetTransaction(tx, { awaitInvoice: false });
+            await node.sendAssetTransaction(tx, { awaitResult: false });
 
             expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.tracker(), false);
@@ -349,7 +351,7 @@ describe("Timelock", function() {
             tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
-            await node.sendAssetTransaction(tx, { awaitInvoice: false });
+            await node.sendAssetTransaction(tx, { awaitResult: false });
 
             expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.tracker(), false);
@@ -381,7 +383,7 @@ describe("Timelock", function() {
             tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
-            await node.sendAssetTransaction(tx, { awaitInvoice: false });
+            await node.sendAssetTransaction(tx, { awaitResult: false });
 
             expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.tracker(), false);

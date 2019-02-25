@@ -59,11 +59,11 @@ import CodeChain from "../helper/spawn";
     await node.sdk.rpc.chain.sendSignedTransaction(transactions[0]);
 
     while (true) {
-        const invoice = await node.sdk.rpc.chain.getInvoice(
+        const result = await node.sdk.rpc.chain.getTransactionResult(
             transactions[numTransactions - 1].hash()
         );
-        console.log(`Node invoice: ${invoice}`);
-        if (invoice) {
+        console.log(`Node result: ${result}`);
+        if (result) {
             break;
         }
 
