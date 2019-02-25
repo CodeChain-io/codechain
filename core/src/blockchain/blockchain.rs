@@ -26,7 +26,7 @@ use rlp::RlpStream;
 
 use super::block_info::BestBlockChanged;
 use super::body_db::{BodyDB, BodyProvider};
-use super::extras::{BlockDetails, EpochTransitions, ParcelAddress, TransactionAddress, EPOCH_KEY_PREFIX};
+use super::extras::{BlockDetails, EpochTransitions, TransactionAddress, TransactionAddresses, EPOCH_KEY_PREFIX};
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::{tree_route, ImportRoute};
@@ -504,19 +504,19 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
         Some(encoded_block)
     }
 
-    /// Get parcel with given parcel hash.
-    fn parcel(&self, address: &ParcelAddress) -> Option<LocalizedTransaction> {
+    /// Get transaction with given transaction hash.
+    fn transaction(&self, address: &TransactionAddress) -> Option<LocalizedTransaction> {
         self.block_body(&address.block_hash).and_then(|body| {
             self.block_number(&address.block_hash)
                 .and_then(|n| body.view().localized_transaction_at(&address.block_hash, n, address.index))
         })
     }
 
-    /// Get a list of parcels for a given block.
+    /// Get a list of transactions for a given block.
     /// Returns None if block does not exist.
-    fn parcels(&self, hash: &H256) -> Option<Vec<LocalizedTransaction>> {
-        self.block_body(hash)
-            .and_then(|body| self.block_number(hash).map(|n| body.view().localized_transactions(hash, n)))
+    fn transactions(&self, block_hash: &H256) -> Option<Vec<LocalizedTransaction>> {
+        self.block_body(block_hash)
+            .and_then(|body| self.block_number(block_hash).map(|n| body.view().localized_transactions(block_hash, n)))
     }
 }
 
@@ -548,12 +548,12 @@ impl BodyProvider for BlockChain {
         self.body_db.is_known_body(hash)
     }
 
-    fn parcel_address(&self, hash: &H256) -> Option<ParcelAddress> {
-        self.body_db.parcel_address(hash)
+    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
+        self.body_db.transaction_address(hash)
     }
 
-    fn transaction_address(&self, tracker: &H256) -> Option<TransactionAddress> {
-        self.body_db.transaction_address(tracker)
+    fn transaction_addresses_by_tracker(&self, tracker: &H256) -> Option<TransactionAddresses> {
+        self.body_db.transaction_addresses_by_tracker(tracker)
     }
 
     fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
@@ -572,9 +572,9 @@ impl InvoiceProvider for BlockChain {
         self.invoice_db.block_invoices(hash)
     }
 
-    /// Get parcel invoice.
-    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice> {
-        self.invoice_db.parcel_invoice(address)
+    /// Get transaction invoice.
+    fn invoice(&self, address: &TransactionAddress) -> Option<Invoice> {
+        self.invoice_db.invoice(address)
     }
 }
 

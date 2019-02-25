@@ -40,12 +40,12 @@ use super::{
     AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
     BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
     Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
-    ParcelInfo, PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, ResealTimer, Seq, Shard, StateInfo,
-    StateOrBlock, TextClient, TransactionInfo,
+    PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, ResealTimer, Seq, Shard, StateInfo, StateOrBlock,
+    TextClient, TransactionInfo,
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{
-    BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, ParcelAddress, TransactionAddress,
+    BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress, TransactionAddresses,
 };
 use crate::consensus::CodeChainEngine;
 use crate::encoded;
@@ -73,7 +73,7 @@ pub struct Client {
     /// List of actors to be notified on certain chain events
     notify: RwLock<Vec<Weak<ChainNotify>>>,
 
-    /// Count of pending parcels in the queue
+    /// Count of pending transactions in the queue
     queue_transactions: AtomicUsize,
 
     genesis_accounts: Vec<Address>,
@@ -177,43 +177,45 @@ impl Client {
         }
     }
 
-    fn parcel_address(&self, id: &TransactionId) -> Option<ParcelAddress> {
+    fn transaction_address(&self, id: &TransactionId) -> Option<TransactionAddress> {
         match id {
-            TransactionId::Hash(hash) => self.block_chain().parcel_address(hash),
-            TransactionId::Location(id, index) => Self::block_hash(&self.block_chain(), id).map(|hash| ParcelAddress {
-                block_hash: hash,
-                index: *index,
-            }),
+            TransactionId::Hash(hash) => self.block_chain().transaction_address(hash),
+            TransactionId::Location(id, index) => {
+                Self::block_hash(&self.block_chain(), id).map(|hash| TransactionAddress {
+                    block_hash: hash,
+                    index: *index,
+                })
+            }
         }
     }
 
-    fn transaction_address(&self, tracker: &H256) -> Option<TransactionAddress> {
-        self.block_chain().transaction_address(tracker)
+    fn transaction_addresses(&self, tracker: &H256) -> Option<TransactionAddresses> {
+        self.block_chain().transaction_addresses_by_tracker(tracker)
     }
 
-    fn parcel_address_of_successful_transaction(&self, hash: &H256) -> Option<ParcelAddress> {
-        self.transaction_address(hash).and_then(|transaction_address| {
+    fn transaction_address_of_successful_transaction(&self, hash: &H256) -> Option<TransactionAddress> {
+        self.transaction_addresses(hash).and_then(|transaction_address| {
             transaction_address
                 .into_iter()
-                .filter(|parcel_address| {
-                    self.parcel_invoice(&(*parcel_address).into()).map_or(false, |invoice| invoice == Invoice::Success)
+                .filter(|transaction_address| {
+                    self.invoice(&(*transaction_address).into()).map_or(false, |invoice| invoice == Invoice::Success)
                 })
                 .take(1)
                 .next()
         })
     }
 
-    /// Import parcels from the IO queue
-    pub fn import_queued_parcels(&self, parcels: &[Bytes], peer_id: NodeId) -> usize {
+    /// Import transactions from the IO queue
+    pub fn import_queued_transactions(&self, transactions: &[Bytes], peer_id: NodeId) -> usize {
         ctrace!(EXTERNAL_PARCEL, "Importing queued");
-        self.queue_transactions.fetch_sub(parcels.len(), AtomicOrdering::SeqCst);
-        let parcels: Vec<UnverifiedTransaction> =
-            parcels.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
-        let hashes: Vec<_> = parcels.iter().map(|parcel| parcel.hash()).collect();
+        self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
+        let transactions: Vec<UnverifiedTransaction> =
+            transactions.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
+        let hashes: Vec<_> = transactions.iter().map(|tx| tx.hash()).collect();
         self.notify(|notify| {
             notify.transactions_received(hashes.clone(), peer_id);
         });
-        let results = self.importer.miner.import_external_tranasctions(self, parcels);
+        let results = self.importer.miner.import_external_tranasctions(self, transactions);
         results.len()
     }
 
@@ -366,13 +368,13 @@ impl AssetClient for Client {
     /// It returns None if such an asset never existed in the shard at the given block.
     fn is_asset_spent(
         &self,
-        transaction_hash: H256,
+        tracker: H256,
         index: usize,
         shard_id: ShardId,
         block_id: BlockId,
     ) -> TrieResult<Option<bool>> {
-        let parcel_address = match self.parcel_address_of_successful_transaction(&transaction_hash) {
-            Some(parcel_address) => parcel_address,
+        let tx_address = match self.transaction_address_of_successful_transaction(&tracker) {
+            Some(itx_address) => itx_address,
             None => return Ok(None),
         };
 
@@ -380,17 +382,15 @@ impl AssetClient for Client {
             None => return Ok(None),
             Some(block_number)
                 if block_number
-                    < self
-                        .block_number(&parcel_address.block_hash.into())
-                        .expect("There is a successful transaction") =>
+                    < self.block_number(&tx_address.block_hash.into()).expect("There is a successful transaction") =>
             {
                 return Ok(None)
             }
             Some(_) => {}
         }
 
-        let parcel = self.transaction(&transaction_hash).expect("There is a successful transaction");
-        let transaction = if let Some(tx) = Option::<ShardTransaction>::from(parcel.action.clone()) {
+        let localized = self.transaction_by_tracker(&tracker).expect("There is a successful transaction");
+        let transaction = if let Some(tx) = Option::<ShardTransaction>::from(localized.action.clone()) {
             tx
         } else {
             return Ok(None)
@@ -400,14 +400,14 @@ impl AssetClient for Client {
         }
 
         let state = Client::state_at(&self, block_id).unwrap();
-        Ok(Some(state.asset(shard_id, transaction_hash, index)?.is_none()))
+        Ok(Some(state.asset(shard_id, tracker, index)?.is_none()))
     }
 }
 
 impl TextClient for Client {
-    fn get_text(&self, parcel_hash: H256, id: BlockId) -> TrieResult<Option<Text>> {
+    fn get_text(&self, tx_hash: H256, id: BlockId) -> TrieResult<Option<Text>> {
         if let Some(state) = Client::state_at(&self, id) {
-            Ok(state.text(&parcel_hash)?)
+            Ok(state.text(&tx_hash)?)
         } else {
             Ok(None)
         }
@@ -563,19 +563,17 @@ impl BlockInfo for Client {
     }
 }
 
-impl ParcelInfo for Client {
-    fn transaction_block(&self, id: &TransactionId) -> Option<H256> {
-        self.parcel_address(id).map(|addr| addr.block_hash)
-    }
-}
-
 impl TransactionInfo for Client {
+    fn transaction_block(&self, id: &TransactionId) -> Option<H256> {
+        self.transaction_address(id).map(|addr| addr.block_hash)
+    }
+
     fn transaction_header(&self, hash: &H256) -> Option<::encoded::Header> {
-        self.transaction_address(hash)
+        self.transaction_addresses(hash)
             .and_then(|addr| {
                 addr.into_iter()
                     .find(|addr| {
-                        let invoice = self.parcel_invoice(&TransactionId::from(*addr)).expect("Parcel must exist");
+                        let invoice = self.invoice(&TransactionId::from(*addr)).expect("Transaction must exist");
                         invoice == Invoice::Success
                     })
                     .map(|hash| hash.block_hash)
@@ -623,7 +621,7 @@ impl BlockChainClient for Client {
             debug!("Ignoring {} transactions: queue is full", transactions.len());
         } else {
             let len = transactions.len();
-            match self.io_channel.lock().send(ClientIoMessage::NewParcels(transactions, peer_id)) {
+            match self.io_channel.lock().send(ClientIoMessage::NewTransactions(transactions, peer_id)) {
                 Ok(_) => {
                     self.queue_transactions.fetch_add(len, AtomicOrdering::SeqCst);
                 }
@@ -676,29 +674,29 @@ impl BlockChainClient for Client {
         Self::block_hash(&chain, id)
     }
 
-    fn parcel(&self, id: &TransactionId) -> Option<LocalizedTransaction> {
+    fn transaction(&self, id: &TransactionId) -> Option<LocalizedTransaction> {
         let chain = self.block_chain();
-        self.parcel_address(id).and_then(|address| chain.parcel(&address))
+        self.transaction_address(id).and_then(|address| chain.transaction(&address))
     }
 
-    fn parcel_invoice(&self, id: &TransactionId) -> Option<Invoice> {
+    fn invoice(&self, id: &TransactionId) -> Option<Invoice> {
         let chain = self.block_chain();
-        self.parcel_address(id).and_then(|address| chain.parcel_invoice(&address))
+        self.transaction_address(id).and_then(|address| chain.invoice(&address))
     }
 
-    fn transaction(&self, tracker: &H256) -> Option<LocalizedTransaction> {
+    fn transaction_by_tracker(&self, tracker: &H256) -> Option<LocalizedTransaction> {
         let chain = self.block_chain();
-        let address = self.transaction_address(tracker)?;
-        address.into_iter().map(Into::into).map(|address| chain.parcel(&address)).next()?
+        let address = self.transaction_addresses(tracker)?;
+        address.into_iter().map(Into::into).map(|address| chain.transaction(&address)).next()?
     }
 
-    fn transaction_invoices(&self, tracker: &H256) -> Vec<Invoice> {
-        self.transaction_address(tracker)
+    fn invoices_by_tracker(&self, tracker: &H256) -> Vec<Invoice> {
+        self.transaction_addresses(tracker)
             .map(|address| {
                 address
                     .into_iter()
                     .map(Into::into)
-                    .map(|address| self.parcel_invoice(&address).expect("The invoice must exist"))
+                    .map(|address| self.invoice(&address).expect("The invoice must exist"))
                     .collect()
             })
             .unwrap_or_default()
