@@ -37,7 +37,7 @@ pub use self::validator_set::ValidatorSet;
 use std::fmt;
 use std::sync::{Arc, Weak};
 
-use ckey::{Address, Public, SchnorrSignature};
+use ckey::{Address, SchnorrSignature};
 use cnetwork::NetworkService;
 use cstate::ActionHandler;
 use ctypes::machine::Machine;
@@ -276,19 +276,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     /// Register an account which signs consensus messages.
     fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address) {}
-
-    /// Sign using the EngineSigner, to be used for consensus transaction signing.
-    fn sign(&self, _hash: H256) -> Result<SchnorrSignature, Error> {
-        unimplemented!()
-    }
-
-    fn signer_public(&self) -> Option<Public> {
-        None
-    }
-
-    fn signer_index(&self, _bh: &H256) -> Option<usize> {
-        None
-    }
 
     fn register_network_extension_to_service(&self, _: &NetworkService) {}
 

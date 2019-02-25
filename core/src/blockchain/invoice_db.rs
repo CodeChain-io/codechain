@@ -22,7 +22,7 @@ use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::H256;
 
-use super::extras::ParcelAddress;
+use super::extras::TransactionAddress;
 use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 
 /// Structure providing fast access to blockchain data.
@@ -68,8 +68,8 @@ pub trait InvoiceProvider {
     /// Get invoices of block with given hash.
     fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices>;
 
-    /// Get parcel invoice.
-    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice>;
+    /// Get transaction invoice.
+    fn invoice(&self, address: &TransactionAddress) -> Option<Invoice>;
 }
 
 impl InvoiceProvider for InvoiceDB {
@@ -83,8 +83,8 @@ impl InvoiceProvider for InvoiceDB {
         Some(result)
     }
 
-    /// Get parcel invoice.
-    fn parcel_invoice(&self, address: &ParcelAddress) -> Option<Invoice> {
+    /// Get transaction invoice.
+    fn invoice(&self, address: &TransactionAddress) -> Option<Invoice> {
         self.block_invoices(&address.block_hash)
             .and_then(|bi| bi.invoices.into_iter().nth(address.index))
             .map(Into::into)

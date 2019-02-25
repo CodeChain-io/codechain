@@ -47,7 +47,7 @@ struct UnlockedPassword {
 
 /// Signing error
 #[derive(Debug)]
-pub enum SignError {
+pub enum Error {
     /// Account is not unlocked
     NotUnlocked,
     /// Account does not exist.
@@ -58,35 +58,33 @@ pub enum SignError {
     KeystoreError(KeystoreError),
 }
 
-impl From<KeyError> for SignError {
+impl From<KeyError> for Error {
     fn from(e: KeyError) -> Self {
-        SignError::KeyError(e)
+        Error::KeyError(e)
     }
 }
 
-impl From<KeystoreError> for SignError {
+impl From<KeystoreError> for Error {
     fn from(e: KeystoreError) -> Self {
-        SignError::KeystoreError(e)
+        Error::KeystoreError(e)
     }
 }
 
-impl fmt::Display for SignError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
-            SignError::NotUnlocked => write!(f, "Account is locked"),
-            SignError::NotFound => write!(f, "Account does not exist"),
-            SignError::KeyError(e) => write!(f, "{}", e),
-            SignError::KeystoreError(e) => write!(f, "{}", e),
+            Error::NotUnlocked => write!(f, "Account is locked"),
+            Error::NotFound => write!(f, "Account does not exist"),
+            Error::KeyError(e) => write!(f, "{}", e),
+            Error::KeystoreError(e) => write!(f, "{}", e),
         }
     }
 }
 
-pub type Error = KeystoreError;
-
 pub struct AccountProvider {
     /// Unlocked account data.
     unlocked: RwLock<HashMap<Address, UnlockedPassword>>,
-    keystore: RwLock<KeyStore>,
+    keystore: KeyStore,
 }
 
 impl AccountProvider {
@@ -94,7 +92,7 @@ impl AccountProvider {
     pub fn new(keystore: KeyStore) -> Arc<Self> {
         Arc::new(Self {
             unlocked: RwLock::new(HashMap::new()),
-            keystore: RwLock::new(keystore),
+            keystore,
         })
     }
 
@@ -102,51 +100,51 @@ impl AccountProvider {
     pub fn transient_provider() -> Arc<Self> {
         Arc::new(Self {
             unlocked: RwLock::new(HashMap::new()),
-            keystore: RwLock::new(KeyStore::open(Box::new(MemoryDirectory::default())).unwrap()),
+            keystore: KeyStore::open(Box::new(MemoryDirectory::default())).unwrap(),
         })
     }
 
-    pub fn new_account_and_public(&self, password: &Password) -> Result<(Address, Public), SignError> {
+    pub fn new_account_and_public(&self, password: &Password) -> Result<(Address, Public), Error> {
         let acc = Random.generate().expect("secp context has generation capabilities; qed");
         self.insert_account_internal(&acc, password)
     }
 
-    pub fn insert_account(&self, private: Private, password: &Password) -> Result<Address, SignError> {
+    pub fn insert_account(&self, private: Private, password: &Password) -> Result<Address, Error> {
         let acc = KeyPair::from_private(private)?;
         self.insert_account_internal(&acc, password).map(|(addr, _)| addr)
     }
 
-    fn insert_account_internal(&self, acc: &KeyPair, password: &Password) -> Result<(Address, Public), SignError> {
+    fn insert_account_internal(&self, acc: &KeyPair, password: &Password) -> Result<(Address, Public), Error> {
         let private = *acc.private();
         let public = *acc.public();
         let address = public_to_address(&public);
-        self.keystore.write().insert_account(*private, password)?;
+        self.keystore.insert_account(*private, password)?;
         Ok((address, public))
     }
 
-    pub fn remove_account(&self, address: Address) -> Result<(), SignError> {
-        self.keystore.write().remove_account(&address)?;
+    pub fn remove_account(&self, address: Address) -> Result<(), Error> {
+        self.keystore.remove_account(&address)?;
         Ok(())
     }
 
-    pub fn has_account(&self, address: &Address) -> Result<bool, SignError> {
-        let has = self.keystore.read().has_account(address)?;
+    pub fn has_account(&self, address: &Address) -> Result<bool, Error> {
+        let has = self.keystore.has_account(address)?;
         Ok(has)
     }
 
-    pub fn has_public(&self, public: &Public) -> Result<bool, SignError> {
+    pub fn has_public(&self, public: &Public) -> Result<bool, Error> {
         let address = public_to_address(public);
-        let has = self.keystore.read().has_account(&address)?;
+        let has = self.keystore.has_account(&address)?;
         Ok(has)
     }
 
-    pub fn get_list(&self) -> Result<Vec<Address>, SignError> {
-        let addresses = self.keystore.read().accounts()?;
+    pub fn get_list(&self) -> Result<Vec<Address>, Error> {
+        let addresses = self.keystore.accounts()?;
         Ok(addresses)
     }
 
-    pub fn import_wallet(&self, json: &[u8], password: &Password) -> Result<Address, SignError> {
-        Ok(self.keystore.write().import_wallet(json, password, false)?)
+    pub fn import_wallet(&self, json: &[u8], password: &Password) -> Result<Address, Error> {
+        Ok(self.keystore.import_wallet(json, password, false)?)
     }
 
     pub fn change_password(
@@ -154,28 +152,33 @@ impl AccountProvider {
         address: Address,
         old_password: &Password,
         new_password: &Password,
-    ) -> Result<(), SignError> {
-        self.keystore.read().change_password(&address, &old_password, &new_password)?;
+    ) -> Result<(), Error> {
+        self.keystore.change_password(&address, &old_password, &new_password)?;
         Ok(())
     }
 
     /// Unlocks account permanently.
-    pub fn unlock_account_permanently(&self, account: Address, password: Password) -> Result<(), Error> {
+    pub fn unlock_account_permanently(&self, account: Address, password: Password) -> Result<(), KeystoreError> {
         self.unlock_account(account, password, Unlock::Perm)
     }
 
     /// Unlocks account temporarily (for one signing).
-    pub fn unlock_account_temporarily(&self, account: Address, password: Password) -> Result<(), Error> {
+    pub fn unlock_account_temporarily(&self, account: Address, password: Password) -> Result<(), KeystoreError> {
         self.unlock_account(account, password, Unlock::OneTime)
     }
 
     /// Unlocks account temporarily with a timeout.
-    pub fn unlock_account_timed(&self, account: Address, password: Password, duration: Duration) -> Result<(), Error> {
+    pub fn unlock_account_timed(
+        &self,
+        account: Address,
+        password: Password,
+        duration: Duration,
+    ) -> Result<(), KeystoreError> {
         self.unlock_account(account, password, Unlock::Timed(Instant::now() + duration))
     }
 
     /// Helper method used for unlocking accounts.
-    fn unlock_account(&self, address: Address, password: Password, unlock: Unlock) -> Result<(), Error> {
+    fn unlock_account(&self, address: Address, password: Password, unlock: Unlock) -> Result<(), KeystoreError> {
         // check if account is already unlocked permanently, if it is, do nothing
         let mut unlocked = self.unlocked.write();
         if let Some(data) = unlocked.get(&address) {
@@ -184,7 +187,7 @@ impl AccountProvider {
             }
         }
 
-        if !self.keystore.read().test_password(&address, &password)? {
+        if !self.keystore.test_password(&address, &password)? {
             return Err(KeystoreError::InvalidPassword)
         }
 
@@ -197,16 +200,16 @@ impl AccountProvider {
         Ok(())
     }
 
-    pub fn get_unlocked_account(&self, address: &Address) -> Result<ScopedAccount, SignError> {
+    pub fn get_unlocked_account(&self, address: &Address) -> Result<ScopedAccount, Error> {
         let mut unlocked = self.unlocked.write();
-        let data = unlocked.get(address).ok_or(SignError::NotUnlocked)?.clone();
+        let data = unlocked.get(address).ok_or(Error::NotUnlocked)?.clone();
         if let Unlock::OneTime = data.unlock {
             unlocked.remove(address).expect("data exists: so key must exist: qed");
         }
         if let Unlock::Timed(ref end) = data.unlock {
             if Instant::now() > *end {
                 unlocked.remove(address).expect("data exists: so key must exist: qed");
-                return Err(SignError::NotUnlocked)
+                return Err(Error::NotUnlocked)
             }
         }
 
@@ -215,10 +218,10 @@ impl AccountProvider {
     }
 
     fn decrypt_account(&self, address: &Address, password: &Password) -> Result<DecryptedAccount, KeystoreError> {
-        self.keystore.read().decrypt_account(address, password)
+        self.keystore.decrypt_account(address, password)
     }
 
-    pub fn get_account(&self, address: &Address, password: Option<&Password>) -> Result<ScopedAccount, SignError> {
+    pub fn get_account(&self, address: &Address, password: Option<&Password>) -> Result<ScopedAccount, Error> {
         match password {
             Some(password) => Ok(ScopedAccount::from(self.decrypt_account(address, password)?)),
             None => self.get_unlocked_account(address),

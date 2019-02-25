@@ -31,7 +31,7 @@ use primitives::{Bytes, H256};
 
 pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
-use crate::account_provider::{AccountProvider, SignError};
+use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use crate::block::ClosedBlock;
 use crate::client::{
     AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
@@ -54,7 +54,7 @@ pub trait MinerService: Send + Sync {
     fn authoring_params(&self) -> AuthoringParams;
 
     /// Set the author that we will seal blocks as.
-    fn set_author(&self, author: Address) -> Result<(), SignError>;
+    fn set_author(&self, author: Address) -> Result<(), AccountProviderError>;
 
     /// Set the extra_data that we will seal blocks with.
     fn set_extra_data(&self, extra_data: Bytes);

@@ -28,7 +28,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
 use ccrypto::blake256;
-use ckey::{public_to_address, recover_schnorr, verify_schnorr, Address, Message, Public, SchnorrSignature};
+use ckey::{public_to_address, recover_schnorr, verify_schnorr, Address, Message, SchnorrSignature};
 use cnetwork::{Api, NetworkExtension, NetworkService, NodeId};
 use cstate::ActionHandler;
 use ctimer::{TimeoutHandler, TimerToken};
@@ -1104,10 +1104,6 @@ impl TendermintInner {
         self.signer.sign(hash).map_err(Into::into)
     }
 
-    fn signer_public(&self) -> Option<Public> {
-        self.signer.public().cloned()
-    }
-
     fn signer_index(&self, bh: &H256) -> Option<usize> {
         // FIXME: More effecient way to find index
         self.signer.public().and_then(|public| self.validators.get_index(bh, public))
@@ -1251,16 +1247,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn set_signer(&self, ap: Arc<AccountProvider>, address: Address) {
         let mut guard = self.inner.lock();
         guard.set_signer(ap, address)
-    }
-
-    fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
-        let guard = self.inner.lock();
-        guard.sign(hash)
-    }
-
-    fn signer_public(&self) -> Option<Public> {
-        let guard = self.inner.lock();
-        guard.signer_public()
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {

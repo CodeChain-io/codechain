@@ -56,8 +56,8 @@ use crate::blockchain_info::BlockChainInfo;
 use crate::client::ImportResult;
 use crate::client::{
     AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
-    ImportSealedBlock, MiningBlockChainClient, ParcelInfo, PrepareOpenBlock, RegularKeyOwner, ReopenBlock, ResealTimer,
-    Seq, StateOrBlock, TransactionInfo,
+    ImportSealedBlock, MiningBlockChainClient, PrepareOpenBlock, RegularKeyOwner, ReopenBlock, ResealTimer, Seq,
+    StateOrBlock, TransactionInfo,
 };
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
@@ -402,13 +402,11 @@ impl BlockInfo for TestBlockChainClient {
     }
 }
 
-impl ParcelInfo for TestBlockChainClient {
+impl TransactionInfo for TestBlockChainClient {
     fn transaction_block(&self, _id: &TransactionId) -> Option<H256> {
         None // Simple default.
     }
-}
 
-impl TransactionInfo for TestBlockChainClient {
     fn transaction_header(&self, _hash: &H256) -> Option<::encoded::Header> {
         None
     }
@@ -525,19 +523,19 @@ impl BlockChainClient for TestBlockChainClient {
         Self::block_hash(self, id)
     }
 
-    fn parcel(&self, _id: &TransactionId) -> Option<LocalizedTransaction> {
+    fn transaction(&self, _id: &TransactionId) -> Option<LocalizedTransaction> {
         unimplemented!();
     }
 
-    fn parcel_invoice(&self, _id: &TransactionId) -> Option<Invoice> {
+    fn invoice(&self, _id: &TransactionId) -> Option<Invoice> {
         unimplemented!();
     }
 
-    fn transaction(&self, _: &H256) -> Option<LocalizedTransaction> {
+    fn transaction_by_tracker(&self, _: &H256) -> Option<LocalizedTransaction> {
         unimplemented!();
     }
 
-    fn transaction_invoices(&self, _: &H256) -> Vec<Invoice> {
+    fn invoices_by_tracker(&self, _: &H256) -> Vec<Invoice> {
         unimplemented!();
     }
 }
