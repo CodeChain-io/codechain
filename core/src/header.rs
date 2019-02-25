@@ -52,7 +52,7 @@ pub struct Header {
     /// State root.
     state_root: H256,
     /// Block invoices root.
-    invoices_root: H256,
+    results_root: H256,
 
     /// Block score.
     score: U256,
@@ -77,7 +77,7 @@ impl Default for Header {
 
             transactions_root: BLAKE_NULL_RLP,
             state_root: BLAKE_NULL_RLP,
-            invoices_root: BLAKE_NULL_RLP,
+            results_root: BLAKE_NULL_RLP,
 
             score: U256::default(),
             seal: vec![],
@@ -124,9 +124,9 @@ impl Header {
     pub fn state_root(&self) -> &H256 {
         &self.state_root
     }
-    /// Get the invoices root field of the header.
-    pub fn invoices_root(&self) -> &H256 {
-        &self.invoices_root
+    /// Get the results root field of the header.
+    pub fn results_root(&self) -> &H256 {
+        &self.results_root
     }
     /// Get the transactions root field of the header.
     pub fn transactions_root(&self) -> &H256 {
@@ -188,8 +188,8 @@ impl Header {
         self.note_dirty()
     }
     /// Set the invoices root field of the header.
-    pub fn set_invoices_root(&mut self, a: H256) {
-        self.invoices_root = a;
+    pub fn set_results_root(&mut self, a: H256) {
+        self.results_root = a;
         self.note_dirty()
     }
 
@@ -242,7 +242,7 @@ impl Header {
         s.append(&self.author);
         s.append(&self.state_root);
         s.append(&self.transactions_root);
-        s.append(&self.invoices_root);
+        s.append(&self.results_root);
         s.append(&self.score);
         s.append(&self.number);
         s.append(&self.timestamp);
@@ -280,7 +280,7 @@ impl Decodable for Header {
             author: r.val_at(1)?,
             state_root: r.val_at(2)?,
             transactions_root: r.val_at(3)?,
-            invoices_root: r.val_at(4)?,
+            results_root: r.val_at(4)?,
             score: r.val_at(5)?,
             number: r.val_at(6)?,
             timestamp: cmp::min(r.val_at::<U256>(7)?, u64::max_value().into()).as_u64(),

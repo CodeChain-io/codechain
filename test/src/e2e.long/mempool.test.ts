@@ -35,7 +35,7 @@ describe("Memory pool size test", function() {
     it("To self", async function() {
         const sending = [];
         for (let i = 0; i < sizeLimit * 2; i++) {
-            sending.push(nodeA.sendPayTx({ seq: i, awaitInvoice: false }));
+            sending.push(nodeA.sendPayTx({ seq: i, awaitResult: false }));
         }
         await Promise.all(sending);
         const pendingTransactions = await nodeA.sdk.rpc.chain.getPendingTransactions();
@@ -62,7 +62,7 @@ describe("Memory pool size test", function() {
             for (let i = 0; i < sizeLimit * 2; i++) {
                 await nodeA.sendPayTx({
                     seq: i,
-                    awaitInvoice: false
+                    awaitResult: false
                 });
             }
 
@@ -83,7 +83,7 @@ describe("Memory pool size test", function() {
                 sent.push(
                     await nodeA.sendPayTx({
                         seq: i,
-                        awaitInvoice: false
+                        awaitResult: false
                     })
                 );
             }

@@ -49,7 +49,7 @@ describe("sync 3 nodes", function() {
 
             it("It should be synced when the first node created a block", async function() {
                 const transaction = await nodes[0].sendPayTx({
-                    awaitInvoice: true
+                    awaitResult: true
                 });
                 for (let i = 1; i < NUM_NODES; i++) {
                     await nodes[i].waitBlockNumberSync(nodes[i - 1]);

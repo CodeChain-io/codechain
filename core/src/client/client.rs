@@ -24,7 +24,7 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, Text, TopLevelState, TopStateView};
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
-use ctypes::invoice::Invoice;
+use ctypes::invoice::{BlockInvoices, Invoice};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
@@ -560,6 +560,11 @@ impl BlockInfo for Client {
         let chain = self.block_chain();
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block(&hash))
+    }
+
+    fn block_invoices(&self, id: &BlockId) -> Option<BlockInvoices> {
+        let chain = self.block_chain();
+        Self::block_hash(&chain, id).and_then(|hash| chain.block_invoices(&hash))
     }
 }
 

@@ -35,7 +35,7 @@ describe("Sealing test", function() {
 
     it("stopSealing then startSealing", async function() {
         await node.sdk.rpc.devel.stopSealing();
-        await node.sendPayTx({ awaitInvoice: false });
+        await node.sendPayTx({ awaitResult: false });
         expect(await node.getBestBlockNumber()).to.equal(0);
         await node.sdk.rpc.devel.startSealing();
         expect(await node.getBestBlockNumber()).to.equal(1);
@@ -60,13 +60,13 @@ describe("Future queue", function() {
     it("all pending transactions must be mined", async function() {
         const seq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
 
-        await node.sendPayTx({ awaitInvoice: false, seq: seq + 3 });
+        await node.sendPayTx({ awaitResult: false, seq: seq + 3 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
-        await node.sendPayTx({ awaitInvoice: false, seq: seq + 2 });
+        await node.sendPayTx({ awaitResult: false, seq: seq + 2 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
-        await node.sendPayTx({ awaitInvoice: false, seq: seq + 1 });
+        await node.sendPayTx({ awaitResult: false, seq: seq + 1 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
-        await node.sendPayTx({ awaitInvoice: false, seq: seq });
+        await node.sendPayTx({ awaitResult: false, seq: seq });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(
             seq + 4
         );
@@ -91,13 +91,10 @@ describe("Timelock", function() {
     });
 
     async function checkTx(txhash: H256, shouldBeConfirmed: boolean) {
-        const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(txhash);
-        if (shouldBeConfirmed) {
-            expect(invoices.length).to.equal(1);
-            expect(invoices[0]).to.be.true;
-        } else {
-            expect(invoices.length).to.equal(0);
-        }
+        const results = await node.sdk.rpc.chain.getTransactionResultsByTracker(
+            txhash
+        );
+        expect(results).deep.equal(shouldBeConfirmed ? [true] : []);
     }
 
     async function sendTransferTx(
@@ -123,7 +120,7 @@ describe("Timelock", function() {
         });
         await node.signTransactionInput(tx, 0);
         const { fee } = options;
-        await node.sendAssetTransaction(tx, { awaitInvoice: false, fee });
+        await node.sendAssetTransaction(tx, { awaitResult: false, fee });
         return tx.tracker();
     }
 

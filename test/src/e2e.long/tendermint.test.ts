@@ -488,14 +488,14 @@ describeSkippedInTravis("Tendermint ", function() {
                 )
             );
 
-            const invoice = (await promiseExpect.shouldFulfill(
-                "getInvoice",
-                nodes[0].sdk.rpc.chain.getInvoice(hash, {
+            const result = (await promiseExpect.shouldFulfill(
+                "getTransactionResult",
+                nodes[0].sdk.rpc.chain.getTransactionResult(hash, {
                     timeout: 120 * 1000
                 })
             ))!;
 
-            expect(invoice).to.be.true;
+            expect(result).to.be.true;
 
             const { amounts, stakeholders } = await getAllStakingInfo();
 

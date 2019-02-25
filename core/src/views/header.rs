@@ -71,7 +71,7 @@ impl<'a> HeaderView<'a> {
     }
 
     /// Returns block invoices root.
-    pub fn invoices_root(&self) -> H256 {
+    pub fn results_root(&self) -> H256 {
         self.rlp.val_at(4)
     }
 

@@ -63,9 +63,9 @@ describe("transactions", function() {
                     scheme,
                     recipient
                 });
-                const invoices = await node.sendAssetTransaction(tx);
-                expect(invoices!.length).to.equal(1);
-                expect(invoices![0]).to.be.true;
+                const results = await node.sendAssetTransaction(tx);
+                expect(results!.length).to.equal(1);
+                expect(results![0]).to.be.true;
             });
         });
 
@@ -136,9 +136,9 @@ describe("transactions", function() {
                 supply: increasedAmount
             });
 
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.true;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.true;
 
             const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByType(
                 asset.assetType,
@@ -171,9 +171,9 @@ describe("transactions", function() {
                 supply: increasedAmount
             });
 
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.false;
 
             const additionalAsset = await node.sdk.rpc.chain.getAsset(
                 tx.tracker(),
@@ -198,14 +198,14 @@ describe("transactions", function() {
             });
 
             await node.sendTransaction(tx, { account: outsider });
-            const invoices = await node.sdk.rpc.chain.getInvoicesByTracker(
+            const results = await node.sdk.rpc.chain.getTransactionResultsByTracker(
                 tx.tracker(),
                 {
                     timeout: 300 * 1000
                 }
             );
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.false;
 
             const additionalAsset = await node.sdk.rpc.chain.getAsset(
                 tx.tracker(),
@@ -227,9 +227,9 @@ describe("transactions", function() {
                 supply: 1
             });
 
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.false;
 
             const additionalAsset = await node.sdk.rpc.chain.getAsset(
                 tx.tracker(),
@@ -265,9 +265,9 @@ describe("transactions", function() {
                     }))
                 );
                 await node.signTransactionInput(tx, 0);
-                const invoices = await node.sendAssetTransaction(tx);
-                expect(invoices!.length).to.equal(1);
-                expect(invoices![0]).to.be.true;
+                const results = await node.sendAssetTransaction(tx);
+                expect(results!.length).to.equal(1);
+                expect(results![0]).to.be.true;
             });
         });
 
@@ -405,9 +405,9 @@ describe("transactions", function() {
                 );
                 await node.signTransactionInput(tx, 0);
                 await node.signTransactionInput(tx, 1);
-                const invoices = await node.sendAssetTransaction(tx);
-                expect(invoices!.length).to.equal(1);
-                expect(invoices![0]).to.be.true;
+                const results = await node.sendAssetTransaction(tx);
+                expect(results!.length).to.equal(1);
+                expect(results![0]).to.be.true;
             });
         });
     });
@@ -423,17 +423,17 @@ describe("transactions", function() {
             quantity: 1
         });
         await node.signTransactionInput(tx1, 0);
-        const invoices1 = await node.sendAssetTransaction(tx1);
-        expect(invoices1!.length).to.equal(1);
-        expect(invoices1![0]).to.be.true;
+        const results1 = await node.sendAssetTransaction(tx1);
+        expect(results1!.length).to.equal(1);
+        expect(results1![0]).to.be.true;
 
         const transferredAsset = tx1.getTransferredAsset(0);
         const tx2 = node.sdk.core.createTransferAssetTransaction();
         tx2.addBurns(transferredAsset);
         await node.signTransactionBurn(tx2, 0);
-        const invoices2 = await node.sendAssetTransaction(tx2);
-        expect(invoices2!.length).to.equal(1);
-        expect(invoices2![0]).to.be.true;
+        const results2 = await node.sendAssetTransaction(tx2);
+        expect(results2!.length).to.equal(1);
+        expect(results2![0]).to.be.true;
 
         expect(
             await node.sdk.rpc.chain.getAsset(tx2.tracker(), 0, asset.shardId)
@@ -451,9 +451,9 @@ describe("transactions", function() {
             quantity: 1
         });
         await node.signTransactionInput(tx1, 0);
-        const invoices = await node.sendAssetTransaction(tx1);
-        expect(invoices!.length).to.equal(1);
-        expect(invoices![0]).to.be.true;
+        const esults = await node.sendAssetTransaction(tx1);
+        expect(esults!.length).to.equal(1);
+        expect(esults![0]).to.be.true;
 
         const tx2 = node.sdk.core.createTransferAssetTransaction();
         const {
@@ -495,9 +495,9 @@ describe("transactions", function() {
             quantity: 1
         });
         await node.signTransactionInput(tx1, 0);
-        const invoices1 = await node.sendAssetTransaction(tx1);
-        expect(invoices1!.length).to.equal(1);
-        expect(invoices1![0]).to.be.true;
+        const results1 = await node.sendAssetTransaction(tx1);
+        expect(results1!.length).to.equal(1);
+        expect(results1![0]).to.be.true;
 
         const transferredAsset = tx1.getTransferredAsset(0);
         const tx2 = node.sdk.core.createTransferAssetTransaction();
@@ -512,9 +512,9 @@ describe("transactions", function() {
             tx2.input(0)!,
             tx2.hashWithoutScript()
         );
-        const invoices2 = await node.sendAssetTransaction(tx2);
-        expect(invoices2!.length).to.equal(1);
-        expect(invoices2![0]).to.be.false;
+        const results2 = await node.sendAssetTransaction(tx2);
+        expect(results2!.length).to.equal(1);
+        expect(results2![0]).to.be.false;
         expect(
             await node.sdk.rpc.chain.getAsset(tx1.tracker(), 0, asset.shardId)
         ).not.to.be.null;
@@ -526,9 +526,9 @@ describe("transactions", function() {
         tx.addBurns(asset);
         await node.signTransactionP2PKH(tx.burn(0)!, tx.hashWithoutScript());
 
-        const invoices = await node.sendAssetTransaction(tx);
-        expect(invoices!.length).to.equal(1);
-        expect(invoices![0]).to.be.false;
+        const results = await node.sendAssetTransaction(tx);
+        expect(results!.length).to.equal(1);
+        expect(results![0]).to.be.false;
     });
 
     describe("ScriptError", function() {
@@ -546,9 +546,9 @@ describe("transactions", function() {
                 });
             tx.input(0)!.setLockScript(P2PKH.getLockScript());
             tx.input(0)!.setUnlockScript(Buffer.from([Opcode.NOP])); // Invalid Opcode for unlock_script
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.false;
         });
 
         it("Cannot transfer trivially fail script", async function() {
@@ -575,9 +575,9 @@ describe("transactions", function() {
             tx.input(0)!.setLockScript(triviallyFail);
             tx.input(0)!.setUnlockScript(Buffer.from([]));
 
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.false;
         });
 
         it("Can transfer trivially success script", async function() {
@@ -605,9 +605,9 @@ describe("transactions", function() {
             tx.input(0)!.setLockScript(triviallySuccess);
             tx.input(0)!.setUnlockScript(Buffer.from([]));
 
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.true;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.true;
         });
 
         it("Cannot transfer when lock script left multiple values in stack", async function() {
@@ -639,9 +639,9 @@ describe("transactions", function() {
             tx.input(0)!.setLockScript(leaveMultipleValue);
             tx.input(0)!.setUnlockScript(Buffer.from([]));
 
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.false;
         });
     });
 
@@ -684,35 +684,35 @@ describe("transactions", function() {
         });
 
         it("approver sends a transaction", async function() {
-            const invoice = await node
+            const result = await node
                 .sendTransaction(transferTx, {
                     account: approver
                 })
                 .then(hash => {
-                    return node.sdk.rpc.chain.getInvoice(hash, {
+                    return node.sdk.rpc.chain.getTransactionResult(hash, {
                         timeout: 300 * 1000
                     });
                 });
-            if (invoice == null) {
-                throw Error("Cannot get the invoice");
+            if (result == null) {
+                throw Error("Cannot get the result");
             }
-            expect(invoice).to.be.true;
+            expect(result).to.be.true;
         });
 
         it("nonApprover sends a transaction", async function() {
-            const invoice = await node
+            const result = await node
                 .sendTransaction(transferTx, {
                     account: nonApprover
                 })
                 .then(hash => {
-                    return node.sdk.rpc.chain.getInvoice(hash, {
+                    return node.sdk.rpc.chain.getTransactionResult(hash, {
                         timeout: 300 * 1000
                     });
                 });
-            if (invoice == null) {
-                throw Error("Cannot get the invoice");
+            if (result == null) {
+                throw Error("Cannot get the result");
             }
-            expect(invoice).to.be.false;
+            expect(result).to.be.false;
         });
     });
 
@@ -794,9 +794,9 @@ describe("transactions", function() {
             await node.sdk.key.signTransactionInput(tx, 0);
             tx.addBurns(assets[2]);
             await node.sdk.key.signTransactionBurn(tx, 0);
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.false;
         });
 
         it("Can add burns after signing with the signature tag of single input", async function() {
@@ -814,9 +814,9 @@ describe("transactions", function() {
             });
             tx.addBurns(assets[2]);
             await node.sdk.key.signTransactionBurn(tx, 0);
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.true;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.true;
         });
 
         // FIXME: (WIP) It fails
@@ -833,9 +833,9 @@ describe("transactions", function() {
             await node.sdk.key.signTransactionInput(tx, 0);
             tx.addInputs(assets[1]);
             await node.sdk.key.signTransactionInput(tx, 1);
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.false;
         });
 
         it("Can add inputs after signing with the signature tag of single input", async function() {
@@ -853,9 +853,9 @@ describe("transactions", function() {
             });
             tx.addInputs(assets[1]);
             await node.sdk.key.signTransactionInput(tx, 1);
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.true;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.true;
         });
 
         it("Can't add outputs after signing the signature tag of all outputs", async function() {
@@ -875,9 +875,9 @@ describe("transactions", function() {
                 quantity: 500,
                 recipient: address2
             });
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            const resutls = await node.sendAssetTransaction(tx);
+            expect(resutls!.length).to.equal(1);
+            expect(resutls![0]).to.be.false;
         });
 
         it("Can add outputs after signing the signature tag of some outputs", async function() {
@@ -902,9 +902,9 @@ describe("transactions", function() {
                 quantity: 500,
                 recipient: address2
             });
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.true;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.true;
         });
 
         it("Can only change the output protected by signature", async function() {
@@ -937,9 +937,9 @@ describe("transactions", function() {
                 .parameters;
             ((tx as any)._transaction.outputs[0]
                 .parameters as any) = address2Param;
-            const invoices = await node.sendAssetTransaction(tx);
-            expect(invoices!.length).to.equal(1);
-            expect(invoices![0]).to.be.false;
+            const results = await node.sendAssetTransaction(tx);
+            expect(results!.length).to.equal(1);
+            expect(results![0]).to.be.false;
 
             ((tx as any)._transaction.outputs[0]
                 .parameters as any) = address1Param;
@@ -955,9 +955,9 @@ describe("transactions", function() {
 
             ((tx as any)._transaction.outputs[1]
                 .parameters as any) = address1Param;
-            const invoices2 = await node.sendAssetTransaction(tx);
-            expect(invoices2!.length).to.equal(1);
-            expect(invoices2![0]).to.be.true;
+            const results2 = await node.sendAssetTransaction(tx);
+            expect(results2!.length).to.equal(1);
+            expect(results2![0]).to.be.true;
         });
 
         describe("many outputs", function() {
@@ -987,9 +987,9 @@ describe("transactions", function() {
                         quantity: 1000 - length,
                         recipient: address1
                     });
-                    const invoices = await node.sendAssetTransaction(tx);
-                    expect(invoices!.length).to.equal(1);
-                    expect(invoices![0]).to.be.true;
+                    const results = await node.sendAssetTransaction(tx);
+                    expect(results!.length).to.equal(1);
+                    expect(results![0]).to.be.true;
                 }).timeout(length * 10 + 5_000);
             });
         });
@@ -1017,10 +1017,13 @@ describe("transactions", function() {
                 const hash = await node.sdk.rpc.chain.sendSignedTransaction(
                     transaction
                 );
-                const invoice = await node.sdk.rpc.chain.getInvoice(hash, {
-                    timeout: 120 * 1000
-                });
-                expect(invoice).to.be.true;
+                const result = await node.sdk.rpc.chain.getTransactionResult(
+                    hash,
+                    {
+                        timeout: 120 * 1000
+                    }
+                );
+                expect(result).to.be.true;
             });
         });
 
@@ -1075,10 +1078,13 @@ describe("transactions", function() {
                 const hash = await node.sdk.rpc.chain.sendSignedTransaction(
                     wrapTransaction
                 );
-                const invoice = await node.sdk.rpc.chain.getInvoice(hash, {
-                    timeout: 120 * 1000
-                });
-                expect(invoice).to.be.true;
+                const result = await node.sdk.rpc.chain.getTransactionResult(
+                    hash,
+                    {
+                        timeout: 120 * 1000
+                    }
+                );
+                expect(result).to.be.true;
             });
 
             it("Unwrap successful", async function() {
@@ -1086,9 +1092,9 @@ describe("transactions", function() {
                     burn: wrapTransaction.getAsset()
                 });
                 await node.signTransactionBurn(tx, 0);
-                const invoices = await node.sendAssetTransaction(tx);
-                expect(invoices!.length).to.equal(1);
-                expect(invoices![0]).to.be.true;
+                const results = await node.sendAssetTransaction(tx);
+                expect(results!.length).to.equal(1);
+                expect(results![0]).to.be.true;
             });
         });
 
@@ -1116,10 +1122,13 @@ describe("transactions", function() {
                 const hash = await node.sdk.rpc.chain.sendSignedTransaction(
                     wrapTransaction
                 );
-                const invoice = await node.sdk.rpc.chain.getInvoice(hash, {
-                    timeout: 120 * 1000
-                });
-                expect(invoice).to.be.true;
+                const result = await node.sdk.rpc.chain.getTransactionResult(
+                    hash,
+                    {
+                        timeout: 120 * 1000
+                    }
+                );
+                expect(result).to.be.true;
             });
 
             it("Transfer then Unwrap successful", async function() {
@@ -1135,9 +1144,9 @@ describe("transactions", function() {
                     quantity
                 });
                 await node.signTransactionInput(transferTx, 0);
-                const invoices1 = await node.sendAssetTransaction(transferTx);
-                expect(invoices1!.length).to.equal(1);
-                expect(invoices1![0]).to.be.true;
+                const results1 = await node.sendAssetTransaction(transferTx);
+                expect(results1!.length).to.equal(1);
+                expect(results1![0]).to.be.true;
 
                 const asset2 = await node.sdk.rpc.chain.getAsset(
                     transferTx.tracker(),
@@ -1149,9 +1158,9 @@ describe("transactions", function() {
                     burn: asset2!
                 });
                 await node.signTransactionBurn(unwrapTx, 0);
-                const invoices2 = await node.sendAssetTransaction(unwrapTx);
-                expect(invoices2!.length).to.equal(1);
-                expect(invoices2![0]).to.be.true;
+                const results2 = await node.sendAssetTransaction(unwrapTx);
+                expect(results2!.length).to.equal(1);
+                expect(results2![0]).to.be.true;
             });
         });
 
@@ -1170,9 +1179,9 @@ describe("transactions", function() {
                     scheme,
                     recipient
                 });
-                const invoices = await node.sendAssetTransaction(mintTx);
-                expect(invoices!.length).to.equal(1);
-                expect(invoices![0]).to.be.true;
+                const results = await node.sendAssetTransaction(mintTx);
+                expect(results!.length).to.equal(1);
+                expect(results![0]).to.be.true;
             });
 
             it("Unwrap unsuccessful - Invalid asset type", async function() {

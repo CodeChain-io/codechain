@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::Block as CoreBlock;
+use ccore::{Block as CoreBlock, LocalizedTransaction};
 use ckey::{NetworkId, PlatformAddress};
 use ctypes::BlockNumber;
 use primitives::{H256, U256};
 
-use super::{ActionWithTracker, Transaction};
+use super::Transaction;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +33,7 @@ pub struct Block {
 
     transactions_root: H256,
     state_root: H256,
-    invoices_root: H256,
+    results_root: H256,
 
     score: U256,
     seal: Vec<Vec<u8>>,
@@ -43,9 +43,18 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn from_core(block: CoreBlock, network_id: NetworkId) -> Self {
+    pub fn from_core(block: CoreBlock, network_id: NetworkId, results: &[bool]) -> Self {
+        assert_eq!(results.len(), block.transactions.len());
         let block_number = block.header.number();
         let block_hash = block.header.hash();
+        let transactions =
+            block.transactions.into_iter().enumerate().map(|(transaction_index, signed)| LocalizedTransaction {
+                signed,
+                block_number,
+                block_hash,
+                transaction_index,
+                cached_signer_public: None,
+            });
         Block {
             parent_hash: *block.header.parent_hash(),
             timestamp: block.header.timestamp(),
@@ -56,32 +65,13 @@ impl Block {
 
             transactions_root: *block.header.transactions_root(),
             state_root: *block.header.state_root(),
-            invoices_root: *block.header.invoices_root(),
+            results_root: *block.header.results_root(),
 
             score: *block.header.score(),
             seal: block.header.seal().to_vec(),
 
             hash: block.header.hash(),
-            transactions: block
-                .transactions
-                .into_iter()
-                .enumerate()
-                .map(|(i, unverified)| {
-                    let sig = unverified.signature();
-                    let network_id = unverified.network_id;
-                    Transaction {
-                        block_number: Some(block_number),
-                        block_hash: Some(block_hash),
-                        transaction_index: Some(i),
-                        seq: unverified.seq,
-                        fee: unverified.fee.into(),
-                        network_id,
-                        action: ActionWithTracker::from_core(unverified.action.clone(), network_id),
-                        hash: unverified.hash(),
-                        sig,
-                    }
-                })
-                .collect(),
+            transactions: transactions.enumerate().map(|(index, tx)| Transaction::from(tx, results[index])).collect(),
         }
     }
 }

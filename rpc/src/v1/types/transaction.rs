@@ -27,6 +27,7 @@ pub struct Transaction {
     pub block_number: Option<u64>,
     pub block_hash: Option<H256>,
     pub transaction_index: Option<usize>,
+    pub result: Option<bool>,
     pub seq: u64,
     pub fee: Uint,
     pub network_id: NetworkId,
@@ -35,13 +36,14 @@ pub struct Transaction {
     pub sig: Signature,
 }
 
-impl From<LocalizedTransaction> for Transaction {
-    fn from(p: LocalizedTransaction) -> Self {
+impl Transaction {
+    pub fn from(p: LocalizedTransaction, result: bool) -> Self {
         let sig = p.signature();
         Self {
             block_number: Some(p.block_number),
             block_hash: Some(p.block_hash),
             transaction_index: Some(p.transaction_index),
+            result: Some(result),
             seq: p.seq,
             fee: p.fee.into(),
             network_id: p.network_id,
@@ -59,6 +61,7 @@ impl From<SignedTransaction> for Transaction {
             block_number: None,
             block_hash: None,
             transaction_index: None,
+            result: None,
             seq: p.seq,
             fee: p.fee.into(),
             network_id: p.network_id,

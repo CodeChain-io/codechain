@@ -77,11 +77,11 @@ describe("engine", function() {
                     })
             );
 
-            const invoice = (await node.sdk.rpc.chain.getInvoice(hash, {
-                timeout: 120 * 1000
-            }))!;
-
-            expect(invoice).to.be.true;
+            expect(
+                await node.sdk.rpc.chain.getTransactionResult(hash, {
+                    timeout: 120 * 1000
+                })
+            ).to.be.true;
 
             const actionData = await node.sdk.rpc.engine.getCustomActionData(
                 hitActionHandlerId,

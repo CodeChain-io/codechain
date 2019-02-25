@@ -23,14 +23,14 @@ import "mocha";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import CodeChain from "../helper/spawn";
 
-describe("invoice", function() {
+describe("transaction result", function() {
     let node: CodeChain;
     before(async function() {
         node = new CodeChain();
         await node.start();
     });
 
-    it("Invoice of Mint Asset", async function() {
+    it("of Mint Asset", async function() {
         const recipient = await node.createP2PKHAddress();
         const mint = node.sdk.core.createMintAssetTransaction({
             scheme: {
@@ -48,20 +48,25 @@ describe("invoice", function() {
 
         await node.sdk.rpc.chain.sendSignedTransaction(signedMint);
 
-        const mintInvoices = await node.sdk.rpc.chain.getInvoicesByTracker(
-            mint.tracker()
-        );
-        expect(mintInvoices).not.to.be.null;
-        expect(mintInvoices.length).to.equal(1);
-        expect(mintInvoices[0]).to.be.true;
-        const mintInvoice = (await node.sdk.rpc.chain.getInvoice(
-            signedMint.hash()
-        ))!;
-        expect(mintInvoice).not.to.be.null;
-        expect(mintInvoice).to.be.true;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResultsByTracker(
+                mint.tracker()
+            )
+        ).deep.equal([true]);
+        expect(await node.sdk.rpc.chain.getTransactionResult(signedMint.hash()))
+            .to.be.true;
+
+        expect(
+            (await node.sdk.rpc.chain.getTransaction(signedMint.hash()))!.result
+        ).to.be.true;
+
+        const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        const bestBlock = (await node.sdk.rpc.chain.getBlock(bestBlockNumber))!;
+        expect(bestBlock).not.to.be.null;
+        expect(bestBlock.transactions[0].result).to.be.true;
     });
 
-    it("Invoice of Transfer Asset", async function() {
+    it("of Transfer Asset", async function() {
         const mint = node.sdk.core.createMintAssetTransaction({
             scheme: {
                 shardId: 0,
@@ -112,42 +117,66 @@ describe("invoice", function() {
         await node.sdk.rpc.chain.sendSignedTransaction(signedMint);
         await node.sdk.rpc.chain.sendSignedTransaction(signedTransfer2);
 
-        const mintInvoices = await node.sdk.rpc.chain.getInvoicesByTracker(
-            mint.tracker()
-        );
-        expect(mintInvoices).not.to.be.null;
-        expect(mintInvoices.length).to.equal(1);
-        expect(mintInvoices[0]).to.be.true;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResultsByTracker(
+                mint.tracker()
+            )
+        ).deep.equal([true]);
 
-        const transferInvoices = await node.sdk.rpc.chain.getInvoicesByTracker(
-            transfer2.tracker()
-        );
-        expect(transferInvoices).not.to.be.null;
-        expect(transferInvoices.length).to.equal(2);
-        expect(transferInvoices[0]).to.be.false;
-        expect(transferInvoices[1]).to.be.true;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResultsByTracker(
+                transfer2.tracker()
+            )
+        ).deep.equal([false, true]);
 
-        const transfer1Invoice = (await node.sdk.rpc.chain.getInvoice(
-            signedTransfer1.hash()
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(
+                signedTransfer1.hash()
+            )
+        ).to.be.false;
+        expect(
+            (await node.sdk.rpc.chain.getTransaction(signedTransfer1.hash()))!
+                .result
+        ).to.be.false;
+
+        expect(await node.sdk.rpc.chain.getTransactionResult(signedMint.hash()))
+            .to.be.true;
+        expect(
+            (await node.sdk.rpc.chain.getTransaction(signedMint.hash()))!.result
+        ).to.be.true;
+
+        expect(
+            await node.sdk.rpc.chain.getTransactionResult(
+                signedTransfer2.hash()
+            )
+        ).to.be.true;
+        expect(
+            (await node.sdk.rpc.chain.getTransaction(signedTransfer2.hash()))!
+                .result
+        ).to.be.true;
+
+        const bestBlockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        const transferBlock1 = (await node.sdk.rpc.chain.getBlock(
+            bestBlockNumber - 2
         ))!;
-        expect(transfer1Invoice).not.to.be.null;
-        expect(transfer1Invoice).to.be.false;
+        expect(transferBlock1).not.to.be.null;
+        expect(transferBlock1.transactions[0].result).to.be.false;
 
-        const mintInvoice = (await node.sdk.rpc.chain.getInvoice(
-            signedMint.hash()
+        const mintBlock = (await node.sdk.rpc.chain.getBlock(
+            bestBlockNumber - 1
         ))!;
-        expect(mintInvoice).not.to.be.null;
-        expect(mintInvoice).to.be.true;
+        expect(mintBlock).not.to.be.null;
+        expect(mintBlock.transactions[0].result).to.be.true;
 
-        const transfer2Invoice = (await node.sdk.rpc.chain.getInvoice(
-            signedTransfer2.hash()
+        const transferBlock2 = (await node.sdk.rpc.chain.getBlock(
+            bestBlockNumber
         ))!;
-        expect(transfer2Invoice).not.to.be.null;
-        expect(transfer2Invoice).to.be.true;
+        expect(transferBlock2).not.to.be.null;
+        expect(transferBlock2.transactions[0].result).to.be.true;
     });
 
     describe("In the same block", async function() {
-        it("Invoice of Transfer Asset", async function() {
+        it("of Transfer Asset", async function() {
             const blockNumberBeforeTx = await node.sdk.rpc.chain.getBestBlockNumber();
             const mint = node.sdk.core.createMintAssetTransaction({
                 scheme: {
@@ -203,38 +232,47 @@ describe("invoice", function() {
             await node.sdk.rpc.devel.startSealing();
             await node.waitBlockNumber(blockNumberBeforeTx + 1);
 
-            const mintInvoices = await node.sdk.rpc.chain.getInvoicesByTracker(
-                mint.tracker()
-            );
-            expect(mintInvoices).not.to.be.null;
-            expect(mintInvoices.length).to.equal(1);
-            expect(mintInvoices[0]).to.be.true;
+            expect(
+                await node.sdk.rpc.chain.getTransactionResultsByTracker(
+                    mint.tracker()
+                )
+            ).deep.equal([true]);
 
-            const transferInvoices = await node.sdk.rpc.chain.getInvoicesByTracker(
-                transfer2.tracker()
-            );
-            expect(transferInvoices).not.to.be.null;
-            expect(transferInvoices.length).to.equal(2);
-            expect(transferInvoices[0]).to.be.false;
-            expect(transferInvoices[1]).to.be.true;
+            expect(
+                await node.sdk.rpc.chain.getTransactionResultsByTracker(
+                    transfer2.tracker()
+                )
+            ).deep.equal([false, true]);
 
-            const transfer1Invoice = (await node.sdk.rpc.chain.getInvoice(
-                signedTransfer1.hash()
-            ))!;
-            expect(transfer1Invoice).not.to.be.null;
-            expect(transfer1Invoice).to.be.false;
+            expect(
+                await node.sdk.rpc.chain.getTransactionResult(
+                    signedTransfer1.hash()
+                )
+            ).to.be.false;
+            expect(
+                (await node.sdk.rpc.chain.getTransaction(
+                    signedTransfer1.hash()
+                ))!.result
+            ).to.be.false;
 
-            const mintInvoice = (await node.sdk.rpc.chain.getInvoice(
-                signedMint.hash()
-            ))!;
-            expect(mintInvoice).not.to.be.null;
-            expect(mintInvoice).to.be.true;
+            expect(
+                await node.sdk.rpc.chain.getTransactionResult(signedMint.hash())
+            ).to.be.true;
+            expect(
+                (await node.sdk.rpc.chain.getTransaction(signedMint.hash()))!
+                    .result
+            ).to.be.true;
 
-            const transfer2Invoice = (await node.sdk.rpc.chain.getInvoice(
-                signedTransfer2.hash()
-            ))!;
-            expect(transfer2Invoice).not.to.be.null;
-            expect(transfer2Invoice).to.be.true;
+            expect(
+                await node.sdk.rpc.chain.getTransactionResult(
+                    signedTransfer2.hash()
+                )
+            ).to.be.true;
+            expect(
+                (await node.sdk.rpc.chain.getTransaction(
+                    signedTransfer2.hash()
+                ))!.result
+            ).to.be.true;
 
             const block = (await node.sdk.rpc.chain.getBlock(
                 blockNumberBeforeTx + 1
@@ -250,6 +288,9 @@ describe("invoice", function() {
             expect(block.transactions[2].hash().value).to.equal(
                 signedTransfer2.hash().value
             );
+            expect(block.transactions[0].result).to.be.false;
+            expect(block.transactions[1].result).to.be.true;
+            expect(block.transactions[2].result).to.be.true;
         });
         after(async function() {
             await node.sdk.rpc.devel.startSealing();

@@ -487,13 +487,13 @@ impl Miner {
         }
         ctrace!(MINER, "Pushed {}/{} transactions", tx_count, tx_total);
 
-        let (transactions_root, invoices_root) = {
+        let (transactions_root, results_root) = {
             let parent_hash = open_block.header().parent_hash();
             let parent_header = chain.block_header(&BlockId::Hash(*parent_hash)).expect("Parent header MUST exist");
             let parent_view = parent_header.view();
-            (parent_view.transactions_root(), parent_view.invoices_root())
+            (parent_view.transactions_root(), parent_view.results_root())
         };
-        let block = open_block.close(transactions_root, invoices_root)?;
+        let block = open_block.close(transactions_root, results_root)?;
 
         let fetch_seq = |p: &Public| {
             let address = public_to_address(p);
