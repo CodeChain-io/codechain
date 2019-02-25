@@ -1707,7 +1707,6 @@ impl TendermintExtension {
         } else {
             tendermint.vote_step()
         };
-        let current_step = current_vote_step.step;
 
         if current_vote_step > peer_vote_step {
             // no messages to receive
@@ -1730,6 +1729,7 @@ impl TendermintExtension {
             self.request_proposal(token, tendermint.height, tendermint.view);
         }
 
+        let current_step = current_vote_step.step;
         if current_step == Step::Prevote || current_step == Step::Precommit {
             let peer_known_votes = if current_vote_step == peer_vote_step {
                 peer_known_votes
