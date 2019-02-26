@@ -102,8 +102,8 @@ pub struct Handler {
     routing_table: Arc<RoutingTable>,
     filters: Arc<FiltersControl>,
 
-    remote_node_ids: Mutex<HashMap<StreamToken, NodeId>>,
-    remote_node_ids_reverse: Mutex<HashMap<NodeId, StreamToken>>,
+    remote_node_ids: RwLock<HashMap<StreamToken, NodeId>>,
+    remote_node_ids_reverse: RwLock<HashMap<NodeId, StreamToken>>,
 
     client: Arc<Client>,
 
@@ -194,7 +194,7 @@ impl Handler {
         let initiator_pub_key = if let Some(initiator_pub_key) = self.routing_table.local_public(socket_address) {
             initiator_pub_key
         } else {
-            cinfo!(NETWORK, "{} is already connecting", socket_address);
+            cinfo!(NETWORK, "{} was banned", socket_address);
             return Ok(())
         };
 
@@ -341,7 +341,7 @@ impl IoHandler<Message> for Handler {
                 data,
             } => {
                 let stream =
-                    *self.remote_node_ids_reverse.lock().get(&node_id).ok_or_else(|| Error::InvalidNode(node_id))?;
+                    *self.remote_node_ids_reverse.read().get(&node_id).ok_or_else(|| Error::InvalidNode(node_id))?;
                 match stream {
                     FIRST_OUTBOUND...LAST_OUTBOUND => {
                         let mut outbound_connections = self.outbound_connections.write();
@@ -369,7 +369,7 @@ impl IoHandler<Message> for Handler {
                 }
             }
             Message::Disconnect(socket_address) => {
-                if let Some(stream) = self.remote_node_ids_reverse.lock().get(&socket_address.into()) {
+                if let Some(stream) = self.remote_node_ids_reverse.read().get(&socket_address.into()) {
                     io.deregister_stream(*stream);
                     cinfo!(NETWORK, "Disconnect {}:{}", socket_address, stream);
                 } else {
@@ -380,7 +380,7 @@ impl IoHandler<Message> for Handler {
             Message::ApplyFilters => {
                 for addr in self.routing_table.established_addresses() {
                     if !self.filters.is_allowed(&addr.ip()) {
-                        if let Some(stream) = self.remote_node_ids_reverse.lock().get(&addr.into()) {
+                        if let Some(stream) = self.remote_node_ids_reverse.read().get(&addr.into()) {
                             io.deregister_stream(*stream);
                             cinfo!(NETWORK, "Filter disconnects {}:{}", addr, stream);
                         } else {
@@ -396,8 +396,8 @@ impl IoHandler<Message> for Handler {
                 let mut inbound_connections = self.inbound_connections.write();
                 if let Some(token) = self.inbound_tokens.lock().gen() {
                     let remote_node_id = connection.peer_addr().into();
-                    assert_eq!(None, self.remote_node_ids.lock().insert(token, remote_node_id));
-                    assert_eq!(None, self.remote_node_ids_reverse.lock().insert(remote_node_id, token));
+                    assert_eq!(None, self.remote_node_ids.write().insert(token, remote_node_id));
+                    assert_eq!(None, self.remote_node_ids_reverse.write().insert(remote_node_id, token));
 
                     let t = inbound_connections.insert(token, connection);
                     assert!(t.is_none());
@@ -414,8 +414,8 @@ impl IoHandler<Message> for Handler {
                 if let Some(token) = self.outbound_tokens.lock().gen() {
                     let peer_addr = *connection.peer_addr();
                     let remote_node_id = peer_addr.into();
-                    assert_eq!(None, self.remote_node_ids.lock().insert(token, remote_node_id));
-                    assert_eq!(None, self.remote_node_ids_reverse.lock().insert(remote_node_id, token));
+                    assert_eq!(None, self.remote_node_ids.write().insert(token, remote_node_id));
+                    assert_eq!(None, self.remote_node_ids_reverse.write().insert(remote_node_id, token));
 
                     for (name, versions) in self.client.extension_versions() {
                         connection.enqueue_negotiation_request(name.clone(), versions);
@@ -519,7 +519,7 @@ impl IoHandler<Message> for Handler {
                     });
                     match con.receive()? {
                         Some(NetworkMessage::Extension(msg)) => {
-                            let remote_node_id = *self.remote_node_ids.lock().get(&stream_token).unwrap_or_else(|| {
+                            let remote_node_id = *self.remote_node_ids.read().get(&stream_token).unwrap_or_else(|| {
                                 unreachable!("Node id for {}:{} must exist", stream_token, con.peer_addr())
                             });
                             let unencrypted = msg.unencrypted_data(con.session()).map_err(|e| format!("{:?}", e))?;
@@ -545,7 +545,7 @@ impl IoHandler<Message> for Handler {
                                 .last()
                                 .ok_or_else(|| format!("There is no valid version for {}", extension_name))?;
 
-                            let remote_node_id = *self.remote_node_ids.lock().get(&stream_token).unwrap_or_else(|| {
+                            let remote_node_id = *self.remote_node_ids.read().get(&stream_token).unwrap_or_else(|| {
                                 unreachable!("Node id for {}:{} must exist", stream_token, con.peer_addr())
                             });
                             self.client.on_node_added(&extension_name, &remote_node_id, version);
@@ -581,7 +581,7 @@ impl IoHandler<Message> for Handler {
                     });
                     match con.receive()? {
                         Some(NetworkMessage::Extension(msg)) => {
-                            let remote_node_id = *self.remote_node_ids.lock().get(&stream_token).unwrap_or_else(|| {
+                            let remote_node_id = *self.remote_node_ids.read().get(&stream_token).unwrap_or_else(|| {
                                 unreachable!("Node id for {}:{} must exist", stream_token, con.peer_addr())
                             });
                             let unencrypted = msg.unencrypted_data(con.session()).map_err(|e| format!("{:?}", e))?;
@@ -602,7 +602,7 @@ impl IoHandler<Message> for Handler {
                             extension_name,
                             allowed_version,
                         })) => {
-                            let remote_node_id = *self.remote_node_ids.lock().get(&stream_token).unwrap_or_else(|| {
+                            let remote_node_id = *self.remote_node_ids.read().get(&stream_token).unwrap_or_else(|| {
                                 unreachable!("Node id for {}:{} must exist", stream_token, con.peer_addr())
                             });
                             self.client.on_node_added(&extension_name, &remote_node_id, allowed_version);
@@ -887,8 +887,8 @@ impl IoHandler<Message> for Handler {
             FIRST_INBOUND...LAST_INBOUND => {
                 let mut inbound_connections = self.inbound_connections.write();
                 if let Some(con) = inbound_connections.remove(&stream) {
-                    if let Some(node_id) = self.remote_node_ids.lock().remove(&stream) {
-                        assert_ne!(None, self.remote_node_ids_reverse.lock().remove(&node_id));
+                    if let Some(node_id) = self.remote_node_ids.write().remove(&stream) {
+                        assert_ne!(None, self.remote_node_ids_reverse.write().remove(&node_id));
                         self.client.on_node_removed(&node_id);
                     } else {
                         unreachable!("{} has no node id", stream);
@@ -904,8 +904,8 @@ impl IoHandler<Message> for Handler {
             FIRST_OUTBOUND...LAST_OUTBOUND => {
                 let mut outbound_connections = self.outbound_connections.write();
                 if let Some(con) = outbound_connections.remove(&stream) {
-                    if let Some(node_id) = self.remote_node_ids.lock().remove(&stream) {
-                        assert_ne!(None, self.remote_node_ids_reverse.lock().remove(&node_id));
+                    if let Some(node_id) = self.remote_node_ids.write().remove(&stream) {
+                        assert_ne!(None, self.remote_node_ids_reverse.write().remove(&node_id));
                         self.client.on_node_removed(&node_id);
                     } else {
                         unreachable!("{} has no node id", stream);
