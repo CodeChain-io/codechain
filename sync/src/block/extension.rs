@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -385,14 +386,18 @@ impl Extension {
             return
         }
 
-        cinfo!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
-
-        let mut peers = self.header_downloaders.write();
-        if peers.contains_key(from) {
-            peers.get_mut(from).unwrap().update(total_score, best_hash);
-        } else {
-            peers.insert(*from, HeaderDownloader::new(self.client.clone(), total_score, best_hash));
+        match self.header_downloaders.write().entry(*from) {
+            Entry::Occupied(mut peer) => {
+                if !peer.get_mut().update(total_score, best_hash) {
+                    cwarn!(SYNC, "Peer #{} status updated but score is less than before", from);
+                    return
+                }
+            }
+            Entry::Vacant(e) => {
+                e.insert(HeaderDownloader::new(self.client.clone(), total_score, best_hash));
+            }
         }
+        cinfo!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
     }
 
     fn on_peer_request(&self, from: &NodeId, id: u64, request: RequestMessage) {
