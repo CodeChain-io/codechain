@@ -362,7 +362,7 @@ impl TendermintInner {
     }
 
     fn increment_view(&mut self, n: View) {
-        ctrace!(ENGINE, "increment_view: New view.");
+        cinfo!(ENGINE, "increment_view: New view.");
         self.view += n;
         self.proposal = None;
         self.votes_received = BitSet::new();
@@ -374,7 +374,7 @@ impl TendermintInner {
 
     fn move_to_height(&mut self, height: Height) {
         assert!(height > self.height, "{} < {}", height, self.height);
-        cdebug!(ENGINE, "Transitioning to height {}.", height);
+        cinfo!(ENGINE, "Transitioning to height {}.", height);
         self.last_lock = None;
         self.height = height;
         self.view = 0;
@@ -403,13 +403,13 @@ impl TendermintInner {
         self.broadcast_state(&vote_step, self.proposal, self.last_lock, self.votes_received);
         match step {
             Step::Propose => {
-                ctrace!(ENGINE, "move_to_step: Propose.");
+                cinfo!(ENGINE, "move_to_step: Propose.");
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
                     if self.client().block_header(&BlockId::Hash(*hash)).is_some() {
                         self.proposal = Some(*hash);
                         self.move_to_step(Step::Prevote, is_restoring);
                     } else {
-                        ctrace!(ENGINE, "Proposal is received but not imported");
+                        cwarn!(ENGINE, "Proposal is received but not imported");
                         // Proposal is received but is not verified yet.
                         // Wait for verification.
                         return
@@ -417,7 +417,7 @@ impl TendermintInner {
                 } else {
                     let parent_block_hash = &self.prev_block_hash();
                     if self.is_signer_proposer(parent_block_hash) {
-                        ctrace!(ENGINE, "I am a proposer, I'll create a block");
+                        cinfo!(ENGINE, "I am a proposer, I'll create a block");
                         self.update_sealing(*parent_block_hash);
                         self.step = TendermintState::ProposeWaitBlockGeneration {
                             parent_hash: *parent_block_hash,
@@ -428,7 +428,7 @@ impl TendermintInner {
                 }
             }
             Step::Prevote => {
-                ctrace!(ENGINE, "move_to_step: Prevote.");
+                cinfo!(ENGINE, "move_to_step: Prevote.");
                 self.request_all_votes(&vote_step);
                 if !self.already_generated_message() {
                     let block_hash = match self.lock_change {
@@ -439,12 +439,12 @@ impl TendermintInner {
                 }
             }
             Step::Precommit => {
-                ctrace!(ENGINE, "move_to_step: Precommit.");
+                cinfo!(ENGINE, "move_to_step: Precommit.");
                 self.request_all_votes(&vote_step);
                 if !self.already_generated_message() {
                     let block_hash = match self.lock_change {
                         Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
-                            ctrace!(ENGINE, "Setting last lock: {}", m.on.step.view);
+                            cinfo!(ENGINE, "Setting last lock: {}", m.on.step.view);
                             self.last_lock = Some(m.on.step.view);
                             m.on.block_hash
                         }
@@ -454,7 +454,7 @@ impl TendermintInner {
                 }
             }
             Step::Commit => {
-                ctrace!(ENGINE, "move_to_step: Commit.");
+                cinfo!(ENGINE, "move_to_step: Commit.");
             }
         }
     }
@@ -493,7 +493,7 @@ impl TendermintInner {
                 let message_rlp = message.rlp_bytes().into_vec();
                 self.votes_received.set(signer_index);
                 self.votes.vote(message.clone());
-                cdebug!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
+                cinfo!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
                 self.handle_valid_message(&message, is_restoring);
 
                 Some(message_rlp)
@@ -522,7 +522,14 @@ impl TendermintInner {
             && message.on.block_hash.is_some()
             && has_enough_aligned_votes;
         if lock_change {
-            ctrace!(ENGINE, "handle_valid_message: Lock change.");
+            cinfo!(
+                ENGINE,
+                "handle_valid_message: Lock change to {}-{} at {}-{}",
+                vote_step.height,
+                vote_step.view,
+                self.height,
+                self.view
+            );
             self.lock_change = Some(message.clone());
         }
         // Check if it can affect the step transition.
@@ -562,7 +569,7 @@ impl TendermintInner {
             && self.height == vote_step.height
             && self.can_move_from_commit_to_propose()
         {
-            ctrace!(
+            cinfo!(
                 ENGINE,
                 "Transition to Propose because all pre-commits are received and the canonical chain is appended"
             );
@@ -644,7 +651,7 @@ impl TendermintInner {
     }
 
     fn submit_proposal_block(&mut self, sealed_block: &SealedBlock) {
-        ctrace!(ENGINE, "Submitting proposal block {}", sealed_block.header().hash());
+        cinfo!(ENGINE, "Submitting proposal block {}", sealed_block.header().hash());
         self.move_to_step(Step::Prevote, false);
         self.broadcast_proposal_block(encoded::Block::new(sealed_block.rlp_bytes()));
     }
@@ -924,7 +931,7 @@ impl TendermintInner {
 
         let next_step = match self.step {
             TendermintState::Propose => {
-                ctrace!(ENGINE, "Propose timeout.");
+                cinfo!(ENGINE, "Propose timeout.");
                 if self.proposal.is_none() {
                     // Report the proposer if no proposal was received.
                     let height = self.height;
@@ -954,24 +961,24 @@ impl TendermintInner {
                 None
             }
             TendermintState::Prevote if self.has_enough_any_votes() => {
-                ctrace!(ENGINE, "Prevote timeout.");
+                cinfo!(ENGINE, "Prevote timeout.");
                 Some(Step::Precommit)
             }
             TendermintState::Prevote => {
-                ctrace!(ENGINE, "Prevote timeout without enough votes.");
+                cinfo!(ENGINE, "Prevote timeout without enough votes.");
                 Some(Step::Prevote)
             }
             TendermintState::Precommit if self.has_enough_any_votes() => {
-                ctrace!(ENGINE, "Precommit timeout.");
+                cinfo!(ENGINE, "Precommit timeout.");
                 self.increment_view(1);
                 Some(Step::Propose)
             }
             TendermintState::Precommit => {
-                ctrace!(ENGINE, "Precommit timeout without enough votes.");
+                cinfo!(ENGINE, "Precommit timeout without enough votes.");
                 Some(Step::Precommit)
             }
             TendermintState::Commit => {
-                ctrace!(ENGINE, "Commit timeout.");
+                cinfo!(ENGINE, "Commit timeout.");
                 assert!(
                     self.check_current_block_exists(),
                     "The canonical chain must have the block of the previous height"
@@ -1380,7 +1387,7 @@ impl ChainNotify for TendermintChainNotify {
                     t.on_imported_proposal(&full_header);
                 } else if t.height < header.number() as usize {
                     height_changed = true;
-                    ctrace!(ENGINE, "Received a commit: {:?}.", header.number());
+                    cinfo!(ENGINE, "Received a commit: {:?}.", header.number());
                     let view = consensus_view(&full_header).expect("Imported block already checked");
                     t.move_to_height(header.number() as usize);
                     t.save_last_confirmed_view(view);
@@ -1392,7 +1399,7 @@ impl ChainNotify for TendermintChainNotify {
             }
         }
         if !enacted.is_empty() && t.can_move_from_commit_to_propose() {
-            ctrace!(
+            cinfo!(
                 ENGINE,
                 "Transition to Propose because all pre-commits are received and the canonical chain is appended"
             );
@@ -1645,7 +1652,7 @@ impl TendermintExtension {
             let block_view = BlockView::new(&bytes);
             let header_view = block_view.header();
             let number = header_view.number();
-            ctrace!(ENGINE, "Proposal received for {}-{:?}", number, header_view.hash());
+            cinfo!(ENGINE, "Proposal received for {}-{:?}", number, header_view.hash());
 
             let parent_hash = header_view.parent_hash();
             if c.block(&BlockId::Hash(*parent_hash)).is_none() {
@@ -1686,18 +1693,18 @@ impl TendermintExtension {
 
             match message.verify(&signer_public) {
                 Ok(false) => {
-                    cdebug!(ENGINE, "Proposal verification failed: signer is different");
+                    cwarn!(ENGINE, "Proposal verification failed: signer is different");
                     return
                 }
                 Err(err) => {
-                    cdebug!(ENGINE, "Proposal verification failed: {:?}", err);
+                    cwarn!(ENGINE, "Proposal verification failed: {:?}", err);
                     return
                 }
                 _ => {}
             }
 
             if *header_view.author() != signer {
-                cdebug!(ENGINE, "Proposal author({}) not matched with header({})", signer, header_view.author());
+                cwarn!(ENGINE, "Proposal author({}) not matched with header({})", signer, header_view.author());
                 return
             }
 
