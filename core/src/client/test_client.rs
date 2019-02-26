@@ -188,37 +188,44 @@ impl TestBlockChainClient {
     pub fn add_blocks(&self, count: usize, transaction_length: usize) {
         let len = self.numbers.read().len();
         for n in len..(len + count) {
-            let mut header = BlockHeader::new();
-            header.set_score(From::from(n));
-            header.set_parent_hash(*self.last_hash.read());
-            header.set_number(n as BlockNumber);
-            header.set_extra_data(self.extra_data.clone());
-            let mut transactions = Vec::new();
-            for _ in 0..transaction_length {
-                let keypair = Random.generate().unwrap();
-                // Update seqs value
-                self.seqs.write().insert(keypair.address(), 0);
-                let tx = Transaction {
-                    seq: 0,
-                    fee: 10,
-                    network_id: NetworkId::default(),
-                    action: Action::Pay {
-                        receiver: Address::random(),
-                        quantity: 0,
-                    },
-                };
-                let signed = SignedTransaction::new_with_sign(tx, keypair.private());
-                transactions.push(signed);
-            }
-            header.set_transactions_root(skewed_merkle_root(
-                *self.last_transactions_root.read(),
-                transactions.iter().map(Encodable::rlp_bytes),
-            ));
-            let mut rlp = RlpStream::new_list(2);
-            rlp.append(&header);
-            rlp.append_list(&transactions);
-            self.import_block(rlp.as_raw().to_vec()).unwrap();
+            self.add_block_with_author(None, n, transaction_length);
         }
+    }
+    /// Add a block to test client with designated author.
+    pub fn add_block_with_author(&self, author: Option<Address>, n: usize, transaction_length: usize) {
+        let mut header = BlockHeader::new();
+        header.set_score(From::from(n));
+        header.set_parent_hash(*self.last_hash.read());
+        header.set_number(n as BlockNumber);
+        header.set_extra_data(self.extra_data.clone());
+        if let Some(addr) = author {
+            header.set_author(addr);
+        }
+        let mut transactions = Vec::with_capacity(transaction_length);
+        for _ in 0..transaction_length {
+            let keypair = Random.generate().unwrap();
+            // Update seqs value
+            self.seqs.write().insert(keypair.address(), 0);
+            let tx = Transaction {
+                seq: 0,
+                fee: 10,
+                network_id: NetworkId::default(),
+                action: Action::Pay {
+                    receiver: Address::random(),
+                    quantity: 0,
+                },
+            };
+            let signed = SignedTransaction::new_with_sign(tx, keypair.private());
+            transactions.push(signed);
+        }
+        header.set_transactions_root(skewed_merkle_root(
+            *self.last_transactions_root.read(),
+            transactions.iter().map(Encodable::rlp_bytes),
+        ));
+        let mut rlp = RlpStream::new_list(2);
+        rlp.append(&header);
+        rlp.append_list(&transactions);
+        self.import_block(rlp.as_raw().to_vec()).unwrap();
     }
 
     /// Make a bad block by setting invalid extra data.

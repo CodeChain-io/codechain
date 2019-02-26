@@ -88,6 +88,10 @@ impl ValidatorSet for ValidatorList {
         self.validators.iter().position(|v| v == public)
     }
 
+    fn get_index_by_address(&self, _bh: &H256, address: &Address) -> Option<usize> {
+        self.validators.iter().position(|v| public_to_address(v) == *address)
+    }
+
     fn count(&self, _bh: &H256) -> usize {
         self.validators.len()
     }

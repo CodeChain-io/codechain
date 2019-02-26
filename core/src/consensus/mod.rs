@@ -360,6 +360,9 @@ pub enum EngineError {
         height: u64,
         index: usize,
     },
+    PrevBlockNotExist {
+        height: u64,
+    },
     /// The same author issued different votes at the same step.
     DoubleVote(Address),
     /// The received block is from an incorrect proposer.
@@ -390,6 +393,9 @@ impl fmt::Display for EngineError {
                 height,
                 index,
             } => format!("The {}th validator on height {} does not exist. (out of bound)", index, height),
+            PrevBlockNotExist {
+                height,
+            } => format!("The previous block of height {} does not exist.", height),
             DoubleVote(address) => format!("Author {} issued too many blocks.", address),
             NotProposer(mis) => format!("Author is not a current proposer: {}", mis),
             UnexpectedMessage => "This Engine should not be fed messages.".into(),
