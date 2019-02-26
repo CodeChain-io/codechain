@@ -1364,7 +1364,7 @@ impl ChainNotify for TendermintChainNotify {
                 }
             }
             if height_changed {
-                t.move_to_step(Step::Commit, false);
+                t.move_to_step(Step::Propose, false);
                 return
             }
         }
