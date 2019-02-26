@@ -188,7 +188,7 @@ impl NetworkExtension for Extension {
             .rlp_bytes(),
         );
         let t = connected_nodes.insert(*id);
-        debug_assert!(t);
+        debug_assert!(t, "{} is already added to peer list", id);
 
         let token = token_generator.gen().expect("Token generator is full");
         let token_info = TokenInfo {

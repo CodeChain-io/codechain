@@ -294,7 +294,16 @@ impl RoutingTable {
                     secret_origin: *secret_origin,
                 }
             }
-            _ => return Err("Invalid state".to_string()),
+            State::Established {
+                ..
+            } => return Err("Cannot try establish. current state: established".to_string()),
+            State::Establishing1(_) => return Err("Cannot try establish. current state: establishing1".to_string()),
+            State::Establishing2 {
+                ..
+            } => return Err("Cannot try establish. current state: establishing2".to_string()),
+            State::Banned {
+                ..
+            } => return Err("Cannot try establish. current state: banned".to_string()),
         };
         *entry = new_state;
         Ok(entry.remote_public().cloned())
@@ -546,7 +555,16 @@ impl RoutingTable {
                 remote_public: *remote_public,
                 secret_origin: *secret_origin,
             },
-            _ => return Err("Initiator is not Establishing1".to_string()),
+            State::Candidate(_) => return Err("Cannot try establish. current state: candidate".to_string()),
+            State::Registered {
+                ..
+            } => return Err("Cannot try establish. current state: registered".to_string()),
+            State::Established {
+                ..
+            } => return Err("Cannot try establish. current state: established".to_string()),
+            State::Banned {
+                ..
+            } => return Err("Cannot try establish. current state: banned".to_string()),
         };
         *entry = new_state;
         Ok(())
