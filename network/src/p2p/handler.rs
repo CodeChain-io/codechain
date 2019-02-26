@@ -194,7 +194,7 @@ impl Handler {
         let initiator_pub_key = if let Some(initiator_pub_key) = self.routing_table.local_public(socket_address) {
             initiator_pub_key
         } else {
-            cinfo!(NETWORK, "{} is already connecting", socket_address);
+            cinfo!(NETWORK, "{} was banned", socket_address);
             return Ok(())
         };
 
