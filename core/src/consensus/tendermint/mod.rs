@@ -184,11 +184,25 @@ impl TendermintInner {
 
     /// Get previous block hash to determine validator set
     fn prev_block_hash(&self) -> H256 {
-        let prev_height = (self.height - 1) as u64;
-        self.client()
-            .block_header(&BlockId::Number(prev_height))
+        self.prev_block_header_of_height(self.height)
             .expect("Height is increased when previous block is imported")
             .hash()
+    }
+
+    /// Get the proposer of previous block to check new proposer is valid.
+    fn prev_block_proposer_idx(&self, height: Height) -> Option<usize> {
+        self.prev_block_header_of_height(height).map(|prev_header| {
+            let prev_proposer = prev_header.author();
+            self.validators
+                .get_index_by_address(&self.prev_block_hash(), &prev_proposer)
+                .expect("The proposer must be in the validator set")
+        })
+    }
+
+    /// Get previous block header of given height
+    fn prev_block_header_of_height(&self, height: Height) -> Option<encoded::Header> {
+        let prev_height = (height - 1) as u64;
+        self.client().block_header(&BlockId::Number(prev_height))
     }
 
     /// Check the committed block of the current height is imported to the canonical chain
@@ -203,10 +217,12 @@ impl TendermintInner {
     }
 
     /// Find the designated for the given view.
-    fn view_proposer(&self, bh: &H256, height: Height, view: View) -> Address {
-        let proposer_nonce = height + view;
-        ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
-        self.validators.get_address(bh, proposer_nonce)
+    fn view_proposer(&self, bh: &H256, height: Height, view: View) -> Option<Address> {
+        self.prev_block_proposer_idx(height).map(|prev_proposer_idx| {
+            let proposer_nonce = prev_proposer_idx + 1 + view;
+            ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
+            self.validators.get_address(bh, proposer_nonce)
+        })
     }
 
     pub fn proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {
@@ -249,21 +265,26 @@ impl TendermintInner {
 
     /// Check if address is a proposer for given view.
     fn check_view_proposer(&self, bh: &H256, height: Height, view: View, address: &Address) -> Result<(), EngineError> {
-        let proposer = self.view_proposer(bh, height, view);
-        if proposer == *address {
-            Ok(())
-        } else {
-            Err(EngineError::NotProposer(Mismatch {
-                expected: proposer,
-                found: *address,
-            }))
-        }
+        self.view_proposer(bh, height, view).map_or(
+            Err(EngineError::PrevBlockNotExist {
+                height: height as u64,
+            }),
+            |proposer| {
+                if proposer == *address {
+                    Ok(())
+                } else {
+                    Err(EngineError::NotProposer(Mismatch {
+                        expected: proposer,
+                        found: *address,
+                    }))
+                }
+            },
+        )
     }
 
     /// Check if current signer is the current proposer.
     fn is_signer_proposer(&self, bh: &H256) -> bool {
-        let proposer = self.view_proposer(bh, self.height, self.view);
-        self.signer.is_address(&proposer)
+        self.view_proposer(bh, self.height, self.view).map_or(false, |proposer| self.signer.is_address(&proposer))
     }
 
     fn is_view(&self, message: &ConsensusMessage) -> bool {
@@ -788,7 +809,7 @@ impl TendermintInner {
             return Err(BlockError::InvalidSeal.into())
         }
 
-        if bitset_count < precommits_count {
+        if bitset_count > precommits_count {
             cwarn!(
                 ENGINE,
                 "verify_block_external: The header({})'s bitset count is greater than the precommits count",
@@ -907,7 +928,9 @@ impl TendermintInner {
                 if self.proposal.is_none() {
                     // Report the proposer if no proposal was received.
                     let height = self.height;
-                    let current_proposer = self.view_proposer(&self.prev_block_hash(), height, self.view);
+                    let current_proposer = self
+                        .view_proposer(&self.prev_block_hash(), height, self.view)
+                        .expect("Height is increased when previous block is imported");
                     self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
                 }
                 Some(Step::Prevote)
@@ -1364,7 +1387,7 @@ impl ChainNotify for TendermintChainNotify {
                 }
             }
             if height_changed {
-                t.move_to_step(Step::Commit, false);
+                t.move_to_step(Step::Propose, false);
                 return
             }
         }
@@ -1951,12 +1974,14 @@ mod tests {
     use super::*;
 
     /// Accounts inserted with "0" and "1" are validators. First proposer is "0".
-    fn setup() -> (Scheme, Arc<AccountProvider>, Arc<EngineClient>) {
+    fn setup() -> (Scheme, Arc<AccountProvider>, Arc<TestBlockChainClient>) {
         let tap = AccountProvider::transient_provider();
         let scheme = Scheme::new_test_tendermint();
-        let test_client: Arc<EngineClient> =
-            Arc::new(TestBlockChainClient::new_with_scheme(Scheme::new_test_tendermint()));
-        scheme.engine.register_client(Arc::downgrade(&test_client));
+        let test = TestBlockChainClient::new_with_scheme(Scheme::new_test_tendermint());
+
+        let test_client: Arc<TestBlockChainClient> = Arc::new(test);
+        let engine_client = Arc::clone(&test_client) as Arc<EngineClient>;
+        scheme.engine.register_client(Arc::downgrade(&engine_client));
         (scheme, tap, test_client)
     }
 
@@ -2020,7 +2045,7 @@ mod tests {
     }
 
     #[test]
-    fn seal_signatures_checking() {
+    fn parent_block_existence_checking() {
         let (spec, tap, _c) = setup();
         let engine = spec.engine;
 
@@ -2031,13 +2056,47 @@ mod tests {
         header.set_parent_hash(Default::default());
 
         let vote_info = message_info_rlp(VoteStep::new(3, 0, Step::Precommit), Some(*header.parent_hash()));
-        let signature0 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let signature2 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
             cur_view: 0,
-            precommits: vec![signature0],
-            precommit_bitset: BitSet::new_with_indices(&[0]),
+            precommits: vec![signature2],
+            precommit_bitset: BitSet::new_with_indices(&[2]),
+        }
+        .seal_fields()
+        .unwrap();
+        header.set_seal(seal);
+
+        assert!(engine.verify_block_external(&header).is_err());
+    }
+
+    #[test]
+    fn seal_signatures_checking() {
+        let (spec, tap, c) = setup();
+        let engine = spec.engine;
+
+        let validator0 = insert_and_unlock(&tap, "0");
+        let validator1 = insert_and_unlock(&tap, "1");
+        let validator2 = insert_and_unlock(&tap, "2");
+        let validator3 = insert_and_unlock(&tap, "3");
+
+        c.add_block_with_author(Some(validator1), 1, 1);
+
+        let mut header = Header::default();
+        header.set_number(2);
+        let proposer = validator2;
+        header.set_author(proposer);
+        header.set_parent_hash(Default::default());
+
+        let vote_info = message_info_rlp(VoteStep::new(1, 0, Step::Precommit), Some(*header.parent_hash()));
+        let signature2 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+
+        let seal = Seal::Tendermint {
+            prev_view: 0,
+            cur_view: 0,
+            precommits: vec![signature2],
+            precommit_bitset: BitSet::new_with_indices(&[2]),
         }
         .seal_fields()
         .unwrap();
@@ -2049,16 +2108,16 @@ mod tests {
             _ => panic!(),
         }
 
-        let voter = insert_and_unlock(&tap, "1");
-        let signature1 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
-        let voter = insert_and_unlock(&tap, "2");
-        let signature2 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let voter = validator3;
+        let signature3 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let voter = validator0;
+        let signature0 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
             cur_view: 0,
-            precommits: vec![signature0, signature1, signature2],
-            precommit_bitset: BitSet::new_with_indices(&[0, 1, 2]),
+            precommits: vec![signature0, signature2, signature3],
+            precommit_bitset: BitSet::new_with_indices(&[0, 2, 3]),
         }
         .seal_fields()
         .unwrap();
@@ -2072,8 +2131,8 @@ mod tests {
         let seal = Seal::Tendermint {
             prev_view: 0,
             cur_view: 0,
-            precommits: vec![signature0, signature1, bad_signature],
-            precommit_bitset: BitSet::new_with_indices(&[0, 1, 2]),
+            precommits: vec![signature0, signature2, bad_signature],
+            precommit_bitset: BitSet::new_with_indices(&[0, 2, 3]),
         }
         .seal_fields()
         .unwrap();
