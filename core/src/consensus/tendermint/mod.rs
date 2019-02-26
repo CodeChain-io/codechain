@@ -742,15 +742,27 @@ impl TendermintInner {
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
         let seal_length = header.seal().len();
         let expected_seal_fields = self.seal_fields(header);
-        if seal_length == expected_seal_fields {
-            Ok(())
-        } else {
-            Err(BlockError::InvalidSealArity(Mismatch {
+        if seal_length != expected_seal_fields {
+            return Err(BlockError::InvalidSealArity(Mismatch {
                 expected: expected_seal_fields,
                 found: seal_length,
             })
             .into())
         }
+
+        let height = header.number() as usize;
+        let view = consensus_view(header).unwrap();
+        let score = Self::calculate_score(height, view);
+
+        if *header.score() != score {
+            return Err(BlockError::InvalidScore(Mismatch {
+                expected: score,
+                found: *header.score(),
+            })
+            .into())
+        }
+
+        Ok(())
     }
 
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
@@ -857,10 +869,13 @@ impl TendermintInner {
     }
 
     fn populate_from_parent(&self, header: &mut Header, _parent: &Header) {
-        let height = U256::from(header.number());
-        let new_score = u256_from_u128(std::u128::MAX) * height - self.view;
-
+        let new_score = Self::calculate_score(header.number() as usize, self.view);
         header.set_score(new_score);
+    }
+
+    fn calculate_score(height: Height, view: View) -> U256 {
+        let height = U256::from(height);
+        u256_from_u128(std::u128::MAX) * height - view
     }
 
     fn on_timeout(&mut self, token: usize) {
