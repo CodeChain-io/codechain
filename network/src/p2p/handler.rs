@@ -200,12 +200,11 @@ impl Handler {
 
         if let Some(stream) = Stream::connect(&socket_address)? {
             let mut outgoing_connections = self.outgoing_connections.write();
-            let mut outgoing_tokens = self.outgoing_tokens.lock();
             // Please make sure there is no early return after it.
             let initiator_port = self.socket_address.port();
             let con =
                 OutgoingConnection::new(stream, initiator_pub_key, self.network_id, initiator_port, socket_address)?;
-            let token = outgoing_tokens.gen().ok_or("Too many outgoing connections")?;
+            let token = self.outgoing_tokens.lock().gen().ok_or("Too many outgoing connections")?;
             let t = outgoing_connections.insert(token, con);
             assert!(t.is_none());
             io.register_stream(token);
@@ -395,8 +394,7 @@ impl IoHandler<Message> for Handler {
                 is_inbound: true,
             } => {
                 let mut inbound_connections = self.inbound_connections.write();
-                let mut inbound_tokens = self.inbound_tokens.lock();
-                if let Some(token) = inbound_tokens.gen() {
+                if let Some(token) = self.inbound_tokens.lock().gen() {
                     let remote_node_id = connection.peer_addr().into();
                     assert_eq!(None, self.remote_node_ids.lock().insert(token, remote_node_id));
                     assert_eq!(None, self.remote_node_ids_reverse.lock().insert(remote_node_id, token));
@@ -413,8 +411,7 @@ impl IoHandler<Message> for Handler {
                 is_inbound: false,
             } => {
                 let mut outbound_connections = self.outbound_connections.write();
-                let mut outbound_tokens = self.outbound_tokens.lock();
-                if let Some(token) = outbound_tokens.gen() {
+                if let Some(token) = self.outbound_tokens.lock().gen() {
                     let peer_addr = *connection.peer_addr();
                     let remote_node_id = peer_addr.into();
                     assert_eq!(None, self.remote_node_ids.lock().insert(token, remote_node_id));
@@ -474,12 +471,11 @@ impl IoHandler<Message> for Handler {
                     io.update_registration(stream_token);
                 });
                 while let Some((stream, socket_address)) = self.listener.accept()? {
-                    let (mut incoming_connections, mut incoming_tokens) = {
+                    let mut incoming_connections = {
                         let inbound_connections = self.inbound_connections.read();
                         let outbound_connections = self.outbound_connections.read();
                         let incoming_connections = self.incoming_connections.write();
                         let outgoing_connections = self.outgoing_connections.read();
-                        let incoming_tokens = self.incoming_tokens.lock();
 
                         let current_connections = outbound_connections.len()
                             + inbound_connections.len()
@@ -496,14 +492,14 @@ impl IoHandler<Message> for Handler {
                             );
                             return Ok(())
                         }
-                        (incoming_connections, incoming_tokens)
+                        incoming_connections
                     };
                     let ip = socket_address.ip();
                     if !self.filters.is_allowed(&ip) {
                         cwarn!(NETWORK, "P2P connection request from {} is received. But it's not allowed", ip);
                         return Ok(())
                     }
-                    let token = incoming_tokens.gen().ok_or("Too many incomming connections")?;
+                    let token = self.incoming_tokens.lock().gen().ok_or("Too many incomming connections")?;
                     // Please make sure there is no early return after it.
                     let t = incoming_connections.insert(token, IncomingConnection::new(stream));
                     assert!(t.is_none());
@@ -890,7 +886,6 @@ impl IoHandler<Message> for Handler {
         match stream {
             FIRST_INBOUND...LAST_INBOUND => {
                 let mut inbound_connections = self.inbound_connections.write();
-                let mut inbound_tokens = self.inbound_tokens.lock();
                 if let Some(con) = inbound_connections.remove(&stream) {
                     if let Some(node_id) = self.remote_node_ids.lock().remove(&stream) {
                         assert_ne!(None, self.remote_node_ids_reverse.lock().remove(&node_id));
@@ -900,7 +895,7 @@ impl IoHandler<Message> for Handler {
                     }
                     con.deregister(event_loop)?;
                     self.routing_table.remove(con.peer_addr());
-                    inbound_tokens.restore(stream);
+                    self.inbound_tokens.lock().restore(stream);
                     ctrace!(NETWORK, "Inbound connect({}) removed", stream);
                 } else {
                     cdebug!(NETWORK, "Invalid inbound token({}) on deregister", stream);
@@ -908,7 +903,6 @@ impl IoHandler<Message> for Handler {
             }
             FIRST_OUTBOUND...LAST_OUTBOUND => {
                 let mut outbound_connections = self.outbound_connections.write();
-                let mut outbound_tokens = self.outbound_tokens.lock();
                 if let Some(con) = outbound_connections.remove(&stream) {
                     if let Some(node_id) = self.remote_node_ids.lock().remove(&stream) {
                         assert_ne!(None, self.remote_node_ids_reverse.lock().remove(&node_id));
@@ -918,7 +912,7 @@ impl IoHandler<Message> for Handler {
                     }
                     con.deregister(event_loop)?;
                     self.routing_table.remove(con.peer_addr());
-                    outbound_tokens.restore(stream);
+                    self.outbound_tokens.lock().restore(stream);
                     ctrace!(NETWORK, "Outbound connect({}) removed", stream);
                 } else {
                     cdebug!(NETWORK, "Invalid outbound token({}) on deregister", stream);
@@ -926,12 +920,10 @@ impl IoHandler<Message> for Handler {
             }
             FIRST_INCOMING...LAST_INCOMING => {
                 let mut incoming_connections = self.incoming_connections.write();
-                let mut incoming_tokens = self.incoming_tokens.lock();
-                let mut establishing_incoming_session = self.establishing_incoming_session.lock();
                 if let Some(con) = incoming_connections.remove(&stream) {
                     con.deregister(event_loop)?;
-                    incoming_tokens.restore(stream);
-                    if let Some((port, session)) = establishing_incoming_session.remove(&stream) {
+                    self.incoming_tokens.lock().restore(stream);
+                    if let Some((port, session)) = self.establishing_incoming_session.lock().remove(&stream) {
                         let connection = con.establish(session, port)?;
                         {
                             let peer_addr = connection.peer_addr();
@@ -957,12 +949,10 @@ impl IoHandler<Message> for Handler {
             }
             FIRST_OUTGOING...LAST_OUTGOING => {
                 let mut outgoing_connections = self.outgoing_connections.write();
-                let mut outgoing_tokens = self.outgoing_tokens.lock();
-                let mut establishing_outgoing_session = self.establishing_outgoing_session.lock();
                 if let Some(con) = outgoing_connections.remove(&stream) {
                     con.deregister(event_loop)?;
-                    outgoing_tokens.restore(stream);
-                    if let Some(session) = establishing_outgoing_session.remove(&stream) {
+                    self.outgoing_tokens.lock().restore(stream);
+                    if let Some(session) = self.establishing_outgoing_session.lock().remove(&stream) {
                         let connection = con.establish(session)?;
                         {
                             let peer_addr = connection.peer_addr();
