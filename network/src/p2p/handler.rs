@@ -135,15 +135,15 @@ impl Handler {
             socket_address,
             listener: Listener::bind(&socket_address).expect("Cannot listen TCP port"),
 
-            inbound_tokens: Mutex::new(TokenGenerator::new(FIRST_INBOUND, MAX_INBOUND_CONNECTIONS)),
-            outbound_tokens: Mutex::new(TokenGenerator::new(FIRST_OUTBOUND, MAX_OUTBOUND_CONNECTIONS)),
-            incoming_tokens: Mutex::new(TokenGenerator::new(FIRST_INCOMING, MAX_INCOMING_CONNECTIONS)),
-            outgoing_tokens: Mutex::new(TokenGenerator::new(FIRST_OUTGOING, MAX_OUTGOING_CONNECTIONS)),
-
             inbound_connections: Default::default(),
             outbound_connections: Default::default(),
             incoming_connections: Default::default(),
             outgoing_connections: Default::default(),
+
+            inbound_tokens: Mutex::new(TokenGenerator::new(FIRST_INBOUND, MAX_INBOUND_CONNECTIONS)),
+            outbound_tokens: Mutex::new(TokenGenerator::new(FIRST_OUTBOUND, MAX_OUTBOUND_CONNECTIONS)),
+            incoming_tokens: Mutex::new(TokenGenerator::new(FIRST_INCOMING, MAX_INCOMING_CONNECTIONS)),
+            outgoing_tokens: Mutex::new(TokenGenerator::new(FIRST_OUTGOING, MAX_OUTGOING_CONNECTIONS)),
 
             establishing_incoming_session: Default::default(),
             establishing_outgoing_session: Default::default(),
@@ -199,8 +199,8 @@ impl Handler {
         };
 
         if let Some(stream) = Stream::connect(&socket_address)? {
-            let mut outgoing_tokens = self.outgoing_tokens.lock();
             let mut outgoing_connections = self.outgoing_connections.write();
+            let mut outgoing_tokens = self.outgoing_tokens.lock();
             // Please make sure there is no early return after it.
             let initiator_port = self.socket_address.port();
             let con =
@@ -267,8 +267,8 @@ impl IoHandler<Message> for Handler {
                 let current_connections = {
                     let inbound_connections = self.inbound_connections.read();
                     let outbound_connections = self.outbound_connections.read();
-                    let outgoing_connections = self.outgoing_connections.read();
                     let incoming_connections = self.incoming_connections.read();
+                    let outgoing_connections = self.outgoing_connections.read();
                     let current_connections = outbound_connections.len()
                         + inbound_connections.len()
                         + incoming_connections.len()
@@ -412,8 +412,8 @@ impl IoHandler<Message> for Handler {
                 mut connection,
                 is_inbound: false,
             } => {
-                let mut outbound_tokens = self.outbound_tokens.lock();
                 let mut outbound_connections = self.outbound_connections.write();
+                let mut outbound_tokens = self.outbound_tokens.lock();
                 if let Some(token) = outbound_tokens.gen() {
                     let peer_addr = *connection.peer_addr();
                     let remote_node_id = peer_addr.into();
