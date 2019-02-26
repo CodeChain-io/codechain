@@ -25,9 +25,9 @@ jobs:
       before_script:
         - cargo fetch --verbose
       script:
-        - test $RUN_UNIT_TEST && (cargo +nightly-2018-12-06 fmt -- --check || exit 1)
-        - test $RUN_UNIT_TEST && (cargo +nightly-2018-12-06 clippy --all --all-targets -- -D warnings || exit 1)
-        - test $RUN_UNIT_TEST && (RUST_BACKTRACE=1 cargo test --verbose --all || exit 1)
+        - (test $RUN_UNIT_TEST && cargo +nightly-2018-12-06 fmt -- --check) || exit 1
+        - (test $RUN_UNIT_TEST && cargo +nightly-2018-12-06 clippy --all --all-targets -- -D warnings) || exit 1
+        - (test $RUN_UNIT_TEST && RUST_BACKTRACE=1 cargo test --verbose --all) || exit 1
         - cd test && yarn && yarn lint || exit 1
         - cargo build || exit 1
         - INT_TEST_FLAG=true && yarn start-short
@@ -49,9 +49,9 @@ jobs:
       before_script:
         - cargo fetch --verbose
       script:
-        - test $RUN_UNIT_TEST && (cargo +nightly-2018-12-06 fmt -- --check || exit 1)
-        - test $RUN_UNIT_TEST && (cargo +nightly-2018-12-06 clippy --all --all-targets -- -D warnings || exit 1)
-        - test $RUN_UNIT_TEST && (RUST_BACKTRACE=1 cargo test --verbose --all || exit 1)
+        - (test $RUN_UNIT_TEST && cargo +nightly-2018-12-06 fmt -- --check) || exit 1
+        - (test $RUN_UNIT_TEST && cargo +nightly-2018-12-06 clippy --all --all-targets -- -D warnings) || exit 1
+        - (test $RUN_UNIT_TEST && RUST_BACKTRACE=1 cargo test --verbose --all) || exit 1
         - cd test && yarn && yarn lint || exit 1
         - cargo build || exit 1
         - INT_TEST_FLAG=true && yarn start-short
