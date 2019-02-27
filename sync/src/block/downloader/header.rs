@@ -73,9 +73,14 @@ impl HeaderDownloader {
         }
     }
 
-    pub fn update(&mut self, total_score: U256, best_hash: H256) {
-        self.total_score = total_score;
-        self.best_hash = best_hash;
+    pub fn update(&mut self, total_score: U256, best_hash: H256) -> bool {
+        if self.total_score < total_score {
+            self.total_score = total_score;
+            self.best_hash = best_hash;
+            true
+        } else {
+            false
+        }
     }
 
     fn is_valid(&self) -> bool {

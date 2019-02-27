@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -58,6 +59,7 @@ pub struct TokenInfo {
 
 pub struct Extension {
     requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
+    connected_nodes: RwLock<HashSet<NodeId>>,
     header_downloaders: RwLock<HashMap<NodeId, HeaderDownloader>>,
     body_downloader: Mutex<BodyDownloader>,
     tokens: RwLock<HashMap<NodeId, TimerToken>>,
@@ -72,6 +74,7 @@ impl Extension {
     pub fn new(client: Arc<Client>, api: Arc<Api>) -> Extension {
         Extension {
             requests: RwLock::new(HashMap::new()),
+            connected_nodes: Default::default(),
             header_downloaders: RwLock::new(HashMap::new()),
             body_downloader: Mutex::new(BodyDownloader::new()),
             tokens: RwLock::new(HashMap::new()),
@@ -167,6 +170,7 @@ impl NetworkExtension for Extension {
 
     fn on_node_added(&self, id: &NodeId, _version: u64) {
         let mut requests = self.requests.write();
+        let mut connected_nodes = self.connected_nodes.write();
         let mut tokens = self.tokens.write();
         let mut tokens_info = self.tokens_info.write();
         let mut token_generator = self.token_generator.lock();
@@ -182,6 +186,8 @@ impl NetworkExtension for Extension {
             }
             .rlp_bytes(),
         );
+        let t = connected_nodes.insert(*id);
+        debug_assert!(t);
 
         let token = token_generator.gen().expect("Token generator is full");
         let token_info = TokenInfo {
@@ -200,12 +206,15 @@ impl NetworkExtension for Extension {
 
     fn on_node_removed(&self, id: &NodeId) {
         let mut requests = self.requests.write();
+        let mut connected_nodes = self.connected_nodes.write();
         let mut header_downloaders = self.header_downloaders.write();
         let mut tokens = self.tokens.write();
         let mut tokens_info = self.tokens_info.write();
         let mut token_generator = self.token_generator.lock();
 
         cinfo!(SYNC, "Peer removed #{}", id);
+        let t = connected_nodes.remove(id);
+        debug_assert!(t);
         header_downloaders.remove(id);
 
         requests.remove(id);
@@ -353,8 +362,9 @@ impl ChainNotify for Extension {
 
 
         let chain_info = self.client.chain_info();
-        let peer_ids = self.header_downloaders.read();
-        for id in peer_ids.keys() {
+        let peer_ids = self.connected_nodes.read();
+
+        for id in &*peer_ids {
             self.api.send(
                 id,
                 &Message::Status {
@@ -376,14 +386,18 @@ impl Extension {
             return
         }
 
-        cinfo!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
-
-        let mut peers = self.header_downloaders.write();
-        if peers.contains_key(from) {
-            peers.get_mut(from).unwrap().update(total_score, best_hash);
-        } else {
-            peers.insert(*from, HeaderDownloader::new(self.client.clone(), total_score, best_hash));
+        match self.header_downloaders.write().entry(*from) {
+            Entry::Occupied(mut peer) => {
+                if !peer.get_mut().update(total_score, best_hash) {
+                    cwarn!(SYNC, "Peer #{} status updated but score is less than before", from);
+                    return
+                }
+            }
+            Entry::Vacant(e) => {
+                e.insert(HeaderDownloader::new(self.client.clone(), total_score, best_hash));
+            }
         }
+        cinfo!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
     }
 
     fn on_peer_request(&self, from: &NodeId, id: u64, request: RequestMessage) {
