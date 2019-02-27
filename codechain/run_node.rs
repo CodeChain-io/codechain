@@ -259,6 +259,8 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
     let miner = new_miner(&config, &scheme, ap.clone(), Arc::clone(&db))?;
     let client = client_start(&client_config, &timer_loop, db, &scheme, miner.clone())?;
+    miner.recover_from_db(client.client().as_ref());
+
     let mut some_sync = None;
 
     scheme.engine.register_chain_notify(client.client().as_ref());
