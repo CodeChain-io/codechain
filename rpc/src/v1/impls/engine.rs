@@ -76,15 +76,14 @@ where
         key_fragment: Bytes,
         block_number: Option<u64>,
     ) -> Result<Option<WithoutPrefix<Bytes>>> {
-        let handler =
-            self.client.find_action_handler_for(handler_id).ok_or_else(errors::action_data_handler_not_found)?;
+        let handler = self.client.find_action_handler_for(handler_id).ok_or_else(errors::action_handler_not_found)?;
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let state = self.client.state_at(block_id).ok_or_else(errors::state_not_exist)?;
 
         match handler.query(&key_fragment, &state) {
             Ok(Some(action_data)) => Ok(Some(Bytes::new(action_data).into_without_prefix())),
             Ok(None) => Ok(None),
-            Err(e) => Err(errors::action_data_handler_error(e)),
+            Err(e) => Err(errors::transaction_core(e)),
         }
     }
 }

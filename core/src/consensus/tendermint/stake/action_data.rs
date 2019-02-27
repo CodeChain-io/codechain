@@ -17,12 +17,12 @@
 use std::collections::{btree_set, BTreeSet};
 
 use ckey::Address;
-use cstate::{ActionDataKeyBuilder, TopLevelState, TopState, TopStateView};
+use cstate::{ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
 use ctypes::errors::RuntimeError;
 use primitives::H256;
-use rlp::{RlpStream, UntrustedRlp};
+use rlp::{Rlp, RlpStream};
 
-use super::{StakeResult, CUSTOM_ACTION_HANDLER_ID};
+use super::CUSTOM_ACTION_HANDLER_ID;
 
 fn get_account_key(address: &Address) -> H256 {
     ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(address).into_key()
@@ -41,12 +41,12 @@ pub struct StakeAccount<'a> {
 }
 
 impl<'a> StakeAccount<'a> {
-    pub fn load_from_state(state: &TopLevelState, address: &'a Address) -> StakeResult<StakeAccount<'a>> {
+    pub fn load_from_state(state: &TopLevelState, address: &'a Address) -> StateResult<StakeAccount<'a>> {
         let account_key = get_account_key(address);
         let action_data = state.action_data(&account_key)?;
 
         let balance = match action_data {
-            Some(data) => UntrustedRlp::new(&data).as_val()?,
+            Some(data) => Rlp::new(&data).as_val(),
             None => StakeBalance::default(),
         };
 
@@ -56,7 +56,7 @@ impl<'a> StakeAccount<'a> {
         })
     }
 
-    pub fn save_to_state(&self, state: &mut TopLevelState) -> StakeResult<()> {
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
         let account_key = get_account_key(self.address);
         let rlp = rlp::encode(&self.balance);
         state.update_action_data(&account_key, rlp.into_vec())?;
@@ -84,21 +84,21 @@ impl<'a> StakeAccount<'a> {
 pub struct Stakeholders(BTreeSet<Address>);
 
 impl Stakeholders {
-    pub fn load_from_state(state: &TopLevelState) -> StakeResult<Stakeholders> {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Stakeholders> {
         let action_data = state.action_data(&*stakeholder_addresses_key)?;
 
         let mut addresses = BTreeSet::new();
 
-        if let Some(rlp) = action_data.as_ref().map(|x| UntrustedRlp::new(x)) {
-            for i in 0..rlp.item_count()? {
-                addresses.insert(rlp.val_at(i)?);
+        if let Some(rlp) = action_data.as_ref().map(|x| Rlp::new(x)) {
+            for i in 0..rlp.item_count() {
+                addresses.insert(rlp.val_at(i));
             }
         }
 
         Ok(Stakeholders(addresses))
     }
 
-    pub fn save_to_state(&self, state: &mut TopLevelState) -> StakeResult<()> {
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
         let mut rlp = RlpStream::new();
         rlp.begin_list(self.0.len());
         for address in self.0.iter() {

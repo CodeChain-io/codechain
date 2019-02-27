@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use ccore::{
     AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
-    Shard, SignedTransaction, TextClient, UnverifiedTransaction,
+    Shard, SignedTransaction, TextClient,
 };
 use ccrypto::Blake;
 use cjson::bytes::Bytes;
@@ -29,7 +29,7 @@ use ctypes::invoice::Invoice;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H160, H256};
-use rlp::{DecoderError, UntrustedRlp};
+use rlp::UntrustedRlp;
 
 use jsonrpc_core::Result;
 
@@ -83,18 +83,6 @@ where
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
             .map_err(|e| errors::rlp(&e))
-            .and_then(|tx: UnverifiedTransaction| {
-                if let Action::Custom {
-                    handler_id,
-                    ..
-                } = &tx.action
-                {
-                    if self.client.find_action_handler_for(*handler_id).is_none() {
-                        return Err(errors::rlp(&DecoderError::Custom("Invalid custom action!")))
-                    }
-                }
-                Ok(tx)
-            })
             .and_then(|tx| SignedTransaction::try_new(tx).map_err(errors::transaction_core))
             .and_then(|signed| {
                 let hash = signed.hash();
