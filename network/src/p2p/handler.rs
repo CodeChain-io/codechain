@@ -462,7 +462,6 @@ impl IoHandler<Message> for Handler {
                 io.register_timer_once(timer, timeout);
             }
             Message::StartConnect => {
-                io.clear_timer(CREATE_CONNECTIONS);
                 io.register_timer_once(CREATE_CONNECTIONS, CREATE_CONNECTION_INTERVAL);
             }
         }
@@ -758,11 +757,9 @@ impl IoHandler<Message> for Handler {
                         Some(IncomingMessage::Nack) => {
                             cinfo!(NETWORK, "Nack from {}", from);
                             self.routing_table.reset_initiator_establish(from)?;
-                            let timeout = self.rng.lock().gen_range(Duration::from_millis(1), RETRY_SYNC_MAX);
                             io.clear_timer(wait_ack_timer(stream_token));
-                            let timer_token = retry_sync_timer(stream_token);
-                            io.clear_timer(timer_token);
-                            io.register_timer_once(timer_token, timeout);
+                            let timeout = self.rng.lock().gen_range(Duration::from_millis(1), RETRY_SYNC_MAX);
+                            io.register_timer_once(retry_sync_timer(stream_token), timeout);
                         }
                         None => {
                             should_update.store(false, Ordering::SeqCst);
