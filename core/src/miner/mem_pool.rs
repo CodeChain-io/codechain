@@ -33,6 +33,7 @@ use super::mem_pool_types::{
     TransactionOrder, TransactionOrderWithTag, TxOrigin, TxTimelock,
 };
 use super::TransactionImportResult;
+use crate::client::{AccountData, BlockChain, RegularKeyOwner};
 use crate::transaction::SignedTransaction;
 use crate::Error as CoreError;
 
@@ -116,7 +117,7 @@ pub struct MemPool {
 impl MemPool {
     /// Create new instance of this Queue with specified limits
     pub fn with_limits(limit: usize, memory_limit: usize, fee_bump_shift: usize, db: Arc<KeyValueDB>) -> Self {
-        let mut result = MemPool {
+        MemPool {
             minimal_fee: 0,
             fee_bump_shift,
             max_time_in_pool: DEFAULT_POOLING_PERIOD,
@@ -133,10 +134,7 @@ impl MemPool {
             last_timestamp: 0,
             next_transaction_id: 0,
             db,
-        };
-        result.recover_from_db();
-
-        result
+        }
     }
 
     /// Set the new limit for `current` and `future` queue.
@@ -436,52 +434,76 @@ impl MemPool {
     }
 
     // Recover MemPool state from db stored data
-    fn recover_from_db(&mut self) {
+    pub fn recover_from_db<C: AccountData + BlockChain + RegularKeyOwner>(&mut self, client: &C) {
+        let fetch_account = |p: &Public| -> AccountDetails {
+            let address = public_to_address(p);
+            let a = client.latest_regular_key_owner(&address).unwrap_or(address);
+            AccountDetails {
+                seq: client.latest_seq(&a),
+                balance: client.latest_balance(&a),
+            }
+        };
         let backup::RecoveredData {
             by_hash,
-            first_seqs,
-            next_seqs,
-            last_time,
-            last_timestamp,
-            next_transaction_id,
+            ..
         } = backup::recover_to_data(self.db.as_ref());
 
+        let recover_time = client.chain_info().best_block_number;
+        let recover_timestamp = client.chain_info().best_block_timestamp;
+
+        let mut max_insertion_id = 0u64;
         let mut to_insert: HashMap<_, Vec<_>> = HashMap::new();
-        let mut keys = Vec::with_capacity(first_seqs.len());
 
         for (hash, item) in by_hash.iter() {
             let signer_public = item.signer_public();
             let seq = item.seq();
+            let client_account = fetch_account(&signer_public);
 
-            let client_account_seq = *first_seqs.get(&signer_public).expect("Low Level Database Error");
+            if item.insertion_id > max_insertion_id {
+                max_insertion_id = item.insertion_id;
+            }
 
-            let order = TransactionOrder::for_transaction(&item, client_account_seq);
+            let order = TransactionOrder::for_transaction(&item, client_account.seq);
             let order_with_tag = TransactionOrderWithTag::new(order, QueueTag::New);
 
-            to_insert.entry(signer_public).or_default().push(seq);
             self.by_hash.insert(*hash, item.clone());
 
-            keys.push(signer_public);
             self.by_signer_public.insert(signer_public, seq, order_with_tag);
             if item.origin == TxOrigin::Local {
                 self.is_local_account.insert(signer_public);
             }
+            to_insert.entry(signer_public).or_default().push(seq);
         }
 
         let keys = self.by_signer_public.keys().map(Clone::clone).collect::<Vec<_>>();
 
         for public in keys {
+            let current_seq = fetch_account(&public).seq;
+
+            let next_seq = to_insert
+                .get(&public)
+                .and_then(|v| self.check_new_transactions(public, v, current_seq, recover_time, recover_timestamp))
+                .unwrap_or_else(|| self.check_transactions(public, current_seq, recover_time, recover_timestamp));
+
+            self.first_seqs.insert(public, current_seq);
+            if next_seq > current_seq {
+                self.next_seqs.insert(public, next_seq);
+            }
+
             if let Some(seq_list) = to_insert.get(&public) {
-                let next_seq = *next_seqs.get(&public).expect("Low Level Database Error");
                 self.add_new_orders_to_queue(public, seq_list, next_seq);
+            }
+
+            if self.by_signer_public.clear_if_empty(&public) {
+                self.is_local_account.remove(&public);
             }
         }
 
-        self.next_seqs = next_seqs;
-        self.first_seqs = first_seqs;
-        self.last_time = last_time;
-        self.last_timestamp = last_timestamp;
-        self.next_transaction_id = next_transaction_id;
+        // last_time and last_timestamp don't have to be the same as previous mem_pool state.
+        // These values are used only to optimize the renewal behavior of next seq and first seq.
+        self.last_time = recover_time;
+        self.last_timestamp = recover_timestamp;
+        self.next_transaction_id = max_insertion_id + 1;
     }
 
     /// Removes invalid transaction identified by hash from pool.
