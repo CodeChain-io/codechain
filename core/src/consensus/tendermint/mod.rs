@@ -1621,11 +1621,12 @@ impl TendermintExtension {
     }
 
     fn request_all_votes(&self, vote_step: &VoteStep) {
-        let peers_guard = self.peers.read();
-        for (token, peer) in peers_guard.iter() {
+        for token in self.select_random_peers() {
+            let peers_guard = self.peers.read();
+            let peer = &peers_guard[&token];
             if *vote_step <= peer.vote_step && !peer.messages.is_empty() {
                 // FIXME: Do not need to request already known votes
-                self.request_messages(token, *vote_step, BitSet::all_set());
+                self.request_messages(&token, *vote_step, BitSet::all_set());
             }
         }
     }
