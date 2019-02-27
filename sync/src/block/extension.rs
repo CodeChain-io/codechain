@@ -103,7 +103,6 @@ impl Extension {
 
     fn send_body_request(&self, id: &NodeId) {
         if let Some(requests) = self.requests.write().get_mut(id) {
-            ctrace!(SYNC, "Send body request to {}", id);
             let have_body_request = {
                 requests.iter().any(|r| match r {
                     (_, RequestMessage::Bodies(..)) => true,
@@ -111,10 +110,12 @@ impl Extension {
                 })
             };
             if have_body_request {
+                cdebug!(SYNC, "Wait body response");
                 return
             }
 
             if let Some(request) = self.body_downloader.lock().create_request() {
+                cdebug!(SYNC, "Request body to {} {:?}", id, request);
                 let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
                 requests.push((request_id, request.clone()));
                 self.api.send(id, &Message::Request(request_id, request).rlp_bytes());
@@ -553,7 +554,7 @@ impl Extension {
                     let parent = &neighbors[0];
                     let child = &neighbors[1];
                     if child.number() != parent.number() + 1 || *child.parent_hash() != parent.hash() {
-                        ctrace!(SYNC, "Received headers are not a chain:\n  parent: (height: {}, hash: {}, parent: {}),\n  child: (height: {}, hash: {}, parent: {})",
+                        cwarn!(SYNC, "Received headers are not a chain:\n  parent: (height: {}, hash: {}, parent: {}),\n  child: (height: {}, hash: {}, parent: {})",
                         parent.number(), parent.hash(), parent.parent_hash(), child.number(), child.hash(), child.parent_hash());
                         return false
                     }
@@ -563,7 +564,7 @@ impl Extension {
             }
             (RequestMessage::Bodies(hashes), ResponseMessage::Bodies(bodies)) => {
                 if hashes.len() != bodies.len() {
-                    ctrace!(
+                    cwarn!(
                         SYNC,
                         "Received bodies' length({}) is not same with the requested hashes({})",
                         bodies.len(),
@@ -581,7 +582,7 @@ impl Extension {
                             _ => true,
                         };
                         if !is_valid {
-                            ctrace!(SYNC, "Received transaction has some invalid actions");
+                            cwarn!(SYNC, "Received transaction has some invalid actions");
                             return false
                         }
                     }
@@ -596,7 +597,7 @@ impl Extension {
                 ResponseMessage::StateChunk(..),
             ) => unimplemented!(),
             _ => {
-                ctrace!(SYNC, "Invalid response type");
+                cwarn!(SYNC, "Invalid response type");
                 false
             }
         }
@@ -635,7 +636,7 @@ impl Extension {
     }
 
     fn on_body_response(&self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedTransaction>>) {
-        ctrace!(SYNC, "Received body response with lenth({})", hashes.len());
+        ctrace!(SYNC, "Received body response with lenth({}) {:?}", hashes.len(), hashes);
         {
             let mut body_downloader = self.body_downloader.lock();
             body_downloader.import_bodies(hashes, bodies);
