@@ -153,9 +153,9 @@ CLI Options for CodeChain client
         Do not use discovery. No automated peer finding.
 
     ``--discovery="kademlia" | "unstructured"``
-        Decide which p2p discovery extension to use. Options are `kademlia <https://github.com/CodeChain-io/codechain/blob/master/spec/Kademlia-Extension.md>`_ and unstructured.
+        Decide which p2p discovery extension to use. Options are `kademlia <https://github.com/CodeChain-io/codechain/blob/master/spec/Node-Discovery-Protocol.md#kademlia>`_ and unstructured.
         In a testing environment, an unstructured p2p network is desirable because it is
-        more than sufficient when there are a few users.
+        more than sufficient when there are a few nodes(< 100).
         (default: unstructured)
 
     ``--discovery-bucket-size=[NUM]``

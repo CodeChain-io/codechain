@@ -2,17 +2,17 @@ Although node discovery is an indispensable part of a p2p network, the node disc
 
 It is also possible to run without node discovery protocol. In this case, the server only tries to connect to fixed servers.
 
-# Kademlia-discovery
+# Kademlia
 
-Kademlia-discovery is one of the discovery protocols that CodeChain provides. This is a subset of the kademlia DHT protocol.
+Kademlia is one of the discovery protocols that CodeChain provides. This is a subset of the kademlia DHT protocol.
 
 ## Node Identification
 
-The kademlia-discovery protocol uses 256-bits to distinguish a node. This 256-bit identification is called `NodeId`. CodeChain uses the BLAKE2b hash of the IP address to make them uniformly distributed and prevent a [Sybil attack](https://en.wikipedia.org/wiki/Sybil_attack).
+The kademlia protocol uses 256-bits to distinguish a node. This 256-bit identification is called `NodeId`. CodeChain uses the BLAKE2b hash of the IP address to make them uniformly distributed and prevent a [Sybil attack](https://en.wikipedia.org/wiki/Sybil_attack).
 
 ## Xor Distance
 
-The kademlia-discovery protocol uses xor distance. Xor distance is symmetric. In other words, the distance from node A to node B is the same as the distance from node B to node A. This property is important because when node A is one of the closest nodes of node B, node B is also probably one of the closest nodes to node A. It reduces the load for managing networks.
+The kademlia protocol uses xor distance. Xor distance is symmetric. In other words, the distance from node A to node B is the same as the distance from node B to node A. This property is important because when node A is one of the closest nodes of node B, node B is also probably one of the closest nodes to node A. It reduces the load for managing networks.
 
 ## Message
 
