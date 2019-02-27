@@ -32,11 +32,9 @@ import {
 import { PromiseExpect } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
-const describeSkippedInTravis = process.env.TRAVIS ? describe.skip : describe;
-
 const RLP = require("rlp");
 
-describeSkippedInTravis("Tendermint ", function() {
+describe("Tendermint ", function() {
     const promiseExpect = new PromiseExpect();
     let nodes: CodeChain[];
 
@@ -67,6 +65,8 @@ describeSkippedInTravis("Tendermint ", function() {
     });
 
     it("Block generation", async function() {
+        const startHight = await nodes[0].getBestBlockNumber();
+
         await promiseExpect.shouldFulfill(
             "connect",
             Promise.all([
@@ -91,22 +91,17 @@ describeSkippedInTravis("Tendermint ", function() {
         await promiseExpect.shouldFulfill(
             "block generation",
             Promise.all([
-                nodes[0].waitBlockNumber(2),
-                nodes[1].waitBlockNumber(2),
-                nodes[2].waitBlockNumber(2),
-                nodes[3].waitBlockNumber(2)
+                nodes[0].waitBlockNumber(startHight + 1),
+                nodes[1].waitBlockNumber(startHight + 1),
+                nodes[2].waitBlockNumber(startHight + 1),
+                nodes[3].waitBlockNumber(startHight + 1)
             ])
         );
-
-        await expect(
-            promiseExpect.shouldFulfill(
-                "best blocknumber",
-                nodes[0].sdk.rpc.chain.getBestBlockNumber()
-            )
-        ).to.eventually.greaterThan(1);
-    }).timeout(20_000);
+    }).timeout(60_000);
 
     it("Block generation with restart", async function() {
+        const startHeight = await nodes[0].getBestBlockNumber();
+
         await promiseExpect.shouldFulfill(
             "connect",
             Promise.all([
@@ -131,10 +126,10 @@ describeSkippedInTravis("Tendermint ", function() {
         await promiseExpect.shouldFulfill(
             "block generation",
             Promise.all([
-                nodes[0].waitBlockNumber(2),
-                nodes[1].waitBlockNumber(2),
-                nodes[2].waitBlockNumber(2),
-                nodes[3].waitBlockNumber(2)
+                nodes[0].waitBlockNumber(startHeight + 1),
+                nodes[1].waitBlockNumber(startHeight + 1),
+                nodes[2].waitBlockNumber(startHeight + 1),
+                nodes[3].waitBlockNumber(startHeight + 1)
             ])
         );
 
@@ -158,13 +153,11 @@ describeSkippedInTravis("Tendermint ", function() {
             ])
         );
 
-        const bestBlockNumber = await promiseExpect.shouldFulfill(
-            "BestBlockNUmber",
-            nodes[0].getBestBlockNumber()
-        );
+        const intermediateHeight = await nodes[0].getBestBlockNumber();
+        expect(startHeight).lessThan(intermediateHeight);
 
         await promiseExpect.shouldFulfill(
-            "connect",
+            "reconnect",
             Promise.all([
                 nodes[0].connect(nodes[1]),
                 nodes[0].connect(nodes[2]),
@@ -176,7 +169,7 @@ describeSkippedInTravis("Tendermint ", function() {
         );
 
         await promiseExpect.shouldFulfill(
-            "wait peers",
+            "wait peers2",
             Promise.all([
                 nodes[0].waitPeers(4 - 1),
                 nodes[1].waitPeers(4 - 1),
@@ -186,21 +179,14 @@ describeSkippedInTravis("Tendermint ", function() {
         );
 
         await promiseExpect.shouldFulfill(
-            "block generation",
+            "block generation2",
             Promise.all([
-                nodes[0].waitBlockNumber(bestBlockNumber + 2),
-                nodes[1].waitBlockNumber(bestBlockNumber + 2),
-                nodes[2].waitBlockNumber(bestBlockNumber + 2),
-                nodes[3].waitBlockNumber(bestBlockNumber + 2)
+                nodes[0].waitBlockNumber(intermediateHeight + 1),
+                nodes[1].waitBlockNumber(intermediateHeight + 1),
+                nodes[2].waitBlockNumber(intermediateHeight + 1),
+                nodes[3].waitBlockNumber(intermediateHeight + 1)
             ])
         );
-
-        await expect(
-            promiseExpect.shouldFulfill(
-                "best blocknumber",
-                nodes[0].sdk.rpc.chain.getBestBlockNumber()
-            )
-        ).to.eventually.greaterThan(bestBlockNumber + 1);
     }).timeout(40_000);
 
     it("Block generation with transaction", async function() {
@@ -225,6 +211,7 @@ describeSkippedInTravis("Tendermint ", function() {
             ])
         );
 
+        const startHeight = await nodes[0].getBestBlockNumber();
         await promiseExpect.shouldFulfill(
             "payTx",
             Promise.all([
@@ -237,22 +224,17 @@ describeSkippedInTravis("Tendermint ", function() {
         await promiseExpect.shouldFulfill(
             "block generation",
             Promise.all([
-                nodes[0].waitBlockNumber(2),
-                nodes[1].waitBlockNumber(2),
-                nodes[2].waitBlockNumber(2),
-                nodes[3].waitBlockNumber(2)
+                nodes[0].waitBlockNumber(startHeight + 1),
+                nodes[1].waitBlockNumber(startHeight + 1),
+                nodes[2].waitBlockNumber(startHeight + 1),
+                nodes[3].waitBlockNumber(startHeight + 1)
             ])
         );
-
-        await expect(
-            promiseExpect.shouldFulfill(
-                "best blocknumber",
-                nodes[0].sdk.rpc.chain.getBestBlockNumber()
-            )
-        ).to.eventually.greaterThan(1);
     }).timeout(60_000);
 
     it("Block sync", async function() {
+        const startHeight = await nodes[0].getBestBlockNumber();
+
         await promiseExpect.shouldFulfill(
             "connect",
             Promise.all([
@@ -273,9 +255,9 @@ describeSkippedInTravis("Tendermint ", function() {
         await promiseExpect.shouldFulfill(
             "wait blocknumber",
             Promise.all([
-                nodes[0].waitBlockNumber(2),
-                nodes[1].waitBlockNumber(2),
-                nodes[2].waitBlockNumber(2)
+                nodes[0].waitBlockNumber(startHeight + 1),
+                nodes[1].waitBlockNumber(startHeight + 1),
+                nodes[2].waitBlockNumber(startHeight + 1)
             ])
         );
 
@@ -291,34 +273,26 @@ describeSkippedInTravis("Tendermint ", function() {
         // nodes[4] should sync all message and participate in the network.
 
         await promiseExpect.shouldFulfill(
-            "connect",
+            "reconnect",
             Promise.all([
                 nodes[3].connect(nodes[1]),
                 nodes[3].connect(nodes[2])
             ])
         );
 
-        const bestNumber = await promiseExpect.shouldFulfill(
-            "best blocknumber",
-            nodes[1].getBestBlockNumber()
-        );
+        const heightOfNode0 = await nodes[0].getBestBlockNumber();
         await promiseExpect.shouldFulfill(
             "best blocknumber",
             Promise.all([
-                nodes[1].waitBlockNumber(bestNumber + 1),
-                nodes[2].waitBlockNumber(bestNumber + 1),
-                nodes[3].waitBlockNumber(bestNumber + 1)
+                nodes[1].waitBlockNumber(heightOfNode0 + 1),
+                nodes[2].waitBlockNumber(heightOfNode0 + 1),
+                nodes[3].waitBlockNumber(heightOfNode0 + 1)
             ])
         );
-        await expect(
-            promiseExpect.shouldFulfill(
-                "best blocknumber",
-                nodes[3].sdk.rpc.chain.getBestBlockNumber()
-            )
-        ).to.eventually.greaterThan(bestNumber);
-    }).timeout(30_000);
+    }).timeout(60_000);
 
     it("Gossip", async function() {
+        const startHeight = await nodes[0].getBestBlockNumber();
         await promiseExpect.shouldFulfill(
             "connect",
             Promise.all([
@@ -331,18 +305,12 @@ describeSkippedInTravis("Tendermint ", function() {
         await promiseExpect.shouldFulfill(
             "wait blocknumber",
             Promise.all([
-                nodes[0].waitBlockNumber(3),
-                nodes[1].waitBlockNumber(3),
-                nodes[2].waitBlockNumber(3),
-                nodes[3].waitBlockNumber(3)
+                nodes[0].waitBlockNumber(startHeight + 1),
+                nodes[1].waitBlockNumber(startHeight + 1),
+                nodes[2].waitBlockNumber(startHeight + 1),
+                nodes[3].waitBlockNumber(startHeight + 1)
             ])
         );
-        await expect(
-            promiseExpect.shouldFulfill(
-                "best blocknumber",
-                nodes[0].sdk.rpc.chain.getBestBlockNumber()
-            )
-        ).to.eventually.greaterThan(1);
     }).timeout(20_000);
 
     it("Gossip with not-permissioned node", async function() {
@@ -363,6 +331,7 @@ describeSkippedInTravis("Tendermint ", function() {
         nodes.push(createNodeWihtOutSigner());
         await Promise.all([nodes[4].start(), nodes[5].start()]);
 
+        const startHeight = await nodes[0].getBestBlockNumber();
         // 4 <-> 5
         // 0 <-> 4, 1 <-> 4
         // 2 <-> 5, 3 <-> 5
@@ -380,21 +349,15 @@ describeSkippedInTravis("Tendermint ", function() {
         await promiseExpect.shouldFulfill(
             "wait blocknumber",
             Promise.all([
-                nodes[0].waitBlockNumber(3),
-                nodes[1].waitBlockNumber(3),
-                nodes[2].waitBlockNumber(3),
-                nodes[3].waitBlockNumber(3),
-                nodes[4].waitBlockNumber(3),
-                nodes[5].waitBlockNumber(3)
+                nodes[0].waitBlockNumber(startHeight + 1),
+                nodes[1].waitBlockNumber(startHeight + 1),
+                nodes[2].waitBlockNumber(startHeight + 1),
+                nodes[3].waitBlockNumber(startHeight + 1),
+                nodes[4].waitBlockNumber(startHeight + 1),
+                nodes[5].waitBlockNumber(startHeight + 1)
             ])
         );
-        await expect(
-            promiseExpect.shouldFulfill(
-                "best blocknumber",
-                nodes[0].sdk.rpc.chain.getBestBlockNumber()
-            )
-        ).to.eventually.greaterThan(1);
-    }).timeout(30_000);
+    }).timeout(60_000);
 
     describe("Staking", function() {
         this.timeout(60_000);
