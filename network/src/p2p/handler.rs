@@ -684,7 +684,7 @@ impl IoHandler<Message> for Handler {
                             } else {
                                 cinfo!(NETWORK, "Send nack to {}", from);
                                 con.send_nack();
-                                io.clear_timer(wait_sync_timer(stream_token));
+                                io.register_timer_once(wait_sync_timer(stream_token), WAIT_SYNC);
                             }
                         }
                         Some(OutgoingMessage::Sync2 {
@@ -715,8 +715,8 @@ impl IoHandler<Message> for Handler {
                                 io.deregister_stream(stream_token);
                             } else {
                                 cinfo!(NETWORK, "Send nack to {}", from);
-                                io.clear_timer(wait_sync_timer(stream_token));
                                 con.send_nack();
+                                io.register_timer_once(wait_sync_timer(stream_token), WAIT_SYNC);
                             }
                         }
                         None => {
