@@ -40,6 +40,7 @@ use primitives::{u256_from_u128, Bytes, H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
+use time::Duration;
 
 use self::backup::{backup, restore, BackupView};
 use self::message::*;
@@ -66,6 +67,11 @@ use ChainNotify;
 const ENGINE_TIMEOUT_TOKEN_NONCE_BASE: TimerToken = 23;
 /// Timer token for empty proposal blocks.
 const ENGINE_TIMEOUT_EMPTY_PROPOSAL: TimerToken = 22;
+/// Timer token for broadcasting step state.
+const ENGINE_TIMEOUT_BROADCAST_STEP_STATE: TimerToken = 21;
+
+/// Unit: second
+const ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL: i64 = 1;
 
 pub type BlockHash = H256;
 
@@ -88,6 +94,8 @@ struct TendermintInner {
     step: TendermintState,
     /// Record current round's received votes as bit set
     votes_received: BitSet,
+    /// The votes_received field is changed after last state broadcast.
+    votes_received_changed: bool,
     /// Vote accumulator.
     votes: VoteCollector<ConsensusMessage>,
     /// Used to sign messages and proposals.
@@ -164,6 +172,7 @@ impl TendermintInner {
             chain_notify: Arc::new(chain_notify),
             machine,
             votes_received: BitSet::new(),
+            votes_received_changed: false,
         }
     }
 }
@@ -581,7 +590,7 @@ impl TendermintInner {
 
         // self.move_to_step() calls self.broadcast_state()
         // If self.move_to_step() is not called, call self.broadcast_state() in here.
-        self.broadcast_state(&self.vote_step(), self.proposal, self.last_lock, self.votes_received);
+        self.votes_received_changed = true;
     }
 
     pub fn on_imported_proposal(&mut self, proposal: &Header) {
@@ -926,6 +935,13 @@ impl TendermintInner {
                     cwarn!(ENGINE, "Empty proposal timer was not cleared.");
                 }
             }
+            return
+        }
+
+        if token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE && self.votes_received_changed {
+            self.votes_received_changed = false;
+            self.broadcast_state(&self.vote_step(), self.proposal, self.last_lock, self.votes_received);
+
             return
         }
 
@@ -1897,6 +1913,12 @@ impl NetworkExtension for TendermintExtension {
         let initial = self.timeouts.initial();
         ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
         self.api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
+        self.api
+            .set_timer(
+                ENGINE_TIMEOUT_BROADCAST_STEP_STATE,
+                Duration::seconds(ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL),
+            )
+            .expect("Timer set succeeds");
     }
 
     fn on_node_added(&self, token: &NodeId, _version: u64) {
@@ -1977,7 +1999,11 @@ impl NetworkExtension for TendermintExtension {
 
 impl TimeoutHandler for TendermintExtension {
     fn on_timeout(&self, token: TimerToken) {
-        debug_assert!(token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE || token == ENGINE_TIMEOUT_EMPTY_PROPOSAL);
+        debug_assert!(
+            token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE
+                || token == ENGINE_TIMEOUT_EMPTY_PROPOSAL
+                || token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE
+        );
         if let Some(c) = self.tendermint.upgrade() {
             c.on_timeout(token);
         }
