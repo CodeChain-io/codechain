@@ -17,7 +17,6 @@
 mod hit;
 
 use std::convert::From;
-use std::sync::Arc;
 
 use ccrypto::blake256;
 use ckey::Address;
@@ -41,7 +40,7 @@ pub trait ActionHandler: Send + Sync {
 }
 
 pub trait FindActionHandler {
-    fn find_action_handler_for(&self, _id: u64) -> Option<&Arc<ActionHandler>> {
+    fn find_action_handler_for(&self, _id: u64) -> Option<&ActionHandler> {
         None
     }
 }

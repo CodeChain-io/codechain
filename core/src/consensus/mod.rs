@@ -307,8 +307,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         &[]
     }
 
-    fn find_action_handler_for(&self, id: u64) -> Option<&Arc<ActionHandler>> {
-        self.action_handlers().iter().find(|handler| handler.handler_id() == id)
+    fn find_action_handler_for(&self, id: u64) -> Option<&ActionHandler> {
+        self.action_handlers().iter().find(|handler| handler.handler_id() == id).map(AsRef::as_ref)
     }
 }
 
