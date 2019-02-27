@@ -213,15 +213,16 @@ impl NetworkExtension for Extension {
         let mut tokens_info = self.tokens_info.write();
         let mut token_generator = self.token_generator.lock();
 
-        cinfo!(SYNC, "Peer removed #{}", id);
-        let t = connected_nodes.remove(id);
-        debug_assert!(t);
-        header_downloaders.remove(id);
+        if connected_nodes.remove(id) {
+            cinfo!(SYNC, "Peer removed #{}", id);
 
-        requests.remove(id);
-        if let Some(token) = tokens.remove(id) {
-            tokens_info.remove(&token);
-            token_generator.restore(token);
+            header_downloaders.remove(id);
+
+            requests.remove(id);
+            if let Some(token) = tokens.remove(id) {
+                tokens_info.remove(&token);
+                token_generator.restore(token);
+            }
         }
     }
 
