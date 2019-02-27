@@ -1998,7 +1998,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## net_addToWhitelist
-Adds the address to the whitelist.
+Adds the CIDR block address to the whitelist.
 
 ### Params
  1. address: `string`
@@ -2027,7 +2027,7 @@ Adds the address to the whitelist.
 [Back to **List of methods**](#list-of-methods)
 
 ## net_removeFromWhitelist
-Removes the address from the whitelist.
+Removes the CIDR block address from the whitelist.
 
 ### Params
  1. address: `string`
@@ -2055,7 +2055,7 @@ Removes the address from the whitelist.
 [Back to **List of methods**](#list-of-methods)
 
 ## net_addToBlacklist
-Adds the address to the blacklist.
+Adds the CIDR block address to the blacklist.
 
 ### Params
  1. address: `string`
@@ -2084,7 +2084,7 @@ Adds the address to the blacklist.
 [Back to **List of methods**](#list-of-methods)
 
 ## net_removeFromBlacklist
-Removes the address from the blacklist.
+Removes the CIDR block address from the blacklist.
 
 ### Params
  1. address: `string`
@@ -2224,7 +2224,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## net_getWhitelist
-Gets the address in the whitelist.
+Gets the CIDR block addresses in the whitelist.
 
 ### Params
 No parameters
@@ -2252,7 +2252,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## net_getBlacklist
-Gets the address in the blacklist.
+Gets the CIDR block addresses in the blacklist.
 
 ### Params
 No parameters
