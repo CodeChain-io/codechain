@@ -21,21 +21,19 @@ use std::sync::Arc;
 
 use ccrypto::blake256;
 use ckey::Address;
-use cmerkle::TrieError;
-use ctypes::errors::RuntimeError;
 use ctypes::invoice::Invoice;
 use primitives::H256;
-use rlp::{DecoderError, Encodable, RlpStream};
+use rlp::{Encodable, RlpStream};
 
 use super::TopStateView;
-use crate::{StateError, TopLevelState};
+use crate::{StateResult, TopLevelState};
 
 pub trait ActionHandler: Send + Sync {
     fn handler_id(&self) -> u64;
-    fn init(&self, state: &mut TopLevelState) -> ActionHandlerResult<()>;
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> ActionHandlerResult<Invoice>;
+    fn init(&self, state: &mut TopLevelState) -> StateResult<()>;
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> StateResult<Invoice>;
 
-    fn query(&self, key_fragment: &[u8], state: &TopLevelState) -> ActionHandlerResult<Option<Vec<u8>>> {
+    fn query(&self, key_fragment: &[u8], state: &TopLevelState) -> StateResult<Option<Vec<u8>>> {
         let key = ActionDataKeyBuilder::key_from_fragment(self.handler_id(), key_fragment);
         let some_action_data = state.action_data(&key)?.map(Vec::from);
         Ok(some_action_data)
@@ -45,38 +43,6 @@ pub trait ActionHandler: Send + Sync {
 pub trait FindActionHandler {
     fn find_action_handler_for(&self, _id: u64) -> Option<&Arc<ActionHandler>> {
         None
-    }
-}
-
-pub type ActionHandlerResult<T> = Result<T, ActionHandlerError>;
-
-#[derive(Debug, PartialEq)]
-pub enum ActionHandlerError {
-    DecoderError(DecoderError),
-    StateError(StateError),
-}
-
-impl From<DecoderError> for ActionHandlerError {
-    fn from(error: DecoderError) -> Self {
-        ActionHandlerError::DecoderError(error)
-    }
-}
-
-impl From<StateError> for ActionHandlerError {
-    fn from(error: StateError) -> Self {
-        ActionHandlerError::StateError(error)
-    }
-}
-
-impl From<TrieError> for ActionHandlerError {
-    fn from(error: TrieError) -> Self {
-        ActionHandlerError::StateError(StateError::Trie(error))
-    }
-}
-
-impl From<RuntimeError> for ActionHandlerError {
-    fn from(error: RuntimeError) -> Self {
-        ActionHandlerError::StateError(StateError::Runtime(error))
     }
 }
 

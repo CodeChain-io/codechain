@@ -21,7 +21,7 @@ use ccore::Error as CoreError;
 use ckey::Error as KeyError;
 use ckeystore::Error as KeystoreError;
 use cnetwork::control::Error as NetworkControlError;
-use cstate::{ActionHandlerError, StateError};
+use cstate::StateError;
 use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 use kvdb::Error as KVDBError;
 use rlp::DecoderError;
@@ -178,6 +178,7 @@ pub fn transaction_core<T: Into<CoreError>>(error: T) -> Error {
             message: "Invalid Seq".into(),
             data: Some(Value::String(format!("{:?}", error))),
         },
+        CoreError::Syntax(SyntaxError::InvalidCustomAction) => action_handler_not_found(),
         _ => unknown_error,
     }
 }
@@ -295,19 +296,11 @@ pub fn state_not_exist() -> Error {
     }
 }
 
-pub fn action_data_handler_not_found() -> Error {
+pub fn action_handler_not_found() -> Error {
     Error {
         code: ErrorCode::ServerError(codes::ACTION_DATA_HANDLER_NOT_FOUND),
         message: "Current consensus engine doesn't have an action handler for a given handler_id".into(),
         data: None,
-    }
-}
-
-pub fn action_data_handler_error(error: ActionHandlerError) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::UNKNOWN_ERROR),
-        message: "Error from custom action handler".into(),
-        data: Some(Value::String(format!("{:?}", error))),
     }
 }
 

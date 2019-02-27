@@ -21,17 +21,16 @@ mod distribute;
 use std::collections::HashMap;
 
 use ckey::Address;
-use cstate::{ActionHandler, ActionHandlerResult, TopLevelState};
+use cstate::{ActionHandler, StateResult, TopLevelState};
+use ctypes::errors::RuntimeError;
 use ctypes::invoice::Invoice;
-use rlp::UntrustedRlp;
+use rlp::{Decodable, UntrustedRlp};
 
 use self::action_data::{StakeAccount, Stakeholders};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
-
-pub type StakeResult<T> = ActionHandlerResult<T>;
 
 pub struct Stake {
     genesis_stakes: HashMap<Address, u64>,
@@ -50,7 +49,7 @@ impl ActionHandler for Stake {
         CUSTOM_ACTION_HANDLER_ID
     }
 
-    fn init(&self, state: &mut TopLevelState) -> ActionHandlerResult<()> {
+    fn init(&self, state: &mut TopLevelState) -> StateResult<()> {
         let mut stakeholders = Stakeholders::load_from_state(state)?;
         for (address, amount) in self.genesis_stakes.iter() {
             if *amount > 0 {
@@ -66,8 +65,9 @@ impl ActionHandler for Stake {
         Ok(())
     }
 
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> ActionHandlerResult<Invoice> {
-        let action = UntrustedRlp::new(bytes).as_val()?;
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> StateResult<Invoice> {
+        let action = Action::decode(&UntrustedRlp::new(bytes))
+            .map_err(|err| RuntimeError::FailedToHandleCustomAction(err.to_string()))?;
         match action {
             Action::TransferCCS {
                 address,
@@ -82,7 +82,7 @@ fn transfer_ccs(
     sender: &Address,
     receiver: &Address,
     quantity: u64,
-) -> StakeResult<Invoice> {
+) -> StateResult<Invoice> {
     let mut stakeholders = Stakeholders::load_from_state(state)?;
     let mut sender_account = StakeAccount::load_from_state(state, sender)?;
     let mut receiver_account = StakeAccount::load_from_state(state, receiver)?;
@@ -100,7 +100,7 @@ fn transfer_ccs(
     Ok(Invoice::Success)
 }
 
-pub fn get_stakes(state: &TopLevelState) -> StakeResult<HashMap<Address, u64>> {
+pub fn get_stakes(state: &TopLevelState) -> StateResult<HashMap<Address, u64>> {
     let stakeholders = Stakeholders::load_from_state(state)?;
     let mut result = HashMap::new();
     for stakeholder in stakeholders.iter() {
