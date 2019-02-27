@@ -354,8 +354,8 @@ impl TendermintInner {
         self.extension().broadcast_state(vote_step, proposal, lock_view, votes);
     }
 
-    fn request_all_votes(&self, vote_step: &VoteStep) {
-        self.extension().request_all_votes(vote_step);
+    fn request_messages_to_all(&self, vote_step: &VoteStep, requested_votes: BitSet) {
+        self.extension().request_messages_to_all(vote_step, requested_votes);
     }
 
     fn request_proposal(&self, height: Height, view: View) {
@@ -438,7 +438,10 @@ impl TendermintInner {
             }
             Step::Prevote => {
                 cinfo!(ENGINE, "move_to_step: Prevote.");
-                self.request_all_votes(&vote_step);
+                // If the number of the collected prevotes is less than 2/3,
+                // move_to_step called with again with the Prevote.
+                // In the case, self.votes_received is not empty.
+                self.request_messages_to_all(&vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
                     let block_hash = match self.lock_change {
                         Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
@@ -449,7 +452,10 @@ impl TendermintInner {
             }
             Step::Precommit => {
                 cinfo!(ENGINE, "move_to_step: Precommit.");
-                self.request_all_votes(&vote_step);
+                // If the number of the collected precommits is less than 2/3,
+                // move_to_step called with again with the Precommit.
+                // In the case, self.votes_received is not empty.
+                self.request_messages_to_all(&vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
                     let block_hash = match self.lock_change {
                         Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
@@ -1615,13 +1621,12 @@ impl TendermintExtension {
         self.api.send(&token, &message);
     }
 
-    fn request_all_votes(&self, vote_step: &VoteStep) {
+    fn request_messages_to_all(&self, vote_step: &VoteStep, requested_votes: BitSet) {
         for token in self.select_random_peers() {
             let peers_guard = self.peers.read();
             let peer = &peers_guard[&token];
             if *vote_step <= peer.vote_step && !peer.messages.is_empty() {
-                // FIXME: Do not need to request already known votes
-                self.request_messages(&token, *vote_step, BitSet::all_set());
+                self.request_messages(&token, *vote_step, requested_votes);
             }
         }
     }
