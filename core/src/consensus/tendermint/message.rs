@@ -280,10 +280,11 @@ impl ConsensusMessage {
         signature: SchnorrSignature,
         num_validators: usize,
         header: &Header,
+        prev_proposer_idx: usize,
     ) -> Result<Self, ::rlp::DecoderError> {
         let height = header.number() as Height;
         let view = consensus_view(header)?;
-        let signer_index = (height + view) % num_validators;
+        let signer_index = (prev_proposer_idx + view + 1) % num_validators;
 
         Ok(ConsensusMessage {
             signature,
