@@ -67,22 +67,15 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
         bucket_size: cfg.discovery_bucket_size.unwrap(),
         t_refresh: cfg.discovery_refresh.unwrap(),
     };
-    match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
-        Some("unstructured") => {
-            cinfo!(DISCOVERY, "Node runs with unstructured discovery");
-            let discovery = service.new_extension(|api| Discovery::unstructured(config, api));
-            service.set_routing_table(&*discovery);
-            Ok(())
-        }
-        Some("kademlia") => {
-            cinfo!(DISCOVERY, "Node runs with kademlia discovery");
-            let discovery = service.new_extension(|api| Discovery::kademlia(config, api));
-            service.set_routing_table(&*discovery);
-            Ok(())
-        }
-        Some(discovery_type) => Err(format!("Unknown discovery {}", discovery_type)),
-        None => Ok(()),
-    }
+    let use_kademlia = match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
+        Some("unstructured") => false,
+        Some("kademlia") => true,
+        Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
+        None => return Ok(()),
+    };
+    let discovery = service.new_extension(|api| Discovery::new(config, api, use_kademlia));
+    service.set_routing_table(&*discovery);
+    Ok(())
 }
 
 fn client_start(
