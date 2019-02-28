@@ -94,6 +94,7 @@ describe("Test onChain transaction communication", function() {
         await sdk.rpc.devel.stopSealing();
         await TH.sendEncodedTransaction([signed.toEncodeObject()]);
 
+        while ((await sdk.rpc.chain.getPendingTransactions()).length !== 1) {}
         const transactions = await sdk.rpc.chain.getPendingTransactions();
         expect(transactions.length).to.equal(1);
 
