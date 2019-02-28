@@ -330,7 +330,6 @@ impl MemPool {
             if current_seq != first_seq || is_this_account_local {
                 self.update_orders(public, current_seq, new_next_seq, is_this_account_local, &mut batch);
                 self.first_seqs.insert(public, current_seq);
-                backup::backup_seqs(&mut batch, &public, current_seq, true);
                 first_seq = current_seq;
             }
             // We don't need to update the height, just move transactions
@@ -343,10 +342,8 @@ impl MemPool {
 
             if new_next_seq <= first_seq {
                 self.next_seqs.remove(&public);
-                backup::remove_seqs(&mut batch, &public, false);
             } else {
                 self.next_seqs.insert(public, new_next_seq);
-                backup::backup_seqs(&mut batch, &public, new_next_seq, false);
             }
 
             if let Some(seq_list) = to_insert.get(&public) {
@@ -366,10 +363,6 @@ impl MemPool {
         assert_eq!(self.current.len() + self.future.len(), self.by_hash.len());
         assert_eq!(self.current.fee_counter.values().sum::<usize>(), self.current.len());
         assert_eq!(self.by_signer_public.len(), self.by_hash.len());
-
-        backup::backup_extra(&mut batch, b"last_time", self.last_time);
-        backup::backup_extra(&mut batch, b"last_timestamp", self.last_timestamp);
-        backup::backup_extra(&mut batch, b"next_transaction_id", self.next_transaction_id);
 
         self.db.write(batch).expect("Low level database error. Some issue with disk?");
         insert_results
@@ -443,10 +436,7 @@ impl MemPool {
                 balance: client.latest_balance(&a),
             }
         };
-        let backup::RecoveredData {
-            by_hash,
-            ..
-        } = backup::recover_to_data(self.db.as_ref());
+        let by_hash = backup::recover_to_data(self.db.as_ref());
 
         let recover_time = client.chain_info().best_block_number;
         let recover_timestamp = client.chain_info().best_block_timestamp;
@@ -578,7 +568,6 @@ impl MemPool {
             if current_seq != first_seq {
                 self.update_orders(public, current_seq, new_next_seq, false, &mut batch);
                 self.first_seqs.insert(public, current_seq);
-                backup::backup_seqs(&mut batch, &public, current_seq, true);
                 first_seq = current_seq;
             }
             // We don't need to update the height, just move transactions
@@ -591,10 +580,8 @@ impl MemPool {
 
             if new_next_seq <= first_seq {
                 self.next_seqs.remove(&public);
-                backup::remove_seqs(&mut batch, &public, false);
             } else {
                 self.next_seqs.insert(public, new_next_seq);
-                backup::backup_seqs(&mut batch, &public, new_next_seq, false);
             }
 
             if self.by_signer_public.clear_if_empty(&public) {
@@ -608,10 +595,6 @@ impl MemPool {
         assert_eq!(self.current.len() + self.future.len(), self.by_hash.len());
         assert_eq!(self.current.fee_counter.values().sum::<usize>(), self.current.len());
         assert_eq!(self.by_signer_public.len(), self.by_hash.len());
-
-        backup::backup_extra(&mut batch, b"last_time", self.last_time);
-        backup::backup_extra(&mut batch, b"last_timestamp", self.last_timestamp);
-        backup::backup_extra(&mut batch, b"next_transaction_id", self.next_transaction_id);
 
         self.db.write(batch).expect("Low level database error. Some issue with disk?");
     }
