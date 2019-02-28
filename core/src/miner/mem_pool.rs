@@ -339,7 +339,6 @@ impl MemPool {
                 self.move_queue(public, next_seq, new_next_seq, QueueTag::Current);
             }
 
-
             if new_next_seq <= first_seq {
                 self.next_seqs.remove(&public);
             } else {
@@ -488,7 +487,6 @@ impl MemPool {
                 self.is_local_account.remove(&public);
             }
         }
-
         // last_time and last_timestamp don't have to be the same as previous mem_pool state.
         // These values are used only to optimize the renewal behavior of next seq and first seq.
         self.last_time = recover_time;
@@ -950,7 +948,8 @@ impl MemPool {
 pub mod test {
     use std::cmp::Ordering;
 
-    use ckey::{Generator, Random};
+    use crate::client::{Balance, RegularKeyOwner, Seq, TestBlockChainClient};
+    use ckey::{Address, Generator, KeyPair, Random};
     use ctypes::transaction::{Action, AssetMintOutput, Transaction};
     use primitives::H160;
 
@@ -1389,30 +1388,69 @@ pub mod test {
 
     #[test]
     fn db_backup_and_recover() {
+        //setup test_client
+        let test_client = TestBlockChainClient::new();
+        let default_addr = Address::default();
+        test_client.set_seq(default_addr, 4u64);
+        test_client.set_balance(default_addr, u64::max_value());
+
         let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
         let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
-        let fetch_account = |_p: &Public| -> AccountDetails {
+
+        let fetch_account = |p: &Public| -> AccountDetails {
+            let address = public_to_address(p);
+            let a = test_client.latest_regular_key_owner(&address).unwrap_or(address);
             AccountDetails {
-                seq: 0,
-                balance: u64::max_value(),
+                seq: test_client.latest_seq(&a),
+                balance: test_client.latest_balance(&a),
             }
         };
-        let current_time = 100;
+        let keypair = Random.generate().unwrap();
+        let no_timelock = TxTimelock {
+            block: None,
+            timestamp: None,
+        };
+
+        let current_time = 1;
         let current_timestamp = 100;
         let mut inputs: Vec<MemPoolInput> = Vec::new();
 
-        let input1 = create_mempool_input_with_pay(100, 100_000, 1u64);
-        let input2 = create_mempool_input_with_pay(100, 200_000, 2u64);
-
-        inputs.push(input1);
-        inputs.push(input2);
-
+        inputs.push(create_mempool_input_with_pay(1u64, keypair, no_timelock));
+        inputs.push(create_mempool_input_with_pay(
+            3u64,
+            keypair,
+            TxTimelock {
+                block: Some(10),
+                timestamp: None,
+            },
+        ));
+        inputs.push(create_mempool_input_with_pay(5u64, keypair, no_timelock));
         mem_pool.add(inputs, current_time, current_timestamp, &fetch_account);
 
-        let mem_pool_recovered = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
+        let current_time = 11;
+        let current_timestamp = 200;
+        let mut inputs: Vec<MemPoolInput> = Vec::new();
+        inputs.push(create_mempool_input_with_pay(2u64, keypair, no_timelock));
+        inputs.push(create_mempool_input_with_pay(4u64, keypair, no_timelock));
+        mem_pool.add(inputs, current_time, current_timestamp, &fetch_account);
 
-        assert_eq!(mem_pool_recovered.last_time, mem_pool.last_time);
-        assert_eq!(mem_pool_recovered.last_timestamp, mem_pool.last_timestamp);
+        let current_time = 20;
+        let current_timestamp = 300;
+        let mut inputs: Vec<MemPoolInput> = Vec::new();
+        inputs.push(create_mempool_input_with_pay(6u64, keypair, no_timelock));
+        inputs.push(create_mempool_input_with_pay(8u64, keypair, no_timelock));
+        inputs.push(create_mempool_input_with_pay(10u64, keypair, no_timelock));
+        mem_pool.add(inputs, current_time, current_timestamp, &fetch_account);
+
+        let current_time = 21;
+        let current_timestamp = 400;
+        let mut inputs: Vec<MemPoolInput> = Vec::new();
+        inputs.push(create_mempool_input_with_pay(7u64, keypair, no_timelock));
+        mem_pool.add(inputs, current_time, current_timestamp, &fetch_account);
+
+        let mut mem_pool_recovered = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
+        mem_pool_recovered.recover_from_db(&test_client);
+
         assert_eq!(mem_pool_recovered.first_seqs, mem_pool.first_seqs);
         assert_eq!(mem_pool_recovered.next_seqs, mem_pool.next_seqs);
         assert_eq!(mem_pool_recovered.is_local_account, mem_pool.is_local_account);
@@ -1424,21 +1462,16 @@ pub mod test {
         assert_eq!(mem_pool_recovered.future, mem_pool.future);
     }
 
-    fn create_mempool_input_with_pay(fee: u64, quantity: u64, reciever_u64: u64) -> MemPoolInput {
-        let receiver = reciever_u64.into();
-        let keypair = Random.generate().unwrap();
+    fn create_mempool_input_with_pay(seq: u64, keypair: KeyPair, timelock: TxTimelock) -> MemPoolInput {
+        let receiver = 1u64.into();
         let tx = Transaction {
-            seq: 0,
-            fee,
+            seq,
+            fee: 100,
             network_id: "tc".into(),
             action: Action::Pay {
                 receiver,
-                quantity,
+                quantity: 100_000,
             },
-        };
-        let timelock = TxTimelock {
-            block: None,
-            timestamp: None,
         };
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());
 
