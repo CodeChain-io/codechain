@@ -341,6 +341,10 @@ impl Seq for TestBlockChainClient {
             _ => None,
         }
     }
+
+    fn latest_seq(&self, address: &Address) -> u64 {
+        self.seq(address, BlockId::Latest).unwrap()
+    }
 }
 
 impl Balance for TestBlockChainClient {
@@ -362,7 +366,7 @@ impl AccountData for TestBlockChainClient {}
 
 impl RegularKeyOwner for TestBlockChainClient {
     fn regular_key_owner(&self, _address: &Address, _state: StateOrBlock) -> Option<Address> {
-        unimplemented!()
+        Some(Address::default())
     }
 }
 
