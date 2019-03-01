@@ -37,8 +37,8 @@ use super::{MinerService, MinerStatus, TransactionImportResult};
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use crate::block::{Block, ClosedBlock, IsBlock};
 use crate::client::{
-    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
-    ResealTimer,
+    AccountData, BlockChain, BlockProducer, Client, ImportSealedBlock, MiningBlockChainClient, RegularKey,
+    RegularKeyOwner, ResealTimer,
 };
 use crate::consensus::{CodeChainEngine, EngineType};
 use crate::error::Error;
@@ -181,6 +181,10 @@ impl Miner {
             accounts,
             notifiers: RwLock::new(notifiers),
         }
+    }
+
+    pub fn recover_from_db(&self, client: &Client) {
+        self.mem_pool.write().recover_from_db(client);
     }
 
     /// Set a callback to be notified about imported transactions' hashes.
