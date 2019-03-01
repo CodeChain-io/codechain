@@ -38,23 +38,13 @@ pub struct Extension {
 }
 
 impl Extension {
-    pub fn kademlia(config: Config, api: Arc<Api>) -> Self {
+    pub fn new(config: Config, api: Arc<Api>, use_kademlia: bool) -> Self {
         Self {
             config,
             routing_table: RwLock::new(None),
             api,
             nodes: RwLock::new(HashSet::new()),
-            use_kademlia: true,
-        }
-    }
-
-    pub fn unstructured(config: Config, api: Arc<Api>) -> Self {
-        Self {
-            config,
-            routing_table: RwLock::new(None),
-            api,
-            nodes: RwLock::new(HashSet::new()),
-            use_kademlia: false,
+            use_kademlia,
         }
     }
 }
@@ -63,11 +53,7 @@ const REFRESH_TOKEN: TimerToken = 0;
 
 impl NetworkExtension for Extension {
     fn name(&self) -> &'static str {
-        if self.use_kademlia {
-            "kademlia-discovery"
-        } else {
-            "unstructured-discovery"
-        }
+        "discovery"
     }
 
     fn need_encryption(&self) -> bool {
@@ -80,6 +66,12 @@ impl NetworkExtension for Extension {
     }
 
     fn on_initialize(&self) {
+        let name = if self.use_kademlia {
+            "kademlia"
+        } else {
+            "unstructured"
+        };
+        cinfo!(DISCOVERY, "Discovery starts with {} option", name);
         self.api
             .set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(self.config.t_refresh)))
             .expect("Refresh msut be registered");

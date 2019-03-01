@@ -16,6 +16,7 @@
 
 use std::net::{IpAddr, SocketAddr};
 
+use cidr::IpCidr;
 use ckey::Public;
 use jsonrpc_core::Result;
 
@@ -48,16 +49,16 @@ build_rpc_trait! {
         fn get_established_peers(&self) -> Result<Vec<SocketAddr>>;
 
         #[rpc(name = "net_addToWhitelist")]
-        fn add_to_whitelist(&self, IpAddr, Option<String>) -> Result<()>;
+        fn add_to_whitelist(&self, IpCidr, Option<String>) -> Result<()>;
 
         #[rpc(name = "net_removeFromWhitelist")]
-        fn remove_from_whitelist(&self, IpAddr) -> Result<()>;
+        fn remove_from_whitelist(&self, IpCidr) -> Result<()>;
 
         #[rpc(name = "net_addToBlacklist")]
-        fn add_to_blacklist(&self, IpAddr, Option<String>) -> Result<()>;
+        fn add_to_blacklist(&self, IpCidr, Option<String>) -> Result<()>;
 
         #[rpc(name = "net_removeFromBlacklist")]
-        fn remove_from_blacklist(&self, IpAddr) -> Result<()>;
+        fn remove_from_blacklist(&self, IpCidr) -> Result<()>;
 
         #[rpc(name = "net_enableWhitelist")]
         fn enable_whitelist(&self) -> Result<()>;

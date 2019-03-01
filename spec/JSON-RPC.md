@@ -1998,7 +1998,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## net_addToWhitelist
-Adds the address to the whitelist.
+Adds the CIDR block address to the whitelist.
 
 ### Params
  1. address: `string`
@@ -2011,7 +2011,7 @@ Adds the address to the whitelist.
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_addToWhitelist", "params": ["1.2.3.4", "tag"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "net_addToWhitelist", "params": ["1.2.3.0/24", "tag"], "id": 6}' \
     localhost:8080
 ```
 
@@ -2027,7 +2027,7 @@ Adds the address to the whitelist.
 [Back to **List of methods**](#list-of-methods)
 
 ## net_removeFromWhitelist
-Removes the address from the whitelist.
+Removes the CIDR block address from the whitelist.
 
 ### Params
  1. address: `string`
@@ -2039,7 +2039,7 @@ Removes the address from the whitelist.
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_removeFromWhitelist", "params": ["1.2.3.4"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "net_removeFromWhitelist", "params": ["1.2.3.0/24"], "id": 6}' \
     localhost:8080
 ```
 
@@ -2055,7 +2055,7 @@ Removes the address from the whitelist.
 [Back to **List of methods**](#list-of-methods)
 
 ## net_addToBlacklist
-Adds the address to the blacklist.
+Adds the CIDR block address to the blacklist.
 
 ### Params
  1. address: `string`
@@ -2084,7 +2084,7 @@ Adds the address to the blacklist.
 [Back to **List of methods**](#list-of-methods)
 
 ## net_removeFromBlacklist
-Removes the address from the blacklist.
+Removes the CIDR block address from the blacklist.
 
 ### Params
  1. address: `string`
@@ -2224,7 +2224,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## net_getWhitelist
-Gets the address in the whitelist.
+Gets the CIDR block addresses in the whitelist.
 
 ### Params
 No parameters
@@ -2244,7 +2244,7 @@ No parameters
 ```
 {
   "jsonrpc":"2.0",
-  "result": { "list": [["1.2.3.4", "tag1"], ["1.2.3.5", "tag2"], ["1.2.3.6", "tag3"]], "enabled": true },
+  "result": { "list": [["1.2.3.0/24", "tag1"], ["1.2.3.5/32", "tag2"], ["1.2.3.6/32", "tag3"]], "enabled": true },
   "id":6
 }
 ```
@@ -2252,7 +2252,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## net_getBlacklist
-Gets the address in the blacklist.
+Gets the CIDR block addresses in the blacklist.
 
 ### Params
 No parameters
@@ -2272,7 +2272,7 @@ No parameters
 ```
 {
   "jsonrpc":"2.0",
-  "result": { "list": [["1.2.3.4", "tag1"], ["1.2.3.5", "tag2"], ["1.2.3.6", "tag3"]], "enabled": false },
+  "result": { "list": [["1.2.3.0/22", "tag1"], ["1.2.3.5/32", "tag2"], ["1.2.3.6/32", "tag3"]], "enabled": false },
   "id":6
 }
 ```

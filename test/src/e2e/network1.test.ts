@@ -45,7 +45,10 @@ describe("network1 node test", function() {
             "tag string for the target"
         );
         let { list } = await node.sdk.rpc.network.getWhitelist();
-        expect(list).to.deep.include([target, "tag string for the target"]);
+        expect(list).to.deep.include([
+            "2.2.2.2/32",
+            "tag string for the target"
+        ]);
 
         await node.sdk.rpc.network.removeFromWhitelist(target);
         ({ list } = await node.sdk.rpc.network.getWhitelist());
@@ -60,7 +63,10 @@ describe("network1 node test", function() {
             "tag string for the target"
         );
         let { list } = await node.sdk.rpc.network.getBlacklist();
-        expect(list).to.deep.include([target, "tag string for the target"]);
+        expect(list).to.deep.include([
+            "1.1.1.1/32",
+            "tag string for the target"
+        ]);
 
         await node.sdk.rpc.network.removeFromBlacklist(target);
         ({ list } = await node.sdk.rpc.network.getBlacklist());

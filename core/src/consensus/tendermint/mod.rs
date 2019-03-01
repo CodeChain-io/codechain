@@ -769,13 +769,18 @@ impl TendermintInner {
         } else {
             panic!("Block is generated at unexpected step {:?}", self.step);
         }
+        let prev_proposer_idx =
+            self.prev_block_proposer_idx(header.number() as Height).expect("Prev block must exists");
 
         let vote_step =
             VoteStep::new(header.number() as Height, consensus_view(&header).expect("I am proposer"), Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
         let num_validators = self.validators.count(&self.prev_block_hash());
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-        self.votes.vote(ConsensusMessage::new_proposal(signature, num_validators, header).expect("I am proposer"));
+        self.votes.vote(
+            ConsensusMessage::new_proposal(signature, num_validators, header, prev_proposer_idx)
+                .expect("I am proposer"),
+        );
 
         self.step = TendermintState::ProposeWaitImported {
             block: Box::new(sealed_block.clone()),
@@ -1690,13 +1695,22 @@ impl TendermintExtension {
             }
 
             let num_validators = tendermint.validators.count(&parent_hash);
-            let message = match ConsensusMessage::new_proposal(signature, num_validators, &header_view) {
-                Ok(message) => message,
-                Err(err) => {
-                    cdebug!(ENGINE, "Invalid proposal received: {:?}", err);
+            let prev_proposer_idx = match tendermint.prev_block_proposer_idx(number as Height) {
+                Some(idx) => idx,
+                None => {
+                    cwarn!(ENGINE, "Prev block proposer does not exist for height {}", number);
                     return
                 }
             };
+
+            let message =
+                match ConsensusMessage::new_proposal(signature, num_validators, &header_view, prev_proposer_idx) {
+                    Ok(message) => message,
+                    Err(err) => {
+                        cwarn!(ENGINE, "Invalid proposal received: {:?}", err);
+                        return
+                    }
+                };
 
             // If the proposal's height is current height + 1 and the proposal has valid precommits,
             // we should import it and increase height
