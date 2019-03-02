@@ -16,14 +16,14 @@
 
 import { expect } from "chai";
 import { H160, H256, U256 } from "codechain-primitives/lib";
-import { TestHelper } from "codechain-test-helper";
-import { Header } from "codechain-test-helper/lib/cHeader";
 import "mocha";
+import { Header } from "../helper/mock/cHeader";
+import { Mock } from "../helper/mock";
 import CodeChain from "../helper/spawn";
 
 describe("Test onChain block communication", async function() {
     let nodeA: CodeChain;
-    let TH: TestHelper;
+    let mock: Mock;
     let soloGenesisBlock: Header;
     let soloBlock1: Header;
     let soloBlock2: Header;
@@ -112,12 +112,12 @@ describe("Test onChain block communication", async function() {
 
         nodeA = new CodeChain();
         await nodeA.start();
-        TH = new TestHelper("0.0.0.0", nodeA.port, "tc");
-        await TH.establish();
+        mock = new Mock("0.0.0.0", nodeA.port, "tc");
+        await mock.establish();
     });
 
     it("OnChain valid block propagation test", async function() {
-        // TH.setLog();
+        // mock.setLog();
         const sdk = nodeA.sdk;
 
         // Genesis block
@@ -129,7 +129,7 @@ describe("Test onChain block communication", async function() {
         // Block 2
         const header2 = soloBlock2;
 
-        await TH.sendEncodedBlock(
+        await mock.sendEncodedBlock(
             [
                 header.toEncodeObject(),
                 header1.toEncodeObject(),
@@ -140,7 +140,7 @@ describe("Test onChain block communication", async function() {
             header2.getScore()
         );
 
-        await TH.waitStatusMessage();
+        await mock.waitStatusMessage();
 
         const block1 = await sdk.rpc.chain.getBlock(1);
         const block2 = await sdk.rpc.chain.getBlock(2);
@@ -153,7 +153,7 @@ describe("Test onChain block communication", async function() {
         if (this.currentTest!.state === "failed") {
             nodeA.testFailed(this.currentTest!.fullTitle());
         }
-        await TH.end();
+        await mock.end();
         await nodeA.clean();
     });
 });

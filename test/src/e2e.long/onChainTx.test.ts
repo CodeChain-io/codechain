@@ -15,9 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
-import { TestHelper } from "codechain-test-helper";
 import "mocha";
 import { faucetSecret } from "../helper/constants";
+import { Mock } from "../helper/mock";
 import CodeChain from "../helper/spawn";
 
 describe("Test onChain transaction communication", function() {
@@ -76,8 +76,8 @@ describe("Test onChain transaction communication", function() {
     });
 
     it("OnChain Pay propagation test", async function() {
-        const TH = new TestHelper("0.0.0.0", nodeA.port, "tc");
-        await TH.establish();
+        const mock = new Mock("0.0.0.0", nodeA.port, "tc");
+        await mock.establish();
 
         const sdk = nodeA.sdk;
 
@@ -92,13 +92,13 @@ describe("Test onChain transaction communication", function() {
             seq: 0
         });
         await sdk.rpc.devel.stopSealing();
-        await TH.sendEncodedTransaction([signed.toEncodeObject()]);
+        await mock.sendEncodedTransaction([signed.toEncodeObject()]);
 
         while ((await sdk.rpc.chain.getPendingTransactions()).length !== 1) {}
         const transactions = await sdk.rpc.chain.getPendingTransactions();
         expect(transactions.length).to.equal(1);
 
-        await TH.end();
+        await mock.end();
     }).timeout(20_000);
 
     describe("OnChain invalid Pay test", async function() {
@@ -111,8 +111,8 @@ describe("Test onChain transaction communication", function() {
         }) {
             const { testName, tfee, tseq, tnetworkId, tsig } = params;
             it(testName, async function() {
-                const TH = new TestHelper("0.0.0.0", nodeA.port, "tc");
-                await TH.establish();
+                const mock = new Mock("0.0.0.0", nodeA.port, "tc");
+                await mock.establish();
 
                 const sdk = nodeA.sdk;
 
@@ -133,11 +133,11 @@ describe("Test onChain transaction communication", function() {
                 data[2] = tnetworkId;
                 data[4] = tsig;
 
-                await TH.sendEncodedTransaction([data]);
+                await mock.sendEncodedTransaction([data]);
                 const txs = await sdk.rpc.chain.getPendingTransactions();
                 expect(txs.length).to.equal(0);
 
-                await TH.end();
+                await mock.end();
             }).timeout(30_000);
         });
     });

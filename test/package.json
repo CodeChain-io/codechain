@@ -24,6 +24,8 @@
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/chai-as-promised": "^7.1.0",
+    "@types/crypto-js": "^3.1.43",
+    "@types/elliptic": "^6.4.4",
     "@types/lodash": "^4.14.118",
     "@types/mkdirp": "^0.5.2",
     "@types/mocha": "^5.2.5",
@@ -37,12 +39,17 @@
     "tslint-no-unused-expression-chai": "^0.1.4"
   },
   "dependencies": {
+    "blakejs": "^1.1.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
+    "codechain-primitives": "^0.4.6",
     "codechain-sdk": "https://github.com/sgkim126/codechain-sdk-js.git#result-lib",
-    "codechain-test-helper": "https://github.com/sgkim126/codechain-test-helper-js.git#result-lib",
+    "crypto": "^1.0.1",
+    "dgram": "^1.0.1",
+    "elliptic": "^6.4.1",
     "lodash": "^4.17.11",
     "mkdirp": "^0.5.1",
+    "net": "^1.0.2",
     "ncp": "^2.0.0",
     "request": "^2.88.0",
     "rlp": "^2.1.0",

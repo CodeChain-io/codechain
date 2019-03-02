@@ -8,6 +8,7 @@
       "only-arrow-functions": false,
       "no-var-requires": false,
       "max-classes-per-file": false,
+      "triple-equals": [true, "allow-null-check", "allow-undefined-check"],
       "no-bitwise": false,
       "array-type": false
   },
