@@ -17,10 +17,10 @@
 import { expect } from "chai";
 import { H160, H256, U256 } from "codechain-primitives";
 import { Block } from "codechain-sdk/lib/core/Block";
-import { Header } from "codechain-test-helper/lib/cHeader";
-import { TestHelper } from "codechain-test-helper/lib/testHelper";
 import "mocha";
 import Test = Mocha.Test;
+import { Mock } from "../helper/mock/";
+import { Header } from "../helper/mock/cHeader";
 import CodeChain from "../helper/spawn";
 
 async function setup(): Promise<[Header, Block, Header]> {
@@ -87,23 +87,19 @@ async function setup(): Promise<[Header, Block, Header]> {
     return [header0, block1, header2];
 }
 
-async function setupEach(): Promise<[CodeChain, TestHelper]> {
+async function setupEach(): Promise<[CodeChain, Mock]> {
     const node = new CodeChain();
     await node.start();
-    const TH = new TestHelper("0.0.0.0", node.port, "tc");
-    await TH.establish();
-    return [node, TH];
+    const mock = new Mock("0.0.0.0", node.port, "tc");
+    await mock.establish();
+    return [node, mock];
 }
 
-async function teardownEach(
-    currentTest: Test,
-    TH: TestHelper,
-    node: CodeChain
-) {
+async function teardownEach(currentTest: Test, mock: Mock, node: CodeChain) {
     if (currentTest.state === "failed") {
         node.testFailed(currentTest.fullTitle());
     }
-    await TH.end();
+    await mock.end();
     await node.clean();
 }
 
@@ -111,7 +107,7 @@ async function testBody(
     header0: Header,
     block1: Block,
     header2: Header,
-    TH: TestHelper,
+    mock: Mock,
     params: {
         tparent?: H256;
         ttimeStamp?: U256;
@@ -181,16 +177,16 @@ async function testBody(
         header.setSeal(tseal);
     }
 
-    const genesis = TH.genesisHash;
-    await TH.sendStatus(bestScore, bestHash, genesis);
-    await TH.sendBlockHeaderResponse([
+    const genesis = mock.genesisHash;
+    await mock.sendStatus(bestScore, bestHash, genesis);
+    await mock.sendBlockHeaderResponse([
         header0.toEncodeObject(),
         header.toEncodeObject(),
         header2.toEncodeObject()
     ]);
-    await TH.waitHeaderRequest();
+    await mock.waitHeaderRequest();
 
-    const bodyRequest = TH.getBlockBodyRequest();
+    const bodyRequest = mock.getBlockBodyRequest();
 
     expect(bodyRequest).to.be.null;
 }
@@ -205,7 +201,7 @@ export function createTestSuite(
         this.timeout(60_000);
         // tslint:enable only-arrow-functions
         let node: CodeChain;
-        let TH: TestHelper;
+        let mock: Mock;
         let header0: Header;
         let block1: Block;
         let header2: Header;
@@ -219,17 +215,17 @@ export function createTestSuite(
         // tslint:disable only-arrow-functions
         beforeEach(async function() {
             // tslint:enable only-arrow-functions
-            [node, TH] = await setupEach();
+            [node, mock] = await setupEach();
         });
 
         afterEach(async function() {
-            await teardownEach(this.currentTest!, TH, node);
+            await teardownEach(this.currentTest!, mock, node);
         });
 
         // tslint:disable only-arrow-functions
         it(title, async function() {
             // tslint:enable only-arrow-functions
-            await testBody(header0, block1, header2, TH, params);
+            await testBody(header0, block1, header2, mock, params);
         }).timeout(30_000);
     });
 }
