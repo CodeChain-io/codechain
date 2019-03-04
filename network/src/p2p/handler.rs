@@ -203,6 +203,10 @@ impl Handler {
             return Ok(())
         };
 
+        if self.routing_table.is_establishing_or_established(&socket_address) {
+            return Ok(())
+        }
+
         if let Some(stream) = Stream::connect(&socket_address)? {
             let mut outgoing_connections = self.outgoing_connections.write();
             // Please make sure there is no early return after it.
