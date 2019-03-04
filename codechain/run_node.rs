@@ -56,8 +56,16 @@ fn network_start(
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
     let filters = Filters::new(cfg.whitelist.clone(), cfg.blacklist.clone());
-    let service = NetworkService::start(network_id, timer_loop, sockaddress, cfg.min_peers, cfg.max_peers, filters)
-        .map_err(|e| format!("Network service error: {:?}", e))?;
+    let service = NetworkService::start(
+        network_id,
+        timer_loop,
+        sockaddress,
+        cfg.bootstrap_addresses.clone(),
+        cfg.min_peers,
+        cfg.max_peers,
+        filters,
+    )
+    .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
 }
@@ -281,9 +289,6 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
             scheme.engine.register_network_extension_to_service(&service);
 
-            for address in network_config.bootstrap_addresses {
-                service.connect_to(address)?;
-            }
             service
         } else {
             Arc::new(DummyNetworkService::new())
