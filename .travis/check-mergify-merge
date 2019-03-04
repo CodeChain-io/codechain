@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -xe
 # Everything that is normally printed to `stdout` in the script will be redirected to `stderr`
 # which will be visible in tty/Travis log.
 # Outputs that is printed to `fd 3` will be redirected to `stdout`,
@@ -14,9 +13,11 @@ function return_to_travis {
 function skip_travis { return_to_travis "skip" ; }
 function noskip_travis { return_to_travis "noskip" ; }
 
-echo "Event type ${TRAVIS_EVENT_TYPE}"
-echo "Branch: ${TRAVIS_EVENT_TYPE}"
-echo "Commit: ${TRAVIS_COMMIT}"
+echo "TRAVIS_EVENT_TYPE=${TRAVIS_EVENT_TYPE}"
+echo "TRAVIS_BRANCH=${TRAVIS_BRANCH}"
+echo "TRAVIS_COMMIT=${TRAVIS_COMMIT}"
+
+set -xe
 
 case ${TRAVIS_EVENT_TYPE} in
 push)
