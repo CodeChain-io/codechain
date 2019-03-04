@@ -136,6 +136,14 @@ impl RoutingTable {
         })
     }
 
+    pub fn is_banned(&self, target: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        match entries.get(target) {
+            Some(State::Banned) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_establishing_or_established(&self, target: &SocketAddr) -> bool {
         let entries = self.entries.read();
         match entries.get(target) {

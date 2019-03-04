@@ -44,6 +44,7 @@ impl Service {
         network_id: NetworkId,
         timer_loop: TimerLoop,
         address: SocketAddr,
+        bootstrap_addresses: Vec<SocketAddr>,
         min_peers: usize,
         max_peers: usize,
         filters_control: Arc<FiltersControl>,
@@ -61,6 +62,7 @@ impl Service {
             Arc::clone(&client),
             Arc::clone(&routing_table),
             Arc::clone(&filters_control),
+            bootstrap_addresses,
             min_peers,
             max_peers,
         )?);
