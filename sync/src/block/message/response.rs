@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{Header, UnverifiedTransaction};
 use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
+use snap;
+
+use ccore::{Header, UnverifiedTransaction};
 
 #[derive(Debug, PartialEq)]
 pub enum ResponseMessage {
@@ -32,10 +34,23 @@ impl Encodable for ResponseMessage {
                 s.append_list(headers);
             }
             ResponseMessage::Bodies(bodies) => {
-                s.begin_list(bodies.len());
-                bodies.iter().for_each(|body| {
-                    s.append_list(body);
-                });
+                s.begin_list(1);
+
+                let mut uncompressed = {
+                    let mut inner_list = RlpStream::new_list(bodies.len());
+                    bodies.iter().for_each(|body| {
+                        inner_list.append_list(body);
+                    });
+                    inner_list.out()
+                };
+
+                let compressed = {
+                    // TODO: Cache the Encoder object
+                    let mut snappy_encoder = snap::Encoder::new();
+                    snappy_encoder.compress_vec(&uncompressed).expect("Compression always succeed")
+                };
+
+                s.append(&compressed);
             }
             ResponseMessage::StateHead(bytes) => {
                 s.begin_list(1);
@@ -67,8 +82,28 @@ impl ResponseMessage {
         let message = match id {
             super::MESSAGE_ID_HEADERS => ResponseMessage::Headers(rlp.as_list()?),
             super::MESSAGE_ID_BODIES => {
+                let item_count = rlp.item_count()?;
+                if item_count != 1 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 1,
+                    })
+                }
+
+                let mut compressed: Vec<u8> = rlp.val_at(0)?;
+                let uncompressed = {
+                    // TODO: Cache the Decoder object
+                    let mut snappy_decoder = snap::Decoder::new();
+                    snappy_decoder.decompress_vec(&compressed).map_err(|err| {
+                        cwarn!(SYNC, "Decompression failed while decoding a body response: {}", err);
+                        DecoderError::Custom("Invalid compression format")
+                    })?
+                };
+
+                let uncompressed_rlp = UntrustedRlp::new(&uncompressed);
+
                 let mut bodies = Vec::new();
-                for item in rlp.into_iter() {
+                for item in uncompressed_rlp.into_iter() {
                     bodies.push(item.as_list()?);
                 }
                 ResponseMessage::Bodies(bodies)
