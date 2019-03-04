@@ -47,7 +47,9 @@ case ${TRAVIS_EVENT_TYPE} in
 push)
     if [[ "${TRAVIS_BRANCH}" = master ]]
     then
-        IFS=... read COMMIT_FROM COMMIT_TO <<< ${TRAVIS_COMMIT_RANGE}
+        COMMIT_FROM=$(awk -F'\\.\\.\\.' '{ print $1 }' <<< "${TRAVIS_COMMIT_RANGE}")
+        COMMIT_TO=$(awk -F'\\.\\.\\.' '{ print $2 }' <<< "$TRAVIS_COMMIT_RANGE")
+
         if ! git cat-file -e "${COMMIT_FROM}^{commit}"
         then
             # A--B (missing)
@@ -59,9 +61,7 @@ push)
             noskip_travis
         fi
 
-        BASE=`git merge-base "${COMMIT_FROM} ${COMMIT_TO}"`
-        COMMIT_FROM=`git rev-parse ${COMMIT_FROM}` # recover full hash
-        if [[ ${COMMIT_FROM} != ${BASE} ]];
+        if ! git merge-base --is-ancestor "${COMMIT_FROM}" "${COMMIT_TO}"
         then
             # A--B
             #  \__C
