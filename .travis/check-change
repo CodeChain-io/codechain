@@ -47,8 +47,8 @@ case ${TRAVIS_EVENT_TYPE} in
 push)
     if [[ "${TRAVIS_BRANCH}" = master ]]
     then
-        COMMIT_FROM=$(awk -F'\\.\\.\\.' '{ print $1 }' <<< "${TRAVIS_COMMIT_RANGE}")
-        COMMIT_TO=$(awk -F'\\.\\.\\.' '{ print $2 }' <<< "$TRAVIS_COMMIT_RANGE")
+        COMMIT_FROM=${TRAVIS_COMMIT_RANGE%...*}
+        COMMIT_TO=${TRAVIS_COMMIT_RANGE#*...}
 
         if ! git cat-file -e "${COMMIT_FROM}^{commit}"
         then
