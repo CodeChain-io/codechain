@@ -62,6 +62,7 @@ const FIRST_OUTGOING: StreamToken = FIRST_INCOMING + 1000;
 const LAST_OUTGOING: StreamToken = FIRST_OUTGOING + MAX_OUTGOING_CONNECTIONS - 1;
 
 const CREATE_CONNECTIONS: TimerToken = 0;
+const CONNECT_TO_BOOTSTRAP: TimerToken = CREATE_CONNECTIONS + 1;
 
 const FIRST_WAIT_SYNC: TimerToken = FIRST_INCOMING;
 const LAST_WAIT_SYNC: TimerToken = LAST_INCOMING;
@@ -107,6 +108,8 @@ pub struct Handler {
 
     client: Arc<Client>,
 
+    bootstrap_addresses: Vec<SocketAddr>,
+
     min_peers: usize,
     max_peers: usize,
 
@@ -121,6 +124,7 @@ impl Handler {
         client: Arc<Client>,
         routing_table: Arc<RoutingTable>,
         filters: Arc<FiltersControl>,
+        bootstrap_addresses: Vec<SocketAddr>,
         min_peers: usize,
         max_peers: usize,
     ) -> ::std::result::Result<Self, String> {
@@ -156,6 +160,7 @@ impl Handler {
 
             client,
 
+            bootstrap_addresses,
             min_peers,
             max_peers,
 
@@ -260,6 +265,7 @@ impl IoHandler<Message> for Handler {
     fn initialize(&self, io: &IoContext<Message>) -> IoHandlerResult<()> {
         io.register_stream(ACCEPT);
         io.register_timer_once(CREATE_CONNECTIONS, CREATE_CONNECTION_INTERVAL);
+        io.register_timer_once(CONNECT_TO_BOOTSTRAP, Duration::default());
         Ok(())
     }
 
@@ -292,6 +298,47 @@ impl IoHandler<Message> for Handler {
                 }
 
                 io.register_timer_once(CREATE_CONNECTIONS, CREATE_CONNECTION_INTERVAL);
+            }
+            CONNECT_TO_BOOTSTRAP => {
+                // DO not try to connect to bootstrap nodes if there is a connection
+                {
+                    let inbound_connections = self.inbound_connections.read();
+                    let outbound_connections = self.outbound_connections.read();
+                    let incoming_connections = self.incoming_connections.read();
+                    let outgoing_connections = self.outgoing_connections.read();
+                    if !inbound_connections.is_empty() {
+                        return Ok(())
+                    }
+                    if !outbound_connections.is_empty() {
+                        return Ok(())
+                    }
+                    if !incoming_connections.is_empty() {
+                        return Ok(())
+                    }
+                    if !outgoing_connections.is_empty() {
+                        return Ok(())
+                    }
+                }
+
+                let mut boots: Vec<_> = self
+                    .bootstrap_addresses
+                    .iter()
+                    .filter(|addr| !self.routing_table.is_establishing_or_established(addr))
+                    .filter(|addr| !self.routing_table.is_banned(addr))
+                    .filter(|addr| self.filters.is_allowed(&addr.ip()))
+                    .collect();
+                boots.shuffle(&mut *self.rng.lock());
+                // It tries to connect to 3 of bootstrap nodes.
+                // FIXME: 3 is a magic number.
+                for addr in boots.into_iter().take(3) {
+                    if let Err(err) = self.connect(io, *addr) {
+                        self.routing_table.remove(addr);
+                        cwarn!(NETWORK, "Cannot connect to bootstrap address {}: {:?}", addr, err);
+                    }
+                }
+
+                const CHECK_BOOTSTRAP_INTERVAL: Duration = Duration::from_secs(15);
+                io.register_timer_once(CONNECT_TO_BOOTSTRAP, CHECK_BOOTSTRAP_INTERVAL);
             }
             FIRST_WAIT_SYNC...LAST_WAIT_SYNC => {
                 cwarn!(NETWORK, "No sync message from {}", timer);
@@ -463,6 +510,10 @@ impl IoHandler<Message> for Handler {
             }
             Message::StartConnect => {
                 io.register_timer_once(CREATE_CONNECTIONS, CREATE_CONNECTION_INTERVAL);
+            }
+            Message::ConnectToBootstrap => {
+                const CHECK_BOOTSTRAP_INTERVAL: Duration = Duration::from_secs(5);
+                io.register_timer_once(CONNECT_TO_BOOTSTRAP, CHECK_BOOTSTRAP_INTERVAL);
             }
         }
         Ok(())
@@ -1011,6 +1062,8 @@ impl IoHandler<Message> for Handler {
             }
             _ => unreachable!("Unexpected stream on deregister: {}", stream),
         }
+
+        self.channel.send(Message::ConnectToBootstrap)?;
         Ok(())
     }
 }
@@ -1040,6 +1093,7 @@ pub enum Message {
         timeout: Duration,
     },
     StartConnect,
+    ConnectToBootstrap,
 }
 
 #[derive(Debug)]
