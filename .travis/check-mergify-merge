@@ -7,7 +7,7 @@ exec 3>&1 1>&2 # fd 3 = fd 1; fd 1 = fd 2
 
 function return_to_travis {
     STRATEGY="${1}"
-    echo ${STRATEGY} >&3
+    echo "${STRATEGY}" >&3
     exit 0
 }
 function skip_travis { return_to_travis "skip" ; }
@@ -36,7 +36,7 @@ push)
 esac
 
 MERGIFY_COMMITTER="mergify[bot] <mergify[bot]@users.noreply.github.com>"
-COMMITTER=`git show --format="%cN <%cE>" --no-patch "${TRAVIS_COMMIT}"`
+COMMITTER=$(git show --format="%cN <%cE>" --no-patch "${TRAVIS_COMMIT}")
 
 if [[ "${COMMITTER}" = "${MERGIFY_COMMITTER}" ]]
 then
