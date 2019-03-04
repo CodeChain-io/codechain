@@ -102,8 +102,11 @@ impl ResponseMessage {
 
 #[cfg(test)]
 mod tests {
-    use ccore::Header;
     use rlp::{Encodable, UntrustedRlp};
+
+    use ccore::{Header, UnverifiedTransaction};
+    use ckey::{Address, Signature};
+    use ctypes::transaction::{Action, Transaction};
 
     use super::ResponseMessage;
 
@@ -126,6 +129,21 @@ mod tests {
     #[test]
     fn bodies_message_rlp() {
         let message = ResponseMessage::Bodies(vec![vec![]]);
+        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
+
+        let tx = UnverifiedTransaction::new(
+            Transaction {
+                seq: 0,
+                fee: 10,
+                action: Action::CreateShard {
+                    users: vec![Address::random(), Address::random()],
+                },
+                network_id: "tc".into(),
+            },
+            Signature::default(),
+        );
+
+        let message = ResponseMessage::Bodies(vec![vec![tx]]);
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
