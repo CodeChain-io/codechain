@@ -29,8 +29,8 @@
 exec 3>&1 1>&2 # fd 3 = fd 1; fd 1 = fd 2
 
 function return_to_travis {
-    STRATEGY="${1}"
-    echo ${STRATEGY} >&3
+    STRATEGY=$1
+    echo "${STRATEGY}" >&3
     exit 0
 }
 function skip_travis { return_to_travis "skip" ; }
@@ -84,7 +84,7 @@ push)
         # we can find common ancestor of master and the branch.
         echo "Branch push"
         git fetch origin master:master;
-        BASE=`git merge-base master ${TRAVIS_COMMIT}`
+        BASE=$(git merge-base master "${TRAVIS_COMMIT}")
         COMMIT_RANGE="${BASE}...${TRAVIS_COMMIT}"
     fi
     ;;
@@ -101,7 +101,7 @@ esac
 
 git log --oneline --decorate --all --graph | head -n 10;
 echo "Check changes for: ${COMMIT_RANGE}"
-if ! git diff --name-only ${COMMIT_RANGE} | grep -qvE "$1"
+if ! git diff --name-only "${COMMIT_RANGE}" | grep -qvE "$1"
 then
     echo "Only '$1' were updated, or there's no change, not running the CI."
     skip_travis
