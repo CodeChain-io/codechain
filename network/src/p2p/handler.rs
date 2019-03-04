@@ -203,6 +203,10 @@ impl Handler {
             return Ok(())
         };
 
+        if self.routing_table.is_establishing_or_established(&socket_address) {
+            return Ok(())
+        }
+
         if let Some(stream) = Stream::connect(&socket_address)? {
             let mut outgoing_connections = self.outgoing_connections.write();
             // Please make sure there is no early return after it.
@@ -353,7 +357,13 @@ impl IoHandler<Message> for Handler {
                 let mut outgoing_connections = self.outgoing_connections.write();
                 if let Some(con) = outgoing_connections.get_mut(&stream) {
                     let target = *con.peer_addr();
-                    let maybe_remote_public = self.routing_table.try_establish(target)?;
+                    let maybe_remote_public = match self.routing_table.try_establish(target) {
+                        Ok(maybe_remote_public) => maybe_remote_public,
+                        Err(err) => {
+                            io.deregister_stream(stream);
+                            return Err(err.into())
+                        }
+                    };
                     con.send_sync(maybe_remote_public);
                     io.register_timer_once(wait_ack_timer(stream), RTT);
                     io.update_registration(stream);
