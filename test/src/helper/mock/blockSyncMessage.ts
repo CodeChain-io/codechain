@@ -15,6 +15,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 import { H256 } from "codechain-primitives";
 import { U256 } from "codechain-primitives";
+import {compressSync, uncompress, uncompressSync} from "snappy";
 
 const RLP = require("rlp");
 const EventEmitter = require("events");
@@ -288,9 +289,12 @@ export class ResponseMessage {
             }
             case MessageType.MESSAGE_ID_GET_BODIES: {
                 Emitter.emit("bodyresponse");
+                const compressed: Buffer = bytes[0] as any;
+                const uncompressed = uncompressSync(compressed);
+                const data = RLP.decode(uncompressed);
                 return new ResponseMessage({
                     type: "bodies",
-                    data: bytes
+                    data
                 });
             }
             case MessageType.MESSAGE_ID_GET_STATE_HEAD: {
@@ -338,7 +342,9 @@ export class ResponseMessage {
                 return this.body.data;
             }
             case "bodies": {
-                return this.body.data;
+                const encodedBodies = RLP.encode(this.body.data);
+                const compressed = compressSync(encodedBodies);
+                return [compressed];
             }
             case "stateheads": {
                 throw Error("Not implemented");
