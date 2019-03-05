@@ -1417,6 +1417,31 @@ mod tests_tx {
     }
 
     #[test]
+    fn cannot_pay_to_regular_account() {
+        let mut state = get_temp_state();
+
+        let (sender, sender_public, _) = address();
+        let (master_account, master_public, _) = address();
+        let (regular_account, regular_public, _) = address();
+        set_top_level_state!(state, [
+            (account: sender => balance: 123),
+            (account: master_account => balance: 456),
+            (regular_key: master_public => regular_public)
+        ]);
+
+        let tx = transaction!(fee: 5, pay!(regular_account, 10));
+        assert_eq!(
+            Ok(Invoice::Failure(RuntimeError::InvalidTransferDestination.to_string())),
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 123 - 5)),
+            (account: master_account => (seq: 0, balance: 456, key: regular_public))
+        ]);
+    }
+
+    #[test]
     fn use_owner_balance_when_signed_with_regular_key() {
         let mut state = get_temp_state();
 
