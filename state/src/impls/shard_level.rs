@@ -2016,10 +2016,10 @@ mod tests {
         ]);
 
         let unwrap_amount = 30;
-        let unwrap_ccc = asset_unwrap_ccc!(asset_transfer_input!(
-            asset_out_point!(wrap_ccc_tracker, 0, asset_type, unwrap_amount),
-            vec![0x01]
-        ));
+        let unwrap_ccc = asset_unwrap_ccc!(
+            asset_transfer_input!(asset_out_point!(wrap_ccc_tracker, 0, asset_type, unwrap_amount), vec![0x01]),
+            sender
+        );
 
         assert_eq!(Ok(()), state.apply(&unwrap_ccc, &sender, &[sender], &[], &get_test_client()));
 
@@ -2076,10 +2076,10 @@ mod tests {
         ]);
 
         let unwrap_amount = 5;
-        let unwrap_ccc = asset_unwrap_ccc!(asset_transfer_input!(
-            asset_out_point!(transfer_tracker, 1, asset_type, unwrap_amount),
-            vec![0x01]
-        ));
+        let unwrap_ccc = asset_unwrap_ccc!(
+            asset_transfer_input!(asset_out_point!(transfer_tracker, 1, asset_type, unwrap_amount), vec![0x01]),
+            sender
+        );
 
         assert_eq!(Ok(()), state.apply(&unwrap_ccc, &sender, &[sender], &[], &get_test_client()));
 

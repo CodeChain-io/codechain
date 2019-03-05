@@ -78,6 +78,7 @@ pub enum ShardTransaction {
     UnwrapCCC {
         network_id: NetworkId,
         burn: AssetTransferInput,
+        receiver: Address,
     },
     WrapCCC {
         network_id: NetworkId,
@@ -429,6 +430,7 @@ impl PartialHashing for ShardTransaction {
             ShardTransaction::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => {
                 if !tag.sign_all_inputs || !tag.sign_all_outputs {
                     return Err(HashingError::InvalidFilter)
@@ -443,6 +445,7 @@ impl PartialHashing for ShardTransaction {
                             lock_script: Vec::new(),
                             unlock_script: Vec::new(),
                         },
+                        receiver: *receiver,
                     }
                     .rlp_bytes(),
                     &blake128(tag.get_tag()),
@@ -594,15 +597,16 @@ impl Decodable for ShardTransaction {
             }
             ASSET_UNWRAP_CCC_ID => {
                 let item_count = d.item_count()?;
-                if item_count != 3 {
+                if item_count != 4 {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
-                        expected: 3,
+                        expected: 4,
                     })
                 }
                 Ok(ShardTransaction::UnwrapCCC {
                     network_id: d.val_at(1)?,
                     burn: d.val_at(2)?,
+                    receiver: d.val_at(3)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -731,8 +735,9 @@ impl Encodable for ShardTransaction {
             ShardTransaction::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => {
-                s.begin_list(3).append(&ASSET_UNWRAP_CCC_ID).append(network_id).append(burn);
+                s.begin_list(4).append(&ASSET_UNWRAP_CCC_ID).append(network_id).append(burn).append(receiver);
             }
             ShardTransaction::WrapCCC {
                 ..
@@ -1037,6 +1042,7 @@ mod tests {
                 lock_script: vec![0x30, 0x01],
                 unlock_script: vec![],
             },
+            receiver: Address::random(),
         };
         rlp_encode_and_decode_test!(tx);
     }
