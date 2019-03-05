@@ -255,9 +255,9 @@ describe("Tendermint ", function() {
         await promiseExpect.shouldFulfill(
             "wait blocknumber",
             Promise.all([
-                nodes[0].waitBlockNumber(startHeight + 1),
-                nodes[1].waitBlockNumber(startHeight + 1),
-                nodes[2].waitBlockNumber(startHeight + 1)
+                nodes[0].waitBlockNumber(startHeight + 3),
+                nodes[1].waitBlockNumber(startHeight + 3),
+                nodes[2].waitBlockNumber(startHeight + 3)
             ])
         );
 
@@ -289,7 +289,7 @@ describe("Tendermint ", function() {
                 nodes[3].waitBlockNumber(heightOfNode0 + 1)
             ])
         );
-    }).timeout(60_000);
+    }).timeout(90_000);
 
     it("Gossip", async function() {
         const startHeight = await nodes[0].getBestBlockNumber();
