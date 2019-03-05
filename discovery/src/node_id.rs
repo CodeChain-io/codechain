@@ -56,8 +56,9 @@ pub fn address_to_hash(addr: &SocketAddr) -> H256 {
             }
             let octets: [u8; 16] = ip.to_ipv6_compatible().octets();
             let mut hash = H256::blake(&octets);
-            hash[14] ^= (port >> 8) as u8;
-            hash[15] ^= (port & 0xFF) as u8;
+            let hash_len = hash.len();
+            hash[hash_len - 2] ^= (port >> 8) as u8;
+            hash[hash_len - 1] ^= (port & 0xFF) as u8;
             hash
         }
         IpAddr::V6(_ip) => unimplemented!(),
