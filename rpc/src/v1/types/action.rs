@@ -100,6 +100,7 @@ pub enum Action {
     UnwrapCCC {
         network_id: NetworkId,
         burn: AssetTransferInput,
+        receiver: PlatformAddress,
     },
     Pay {
         receiver: PlatformAddress,
@@ -231,6 +232,7 @@ pub enum ActionWithTracker {
     UnwrapCCC {
         network_id: NetworkId,
         burn: Box<AssetTransferInput>,
+        receiver: PlatformAddress,
 
         tracker: H256,
     },
@@ -394,9 +396,11 @@ impl ActionWithTracker {
             ActionType::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => ActionWithTracker::UnwrapCCC {
                 network_id,
                 burn: Box::new(burn.into()),
+                receiver: PlatformAddress::new_v1(network_id, receiver),
                 tracker: tracker.unwrap(),
             },
             ActionType::Pay {
@@ -632,9 +636,11 @@ impl From<Action> for Result<ActionType, ConversionError> {
             Action::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => ActionType::UnwrapCCC {
                 network_id,
                 burn: burn.into(),
+                receiver: receiver.try_into_address()?,
             },
             Action::Pay {
                 receiver,

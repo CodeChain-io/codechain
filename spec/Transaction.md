@@ -261,6 +261,7 @@ The payer has the converted CCC.
 UnwrapCCC {
     network_id: NetworkId,
     burn: AssetTransferInput,
+    receiver: PlatformAddress,
 }
 ```
 

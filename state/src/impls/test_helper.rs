@@ -365,19 +365,21 @@ macro_rules! asset_wrap_ccc {
 }
 
 macro_rules! unwrap_ccc {
-    ($burn:expr) => {
+    ($burn:expr, $receiver:expr) => {
         $crate::ctypes::transaction::Action::UnwrapCCC {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             burn: $burn,
+            receiver: $receiver,
         }
     };
 }
 
 macro_rules! asset_unwrap_ccc {
-    ($burn:expr) => {
+    ($burn:expr, $receiver:expr) => {
         $crate::ctypes::transaction::ShardTransaction::UnwrapCCC {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             burn: $burn,
+            receiver: $receiver,
         }
     };
 }
@@ -537,6 +539,9 @@ macro_rules! check_top_level_state {
     ($state:expr, [(account: $addr:expr => (seq: $seq:expr, balance: $balance:expr, key)) $(,$x:tt)*]) => {
         assert_eq!(Ok(None), $state.regular_key(&$addr));
         check_top_level_state!($state, [(account: $addr => (seq: $seq, balance: $balance)) $(,$x)*]);
+    };
+    ($state:expr, [(account: $addr:expr) $(,$x:tt)*]) => {
+        check_top_level_state!($state, [(account: $addr => (seq: 0, balance: 0)) $(,$x)*]);
     };
     ($state:expr, [(shard: $shard_id:expr => owners: [$($owner:expr),*]) $(,$x:tt)*]) => {
         check_top_level_state!($state, [(shard: $shard_id => owners: vec![$($owner,)*]) $(,$x)*]);

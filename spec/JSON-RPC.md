@@ -104,6 +104,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 
  - networkId: `NetworkID`
  - burn: `AssetTransferInput`
+ - receiver: `PlatformAddress`
 
 ### Pay Action
 

@@ -442,13 +442,14 @@ impl TopLevelState {
                             },
                         ..
                     },
+                receiver,
                 ..
             } => {
                 let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's an unwrap transaction");
                 debug_assert_eq!(network_id, transaction.network_id());
                 let invoice = self.apply_shard_transaction(&transaction, fee_payer, &[], client)?;
                 if invoice == Invoice::Success {
-                    self.add_balance(fee_payer, *quantity)?;
+                    self.add_balance(receiver, *quantity)?;
                 }
                 Ok(invoice)
             }
@@ -1894,6 +1895,7 @@ mod tests_tx {
     #[test]
     fn wrap_and_unwrap_ccc() {
         let (sender, sender_public, _) = address();
+        let (receiver, ..) = address();
 
         let shard_id = 0x0;
 
@@ -1915,17 +1917,19 @@ mod tests_tx {
         let asset_type = H160::zero();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
+            (account: receiver),
             (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
         let unwrap_ccc_tx =
-            unwrap_ccc!(asset_transfer_input!(asset_out_point!(tx_hash, 0, asset_type, 30), vec![0x01]));
+            unwrap_ccc!(asset_transfer_input!(asset_out_point!(tx_hash, 0, asset_type, 30), vec![0x01]), receiver);
         let tx = transaction!(seq: 1, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 2, balance: 100 - 11 - 30 - 11 + 30)),
+            (account: sender => (seq: 2, balance: 100 - 11 - 30 - 11)),
+            (account: receiver => (seq: 0, balance: 30)),
             (asset: (tx_hash, 0, 0))
         ]);
     }
@@ -1933,6 +1937,7 @@ mod tests_tx {
     #[test]
     fn wrap_and_failed_unwrap() {
         let (sender, sender_public, _) = address();
+        let (receiver, ..) = address();
 
         let shard_id = 0x0;
 
@@ -1954,14 +1959,15 @@ mod tests_tx {
         let asset_type = H160::zero();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
+            (account: receiver),
             (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
         let failed_lock_script = vec![0x02];
-        let unwrap_ccc_tx = unwrap_ccc!(asset_transfer_input!(
-            asset_out_point!(tx_hash, 0, asset_type, 30),
-            failed_lock_script.clone()
-        ));
+        let unwrap_ccc_tx = unwrap_ccc!(
+            asset_transfer_input!(asset_out_point!(tx_hash, 0, asset_type, 30), failed_lock_script.clone()),
+            receiver
+        );
         let tx = transaction!(seq: 1, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(
@@ -1977,6 +1983,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 100 - 11 - 30 - 11)),
+            (account: receiver),
             (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
     }
@@ -2067,8 +2074,10 @@ mod tests_tx {
             (asset: (transfer_tx_tracker, 2, 0) => { asset_type: asset_type, quantity: 15 })
         ]);
 
-        let unwrap_ccc_tx =
-            unwrap_ccc!(asset_transfer_input!(asset_out_point!(transfer_tx_tracker, 1, asset_type, 5), vec![0x01]));
+        let unwrap_ccc_tx = unwrap_ccc!(
+            asset_transfer_input!(asset_out_point!(transfer_tx_tracker, 1, asset_type, 5), vec![0x01]),
+            sender
+        );
         let tx = transaction!(seq: 2, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
