@@ -21,14 +21,16 @@ import CodeChain from "../helper/spawn";
 
 describe("bootstrap", function() {
     const NUM_NODES = 100;
-    describe.only(`connect ${NUM_NODES} nodes`, function() {
+    describe(`connect ${NUM_NODES} nodes`, function() {
         const promiseExpect = new PromiseExpect();
         let bootstrap: CodeChain;
 
         beforeEach(async function() {
             this.timeout(10_000);
 
-            bootstrap = new CodeChain({ argv: ["--no-discovery", "--max-peers", "100"] });
+            bootstrap = new CodeChain({
+                argv: ["--no-discovery", "--max-peers", "100"]
+            });
             await bootstrap.start();
         });
 
