@@ -41,6 +41,7 @@ impl Config {
 pub struct Logger {
     instance_id: usize,
     filter: Filter,
+    stderr_is_tty: bool,
 }
 
 impl Logger {
@@ -52,9 +53,12 @@ impl Logger {
             builder.parse(&rust_log);
         }
 
+        let stderr_is_tty = atty::is(atty::Stream::Stderr);
+
         Self {
             instance_id: config.instance_id,
             filter: builder.build(),
+            stderr_is_tty,
         }
     }
 
@@ -73,14 +77,13 @@ impl Log for Logger {
             let thread_name = thread::current().name().unwrap_or_default().to_string();
             let timestamp = time::strftime("%Y-%m-%d %H:%M:%S %Z", &time::now()).unwrap();
 
-            let stderr_isatty = atty::is(atty::Stream::Stderr);
             let instance_id = self.instance_id;
-            let timestamp = if stderr_isatty {
+            let timestamp = if self.stderr_is_tty {
                 timestamp.bold()
             } else {
                 timestamp.normal()
             };
-            let colored_thread_name = if stderr_isatty {
+            let colored_thread_name = if self.stderr_is_tty {
                 thread_name.blue().bold()
             } else {
                 thread_name.normal()
