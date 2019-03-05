@@ -500,7 +500,7 @@ impl Network {
         if let Some(min_peers) = matches.value_of("min-peers") {
             self.min_peers = Some(min_peers.parse().map_err(|_| "Invalid min-peers")?);
         }
-        if let Some(max_peers) = matches.value_of("min-peers") {
+        if let Some(max_peers) = matches.value_of("max-peers") {
             self.max_peers = Some(max_peers.parse().map_err(|_| "Invalid max-peers")?);
         }
         if self.min_peers > self.max_peers {
