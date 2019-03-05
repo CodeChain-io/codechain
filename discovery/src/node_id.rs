@@ -19,7 +19,7 @@ use std::net::IpAddr;
 use ccrypto::Blake;
 
 use cnetwork::{IntoSocketAddr, NodeId, SocketAddr};
-use primitives::H256;
+use primitives::H128;
 
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct KademliaId {
@@ -28,7 +28,7 @@ pub struct KademliaId {
 }
 
 impl KademliaId {
-    pub fn new(address: SocketAddr, datum: &H256) -> Self {
+    pub fn new(address: SocketAddr, datum: &H128) -> Self {
         Self {
             distance: log2_distance(&address, datum),
             node_id: address.into(),
@@ -42,7 +42,7 @@ impl From<KademliaId> for SocketAddr {
     }
 }
 
-pub fn address_to_hash(addr: &SocketAddr) -> H256 {
+pub fn address_to_hash(addr: &SocketAddr) -> H128 {
     let ip = addr.ip();
     let port = addr.port();
     match ip {
@@ -55,7 +55,7 @@ pub fn address_to_hash(addr: &SocketAddr) -> H256 {
                 return Blake::blake(&octets)
             }
             let octets: [u8; 16] = ip.to_ipv6_compatible().octets();
-            let mut hash = H256::blake(&octets);
+            let mut hash = H128::blake(&octets);
             let hash_len = hash.len();
             hash[hash_len - 2] ^= (port >> 8) as u8;
             hash[hash_len - 1] ^= (port & 0xFF) as u8;
@@ -65,11 +65,11 @@ pub fn address_to_hash(addr: &SocketAddr) -> H256 {
     }
 }
 
-fn log2_distance(addr: &SocketAddr, datum: &H256) -> usize {
+fn log2_distance(addr: &SocketAddr, datum: &H128) -> usize {
     let hash = address_to_hash(addr);
 
     let distance = hash ^ *datum;
-    const B: usize = 32 * 8;
+    const B: usize = 16 * 8;
     const BYTES_SIZE: usize = B / 8;
     debug_assert_eq!(B % 8, 0);
     let mut distance_as_bytes: [u8; BYTES_SIZE] = [0; BYTES_SIZE];
