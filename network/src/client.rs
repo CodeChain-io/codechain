@@ -87,38 +87,6 @@ pub struct Client {
     timer_loop: TimerLoop,
 }
 
-macro_rules! define_broadcast_method {
-    ($method_name: ident) => {
-        pub fn $method_name (&self) {
-            let extensions = self.extensions.read();
-            for (_, ref extension) in extensions.iter() {
-                extension.$method_name();
-            }
-        }
-    };
-    ($method_name: ident; $($var: ident, $t: ty);*) => {
-        pub fn $method_name (&self, $($var: $t), *) {
-            let extensions = self.extensions.read();
-            for (_, ref extension) in extensions.iter() {
-                extension.$method_name($($var),*);
-            }
-        }
-    };
-}
-
-macro_rules! define_method {
-    ($method_name: ident; $($var: ident, $t: ty);*) => {
-        pub fn $method_name (&self, name: &str, $($var: $t), *) {
-            let extensions = self.extensions.read();
-            if let Some(ref extension) = extensions.get(name) {
-                extension.$method_name($($var),*);
-            } else {
-                cdebug!(NETAPI, "{} doesn't exist.", name);
-            }
-        }
-    };
-}
-
 impl Client {
     pub fn new_extension<T, F>(&self, factory: F) -> Arc<T>
     where
@@ -161,12 +129,25 @@ impl Client {
         extensions.iter().map(|(name, extension)| (name.to_string(), extension.versions().to_vec())).collect()
     }
 
-    define_method!(on_node_added; id, &NodeId; version, u64);
-    define_broadcast_method!(on_node_removed; id, &NodeId);
+    pub fn on_node_removed(&self, id: &NodeId) {
+        let extensions = self.extensions.read();
+        for (_, extension) in extensions.iter() {
+            extension.on_node_removed(id);
+        }
+    }
+
+    pub fn on_node_added(&self, name: &str, id: &NodeId, version: u64) {
+        let extensions = self.extensions.read();
+        if let Some(extension) = extensions.get(name) {
+            extension.on_node_added(id, version);
+        } else {
+            cdebug!(NETAPI, "{} doesn't exist.", name);
+        }
+    }
 
     pub fn on_message(&self, name: &str, id: &NodeId, data: &[u8]) {
         let extensions = self.extensions.read();
-        if let Some(ref extension) = extensions.get(name) {
+        if let Some(extension) = extensions.get(name) {
             cdebug!(NETAPI, "`{}` receives {} bytes from {}", name, data.len(), id.into_addr());
             extension.on_message(id, data);
         } else {
