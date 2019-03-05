@@ -192,7 +192,7 @@ impl TestBlockChainClient {
         }
     }
     /// Add a block to test client with designated author.
-    pub fn add_block_with_author(&self, author: Option<Address>, n: usize, transaction_length: usize) {
+    pub fn add_block_with_author(&self, author: Option<Address>, n: usize, transaction_length: usize) -> H256 {
         let mut header = BlockHeader::new();
         header.set_score(From::from(n));
         header.set_parent_hash(*self.last_hash.read());
@@ -225,7 +225,7 @@ impl TestBlockChainClient {
         let mut rlp = RlpStream::new_list(2);
         rlp.append(&header);
         rlp.append_list(&transactions);
-        self.import_block(rlp.as_raw().to_vec()).unwrap();
+        self.import_block(rlp.as_raw().to_vec()).unwrap()
     }
 
     /// Make a bad block by setting invalid extra data.
