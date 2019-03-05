@@ -51,13 +51,12 @@ pub trait Blake {
 }
 
 macro_rules! implement_blake {
-    ($self:ident, $len:expr) => {
+    ($self:ident) => {
         impl Blake for $self {
             fn blake<T: AsRef<[u8]>>(s: T) -> Self {
                 let input = s.as_ref();
                 let mut result = Self::default();
-                debug_assert_eq!($len, result.len());
-                let mut hasher = Blake2b::new($len);
+                let mut hasher = Blake2b::new(result.len());
                 hasher.input(input);
                 hasher.result(&mut *result);
                 result
@@ -65,8 +64,7 @@ macro_rules! implement_blake {
             fn blake_with_key<T: AsRef<[u8]>>(s: T, key: &[u8]) -> Self {
                 let input = s.as_ref();
                 let mut result = Self::default();
-                debug_assert_eq!($len, result.len());
-                let mut hasher = Blake2b::new_keyed($len, &key);
+                let mut hasher = Blake2b::new_keyed(result.len(), &key);
                 hasher.input(input);
                 hasher.result(&mut *result);
                 result
@@ -75,10 +73,10 @@ macro_rules! implement_blake {
     };
 }
 
-implement_blake!(H128, 16);
-implement_blake!(H160, 20);
-implement_blake!(H256, 32);
-implement_blake!(H512, 64);
+implement_blake!(H128);
+implement_blake!(H160);
+implement_blake!(H256);
+implement_blake!(H512);
 
 /// Get the 256-bits BLAKE2b hash of the empty bytes string.
 pub const BLAKE_EMPTY: H256 = H256([
