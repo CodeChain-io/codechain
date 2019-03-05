@@ -209,6 +209,7 @@ impl NetworkExtension for Extension {
         let mut requests = self.requests.write();
         let mut connected_nodes = self.connected_nodes.write();
         let mut header_downloaders = self.header_downloaders.write();
+        let mut body_downloader = self.body_downloader.lock();
         let mut tokens = self.tokens.write();
         let mut tokens_info = self.tokens_info.write();
         let mut token_generator = self.token_generator.lock();
@@ -218,8 +219,14 @@ impl NetworkExtension for Extension {
 
             header_downloaders.remove(id);
 
-            requests.remove(id);
+            for (_, request) in requests.remove(id).into_iter().flatten() {
+                if let RequestMessage::Bodies(hashes) = request {
+                    body_downloader.reset_downloading(&hashes);
+                }
+            }
+
             if let Some(token) = tokens.remove(id) {
+                self.api.clear_timer(token).expect("Timer cancel failed");
                 tokens_info.remove(&token);
                 token_generator.restore(token);
             }
