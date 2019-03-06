@@ -1487,7 +1487,7 @@ It returns `null` if the given block number is not mined yet.
 Executes the transactions and returns the current shard root and the changed shard root.
 
 ### Params
- 1. transaction: `Transaction`
+ 1. transaction: `UnsignedTransaction`
  2. sender: `PlatformAddress`
 
 ### Returns
