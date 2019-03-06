@@ -26,7 +26,7 @@ use ccore::{
 };
 use cnetwork::{Api, NetworkExtension, NodeId};
 use cstate::FindActionHandler;
-use ctimer::{TimeoutHandler, TimerToken};
+use ctimer::TimerToken;
 use ctypes::transaction::Action;
 use ctypes::BlockNumber;
 use parking_lot::{Mutex, RwLock};
@@ -256,9 +256,7 @@ impl NetworkExtension for Extension {
             cinfo!(SYNC, "Invalid message from peer {}", id);
         }
     }
-}
 
-impl TimeoutHandler for Extension {
     fn on_timeout(&self, token: TimerToken) {
         match token {
             SYNC_TIMER_TOKEN => {

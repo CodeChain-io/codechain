@@ -18,10 +18,10 @@ use std::convert::From;
 use std::result;
 
 use cio::IoError;
+use ctimer::{TimerScheduleError, TimerToken};
 use time::Duration;
 
 use crate::NodeId;
-use ctimer::{TimeoutHandler, TimerScheduleError, TimerToken};
 
 #[derive(Debug)]
 pub enum Error {
@@ -54,7 +54,7 @@ pub trait Api: Send + Sync {
     fn clear_timer(&self, timer: TimerToken) -> Result<()>;
 }
 
-pub trait Extension: TimeoutHandler + Send + Sync {
+pub trait Extension: Send + Sync {
     fn name(&self) -> &'static str;
     fn need_encryption(&self) -> bool;
     fn versions(&self) -> &[u64];
@@ -65,4 +65,6 @@ pub trait Extension: TimeoutHandler + Send + Sync {
     fn on_node_removed(&self, _node: &NodeId) {}
 
     fn on_message(&self, _node: &NodeId, _message: &[u8]) {}
+
+    fn on_timeout(&self, _token: TimerToken) {}
 }

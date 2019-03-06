@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use ccore::BlockChainClient;
 use cnetwork::{Api, NetworkExtension, NodeId};
-use ctimer::{TimeoutHandler, TimerToken};
+use ctimer::TimerToken;
 use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Encodable, UntrustedRlp};
@@ -127,9 +127,7 @@ impl NetworkExtension for Extension {
             cwarn!(SYNC_TX, "Invalid message from peer {}", token);
         }
     }
-}
 
-impl TimeoutHandler for Extension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             BROADCAST_TIMER_TOKEN => self.random_broadcast(),
