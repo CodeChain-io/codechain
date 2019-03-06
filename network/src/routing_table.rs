@@ -637,3 +637,39 @@ fn encrypt_nonce(nonce: Nonce, shared_secret: &Secret) -> Result<Bytes, Symmetri
     let iv = 0; // FIXME: Use proper iv
     Ok(aes::encrypt(&nonce.to_be_bytes(), shared_secret, &iv)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn encrypt_and_decrypt(secret: Secret, nonce: Nonce) {
+        assert_eq!(
+            nonce,
+            decrypt_nonce(&encrypt_nonce(nonce, &secret).unwrap(), &secret).unwrap(),
+            "nonce: {}, secret: {}",
+            nonce,
+            secret
+        );
+    }
+
+    #[test]
+    fn encrypt_and_decrypt_0() {
+        let secret = Secret::random();
+        let nonce = 0;
+        encrypt_and_decrypt(secret, nonce);
+    }
+
+    #[test]
+    fn encrypt_and_decrypt_u64_max() {
+        let secret = Secret::random();
+        let nonce = ::std::u64::MAX.into();
+        encrypt_and_decrypt(secret, nonce);
+    }
+
+    #[test]
+    fn encrypt_and_decrypt_u128_max() {
+        let secret = Secret::random();
+        let nonce = ::std::u128::MAX;
+        encrypt_and_decrypt(secret, nonce);
+    }
+}
