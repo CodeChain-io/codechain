@@ -25,6 +25,7 @@ extern crate codechain_logger as clogger;
 extern crate codechain_timer as ctimer;
 extern crate codechain_types as ctypes;
 extern crate core;
+extern crate crossbeam_channel;
 extern crate finally;
 extern crate limited_table;
 #[macro_use]
