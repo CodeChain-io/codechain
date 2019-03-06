@@ -1484,7 +1484,7 @@ It returns `null` if the given block number is not mined yet.
 [Back to **List of methods**](#list-of-methods)
 
 ## chain_executeTransaction
-Executes the transactions and returns the current shard root and the changed shard root.
+Executes the transactions and returns whether the execution is successful.
 
 ### Params
  1. transaction: `UnsignedTransaction`
