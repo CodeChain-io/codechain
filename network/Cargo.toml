@@ -10,6 +10,7 @@ codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }
 codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
+crossbeam-channel = "0.3"
 finally = { git = "https://github.com/CodeChain-io/rust-finally.git" }
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 limited-table = { git = "https://github.com/CodeChain-io/rust-limited-table.git" }
