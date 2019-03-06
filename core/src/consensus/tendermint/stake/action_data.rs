@@ -25,7 +25,7 @@ use rlp::{Rlp, RlpStream};
 use super::CUSTOM_ACTION_HANDLER_ID;
 
 fn get_account_key(address: &Address) -> H256 {
-    ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(address).into_key()
+    ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 2).append(&"Account").append(address).into_key()
 }
 
 lazy_static! {
