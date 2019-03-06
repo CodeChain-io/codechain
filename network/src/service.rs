@@ -26,10 +26,8 @@ use ctimer::TimerLoop;
 use crate::client::Client;
 use crate::control::{Control, Error as ControlError};
 use crate::filters::{FilterEntry, FiltersControl};
-use crate::p2p;
 use crate::routing_table::RoutingTable;
-use crate::DiscoveryApi;
-use crate::{Api, NetworkExtension, SocketAddr};
+use crate::{p2p, Api, NetworkExtension, SocketAddr};
 
 pub struct Service {
     p2p: IoService<p2p::Message>,
@@ -48,10 +46,9 @@ impl Service {
         min_peers: usize,
         max_peers: usize,
         filters_control: Arc<FiltersControl>,
+        routing_table: Arc<RoutingTable>,
     ) -> Result<Arc<Self>, Error> {
         let p2p = IoService::start("P2P")?;
-
-        let routing_table = RoutingTable::new();
 
         let client = Client::new(p2p.channel(), timer_loop);
 
@@ -87,10 +84,6 @@ impl Service {
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {
         self.p2p.send_message(p2p::Message::RequestConnection(address)).map_err(|e| format!("{:?}", e))?;
         Ok(())
-    }
-
-    pub fn set_routing_table(&self, disc: &DiscoveryApi) {
-        disc.set_routing_table(Arc::clone(&self.routing_table));
     }
 }
 
