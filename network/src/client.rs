@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
 use cio::IoChannel;
-use ctimer::{TimerApi, TimerLoop, TimerToken};
+use ctimer::{TimeoutHandler, TimerApi, TimerLoop, TimerToken};
 use parking_lot::RwLock;
 use time::Duration;
 
@@ -81,6 +81,16 @@ impl Api for ClientApi {
     }
 }
 
+impl TimeoutHandler for ClientApi {
+    fn on_timeout(&self, token: TimerToken) {
+        let extension_guard = self.extension.read();
+        let some_extension = extension_guard.as_ref().expect("Extension should be initialized");
+        if let Some(extension) = some_extension.upgrade() {
+            extension.on_timeout(token);
+        }
+    }
+}
+
 pub struct Client {
     extensions: RwLock<HashMap<&'static str, Arc<NetworkExtension>>>,
     p2p_channel: IoChannel<P2pMessage>,
@@ -106,7 +116,7 @@ impl Client {
         let name = extension.name();
         *api.extension.write() = Some(Arc::downgrade(&extension) as Weak<NetworkExtension>);
         api.timer.set_name(name);
-        api.timer.set_handler(Arc::downgrade(&extension));
+        api.timer.set_handler(Arc::downgrade(&api));
         extension.on_initialize();
         let trait_extension = Arc::clone(&extension) as Arc<NetworkExtension>;
         if extensions.insert(name, trait_extension).is_some() {
@@ -162,7 +172,7 @@ mod tests {
     use std::vec::Vec;
 
     use cio::IoService;
-    use ctimer::{TimeoutHandler, TimerLoop};
+    use ctimer::TimerLoop;
     use parking_lot::Mutex;
     use time::Duration;
 
@@ -246,9 +256,7 @@ mod tests {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Message);
         }
-    }
 
-    impl TimeoutHandler for TestExtension {
         fn on_timeout(&self, _timer_id: usize) {
             let mut callbacks = self.callbacks.lock();
             callbacks.push(Callback::Timeout);

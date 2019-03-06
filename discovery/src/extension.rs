@@ -18,7 +18,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use cnetwork::{Api, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
-use ctimer::{TimeoutHandler, TimerToken};
+use ctimer::TimerToken;
 use parking_lot::RwLock;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -127,9 +127,7 @@ impl NetworkExtension for Extension {
             }
         }
     }
-}
 
-impl TimeoutHandler for Extension {
     fn on_timeout(&self, timer: TimerToken) {
         match timer {
             REFRESH_TOKEN => {

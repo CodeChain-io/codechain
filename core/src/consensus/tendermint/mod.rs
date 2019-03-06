@@ -31,7 +31,7 @@ use ccrypto::blake256;
 use ckey::{public_to_address, recover_schnorr, verify_schnorr, Address, Message, SchnorrSignature};
 use cnetwork::{Api, NetworkExtension, NetworkService, NodeId};
 use cstate::ActionHandler;
-use ctimer::{TimeoutHandler, TimerToken};
+use ctimer::TimerToken;
 use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::BlockNumber;
@@ -2049,9 +2049,7 @@ impl NetworkExtension for TendermintExtension {
             _ => cinfo!(ENGINE, "Invalid message from peer {}", token),
         }
     }
-}
 
-impl TimeoutHandler for TendermintExtension {
     fn on_timeout(&self, token: TimerToken) {
         debug_assert!(
             token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE
