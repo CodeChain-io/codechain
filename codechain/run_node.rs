@@ -30,7 +30,7 @@ use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
-use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, SocketAddr};
+use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, RoutingTable, SocketAddr};
 use creactor::EventLoop;
 use csync::{BlockSyncExtension, SnapshotService, TransactionSyncExtension};
 use ctimer::TimerLoop;
@@ -52,6 +52,7 @@ fn network_start(
     network_id: NetworkId,
     timer_loop: TimerLoop,
     cfg: &NetworkConfig,
+    routing_table: Arc<RoutingTable>,
 ) -> Result<Arc<NetworkService>, String> {
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
@@ -64,13 +65,18 @@ fn network_start(
         cfg.min_peers,
         cfg.max_peers,
         filters,
+        routing_table,
     )
     .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
 }
 
-fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<(), String> {
+fn discovery_start(
+    service: &NetworkService,
+    cfg: &config::Network,
+    routing_table: Arc<RoutingTable>,
+) -> Result<(), String> {
     let config = Config {
         bucket_size: cfg.discovery_bucket_size.unwrap(),
         t_refresh: cfg.discovery_refresh.unwrap(),
@@ -81,8 +87,7 @@ fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<()
         Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
         None => return Ok(()),
     };
-    let discovery = service.new_extension(|api| Discovery::new(config, api, use_kademlia));
-    service.set_routing_table(&*discovery);
+    service.new_extension(|api| Discovery::new(routing_table, config, api, use_kademlia));
     Ok(())
 }
 
@@ -270,10 +275,11 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
             let network_id = client.client().common_params().network_id;
-            let service = network_start(network_id, timer_loop, &network_config)?;
+            let routing_table = RoutingTable::new();
+            let service = network_start(network_id, timer_loop, &network_config, Arc::clone(&routing_table))?;
 
             if config.network.discovery.unwrap() {
-                discovery_start(&service, &config.network)?;
+                discovery_start(&service, &config.network, routing_table)?;
             } else {
                 cwarn!(DISCOVERY, "Node runs without discovery extension");
             }

@@ -17,7 +17,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use cnetwork::{Api, DiscoveryApi, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
+use cnetwork::{Api, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
 use ctimer::{TimeoutHandler, TimerToken};
 use parking_lot::RwLock;
 use rand::prelude::SliceRandom;
@@ -31,17 +31,17 @@ use super::Config;
 
 pub struct Extension {
     config: Config,
-    routing_table: RwLock<Option<Arc<RoutingTable>>>,
+    routing_table: Arc<RoutingTable>,
     api: Arc<Api>,
     nodes: RwLock<HashSet<NodeId>>, // FIXME: Find the optimized data structure for it
     use_kademlia: bool,
 }
 
 impl Extension {
-    pub fn new(config: Config, api: Arc<Api>, use_kademlia: bool) -> Self {
+    pub fn new(routing_table: Arc<RoutingTable>, config: Config, api: Arc<Api>, use_kademlia: bool) -> Self {
         Self {
             config,
-            routing_table: RwLock::new(None),
+            routing_table,
             api,
             nodes: RwLock::new(HashSet::new()),
             use_kademlia,
@@ -98,40 +98,32 @@ impl NetworkExtension for Extension {
         };
         match message {
             Message::Request(len) => {
-                let routing_table = self.routing_table.read();
-                if let Some(routing_table) = &*routing_table {
-                    let addresses = if self.use_kademlia {
-                        let datum = address_to_hash(&node.into_addr());
-                        let mut addresses = routing_table
-                            .reachable_addresses(&node.into_addr())
-                            .into_iter()
-                            .map(|address| KademliaId::new(address, &datum))
-                            .collect::<Vec<_>>();
+                let addresses = if self.use_kademlia {
+                    let datum = address_to_hash(&node.into_addr());
+                    let mut addresses = self
+                        .routing_table
+                        .reachable_addresses(&node.into_addr())
+                        .into_iter()
+                        .map(|address| KademliaId::new(address, &datum))
+                        .collect::<Vec<_>>();
 
-                        addresses.sort_unstable();
+                    addresses.sort_unstable();
 
-                        addresses
-                            .into_iter()
-                            .map(|kademlia_id| kademlia_id.into())
-                            .take(::std::cmp::min(self.config.bucket_size, len) as usize)
-                            .collect()
-                    } else {
-                        let mut addresses = routing_table.reachable_addresses(&node.into_addr());
-                        addresses.shuffle(&mut thread_rng());
-                        addresses.into_iter().take(::std::cmp::min(self.config.bucket_size, len) as usize).collect()
-                    };
-                    let response = Message::Response(addresses).rlp_bytes();
-                    self.api.send(&node, &response);
-                }
+                    addresses
+                        .into_iter()
+                        .map(|kademlia_id| kademlia_id.into())
+                        .take(::std::cmp::min(self.config.bucket_size, len) as usize)
+                        .collect()
+                } else {
+                    let mut addresses = self.routing_table.reachable_addresses(&node.into_addr());
+                    addresses.shuffle(&mut thread_rng());
+                    addresses.into_iter().take(::std::cmp::min(self.config.bucket_size, len) as usize).collect()
+                };
+                let response = Message::Response(addresses).rlp_bytes();
+                self.api.send(&node, &response);
             }
             Message::Response(addresses) => {
-                let routing_table = self.routing_table.read();
-                match routing_table.as_ref() {
-                    None => cwarn!(DISCOVERY, "No routing table"),
-                    Some(routing_table) => {
-                        routing_table.touch_addresses(addresses);
-                    }
-                }
+                self.routing_table.touch_addresses(addresses);
             }
         }
     }
@@ -150,11 +142,5 @@ impl TimeoutHandler for Extension {
             }
             _ => unreachable!(),
         }
-    }
-}
-
-impl DiscoveryApi for Extension {
-    fn set_routing_table(&self, routing_table: Arc<RoutingTable>) {
-        *self.routing_table.write() = Some(routing_table);
     }
 }

@@ -43,7 +43,6 @@ extern crate token_generator;
 mod addr;
 mod client;
 mod config;
-mod discovery;
 mod extension;
 mod filters;
 mod node_id;
@@ -59,7 +58,6 @@ pub mod session;
 pub use crate::addr::SocketAddr;
 pub use crate::config::Config as NetworkConfig;
 pub use crate::control::{Control as NetworkControl, Error as NetworkControlError};
-pub use crate::discovery::Api as DiscoveryApi;
 pub use crate::extension::{
     Api, Error as NetworkExtensionError, Extension as NetworkExtension, Result as NetworkExtensionResult,
 };
