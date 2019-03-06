@@ -138,7 +138,7 @@ impl Client {
         let name = extension.name();
         *api.extension.write() = Some(Arc::downgrade(&extension) as Weak<NetworkExtension>);
         api.timer.set_name(name);
-        api.timer.set_handler(&extension);
+        api.timer.set_handler(Arc::downgrade(&extension));
         extension.on_initialize();
         let trait_extension = Arc::clone(&extension) as Arc<NetworkExtension>;
         if extensions.insert(name, trait_extension).is_some() {
