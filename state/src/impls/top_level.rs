@@ -445,6 +445,9 @@ impl TopLevelState {
                 receiver,
                 ..
             } => {
+                if self.regular_account_exists_and_not_null_by_address(receiver)? {
+                    return Err(RuntimeError::InvalidTransferDestination.into())
+                }
                 let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's an unwrap transaction");
                 debug_assert_eq!(network_id, transaction.network_id());
                 let invoice = self.apply_shard_transaction(&transaction, fee_payer, &[], client)?;
@@ -1413,6 +1416,67 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 0, key: key))
+        ]);
+    }
+
+    #[test]
+    fn cannot_pay_to_regular_account() {
+        let mut state = get_temp_state();
+
+        let (sender, sender_public, _) = address();
+        let (master_account, master_public, _) = address();
+        let (regular_account, regular_public, _) = address();
+        set_top_level_state!(state, [
+            (account: sender => balance: 123),
+            (account: master_account => balance: 456),
+            (regular_key: master_public => regular_public)
+        ]);
+
+        let tx = transaction!(fee: 5, pay!(regular_account, 10));
+        assert_eq!(
+            Ok(Invoice::Failure(RuntimeError::InvalidTransferDestination.to_string())),
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 123 - 5)),
+            (account: master_account => (seq: 0, balance: 456, key: regular_public))
+        ]);
+    }
+
+    #[test]
+    fn regular_account_cannot_get_unwrapped_ccc() {
+        let mut state = get_temp_state();
+
+        let (sender, sender_public, _) = address();
+        let (master_account, master_public, _) = address();
+        let (regular_account, regular_public, _) = address();
+        let type_of_wccc = H160::zero();
+        let tracker = H256::random();
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
+        let shard_id = 0;
+        set_top_level_state!(state, [
+            (account: sender => balance: 123),
+            (account: master_account => balance: 456),
+            (regular_key: master_public => regular_public),
+            (shard: shard_id => owners: [sender]),
+            (metadata: shards: 1),
+            (asset: (shard_id, tracker, 0) => { asset_type: type_of_wccc, quantity: 30, lock_script_hash: lock_script_hash })
+        ]);
+
+        let unwrap_ccc_tx = unwrap_ccc!(
+            asset_transfer_input!(asset_out_point!(tracker, 0, type_of_wccc, 30), vec![0x01]),
+            regular_account
+        );
+        let tx = transaction!(seq: 0, fee: 11, unwrap_ccc_tx);
+        assert_eq!(
+            Ok(Invoice::Failure(RuntimeError::InvalidTransferDestination.to_string())),
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 123 - 11)),
+            (account: master_account => (seq: 0, balance: 456, key: regular_public))
         ]);
     }
 
