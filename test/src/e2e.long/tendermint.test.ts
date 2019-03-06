@@ -375,7 +375,7 @@ describe("Tendermint ", function() {
                     validatorAddresses.map(addr =>
                         nodes[0].sdk.rpc.engine.getCustomActionData(
                             stakeActionHandlerId,
-                            [addr.accountId.toEncodeObject()]
+                            ["Account", addr.accountId.toEncodeObject()]
                         )
                     )
                 )
