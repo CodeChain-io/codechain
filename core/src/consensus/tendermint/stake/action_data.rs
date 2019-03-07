@@ -33,11 +33,11 @@ lazy_static! {
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"StakeholderAddresses").into_key();
 }
 
-pub type StakeBalance = u64;
+pub type StakeQuantity = u64;
 
 pub struct StakeAccount<'a> {
     pub address: &'a Address,
-    pub balance: StakeBalance,
+    pub balance: StakeQuantity,
 }
 
 impl<'a> StakeAccount<'a> {
@@ -47,7 +47,7 @@ impl<'a> StakeAccount<'a> {
 
         let balance = match action_data {
             Some(data) => Rlp::new(&data).as_val(),
-            None => StakeBalance::default(),
+            None => StakeQuantity::default(),
         };
 
         Ok(StakeAccount {
