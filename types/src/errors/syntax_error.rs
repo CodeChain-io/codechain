@@ -88,6 +88,10 @@ pub enum Error {
     CannotChangeWcccAssetScheme,
     DisabledTransaction,
     InvalidSignerOfWrapCCC,
+    InvalidSpentQuantity {
+        asset_quantity_from: u64,
+        spent_quantity: u64,
+    },
 }
 
 const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 1;
@@ -117,6 +121,7 @@ const ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME: u8 = 27;
 const ERROR_ID_DISABLED_TRANSACTION: u8 = 28;
 const ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC: u8 = 29;
 const ERROR_ID_INVALID_CUSTOM_ACTION: u8 = 30;
+const ERROR_ID_INVALID_SPENT_QUANTITY: u8 = 31;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -151,6 +156,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => 1,
             ERROR_ID_DISABLED_TRANSACTION => 1,
             ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => 1,
+            ERROR_ID_INVALID_SPENT_QUANTITY => 3,
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         })
     }
@@ -224,6 +230,12 @@ impl Encodable for Error {
             }
             Error::DisabledTransaction => RlpHelper::new_tagged_list(s, ERROR_ID_DISABLED_TRANSACTION),
             Error::InvalidSignerOfWrapCCC => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC),
+            Error::InvalidSpentQuantity {
+                asset_quantity_from,
+                spent_quantity,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SPENT_QUANTITY)
+                .append(asset_quantity_from)
+                .append(spent_quantity),
         };
     }
 }
@@ -275,6 +287,10 @@ impl Decodable for Error {
             ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => Error::CannotChangeWcccAssetScheme,
             ERROR_ID_DISABLED_TRANSACTION => Error::DisabledTransaction,
             ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => Error::InvalidSignerOfWrapCCC,
+            ERROR_ID_INVALID_SPENT_QUANTITY => Error::InvalidSpentQuantity {
+                asset_quantity_from: rlp.val_at(1)?,
+                spent_quantity: rlp.val_at(2)?,
+            },
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -329,6 +345,12 @@ impl Display for Error {
             Error::CannotChangeWcccAssetScheme => write!(f, "Cannot change the asset scheme of WCCC"),
             Error::DisabledTransaction => write!(f, "Used the disabled transaction"),
             Error::InvalidSignerOfWrapCCC => write!(f, "The signer of WrapCCC must be matched"),
+            Error::InvalidSpentQuantity {
+                asset_quantity_from,
+                spent_quantity,
+            } => {
+                write!(f, "The spentQuantity value {} in an OrderOnTransfer cannot exceed the assetQuantityFrom value {}", spent_quantity, asset_quantity_from)
+            }
         }
     }
 }
