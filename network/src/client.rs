@@ -37,7 +37,7 @@ impl Api for ClientApi {
         let some_extension = extension_guard.as_ref().expect("Extension should be initialized");
         if let Some(extension) = some_extension.upgrade() {
             let need_encryption = extension.need_encryption();
-            let extension_name = extension.name().to_string();
+            let extension_name = extension.name();
             let node_id = *id;
             let data = message.to_vec();
             let bytes = data.len();
