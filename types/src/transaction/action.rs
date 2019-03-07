@@ -1063,6 +1063,12 @@ fn verify_input_and_output_consistent_with_order(
 
         let order = &order_tx.order;
 
+        if order_tx.spent_quantity > order.asset_quantity_from {
+            return Err(SyntaxError::InvalidSpentQuantity {
+                asset_quantity_from: order.asset_quantity_from,
+                spent_quantity: order_tx.spent_quantity,
+            })
+        }
         // NOTE: If asset_quantity_fee is zero, asset_type_fee can be same as asset_type_from or asset_type_to.
         // But, asset_type_fee is compared at the last, so here's safe by the logic.
 
