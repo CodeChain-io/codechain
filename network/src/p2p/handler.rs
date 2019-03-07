@@ -410,7 +410,7 @@ impl IoHandler<Message> for Handler {
                             let _f = finally(|| {
                                 io.update_registration(stream);
                             });
-                            con.enqueue_extension_message(extension_name, need_encryption, data)?;
+                            con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?;
                         } else {
                             return Err(format!("{} is an invalid stream", stream).into())
                         }
@@ -421,7 +421,7 @@ impl IoHandler<Message> for Handler {
                             let _f = finally(|| {
                                 io.update_registration(stream);
                             });
-                            con.enqueue_extension_message(extension_name, need_encryption, data)?;
+                            con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?;
                         } else {
                             return Err(format!("{} is an invalid stream", stream).into())
                         }
@@ -1088,7 +1088,7 @@ pub enum Message {
     RequestConnection(SocketAddr),
     SendExtensionMessage {
         node_id: NodeId,
-        extension_name: String,
+        extension_name: &'static str,
         need_encryption: bool,
         data: Vec<u8>,
     },
