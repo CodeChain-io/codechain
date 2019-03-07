@@ -2015,29 +2015,23 @@ impl NetworkExtension for TendermintExtension {
 
         let m = UntrustedRlp::new(data);
         match m.as_val() {
-            Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {
-                match t.handle_message(bytes, false) {
-                    Err(EngineError::FutureMessage {
+            Ok(TendermintMessage::ConsensusMessage(ref bytes)) => match t.handle_message(bytes, false) {
+                Err(EngineError::FutureMessage {
+                    future_height,
+                    current_height,
+                }) => {
+                    cdebug!(
+                        ENGINE,
+                        "Could not handle future message from {}, in height {}",
                         future_height,
-                        current_height,
-                    }) => {
-                        cdebug!(
-                            ENGINE,
-                            "Could not handle future message from {}, in height {}",
-                            future_height,
-                            current_height
-                        );
-                    }
-                    Err(e) => {
-                        cinfo!(ENGINE, "Failed to handle message {:?}", e);
-                    }
-                    Ok(_) => {}
+                        current_height
+                    );
                 }
-
-                if let Err(e) = t.handle_message(bytes, false) {
+                Err(e) => {
                     cinfo!(ENGINE, "Failed to handle message {:?}", e);
                 }
-            }
+                Ok(_) => {}
+            },
             Ok(TendermintMessage::ProposalBlock {
                 signature,
                 view,
