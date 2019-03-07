@@ -49,7 +49,6 @@ mod node_id;
 mod routing_table;
 mod service;
 mod stream;
-mod test;
 
 pub mod control;
 mod p2p;
@@ -63,7 +62,6 @@ pub use crate::extension::{
 };
 pub use crate::node_id::{IntoSocketAddr, NodeId};
 pub use crate::service::{Error as NetworkServiceError, Service as NetworkService};
-pub use crate::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
 
 pub use crate::filters::{FilterEntry, Filters, FiltersControl};
 pub use crate::routing_table::RoutingTable;
