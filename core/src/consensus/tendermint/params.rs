@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use cjson;
 use ckey::{Address, PlatformAddress};
-use std::collections::HashMap;
 use time::Duration;
 
 use super::super::validator_set::{new_validator_set, ValidatorSet};
@@ -26,7 +28,7 @@ use super::Step;
 /// `Tendermint` params.
 pub struct TendermintParams {
     /// List of validators.
-    pub validators: Box<ValidatorSet>,
+    pub validators: Arc<ValidatorSet>,
     /// Timeout durations for different steps.
     pub timeouts: TimeoutParams,
     /// Reward per block in base units.
@@ -66,7 +68,7 @@ fn to_duration(ms: cjson::uint::Uint) -> Duration {
 }
 
 /// Base timeout of each step in ms.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct TimeoutParams {
     pub propose: Duration,
     pub propose_delta: Duration,
