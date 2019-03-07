@@ -16,6 +16,17 @@
 
 #![allow(deprecated)]
 
+extern crate cidr;
+extern crate codechain_crypto as ccrypto;
+extern crate codechain_io as cio;
+extern crate codechain_key as ckey;
+#[macro_use]
+extern crate codechain_logger as clogger;
+extern crate codechain_timer as ctimer;
+extern crate codechain_types as ctypes;
+extern crate core;
+extern crate finally;
+extern crate limited_table;
 #[macro_use]
 extern crate log;
 extern crate mio;
@@ -25,22 +36,9 @@ extern crate rand;
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;
-
-extern crate cidr;
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_io as cio;
-extern crate codechain_key as ckey;
-extern crate codechain_timer as ctimer;
-extern crate codechain_types as ctypes;
-extern crate finally;
-extern crate limited_table;
 extern crate table as ctable;
 extern crate time;
 extern crate token_generator;
-
-#[macro_use]
-extern crate codechain_logger as clogger;
-extern crate core;
 
 mod addr;
 mod client;
