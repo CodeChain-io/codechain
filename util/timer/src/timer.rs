@@ -31,7 +31,7 @@ const TIMER_NAME_DEFAULT: TimerName = "UNNAMED_TIMER";
 pub type TimerToken = usize;
 
 pub trait TimeoutHandler: Send + Sync {
-    fn on_timeout(&self, _token: TimerToken) {}
+    fn on_timeout(&self, _token: TimerToken);
 }
 
 #[derive(Clone)]
