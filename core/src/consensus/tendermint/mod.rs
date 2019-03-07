@@ -771,8 +771,9 @@ impl TendermintInner {
         }
         let prev_proposer_idx = self.block_proposer_idx(*header.parent_hash()).expect("Prev block must exists");
 
-        let vote_step =
-            VoteStep::new(header.number() as Height, consensus_view(&header).expect("I am proposer"), Step::Propose);
+        debug_assert_eq!(self.view, consensus_view(&header).expect("I am proposer"));
+
+        let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
         let num_validators = self.validators.count(&self.prev_block_hash());
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
@@ -1152,19 +1153,13 @@ impl TendermintInner {
         let header = block.decode_header();
         let hash = header.hash();
         let parent_hash = header.parent_hash();
-        let vote_step =
-            VoteStep::new(header.number() as Height, consensus_view(&header).expect("Already verified"), Step::Propose);
+        let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         cdebug!(ENGINE, "Send proposal {:?}", vote_step);
 
-        if self.is_signer_proposer(&parent_hash) {
-            let vote_info = message_info_rlp(vote_step, Some(hash));
-            let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
-            self.extension().broadcast_proposal_block(signature, block.into_inner());
-        } else if let Some(signature) = self.votes.round_signature(&vote_step, &hash) {
-            self.extension().broadcast_proposal_block(signature, block.into_inner());
-        } else {
-            cwarn!(ENGINE, "There is a proposal but does not have signature {:?}", vote_step);
-        }
+        assert!(self.is_signer_proposer(&parent_hash));
+
+        let signature = self.votes.round_signature(&vote_step, &hash).expect("Proposal vote is generated before");
+        self.extension().broadcast_proposal_block(signature, block.into_inner());
     }
 
     fn set_signer(&mut self, ap: Arc<AccountProvider>, address: Address) {
