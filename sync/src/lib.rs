@@ -33,6 +33,7 @@ extern crate kvdb;
 extern crate kvdb_memorydb;
 #[macro_use]
 extern crate log;
+extern crate never;
 extern crate primitives;
 extern crate rand;
 extern crate rlp;
@@ -49,7 +50,7 @@ mod block;
 mod snapshot;
 mod transaction;
 
-pub use crate::block::{BlockSyncExtension, BlockSyncInfo};
+pub use crate::block::{BlockSyncEvent, BlockSyncExtension, BlockSyncSender};
 pub use crate::snapshot::SnapshotService;
 pub use crate::transaction::TransactionSyncExtension;
 

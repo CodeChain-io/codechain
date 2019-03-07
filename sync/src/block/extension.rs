@@ -24,7 +24,7 @@ use ccore::{
     Block, BlockChainClient, BlockId, BlockImportError, BlockInfo, ChainInfo, ChainNotify, Client, Header, ImportBlock,
     ImportError, Seal, UnverifiedTransaction,
 };
-use cnetwork::{Api, NetworkExtension, NodeId};
+use cnetwork::{Api, EventSender, NetworkExtension, NodeId};
 use cstate::FindActionHandler;
 use ctimer::TimerToken;
 use ctypes::transaction::Action;
@@ -37,7 +37,6 @@ use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 use token_generator::TokenGenerator;
 
-use super::super::block::BlockSyncInfo;
 use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
 
@@ -135,7 +134,7 @@ impl Extension {
     }
 }
 
-impl NetworkExtension for Extension {
+impl NetworkExtension<Event> for Extension {
     fn name(&self) -> &'static str {
         "block-propagation"
     }
@@ -316,19 +315,46 @@ impl NetworkExtension for Extension {
             _ => unreachable!(),
         }
     }
+
+    fn on_event(&self, event: Event) {
+        match event {
+            Event::GetPeers(channel) => {
+                for peer in self.header_downloaders.read().keys() {
+                    channel.send(*peer).unwrap();
+                }
+            }
+            Event::NewHeaders {
+                imported,
+                enacted,
+                retracted,
+            } => {
+                self.new_headers(imported, enacted, retracted);
+            }
+            Event::NewBlocks {
+                imported,
+                invalid,
+            } => {
+                self.new_blocks(imported, invalid);
+            }
+        }
+    }
 }
 
-impl ChainNotify for Extension {
-    fn new_headers(
-        &self,
+pub enum Event {
+    GetPeers(EventSender<NodeId>),
+    NewHeaders {
         imported: Vec<H256>,
-        _invalid: Vec<H256>,
         enacted: Vec<H256>,
         retracted: Vec<H256>,
-        _sealed: Vec<H256>,
-        _duration: u64,
-        _new_best_proposal: Option<H256>,
-    ) {
+    },
+    NewBlocks {
+        imported: Vec<H256>,
+        invalid: Vec<H256>,
+    },
+}
+
+impl Extension {
+    fn new_headers(&self, imported: Vec<H256>, enacted: Vec<H256>, retracted: Vec<H256>) {
         let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
         for id in peer_ids {
             if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
@@ -355,15 +381,7 @@ impl ChainNotify for Extension {
         self.body_downloader.lock().remove_target(&retracted);
     }
 
-    fn new_blocks(
-        &self,
-        imported: Vec<H256>,
-        invalid: Vec<H256>,
-        _enacted: Vec<H256>,
-        _retracted: Vec<H256>,
-        _sealed: Vec<H256>,
-        _duration: u64,
-    ) {
+    fn new_blocks(&self, imported: Vec<H256>, invalid: Vec<H256>) {
         self.body_downloader.lock().remove_target(&imported);
         self.body_downloader.lock().remove_target(&invalid);
 
@@ -690,8 +708,48 @@ impl Extension {
     }
 }
 
-impl BlockSyncInfo for Extension {
-    fn get_peers(&self) -> Vec<NodeId> {
-        self.header_downloaders.read().keys().cloned().collect()
+pub struct BlockSyncSender(EventSender<Event>);
+
+impl From<EventSender<Event>> for BlockSyncSender {
+    fn from(sender: EventSender<Event>) -> Self {
+        BlockSyncSender(sender)
+    }
+}
+
+impl ChainNotify for BlockSyncSender {
+    fn new_headers(
+        &self,
+        imported: Vec<H256>,
+        _invalid: Vec<H256>,
+        enacted: Vec<H256>,
+        retracted: Vec<H256>,
+        _sealed: Vec<H256>,
+        _duration: u64,
+        _new_best_proposal: Option<H256>,
+    ) {
+        self.0
+            .send(Event::NewHeaders {
+                imported,
+                enacted,
+                retracted,
+            })
+            .unwrap();
+    }
+
+    fn new_blocks(
+        &self,
+        imported: Vec<H256>,
+        invalid: Vec<H256>,
+        _enacted: Vec<H256>,
+        _retracted: Vec<H256>,
+        _sealed: Vec<H256>,
+        _duration: u64,
+    ) {
+        self.0
+            .send(Event::NewBlocks {
+                imported,
+                invalid,
+            })
+            .unwrap();
     }
 }

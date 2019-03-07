@@ -54,7 +54,7 @@ pub trait Api: Send + Sync {
     fn clear_timer(&self, timer: TimerToken) -> Result<()>;
 }
 
-pub trait Extension: Send + Sync {
+pub trait Extension<Event: Send>: Send + Sync {
     fn name(&self) -> &'static str;
     fn need_encryption(&self) -> bool;
     fn versions(&self) -> &[u64];
@@ -67,4 +67,6 @@ pub trait Extension: Send + Sync {
     fn on_message(&self, _node: &NodeId, _message: &[u8]) {}
 
     fn on_timeout(&self, _token: TimerToken) {}
+
+    fn on_event(&self, _event: Event) {}
 }

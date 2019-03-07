@@ -21,6 +21,7 @@ use std::sync::Arc;
 use cidr::IpCidr;
 use cio::{IoError, IoService};
 use ckey::{NetworkId, Public};
+use crossbeam_channel::Sender;
 use ctimer::TimerLoop;
 
 use crate::client::Client;
@@ -74,11 +75,12 @@ impl Service {
         }))
     }
 
-    pub fn new_extension<T, F>(&self, factory: F) -> Arc<T>
+    pub fn register_extension<T, E, F>(&self, factory: F) -> (Sender<E>, Arc<T>)
     where
-        T: 'static + Sized + NetworkExtension,
+        T: 'static + Sized + NetworkExtension<E>,
+        E: 'static + Sized + Send,
         F: FnOnce(Arc<Api>) -> T, {
-        self.client.new_extension(factory)
+        self.client.register_extension(factory)
     }
 
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {

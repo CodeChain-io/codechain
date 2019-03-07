@@ -1351,10 +1351,11 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             let timeouts = inner.timeouts;
             let tendermint = Weak::clone(weak_self.as_ref().expect("Only writes in initialize"));
             let client = Weak::clone(inner.client.as_ref().expect("Only writes in initialize"));
-            service.new_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api))
+            // TODO: Make tendermint use a channel instead of using the extension directly
+            service.register_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api)).1
         };
 
-        inner.extension = Some(Arc::clone(&extension));
+        inner.extension = Some(extension);
         inner.restore();
     }
 
@@ -1955,7 +1956,7 @@ impl TendermintExtension {
     }
 }
 
-impl NetworkExtension for TendermintExtension {
+impl NetworkExtension<Event> for TendermintExtension {
     fn name(&self) -> &'static str {
         "tendermint"
     }
@@ -2062,6 +2063,9 @@ impl NetworkExtension for TendermintExtension {
         }
     }
 }
+
+#[allow(dead_code)]
+pub enum Event {}
 
 #[cfg(test)]
 mod tests {

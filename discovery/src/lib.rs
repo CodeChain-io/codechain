@@ -18,6 +18,7 @@
 
 #[macro_use]
 extern crate log;
+extern crate never;
 extern crate parking_lot;
 extern crate primitives;
 extern crate rand;

@@ -20,6 +20,7 @@ use std::sync::Arc;
 use ccore::BlockChainClient;
 use cnetwork::{Api, NetworkExtension, NodeId};
 use ctimer::TimerToken;
+use never::Never;
 use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Encodable, UntrustedRlp};
@@ -74,7 +75,7 @@ impl Extension {
     }
 }
 
-impl NetworkExtension for Extension {
+impl NetworkExtension<Never> for Extension {
     fn name(&self) -> &'static str {
         "transaction-propagation"
     }
