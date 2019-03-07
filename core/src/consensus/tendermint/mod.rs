@@ -452,6 +452,7 @@ impl TendermintInner {
                 self.request_messages_to_all(&vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
                     let block_hash = match self.lock_change {
+                        Some(ref m) if m.on.block_hash.is_none() => self.proposal,
                         Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
                         _ => self.proposal,
                     };
@@ -561,7 +562,6 @@ impl TendermintInner {
         let lock_change = is_newer_than_lock
             && vote_step.height == self.height
             && vote_step.step == Step::Prevote
-            && message.on.block_hash.is_some()
             && has_enough_aligned_votes;
         if lock_change {
             cinfo!(
