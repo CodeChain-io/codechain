@@ -97,7 +97,7 @@ fn client_start(
     let reseal_timer = timer_loop.new_timer_with_name("Client reseal timer");
     let service = ClientService::start(client_config, &scheme, db, miner, reseal_timer.clone())
         .map_err(|e| format!("Client service error: {}", e))?;
-    reseal_timer.set_handler(&service.client());
+    reseal_timer.set_handler(Arc::downgrade(&service.client()));
 
     Ok(service)
 }
