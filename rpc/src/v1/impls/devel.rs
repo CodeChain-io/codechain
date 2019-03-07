@@ -28,8 +28,8 @@ use ccore::{
 use ccrypto::Blake;
 use cjson::bytes::Bytes;
 use ckey::{Address, KeyPair, Private};
-use cnetwork::IntoSocketAddr;
-use csync::BlockSyncInfo;
+use cnetwork::{unbounded_event_callback, EventSender, IntoSocketAddr};
+use csync::BlockSyncEvent;
 use ctypes::transaction::{
     Action, AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction,
 };
@@ -45,24 +45,22 @@ use super::super::errors;
 use super::super::traits::Devel;
 use super::super::types::{TPSTestOption, TPSTestSetting};
 
-pub struct DevelClient<C, M, B>
+pub struct DevelClient<C, M>
 where
     C: DatabaseClient + EngineInfo + EngineClient + MiningBlockChainClient,
-    M: MinerService,
-    B: BlockSyncInfo, {
+    M: MinerService, {
     client: Arc<C>,
     db: Arc<KeyValueDB>,
     miner: Arc<M>,
-    block_sync: Option<Arc<B>>,
+    block_sync: Option<EventSender<BlockSyncEvent>>,
 }
 
-impl<C, M, B> DevelClient<C, M, B>
+impl<C, M> DevelClient<C, M>
 where
     C: DatabaseClient + EngineInfo + EngineClient + MiningBlockChainClient,
     M: MinerService,
-    B: BlockSyncInfo,
 {
-    pub fn new(client: Arc<C>, miner: Arc<M>, block_sync: Option<Arc<B>>) -> Self {
+    pub fn new(client: Arc<C>, miner: Arc<M>, block_sync: Option<EventSender<BlockSyncEvent>>) -> Self {
         let db = client.database();
         Self {
             client,
@@ -73,11 +71,10 @@ where
     }
 }
 
-impl<C, M, B> Devel for DevelClient<C, M, B>
+impl<C, M> Devel for DevelClient<C, M>
 where
     C: DatabaseClient + EngineInfo + EngineClient + MiningBlockChainClient + 'static,
     M: MinerService + 'static,
-    B: BlockSyncInfo + 'static,
 {
     fn get_state_trie_keys(&self, offset: usize, limit: usize) -> Result<Vec<H256>> {
         let iter = self.db.iter(COL_STATE);
@@ -106,7 +103,9 @@ where
 
     fn get_block_sync_peers(&self) -> Result<Vec<SocketAddr>> {
         if let Some(block_sync) = self.block_sync.as_ref() {
-            Ok(block_sync.get_peers().into_iter().map(|node_id| node_id.into_addr().into()).collect())
+            let (sender, receiver) = unbounded_event_callback();
+            block_sync.send(BlockSyncEvent::GetPeers(sender)).unwrap();
+            Ok(receiver.iter().map(|node_id| node_id.into_addr().into()).collect())
         } else {
             Ok(Vec::new())
         }

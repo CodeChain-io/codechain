@@ -32,7 +32,7 @@ use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, RoutingTable, SocketAddr};
 use creactor::EventLoop;
-use csync::{BlockSyncExtension, SnapshotService, TransactionSyncExtension};
+use csync::{BlockSyncExtension, BlockSyncSender, SnapshotService, TransactionSyncExtension};
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
@@ -87,7 +87,7 @@ fn discovery_start(
         Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
         None => return Ok(()),
     };
-    service.new_extension(|api| Discovery::new(routing_table, config, api, use_kademlia));
+    service.register_extension(|api| Discovery::new(routing_table, config, api, use_kademlia));
     Ok(())
 }
 
@@ -267,7 +267,8 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     let client = client_start(&client_config, &timer_loop, db, &scheme, miner.clone())?;
     miner.recover_from_db(client.client().as_ref());
 
-    let mut some_sync = None;
+    let mut _maybe_sync = None;
+    let mut maybe_sync_sender = None;
 
     scheme.engine.register_chain_notify(client.client().as_ref());
 
@@ -285,12 +286,14 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             }
 
             if config.network.sync.unwrap() {
-                let sync = service.new_extension(|api| BlockSyncExtension::new(client.client(), api));
+                let sync_sender = service.register_extension(|api| BlockSyncExtension::new(client.client(), api)).0;
+                let sync = Arc::new(BlockSyncSender::from(sync_sender.clone()));
                 client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
-                some_sync = Some(sync);
+                _maybe_sync = Some(sync); // Hold sync to ensure it not to be destroyed.
+                maybe_sync_sender = Some(sync_sender);
             }
             if config.network.transaction_relay.unwrap() {
-                service.new_extension(|api| TransactionSyncExtension::new(client.client(), api));
+                service.register_extension(|api| TransactionSyncExtension::new(client.client(), api));
             }
 
             scheme.engine.register_network_extension_to_service(&service);
@@ -306,7 +309,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         miner: Arc::clone(&miner),
         network_control: Arc::clone(&network_service),
         account_provider: ap,
-        block_sync: some_sync,
+        block_sync: maybe_sync_sender,
     });
 
     let _rpc_server = {

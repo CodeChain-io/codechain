@@ -16,6 +16,7 @@ primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.
 limited-table = { git = "https://github.com/CodeChain-io/rust-limited-table.git" }
 log = "0.4.6"
 mio = "0.6.16"
+never = { git = "https://github.com/CodeChain-io/rust-never.git" }
 parking_lot = "0.6.0"
 rand = "0.6.1"
 rlp = { path = "../util/rlp" }
