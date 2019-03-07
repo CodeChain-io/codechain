@@ -296,10 +296,6 @@ impl TendermintInner {
         self.view_proposer(bh, self.view).map_or(false, |proposer| self.signer.is_address(&proposer))
     }
 
-    fn is_view(&self, message: &ConsensusMessage) -> bool {
-        message.on.step.is_view(self.height, self.view)
-    }
-
     fn is_step(&self, message: &ConsensusMessage) -> bool {
         message.on.step.is_step(self.height, self.view, self.step.to_step())
     }
@@ -471,10 +467,20 @@ impl TendermintInner {
                 self.request_messages_to_all(&vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
                     let block_hash = match self.lock_change {
-                        Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
-                            cinfo!(ENGINE, "Setting last lock: {}", m.on.step.view);
-                            self.last_lock = Some(m.on.step.view);
-                            m.on.block_hash
+                        Some(ref m) => {
+                            let newer_lock = match self.last_lock {
+                                None => true,
+                                Some(lock) => lock < m.on.step.view,
+                            };
+                            if newer_lock && m.on.block_hash.is_some() {
+                                cinfo!(ENGINE, "Setting last lock: {}", m.on.step.view);
+                                self.last_lock = Some(m.on.step.view);
+                            }
+                            if m.on.step.view == self.view {
+                                m.on.block_hash
+                            } else {
+                                None
+                            }
                         }
                         _ => None,
                     };

@@ -44,10 +44,6 @@ impl VoteStep {
         }
     }
 
-    pub fn is_view(&self, height: Height, view: View) -> bool {
-        self.height == height && self.view == view
-    }
-
     pub fn is_step(&self, height: Height, view: View, step: Step) -> bool {
         self.height == height && self.view == view && self.step == step
     }
