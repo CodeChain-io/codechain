@@ -426,11 +426,19 @@ impl TendermintInner {
                 } else {
                     let parent_block_hash = &self.prev_block_hash();
                     if self.is_signer_proposer(parent_block_hash) {
-                        cinfo!(ENGINE, "I am a proposer, I'll create a block");
-                        self.update_sealing(*parent_block_hash);
-                        self.step = TendermintState::ProposeWaitBlockGeneration {
-                            parent_hash: *parent_block_hash,
-                        };
+                        if let Some(last_lock) = self.last_lock {
+                            cinfo!(ENGINE, "I am a proposer, I'll re-propose a locked block");
+                            match self.locked_proposal_block(last_lock) {
+                                Ok(block) => self.repropose_block(block),
+                                Err(error_msg) => cwarn!(ENGINE, "{}", error_msg),
+                            }
+                        } else {
+                            cinfo!(ENGINE, "I am a proposer, I'll create a block");
+                            self.update_sealing(*parent_block_hash);
+                            self.step = TendermintState::ProposeWaitBlockGeneration {
+                                parent_hash: *parent_block_hash,
+                            };
+                        }
                     } else {
                         self.request_proposal(vote_step.height, vote_step.view);
                     }
@@ -472,6 +480,25 @@ impl TendermintInner {
                 cinfo!(ENGINE, "move_to_step: Commit.");
             }
         }
+    }
+
+    fn locked_proposal_block(&self, locked_view: View) -> Result<encoded::Block, String> {
+        let vote_step = VoteStep::new(self.height, locked_view, Step::Propose);
+        let locked_proposal_hash = self.votes.get_block_hashes(&vote_step).first().cloned();
+
+        let locked_proposal_hash = locked_proposal_hash.ok_or_else(|| {
+            self.request_proposal(self.height, locked_view);
+            format!("Have a lock on {}-{}, but do not received a locked proposal", self.height, locked_view)
+        })?;
+
+        let locked_proposal_block = self.client().block(&BlockId::Hash(locked_proposal_hash)).ok_or_else(|| {
+            format!(
+                "Have a lock on {}-{}, and received the locked proposal, but the proposal is not imported yet.",
+                self.height, locked_view
+            )
+        })?;
+
+        Ok(locked_proposal_block)
     }
 
     fn already_generated_message(&self) -> bool {
@@ -630,9 +657,10 @@ impl TendermintInner {
             step: Step::Propose,
         });
 
-        let proposal_view = consensus_view(proposal).unwrap();
         let current_height = self.height;
-        if current_height == height && self.view == proposal_view {
+        let vote_step = VoteStep::new(self.height, self.view, self.step.to_step());
+        let proposal_at_current_view = self.votes.get_block_hashes(&vote_step).first().cloned();
+        if proposal_at_current_view == Some(proposal.hash()) {
             self.proposal = Some(proposal.hash());
             let current_step = self.step.clone();
             match current_step {
@@ -659,6 +687,7 @@ impl TendermintInner {
             };
         } else if current_height < height {
             self.move_to_height(height);
+            let proposal_view = consensus_view(proposal).unwrap();
             self.save_last_confirmed_view(proposal_view);
             self.proposal = Some(proposal.hash());
             self.move_to_step(Step::Prevote, false);
@@ -668,7 +697,7 @@ impl TendermintInner {
     fn submit_proposal_block(&mut self, sealed_block: &SealedBlock) {
         cinfo!(ENGINE, "Submitting proposal block {}", sealed_block.header().hash());
         self.move_to_step(Step::Prevote, false);
-        self.broadcast_proposal_block(encoded::Block::new(sealed_block.rlp_bytes()));
+        self.broadcast_proposal_block(self.view, encoded::Block::new(sealed_block.rlp_bytes()));
     }
 
     fn backup(&self) {
@@ -778,7 +807,7 @@ impl TendermintInner {
         let num_validators = self.validators.count(&self.prev_block_hash());
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(
-            ConsensusMessage::new_proposal(signature, num_validators, header, prev_proposer_idx)
+            ConsensusMessage::new_proposal(signature, num_validators, header, self.view, prev_proposer_idx)
                 .expect("I am proposer"),
         );
 
@@ -1149,17 +1178,33 @@ impl TendermintInner {
         !self.has_enough_precommit_votes(header.hash())
     }
 
-    fn broadcast_proposal_block(&self, block: encoded::Block) {
+    fn repropose_block(&mut self, block: encoded::Block) {
+        let header = block.decode_header();
+        let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
+        let vote_info = message_info_rlp(vote_step, Some(header.hash()));
+        let num_validators = self.validators.count(&self.prev_block_hash());
+        let prev_proposer_idx = self.block_proposer_idx(*header.parent_hash()).expect("Prev block must exists");
+        let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
+        self.votes.vote(
+            ConsensusMessage::new_proposal(signature, num_validators, &header, self.view, prev_proposer_idx)
+                .expect("I am proposer"),
+        );
+
+        self.proposal = Some(header.hash());
+        self.broadcast_proposal_block(self.view, block);
+    }
+
+    fn broadcast_proposal_block(&self, view: View, block: encoded::Block) {
         let header = block.decode_header();
         let hash = header.hash();
         let parent_hash = header.parent_hash();
-        let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
+        let vote_step = VoteStep::new(header.number() as Height, view, Step::Propose);
         cdebug!(ENGINE, "Send proposal {:?}", vote_step);
 
         assert!(self.is_signer_proposer(&parent_hash));
 
         let signature = self.votes.round_signature(&vote_step, &hash).expect("Proposal vote is generated before");
-        self.extension().broadcast_proposal_block(signature, block.into_inner());
+        self.extension().broadcast_proposal_block(signature, view, block.into_inner());
     }
 
     fn set_signer(&mut self, ap: Arc<AccountProvider>, address: Address) {
@@ -1565,20 +1610,22 @@ impl TendermintExtension {
         }
     }
 
-    fn send_proposal_block(&self, token: &NodeId, signature: SchnorrSignature, message: Bytes) {
+    fn send_proposal_block(&self, token: &NodeId, signature: SchnorrSignature, view: View, message: Bytes) {
         let message = TendermintMessage::ProposalBlock {
             signature,
             message,
+            view,
         }
         .rlp_bytes()
         .into_vec();
         self.api.send(token, &message);
     }
 
-    fn broadcast_proposal_block(&self, signature: SchnorrSignature, message: Bytes) {
+    fn broadcast_proposal_block(&self, signature: SchnorrSignature, view: View, message: Bytes) {
         let message = TendermintMessage::ProposalBlock {
             signature,
             message,
+            view,
         }
         .rlp_bytes()
         .into_vec();
@@ -1662,7 +1709,13 @@ impl TendermintExtension {
             .expect("Timer set succeeds");
     }
 
-    fn on_proposal_message(&self, tendermint: MutexGuard<TendermintInner>, signature: SchnorrSignature, bytes: Bytes) {
+    fn on_proposal_message(
+        &self,
+        mut tendermint: MutexGuard<TendermintInner>,
+        signature: SchnorrSignature,
+        proposed_view: View,
+        bytes: Bytes,
+    ) {
         let c = match self.client.upgrade() {
             Some(c) => c,
             None => return,
@@ -1697,14 +1750,19 @@ impl TendermintExtension {
                 }
             };
 
-            let message =
-                match ConsensusMessage::new_proposal(signature, num_validators, &header_view, prev_proposer_idx) {
-                    Ok(message) => message,
-                    Err(err) => {
-                        cwarn!(ENGINE, "Invalid proposal received: {:?}", err);
-                        return
-                    }
-                };
+            let message = match ConsensusMessage::new_proposal(
+                signature,
+                num_validators,
+                &header_view,
+                proposed_view,
+                prev_proposer_idx,
+            ) {
+                Ok(message) => message,
+                Err(err) => {
+                    cwarn!(ENGINE, "Invalid proposal received: {:?}", err);
+                    return
+                }
+            };
 
             // If the proposal's height is current height + 1 and the proposal has valid precommits,
             // we should import it and increase height
@@ -1713,14 +1771,12 @@ impl TendermintExtension {
                 return
             }
 
-            if number == tendermint.height as u64 && message.on.step.view > tendermint.view {
+            if number == tendermint.height as u64 && proposed_view > tendermint.view {
                 ctrace!(ENGINE, "Received future proposal, ignore it");
                 return
             }
 
             let signer_public = tendermint.validators.get(&parent_hash, message.signer_index);
-            let signer = public_to_address(&signer_public);
-
             match message.verify(&signer_public) {
                 Ok(false) => {
                     cwarn!(ENGINE, "Proposal verification failed: signer is different");
@@ -1733,14 +1789,25 @@ impl TendermintExtension {
                 _ => {}
             }
 
-            if *header_view.author() != signer {
-                cwarn!(ENGINE, "Proposal author({}) not matched with header({})", signer, header_view.author());
-                return
-            }
-
             if tendermint.votes.is_old_or_known(&message) {
                 cdebug!(ENGINE, "Proposal is already known");
                 return
+            }
+
+            if number == tendermint.height as u64 && proposed_view == tendermint.view {
+                // The proposer re-proposed its locked proposal.
+                // If we already imported the proposal, we should set `proposal` here.
+                if c.block(&BlockId::Hash(header_view.hash())).is_some() {
+                    let generated_view = consensus_view(&header_view).expect("Imported block is verified");
+                    cdebug!(
+                        ENGINE,
+                        "Received a proposal({}) by a locked proposer. current view: {}, original proposal's view: {}",
+                        header_view.hash(),
+                        proposed_view,
+                        generated_view
+                    );
+                    tendermint.proposal = Some(header_view.hash());
+                }
             }
 
             tendermint.votes.vote(message);
@@ -1890,7 +1957,7 @@ impl TendermintExtension {
 
         if let Some((signature, _signer_index, block)) = tendermint.proposal_at(request_height, request_view) {
             ctrace!(ENGINE, "Send proposal {}-{} to {:?}", request_height, request_view, token);
-            self.send_proposal_block(token, signature, block);
+            self.send_proposal_block(token, signature, request_view, block);
         }
     }
 }
@@ -1963,9 +2030,10 @@ impl NetworkExtension for TendermintExtension {
             }
             Ok(TendermintMessage::ProposalBlock {
                 signature,
+                view,
                 message,
             }) => {
-                self.on_proposal_message(t, signature, message);
+                self.on_proposal_message(t, signature, view, message);
             }
             Ok(TendermintMessage::StepState {
                 vote_step,

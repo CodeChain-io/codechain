@@ -88,6 +88,7 @@ pub enum TendermintMessage {
     ConsensusMessage(Bytes),
     ProposalBlock {
         signature: SchnorrSignature,
+        view: View,
         message: Bytes,
     },
     StepState {
@@ -116,11 +117,13 @@ impl Encodable for TendermintMessage {
             }
             TendermintMessage::ProposalBlock {
                 signature,
+                view,
                 message,
             } => {
-                s.begin_list(3);
+                s.begin_list(4);
                 s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
                 s.append(signature);
+                s.append(view);
                 s.append(message);
             }
             TendermintMessage::StepState {
@@ -175,16 +178,18 @@ impl Decodable for TendermintMessage {
             }
             MESSAGE_ID_PROPOSAL_BLOCK => {
                 let item_count = rlp.item_count()?;
-                if item_count != 3 {
+                if item_count != 4 {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
-                        expected: 3,
+                        expected: 4,
                     })
                 }
                 let signature = rlp.at(1)?;
-                let message = rlp.at(2)?;
+                let view = rlp.at(2)?;
+                let message = rlp.at(3)?;
                 TendermintMessage::ProposalBlock {
                     signature: signature.as_val()?,
+                    view: view.as_val()?,
                     message: message.as_val()?,
                 }
             }
@@ -276,22 +281,23 @@ impl ConsensusMessage {
         }
     }
 
+    /// If a locked node re-proposes locked proposal, the proposed_view is different from the header's view.
     pub fn new_proposal(
         signature: SchnorrSignature,
         num_validators: usize,
-        header: &Header,
+        proposal_header: &Header,
+        proposed_view: View,
         prev_proposer_idx: usize,
     ) -> Result<Self, ::rlp::DecoderError> {
-        let height = header.number() as Height;
-        let view = consensus_view(header)?;
-        let signer_index = (prev_proposer_idx + view + 1) % num_validators;
+        let height = proposal_header.number() as Height;
+        let signer_index = (prev_proposer_idx + proposed_view + 1) % num_validators;
 
         Ok(ConsensusMessage {
             signature,
             signer_index,
             on: VoteOn {
-                step: VoteStep::new(height, view, Step::Propose),
-                block_hash: Some(header.hash()),
+                step: VoteStep::new(height, proposed_view, Step::Propose),
+                block_hash: Some(proposal_header.hash()),
             },
         })
     }
@@ -376,6 +382,7 @@ mod tests {
     fn encode_and_decode_tendermint_message_2() {
         rlp_encode_and_decode_test!(TendermintMessage::ProposalBlock {
             signature: SchnorrSignature::random(),
+            view: 1,
             message: vec![1u8, 2u8]
         });
     }
