@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 use ckey::{Address, Public};
 use ctypes::BlockNumber;
@@ -30,8 +30,8 @@ use crate::header::Header;
 pub mod validator_list;
 
 /// Creates a validator set from validator public keys.
-pub fn new_validator_set(validators: Vec<Public>) -> Box<ValidatorSet> {
-    Box::new(ValidatorList::new(validators))
+pub fn new_validator_set(validators: Vec<Public>) -> Arc<ValidatorSet> {
+    Arc::new(ValidatorList::new(validators))
 }
 
 /// A validator set.
