@@ -378,7 +378,11 @@ impl TendermintInner {
     }
 
     fn should_unlock(&self, lock_change_view: View) -> bool {
-        self.last_lock.unwrap_or(0) < lock_change_view && lock_change_view < self.view
+        match self.last_lock {
+            // No lock exist
+            None => false,
+            Some(last_lock) => last_lock < lock_change_view && lock_change_view < self.view,
+        }
     }
 
     fn move_to_height(&mut self, height: Height) {
