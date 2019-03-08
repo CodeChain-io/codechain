@@ -363,3 +363,35 @@ impl<'a> TendermintSealView<'a> {
             .collect::<Result<_, _>>()?)
     }
 }
+
+#[derive(Copy, Clone)]
+pub enum TwoThirdsMajority {
+    Empty,
+    Lock(View, H256),
+    Unlock(View),
+}
+
+impl TwoThirdsMajority {
+    pub fn from_message(view: View, block_hash: Option<H256>) -> Self {
+        match block_hash {
+            Some(block_hash) => TwoThirdsMajority::Lock(view, block_hash),
+            None => TwoThirdsMajority::Unlock(view),
+        }
+    }
+
+    pub fn view(&self) -> Option<View> {
+        match self {
+            TwoThirdsMajority::Empty => None,
+            TwoThirdsMajority::Lock(view, _) => Some(*view),
+            TwoThirdsMajority::Unlock(view) => Some(*view),
+        }
+    }
+
+    pub fn block_hash(&self) -> Option<H256> {
+        match self {
+            TwoThirdsMajority::Empty => None,
+            TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
+            TwoThirdsMajority::Unlock(_) => None,
+        }
+    }
+}
