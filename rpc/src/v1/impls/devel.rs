@@ -154,7 +154,7 @@ where
                         shard_id: 0,
                         metadata: format!("{:?}", Instant::now()),
                         approver: None,
-                        administrator: None,
+                        registrar: None,
                         allowed_script_hashes: vec![],
                         output: Box::new(AssetMintOutput {
                             lock_script_hash: lock_script_hash_empty_sig,
