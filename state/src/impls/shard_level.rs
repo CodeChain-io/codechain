@@ -111,7 +111,7 @@ impl<'db> ShardLevelState<'db> {
                 metadata,
                 shard_id,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 output,
                 ..
@@ -123,7 +123,7 @@ impl<'db> ShardLevelState<'db> {
                     output,
                     approver,
                     approvers,
-                    administrator,
+                    registrar,
                     allowed_script_hashes,
                     sender,
                     shard_users,
@@ -146,7 +146,7 @@ impl<'db> ShardLevelState<'db> {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 ..
             } => {
@@ -157,7 +157,7 @@ impl<'db> ShardLevelState<'db> {
                     asset_type,
                     metadata,
                     approver,
-                    administrator,
+                    registrar,
                     allowed_script_hashes,
                 )
             }
@@ -173,7 +173,7 @@ impl<'db> ShardLevelState<'db> {
             ShardTransaction::ComposeAsset {
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output,
@@ -183,7 +183,7 @@ impl<'db> ShardLevelState<'db> {
                 &transaction,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output,
@@ -231,7 +231,7 @@ impl<'db> ShardLevelState<'db> {
         output: &AssetMintOutput,
         approver: &Option<Address>,
         approvers: &[Address],
-        administrator: &Option<Address>,
+        registrar: &Option<Address>,
         allowed_script_hashes: &[H160],
         sender: &Address,
         shard_users: &[Address],
@@ -259,7 +259,7 @@ impl<'db> ShardLevelState<'db> {
             metadata.to_string(),
             output.supply,
             *approver,
-            *administrator,
+            *registrar,
             allowed_script_hashes.to_vec(),
             pool,
         )?;
@@ -408,7 +408,7 @@ impl<'db> ShardLevelState<'db> {
         asset_type: &H160,
         metadata: &str,
         approver: &Option<Address>,
-        administrator: &Option<Address>,
+        registrar: &Option<Address>,
         allowed_script_hashes: &[H160],
     ) -> StateResult<()> {
         {
@@ -420,8 +420,8 @@ impl<'db> ShardLevelState<'db> {
             if !asset_scheme.is_centralized() {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
-            let administrator = asset_scheme.administrator().as_ref().expect("Centralized asset has administrator");
-            if administrator != sender && !approvers.contains(administrator) {
+            let registrar = asset_scheme.registrar().as_ref().expect("Centralized asset has registrar");
+            if registrar != sender && !approvers.contains(registrar) {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
         }
@@ -429,7 +429,7 @@ impl<'db> ShardLevelState<'db> {
         asset_scheme.change_data(
             metadata.to_string(),
             approver.clone(),
-            administrator.clone(),
+            registrar.clone(),
             allowed_script_hashes.to_vec(),
         );
 
@@ -455,8 +455,8 @@ impl<'db> ShardLevelState<'db> {
             if !asset_scheme.is_centralized() {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
-            let administrator = asset_scheme.administrator().as_ref().expect("Centralized asset has administrator");
-            if administrator != sender && !approvers.contains(administrator) {
+            let registrar = asset_scheme.registrar().as_ref().expect("Centralized asset has registrar");
+            if registrar != sender && !approvers.contains(registrar) {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
         }
@@ -564,11 +564,11 @@ impl<'db> ShardLevelState<'db> {
         let asset_scheme =
             self.asset_scheme(input.prev_out.asset_type)?.expect("AssetScheme must exist when the asset exist");
         if asset_scheme.is_centralized() {
-            let administrator = asset_scheme.administrator().as_ref().expect("Centralized asset has administrator");
-            if administrator == sender || approvers.contains(administrator) {
+            let registrar = asset_scheme.registrar().as_ref().expect("Centralized asset has registrar");
+            if registrar == sender || approvers.contains(registrar) {
                 return Ok(())
             } else if burn {
-                // Only the administrator can burn the centralized asset
+                // Only the registrar can burn the centralized asset
                 return Err(RuntimeError::CannotBurnCentralizedAsset.into())
             }
         }
@@ -635,7 +635,7 @@ impl<'db> ShardLevelState<'db> {
         transaction: &ShardTransaction,
         metadata: &str,
         approver: &Option<Address>,
-        administrator: &Option<Address>,
+        registrar: &Option<Address>,
         allowed_script_hashes: &[H160],
         inputs: &[AssetTransferInput],
         output: &AssetMintOutput,
@@ -679,7 +679,7 @@ impl<'db> ShardLevelState<'db> {
                 output,
                 approver,
                 approvers,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 sender,
                 shard_users,
@@ -865,12 +865,12 @@ impl<'db> ShardLevelState<'db> {
         metadata: String,
         supply: u64,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> cmerkle::Result<AssetScheme> {
         self.cache.create_asset_scheme(&AssetSchemeAddress::new(asset_type, shard_id), || {
-            AssetScheme::new_with_pool(metadata, supply, approver, administrator, allowed_script_hashes, pool)
+            AssetScheme::new_with_pool(metadata, supply, approver, registrar, allowed_script_hashes, pool)
         })
     }
 
@@ -1378,28 +1378,25 @@ mod tests {
 
 
     #[test]
-    fn administrator_can_transfer() {
+    fn registrar_can_transfer() {
         let sender = address();
         let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
 
-        let administrator = address();
+        let registrar = address();
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(
-            asset_mint_output!(lock_script_hash, supply: amount),
-            metadata.clone(),
-            administrator: administrator
-        );
+        let mint =
+            asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone(), registrar: registrar);
         let mint_tracker = mint.tracker();
         let asset_type = Blake::blake(mint_tracker);
 
         assert_eq!(Ok(()), state.apply(&mint, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata, supply: amount, administrator: administrator }),
+            (scheme: (asset_type) => { metadata: metadata, supply: amount, registrar: registrar }),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
         ]);
 
@@ -1415,10 +1412,10 @@ mod tests {
         );
         let transfer_tracker = transfer.tracker();
 
-        assert_eq!(Ok(()), state.apply(&transfer, &administrator, &[sender], &[], &get_test_client()));
+        assert_eq!(Ok(()), state.apply(&transfer, &registrar, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata, supply: amount, administrator: administrator }),
+            (scheme: (asset_type) => { metadata: metadata, supply: amount, registrar: registrar }),
             (asset: (mint_tracker, 0)),
             (asset: (transfer_tracker, 0) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1) => { asset_type: asset_type, quantity: 5 }),
@@ -1428,28 +1425,25 @@ mod tests {
 
 
     #[test]
-    fn administrator_can_burn() {
+    fn registrar_can_burn() {
         let sender = address();
         let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
         let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
 
-        let administrator = address();
+        let registrar = address();
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let mint = asset_mint!(
-            asset_mint_output!(lock_script_hash, supply: amount),
-            metadata.clone(),
-            administrator: administrator
-        );
+        let mint =
+            asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone(), registrar: registrar);
         let mint_tracker = mint.tracker();
         let asset_type = Blake::blake(mint_tracker);
 
         assert_eq!(Ok(()), state.apply(&mint, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata, supply: amount, administrator: administrator }),
+            (scheme: (asset_type) => { metadata: metadata, supply: amount, registrar: registrar }),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
         ]);
 
@@ -1457,10 +1451,10 @@ mod tests {
             asset_transfer!(burns: asset_transfer_inputs![(asset_out_point!(mint_tracker, 0, asset_type, amount))]);
         let burn_tracker = burn.tracker();
 
-        assert_eq!(Ok(()), state.apply(&burn, &administrator, &[sender], &[], &get_test_client()));
+        assert_eq!(Ok(()), state.apply(&burn, &registrar, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata, supply: 0, administrator: administrator }),
+            (scheme: (asset_type) => { metadata: metadata, supply: 0, registrar: registrar }),
             (asset: (mint_tracker, 0)),
             (asset: (burn_tracker, 0))
         ]);
@@ -2331,11 +2325,11 @@ mod tests {
         let lock_script_hash = H160::random();
         let parameters = vec![];
         let amount = 100;
-        let administrator = Address::random();
+        let registrar = Address::random();
         let mint = asset_mint!(
             asset_mint_output!(lock_script_hash, parameters.clone(), amount),
             metadata.clone(),
-            administrator: administrator
+            registrar: registrar
         );
 
         let mint_tracker = mint.tracker();
@@ -2344,7 +2338,7 @@ mod tests {
         assert_eq!(Ok(()), state.apply(&mint, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: amount, approver, administrator: administrator }),
+            (scheme: (asset_type) => { metadata: metadata.clone(), supply: amount, approver, registrar: registrar }),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
         ]);
 
@@ -2355,13 +2349,13 @@ mod tests {
             asset_type,
             metadata: "New metadata".to_string(),
             approver: Some(approver),
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: Vec::new(),
         };
-        assert_eq!(Ok(()), state.apply(&change_asset_scheme, &sender, &[], &[administrator], &get_test_client()));
+        assert_eq!(Ok(()), state.apply(&change_asset_scheme, &sender, &[], &[registrar], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: "New metadata".to_string(), supply: amount, approver: approver, administrator }),
+            (scheme: (asset_type) => { metadata: "New metadata".to_string(), supply: amount, approver: approver, registrar }),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
         ]);
     }
@@ -2377,11 +2371,11 @@ mod tests {
         let lock_script_hash = H160::random();
         let parameters = vec![];
         let amount = 100;
-        let administrator = Address::random();
+        let registrar = Address::random();
         let mint = asset_mint!(
             asset_mint_output!(lock_script_hash, parameters.clone(), amount),
             metadata.clone(),
-            administrator: administrator
+            registrar: registrar
         );
 
         let mint_tracker = mint.tracker();
@@ -2390,7 +2384,7 @@ mod tests {
         assert_eq!(Ok(()), state.apply(&mint, &sender, &[sender], &[], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: amount, approver, administrator: administrator }),
+            (scheme: (asset_type) => { metadata: metadata.clone(), supply: amount, approver, registrar: registrar }),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
         ]);
 
@@ -2407,10 +2401,10 @@ mod tests {
         };
         let supply_tracker = increase_supply.tracker();
 
-        assert_eq!(Ok(()), state.apply(&increase_supply, &sender, &[], &[administrator], &get_test_client()));
+        assert_eq!(Ok(()), state.apply(&increase_supply, &sender, &[], &[registrar], &get_test_client()));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: "metadata".to_string(), supply: amount + new_supply, approver, administrator: administrator }),
+            (scheme: (asset_type) => { metadata: "metadata".to_string(), supply: amount + new_supply, approver, registrar: registrar }),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount }),
             (asset: (supply_tracker, 0) => { asset_type: asset_type, quantity: new_supply })
         ]);

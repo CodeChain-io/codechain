@@ -29,7 +29,7 @@ macro_rules! mint_asset {
             metadata: $metadata,
             output: $output,
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![],
         }
@@ -41,19 +41,19 @@ macro_rules! mint_asset {
             metadata: $metadata,
             output: $output,
             approver: Some($approver),
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![],
         }
     };
-    ($output:expr, $metadata:expr, administrator: $admin:expr) => {
+    ($output:expr, $metadata:expr, registrar: $admin:expr) => {
         $crate::ctypes::transaction::Action::MintAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             shard_id: $crate::impls::test_helper::SHARD_ID,
             metadata: $metadata,
             output: $output,
             approver: None,
-            administrator: Some($admin),
+            registrar: Some($admin),
             allowed_script_hashes: vec![],
             approvals: vec![],
         }
@@ -68,7 +68,7 @@ macro_rules! asset_mint {
             metadata: $metadata,
             output: $output,
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
         }
     };
@@ -79,18 +79,18 @@ macro_rules! asset_mint {
             metadata: $metadata,
             output: $output,
             approver: Some($approver),
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
         }
     };
-    ($output:expr, $metadata:expr, administrator: $admin:expr) => {
+    ($output:expr, $metadata:expr, registrar: $admin:expr) => {
         $crate::ctypes::transaction::ShardTransaction::MintAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             shard_id: $crate::impls::test_helper::SHARD_ID,
             metadata: $metadata,
             output: $output,
             approver: None,
-            administrator: Some($admin),
+            registrar: Some($admin),
             allowed_script_hashes: vec![],
         }
     };
@@ -101,7 +101,7 @@ macro_rules! asset_mint {
             metadata: $metadata,
             output: $output,
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: $allowed,
         }
     };
@@ -325,7 +325,7 @@ macro_rules! asset_compose {
             shard_id: $crate::impls::test_helper::SHARD_ID,
             metadata: $metadata,
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             inputs: $inputs,
             output: $outputs,
@@ -669,35 +669,35 @@ macro_rules! check_shard_level_state {
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($asset_type:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver: $approver:expr, administrator }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($asset_type:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver: $approver:expr, registrar }) $(,$x:tt)*]) => {
         let scheme = $state.asset_scheme($asset_type)
             .expect(&format!("Cannot read AssetScheme from {}:{}", $state.shard_id(), $asset_type))
             .expect(&format!("AssetScheme for {}:{} not exist", $state.shard_id(), $asset_type));
         assert_eq!(&$metadata, scheme.metadata());
         assert_eq!($supply, scheme.supply());
         assert_eq!(Some(&$approver), scheme.approver().as_ref());
-        assert_eq!(&None, scheme.administrator());
+        assert_eq!(&None, scheme.registrar());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($asset_type:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver, administrator: $administrator:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($asset_type:expr) => { metadata: $metadata:expr, supply: $supply:expr, approver, registrar: $registrar:expr }) $(,$x:tt)*]) => {
         let scheme = $state.asset_scheme($asset_type)
             .expect(&format!("Cannot read AssetScheme from {}:{}", $state.shard_id(), $asset_type))
             .expect(&format!("AssetScheme for {}:{} not exist", $state.shard_id(), $asset_type));
         assert_eq!(&$metadata, scheme.metadata());
         assert_eq!($supply, scheme.supply());
         assert_eq!(&None, scheme.approver());
-        assert_eq!(Some(&$administrator), scheme.administrator().as_ref());
+        assert_eq!(Some(&$registrar), scheme.registrar().as_ref());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(scheme: ($asset_type:expr) => { metadata: $metadata:expr, supply: $supply:expr, administrator: $administrator:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(scheme: ($asset_type:expr) => { metadata: $metadata:expr, supply: $supply:expr, registrar: $registrar:expr }) $(,$x:tt)*]) => {
         let scheme = $state.asset_scheme($asset_type)
             .expect(&format!("Cannot read AssetScheme from {}:{}", $state.shard_id(), $asset_type))
             .expect(&format!("AssetScheme for {}:{} not exist", $state.shard_id(), $asset_type));
         assert_eq!(&$metadata, scheme.metadata());
         assert_eq!($supply, scheme.supply());
-        assert_eq!(Some(&$administrator), scheme.administrator().as_ref());
+        assert_eq!(Some(&$registrar), scheme.registrar().as_ref());
 
         check_shard_level_state!($state, [$($x),*]);
     };
