@@ -45,7 +45,7 @@ impl ToHex for Private {
 
 impl fmt::Debug for Private {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "Secret: 0x{:x}{:x}..{:x}{:x}", self.0[0], self.0[1], self.0[30], self.0[31])
+        write!(fmt, "Secret: 0x{:2x}{:2x}..{:2x}{:2x}", self.0[0], self.0[1], self.0[30], self.0[31])
     }
 }
 
