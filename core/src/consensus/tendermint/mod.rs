@@ -78,13 +78,15 @@ pub type BlockHash = H256;
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
     inner: Mutex<TendermintInner>,
+    // TODO: If there is a way to call register_network_extension_to_service with `Arc<Tendermint>`,
+    //       `weak_self` can be removed.
+    weak_self: RwLock<Option<Weak<Tendermint>>>,
     machine: Arc<CodeChainMachine>,
     /// Action handlers for this consensus method
     action_handlers: Vec<Arc<ActionHandler>>,
 }
 
 struct TendermintInner {
-    engine: Option<Weak<Tendermint>>,
     client: Option<Weak<EngineClient>>,
     /// Blockchain height.
     height: Height,
@@ -131,15 +133,17 @@ impl Tendermint {
 
         let engine = Arc::new(Tendermint {
             inner: Mutex::new(inner),
+            weak_self: Default::default(),
             machine,
             action_handlers,
         });
+        let weak_self = Arc::downgrade(&engine);
+        *engine.weak_self.write() = Some(weak_self);
 
         {
-            let mut guard = engine.inner.lock();
+            let inner = engine.inner.lock();
             let engine_weak = Arc::downgrade(&engine);
-            guard.engine = Some(Weak::clone(&engine_weak));
-            guard.chain_notify.register_tendermint(Weak::clone(&engine_weak));
+            inner.chain_notify.register_tendermint(Weak::clone(&engine_weak));
         }
 
         engine
@@ -152,7 +156,6 @@ impl TendermintInner {
     pub fn new(our_params: TendermintParams, machine: Arc<CodeChainMachine>) -> Self {
         let chain_notify = TendermintChainNotify::new();
         TendermintInner {
-            engine: None,
             client: None,
             height: 1,
             view: 0,
@@ -175,14 +178,6 @@ impl TendermintInner {
 }
 
 impl TendermintInner {
-    fn engine(&self) -> Arc<Tendermint> {
-        self.engine
-            .as_ref()
-            .expect("Only writes in initialize")
-            .upgrade()
-            .expect("Reference to itself should not be dropped")
-    }
-
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
     fn client(&self) -> Arc<EngineClient> {
         self.client.as_ref().expect("Only writes in initialize").upgrade().expect("Client lives longer than consensus")
@@ -1219,18 +1214,6 @@ impl TendermintInner {
         self.signer.public().and_then(|public| self.validators.get_index(bh, public))
     }
 
-    fn register_network_extension_to_service(&mut self, service: &NetworkService) {
-        let extension = {
-            let timeouts = self.timeouts.clone();
-            let tendermint = Arc::downgrade(&self.engine());
-            let client = Arc::downgrade(&self.client());
-            service.new_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api))
-        };
-
-        self.extension = Some(Arc::clone(&extension));
-        self.restore();
-    }
-
     fn block_reward(&self, _block_number: u64) -> u64 {
         self.block_reward
     }
@@ -1360,8 +1343,18 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
-        let mut guard = self.inner.lock();
-        guard.register_network_extension_to_service(service)
+        let mut inner = self.inner.lock();
+        let weak_self = self.weak_self.read();
+
+        let extension = {
+            let timeouts = inner.timeouts.clone();
+            let tendermint = Weak::clone(weak_self.as_ref().expect("Only writes in initialize"));
+            let client = Weak::clone(inner.client.as_ref().expect("Only writes in initialize"));
+            service.new_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api))
+        };
+
+        inner.extension = Some(Arc::clone(&extension));
+        inner.restore();
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {
