@@ -128,7 +128,7 @@ describe("transactions", function() {
             const increasedAmount = 300;
             const { asset } = await node.mintAsset({
                 supply: amount,
-                administrator: faucetAddress
+                registrar: faucetAddress
             });
             const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
                 shardId: asset.shardId,
@@ -159,7 +159,7 @@ describe("transactions", function() {
             );
         });
 
-        it("cannot increase without administrator", async function() {
+        it("cannot increase without registrar", async function() {
             const amount = 100;
             const increasedAmount = 300;
             const { asset } = await node.mintAsset({
@@ -189,7 +189,7 @@ describe("transactions", function() {
             const increasedAmount = 300;
             const { asset } = await node.mintAsset({
                 supply: amount,
-                administrator: faucetAddress
+                registrar: faucetAddress
             });
             const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
                 shardId: asset.shardId,
@@ -219,7 +219,7 @@ describe("transactions", function() {
         it("cannot be overflowed", async function() {
             const { asset } = await node.mintAsset({
                 supply: U64.MAX_VALUE,
-                administrator: faucetAddress
+                registrar: faucetAddress
             });
             const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
                 shardId: asset.shardId,

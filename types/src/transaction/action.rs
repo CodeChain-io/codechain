@@ -50,7 +50,7 @@ pub enum Action {
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         output: Box<AssetMintOutput>,
         approvals: Vec<Signature>,
@@ -71,7 +71,7 @@ pub enum Action {
         asset_type: H160,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         approvals: Vec<Signature>,
     },
@@ -87,7 +87,7 @@ pub enum Action {
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         inputs: Vec<AssetTransferInput>,
         output: Box<AssetMintOutput>,
@@ -402,7 +402,7 @@ impl From<Action> for Option<ShardTransaction> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 output,
                 ..
@@ -411,7 +411,7 @@ impl From<Action> for Option<ShardTransaction> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 output: *output,
             }),
@@ -435,7 +435,7 @@ impl From<Action> for Option<ShardTransaction> {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 ..
             } => Some(ShardTransaction::ChangeAssetScheme {
@@ -444,7 +444,7 @@ impl From<Action> for Option<ShardTransaction> {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
             }),
             Action::IncreaseAssetSupply {
@@ -464,7 +464,7 @@ impl From<Action> for Option<ShardTransaction> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output,
@@ -474,7 +474,7 @@ impl From<Action> for Option<ShardTransaction> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output: *output,
@@ -511,7 +511,7 @@ impl Encodable for Action {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 output,
                 approvals,
@@ -525,7 +525,7 @@ impl Encodable for Action {
                     .append(&output.parameters)
                     .append(&output.supply)
                     .append(approver)
-                    .append(administrator)
+                    .append(registrar)
                     .append_list(allowed_script_hashes)
                     .append_list(approvals);
             }
@@ -556,7 +556,7 @@ impl Encodable for Action {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 approvals,
             } => {
@@ -567,7 +567,7 @@ impl Encodable for Action {
                     .append(asset_type)
                     .append(metadata)
                     .append(approver)
-                    .append(administrator)
+                    .append(registrar)
                     .append_list(allowed_script_hashes)
                     .append_list(approvals);
             }
@@ -593,7 +593,7 @@ impl Encodable for Action {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output,
@@ -605,7 +605,7 @@ impl Encodable for Action {
                     .append(shard_id)
                     .append(metadata)
                     .append(approver)
-                    .append(administrator)
+                    .append(registrar)
                     .append_list(allowed_script_hashes)
                     .append_list(inputs)
                     .append(&output.lock_script_hash)
@@ -743,7 +743,7 @@ impl Decodable for Action {
                         supply: rlp.val_at(6)?,
                     }),
                     approver: rlp.val_at(7)?,
-                    administrator: rlp.val_at(8)?,
+                    registrar: rlp.val_at(8)?,
                     allowed_script_hashes: rlp.list_at(9)?,
                     approvals: rlp.list_at(10)?,
                 })
@@ -781,7 +781,7 @@ impl Decodable for Action {
                     asset_type: rlp.val_at(3)?,
                     metadata: rlp.val_at(4)?,
                     approver: rlp.val_at(5)?,
-                    administrator: rlp.val_at(6)?,
+                    registrar: rlp.val_at(6)?,
                     allowed_script_hashes: rlp.list_at(7)?,
                     approvals: rlp.list_at(8)?,
                 })
@@ -819,7 +819,7 @@ impl Decodable for Action {
                     shard_id: rlp.val_at(2)?,
                     metadata: rlp.val_at(3)?,
                     approver: rlp.val_at(4)?,
-                    administrator: rlp.val_at(5)?,
+                    registrar: rlp.val_at(5)?,
                     allowed_script_hashes: rlp.list_at(6)?,
                     inputs: rlp.list_at(7)?,
                     output: Box::new(AssetMintOutput {
@@ -1172,7 +1172,7 @@ mod tests {
                 supply: 10000,
             }),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![Signature::random(), Signature::random(), Signature::random(), Signature::random()],
         });
@@ -1190,7 +1190,7 @@ mod tests {
                 supply: 10000,
             }),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![Signature::random()],
         });
@@ -1208,7 +1208,7 @@ mod tests {
                 supply: 10000,
             }),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![Signature::random()],
         });
@@ -1226,7 +1226,7 @@ mod tests {
                 supply: 10000,
             }),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![Signature::random()],
         });
@@ -1301,7 +1301,7 @@ mod tests {
             asset_type: H160::random(),
             metadata: "some asset scheme metadata".to_string(),
             approver: Some(Address::random()),
-            administrator: Some(Address::random()),
+            registrar: Some(Address::random()),
             allowed_script_hashes: vec![H160::random(), H160::random(), H160::random()],
             approvals: vec![],
         });

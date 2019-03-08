@@ -43,8 +43,8 @@ pub enum Error {
         shard_id: ShardId,
     },
     AssetSupplyOverflow,
-    CannotBurnCentralizedAsset,
-    CannotComposeCentralizedAsset,
+    CannotBurnRegulatedAsset,
+    CannotComposeRegulatedAsset,
     FailedToHandleCustomAction(String),
     /// Script execution result is `Fail`
     FailedToUnlock {
@@ -111,8 +111,8 @@ pub enum Error {
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 1;
 const ERROR_ID_ASSET_SCHEME_DUPLICATED: u8 = 2;
 const ERROR_ID_ASSET_SCHEME_NOT_FOUND: u8 = 3;
-const ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET: u8 = 4;
-const ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET: u8 = 5;
+const ERROR_ID_CANNOT_BURN_REGULATED_ASSET: u8 = 4;
+const ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET: u8 = 5;
 const ERROR_ID_FAILED_TO_UNLOCK: u8 = 6;
 const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 9;
@@ -148,8 +148,8 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_ASSET_SCHEME_DUPLICATED => 3,
             ERROR_ID_ASSET_SCHEME_NOT_FOUND => 3,
             ERROR_ID_ASSET_SUPPLY_OVERFLOW => 1,
-            ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => 1,
-            ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => 1,
+            ERROR_ID_CANNOT_BURN_REGULATED_ASSET => 1,
+            ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET => 1,
             ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION => 2,
             ERROR_ID_FAILED_TO_UNLOCK => 5,
             ERROR_ID_INSUFFICIENT_BALANCE => 4,
@@ -195,9 +195,9 @@ impl Encodable for Error {
                 shard_id,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(asset_type).append(shard_id),
             Error::AssetSupplyOverflow => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SUPPLY_OVERFLOW),
-            Error::CannotBurnCentralizedAsset => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET),
-            Error::CannotComposeCentralizedAsset => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET)
+            Error::CannotBurnRegulatedAsset => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_BURN_REGULATED_ASSET),
+            Error::CannotComposeRegulatedAsset => {
+                RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET)
             }
             Error::FailedToHandleCustomAction(detail) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION).append(detail)
@@ -302,8 +302,8 @@ impl Decodable for Error {
                 shard_id: rlp.val_at(2)?,
             },
             ERROR_ID_ASSET_SUPPLY_OVERFLOW => Error::AssetSupplyOverflow,
-            ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => Error::CannotBurnCentralizedAsset,
-            ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => Error::CannotComposeCentralizedAsset,
+            ERROR_ID_CANNOT_BURN_REGULATED_ASSET => Error::CannotBurnRegulatedAsset,
+            ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET => Error::CannotComposeRegulatedAsset,
             ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION => Error::FailedToHandleCustomAction(rlp.val_at(1)?),
             ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock {
                 shard_id: rlp.val_at(1)?,
@@ -371,8 +371,8 @@ impl Display for Error {
                 shard_id,
             } => write!(f, "Asset scheme not found: {}:{}", asset_type, shard_id),
             Error::AssetSupplyOverflow => write!(f, "Asset supply should not be overflowed"),
-            Error::CannotBurnCentralizedAsset => write!(f, "Cannot burn the centralized asset"),
-            Error::CannotComposeCentralizedAsset => write!(f, "Cannot compose the centralized asset"),
+            Error::CannotBurnRegulatedAsset => write!(f, "Cannot burn the regulated asset"),
+            Error::CannotComposeRegulatedAsset => write!(f, "Cannot compose the regulated asset"),
             Error::FailedToHandleCustomAction(detail) => write!(f, "Cannot handle custom action: {}", detail),
             Error::FailedToUnlock {
                 shard_id,
