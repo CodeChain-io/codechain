@@ -15,16 +15,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod account_command;
+mod convert_command;
 
 use clap::ArgMatches;
 
 use self::account_command::run_account_command;
+use self::convert_command::run_convert_command;
 
 pub fn run_subcommand(matches: &ArgMatches) -> Result<(), String> {
     let subcommand = matches.subcommand.as_ref().unwrap();
-    if subcommand.name == "account" {
-        run_account_command(&subcommand.matches)
-    } else {
-        Err("Invalid subcommand".to_string())
+    match subcommand.name.as_str() {
+        "account" => run_account_command(&subcommand.matches),
+        "convert" => run_convert_command(&subcommand.matches),
+        _ => Err("Invalid subcommand".to_string()),
     }
 }
