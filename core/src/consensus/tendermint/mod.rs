@@ -45,7 +45,7 @@ use time::Duration;
 use self::backup::{backup, restore, BackupView};
 use self::message::*;
 pub use self::params::{TendermintParams, TimeoutParams};
-use self::types::{BitSet, Height, PeerState, Step, TendermintSealView, TendermintState, View};
+use self::types::{BitSet, Height, PeerState, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
@@ -100,10 +100,8 @@ struct TendermintInner {
     votes: VoteCollector<ConsensusMessage>,
     /// Used to sign messages and proposals.
     signer: EngineSigner,
-    /// Message for the last PoLC.
-    lock_change: Option<ConsensusMessage>,
-    /// Last lock view.
-    last_lock: Option<View>,
+    /// Last majority
+    last_two_thirds_majority: TwoThirdsMajority,
     /// hash of the proposed block, used for seal submission.
     proposal: Option<H256>,
     /// The last confirmed view from the commit step.
@@ -161,8 +159,7 @@ impl TendermintInner {
             step: TendermintState::Propose,
             votes: Default::default(),
             signer: Default::default(),
-            lock_change: None,
-            last_lock: None,
+            last_two_thirds_majority: TwoThirdsMajority::Empty,
             proposal: None,
             last_confirmed_view: 0,
             validators: our_params.validators,
@@ -373,21 +370,12 @@ impl TendermintInner {
         self.votes_received = BitSet::new();
     }
 
-    fn should_unlock(&self, lock_change_view: View) -> bool {
-        match self.last_lock {
-            // No lock exist
-            None => false,
-            Some(last_lock) => last_lock < lock_change_view && lock_change_view < self.view,
-        }
-    }
-
     fn move_to_height(&mut self, height: Height) {
         assert!(height > self.height, "{} < {}", height, self.height);
         cinfo!(ENGINE, "Transitioning to height {}.", height);
-        self.last_lock = None;
+        self.last_two_thirds_majority = TwoThirdsMajority::Empty;
         self.height = height;
         self.view = 0;
-        self.lock_change = None;
         self.proposal = None;
         self.votes_received = BitSet::new();
     }
@@ -409,7 +397,7 @@ impl TendermintInner {
         }
 
         // need to reset vote
-        self.broadcast_state(&vote_step, self.proposal, self.last_lock, self.votes_received);
+        self.broadcast_state(&vote_step, self.proposal, self.last_two_thirds_majority.view(), self.votes_received);
         match step {
             Step::Propose => {
                 cinfo!(ENGINE, "move_to_step: Propose.");
@@ -426,9 +414,9 @@ impl TendermintInner {
                 } else {
                     let parent_block_hash = &self.prev_block_hash();
                     if self.is_signer_proposer(parent_block_hash) {
-                        if let Some(last_lock) = self.last_lock {
+                        if let TwoThirdsMajority::Lock(lock_view, _) = self.last_two_thirds_majority {
                             cinfo!(ENGINE, "I am a proposer, I'll re-propose a locked block");
-                            match self.locked_proposal_block(last_lock) {
+                            match self.locked_proposal_block(lock_view) {
                                 Ok(block) => self.repropose_block(block),
                                 Err(error_msg) => cwarn!(ENGINE, "{}", error_msg),
                             }
@@ -451,10 +439,10 @@ impl TendermintInner {
                 // In the case, self.votes_received is not empty.
                 self.request_messages_to_all(&vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
-                    let block_hash = match self.lock_change {
-                        Some(ref m) if m.on.block_hash.is_none() => self.proposal,
-                        Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
-                        _ => self.proposal,
+                    let block_hash = match &self.last_two_thirds_majority {
+                        TwoThirdsMajority::Empty => self.proposal,
+                        TwoThirdsMajority::Unlock(_) => self.proposal,
+                        TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
                     };
                     self.generate_and_broadcast_message(block_hash, is_restoring);
                 }
@@ -466,23 +454,16 @@ impl TendermintInner {
                 // In the case, self.votes_received is not empty.
                 self.request_messages_to_all(&vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
-                    let block_hash = match self.lock_change {
-                        Some(ref m) => {
-                            let newer_lock = match self.last_lock {
-                                None => true,
-                                Some(lock) => lock < m.on.step.view,
-                            };
-                            if newer_lock && m.on.block_hash.is_some() {
-                                cinfo!(ENGINE, "Setting last lock: {}", m.on.step.view);
-                                self.last_lock = Some(m.on.step.view);
-                            }
-                            if m.on.step.view == self.view {
-                                m.on.block_hash
+                    let block_hash = match &self.last_two_thirds_majority {
+                        TwoThirdsMajority::Empty => None,
+                        TwoThirdsMajority::Unlock(_) => None,
+                        TwoThirdsMajority::Lock(locked_view, block_hash) => {
+                            if locked_view == &self.view {
+                                Some(*block_hash)
                             } else {
                                 None
                             }
                         }
-                        _ => None,
                     };
                     self.generate_and_broadcast_message(block_hash, is_restoring);
                 }
@@ -564,8 +545,8 @@ impl TendermintInner {
 
     fn handle_valid_message(&mut self, message: &ConsensusMessage, is_restoring: bool) {
         let vote_step = &message.on.step;
-        let is_newer_than_lock = match &self.lock_change {
-            Some(lock) => *vote_step > lock.on.step,
+        let is_newer_than_lock = match self.last_two_thirds_majority.view() {
+            Some(last_lock) => vote_step.view > last_lock,
             None => true,
         };
         let has_enough_aligned_votes = self.has_enough_aligned_votes(message);
@@ -576,13 +557,16 @@ impl TendermintInner {
         if lock_change {
             cinfo!(
                 ENGINE,
-                "handle_valid_message: Lock change to {}-{} at {}-{}",
+                "handle_valid_message: Lock change to {}-{}-{:?} at {}-{}-{:?}",
                 vote_step.height,
                 vote_step.view,
+                message.on.block_hash,
                 self.height,
-                self.view
+                self.view,
+                self.last_two_thirds_majority.block_hash(),
             );
-            self.lock_change = Some(message.clone());
+            self.last_two_thirds_majority =
+                TwoThirdsMajority::from_message(message.on.step.view, message.on.block_hash);
         }
         // Check if it can affect the step transition.
         if self.is_step(message) {
@@ -985,7 +969,12 @@ impl TendermintInner {
 
         if token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE && self.votes_received_changed {
             self.votes_received_changed = false;
-            self.broadcast_state(&self.vote_step(), self.proposal, self.last_lock, self.votes_received);
+            self.broadcast_state(
+                &self.vote_step(),
+                self.proposal,
+                self.last_two_thirds_majority.view(),
+                self.votes_received,
+            );
 
             return
         }
@@ -1904,11 +1893,11 @@ impl TendermintExtension {
         }
 
         if peer_vote_step.height == tendermint.height {
-            match (tendermint.last_lock, peer_lock_view) {
+            match (tendermint.last_two_thirds_majority.view(), peer_lock_view) {
                 (None, Some(peer_lock_view)) if peer_lock_view < tendermint.view => {
                     ctrace!(
                         ENGINE,
-                        "Peer has a lock on {}-{} but I don't have it",
+                        "Peer has a two thirds majority prevotes on {}-{} but I don't have it",
                         peer_vote_step.height,
                         peer_lock_view
                     );
@@ -1927,7 +1916,7 @@ impl TendermintExtension {
                 {
                     ctrace!(
                         ENGINE,
-                        "Peer has a lock on {}-{} which is newer than mine {}",
+                        "Peer has a two thirds majority prevotes on {}-{} which is newer than mine {}",
                         peer_vote_step.height,
                         peer_lock_view,
                         my_lock_view
