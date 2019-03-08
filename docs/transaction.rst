@@ -52,7 +52,7 @@ Mint Asset
 `MintAsset` issues a new asset. When issuing a new asset, the asset has fields that can be designated, such as metadata, approver, and registrar. There are two types of assets that can be issued:
 
 - A permissioned asset is an asset that has an approver. These kind of assets need permission from the specifically assigned approver in order to be transferred to other addresses.
-- A centralized asset is an asset that has an registrar. The registrar can change the asset scheme and is allowed to transfer the asset arbitrarily.
+- A regulated asset is an asset that has an registrar. The registrar can change the asset scheme and is allowed to transfer the asset arbitrarily.
 
 Transfer Asset
 ==============================

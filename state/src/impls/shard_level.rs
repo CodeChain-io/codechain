@@ -417,10 +417,10 @@ impl<'db> ShardLevelState<'db> {
                 shard_id: self.shard_id,
             })?;
 
-            if !asset_scheme.is_centralized() {
+            if !asset_scheme.is_regulated() {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
-            let registrar = asset_scheme.registrar().as_ref().expect("Centralized asset has registrar");
+            let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
             if registrar != sender && !approvers.contains(registrar) {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
@@ -452,10 +452,10 @@ impl<'db> ShardLevelState<'db> {
                 index,
             })?;
 
-            if !asset_scheme.is_centralized() {
+            if !asset_scheme.is_regulated() {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
-            let registrar = asset_scheme.registrar().as_ref().expect("Centralized asset has registrar");
+            let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
             if registrar != sender && !approvers.contains(registrar) {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
@@ -563,13 +563,13 @@ impl<'db> ShardLevelState<'db> {
         assert_eq!(self.shard_id, input.prev_out.shard_id);
         let asset_scheme =
             self.asset_scheme(input.prev_out.asset_type)?.expect("AssetScheme must exist when the asset exist");
-        if asset_scheme.is_centralized() {
-            let registrar = asset_scheme.registrar().as_ref().expect("Centralized asset has registrar");
+        if asset_scheme.is_regulated() {
+            let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
             if registrar == sender || approvers.contains(registrar) {
                 return Ok(())
             } else if burn {
-                // Only the registrar can burn the centralized asset
-                return Err(RuntimeError::CannotBurnCentralizedAsset.into())
+                // Only the registrar can burn the regulated asset
+                return Err(RuntimeError::CannotBurnRegulatedAsset.into())
             }
         }
 
@@ -659,8 +659,8 @@ impl<'db> ShardLevelState<'db> {
             let shard_asset_type = (input.prev_out.asset_type, input.prev_out.shard_id);
             let asset_scheme =
                 self.asset_scheme(shard_asset_type.0)?.expect("AssetScheme must exist when the asset exist");
-            if asset_scheme.is_centralized() {
-                return Err(RuntimeError::CannotComposeCentralizedAsset.into())
+            if asset_scheme.is_regulated() {
+                return Err(RuntimeError::CannotComposeRegulatedAsset.into())
             }
 
             self.kill_asset(input.prev_out.tracker, input.prev_out.index);

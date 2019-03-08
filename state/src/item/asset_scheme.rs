@@ -94,7 +94,7 @@ impl AssetScheme {
         self.approver.is_some()
     }
 
-    pub fn is_centralized(&self) -> bool {
+    pub fn is_regulated(&self) -> bool {
         self.registrar.is_some()
     }
 
