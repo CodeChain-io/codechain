@@ -45,7 +45,7 @@ use time::Duration;
 use self::backup::{backup, restore, BackupView};
 use self::message::*;
 pub use self::params::{TendermintParams, TimeoutParams};
-use self::types::{BitSet, Height, PeerState, Step, TendermintSealView, TendermintState, View};
+use self::types::{BitSet, Height, PeerState, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
@@ -78,13 +78,15 @@ pub type BlockHash = H256;
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
     inner: Mutex<TendermintInner>,
+    // TODO: If there is a way to call register_network_extension_to_service with `Arc<Tendermint>`,
+    //       `weak_self` can be removed.
+    weak_self: RwLock<Option<Weak<Tendermint>>>,
     machine: Arc<CodeChainMachine>,
     /// Action handlers for this consensus method
     action_handlers: Vec<Arc<ActionHandler>>,
 }
 
 struct TendermintInner {
-    engine: Option<Weak<Tendermint>>,
     client: Option<Weak<EngineClient>>,
     /// Blockchain height.
     height: Height,
@@ -100,10 +102,8 @@ struct TendermintInner {
     votes: VoteCollector<ConsensusMessage>,
     /// Used to sign messages and proposals.
     signer: EngineSigner,
-    /// Message for the last PoLC.
-    lock_change: Option<ConsensusMessage>,
-    /// Last lock view.
-    last_lock: Option<View>,
+    /// Last majority
+    last_two_thirds_majority: TwoThirdsMajority,
     /// hash of the proposed block, used for seal submission.
     proposal: Option<H256>,
     /// The last confirmed view from the commit step.
@@ -133,15 +133,17 @@ impl Tendermint {
 
         let engine = Arc::new(Tendermint {
             inner: Mutex::new(inner),
+            weak_self: Default::default(),
             machine,
             action_handlers,
         });
+        let weak_self = Arc::downgrade(&engine);
+        *engine.weak_self.write() = Some(weak_self);
 
         {
-            let mut guard = engine.inner.lock();
+            let inner = engine.inner.lock();
             let engine_weak = Arc::downgrade(&engine);
-            guard.engine = Some(Weak::clone(&engine_weak));
-            guard.chain_notify.register_tendermint(Weak::clone(&engine_weak));
+            inner.chain_notify.register_tendermint(Weak::clone(&engine_weak));
         }
 
         engine
@@ -154,15 +156,13 @@ impl TendermintInner {
     pub fn new(our_params: TendermintParams, machine: Arc<CodeChainMachine>) -> Self {
         let chain_notify = TendermintChainNotify::new();
         TendermintInner {
-            engine: None,
             client: None,
             height: 1,
             view: 0,
             step: TendermintState::Propose,
             votes: Default::default(),
             signer: Default::default(),
-            lock_change: None,
-            last_lock: None,
+            last_two_thirds_majority: TwoThirdsMajority::Empty,
             proposal: None,
             last_confirmed_view: 0,
             validators: our_params.validators,
@@ -178,14 +178,6 @@ impl TendermintInner {
 }
 
 impl TendermintInner {
-    fn engine(&self) -> Arc<Tendermint> {
-        self.engine
-            .as_ref()
-            .expect("Only writes in initialize")
-            .upgrade()
-            .expect("Reference to itself should not be dropped")
-    }
-
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
     fn client(&self) -> Arc<EngineClient> {
         self.client.as_ref().expect("Only writes in initialize").upgrade().expect("Client lives longer than consensus")
@@ -296,10 +288,6 @@ impl TendermintInner {
         self.view_proposer(bh, self.view).map_or(false, |proposer| self.signer.is_address(&proposer))
     }
 
-    fn is_view(&self, message: &ConsensusMessage) -> bool {
-        message.on.step.is_view(self.height, self.view)
-    }
-
     fn is_step(&self, message: &ConsensusMessage) -> bool {
         message.on.step.is_step(self.height, self.view, self.step.to_step())
     }
@@ -377,17 +365,12 @@ impl TendermintInner {
         self.votes_received = BitSet::new();
     }
 
-    fn should_unlock(&self, lock_change_view: View) -> bool {
-        self.last_lock.unwrap_or(0) < lock_change_view && lock_change_view < self.view
-    }
-
     fn move_to_height(&mut self, height: Height) {
         assert!(height > self.height, "{} < {}", height, self.height);
         cinfo!(ENGINE, "Transitioning to height {}.", height);
-        self.last_lock = None;
+        self.last_two_thirds_majority = TwoThirdsMajority::Empty;
         self.height = height;
         self.view = 0;
-        self.lock_change = None;
         self.proposal = None;
         self.votes_received = BitSet::new();
     }
@@ -409,7 +392,7 @@ impl TendermintInner {
         }
 
         // need to reset vote
-        self.broadcast_state(&vote_step, self.proposal, self.last_lock, self.votes_received);
+        self.broadcast_state(&vote_step, self.proposal, self.last_two_thirds_majority.view(), self.votes_received);
         match step {
             Step::Propose => {
                 cinfo!(ENGINE, "move_to_step: Propose.");
@@ -426,9 +409,9 @@ impl TendermintInner {
                 } else {
                     let parent_block_hash = &self.prev_block_hash();
                     if self.is_signer_proposer(parent_block_hash) {
-                        if let Some(last_lock) = self.last_lock {
+                        if let TwoThirdsMajority::Lock(lock_view, _) = self.last_two_thirds_majority {
                             cinfo!(ENGINE, "I am a proposer, I'll re-propose a locked block");
-                            match self.locked_proposal_block(last_lock) {
+                            match self.locked_proposal_block(lock_view) {
                                 Ok(block) => self.repropose_block(block),
                                 Err(error_msg) => cwarn!(ENGINE, "{}", error_msg),
                             }
@@ -451,9 +434,10 @@ impl TendermintInner {
                 // In the case, self.votes_received is not empty.
                 self.request_messages_to_all(&vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
-                    let block_hash = match self.lock_change {
-                        Some(ref m) if !self.should_unlock(m.on.step.view) => m.on.block_hash,
-                        _ => self.proposal,
+                    let block_hash = match &self.last_two_thirds_majority {
+                        TwoThirdsMajority::Empty => self.proposal,
+                        TwoThirdsMajority::Unlock(_) => self.proposal,
+                        TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
                     };
                     self.generate_and_broadcast_message(block_hash, is_restoring);
                 }
@@ -465,13 +449,16 @@ impl TendermintInner {
                 // In the case, self.votes_received is not empty.
                 self.request_messages_to_all(&vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
-                    let block_hash = match self.lock_change {
-                        Some(ref m) if self.is_view(m) && m.on.block_hash.is_some() => {
-                            cinfo!(ENGINE, "Setting last lock: {}", m.on.step.view);
-                            self.last_lock = Some(m.on.step.view);
-                            m.on.block_hash
+                    let block_hash = match &self.last_two_thirds_majority {
+                        TwoThirdsMajority::Empty => None,
+                        TwoThirdsMajority::Unlock(_) => None,
+                        TwoThirdsMajority::Lock(locked_view, block_hash) => {
+                            if locked_view == &self.view {
+                                Some(*block_hash)
+                            } else {
+                                None
+                            }
                         }
-                        _ => None,
                     };
                     self.generate_and_broadcast_message(block_hash, is_restoring);
                 }
@@ -553,26 +540,28 @@ impl TendermintInner {
 
     fn handle_valid_message(&mut self, message: &ConsensusMessage, is_restoring: bool) {
         let vote_step = &message.on.step;
-        let is_newer_than_lock = match &self.lock_change {
-            Some(lock) => *vote_step > lock.on.step,
+        let is_newer_than_lock = match self.last_two_thirds_majority.view() {
+            Some(last_lock) => vote_step.view > last_lock,
             None => true,
         };
         let has_enough_aligned_votes = self.has_enough_aligned_votes(message);
         let lock_change = is_newer_than_lock
             && vote_step.height == self.height
             && vote_step.step == Step::Prevote
-            && message.on.block_hash.is_some()
             && has_enough_aligned_votes;
         if lock_change {
             cinfo!(
                 ENGINE,
-                "handle_valid_message: Lock change to {}-{} at {}-{}",
+                "handle_valid_message: Lock change to {}-{}-{:?} at {}-{}-{:?}",
                 vote_step.height,
                 vote_step.view,
+                message.on.block_hash,
                 self.height,
-                self.view
+                self.view,
+                self.last_two_thirds_majority.block_hash(),
             );
-            self.lock_change = Some(message.clone());
+            self.last_two_thirds_majority =
+                TwoThirdsMajority::from_message(message.on.step.view, message.on.block_hash);
         }
         // Check if it can affect the step transition.
         if self.is_step(message) {
@@ -975,7 +964,12 @@ impl TendermintInner {
 
         if token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE && self.votes_received_changed {
             self.votes_received_changed = false;
-            self.broadcast_state(&self.vote_step(), self.proposal, self.last_lock, self.votes_received);
+            self.broadcast_state(
+                &self.vote_step(),
+                self.proposal,
+                self.last_two_thirds_majority.view(),
+                self.votes_received,
+            );
 
             return
         }
@@ -1220,18 +1214,6 @@ impl TendermintInner {
         self.signer.public().and_then(|public| self.validators.get_index(bh, public))
     }
 
-    fn register_network_extension_to_service(&mut self, service: &NetworkService) {
-        let extension = {
-            let timeouts = self.timeouts.clone();
-            let tendermint = Arc::downgrade(&self.engine());
-            let client = Arc::downgrade(&self.client());
-            service.new_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api))
-        };
-
-        self.extension = Some(Arc::clone(&extension));
-        self.restore();
-    }
-
     fn block_reward(&self, _block_number: u64) -> u64 {
         self.block_reward
     }
@@ -1361,8 +1343,18 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
-        let mut guard = self.inner.lock();
-        guard.register_network_extension_to_service(service)
+        let mut inner = self.inner.lock();
+        let weak_self = self.weak_self.read();
+
+        let extension = {
+            let timeouts = inner.timeouts.clone();
+            let tendermint = Weak::clone(weak_self.as_ref().expect("Only writes in initialize"));
+            let client = Weak::clone(inner.client.as_ref().expect("Only writes in initialize"));
+            service.new_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api))
+        };
+
+        inner.extension = Some(Arc::clone(&extension));
+        inner.restore();
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {
@@ -1894,11 +1886,11 @@ impl TendermintExtension {
         }
 
         if peer_vote_step.height == tendermint.height {
-            match (tendermint.last_lock, peer_lock_view) {
+            match (tendermint.last_two_thirds_majority.view(), peer_lock_view) {
                 (None, Some(peer_lock_view)) if peer_lock_view < tendermint.view => {
                     ctrace!(
                         ENGINE,
-                        "Peer has a lock on {}-{} but I don't have it",
+                        "Peer has a two thirds majority prevotes on {}-{} but I don't have it",
                         peer_vote_step.height,
                         peer_lock_view
                     );
@@ -1917,7 +1909,7 @@ impl TendermintExtension {
                 {
                     ctrace!(
                         ENGINE,
-                        "Peer has a lock on {}-{} which is newer than mine {}",
+                        "Peer has a two thirds majority prevotes on {}-{} which is newer than mine {}",
                         peer_vote_step.height,
                         peer_lock_view,
                         my_lock_view
@@ -2005,29 +1997,23 @@ impl NetworkExtension for TendermintExtension {
 
         let m = UntrustedRlp::new(data);
         match m.as_val() {
-            Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {
-                match t.handle_message(bytes, false) {
-                    Err(EngineError::FutureMessage {
+            Ok(TendermintMessage::ConsensusMessage(ref bytes)) => match t.handle_message(bytes, false) {
+                Err(EngineError::FutureMessage {
+                    future_height,
+                    current_height,
+                }) => {
+                    cdebug!(
+                        ENGINE,
+                        "Could not handle future message from {}, in height {}",
                         future_height,
-                        current_height,
-                    }) => {
-                        cdebug!(
-                            ENGINE,
-                            "Could not handle future message from {}, in height {}",
-                            future_height,
-                            current_height
-                        );
-                    }
-                    Err(e) => {
-                        cinfo!(ENGINE, "Failed to handle message {:?}", e);
-                    }
-                    Ok(_) => {}
+                        current_height
+                    );
                 }
-
-                if let Err(e) = t.handle_message(bytes, false) {
+                Err(e) => {
                     cinfo!(ENGINE, "Failed to handle message {:?}", e);
                 }
-            }
+                Ok(_) => {}
+            },
             Ok(TendermintMessage::ProposalBlock {
                 signature,
                 view,
