@@ -149,6 +149,11 @@ export const ERROR = {
         message: $anything,
         data: $containsWord("InvalidOutputWithOrder")
     },
+    INVALID_SPENT_QUANTITY: {
+        code: -32099,
+        message: $anything,
+        data: $containsWord("InvalidSpentQuantity")
+    },
     ORDER_EXPIRED: {
         code: -32099,
         message: $anything,

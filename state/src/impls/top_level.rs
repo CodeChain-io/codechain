@@ -350,13 +350,13 @@ impl TopLevelState {
             Action::MintAsset {
                 approvals,
                 approver,
-                administrator,
+                registrar,
                 ..
             }
             | Action::ChangeAssetScheme {
                 approvals,
                 approver,
-                administrator,
+                registrar,
                 ..
             } => {
                 if let Some(approver) = approver {
@@ -368,11 +368,11 @@ impl TopLevelState {
                         .into())
                     }
                 }
-                if let Some(administrator) = administrator {
-                    if !is_active_account(self, administrator)? {
+                if let Some(registrar) = registrar {
+                    if !is_active_account(self, registrar)? {
                         return Err(RuntimeError::NonActiveAccount {
-                            address: *administrator,
-                            name: "administrator of asset".to_string(),
+                            address: *registrar,
+                            name: "registrar of asset".to_string(),
                         }
                         .into())
                     }
@@ -728,7 +728,7 @@ impl TopLevelState {
         metadata: String,
         amount: u64,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> TrieResult<bool> {
@@ -742,7 +742,7 @@ impl TopLevelState {
                     metadata,
                     amount,
                     approver,
-                    administrator,
+                    registrar,
                     allowed_script_hashes,
                     pool,
                 )?;
@@ -3237,7 +3237,7 @@ mod tests_tx {
 
 
     #[test]
-    fn regular_account_cannot_be_administrator() {
+    fn regular_account_cannot_be_registrar() {
         let (sender, sender_public, _) = address();
         let (master_account, master_public, _) = address();
         let (regular_account, regular_public, _) = address();
@@ -3256,7 +3256,7 @@ mod tests_tx {
         let transaction = mint_asset!(
             Box::new(asset_mint_output!(H160::random(), vec![], 30)),
             "metadata".to_string(),
-            administrator: regular_account
+            registrar: regular_account
         );
         let transaction_tracker = transaction.tracker().unwrap();
         let asset_type = Blake::blake(transaction_tracker);
@@ -3266,7 +3266,7 @@ mod tests_tx {
             Ok(Invoice::Failure(
                 RuntimeError::NonActiveAccount {
                     address: regular_account,
-                    name: "administrator of asset".to_string(),
+                    name: "registrar of asset".to_string(),
                 }
                 .to_string()
             )),
