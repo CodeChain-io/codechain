@@ -27,7 +27,7 @@ pub struct AssetScheme {
     metadata: String,
     supply: Uint,
     approver: Option<PlatformAddress>,
-    administrator: Option<PlatformAddress>,
+    registrar: Option<PlatformAddress>,
     allowed_script_hashes: Vec<H160>,
     pool: Vec<Asset>,
 }
@@ -38,10 +38,10 @@ impl AssetScheme {
             metadata: asset_scheme.metadata().clone(),
             supply: asset_scheme.supply().into(),
             approver: asset_scheme.approver().as_ref().map(|approver| PlatformAddress::new_v1(network_id, *approver)),
-            administrator: asset_scheme
-                .administrator()
+            registrar: asset_scheme
+                .registrar()
                 .as_ref()
-                .map(|administrator| PlatformAddress::new_v1(network_id, *administrator)),
+                .map(|registrar| PlatformAddress::new_v1(network_id, *registrar)),
             allowed_script_hashes: asset_scheme.allowed_script_hashes().to_owned(),
             pool: asset_scheme.pool().iter().map(|asset| asset.clone().into()).collect(),
         }

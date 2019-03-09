@@ -43,8 +43,8 @@ The output becomes the lock script hash and parameters of the new asset.
 A permissioned asset is an asset that has an approver.
 This kind of asset needs permission to be transferred.
 
-A centralized asset is an asset that has an administrator.
-The administrator can change the asset scheme and transfer the asset arbitrarily.
+A regulated asset is an asset that has an registrar.
+The registrar can change the asset scheme and transfer the asset arbitrarily.
 
 ```rust
 MintAsset {
@@ -52,7 +52,7 @@ MintAsset {
     shard_id: ShardId,
     metadata: String,
     approver: Option<PlatformAddress>,
-    administrator: Option<PlatformAddress>,
+    registrar: Option<PlatformAddress>,
 
     output: AssetMintOutput,
 
@@ -134,7 +134,7 @@ Please see [this page](./Asset-Exchange-Protocol.md) for more information.
 ## ChangeAssetScheme
 
 It changes the asset scheme.
-Only the administrator of the asset can use it.
+Only the registrar of the asset can use it.
 
 ```rust
 ChangeAssetScheme {
@@ -142,7 +142,7 @@ ChangeAssetScheme {
     asset_type: H256,
     metadata: String,
     approver: Option<PlatformAddress>,
-    administrator: Option<PlatformAddress>,
+    registrar: Option<PlatformAddress>,
 
     approvals: Vec<Signature>,
 }
@@ -159,7 +159,7 @@ ComposeAsset {
     shard_id: ShardId,
     metadata: String,
     approver: Option<PlatformAddress>,
-    administrator: Option<PlatformAddress>,
+    registrar: Option<PlatformAddress>,
     inputs: Vec<AssetTransferInput>,
     output: Box<AssetMintOutput>,
 

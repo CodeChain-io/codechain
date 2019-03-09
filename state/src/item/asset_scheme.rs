@@ -29,7 +29,7 @@ pub struct AssetScheme {
     metadata: String,
     supply: u64,
     approver: Option<Address>,
-    administrator: Option<Address>,
+    registrar: Option<Address>,
     allowed_script_hashes: Vec<H160>,
     pool: Vec<Asset>,
 }
@@ -39,14 +39,14 @@ impl AssetScheme {
         metadata: String,
         supply: u64,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
     ) -> Self {
         Self {
             metadata,
             supply,
             approver,
-            administrator,
+            registrar,
             allowed_script_hashes,
             pool: Vec::new(),
         }
@@ -56,7 +56,7 @@ impl AssetScheme {
         metadata: String,
         supply: u64,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> Self {
@@ -64,7 +64,7 @@ impl AssetScheme {
             metadata,
             supply,
             approver,
-            administrator,
+            registrar,
             allowed_script_hashes,
             pool,
         }
@@ -82,8 +82,8 @@ impl AssetScheme {
         &self.approver
     }
 
-    pub fn administrator(&self) -> &Option<Address> {
-        &self.administrator
+    pub fn registrar(&self) -> &Option<Address> {
+        &self.registrar
     }
 
     pub fn allowed_script_hashes(&self) -> &[H160] {
@@ -94,8 +94,8 @@ impl AssetScheme {
         self.approver.is_some()
     }
 
-    pub fn is_centralized(&self) -> bool {
-        self.administrator.is_some()
+    pub fn is_regulated(&self) -> bool {
+        self.registrar.is_some()
     }
 
     pub fn is_allowed_script_hash(&self, lock_script_hash: &H160) -> bool {
@@ -111,12 +111,12 @@ impl AssetScheme {
         &mut self,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
     ) {
         self.metadata = metadata;
         self.approver = approver;
-        self.administrator = administrator;
+        self.registrar = registrar;
         self.allowed_script_hashes = allowed_script_hashes;
     }
 
@@ -153,7 +153,7 @@ impl Encodable for AssetScheme {
             .append(&self.metadata)
             .append(&self.supply)
             .append(&self.approver)
-            .append(&self.administrator)
+            .append(&self.registrar)
             .append_list(&self.allowed_script_hashes)
             .append_list(&self.pool);
     }
@@ -178,7 +178,7 @@ impl Decodable for AssetScheme {
             metadata: rlp.val_at(1)?,
             supply: rlp.val_at(2)?,
             approver: rlp.val_at(3)?,
-            administrator: rlp.val_at(4)?,
+            registrar: rlp.val_at(4)?,
             allowed_script_hashes: rlp.list_at(5)?,
             pool: rlp.list_at(6)?,
         })
