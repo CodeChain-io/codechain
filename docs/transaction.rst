@@ -49,10 +49,10 @@ The following is a brief explanation for different actions you can use through a
 
 Mint Asset
 ==============================
-`MintAsset` issues a new asset. When issuing a new asset, the asset has fields that can be designated, such as metadata, approver, and administrator. There are two types of assets that can be issued:
+`MintAsset` issues a new asset. When issuing a new asset, the asset has fields that can be designated, such as metadata, approver, and registrar. There are two types of assets that can be issued:
 
 - A permissioned asset is an asset that has an approver. These kind of assets need permission from the specifically assigned approver in order to be transferred to other addresses.
-- A centralized asset is an asset that has an administrator. The administrator can change the asset scheme and is allowed to transfer the asset arbitrarily.
+- A regulated asset is an asset that has an registrar. The registrar can change the asset scheme and is allowed to transfer the asset arbitrarily.
 
 Transfer Asset
 ==============================
@@ -60,7 +60,7 @@ Transfer Asset
 
 Change Asset Scheme
 ==============================
-When minting assets as described above, you create an asset scheme. This scheme defines properties of a specific asset, such as the metadata, and through `ChangeAssetScheme`, the administrator can change an asset's scheme. However, it is important to note that only the administrator has access to `ChangeAssetScheme`.
+When minting assets as described above, you create an asset scheme. This scheme defines properties of a specific asset, such as the metadata, and through `ChangeAssetScheme`, the registrar can change an asset's scheme. However, it is important to note that only the registrar has access to `ChangeAssetScheme`.
 
 Compose Asset
 ==============================

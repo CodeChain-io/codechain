@@ -1214,7 +1214,7 @@ pub mod test {
                     supply: ::std::u64::MAX,
                 }),
                 approver: None,
-                administrator: None,
+                registrar: None,
                 allowed_script_hashes: vec![],
                 approvals: vec![],
             },
@@ -1366,7 +1366,7 @@ pub mod test {
                 shard_id: 0,
                 metadata: String::from_utf8(vec![b'a'; 1]).unwrap(),
                 approver: None,
-                administrator: None,
+                registrar: None,
                 allowed_script_hashes: vec![],
                 output: Box::new(AssetMintOutput {
                     lock_script_hash: H160::zero(),
@@ -1489,7 +1489,7 @@ pub mod test {
                 shard_id: 0,
                 metadata: String::from_utf8(vec![b'a'; transaction_count]).unwrap(),
                 approver: None,
-                administrator: None,
+                registrar: None,
                 allowed_script_hashes: vec![],
                 output: Box::new(AssetMintOutput {
                     lock_script_hash: H160::zero(),
