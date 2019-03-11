@@ -18,10 +18,15 @@ use ckey::Address;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 const ACTION_TAG_TRANSFER_CCS: u8 = 1;
+const ACTION_TAG_DELEGATE_CCS: u8 = 2;
 
 #[derive(Debug)]
 pub enum Action {
     TransferCCS {
+        address: Address,
+        quantity: u64,
+    },
+    DelegateCCS {
         address: Address,
         quantity: u64,
     },
@@ -34,6 +39,10 @@ impl Encodable for Action {
                 address,
                 quantity,
             } => s.begin_list(3).append(&ACTION_TAG_TRANSFER_CCS).append(address).append(quantity),
+            Action::DelegateCCS {
+                address,
+                quantity,
+            } => s.begin_list(3).append(&ACTION_TAG_DELEGATE_CCS).append(address).append(quantity),
         };
     }
 }
@@ -51,6 +60,19 @@ impl Decodable for Action {
                     })
                 }
                 Ok(Action::TransferCCS {
+                    address: rlp.val_at(1)?,
+                    quantity: rlp.val_at(2)?,
+                })
+            }
+            ACTION_TAG_DELEGATE_CCS => {
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpInvalidLength {
+                        expected: 3,
+                        got: item_count,
+                    })
+                }
+                Ok(Action::DelegateCCS {
                     address: rlp.val_at(1)?,
                     quantity: rlp.val_at(2)?,
                 })
