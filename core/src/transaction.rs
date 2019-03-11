@@ -157,6 +157,12 @@ pub struct SignedTransaction {
     signer_public: Public,
 }
 
+pub struct PendingSignedTransactions {
+    pub transactions: Vec<SignedTransaction>,
+    pub last_timestamp: Option<u64>,
+}
+
+
 impl rlp::Encodable for SignedTransaction {
     fn rlp_append(&self, s: &mut RlpStream) {
         self.tx.rlp_append_sealed_transaction(s)

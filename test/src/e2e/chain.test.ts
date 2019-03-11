@@ -136,7 +136,7 @@ describe("chain", function() {
 
     it("getPendingTransactions", async function() {
         const pending = await node.sdk.rpc.chain.getPendingTransactions();
-        expect(pending.length).to.equal(0);
+        expect(pending.transactions.length).to.equal(0);
     });
 
     it("sendPayTx, getTransactionResult, getTransaction", async function() {

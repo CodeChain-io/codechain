@@ -23,7 +23,9 @@ use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
 
-use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
+use super::super::types::{
+    AssetScheme, Block, BlockNumberAndHash, OwnedAsset, PendingTransactions, Text, Transaction, UnsignedTransaction,
+};
 
 build_rpc_trait! {
     pub trait Chain {
@@ -137,11 +139,11 @@ build_rpc_trait! {
 
         /// Gets transactions in the current mem pool.
         # [rpc(name = "chain_getPendingTransactions")]
-        fn get_pending_transactions(&self) -> Result<Vec<Transaction>>;
+        fn get_pending_transactions(&self, Option<u64>, Option<u64>) -> Result<PendingTransactions>;
 
        /// Gets the count of transactions in the current mem pool.
         # [rpc(name = "chain_getPendingTransactionsCount")]
-        fn get_pending_transactions_count(&self) -> Result<usize>;
+        fn get_pending_transactions_count(&self, Option<u64>, Option<u64>) -> Result<usize>;
 
         /// Gets the mining given block number
         # [rpc(name = "chain_getMiningReward")]

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccore::{LocalizedTransaction, SignedTransaction};
+use ccore::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use cjson::uint::Uint;
 use ckey::{NetworkId, Signature};
 use primitives::H256;
@@ -34,6 +34,23 @@ pub struct Transaction {
     pub action: ActionWithTracker,
     pub hash: H256,
     pub sig: Signature,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingTransactions {
+    transactions: Vec<Transaction>,
+    last_timestamp: Option<u64>,
+}
+
+impl From<PendingSignedTransactions> for PendingTransactions {
+    fn from(p: PendingSignedTransactions) -> Self {
+        let transactions = p.transactions.into_iter().map(From::from).collect();
+        Self {
+            transactions,
+            last_timestamp: p.last_timestamp,
+        }
+    }
 }
 
 impl Transaction {

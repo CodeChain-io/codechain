@@ -29,6 +29,7 @@ pub use self::config::ClientConfig;
 pub use self::error::Error;
 pub use self::test_client::TestBlockChainClient;
 
+use std::ops::Range;
 use std::sync::Arc;
 
 use ckey::{Address, PlatformAddress, Public};
@@ -47,7 +48,7 @@ use crate::blockchain_info::BlockChainInfo;
 use crate::encoded;
 use crate::error::{BlockImportError, Error as CoreError};
 use crate::scheme::CommonParams;
-use crate::transaction::{LocalizedTransaction, SignedTransaction};
+use crate::transaction::{LocalizedTransaction, PendingSignedTransactions};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides `chain_info` method
@@ -230,10 +231,10 @@ pub trait BlockChainClient:
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: NodeId);
 
     /// List all transactions that are allowed into the next block.
-    fn ready_transactions(&self) -> Vec<SignedTransaction>;
+    fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions;
 
     /// Get the count of all pending transactions currently in the mem_pool.
-    fn count_pending_transactions(&self) -> usize;
+    fn count_pending_transactions(&self, range: Range<u64>) -> usize;
 
     /// Check there are transactions which are allowed into the next block.
     fn is_pending_queue_empty(&self) -> bool;

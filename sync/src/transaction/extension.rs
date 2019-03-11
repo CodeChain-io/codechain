@@ -138,7 +138,7 @@ impl NetworkExtension for Extension {
 
 impl Extension {
     fn random_broadcast(&self) {
-        let transactions = self.client.ready_transactions();
+        let transactions = self.client.ready_transactions(0..(::std::u64::MAX)).transactions;
         if transactions.is_empty() {
             ctrace!(SYNC_TX, "No transactions to propagate");
             return
