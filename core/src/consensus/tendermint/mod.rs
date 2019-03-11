@@ -128,7 +128,7 @@ impl Tendermint {
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let machine = Arc::new(machine);
         let inner = TendermintInner::new(&our_params, machine.clone());
-        let stake = stake::Stake::new(our_params.genesis_stakes);
+        let stake = stake::Stake::new(our_params.genesis_stakes, our_params.validators);
         let action_handlers: Vec<Arc<ActionHandler>> = vec![Arc::new(stake)];
 
         let engine = Arc::new(Tendermint {

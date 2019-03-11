@@ -19,12 +19,14 @@ import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 import { toHex } from "codechain-sdk/lib/utils";
+import { PlatformAddress, H256 } from "codechain-primitives/lib";
 import "mocha";
 import {
     faucetAddress,
     faucetSecret,
     stakeActionHandlerId,
     validator0Address,
+    validator0Secret,
     validator1Address,
     validator2Address,
     validator3Address
@@ -65,6 +67,29 @@ describe("Staking", function() {
         await Promise.all(nodes.map(node => node.start()));
     });
 
+    async function connectEachOther() {
+        await promiseExpect.shouldFulfill(
+            "connect",
+            Promise.all([
+                nodes[0].connect(nodes[1]),
+                nodes[0].connect(nodes[2]),
+                nodes[0].connect(nodes[3]),
+                nodes[1].connect(nodes[2]),
+                nodes[1].connect(nodes[3]),
+                nodes[2].connect(nodes[3])
+            ])
+        );
+        await promiseExpect.shouldFulfill(
+            "wait peers",
+            Promise.all([
+                nodes[0].waitPeers(4 - 1),
+                nodes[1].waitPeers(4 - 1),
+                nodes[2].waitPeers(4 - 1),
+                nodes[3].waitPeers(4 - 1)
+            ])
+        );
+    }
+
     async function getAllStakingInfo() {
         const validatorAddresses = [
             faucetAddress,
@@ -93,6 +118,110 @@ describe("Staking", function() {
         return { amounts, stakeholders };
     }
 
+    async function getAllDelegation() {
+        const validatorAddresses = [
+            faucetAddress,
+            validator0Address,
+            validator1Address,
+            validator2Address,
+            validator3Address
+        ];
+        const delegations = await promiseExpect.shouldFulfill(
+            "get customActionData",
+            Promise.all(
+                validatorAddresses.map(addr =>
+                    nodes[0].sdk.rpc.engine.getCustomActionData(
+                        stakeActionHandlerId,
+                        ["Delegation", addr.accountId.toEncodeObject()]
+                    )
+                )
+            )
+        );
+        return delegations;
+    }
+
+    async function sendStakeToken(params: {
+        senderAddress: PlatformAddress;
+        senderSecret: string;
+        receiverAddress: PlatformAddress;
+        quantity: number;
+        fee?: number;
+    }): Promise<boolean> {
+        const { fee = 10 } = params;
+
+        const hash = await promiseExpect.shouldFulfill(
+            "sendSignTransaction",
+            nodes[0].sdk.rpc.chain.sendSignedTransaction(
+                nodes[0].sdk.core
+                    .createCustomTransaction({
+                        handlerId: stakeActionHandlerId,
+                        bytes: Buffer.from(
+                            RLP.encode([
+                                1,
+                                params.receiverAddress.accountId.toEncodeObject(),
+                                params.quantity
+                            ])
+                        )
+                    })
+                    .sign({
+                        secret: params.senderSecret,
+                        seq: await nodes[0].sdk.rpc.chain.getSeq(
+                            params.senderAddress
+                        ),
+                        fee: fee
+                    })
+            )
+        );
+
+        return (await promiseExpect.shouldFulfill(
+            "getTransactionResult",
+            nodes[0].sdk.rpc.chain.getTransactionResult(hash, {
+                timeout: 120 * 1000
+            })
+        ))!;
+    }
+
+    async function delegateToken(params: {
+        senderAddress: PlatformAddress;
+        senderSecret: string;
+        receiverAddress: PlatformAddress;
+        quantity: number;
+        fee?: number;
+    }): Promise<boolean> {
+        const { fee = 10 } = params;
+
+        const hash = await promiseExpect.shouldFulfill(
+            "sendSignTransaction",
+            nodes[0].sdk.rpc.chain.sendSignedTransaction(
+                nodes[0].sdk.core
+                    .createCustomTransaction({
+                        handlerId: stakeActionHandlerId,
+                        bytes: Buffer.from(
+                            RLP.encode([
+                                2,
+                                params.receiverAddress.accountId.toEncodeObject(),
+                                params.quantity
+                            ])
+                        )
+                    })
+                    .sign({
+                        secret: params.senderSecret,
+                        seq: await nodes[0].sdk.rpc.chain.getSeq(
+                            params.senderAddress
+                        ),
+                        fee: fee
+                    })
+            )
+        );
+
+        return (await promiseExpect.shouldFulfill(
+            "getTransactionResult",
+            nodes[0].sdk.rpc.chain.getTransactionResult(hash, {
+                timeout: 120 * 1000
+            })
+        ))!;
+    }
+
     it("should have proper initial stake tokens", async function() {
         const { amounts, stakeholders } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
@@ -109,60 +238,18 @@ describe("Staking", function() {
     });
 
     it("should send stake tokens", async function() {
-        await promiseExpect.shouldFulfill(
-            "connect",
-            Promise.all([
-                nodes[0].connect(nodes[1]),
-                nodes[0].connect(nodes[2]),
-                nodes[0].connect(nodes[3]),
-                nodes[1].connect(nodes[2]),
-                nodes[1].connect(nodes[3]),
-                nodes[2].connect(nodes[3])
-            ])
-        );
-        await promiseExpect.shouldFulfill(
-            "wait peers",
-            Promise.all([
-                nodes[0].waitPeers(4 - 1),
-                nodes[1].waitPeers(4 - 1),
-                nodes[2].waitPeers(4 - 1),
-                nodes[3].waitPeers(4 - 1)
-            ])
-        );
+        await connectEachOther();
 
-        const hash = await promiseExpect.shouldFulfill(
-            "sendSignTransaction",
-            nodes[0].sdk.rpc.chain.sendSignedTransaction(
-                nodes[0].sdk.core
-                    .createCustomTransaction({
-                        handlerId: stakeActionHandlerId,
-                        bytes: Buffer.from(
-                            RLP.encode([
-                                1,
-                                validator0Address.accountId.toEncodeObject(),
-                                100
-                            ])
-                        )
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        seq: await nodes[0].sdk.rpc.chain.getSeq(faucetAddress),
-                        fee: 10
-                    })
-            )
-        );
-
-        const result = (await promiseExpect.shouldFulfill(
-            "getTransactionResult",
-            nodes[0].sdk.rpc.chain.getTransactionResult(hash, {
-                timeout: 120 * 1000
-            })
-        ))!;
+        const result = await sendStakeToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 100
+        });
 
         expect(result).to.be.true;
 
         const { amounts, stakeholders } = await getAllStakingInfo();
-
         expect(amounts).to.be.deep.equal([
             toHex(RLP.encode(100000 - 100)),
             toHex(RLP.encode(100)),
@@ -170,7 +257,6 @@ describe("Staking", function() {
             null,
             null
         ]);
-
         expect(stakeholders).to.be.equal(
             toHex(
                 RLP.encode(
@@ -182,6 +268,67 @@ describe("Staking", function() {
             )
         );
     }).timeout(60_000);
+
+    it("can delegate tokens", async function() {
+        await connectEachOther();
+
+        const result = await delegateToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 100
+        });
+
+        expect(result).to.be.true;
+
+        const { amounts } = await getAllStakingInfo();
+        expect(amounts).to.be.deep.equal([
+            toHex(RLP.encode(100000 - 100)),
+            null,
+            null,
+            null,
+            null
+        ]);
+
+        const delegations = await getAllDelegation();
+        expect(delegations).to.be.deep.equal([
+            toHex(
+                RLP.encode([
+                    [validator0Address.accountId.toEncodeObject(), 100]
+                ])
+            ),
+            null,
+            null,
+            null,
+            null
+        ]);
+    });
+
+    it("cannot delegate to non-validator", async function() {
+        await connectEachOther();
+        // give some ccs to delegate.
+        await sendStakeToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 200
+        });
+        // give some ccc to pay fee
+        await nodes[0].sendPayTx({
+            recipient: validator0Address,
+            quantity: 100000
+        });
+
+        // delegate
+        const result = await delegateToken({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            receiverAddress: faucetAddress,
+            quantity: 100
+        });
+
+        expect(result).to.be.false;
+    });
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
