@@ -3,7 +3,7 @@
   "engine": {
     "tendermint": {
       "params": {
-        "blockReward": "0x3b9aca00",
+        "blockReward": "0x0",
         "validators": [
           "0xf3b0ff30533714b70d9ef1a2752326625567eaeeaedb7eee5ff530fca25750d36c9c02539553910beb4b3cda846b5d20bdc619b0226234a5f7c15dd029835635",
           "0xde143724024b36fef78a315430931bb6d16faeb71285304ab2bbe3de59d1ecf76ddea1aa9e7bb402928956cee3ae3fb5ea156e319aa3e53ebc9fb8b01dec313c",
