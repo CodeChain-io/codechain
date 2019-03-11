@@ -962,15 +962,16 @@ impl TendermintInner {
             return
         }
 
-        if token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE && self.votes_received_changed {
-            self.votes_received_changed = false;
-            self.broadcast_state(
-                &self.vote_step(),
-                self.proposal,
-                self.last_two_thirds_majority.view(),
-                self.votes_received,
-            );
-
+        if token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE {
+            if self.votes_received_changed {
+                self.votes_received_changed = false;
+                self.broadcast_state(
+                    &self.vote_step(),
+                    self.proposal,
+                    self.last_two_thirds_majority.view(),
+                    self.votes_received,
+                );
+            }
             return
         }
 

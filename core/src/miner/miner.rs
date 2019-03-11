@@ -254,8 +254,8 @@ impl Miner {
         mem_pool: &mut MemPool,
     ) -> Vec<Result<TransactionImportResult, Error>> {
         let best_block_header = client.best_block_header().decode();
-        let insertion_time = client.chain_info().best_block_number;
-        let insertion_timestamp = client.chain_info().best_block_timestamp;
+        let current_block_number = client.chain_info().best_block_number;
+        let current_timestamp = client.chain_info().best_block_timestamp;
         let mut inserted = Vec::with_capacity(transactions.len());
         let mut to_insert = Vec::new();
         let mut tx_hashes = Vec::new();
@@ -311,7 +311,7 @@ impl Miner {
             }
         };
 
-        let insertion_results = mem_pool.add(to_insert, insertion_time, insertion_timestamp, &fetch_account);
+        let insertion_results = mem_pool.add(to_insert, current_block_number, current_timestamp, &fetch_account);
 
         debug_assert_eq!(insertion_results.len(), intermediate_results.iter().filter(|r| r.is_ok()).count());
         let mut insertion_results_index = 0;
@@ -684,10 +684,10 @@ impl MinerService for Miner {
                     balance: chain.latest_balance(&a),
                 }
             };
-            let time = chain.chain_info().best_block_number;
-            let timestamp = chain.chain_info().best_block_timestamp;
+            let current_block_number = chain.chain_info().best_block_number;
+            let current_timestamp = chain.chain_info().best_block_timestamp;
             let mut mem_pool = self.mem_pool.write();
-            mem_pool.remove_old(&fetch_account, time, timestamp);
+            mem_pool.remove_old(&fetch_account, current_block_number, current_timestamp);
         }
 
         if !self.options.no_reseal_timer {

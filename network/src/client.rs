@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread::{spawn, JoinHandle};
+use std::thread::{Builder, JoinHandle};
 
 use cio::IoChannel;
 use crossbeam_channel as crossbeam;
@@ -146,43 +146,48 @@ impl Client {
 
         let (quit_sender, quit_receiver) = crossbeam::bounded(1);
         let (init_sender, init_receiver) = crossbeam::bounded(1);
-        let join = Some(spawn(move || {
-            init_receiver.recv().expect("The main thread must send one message");
-            cloned_extension.on_initialize();
-            loop {
-                crossbeam::select! {
-                    recv(rx) -> msg => {
-                        match msg {
-                            Ok(ExtensionMessage::NodeAdded(id, version)) => {
-                                cloned_extension.on_node_added(&id, version);
+        let join = Some(
+            Builder::new()
+                .name(format!("{}.ext", name))
+                .spawn(move || {
+                    init_receiver.recv().expect("The main thread must send one message");
+                    cloned_extension.on_initialize();
+                    loop {
+                        crossbeam::select! {
+                            recv(rx) -> msg => {
+                                match msg {
+                                    Ok(ExtensionMessage::NodeAdded(id, version)) => {
+                                        cloned_extension.on_node_added(&id, version);
+                                    }
+                                    Ok(ExtensionMessage::NodeRemoved(id)) => {
+                                        cloned_extension.on_node_removed(&id);
+                                    }
+                                    Ok(ExtensionMessage::Timeout(token)) => {
+                                        cloned_extension.on_timeout(token);
+                                    }
+                                    Ok(ExtensionMessage::Message(id, message)) => {
+                                        cloned_extension.on_message(&id, &message);
+                                    }
+                                    Err(crossbeam::RecvError) => {
+                                        cinfo!(NETAPI, "The channel for {} had been disconnected", name);
+                                        break
+                                    }
+                                }
                             }
-                            Ok(ExtensionMessage::NodeRemoved(id)) => {
-                                cloned_extension.on_node_removed(&id);
-                            }
-                            Ok(ExtensionMessage::Timeout(token)) => {
-                                cloned_extension.on_timeout(token);
-                            }
-                            Ok(ExtensionMessage::Message(id, message)) => {
-                                cloned_extension.on_message(&id, &message);
-                            }
-                            Err(crossbeam::RecvError) => {
-                                cinfo!(NETAPI, "The channel for {} had been disconnected", name);
-                                break
+                            recv(quit_receiver) -> msg => {
+                                match msg {
+                                    Ok(()) => break,
+                                    Err(crossbeam::RecvError) => {
+                                        cinfo!(NETAPI, "The quit channel for {} had been disconnected", name);
+                                        break
+                                    }
+                                }
                             }
                         }
                     }
-                    recv(quit_receiver) -> msg => {
-                        match msg {
-                            Ok(()) => break,
-                            Err(crossbeam::RecvError) => {
-                                cinfo!(NETAPI, "The quit channel for {} had been disconnected", name);
-                                break
-                            }
-                        }
-                    }
-                }
-            }
-        }))
+                })
+                .unwrap(),
+        )
         .into();
 
         *api.name.lock() = Some(name);
