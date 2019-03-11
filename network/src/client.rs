@@ -118,9 +118,10 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new_extension<T, F>(&self, factory: F) -> Arc<T>
+    pub fn register_extension<T, E, F>(&self, factory: F) -> (crossbeam::Sender<E>, Arc<T>)
     where
-        T: 'static + Sized + NetworkExtension,
+        T: 'static + Sized + NetworkExtension<E>,
+        E: 'static + Sized + Send,
         F: FnOnce(Arc<Api>) -> T, {
         let mut extensions = self.extensions.write();
         let timer = self.timer_loop.new_timer();
@@ -141,47 +142,87 @@ impl Client {
         };
         let extension = Arc::new(factory(Arc::clone(&api) as Arc<Api>));
         let name = extension.name();
-
-        let cloned_extension = Arc::clone(&extension);
+        let versions = extension.versions().to_vec();
+        let need_encryption = extension.need_encryption();
 
         let (quit_sender, quit_receiver) = crossbeam::bounded(1);
         let (init_sender, init_receiver) = crossbeam::bounded(1);
+        let (event_sender, event_receiver) = crossbeam::unbounded();
+
+        let cloned_extension = Arc::clone(&extension);
+
         let join = Some(
             Builder::new()
                 .name(format!("{}.ext", name))
                 .spawn(move || {
+                    *api.name.lock() = Some(name);
+                    if need_encryption {
+                        api.need_encryption.store(true, Ordering::SeqCst);
+                    }
+                    api.timer.set_name(name);
+                    api.timer.set_handler(Arc::downgrade(&api));
+
                     init_receiver.recv().expect("The main thread must send one message");
-                    cloned_extension.on_initialize();
+                    extension.on_initialize();
+                    let mut s = crossbeam::Select::new();
+                    let rx_index = s.recv(&rx);
+                    let quit_index = s.recv(&quit_receiver);
+                    let mut event_closed = false;
                     loop {
-                        crossbeam::select! {
-                            recv(rx) -> msg => {
-                                match msg {
-                                    Ok(ExtensionMessage::NodeAdded(id, version)) => {
-                                        cloned_extension.on_node_added(&id, version);
+                        let mut s = s.clone();
+                        // Not all extension uses event channel, so closing the event channel is natural thing.
+                        // TODO: Please make this dynamic selection simply.
+                        let event_index = if event_closed {
+                            // It's a trick using that the index increases sequentially form 0.
+                            // TODO: Please remove this magic number.
+                            ::std::usize::MAX
+                        } else {
+                            s.recv(&event_receiver)
+                        };
+                        match s.ready() {
+                            index if index == rx_index => match rx.try_recv() {
+                                Ok(ExtensionMessage::NodeAdded(id, version)) => {
+                                    extension.on_node_added(&id, version);
+                                }
+                                Ok(ExtensionMessage::NodeRemoved(id)) => {
+                                    extension.on_node_removed(&id);
+                                }
+                                Ok(ExtensionMessage::Timeout(token)) => {
+                                    extension.on_timeout(token);
+                                }
+                                Ok(ExtensionMessage::Message(id, message)) => {
+                                    extension.on_message(&id, &message);
+                                }
+                                Err(crossbeam::TryRecvError::Empty) => continue, // Handle a spuriously wake-up
+                                Err(crossbeam::TryRecvError::Disconnected) => {
+                                    cinfo!(NETAPI, "The channel for {} had been disconnected", name);
+                                    break
+                                }
+                            },
+                            index if index == quit_index => match quit_receiver.try_recv() {
+                                Ok(()) => break,
+                                Err(crossbeam::TryRecvError::Empty) => continue, // Handle a spuriously wake-up
+                                Err(crossbeam::TryRecvError::Disconnected) => {
+                                    cinfo!(NETAPI, "The quit channel for {} had been disconnected", name);
+                                    break
+                                }
+                            },
+                            index if index == event_index => {
+                                assert!(!event_closed);
+                                match event_receiver.try_recv() {
+                                    Ok(event) => {
+                                        extension.on_event(event);
                                     }
-                                    Ok(ExtensionMessage::NodeRemoved(id)) => {
-                                        cloned_extension.on_node_removed(&id);
-                                    }
-                                    Ok(ExtensionMessage::Timeout(token)) => {
-                                        cloned_extension.on_timeout(token);
-                                    }
-                                    Ok(ExtensionMessage::Message(id, message)) => {
-                                        cloned_extension.on_message(&id, &message);
-                                    }
-                                    Err(crossbeam::RecvError) => {
-                                        cinfo!(NETAPI, "The channel for {} had been disconnected", name);
-                                        break
+                                    Err(crossbeam::TryRecvError::Empty) => continue, // Handle a spuriously wake-up
+                                    Err(crossbeam::TryRecvError::Disconnected) => {
+                                        event_closed = true;
+                                        cdebug!(NETAPI, "The event channel for {} had been disconnected", name);
+                                        continue
                                     }
                                 }
                             }
-                            recv(quit_receiver) -> msg => {
-                                match msg {
-                                    Ok(()) => break,
-                                    Err(crossbeam::RecvError) => {
-                                        cinfo!(NETAPI, "The quit channel for {} had been disconnected", name);
-                                        break
-                                    }
-                                }
+                            index => {
+                                unreachable!("{} is not an expected index of message queue", index);
                             }
                         }
                     }
@@ -190,14 +231,6 @@ impl Client {
         )
         .into();
 
-        *api.name.lock() = Some(name);
-        if extension.need_encryption() {
-            api.need_encryption.store(true, Ordering::SeqCst);
-        }
-        api.timer.set_name(name);
-        api.timer.set_handler(Arc::downgrade(&api));
-
-        let versions = extension.versions().to_vec();
         if extensions
             .insert(
                 name,
@@ -213,7 +246,7 @@ impl Client {
             unreachable!("Duplicated extension name : {}", name)
         }
         init_sender.send(()).unwrap();
-        extension
+        (event_sender, cloned_extension)
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
@@ -273,6 +306,7 @@ enum ExtensionMessage {
 #[cfg(test)]
 mod tests {
     use cio::IoService;
+    use never::Never;
 
     use super::*;
     use crate::SocketAddr;
@@ -321,7 +355,7 @@ mod tests {
         }
     }
 
-    impl NetworkExtension for TestExtension {
+    impl NetworkExtension<Never> for TestExtension {
         fn name(&self) -> &'static str {
             self.name
         }
@@ -371,8 +405,8 @@ mod tests {
         let node_id1 = SocketAddr::v4(127, 0, 0, 1, 8081).into();
         let node_id5 = SocketAddr::v4(127, 0, 0, 1, 8085).into();
 
-        let _e1 = client.new_extension(|_| TestExtension::new("e1"));
-        let _e2 = client.new_extension(|_| TestExtension::new("e2"));
+        let _e1 = client.register_extension(|_| TestExtension::new("e1"));
+        let _e2 = client.register_extension(|_| TestExtension::new("e2"));
 
         // FIXME: The callback is asynchronous, find a way to test it.
 

@@ -109,7 +109,7 @@ struct TendermintInner {
     /// The last confirmed view from the commit step.
     last_confirmed_view: View,
     /// Set used to determine the current validators.
-    validators: Box<ValidatorSet>,
+    validators: Arc<ValidatorSet>,
     /// Reward per block, in base units.
     block_reward: u64,
     /// TimeoutParams for delayed creation of the TendermintExtension.
@@ -126,10 +126,10 @@ impl Tendermint {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
-        let action_handlers: Vec<Arc<ActionHandler>> =
-            vec![Arc::new(stake::Stake::new(our_params.genesis_stakes.clone()))];
         let machine = Arc::new(machine);
-        let inner = TendermintInner::new(our_params, machine.clone());
+        let inner = TendermintInner::new(&our_params, machine.clone());
+        let stake = stake::Stake::new(our_params.genesis_stakes);
+        let action_handlers: Vec<Arc<ActionHandler>> = vec![Arc::new(stake)];
 
         let engine = Arc::new(Tendermint {
             inner: Mutex::new(inner),
@@ -153,7 +153,7 @@ impl Tendermint {
 impl TendermintInner {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     /// Create a new instance of Tendermint engine
-    pub fn new(our_params: TendermintParams, machine: Arc<CodeChainMachine>) -> Self {
+    pub fn new(our_params: &TendermintParams, machine: Arc<CodeChainMachine>) -> Self {
         let chain_notify = TendermintChainNotify::new();
         TendermintInner {
             client: None,
@@ -165,7 +165,7 @@ impl TendermintInner {
             last_two_thirds_majority: TwoThirdsMajority::Empty,
             proposal: None,
             last_confirmed_view: 0,
-            validators: our_params.validators,
+            validators: Arc::clone(&our_params.validators),
             block_reward: our_params.block_reward,
             timeouts: our_params.timeouts,
             extension: None,
@@ -1349,13 +1349,14 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let weak_self = self.weak_self.read();
 
         let extension = {
-            let timeouts = inner.timeouts.clone();
+            let timeouts = inner.timeouts;
             let tendermint = Weak::clone(weak_self.as_ref().expect("Only writes in initialize"));
             let client = Weak::clone(inner.client.as_ref().expect("Only writes in initialize"));
-            service.new_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api))
+            // TODO: Make tendermint use a channel instead of using the extension directly
+            service.register_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api)).1
         };
 
-        inner.extension = Some(Arc::clone(&extension));
+        inner.extension = Some(extension);
         inner.restore();
     }
 
@@ -1956,7 +1957,7 @@ impl TendermintExtension {
     }
 }
 
-impl NetworkExtension for TendermintExtension {
+impl NetworkExtension<Event> for TendermintExtension {
     fn name(&self) -> &'static str {
         "tendermint"
     }
@@ -2063,6 +2064,9 @@ impl NetworkExtension for TendermintExtension {
         }
     }
 }
+
+#[allow(dead_code)]
+pub enum Event {}
 
 #[cfg(test)]
 mod tests {

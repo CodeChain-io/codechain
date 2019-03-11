@@ -25,19 +25,19 @@ use rlp::{Rlp, RlpStream};
 use super::CUSTOM_ACTION_HANDLER_ID;
 
 fn get_account_key(address: &Address) -> H256 {
-    ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(address).into_key()
+    ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 2).append(&"Account").append(address).into_key()
 }
 
 lazy_static! {
-    pub static ref stakeholder_addresses_key: H256 =
+    pub static ref STAKEHOLDER_ADDRESSES_KEY: H256 =
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"StakeholderAddresses").into_key();
 }
 
-pub type StakeBalance = u64;
+pub type StakeQuantity = u64;
 
 pub struct StakeAccount<'a> {
     pub address: &'a Address,
-    pub balance: StakeBalance,
+    pub balance: StakeQuantity,
 }
 
 impl<'a> StakeAccount<'a> {
@@ -47,7 +47,7 @@ impl<'a> StakeAccount<'a> {
 
         let balance = match action_data {
             Some(data) => Rlp::new(&data).as_val(),
-            None => StakeBalance::default(),
+            None => StakeQuantity::default(),
         };
 
         Ok(StakeAccount {
@@ -85,7 +85,7 @@ pub struct Stakeholders(BTreeSet<Address>);
 
 impl Stakeholders {
     pub fn load_from_state(state: &TopLevelState) -> StateResult<Stakeholders> {
-        let action_data = state.action_data(&*stakeholder_addresses_key)?;
+        let action_data = state.action_data(&*STAKEHOLDER_ADDRESSES_KEY)?;
 
         let mut addresses = BTreeSet::new();
 
@@ -104,7 +104,7 @@ impl Stakeholders {
         for address in self.0.iter() {
             rlp.append(address);
         }
-        state.update_action_data(&*stakeholder_addresses_key, rlp.drain().into_vec())?;
+        state.update_action_data(&*STAKEHOLDER_ADDRESSES_KEY, rlp.drain().into_vec())?;
         Ok(())
     }
 

@@ -18,16 +18,16 @@ use std::sync::Arc;
 
 use ccore::{AccountProvider, Client, Miner};
 use clogger::slogger;
-use cnetwork::NetworkControl;
+use cnetwork::{EventSender, NetworkControl};
 use crpc::{MetaIoHandler, Params, Value};
-use csync::BlockSyncExtension;
+use csync::BlockSyncEvent;
 
 pub struct ApiDependencies {
     pub client: Arc<Client>,
     pub miner: Arc<Miner>,
     pub network_control: Arc<NetworkControl>,
     pub account_provider: Arc<AccountProvider>,
-    pub block_sync: Option<Arc<BlockSyncExtension>>,
+    pub block_sync: Option<EventSender<BlockSyncEvent>>,
 }
 
 impl ApiDependencies {

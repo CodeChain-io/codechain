@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 use cnetwork::{Api, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
 use ctimer::TimerToken;
+use never::Never;
 use parking_lot::RwLock;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -51,7 +52,7 @@ impl Extension {
 
 const REFRESH_TOKEN: TimerToken = 0;
 
-impl NetworkExtension for Extension {
+impl NetworkExtension<Never> for Extension {
     fn name(&self) -> &'static str {
         "discovery"
     }

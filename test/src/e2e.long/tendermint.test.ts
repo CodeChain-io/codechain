@@ -18,12 +18,8 @@ import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
-import { toHex } from "codechain-sdk/lib/utils";
 import "mocha";
 import {
-    faucetAddress,
-    faucetSecret,
-    stakeActionHandlerId,
     validator0Address,
     validator1Address,
     validator2Address,
@@ -31,8 +27,6 @@ import {
 } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import CodeChain from "../helper/spawn";
-
-const RLP = require("rlp");
 
 describe("Tendermint ", function() {
     const promiseExpect = new PromiseExpect();
@@ -358,130 +352,6 @@ describe("Tendermint ", function() {
             ])
         );
     }).timeout(60_000);
-
-    describe("Staking", function() {
-        this.timeout(60_000);
-        async function getAllStakingInfo() {
-            const validatorAddresses = [
-                faucetAddress,
-                validator0Address,
-                validator1Address,
-                validator2Address,
-                validator3Address
-            ];
-            const amounts = await promiseExpect.shouldFulfill(
-                "get customActionData",
-                Promise.all(
-                    validatorAddresses.map(addr =>
-                        nodes[0].sdk.rpc.engine.getCustomActionData(
-                            stakeActionHandlerId,
-                            [addr.accountId.toEncodeObject()]
-                        )
-                    )
-                )
-            );
-            const stakeholders = await promiseExpect.shouldFulfill(
-                "get customActionData",
-                nodes[0].sdk.rpc.engine.getCustomActionData(
-                    stakeActionHandlerId,
-                    ["StakeholderAddresses"]
-                )
-            );
-            return { amounts, stakeholders };
-        }
-
-        it("should have proper initial stake tokens", async function() {
-            const { amounts, stakeholders } = await getAllStakingInfo();
-            expect(amounts).to.be.deep.equal([
-                toHex(RLP.encode(100000)),
-                null,
-                null,
-                null,
-                null
-            ]);
-
-            expect(stakeholders).to.be.equal(
-                toHex(RLP.encode([faucetAddress.accountId.toEncodeObject()]))
-            );
-        });
-
-        it("should send stake tokens", async function() {
-            await promiseExpect.shouldFulfill(
-                "connect",
-                Promise.all([
-                    nodes[0].connect(nodes[1]),
-                    nodes[0].connect(nodes[2]),
-                    nodes[0].connect(nodes[3]),
-                    nodes[1].connect(nodes[2]),
-                    nodes[1].connect(nodes[3]),
-                    nodes[2].connect(nodes[3])
-                ])
-            );
-            await promiseExpect.shouldFulfill(
-                "wait peers",
-                Promise.all([
-                    nodes[0].waitPeers(4 - 1),
-                    nodes[1].waitPeers(4 - 1),
-                    nodes[2].waitPeers(4 - 1),
-                    nodes[3].waitPeers(4 - 1)
-                ])
-            );
-
-            const hash = await promiseExpect.shouldFulfill(
-                "sendSignTransaction",
-                nodes[0].sdk.rpc.chain.sendSignedTransaction(
-                    nodes[0].sdk.core
-                        .createCustomTransaction({
-                            handlerId: stakeActionHandlerId,
-                            bytes: Buffer.from(
-                                RLP.encode([
-                                    1,
-                                    validator0Address.accountId.toEncodeObject(),
-                                    100
-                                ])
-                            )
-                        })
-                        .sign({
-                            secret: faucetSecret,
-                            seq: await nodes[0].sdk.rpc.chain.getSeq(
-                                faucetAddress
-                            ),
-                            fee: 10
-                        })
-                )
-            );
-
-            const result = (await promiseExpect.shouldFulfill(
-                "getTransactionResult",
-                nodes[0].sdk.rpc.chain.getTransactionResult(hash, {
-                    timeout: 120 * 1000
-                })
-            ))!;
-
-            expect(result).to.be.true;
-
-            const { amounts, stakeholders } = await getAllStakingInfo();
-
-            expect(amounts).to.be.deep.equal([
-                toHex(RLP.encode(100000 - 100)),
-                toHex(RLP.encode(100)),
-                null,
-                null,
-                null
-            ]);
-
-            expect(stakeholders).to.be.equal(
-                toHex(
-                    RLP.encode(
-                        [
-                            faucetAddress.accountId.toEncodeObject(),
-                            validator0Address.accountId.toEncodeObject()
-                        ].sort()
-                    )
-                )
-            );
-        }).timeout(60_000);
-    });
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
