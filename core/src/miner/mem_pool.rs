@@ -85,7 +85,7 @@ pub struct MemPool {
     /// Maximal time transaction may occupy the pool.
     /// When we reach `max_time_in_pool / 2^3` we re-validate
     /// account balance.
-    max_time_in_pool: PoolingInstant,
+    max_block_number_period_in_pool: PoolingInstant,
     /// Priority queue and fee counter for transactions that can go to block
     current: CurrentQueue,
     /// Priority queue for transactions that has been received but are not yet valid to go to block
@@ -105,7 +105,7 @@ pub struct MemPool {
     /// Check if there's any local transaction from specific account
     is_local_account: HashSet<Public>,
     /// The time when the pool is finally used
-    last_time: PoolingInstant,
+    last_block_number: PoolingInstant,
     /// The timestamp when the pool is finally used
     last_timestamp: u64,
     /// Next id that should be assigned to a transaction imported to the pool
@@ -120,7 +120,7 @@ impl MemPool {
         MemPool {
             minimal_fee: 0,
             fee_bump_shift,
-            max_time_in_pool: DEFAULT_POOLING_PERIOD,
+            max_block_number_period_in_pool: DEFAULT_POOLING_PERIOD,
             current: CurrentQueue::new(),
             future: FutureQueue::new(),
             by_signer_public: Table::new(),
@@ -130,7 +130,7 @@ impl MemPool {
             first_seqs: HashMap::new(),
             next_seqs: HashMap::new(),
             is_local_account: HashSet::new(),
-            last_time: 0,
+            last_block_number: 0,
             last_timestamp: 0,
             next_transaction_id: 0,
             db,
@@ -239,13 +239,13 @@ impl MemPool {
     pub fn add<F>(
         &mut self,
         inputs: Vec<MemPoolInput>,
-        current_time: PoolingInstant,
-        current_timestamp: u64,
+        inserted_block_number: PoolingInstant,
+        inserted_timestamp: u64,
         fetch_account: &F,
     ) -> Vec<Result<TransactionImportResult, Error>>
     where
         F: Fn(&Public) -> AccountDetails, {
-        ctrace!(MEM_POOL, "add() called, time: {}, timestamp: {}", current_time, current_timestamp);
+        ctrace!(MEM_POOL, "add() called, time: {}, timestamp: {}", inserted_block_number, inserted_timestamp);
         let mut insert_results = Vec::new();
         let mut to_insert: HashMap<Public, Vec<u64>> = HashMap::new();
         let mut new_local_accounts = HashSet::new();
@@ -276,7 +276,7 @@ impl MemPool {
 
             let id = self.next_transaction_id;
             self.next_transaction_id += 1;
-            let item = MemPoolItem::new(tx, origin, current_time, id, timelock);
+            let item = MemPoolItem::new(tx, origin, inserted_block_number, id, timelock);
             let order = TransactionOrder::for_transaction(&item, client_account.seq);
             let order_with_tag = TransactionOrderWithTag::new(order, QueueTag::New);
 
@@ -313,16 +313,20 @@ impl MemPool {
             let next_seq = self.next_seqs.get(&public).cloned().unwrap_or(current_seq);
 
             let new_next_seq = if current_seq < first_seq
-                || current_time < self.last_time
-                || current_timestamp < self.last_timestamp
+                || inserted_block_number < self.last_block_number
+                || inserted_timestamp < self.last_timestamp
                 || next_seq < current_seq
             {
-                self.check_transactions(public, current_seq, current_time, current_timestamp)
+                self.check_transactions(public, current_seq, inserted_block_number, inserted_timestamp)
             } else {
                 to_insert
                     .get(&public)
-                    .and_then(|v| self.check_new_transactions(public, v, next_seq, current_time, current_timestamp))
-                    .unwrap_or_else(|| self.check_transactions(public, next_seq, current_time, current_timestamp))
+                    .and_then(|v| {
+                        self.check_new_transactions(public, v, next_seq, inserted_block_number, inserted_timestamp)
+                    })
+                    .unwrap_or_else(|| {
+                        self.check_transactions(public, next_seq, inserted_block_number, inserted_timestamp)
+                    })
             };
 
             let is_this_account_local = new_local_accounts.contains(&public);
@@ -356,8 +360,8 @@ impl MemPool {
 
         self.enforce_limit(&mut batch);
 
-        self.last_time = current_time;
-        self.last_timestamp = current_timestamp;
+        self.last_block_number = inserted_block_number;
+        self.last_timestamp = inserted_timestamp;
 
         assert_eq!(self.current.len() + self.future.len(), self.by_hash.len());
         assert_eq!(self.current.fee_counter.values().sum::<usize>(), self.current.len());
@@ -382,21 +386,21 @@ impl MemPool {
 
     /// Checks the current seq for all transactions' senders in the pool and removes the old transactions.
     /// Expired transactions are removed by this function only.
-    pub fn remove_old<F>(&mut self, fetch_account: &F, current_time: PoolingInstant, current_timestamp: u64)
+    pub fn remove_old<F>(&mut self, fetch_account: &F, current_block_number: PoolingInstant, current_timestamp: u64)
     where
         F: Fn(&Public) -> AccountDetails, {
-        ctrace!(MEM_POOL, "remove_old() called, time: {}, timestamp: {}", current_time, current_timestamp);
+        ctrace!(MEM_POOL, "remove_old() called, time: {}, timestamp: {}", current_block_number, current_timestamp);
         let signers =
             self.by_signer_public.keys().map(|sender| (*sender, fetch_account(sender))).collect::<HashMap<_, _>>();
-        let max_time = self.max_time_in_pool;
-        let balance_check = max_time >> 3;
+        let max_block_number = self.max_block_number_period_in_pool;
+        let balance_check = max_block_number >> 3;
 
         // Clear transactions occupying the pool too long, or expired
         let invalid = self
             .by_hash
             .iter()
             .filter(|&(_, ref item)| !item.origin.is_local())
-            .map(|(hash, item)| (hash, item, current_time.saturating_sub(item.insertion_time)))
+            .map(|(hash, item)| (hash, item, current_block_number.saturating_sub(item.inserted_block_number)))
             .filter_map(|(hash, item, time_diff)| {
                 // FIXME: In PoW, current_timestamp can be roll-backed.
                 // In that case, transactions which are removed in here can be recovered.
@@ -406,7 +410,7 @@ impl MemPool {
                     }
                 }
 
-                if time_diff > max_time {
+                if time_diff > max_block_number {
                     return Some(*hash)
                 }
 
@@ -422,7 +426,7 @@ impl MemPool {
             .collect::<Vec<_>>();
         let fetch_seq =
             |a: &Public| signers.get(a).expect("We fetch details for all signers from both current and future").seq;
-        self.remove(&invalid, &fetch_seq, current_time, current_timestamp);
+        self.remove(&invalid, &fetch_seq, current_block_number, current_timestamp);
     }
 
     // Recover MemPool state from db stored data
@@ -437,7 +441,7 @@ impl MemPool {
         };
         let by_hash = backup::recover_to_data(self.db.as_ref());
 
-        let recover_time = client.chain_info().best_block_number;
+        let recover_block_number = client.chain_info().best_block_number;
         let recover_timestamp = client.chain_info().best_block_timestamp;
 
         let mut max_insertion_id = 0u64;
@@ -471,8 +475,12 @@ impl MemPool {
 
             let next_seq = to_insert
                 .get(&public)
-                .and_then(|v| self.check_new_transactions(public, v, current_seq, recover_time, recover_timestamp))
-                .unwrap_or_else(|| self.check_transactions(public, current_seq, recover_time, recover_timestamp));
+                .and_then(|v| {
+                    self.check_new_transactions(public, v, current_seq, recover_block_number, recover_timestamp)
+                })
+                .unwrap_or_else(|| {
+                    self.check_transactions(public, current_seq, recover_block_number, recover_timestamp)
+                });
 
             self.first_seqs.insert(public, current_seq);
             if next_seq > current_seq {
@@ -487,9 +495,9 @@ impl MemPool {
                 self.is_local_account.remove(&public);
             }
         }
-        // last_time and last_timestamp don't have to be the same as previous mem_pool state.
+        // last_block_number and last_timestamp don't have to be the same as previous mem_pool state.
         // These values are used only to optimize the renewal behavior of next seq and first seq.
-        self.last_time = recover_time;
+        self.last_block_number = recover_block_number;
         self.last_timestamp = recover_timestamp;
         self.next_transaction_id = max_insertion_id + 1;
     }
@@ -503,11 +511,11 @@ impl MemPool {
         &mut self,
         transaction_hashes: &[H256],
         fetch_seq: &F,
-        current_time: PoolingInstant,
+        current_block_number: PoolingInstant,
         current_timestamp: u64,
     ) where
         F: Fn(&Public) -> u64, {
-        ctrace!(MEM_POOL, "remove() called, time: {}, timestamp: {}", current_time, current_timestamp);
+        ctrace!(MEM_POOL, "remove() called, time: {}, timestamp: {}", current_block_number, current_timestamp);
         let mut removed: HashMap<_, _> = HashMap::new();
         let mut batch = backup::backup_batch_with_capacity(transaction_hashes.len());
 
@@ -551,15 +559,15 @@ impl MemPool {
             let next_seq = self.next_seqs.get(&public).cloned().unwrap_or(current_seq);
 
             let new_next_seq = if current_seq < first_seq
-                || current_time < self.last_time
+                || current_block_number < self.last_block_number
                 || current_timestamp < self.last_timestamp
                 || next_seq < current_seq
             {
-                self.check_transactions(public, current_seq, current_time, current_timestamp)
+                self.check_transactions(public, current_seq, current_block_number, current_timestamp)
             } else if let Some(seq) = removed.get(&public) {
                 *seq
             } else {
-                self.check_transactions(public, next_seq, current_time, current_timestamp)
+                self.check_transactions(public, next_seq, current_block_number, current_timestamp)
             };
 
             // Need to update the height
@@ -587,7 +595,7 @@ impl MemPool {
             }
         }
 
-        self.last_time = current_time;
+        self.last_block_number = current_block_number;
         self.last_timestamp = current_timestamp;
 
         assert_eq!(self.current.len() + self.future.len(), self.by_hash.len());
@@ -603,7 +611,7 @@ impl MemPool {
         &self,
         public: Public,
         mut start_seq: u64,
-        current_time: PoolingInstant,
+        current_block_number: PoolingInstant,
         current_timestamp: u64,
     ) -> u64 {
         let row = self
@@ -613,7 +621,7 @@ impl MemPool {
 
         while let Some(order_with_tag) = row.get(&start_seq) {
             let order = order_with_tag.order;
-            if Self::should_wait_timelock(&order.timelock, current_time, current_timestamp) {
+            if Self::should_wait_timelock(&order.timelock, current_block_number, current_timestamp) {
                 break
             }
             start_seq += 1;
@@ -630,7 +638,7 @@ impl MemPool {
         public: Public,
         seqs: &[u64],
         next_seq: u64,
-        current_time: PoolingInstant,
+        current_block_number: PoolingInstant,
         current_timestamp: u64,
     ) -> Option<u64> {
         let row = self
@@ -646,7 +654,7 @@ impl MemPool {
             }
             let order_with_tag = row.get(&seq).expect("Must exist");
             let order = order_with_tag.order;
-            if Self::should_wait_timelock(&order.timelock, current_time, current_timestamp)
+            if Self::should_wait_timelock(&order.timelock, current_block_number, current_timestamp)
                 && (result.is_none() || (result.is_some() && result.unwrap() > *seq))
             {
                 result = Some(*seq)
@@ -1411,8 +1419,8 @@ pub mod test {
             timestamp: None,
         };
 
-        let current_time = 1;
-        let current_timestamp = 100;
+        let inserted_block_number = 1;
+        let inserted_timestamp = 100;
         let mut inputs: Vec<MemPoolInput> = Vec::new();
 
         inputs.push(create_mempool_input_with_pay(1u64, keypair, no_timelock));
@@ -1425,28 +1433,28 @@ pub mod test {
             },
         ));
         inputs.push(create_mempool_input_with_pay(5u64, keypair, no_timelock));
-        mem_pool.add(inputs, current_time, current_timestamp, &fetch_account);
+        mem_pool.add(inputs, inserted_block_number, inserted_timestamp, &fetch_account);
 
-        let current_time = 11;
-        let current_timestamp = 200;
+        let inserted_block_number = 11;
+        let inserted_timestamp = 200;
         let mut inputs: Vec<MemPoolInput> = Vec::new();
         inputs.push(create_mempool_input_with_pay(2u64, keypair, no_timelock));
         inputs.push(create_mempool_input_with_pay(4u64, keypair, no_timelock));
-        mem_pool.add(inputs, current_time, current_timestamp, &fetch_account);
+        mem_pool.add(inputs, inserted_block_number, inserted_timestamp, &fetch_account);
 
-        let current_time = 20;
-        let current_timestamp = 300;
+        let inserted_block_number = 20;
+        let inserted_timestamp = 300;
         let mut inputs: Vec<MemPoolInput> = Vec::new();
         inputs.push(create_mempool_input_with_pay(6u64, keypair, no_timelock));
         inputs.push(create_mempool_input_with_pay(8u64, keypair, no_timelock));
         inputs.push(create_mempool_input_with_pay(10u64, keypair, no_timelock));
-        mem_pool.add(inputs, current_time, current_timestamp, &fetch_account);
+        mem_pool.add(inputs, inserted_block_number, inserted_timestamp, &fetch_account);
 
-        let current_time = 21;
-        let current_timestamp = 400;
+        let inserted_block_number = 21;
+        let inserted_timestamp = 400;
         let mut inputs: Vec<MemPoolInput> = Vec::new();
         inputs.push(create_mempool_input_with_pay(7u64, keypair, no_timelock));
-        mem_pool.add(inputs, current_time, current_timestamp, &fetch_account);
+        mem_pool.add(inputs, inserted_block_number, inserted_timestamp, &fetch_account);
 
         let mut mem_pool_recovered = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
         mem_pool_recovered.recover_from_db(&test_client);
