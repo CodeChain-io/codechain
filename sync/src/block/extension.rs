@@ -101,6 +101,7 @@ impl Extension {
     }
 
     fn send_body_request(&self, id: &NodeId) {
+        self.check_sync_variable();
         if let Some(requests) = self.requests.write().get_mut(id) {
             let have_body_request = {
                 requests.iter().any(|r| match r {
@@ -131,6 +132,56 @@ impl Extension {
                 token_info.request_id = Some(request_id);
             }
         }
+        self.check_sync_variable();
+    }
+
+    fn check_sync_variable(&self) {
+        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+
+        let mut all_requests = self.requests.write();
+        let tokens = self.tokens.read();
+        let mut tokens_info = self.tokens_info.write();
+
+        let mut has_error = false;
+        for id in peer_ids {
+            let requests = match all_requests.get_mut(&id) {
+                Some(requests) => requests,
+                None => continue,
+            };
+
+            let body_requests: Vec<RequestMessage> = requests
+                .iter()
+                .filter_map(|r| match r {
+                    (_, RequestMessage::Bodies(..)) => Some(r.1.clone()),
+                    _ => None,
+                })
+                .collect();
+
+            if body_requests.len() > 1 {
+                cerror!(SYNC, "Body request length {} > 1, body_requests: {:?}", body_requests.len(), body_requests);
+                has_error = true;
+            }
+
+            let token = tokens.get(&id).unwrap();
+            let token_info = tokens_info.get_mut(token).unwrap();
+
+            match (token_info.request_id, body_requests.len()) {
+                (Some(_), 1) => {}
+                (None, 0) => {}
+                _ => {
+                    cerror!(
+                        SYNC,
+                        "request_id: {:?}, body_requests.len(): {}, body_requests: {:?}",
+                        token_info.request_id,
+                        body_requests.len(),
+                        body_requests
+                    );
+                    has_error = true;
+                }
+            }
+        }
+
+        debug_assert!(!has_error);
     }
 }
 
@@ -282,6 +333,7 @@ impl NetworkExtension<Event> for Extension {
                 }
             }
             SYNC_EXPIRE_TOKEN_BEGIN...SYNC_EXPIRE_TOKEN_END => {
+                self.check_sync_variable();
                 let (id, request_id) = {
                     let mut tokens_info = self.tokens_info.write();
                     let token_info = match tokens_info.get_mut(&token) {
@@ -311,6 +363,7 @@ impl NetworkExtension<Event> for Extension {
                 }
 
                 self.dismiss_request(&id, request_id);
+                self.check_sync_variable();
             }
             _ => unreachable!(),
         }
@@ -541,6 +594,7 @@ impl Extension {
                     self.on_header_response(from, &headers)
                 }
                 ResponseMessage::Bodies(bodies) => {
+                    self.check_sync_variable();
                     let hashes = match request {
                         RequestMessage::Bodies(hashes) => hashes,
                         _ => unreachable!(),
@@ -558,6 +612,7 @@ impl Extension {
                     }
                     self.dismiss_request(from, id);
                     self.on_body_response(hashes, bodies);
+                    self.check_sync_variable();
                 }
                 _ => unimplemented!(),
             }
