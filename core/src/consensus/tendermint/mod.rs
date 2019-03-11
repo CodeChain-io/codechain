@@ -220,7 +220,7 @@ impl TendermintInner {
     /// Find the designated for the given view.
     fn view_proposer(&self, prev_block_hash: &H256, view: View) -> Option<Address> {
         self.block_proposer_idx(*prev_block_hash).map(|prev_proposer_idx| {
-            let proposer_nonce = prev_proposer_idx + 1 + view;
+            let proposer_nonce = prev_proposer_idx + 1 + view as usize;
             ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
             self.validators.get_address(prev_block_hash, proposer_nonce)
         })
@@ -641,7 +641,7 @@ impl TendermintInner {
         // Since the votes needs at least one vote to check the old votes,
         // we should remove old votes after inserting current votes.
         self.votes.throw_out_old(&VoteStep {
-            height: (proposal.number() - 1) as usize,
+            height: proposal.number() - 1,
             view: 0,
             step: Step::Propose,
         });
@@ -816,7 +816,7 @@ impl TendermintInner {
             .into())
         }
 
-        let height = header.number() as usize;
+        let height = header.number();
         let view = consensus_view(header).unwrap();
         let score = Self::calculate_score(height, view);
 
@@ -839,7 +839,7 @@ impl TendermintInner {
         if !self.is_authority(header.parent_hash(), proposer) {
             return Err(EngineError::BlockNotAuthorized(*proposer).into())
         }
-        self.check_view_proposer(header.parent_hash(), header.number() as usize, consensus_view(header)?, &proposer)
+        self.check_view_proposer(header.parent_hash(), header.number(), consensus_view(header)?, &proposer)
             .map_err(Error::from)?;
         let seal_view = TendermintSealView::new(header.seal());
         let bitset_count = seal_view.bitset()?.count() as usize;
@@ -864,7 +864,7 @@ impl TendermintInner {
         }
 
         let previous_block_view = previous_block_view(header)?;
-        let step = VoteStep::new((header.number() - 1) as usize, previous_block_view, Step::Precommit);
+        let step = VoteStep::new(header.number() - 1, previous_block_view, Step::Precommit);
         let precommit_hash = message_hash(step, *header.parent_hash());
         let mut counter = 0;
 
@@ -935,7 +935,7 @@ impl TendermintInner {
     }
 
     fn populate_from_parent(&self, header: &mut Header, _parent: &Header) {
-        let new_score = Self::calculate_score(header.number() as usize, self.view);
+        let new_score = Self::calculate_score(header.number(), self.view);
         header.set_score(new_score);
     }
 
@@ -1157,7 +1157,7 @@ impl TendermintInner {
 
     fn is_proposal(&self, header: &Header) -> bool {
         let number = header.number();
-        if self.height > number as usize {
+        if self.height > number {
             return false
         }
 
@@ -1445,11 +1445,11 @@ impl ChainNotify for TendermintChainNotify {
                 let full_header = header.decode();
                 if t.is_proposal(&full_header) {
                     t.on_imported_proposal(&full_header);
-                } else if t.height < header.number() as usize {
+                } else if t.height < header.number() {
                     height_changed = true;
                     cinfo!(ENGINE, "Received a commit: {:?}.", header.number());
                     let view = consensus_view(&full_header).expect("Imported block already checked");
-                    t.move_to_height(header.number() as usize);
+                    t.move_to_height(header.number());
                     t.save_last_confirmed_view(view);
                 }
             }

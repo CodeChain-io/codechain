@@ -26,8 +26,8 @@ use super::message::VoteStep;
 use crate::block::{IsBlock, SealedBlock};
 use crate::error::Error;
 
-pub type Height = usize;
-pub type View = usize;
+pub type Height = u64;
+pub type View = u64;
 
 #[derive(Clone)]
 pub enum TendermintState {
