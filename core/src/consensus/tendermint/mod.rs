@@ -77,13 +77,12 @@ pub type BlockHash = H256;
 
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
-    inner: Mutex<TendermintInner>,
-    // TODO: If there is a way to call register_network_extension_to_service with `Arc<Tendermint>`,
-    //       `weak_self` can be removed.
-    weak_self: RwLock<Option<Weak<Tendermint>>>,
+    inner: Arc<Mutex<TendermintInner>>,
     machine: Arc<CodeChainMachine>,
     /// Action handlers for this consensus method
     action_handlers: Vec<Arc<ActionHandler>>,
+    /// Chain notify
+    chain_notify: Arc<TendermintChainNotify>,
 }
 
 struct TendermintInner {
@@ -118,8 +117,6 @@ struct TendermintInner {
     extension: Option<Arc<TendermintExtension>>,
     /// codechain machine descriptor
     machine: Arc<CodeChainMachine>,
-    /// Chain notify
-    chain_notify: Arc<TendermintChainNotify>,
 }
 
 impl Tendermint {
@@ -127,34 +124,34 @@ impl Tendermint {
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let machine = Arc::new(machine);
-        let inner = TendermintInner::new(&our_params, machine.clone());
-        let stake = stake::Stake::new(our_params.genesis_stakes, our_params.validators);
+        let stake = stake::Stake::new(our_params.genesis_stakes, Arc::clone(&our_params.validators));
+        let inner = Arc::new(Mutex::new(TendermintInner::new(
+            our_params.validators,
+            our_params.block_reward,
+            our_params.timeouts,
+            Arc::clone(&machine),
+        )));
         let action_handlers: Vec<Arc<ActionHandler>> = vec![Arc::new(stake)];
+        let chain_notify = Arc::new(TendermintChainNotify::new(Arc::clone(&inner)));
 
-        let engine = Arc::new(Tendermint {
-            inner: Mutex::new(inner),
-            weak_self: Default::default(),
+        Arc::new(Tendermint {
+            inner,
             machine,
             action_handlers,
-        });
-        let weak_self = Arc::downgrade(&engine);
-        *engine.weak_self.write() = Some(weak_self);
-
-        {
-            let inner = engine.inner.lock();
-            let engine_weak = Arc::downgrade(&engine);
-            inner.chain_notify.register_tendermint(Weak::clone(&engine_weak));
-        }
-
-        engine
+            chain_notify,
+        })
     }
 }
 
 impl TendermintInner {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     /// Create a new instance of Tendermint engine
-    pub fn new(our_params: &TendermintParams, machine: Arc<CodeChainMachine>) -> Self {
-        let chain_notify = TendermintChainNotify::new();
+    pub fn new(
+        validators: Arc<ValidatorSet>,
+        block_reward: u64,
+        timeouts: TimeoutParams,
+        machine: Arc<CodeChainMachine>,
+    ) -> Self {
         TendermintInner {
             client: None,
             height: 1,
@@ -165,11 +162,10 @@ impl TendermintInner {
             last_two_thirds_majority: TwoThirdsMajority::Empty,
             proposal: None,
             last_confirmed_view: 0,
-            validators: Arc::clone(&our_params.validators),
-            block_reward: our_params.block_reward,
-            timeouts: our_params.timeouts,
+            validators,
+            block_reward,
+            timeouts,
             extension: None,
-            chain_notify: Arc::new(chain_notify),
             machine,
             votes_received: BitSet::new(),
             votes_received_changed: false,
@@ -1073,8 +1069,7 @@ impl TendermintInner {
     fn register_client(&mut self, client: Weak<EngineClient>) {
         self.last_confirmed_view = 0;
         self.client = Some(Weak::clone(&client));
-        self.validators.register_client(Weak::clone(&client));
-        self.chain_notify.register_client(client);
+        self.validators.register_client(client);
     }
 
     fn handle_message(&mut self, rlp: &[u8], is_restoring: bool) -> Result<(), EngineError> {
@@ -1220,10 +1215,6 @@ impl TendermintInner {
     fn block_reward(&self, _block_number: u64) -> u64 {
         self.block_reward
     }
-
-    fn register_chain_notify(&self, client: &Client) {
-        client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<ChainNotify>);
-    }
 }
 
 impl ConsensusEngine<CodeChainMachine> for Tendermint {
@@ -1326,7 +1317,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn register_client(&self, client: Weak<EngineClient>) {
         let mut guard = self.inner.lock();
-        guard.register_client(client);
+        guard.register_client(Weak::clone(&client));
+        self.chain_notify.register_client(client);
     }
 
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
@@ -1345,15 +1337,14 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn register_network_extension_to_service(&self, service: &NetworkService) {
+        let cloned_inner = Arc::clone(&self.inner);
         let mut inner = self.inner.lock();
-        let weak_self = self.weak_self.read();
 
         let extension = {
             let timeouts = inner.timeouts;
-            let tendermint = Weak::clone(weak_self.as_ref().expect("Only writes in initialize"));
             let client = Weak::clone(inner.client.as_ref().expect("Only writes in initialize"));
             // TODO: Make tendermint use a channel instead of using the extension directly
-            service.register_extension(|api| TendermintExtension::new(tendermint, client, timeouts, api)).1
+            service.register_extension(|api| TendermintExtension::new(cloned_inner, client, timeouts, api)).1
         };
 
         inner.extension = Some(extension);
@@ -1370,8 +1361,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     fn register_chain_notify(&self, client: &Client) {
-        let guard = self.inner.lock();
-        guard.register_chain_notify(client);
+        client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<ChainNotify>);
     }
 
     fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> H256 {
@@ -1394,24 +1384,20 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 }
 
 struct TendermintChainNotify {
-    tendermint: RwLock<Option<Weak<Tendermint>>>,
+    inner: Arc<Mutex<TendermintInner>>,
     client: RwLock<Option<Weak<EngineClient>>>,
 }
 
 impl TendermintChainNotify {
-    fn new() -> Self {
+    fn new(inner: Arc<Mutex<TendermintInner>>) -> Self {
         Self {
-            tendermint: RwLock::new(None),
-            client: RwLock::new(None),
+            inner,
+            client: Default::default(),
         }
     }
 
     fn register_client(&self, client: Weak<EngineClient>) {
         *self.client.write() = Some(client);
-    }
-
-    fn register_tendermint(&self, tendermint: Weak<Tendermint>) {
-        *self.tendermint.write() = Some(tendermint);
     }
 }
 
@@ -1431,12 +1417,7 @@ impl ChainNotify for TendermintChainNotify {
             None => return,
         };
 
-        let t = match self.tendermint.read().as_ref().and_then(|weak| weak.upgrade()) {
-            Some(t) => t,
-            None => return,
-        };
-
-        let mut t = t.inner.lock();
+        let mut t = self.inner.lock();
         if !imported.is_empty() {
             let mut height_changed = false;
             for hash in imported {
@@ -1529,7 +1510,7 @@ fn destructure_proofs(combined: &[u8]) -> Result<(BlockNumber, &[u8], &[u8]), Er
 }
 
 struct TendermintExtension {
-    tendermint: Weak<Tendermint>,
+    inner: Arc<Mutex<TendermintInner>>,
     client: Weak<EngineClient>,
     peers: RwLock<HashMap<NodeId, PeerState>>,
     api: Arc<Api>,
@@ -1541,9 +1522,14 @@ const MIN_PEERS_PROPAGATION: usize = 4;
 const MAX_PEERS_PROPAGATION: usize = 128;
 
 impl TendermintExtension {
-    fn new(tendermint: Weak<Tendermint>, client: Weak<EngineClient>, timeouts: TimeoutParams, api: Arc<Api>) -> Self {
+    fn new(
+        inner: Arc<Mutex<TendermintInner>>,
+        client: Weak<EngineClient>,
+        timeouts: TimeoutParams,
+        api: Arc<Api>,
+    ) -> Self {
         Self {
-            tendermint,
+            inner,
             client,
             peers: RwLock::new(HashMap::new()),
             api,
@@ -1992,11 +1978,7 @@ impl NetworkExtension<Event> for TendermintExtension {
     }
 
     fn on_message(&self, token: &NodeId, data: &[u8]) {
-        let t = match self.tendermint.upgrade() {
-            Some(t) => t,
-            None => return,
-        };
-        let mut t = t.inner.lock();
+        let mut t = self.inner.lock();
 
         let m = UntrustedRlp::new(data);
         match m.as_val() {
@@ -2059,9 +2041,8 @@ impl NetworkExtension<Event> for TendermintExtension {
                 || token == ENGINE_TIMEOUT_EMPTY_PROPOSAL
                 || token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE
         );
-        if let Some(c) = self.tendermint.upgrade() {
-            c.on_timeout(token);
-        }
+        let mut c = self.inner.lock();
+        c.on_timeout(token);
     }
 }
 
