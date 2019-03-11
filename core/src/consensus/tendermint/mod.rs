@@ -177,6 +177,8 @@ impl TendermintInner {
     }
 }
 
+const SEAL_FIELDS: usize = 4;
+
 impl TendermintInner {
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
     fn client(&self) -> Arc<EngineClient> {
@@ -732,8 +734,8 @@ impl TendermintInner {
         }
     }
 
-    fn seal_fields(&self, _header: &Header) -> usize {
-        4
+    fn seal_fields(&self) -> usize {
+        SEAL_FIELDS
     }
 
     fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
@@ -807,7 +809,7 @@ impl TendermintInner {
 
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
         let seal_length = header.seal().len();
-        let expected_seal_fields = self.seal_fields(header);
+        let expected_seal_fields = self.seal_fields();
         if seal_length != expected_seal_fields {
             return Err(BlockError::InvalidSealArity(Mismatch {
                 expected: expected_seal_fields,
@@ -1234,9 +1236,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     }
 
     /// (consensus view, proposal signature, authority signatures)
-    fn seal_fields(&self, header: &Header) -> usize {
-        let guard = self.inner.lock();
-        guard.seal_fields(header)
+    fn seal_fields(&self, _header: &Header) -> usize {
+        SEAL_FIELDS
     }
 
     /// Should this node participate.
