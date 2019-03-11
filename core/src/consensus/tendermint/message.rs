@@ -286,7 +286,7 @@ impl ConsensusMessage {
         prev_proposer_idx: usize,
     ) -> Result<Self, ::rlp::DecoderError> {
         let height = proposal_header.number() as Height;
-        let signer_index = (prev_proposer_idx + proposed_view + 1) % num_validators;
+        let signer_index = (prev_proposer_idx + proposed_view as usize + 1) % num_validators;
 
         Ok(ConsensusMessage {
             signature,
@@ -424,8 +424,8 @@ mod tests {
         let message = ConsensusMessage::new(
             SchnorrSignature::random(),
             0x1234,
-            2usize,
-            3usize,
+            2,
+            3,
             Step::Commit,
             Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050")),
         );
@@ -434,8 +434,8 @@ mod tests {
 
     #[test]
     fn encode_and_decode_consensus_message_3() {
-        let height = 2usize;
-        let view = 3usize;
+        let height = 2;
+        let view = 3;
         let step = Step::Commit;
         let signature = SchnorrSignature::random();
         let index = 0x1234;
