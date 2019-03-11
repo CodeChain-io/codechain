@@ -54,6 +54,7 @@ extern crate util_error;
 
 #[macro_use]
 extern crate log;
+extern crate core;
 
 mod account_provider;
 pub mod block;
@@ -92,5 +93,7 @@ pub use crate::header::{Header, Seal};
 pub use crate::miner::{Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};
 pub use crate::scheme::Scheme;
 pub use crate::service::ClientService;
-pub use crate::transaction::{LocalizedTransaction, SignedTransaction, UnverifiedTransaction};
+pub use crate::transaction::{
+    LocalizedTransaction, PendingSignedTransactions, SignedTransaction, UnverifiedTransaction,
+};
 pub use crate::types::{BlockId, TransactionId};

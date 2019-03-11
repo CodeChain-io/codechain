@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::iter::once;
+use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -44,7 +45,7 @@ use crate::consensus::{CodeChainEngine, EngineType};
 use crate::error::Error;
 use crate::header::Header;
 use crate::scheme::Scheme;
-use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::transaction::{PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
 use crate::types::{BlockId, TransactionId};
 
 /// Configures the behaviour of the miner.
@@ -449,7 +450,10 @@ impl Miner {
             let params = self.params.read().clone();
             let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
             let max_body_size = self.engine.params().max_body_size;
-            let transactions = mem_pool.top_transactions(max_body_size, Some(open_block.header().timestamp()));
+            const DEFAULT_RANGE: Range<u64> = 0..::std::u64::MAX;
+            let transactions = mem_pool
+                .top_transactions(max_body_size, Some(open_block.header().timestamp()), DEFAULT_RANGE)
+                .transactions;
 
             (transactions, open_block, last_work_hash)
         };
@@ -943,7 +947,8 @@ impl MinerService for Miner {
                         seq
                     })
                     .unwrap_or_else(|| {
-                        get_next_seq(self.ready_transactions(), &addresses)
+                        const DEFAULT_RANGE: Range<u64> = 0..::std::u64::MAX;
+                        get_next_seq(self.ready_transactions(DEFAULT_RANGE).transactions, &addresses)
                             .map(|seq| {
                                 cdebug!(RPC, "There are ready transactions for {}", platform_address);
                                 seq
@@ -963,13 +968,13 @@ impl MinerService for Miner {
         Ok((hash, seq))
     }
 
-    fn ready_transactions(&self) -> Vec<SignedTransaction> {
+    fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
         let max_body_size = self.engine.params().max_body_size;
-        self.mem_pool.read().top_transactions(max_body_size, None)
+        self.mem_pool.read().top_transactions(max_body_size, None, range)
     }
 
-    fn count_pending_transactions(&self) -> usize {
-        self.mem_pool.read().count_pending_transactions()
+    fn count_pending_transactions(&self, range: Range<u64>) -> usize {
+        self.mem_pool.read().count_pending_transactions(range)
     }
 
     /// Get a list of all future transactions.

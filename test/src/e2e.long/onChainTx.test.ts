@@ -94,9 +94,12 @@ describe("Test onChain transaction communication", function() {
         await sdk.rpc.devel.stopSealing();
         await mock.sendEncodedTransaction([signed.toEncodeObject()]);
 
-        while ((await sdk.rpc.chain.getPendingTransactions()).length !== 1) {}
+        while (
+            (await sdk.rpc.chain.getPendingTransactions()).transactions
+                .length !== 1
+        ) {}
         const transactions = await sdk.rpc.chain.getPendingTransactions();
-        expect(transactions.length).to.equal(1);
+        expect(transactions.transactions.length).to.equal(1);
 
         await mock.end();
     }).timeout(20_000);
@@ -135,7 +138,7 @@ describe("Test onChain transaction communication", function() {
 
                 await mock.sendEncodedTransaction([data]);
                 const txs = await sdk.rpc.chain.getPendingTransactions();
-                expect(txs.length).to.equal(0);
+                expect(txs.transactions.length).to.equal(0);
 
                 await mock.end();
             }).timeout(30_000);

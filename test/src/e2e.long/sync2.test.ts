@@ -333,12 +333,14 @@ describe("sync 2 nodes", function() {
                     awaitResult: false
                 });
                 expect(
-                    (await nodeA.sdk.rpc.chain.getPendingTransactions()).length
+                    (await nodeA.sdk.rpc.chain.getPendingTransactions())
+                        .transactions.length
                 ).to.equal(i + 1);
             }
             await wait(2000);
             expect(
-                (await nodeB.sdk.rpc.chain.getPendingTransactions()).length
+                (await nodeB.sdk.rpc.chain.getPendingTransactions())
+                    .transactions.length
             ).to.equal(0);
         }).timeout(500 * testSize + 4000);
     });
