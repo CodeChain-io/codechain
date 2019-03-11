@@ -251,7 +251,13 @@ impl BlockChain {
                 prev_best_block_detail.number,
                 prev_best_hash
             );
-            assert!(block_detail.number <= prev_best_block_detail.number);
+
+            assert!(
+                block_detail.number <= prev_best_block_detail.number,
+                "{} <= {}",
+                block_detail.number,
+                prev_best_block_detail.number
+            );
             return ImportRoute::none()
         }
 
