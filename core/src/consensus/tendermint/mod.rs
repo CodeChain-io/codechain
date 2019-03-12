@@ -2270,15 +2270,15 @@ impl TendermintInner {
 }
 
 impl NetworkExtension<ExtensionEvent> for TendermintExtension {
-    fn name(&self) -> &'static str {
+    fn name() -> &'static str {
         "tendermint"
     }
 
-    fn need_encryption(&self) -> bool {
+    fn need_encryption() -> bool {
         false
     }
 
-    fn versions(&self) -> &[u64] {
+    fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
     }

@@ -186,14 +186,14 @@ impl Extension {
 }
 
 impl NetworkExtension<Event> for Extension {
-    fn name(&self) -> &'static str {
+    fn name() -> &'static str {
         "block-propagation"
     }
-    fn need_encryption(&self) -> bool {
+    fn need_encryption() -> bool {
         false
     }
 
-    fn versions(&self) -> &[u64] {
+    fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
     }

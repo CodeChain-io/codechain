@@ -55,9 +55,9 @@ pub trait Api: Send + Sync {
 }
 
 pub trait Extension<Event: Send>: Send + Sync {
-    fn name(&self) -> &'static str;
-    fn need_encryption(&self) -> bool;
-    fn versions(&self) -> &[u64];
+    fn name() -> &'static str;
+    fn need_encryption() -> bool;
+    fn versions() -> &'static [u64];
 
     fn on_initialize(&self);
 
