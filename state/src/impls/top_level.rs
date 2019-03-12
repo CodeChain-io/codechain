@@ -263,6 +263,10 @@ impl TopLevelState {
                 self.discard_checkpoint(FEE_CHECKPOINT);
                 Ok(invoice)
             }
+            Err(err @ StateError::Runtime(RuntimeError::InvalidSeq(_))) => {
+                self.revert_to_checkpoint(FEE_CHECKPOINT);
+                Err(err)
+            }
             Err(StateError::Runtime(err)) => {
                 self.discard_checkpoint(FEE_CHECKPOINT);
                 Ok(Invoice::Failure(err.to_string()))
@@ -1346,13 +1350,10 @@ mod tests_tx {
 
         let tx = transaction!(seq: 2, fee: 5, pay!(address().0, 10));
         assert_eq!(
-            Ok(Invoice::Failure(
-                RuntimeError::InvalidSeq(Mismatch {
-                    expected: 0,
-                    found: 2
-                })
-                .to_string()
-            )),
+            Err(StateError::Runtime(RuntimeError::InvalidSeq(Mismatch {
+                expected: 0,
+                found: 2
+            }))),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
