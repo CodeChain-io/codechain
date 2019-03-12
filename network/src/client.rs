@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::{Builder, JoinHandle};
 
@@ -32,14 +31,14 @@ struct ClientApi {
     p2p_channel: IoChannel<P2pMessage>,
     timer: TimerApi,
     channel: Mutex<crossbeam::Sender<ExtensionMessage>>,
-    name: Mutex<Option<&'static str>>,
-    need_encryption: AtomicBool,
+    name: &'static str,
+    need_encryption: bool,
 }
 
 impl Api for ClientApi {
     fn send(&self, id: &NodeId, message: &[u8]) {
-        let need_encryption = self.need_encryption.load(Ordering::SeqCst);
-        let extension_name = self.name.lock().expect("send must be called after initialized");
+        let need_encryption = self.need_encryption;
+        let extension_name = self.name;
         let node_id = *id;
         let data = message.to_vec();
         let bytes = data.len();
@@ -84,13 +83,7 @@ impl TimeoutHandler for ClientApi {
     fn on_timeout(&self, token: TimerToken) {
         let channel = self.channel.lock();
         if let Err(err) = channel.send(ExtensionMessage::Timeout(token)) {
-            cwarn!(
-                NETAPI,
-                "{} cannot timeout {}: {:?}",
-                self.name.lock().expect("send must be called after initialized"),
-                token,
-                err
-            );
+            cwarn!(NETAPI, "{} cannot timeout {}: {:?}", self.name, token, err);
         }
     }
 }
@@ -124,26 +117,18 @@ impl Client {
         E: 'static + Sized + Send,
         F: FnOnce(Arc<Api>) -> T, {
         let mut extensions = self.extensions.write();
-        let timer = self.timer_loop.new_timer();
-        let (api, channel, rx) = {
-            let p2p_channel = self.p2p_channel.clone();
-            let (channel, rx) = crossbeam::unbounded();
-            (
-                Arc::new(ClientApi {
-                    name: Default::default(),
-                    need_encryption: Default::default(),
-                    p2p_channel,
-                    timer,
-                    channel: channel.clone().into(),
-                }),
-                channel,
-                rx,
-            )
-        };
+        let name = T::name();
+        let timer = self.timer_loop.new_timer_with_name(name);
+        let p2p_channel = self.p2p_channel.clone();
+        let (channel, rx) = crossbeam::unbounded();
+        let api = Arc::new(ClientApi {
+            name,
+            need_encryption: T::need_encryption(),
+            p2p_channel,
+            timer,
+            channel: channel.clone().into(),
+        });
         let extension = Arc::new(factory(Arc::clone(&api) as Arc<Api>));
-        let name = extension.name();
-        let versions = extension.versions().to_vec();
-        let need_encryption = extension.need_encryption();
 
         let (quit_sender, quit_receiver) = crossbeam::bounded(1);
         let (init_sender, init_receiver) = crossbeam::bounded(1);
@@ -155,11 +140,6 @@ impl Client {
             Builder::new()
                 .name(format!("{}.ext", name))
                 .spawn(move || {
-                    *api.name.lock() = Some(name);
-                    if need_encryption {
-                        api.need_encryption.store(true, Ordering::SeqCst);
-                    }
-                    api.timer.set_name(name);
                     api.timer.set_handler(Arc::downgrade(&api));
 
                     init_receiver.recv().expect("The main thread must send one message");
@@ -235,7 +215,7 @@ impl Client {
             .insert(
                 name,
                 Extension {
-                    versions,
+                    versions: T::versions().to_vec(),
                     sender: channel.into(),
                     quit: quit_sender.into(),
                     join,
@@ -341,59 +321,64 @@ mod tests {
         Timeout,
     }
 
-    struct TestExtension {
-        name: &'static str,
-        callbacks: Mutex<Vec<Callback>>,
-    }
-
-    impl TestExtension {
-        fn new(name: &'static str) -> Self {
-            Self {
-                name,
-                callbacks: Mutex::new(vec![]),
+    macro_rules! define_test_extension {
+        ($type_name: tt, $name: expr) => {
+            struct $type_name {
+                callbacks: Mutex<Vec<Callback>>,
             }
-        }
+
+            impl $type_name {
+                fn new() -> Self {
+                    Self {
+                        callbacks: Mutex::new(vec![]),
+                    }
+                }
+            }
+
+            impl NetworkExtension<Never> for $type_name {
+                fn name() -> &'static str {
+                    $name
+                }
+
+                fn need_encryption() -> bool {
+                    false
+                }
+
+                fn versions() -> &'static [u64] {
+                    const VERSIONS: &[u64] = &[0];
+                    &VERSIONS
+                }
+
+                fn on_initialize(&self) {
+                    let mut callbacks = self.callbacks.lock();
+                    callbacks.push(Callback::Initialize);
+                }
+
+                fn on_node_added(&self, _id: &NodeId, _version: u64) {
+                    let mut callbacks = self.callbacks.lock();
+                    callbacks.push(Callback::NodeAdded);
+                }
+
+                fn on_node_removed(&self, _id: &NodeId) {
+                    let mut callbacks = self.callbacks.lock();
+                    callbacks.push(Callback::NodeRemoved);
+                }
+
+                fn on_message(&self, _id: &NodeId, _message: &[u8]) {
+                    let mut callbacks = self.callbacks.lock();
+                    callbacks.push(Callback::Message);
+                }
+
+                fn on_timeout(&self, _timer_id: usize) {
+                    let mut callbacks = self.callbacks.lock();
+                    callbacks.push(Callback::Timeout);
+                }
+            }
+        };
     }
 
-    impl NetworkExtension<Never> for TestExtension {
-        fn name(&self) -> &'static str {
-            self.name
-        }
-
-        fn need_encryption(&self) -> bool {
-            false
-        }
-
-        fn versions(&self) -> &[u64] {
-            const VERSIONS: &[u64] = &[0];
-            &VERSIONS
-        }
-
-        fn on_initialize(&self) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::Initialize);
-        }
-
-        fn on_node_added(&self, _id: &NodeId, _version: u64) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::NodeAdded);
-        }
-
-        fn on_node_removed(&self, _id: &NodeId) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::NodeRemoved);
-        }
-
-        fn on_message(&self, _id: &NodeId, _message: &[u8]) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::Message);
-        }
-
-        fn on_timeout(&self, _timer_id: usize) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::Timeout);
-        }
-    }
+    define_test_extension!(TestExtension1, "e1");
+    define_test_extension!(TestExtension2, "e2");
 
     #[test]
     fn message_only_to_target() {
@@ -405,8 +390,8 @@ mod tests {
         let node_id1 = SocketAddr::v4(127, 0, 0, 1, 8081).into();
         let node_id5 = SocketAddr::v4(127, 0, 0, 1, 8085).into();
 
-        let _e1 = client.register_extension(|_| TestExtension::new("e1"));
-        let _e2 = client.register_extension(|_| TestExtension::new("e2"));
+        let _e1 = client.register_extension(|_| TestExtension1::new());
+        let _e2 = client.register_extension(|_| TestExtension2::new());
 
         // FIXME: The callback is asynchronous, find a way to test it.
 

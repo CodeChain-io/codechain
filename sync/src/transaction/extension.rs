@@ -76,14 +76,14 @@ impl Extension {
 }
 
 impl NetworkExtension<Never> for Extension {
-    fn name(&self) -> &'static str {
+    fn name() -> &'static str {
         "transaction-propagation"
     }
-    fn need_encryption(&self) -> bool {
+    fn need_encryption() -> bool {
         false
     }
 
-    fn versions(&self) -> &[u64] {
+    fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
     }
