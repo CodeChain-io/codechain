@@ -111,7 +111,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn register_extension<T, E, F>(&self, factory: F) -> (crossbeam::Sender<E>, Arc<T>)
+    pub fn register_extension<T, E, F>(&self, factory: F) -> crossbeam::Sender<E>
     where
         T: 'static + Sized + NetworkExtension<E>,
         E: 'static + Sized + Send,
@@ -133,8 +133,6 @@ impl Client {
         let (quit_sender, quit_receiver) = crossbeam::bounded(1);
         let (init_sender, init_receiver) = crossbeam::bounded(1);
         let (event_sender, event_receiver) = crossbeam::unbounded();
-
-        let cloned_extension = Arc::clone(&extension);
 
         let join = Some(
             Builder::new()
@@ -226,7 +224,7 @@ impl Client {
             unreachable!("Duplicated extension name : {}", name)
         }
         init_sender.send(()).unwrap();
-        (event_sender, cloned_extension)
+        event_sender
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
