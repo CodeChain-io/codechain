@@ -39,6 +39,13 @@ pub struct Extension {
 
 impl Extension {
     pub fn new(routing_table: Arc<RoutingTable>, config: Config, api: Box<Api>, use_kademlia: bool) -> Self {
+        if use_kademlia {
+            cinfo!(DISCOVERY, "Discovery starts with kademlia option");
+        } else {
+            cinfo!(DISCOVERY, "Discovery starts with unstructured option");
+        }
+        api.set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(config.t_refresh)))
+            .expect("Refresh msut be registered");
         Self {
             config,
             routing_table,
@@ -63,18 +70,6 @@ impl NetworkExtension<Never> for Extension {
     fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
-    }
-
-    fn on_initialize(&mut self) {
-        let name = if self.use_kademlia {
-            "kademlia"
-        } else {
-            "unstructured"
-        };
-        cinfo!(DISCOVERY, "Discovery starts with {} option", name);
-        self.api
-            .set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(self.config.t_refresh)))
-            .expect("Refresh msut be registered");
     }
 
     fn on_node_added(&mut self, node: &NodeId, _version: u64) {

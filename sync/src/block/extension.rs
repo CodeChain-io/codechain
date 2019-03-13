@@ -69,11 +69,29 @@ pub struct Extension {
 
 impl Extension {
     pub fn new(client: Arc<Client>, api: Box<Api>) -> Extension {
+        api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
+
+        let mut header = client.best_header();
+        let mut hollow_headers = vec![header.decode()];
+        while client.block_body(&BlockId::Hash(header.hash())).is_none() {
+            header = client
+                .block_header(&BlockId::Hash(header.parent_hash()))
+                .expect("Every imported header must have parent");
+            hollow_headers.push(header.decode());
+        }
+        let mut body_downloader = BodyDownloader::default();
+        for neighbors in hollow_headers.windows(2).rev() {
+            let child = &neighbors[0];
+            let parent = &neighbors[1];
+            cdebug!(SYNC, "Adding block #{} (hash: {}) for initial body download target", child.number(), child.hash());
+            body_downloader.add_target(child, parent);
+        }
+        cinfo!(SYNC, "Sync extension initialized");
         Extension {
             requests: Default::default(),
             connected_nodes: Default::default(),
             header_downloaders: Default::default(),
-            body_downloader: Default::default(),
+            body_downloader,
             tokens: Default::default(),
             tokens_info: Default::default(),
             token_generator: TokenGenerator::new(SYNC_EXPIRE_TOKEN_BEGIN, SYNC_EXPIRE_TOKEN_END),
@@ -187,27 +205,6 @@ impl NetworkExtension<Event> for Extension {
     fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
-    }
-
-    fn on_initialize(&mut self) {
-        self.api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
-
-        let mut header = self.client.best_header();
-        let mut hollow_headers = vec![header.decode()];
-        while self.client.block_body(&BlockId::Hash(header.hash())).is_none() {
-            header = self
-                .client
-                .block_header(&BlockId::Hash(header.parent_hash()))
-                .expect("Every imported header must have parent");
-            hollow_headers.push(header.decode());
-        }
-        for neighbors in hollow_headers.windows(2).rev() {
-            let child = &neighbors[0];
-            let parent = &neighbors[1];
-            cdebug!(SYNC, "Adding block #{} (hash: {}) for initial body download target", child.number(), child.hash());
-            self.body_downloader.add_target(child, parent);
-        }
-        cinfo!(SYNC, "Sync extension initialized");
     }
 
     fn on_node_added(&mut self, id: &NodeId, _version: u64) {

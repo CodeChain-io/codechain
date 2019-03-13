@@ -59,8 +59,6 @@ pub trait Extension<Event: Send> {
     fn need_encryption() -> bool;
     fn versions() -> &'static [u64];
 
-    fn on_initialize(&mut self);
-
     fn on_node_added(&mut self, _node: &NodeId, _version: u64) {}
     fn on_node_removed(&mut self, _node: &NodeId) {}
 

@@ -67,6 +67,8 @@ pub struct Extension {
 
 impl Extension {
     pub fn new(client: Arc<BlockChainClient>, api: Box<Api>) -> Self {
+        api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
+            .expect("Timer set succeeds");
         Extension {
             peers: Default::default(),
             client,
@@ -86,12 +88,6 @@ impl NetworkExtension<Never> for Extension {
     fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
-    }
-
-    fn on_initialize(&mut self) {
-        self.api
-            .set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
-            .expect("Timer set succeeds");
     }
 
     fn on_node_added(&mut self, token: &NodeId, _version: u64) {
