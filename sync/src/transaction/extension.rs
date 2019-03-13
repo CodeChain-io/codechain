@@ -62,11 +62,11 @@ impl Peer {
 pub struct Extension {
     peers: HashMap<NodeId, RwLock<Peer>>,
     client: Arc<BlockChainClient>,
-    api: Arc<Api>,
+    api: Box<Api>,
 }
 
 impl Extension {
-    pub fn new(client: Arc<BlockChainClient>, api: Arc<Api>) -> Self {
+    pub fn new(client: Arc<BlockChainClient>, api: Box<Api>) -> Self {
         Extension {
             peers: Default::default(),
             client,

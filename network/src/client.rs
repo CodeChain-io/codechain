@@ -30,7 +30,6 @@ use crate::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionResult, NodeI
 struct ClientApi {
     p2p_channel: IoChannel<P2pMessage>,
     timer: TimerApi,
-    channel: Mutex<crossbeam::Sender<ExtensionMessage>>,
     name: &'static str,
     need_encryption: bool,
 }
@@ -79,20 +78,20 @@ impl Api for ClientApi {
     }
 }
 
-impl TimeoutHandler for ClientApi {
-    fn on_timeout(&self, token: TimerToken) {
-        let channel = self.channel.lock();
-        if let Err(err) = channel.send(ExtensionMessage::Timeout(token)) {
-            cwarn!(NETAPI, "{} cannot timeout {}: {:?}", self.name, token, err);
-        }
-    }
-}
-
 struct Extension {
     versions: Vec<u64>,
+    name: &'static str,
     sender: Mutex<crossbeam::Sender<ExtensionMessage>>,
     quit: Mutex<crossbeam::Sender<()>>,
     join: Mutex<Option<JoinHandle<()>>>,
+}
+
+impl TimeoutHandler for Extension {
+    fn on_timeout(&self, token: TimerToken) {
+        if let Err(err) = self.sender.lock().send(ExtensionMessage::Timeout(token)) {
+            cwarn!(NETAPI, "{} cannot timeout {}: {:?}", self.name, token, err);
+        }
+    }
 }
 
 impl Drop for Extension {
@@ -105,7 +104,7 @@ impl Drop for Extension {
 }
 
 pub struct Client {
-    extensions: RwLock<HashMap<&'static str, Extension>>,
+    extensions: RwLock<HashMap<&'static str, Arc<Extension>>>,
     p2p_channel: IoChannel<P2pMessage>,
     timer_loop: TimerLoop,
 }
@@ -115,10 +114,11 @@ impl Client {
     where
         T: 'static + Sized + NetworkExtension<E>,
         E: 'static + Sized + Send,
-        F: 'static + FnOnce(Arc<Api>) -> T + Send, {
+        F: 'static + FnOnce(Box<Api>) -> T + Send, {
         let mut extensions = self.extensions.write();
         let name = T::name();
         let timer = self.timer_loop.new_timer_with_name(name);
+        let cloned_timer = timer.clone();
         let p2p_channel = self.p2p_channel.clone();
         let (channel, rx) = crossbeam::unbounded();
         let sender = channel.clone().into();
@@ -131,15 +131,13 @@ impl Client {
             Builder::new()
                 .name(format!("{}.ext", name))
                 .spawn(move || {
-                    let api = Arc::new(ClientApi {
+                    let api = ClientApi {
                         name,
                         need_encryption: T::need_encryption(),
                         p2p_channel,
                         timer,
-                        channel: channel.into(),
-                    });
-                    api.timer.set_handler(Arc::downgrade(&api));
-                    let mut extension = factory(Arc::clone(&api) as Arc<Api>);
+                    };
+                    let mut extension = factory(Box::from(api));
 
                     init_receiver.recv().expect("The main thread must send one message");
                     extension.on_initialize();
@@ -210,18 +208,15 @@ impl Client {
         )
         .into();
 
-        if extensions
-            .insert(
-                name,
-                Extension {
-                    versions: T::versions().to_vec(),
-                    sender,
-                    quit: quit_sender.into(),
-                    join,
-                },
-            )
-            .is_some()
-        {
+        let extension = Arc::new(Extension {
+            name,
+            versions: T::versions().to_vec(),
+            sender,
+            quit: quit_sender.into(),
+            join,
+        });
+        cloned_timer.set_handler(Arc::downgrade(&extension));
+        if extensions.insert(name, extension).is_some() {
             unreachable!("Duplicated extension name : {}", name)
         }
         init_sender.send(()).unwrap();

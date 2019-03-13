@@ -1827,7 +1827,7 @@ fn destructure_proofs(combined: &[u8]) -> Result<(BlockNumber, &[u8], &[u8]), Er
 struct TendermintExtension {
     inner: crossbeam::Sender<InnerEvent>,
     peers: HashMap<NodeId, PeerState>,
-    api: Arc<Api>,
+    api: Box<Api>,
     timeouts: TimeoutParams,
 }
 
@@ -1835,7 +1835,7 @@ const MIN_PEERS_PROPAGATION: usize = 4;
 const MAX_PEERS_PROPAGATION: usize = 128;
 
 impl TendermintExtension {
-    fn new(inner: crossbeam::Sender<InnerEvent>, timeouts: TimeoutParams, api: Arc<Api>) -> Self {
+    fn new(inner: crossbeam::Sender<InnerEvent>, timeouts: TimeoutParams, api: Box<Api>) -> Self {
         Self {
             inner,
             peers: Default::default(),

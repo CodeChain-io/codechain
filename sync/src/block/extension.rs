@@ -63,12 +63,12 @@ pub struct Extension {
     tokens_info: HashMap<TimerToken, TokenInfo>,
     token_generator: TokenGenerator,
     client: Arc<Client>,
-    api: Arc<Api>,
+    api: Box<Api>,
     last_request: u64,
 }
 
 impl Extension {
-    pub fn new(client: Arc<Client>, api: Arc<Api>) -> Extension {
+    pub fn new(client: Arc<Client>, api: Box<Api>) -> Extension {
         Extension {
             requests: Default::default(),
             connected_nodes: Default::default(),
