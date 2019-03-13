@@ -87,7 +87,7 @@ fn discovery_start(
         Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
         None => return Ok(()),
     };
-    service.register_extension(|api| Discovery::new(routing_table, config, api, use_kademlia));
+    service.register_extension(move |api| Discovery::new(routing_table, config, api, use_kademlia));
     Ok(())
 }
 
@@ -286,14 +286,18 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             }
 
             if config.network.sync.unwrap() {
-                let sync_sender = service.register_extension(|api| BlockSyncExtension::new(client.client(), api));
+                let sync_sender = {
+                    let client = client.client();
+                    service.register_extension(move |api| BlockSyncExtension::new(client, api))
+                };
                 let sync = Arc::new(BlockSyncSender::from(sync_sender.clone()));
                 client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
                 _maybe_sync = Some(sync); // Hold sync to ensure it not to be destroyed.
                 maybe_sync_sender = Some(sync_sender);
             }
             if config.network.transaction_relay.unwrap() {
-                service.register_extension(|api| TransactionSyncExtension::new(client.client(), api));
+                let client = client.client();
+                service.register_extension(move |api| TransactionSyncExtension::new(client, api));
             }
 
             scheme.engine.register_network_extension_to_service(&service);

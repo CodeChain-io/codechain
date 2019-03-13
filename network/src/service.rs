@@ -79,7 +79,7 @@ impl Service {
     where
         T: 'static + Sized + NetworkExtension<E>,
         E: 'static + Sized + Send,
-        F: FnOnce(Arc<Api>) -> T, {
+        F: 'static + FnOnce(Arc<Api>) -> T + Send, {
         self.client.register_extension(factory)
     }
 
