@@ -19,7 +19,7 @@ import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 import { toHex } from "codechain-sdk/lib/utils";
-import { PlatformAddress, H256 } from "codechain-primitives/lib";
+import { PlatformAddress, H256, U64 } from "codechain-primitives/lib";
 import "mocha";
 import {
     faucetAddress,
@@ -328,6 +328,49 @@ describe("Staking", function() {
         });
 
         expect(result).to.be.false;
+    });
+
+    it("get fee in proportion to holding stakes", async function() {
+        await connectEachOther();
+        // faucet: 100000
+        await sendStakeToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 50000,
+            fee: 1000
+        });
+        // faucet: 50000, val0: 50000,
+
+        const balance = await nodes[0].sdk.rpc.chain.getBalance(
+            validator0Address
+        );
+        expect(balance).to.be.deep.equal(new U64(1000 / 2));
+    });
+
+    it("get fee even if it delegated stakes to other", async function() {
+        await connectEachOther();
+        // faucet: 100000
+        await sendStakeToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 50000,
+            fee: 1000
+        });
+        // faucet: 50000, val0: 50000,
+        await delegateToken({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            receiverAddress: validator1Address,
+            quantity: 50000,
+            fee: 100
+        });
+        // faucet: 50000, val0: 0 (delegated 50000 to val1), val1: 0
+        const balance = await nodes[0].sdk.rpc.chain.getBalance(
+            validator0Address
+        );
+        expect(balance).to.be.deep.equal(new U64(1000 / 2 - 100 + 100 / 2));
     });
 
     afterEach(async function() {
