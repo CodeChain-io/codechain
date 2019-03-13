@@ -286,7 +286,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             }
 
             if config.network.sync.unwrap() {
-                let sync_sender = service.register_extension(|api| BlockSyncExtension::new(client.client(), api)).0;
+                let sync_sender = service.register_extension(|api| BlockSyncExtension::new(client.client(), api));
                 let sync = Arc::new(BlockSyncSender::from(sync_sender.clone()));
                 client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
                 _maybe_sync = Some(sync); // Hold sync to ensure it not to be destroyed.

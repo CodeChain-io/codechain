@@ -1650,7 +1650,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let timeouts = self.timeouts;
 
         let inner = self.inner.clone();
-        let extension = service.register_extension(|api| TendermintExtension::new(inner, timeouts, api)).0;
+        let extension = service.register_extension(|api| TendermintExtension::new(inner, timeouts, api));
         let client = Weak::clone(self.client.read().as_ref().unwrap());
         self.extension_initializer.send((extension, client)).unwrap();
 
