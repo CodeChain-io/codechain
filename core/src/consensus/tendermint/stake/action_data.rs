@@ -157,6 +157,10 @@ impl<'a> Delegation<'a> {
     pub fn iter(&self) -> btree_map::Iter<Address, StakeQuantity> {
         self.delegatees.iter()
     }
+
+    pub fn sum(&self) -> u64 {
+        self.delegatees.values().sum()
+    }
 }
 
 fn decode_set<V>(data: Option<&ActionData>) -> BTreeSet<V>

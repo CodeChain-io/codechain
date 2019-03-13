@@ -137,7 +137,8 @@ pub fn get_stakes(state: &TopLevelState) -> StateResult<HashMap<Address, u64>> {
     let mut result = HashMap::new();
     for stakeholder in stakeholders.iter() {
         let account = StakeAccount::load_from_state(state, stakeholder)?;
-        result.insert(*stakeholder, account.balance);
+        let delegation = Delegation::load_from_state(state, stakeholder)?;
+        result.insert(*stakeholder, account.balance + delegation.sum());
     }
     Ok(result)
 }
