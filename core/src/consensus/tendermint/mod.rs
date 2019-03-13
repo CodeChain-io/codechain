@@ -1836,6 +1836,14 @@ const MAX_PEERS_PROPAGATION: usize = 128;
 
 impl TendermintExtension {
     fn new(inner: crossbeam::Sender<InnerEvent>, timeouts: TimeoutParams, api: Box<Api>) -> Self {
+        let initial = timeouts.initial();
+        ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
+        api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
+        api.set_timer(
+            ENGINE_TIMEOUT_BROADCAST_STEP_STATE,
+            Duration::seconds(ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL),
+        )
+        .expect("Timer set succeeds");
         Self {
             inner,
             peers: Default::default(),
@@ -2278,18 +2286,6 @@ impl NetworkExtension<ExtensionEvent> for TendermintExtension {
     fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
-    }
-
-    fn on_initialize(&mut self) {
-        let initial = self.timeouts.initial();
-        ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
-        self.api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
-        self.api
-            .set_timer(
-                ENGINE_TIMEOUT_BROADCAST_STEP_STATE,
-                Duration::seconds(ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL),
-            )
-            .expect("Timer set succeeds");
     }
 
     fn on_node_added(&mut self, token: &NodeId, _version: u64) {

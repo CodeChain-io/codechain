@@ -131,6 +131,7 @@ impl Client {
             Builder::new()
                 .name(format!("{}.ext", name))
                 .spawn(move || {
+                    init_receiver.recv().expect("The main thread must send one message");
                     let api = ClientApi {
                         name,
                         need_encryption: T::need_encryption(),
@@ -139,8 +140,6 @@ impl Client {
                     };
                     let mut extension = factory(Box::from(api));
 
-                    init_receiver.recv().expect("The main thread must send one message");
-                    extension.on_initialize();
                     let mut s = crossbeam::Select::new();
                     let rx_index = s.recv(&rx);
                     let quit_index = s.recv(&quit_receiver);
@@ -308,7 +307,6 @@ mod tests {
 
     #[derive(Debug, Eq, PartialEq)]
     enum Callback {
-        Initialize,
         NodeAdded,
         NodeRemoved,
         Message,
@@ -341,11 +339,6 @@ mod tests {
                 fn versions() -> &'static [u64] {
                     const VERSIONS: &[u64] = &[0];
                     &VERSIONS
-                }
-
-                fn on_initialize(&mut self) {
-                    let mut callbacks = self.callbacks.lock();
-                    callbacks.push(Callback::Initialize);
                 }
 
                 fn on_node_added(&mut self, _id: &NodeId, _version: u64) {
