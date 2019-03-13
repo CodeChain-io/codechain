@@ -115,20 +115,13 @@ impl Client {
     where
         T: 'static + Sized + NetworkExtension<E>,
         E: 'static + Sized + Send,
-        F: FnOnce(Arc<Api>) -> T, {
+        F: 'static + FnOnce(Arc<Api>) -> T + Send, {
         let mut extensions = self.extensions.write();
         let name = T::name();
         let timer = self.timer_loop.new_timer_with_name(name);
         let p2p_channel = self.p2p_channel.clone();
         let (channel, rx) = crossbeam::unbounded();
-        let api = Arc::new(ClientApi {
-            name,
-            need_encryption: T::need_encryption(),
-            p2p_channel,
-            timer,
-            channel: channel.clone().into(),
-        });
-        let extension = Arc::new(factory(Arc::clone(&api) as Arc<Api>));
+        let sender = channel.clone().into();
 
         let (quit_sender, quit_receiver) = crossbeam::bounded(1);
         let (init_sender, init_receiver) = crossbeam::bounded(1);
@@ -138,7 +131,15 @@ impl Client {
             Builder::new()
                 .name(format!("{}.ext", name))
                 .spawn(move || {
+                    let api = Arc::new(ClientApi {
+                        name,
+                        need_encryption: T::need_encryption(),
+                        p2p_channel,
+                        timer,
+                        channel: channel.into(),
+                    });
                     api.timer.set_handler(Arc::downgrade(&api));
+                    let extension = Arc::new(factory(Arc::clone(&api) as Arc<Api>));
 
                     init_receiver.recv().expect("The main thread must send one message");
                     extension.on_initialize();
@@ -214,7 +215,7 @@ impl Client {
                 name,
                 Extension {
                     versions: T::versions().to_vec(),
-                    sender: channel.into(),
+                    sender,
                     quit: quit_sender.into(),
                     join,
                 },
