@@ -46,7 +46,7 @@ impl From<TimerScheduleError> for Error {
 
 pub type Result<T> = result::Result<T, Error>;
 
-pub trait Api: Send + Sync {
+pub trait Api {
     fn send(&self, node: &NodeId, message: &[u8]);
 
     fn set_timer(&self, timer: TimerToken, d: Duration) -> Result<()>;
