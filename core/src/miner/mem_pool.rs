@@ -932,7 +932,6 @@ impl MemPool {
         self.current
             .queue
             .iter()
-            .chain(self.future.queue.iter())
             .map(|t| {
                 self.by_hash
                     .get(&t.hash)
