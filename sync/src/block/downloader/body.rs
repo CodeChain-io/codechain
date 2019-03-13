@@ -29,6 +29,7 @@ struct Target {
     transaction_root: H256,
 }
 
+#[derive(Default)]
 pub struct BodyDownloader {
     targets: Vec<Target>,
     downloading: HashSet<H256>,
@@ -36,14 +37,6 @@ pub struct BodyDownloader {
 }
 
 impl BodyDownloader {
-    pub fn new() -> Self {
-        Self {
-            targets: Vec::new(),
-            downloading: HashSet::new(),
-            downloaded: HashMap::new(),
-        }
-    }
-
     pub fn create_request(&mut self) -> Option<RequestMessage> {
         const MAX_BODY_REQEUST_LENGTH: usize = 128;
         let mut hashes = Vec::new();

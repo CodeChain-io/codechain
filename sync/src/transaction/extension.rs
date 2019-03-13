@@ -60,7 +60,7 @@ impl Peer {
 }
 
 pub struct Extension {
-    peers: RwLock<HashMap<NodeId, RwLock<Peer>>>,
+    peers: HashMap<NodeId, RwLock<Peer>>,
     client: Arc<BlockChainClient>,
     api: Arc<Api>,
 }
@@ -68,7 +68,7 @@ pub struct Extension {
 impl Extension {
     pub fn new(client: Arc<BlockChainClient>, api: Arc<Api>) -> Self {
         Extension {
-            peers: RwLock::new(HashMap::new()),
+            peers: Default::default(),
             client,
             api,
         }
@@ -88,20 +88,20 @@ impl NetworkExtension<Never> for Extension {
         &VERSIONS
     }
 
-    fn on_initialize(&self) {
+    fn on_initialize(&mut self) {
         self.api
             .set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
             .expect("Timer set succeeds");
     }
 
-    fn on_node_added(&self, token: &NodeId, _version: u64) {
-        self.peers.write().insert(*token, RwLock::new(Peer::new()));
+    fn on_node_added(&mut self, token: &NodeId, _version: u64) {
+        self.peers.insert(*token, RwLock::new(Peer::new()));
     }
-    fn on_node_removed(&self, token: &NodeId) {
-        self.peers.write().remove(token);
+    fn on_node_removed(&mut self, token: &NodeId) {
+        self.peers.remove(token);
     }
 
-    fn on_message(&self, token: &NodeId, data: &[u8]) {
+    fn on_message(&mut self, token: &NodeId, data: &[u8]) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Transactions(transactions) => {
@@ -109,8 +109,7 @@ impl NetworkExtension<Never> for Extension {
                         transactions.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
                         *token,
                     );
-                    let peers = self.peers.read();
-                    if let Some(peer) = peers.get(token) {
+                    if let Some(peer) = self.peers.get(token) {
                         let mut peer = peer.write();
                         let transactions: Vec<_> =
                             transactions.iter().map(|tx| tx.hash()).filter(|tx_hash| !peer.contains(tx_hash)).collect();
@@ -129,7 +128,7 @@ impl NetworkExtension<Never> for Extension {
         }
     }
 
-    fn on_timeout(&self, timer: TimerToken) {
+    fn on_timeout(&mut self, timer: TimerToken) {
         match timer {
             BROADCAST_TIMER_TOKEN => self.random_broadcast(),
             _ => unreachable!(),
@@ -144,7 +143,7 @@ impl Extension {
             ctrace!(SYNC_TX, "No transactions to propagate");
             return
         }
-        for (token, peer) in self.peers.read().iter() {
+        for (token, peer) in &self.peers {
             let mut peer = peer.write();
             let unsent: Vec<_> = transactions
                 .iter()

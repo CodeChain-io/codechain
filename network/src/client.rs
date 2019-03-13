@@ -139,7 +139,7 @@ impl Client {
                         channel: channel.into(),
                     });
                     api.timer.set_handler(Arc::downgrade(&api));
-                    let extension = Arc::new(factory(Arc::clone(&api) as Arc<Api>));
+                    let mut extension = factory(Arc::clone(&api) as Arc<Api>);
 
                     init_receiver.recv().expect("The main thread must send one message");
                     extension.on_initialize();
@@ -348,27 +348,27 @@ mod tests {
                     &VERSIONS
                 }
 
-                fn on_initialize(&self) {
+                fn on_initialize(&mut self) {
                     let mut callbacks = self.callbacks.lock();
                     callbacks.push(Callback::Initialize);
                 }
 
-                fn on_node_added(&self, _id: &NodeId, _version: u64) {
+                fn on_node_added(&mut self, _id: &NodeId, _version: u64) {
                     let mut callbacks = self.callbacks.lock();
                     callbacks.push(Callback::NodeAdded);
                 }
 
-                fn on_node_removed(&self, _id: &NodeId) {
+                fn on_node_removed(&mut self, _id: &NodeId) {
                     let mut callbacks = self.callbacks.lock();
                     callbacks.push(Callback::NodeRemoved);
                 }
 
-                fn on_message(&self, _id: &NodeId, _message: &[u8]) {
+                fn on_message(&mut self, _id: &NodeId, _message: &[u8]) {
                     let mut callbacks = self.callbacks.lock();
                     callbacks.push(Callback::Message);
                 }
 
-                fn on_timeout(&self, _timer_id: usize) {
+                fn on_timeout(&mut self, _timer_id: usize) {
                     let mut callbacks = self.callbacks.lock();
                     callbacks.push(Callback::Timeout);
                 }
