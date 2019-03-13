@@ -1826,7 +1826,7 @@ fn destructure_proofs(combined: &[u8]) -> Result<(BlockNumber, &[u8], &[u8]), Er
 
 struct TendermintExtension {
     inner: crossbeam::Sender<InnerEvent>,
-    peers: RwLock<HashMap<NodeId, PeerState>>,
+    peers: HashMap<NodeId, PeerState>,
     api: Arc<Api>,
     timeouts: TimeoutParams,
 }
@@ -1838,15 +1838,14 @@ impl TendermintExtension {
     fn new(inner: crossbeam::Sender<InnerEvent>, timeouts: TimeoutParams, api: Arc<Api>) -> Self {
         Self {
             inner,
-            peers: RwLock::new(HashMap::new()),
+            peers: Default::default(),
             api,
             timeouts,
         }
     }
 
-    fn update_peer_state(&self, token: &NodeId, vote_step: VoteStep, proposal: Option<H256>, messages: BitSet) {
-        let mut peers_guard = self.peers.write();
-        let peer_state = match peers_guard.get_mut(token) {
+    fn update_peer_state(&mut self, token: &NodeId, vote_step: VoteStep, proposal: Option<H256>, messages: BitSet) {
+        let peer_state = match self.peers.get_mut(token) {
             Some(peer_state) => peer_state,
             // update_peer_state could be called after the peer is disconnected
             None => return,
@@ -1857,7 +1856,7 @@ impl TendermintExtension {
     }
 
     fn select_random_peers(&self) -> Vec<NodeId> {
-        let mut peers: Vec<NodeId> = self.peers.write().keys().cloned().collect();
+        let mut peers: Vec<NodeId> = self.peers.keys().cloned().collect();
         let mut count = (peers.len() as f64).powf(0.5).round() as usize;
         count = cmp::min(count, MAX_PEERS_PROPAGATION);
         count = cmp::max(count, MIN_PEERS_PROPAGATION);
@@ -1905,14 +1904,13 @@ impl TendermintExtension {
         }
         .rlp_bytes()
         .into_vec();
-        for token in self.peers.read().keys() {
-            self.api.send(&token, &message);
+        for token in self.peers.keys() {
+            self.api.send(token, &message);
         }
     }
 
     fn request_proposal_to_any(&self, height: Height, view: View) {
-        let peers_guard = self.peers.read();
-        for (token, peer) in peers_guard.iter() {
+        for (token, peer) in &self.peers {
             let is_future_height_and_view = {
                 let higher_height = peer.vote_step.height > height;
                 let same_height_and_higher_view = peer.vote_step.height == height && peer.vote_step.view > view;
@@ -1945,8 +1943,7 @@ impl TendermintExtension {
 
     fn request_messages_to_all(&self, vote_step: VoteStep, requested_votes: BitSet) {
         for token in self.select_random_peers() {
-            let peers_guard = self.peers.read();
-            let peer = &peers_guard[&token];
+            let peer = &self.peers[&token];
             if vote_step <= peer.vote_step && !peer.messages.is_empty() {
                 self.request_messages(&token, vote_step, requested_votes);
             }
@@ -2283,7 +2280,7 @@ impl NetworkExtension<ExtensionEvent> for TendermintExtension {
         &VERSIONS
     }
 
-    fn on_initialize(&self) {
+    fn on_initialize(&mut self) {
         let initial = self.timeouts.initial();
         ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
         self.api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
@@ -2295,15 +2292,15 @@ impl NetworkExtension<ExtensionEvent> for TendermintExtension {
             .expect("Timer set succeeds");
     }
 
-    fn on_node_added(&self, token: &NodeId, _version: u64) {
-        self.peers.write().insert(*token, PeerState::new());
+    fn on_node_added(&mut self, token: &NodeId, _version: u64) {
+        self.peers.insert(*token, PeerState::new());
     }
 
-    fn on_node_removed(&self, token: &NodeId) {
-        self.peers.write().remove(token);
+    fn on_node_removed(&mut self, token: &NodeId) {
+        self.peers.remove(token);
     }
 
-    fn on_message(&self, token: &NodeId, data: &[u8]) {
+    fn on_message(&mut self, token: &NodeId, data: &[u8]) {
         let m = UntrustedRlp::new(data);
         match m.as_val() {
             Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {
@@ -2423,7 +2420,7 @@ impl NetworkExtension<ExtensionEvent> for TendermintExtension {
         }
     }
 
-    fn on_timeout(&self, token: TimerToken) {
+    fn on_timeout(&mut self, token: TimerToken) {
         debug_assert!(
             token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE
                 || token == ENGINE_TIMEOUT_EMPTY_PROPOSAL
@@ -2432,7 +2429,7 @@ impl NetworkExtension<ExtensionEvent> for TendermintExtension {
         self.inner.send(InnerEvent::OnTimeout(token)).unwrap();
     }
 
-    fn on_event(&self, event: ExtensionEvent) {
+    fn on_event(&mut self, event: ExtensionEvent) {
         match event {
             ExtensionEvent::BroadcastMessage {
                 message,

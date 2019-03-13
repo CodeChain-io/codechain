@@ -54,19 +54,19 @@ pub trait Api: Send + Sync {
     fn clear_timer(&self, timer: TimerToken) -> Result<()>;
 }
 
-pub trait Extension<Event: Send>: Sync {
+pub trait Extension<Event: Send> {
     fn name() -> &'static str;
     fn need_encryption() -> bool;
     fn versions() -> &'static [u64];
 
-    fn on_initialize(&self);
+    fn on_initialize(&mut self);
 
-    fn on_node_added(&self, _node: &NodeId, _version: u64) {}
-    fn on_node_removed(&self, _node: &NodeId) {}
+    fn on_node_added(&mut self, _node: &NodeId, _version: u64) {}
+    fn on_node_removed(&mut self, _node: &NodeId) {}
 
-    fn on_message(&self, _node: &NodeId, _message: &[u8]) {}
+    fn on_message(&mut self, _node: &NodeId, _message: &[u8]) {}
 
-    fn on_timeout(&self, _token: TimerToken) {}
+    fn on_timeout(&mut self, _token: TimerToken) {}
 
-    fn on_event(&self, _event: Event) {}
+    fn on_event(&mut self, _event: Event) {}
 }
