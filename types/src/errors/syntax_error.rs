@@ -77,6 +77,7 @@ pub enum Error {
     /// Errors on orders
     /// origin_outputs of order is not satisfied.
     InvalidOriginOutputs(H256),
+    InvalidApproval(String),
     /// Max metadata size is exceeded.
     MetadataTooBig,
     OrderRecipientsAreSame,
@@ -111,6 +112,7 @@ const ERROR_ID_INVALID_ORDER_IN_OUT_INDICES: u8 = 14;
 const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 15;
 const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 16;
 const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 17;
+const ERROR_ID_INVALID_APPROVAL: u8 = 18;
 const ERROR_ID_METADATA_TOO_BIG: u8 = 20;
 const ERROR_ID_ORDER_RECIPIENTS_ARE_SAME: u8 = 21;
 const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 22;
@@ -147,6 +149,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => 2,
             ERROR_ID_INVALID_ORDER_PARAMETERS => 2,
             ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
+            ERROR_ID_INVALID_APPROVAL => 2,
             ERROR_ID_METADATA_TOO_BIG => 1,
             ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => 1,
             ERROR_ID_TEXT_CONTENT_TOO_BIG => 1,
@@ -219,6 +222,7 @@ impl Encodable for Error {
             Error::InvalidOriginOutputs(order_hash) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORIGIN_OUTPUTS).append(order_hash)
             }
+            Error::InvalidApproval(err) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_APPROVAL).append(err),
             Error::MetadataTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_METADATA_TOO_BIG),
             Error::OrderRecipientsAreSame => RlpHelper::new_tagged_list(s, ERROR_ID_ORDER_RECIPIENTS_ARE_SAME),
             Error::TextContentTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_TEXT_CONTENT_TOO_BIG),
@@ -278,6 +282,7 @@ impl Decodable for Error {
             ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => Error::InvalidOrderLockScriptHash(rlp.val_at(1)?),
             ERROR_ID_INVALID_ORDER_PARAMETERS => Error::InvalidOrderParameters(rlp.val_at(1)?),
             ERROR_ID_INVALID_ORIGIN_OUTPUTS => Error::InvalidOriginOutputs(rlp.val_at(1)?),
+            ERROR_ID_INVALID_APPROVAL => Error::InvalidApproval(rlp.val_at(1)?),
             ERROR_ID_METADATA_TOO_BIG => Error::MetadataTooBig,
             ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => Error::OrderRecipientsAreSame,
             ERROR_ID_TEXT_CONTENT_TOO_BIG => Error::TextContentTooBig,
@@ -336,6 +341,7 @@ impl Display for Error {
             Error::InvalidOrderLockScriptHash (lock_script_hash) => write!(f, "The lock script hash of the order is different from the output: {}", lock_script_hash),
             Error::InvalidOrderParameters (parameters) => write!(f, "The parameters of the order is different from the output: {:?}", parameters),
             Error::InvalidOriginOutputs (order_hash) => write!(f, "The order({}) is invalid because its origin outputs are wrong", order_hash),
+            Error::InvalidApproval(err) => write!(f, "Transaction has an invalid approval :{}", err),
             Error::MetadataTooBig  => write!(f, "Metadata size is too big."),
             Error::OrderRecipientsAreSame  => write!(f, "Both the lock script hash and parameters should not be same between maker and relayer"),
             Error::TextContentTooBig  => write!(f, "The content of the text is too big"),

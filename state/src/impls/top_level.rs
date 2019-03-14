@@ -759,7 +759,7 @@ where
     approvals
         .iter()
         .map(|signature| {
-            let public = recover(&signature, tracker)?;
+            let public = recover(&signature, tracker).expect("An invalid approval is a syntax error");
             public_to_owner_address(&public)
         })
         .collect()
