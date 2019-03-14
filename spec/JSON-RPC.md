@@ -1376,19 +1376,20 @@ Errors: `KVDB Error`, `Invalid Params`
 [Back to **List of methods**](#list-of-methods)
 
 ## chain_getPendingTransactions
-Gets transactions in the current transaction queue.
+Gets transactions that have insertion_timestamps within the given range from the current transaction queue.
 
 ### Params
-No parameters
+ 1. from: `number | null` - The lower bound of collected pending transactions. If null, there is no lower bound.
+ 2. to: `number | null` - The upper bound of collected pending transactions. If null, there is no upper bound.
 
 ### Returns
-`Transaction[]`
+`{ transactions: Transaction[], lastTimestamp: number }`
 
 ### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactions", "params": [], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactions", "params": [null, null], "id": null}' \
     localhost:8080
 ```
 
@@ -1396,8 +1397,9 @@ No parameters
 ```
 {
   "jsonrpc":"2.0",
-  "result":[
-    {
+  "result":{
+    "lastTimestamp": null,
+    "transactions": [{
       "blockHash":null,
       "blockNumber":null,
       "fee":"0xa",
@@ -1417,8 +1419,8 @@ No parameters
         }
       ],
       "v":0
-    }
-  ],
+    }]
+  },
   "id":null
 }
 ```
@@ -1426,10 +1428,11 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## chain_getPendingTransactionsCount
-Returns a count of the transactions that are in the current transaction queue.
+Returns a count of the transactions that have insertion_timestamps within the given range from the transaction queues.
 
 ### Params
-No parameters
+ 1. from: `number | null` - The lower bound of collected pending transactions. If null, there is no lower bound.
+ 2. to: `number | null` - The upper bound of collected pending transactions. If null, there is no upper bound.
 
 ### Returns
 `number`
@@ -1438,7 +1441,7 @@ No parameters
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactionsCount", "params": [], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactionsCount", "params": [null, null], "id": null}' \
     localhost:8080
 ```
 

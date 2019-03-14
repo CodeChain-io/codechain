@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 use std::time::Instant;
@@ -53,7 +54,7 @@ use crate::error::{BlockImportError, Error, ImportError, SchemeError};
 use crate::miner::{Miner, MinerService};
 use crate::scheme::{CommonParams, Scheme};
 use crate::service::ClientIoMessage;
-use crate::transaction::{LocalizedTransaction, SignedTransaction, UnverifiedTransaction};
+use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, UnverifiedTransaction};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -637,12 +638,12 @@ impl BlockChainClient for Client {
         }
     }
 
-    fn ready_transactions(&self) -> Vec<SignedTransaction> {
-        self.importer.miner.ready_transactions()
+    fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
+        self.importer.miner.ready_transactions(range)
     }
 
-    fn count_pending_transactions(&self) -> usize {
-        self.importer.miner.count_pending_transactions()
+    fn count_pending_transactions(&self, range: Range<u64>) -> usize {
+        self.importer.miner.count_pending_transactions(range)
     }
 
     fn is_pending_queue_empty(&self) -> bool {

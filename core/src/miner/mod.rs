@@ -23,6 +23,8 @@ mod sealing_queue;
 mod stratum;
 mod work_notify;
 
+use std::ops::Range;
+
 use ckey::{Address, Password, PlatformAddress};
 use cstate::{FindActionHandler, TopStateView};
 use ctypes::transaction::IncompleteTransaction;
@@ -39,7 +41,7 @@ use crate::client::{
 };
 use crate::consensus::EngineType;
 use crate::error::Error;
-use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::transaction::{PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
 use crate::BlockId;
 
 /// Miner client API
@@ -136,10 +138,10 @@ pub trait MinerService: Send + Sync {
     ) -> Result<(H256, u64), Error>;
 
     /// Get a list of all pending transactions in the mem pool.
-    fn ready_transactions(&self) -> Vec<SignedTransaction>;
+    fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions;
 
     /// Get a count of all pending transactions in the mem pool.
-    fn count_pending_transactions(&self) -> usize;
+    fn count_pending_transactions(&self, range: Range<u64>) -> usize;
 
     /// Get a list of all future transactions.
     fn future_transactions(&self) -> Vec<SignedTransaction>;

@@ -44,7 +44,7 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "codechain-primitives": "^0.4.6",
-    "codechain-sdk": "https://github.com/HoOngEe/codechain-sdk-js.git#registrar-lib",
+    "codechain-sdk": "https://github.com/HoOngEe/codechain-sdk-js.git#range-pendingTx-lib",
     "crypto": "^1.0.1",
     "dgram": "^1.0.1",
     "elliptic": "^6.4.1",

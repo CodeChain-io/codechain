@@ -16,6 +16,7 @@
 
 use std::cmp;
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::ops::Range;
 use std::sync::Arc;
 
 use ckey::{public_to_address, Public};
@@ -34,7 +35,7 @@ use super::mem_pool_types::{
 };
 use super::TransactionImportResult;
 use crate::client::{AccountData, BlockChain, RegularKeyOwner};
-use crate::transaction::SignedTransaction;
+use crate::transaction::{PendingSignedTransactions, SignedTransaction};
 use crate::Error as CoreError;
 
 const DEFAULT_POOLING_PERIOD: BlockNumber = 128;
@@ -276,7 +277,7 @@ impl MemPool {
 
             let id = self.next_transaction_id;
             self.next_transaction_id += 1;
-            let item = MemPoolItem::new(tx, origin, inserted_block_number, id, timelock);
+            let item = MemPoolItem::new(tx, origin, inserted_block_number, inserted_timestamp, id, timelock);
             let order = TransactionOrder::for_transaction(&item, client_account.seq);
             let order_with_tag = TransactionOrderWithTag::new(order, QueueTag::New);
 
@@ -881,11 +882,18 @@ impl MemPool {
         self.next_seqs.clear();
     }
 
-    /// Returns top transactions from the pool ordered by priority.
+    /// Returns top transactions whose timestamp are in the given range from the pool ordered by priority.
     // FIXME: current_timestamp should be `u64`, not `Option<u64>`.
-    pub fn top_transactions(&self, size_limit: usize, current_timestamp: Option<u64>) -> Vec<SignedTransaction> {
+    // FIXME: if range_contains becomes stable, use range.contains instead of inequality.
+    pub fn top_transactions(
+        &self,
+        size_limit: usize,
+        current_timestamp: Option<u64>,
+        range: Range<u64>,
+    ) -> PendingSignedTransactions {
         let mut current_size: usize = 0;
-        self.current
+        let pending_items: Vec<_> = self
+            .current
             .queue
             .iter()
             .map(|t| {
@@ -901,19 +909,36 @@ impl MemPool {
                 }
                 true
             })
+            .filter(|t| range.start <= t.inserted_timestamp && t.inserted_timestamp < range.end)
             .take_while(|t| {
                 let encoded_byte_array: Vec<u8> = rlp::encode(&t.tx).into_vec();
                 let size_in_byte = encoded_byte_array.len();
                 current_size += size_in_byte;
                 current_size < size_limit
             })
-            .map(|t| t.tx.clone())
-            .collect()
+            .collect();
+
+        let transactions = pending_items.iter().map(|t| t.tx.clone()).collect();
+        let last_timestamp = pending_items.into_iter().map(|t| t.inserted_timestamp).max();
+
+        PendingSignedTransactions {
+            transactions,
+            last_timestamp,
+        }
     }
 
-    /// Return all transactions in the memory pool.
-    pub fn count_pending_transactions(&self) -> usize {
-        self.current.queue.len() + self.future.queue.len()
+    /// Return all transactions whose timestamp are in the given range in the memory pool.
+    pub fn count_pending_transactions(&self, range: Range<u64>) -> usize {
+        self.current
+            .queue
+            .iter()
+            .map(|t| {
+                self.by_hash
+                    .get(&t.hash)
+                    .expect("All transactions in `current` and `future` are always included in `by_hash`")
+            })
+            .filter(|t| range.start <= t.inserted_timestamp && t.inserted_timestamp < range.end)
+            .count()
     }
 
     /// Return all future transactions.
@@ -1233,7 +1258,7 @@ pub mod test {
         };
         let keypair = Random.generate().unwrap();
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());
-        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, timelock);
+        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, 0, timelock);
 
         assert_eq!(fee, item.cost());
     }
@@ -1262,7 +1287,7 @@ pub mod test {
         };
         let keypair = Random.generate().unwrap();
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());
-        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, timelock);
+        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, 0, timelock);
 
         assert_eq!(fee, item.cost());
     }
@@ -1287,7 +1312,7 @@ pub mod test {
             timestamp: None,
         };
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());
-        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, timelock);
+        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, 0, timelock);
 
         assert_eq!(fee + quantity, item.cost());
     }
@@ -1389,7 +1414,7 @@ pub mod test {
             timestamp: None,
         };
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());
-        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, timelock);
+        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, 0, timelock);
 
         rlp_encode_and_decode_test!(item);
     }
@@ -1512,7 +1537,7 @@ pub mod test {
             timestamp: None,
         };
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());
-        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, timelock);
+        let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, 0, timelock);
         TransactionOrder::for_transaction(&item, 0)
     }
 }
