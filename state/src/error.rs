@@ -16,13 +16,11 @@
 
 use std::fmt;
 
-use ckey::Error as KeyError;
 use cmerkle::TrieError;
 use ctypes::errors::RuntimeError;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    Key(KeyError),
     Trie(TrieError),
     Runtime(RuntimeError),
 }
@@ -30,16 +28,9 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Key(err) => err.fmt(f),
             Error::Trie(err) => err.fmt(f),
             Error::Runtime(err) => err.fmt(f),
         }
-    }
-}
-
-impl From<KeyError> for Error {
-    fn from(err: KeyError) -> Self {
-        Error::Key(err)
     }
 }
 
