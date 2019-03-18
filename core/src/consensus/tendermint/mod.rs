@@ -467,7 +467,20 @@ impl TendermintInner {
     /// Check Tendermint can move from the commit step to the propose step
     fn can_move_from_commit_to_propose(&self) -> bool {
         let vote_step = VoteStep::new(self.height, self.last_confirmed_view, Step::Precommit);
-        self.step.is_commit() && self.has_all_votes(&vote_step) && self.check_current_block_exists()
+        if self.step.is_commit_timedout() && self.check_current_block_exists() {
+            cinfo!(ENGINE, "Transition to Propose because best block is changed after commit timeout");
+            return true
+        }
+
+        if self.step.is_commit() && self.has_all_votes(&vote_step) && self.check_current_block_exists() {
+            cinfo!(
+                ENGINE,
+                "Transition to Propose because all pre-commits are received and the canonical chain is appended"
+            );
+            return true
+        }
+
+        false
     }
 
     /// Find the designated for the given view.
@@ -1261,14 +1274,17 @@ impl TendermintInner {
             }
             TendermintState::Commit => {
                 cinfo!(ENGINE, "Commit timeout.");
-                assert!(
-                    self.check_current_block_exists(),
-                    "The canonical chain must have the block of the previous height"
-                );
-                let height = self.height;
-                self.move_to_height(height + 1);
-                Some(Step::Propose)
+                if self.check_current_block_exists() {
+                    let height = self.height;
+                    self.move_to_height(height + 1);
+                    Some(Step::Propose)
+                } else {
+                    cwarn!(ENGINE, "Best chain is not updated yet, wait until imported");
+                    self.step = TendermintState::CommitTimedout;
+                    None
+                }
             }
+            TendermintState::CommitTimedout => unreachable!(),
         };
 
         if let Some(next_step) = next_step {
@@ -1756,10 +1772,6 @@ impl TendermintInner {
             }
         }
         if !enacted.is_empty() && self.can_move_from_commit_to_propose() {
-            cinfo!(
-                ENGINE,
-                "Transition to Propose because all pre-commits are received and the canonical chain is appended"
-            );
             let new_height = self.height + 1;
             self.move_to_height(new_height);
             self.move_to_step(Step::Propose, false)
