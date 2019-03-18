@@ -32,12 +32,12 @@ const BROADCAST_TIMER_TOKEN: TimerToken = 0;
 const BROADCAST_TIMER_INTERVAL: i64 = 1000;
 const MAX_HISTORY_SIZE: usize = 100;
 
-struct Peer {
+struct KnownTxs {
     history_set: HashSet<H256>,
     history_queue: VecDeque<H256>,
 }
 
-impl Peer {
+impl KnownTxs {
     fn new() -> Self {
         Self {
             history_set: HashSet::new(),
@@ -60,7 +60,7 @@ impl Peer {
 }
 
 pub struct Extension {
-    peers: HashMap<NodeId, RwLock<Peer>>,
+    peers: HashMap<NodeId, RwLock<KnownTxs>>,
     client: Arc<BlockChainClient>,
     api: Box<Api>,
 }
@@ -91,7 +91,7 @@ impl NetworkExtension<Never> for Extension {
     }
 
     fn on_node_added(&mut self, token: &NodeId, _version: u64) {
-        self.peers.insert(*token, RwLock::new(Peer::new()));
+        self.peers.insert(*token, RwLock::new(KnownTxs::new()));
     }
     fn on_node_removed(&mut self, token: &NodeId) {
         self.peers.remove(token);
