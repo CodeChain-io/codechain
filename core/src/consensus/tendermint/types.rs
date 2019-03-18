@@ -44,6 +44,7 @@ pub enum TendermintState {
     Prevote,
     Precommit,
     Commit,
+    CommitTimedout,
 }
 
 impl TendermintState {
@@ -62,12 +63,21 @@ impl TendermintState {
             TendermintState::Prevote => Step::Prevote,
             TendermintState::Precommit => Step::Precommit,
             TendermintState::Commit => Step::Commit,
+            TendermintState::CommitTimedout => Step::Commit,
         }
     }
 
     pub fn is_commit(&self) -> bool {
         match self {
             TendermintState::Commit => true,
+            TendermintState::CommitTimedout => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_commit_timedout(&self) -> bool {
+        match self {
+            TendermintState::CommitTimedout => true,
             _ => false,
         }
     }
@@ -89,6 +99,7 @@ impl fmt::Debug for TendermintState {
             TendermintState::Prevote => write!(f, "TendermintState::Prevote"),
             TendermintState::Precommit => write!(f, "TendermintState::Precommit"),
             TendermintState::Commit => write!(f, "TendermintState::Commit"),
+            TendermintState::CommitTimedout => write!(f, "TendermintState::CommitTimedout"),
         }
     }
 }
