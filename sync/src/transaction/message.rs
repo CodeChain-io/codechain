@@ -25,14 +25,39 @@ pub enum Message {
 impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match &self {
-            Message::Transactions(transactions) => s.append_list(transactions),
+            Message::Transactions(transactions) => {
+                let mut uncompressed = {
+                    let mut inner_list = RlpStream::new();
+                    inner_list.append_list(transactions);
+                    inner_list.out()
+                };
+
+                let compressed = {
+                    // TODO: Cache the Encoder object
+                    let mut snappy_encoder = snap::Encoder::new();
+                    snappy_encoder.compress_vec(&uncompressed).expect("Compression always succeed")
+                };
+
+                s.append(&compressed)
+            }
         };
     }
 }
 
 impl Decodable for Message {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        Ok(Message::Transactions(rlp.as_list()?))
+        let compressed: Vec<u8> = rlp.as_val()?;
+        let uncompressed = {
+            // TODO: Cache the Decoder object
+            let mut snappy_decoder = snap::Decoder::new();
+            snappy_decoder.decompress_vec(&compressed).map_err(|err| {
+                cwarn!(SYNC_TX, "Decompression failed with decoding a transactions: {}", err);
+                DecoderError::Custom("Invalid compression format")
+            })?
+        };
+
+        let uncompressed_rlp = UntrustedRlp::new(&uncompressed);
+        Ok(Message::Transactions(uncompressed_rlp.as_list()?))
     }
 }
 
@@ -40,10 +65,31 @@ impl Decodable for Message {
 mod tests {
     use rlp::rlp_encode_and_decode_test;
 
+    use ccore::UnverifiedTransaction;
+    use ckey::{Address, Signature};
+    use ctypes::transaction::{Action, Transaction};
+
     use super::Message;
 
     #[test]
     fn transactions_message_rlp() {
         rlp_encode_and_decode_test!(Message::Transactions(Vec::new()));
+    }
+
+    #[test]
+    fn transactions_message_rlp_with_tx() {
+        let tx = UnverifiedTransaction::new(
+            Transaction {
+                seq: 0,
+                fee: 10,
+                action: Action::CreateShard {
+                    users: vec![Address::random(), Address::random()],
+                },
+                network_id: "tc".into(),
+            },
+            Signature::default(),
+        );
+
+        rlp_encode_and_decode_test!(Message::Transactions(vec![tx]));
     }
 }

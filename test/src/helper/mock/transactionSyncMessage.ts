@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -13,6 +13,8 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
+import {compressSync, uncompressSync} from "snappy";
+
 const RLP = require("rlp");
 
 type transactionSyncMessageBody = ITransactions;
@@ -25,7 +27,10 @@ interface ITransactions {
 export class TransactionSyncMessage {
 
     public static fromBytes(bytes: Buffer): TransactionSyncMessage {
-        const decodedmsg = RLP.decode(bytes);
+        const compressed = RLP.decode(bytes) as any;
+        const uncompressed = uncompressSync(compressed);
+        const decodedmsg = RLP.decode(uncompressed);
+
         return new TransactionSyncMessage({
             type: "transactions",
             data: decodedmsg
@@ -46,6 +51,8 @@ export class TransactionSyncMessage {
     }
 
     public rlpBytes(): Buffer {
-        return RLP.encode(this.toEncodeObject());
+        const uncompressed = RLP.encode(this.toEncodeObject());
+        const compressed = compressSync(uncompressed);
+        return RLP.encode(compressed);
     }
 }
