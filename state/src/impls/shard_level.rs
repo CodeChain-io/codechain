@@ -417,11 +417,11 @@ impl<'db> ShardLevelState<'db> {
                 shard_id: self.shard_id,
             })?;
 
-            if !asset_scheme.is_regulated() {
-                return Err(RuntimeError::InsufficientPermission.into())
-            }
-            let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
-            if registrar != sender && !approvers.contains(registrar) {
+            if let Some(registrar) = asset_scheme.registrar().as_ref() {
+                if registrar != sender && !approvers.contains(registrar) {
+                    return Err(RuntimeError::InsufficientPermission.into())
+                }
+            } else {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
         }
@@ -452,11 +452,11 @@ impl<'db> ShardLevelState<'db> {
                 index,
             })?;
 
-            if !asset_scheme.is_regulated() {
-                return Err(RuntimeError::InsufficientPermission.into())
-            }
-            let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
-            if registrar != sender && !approvers.contains(registrar) {
+            if let Some(registrar) = asset_scheme.registrar().as_ref() {
+                if registrar != sender && !approvers.contains(registrar) {
+                    return Err(RuntimeError::InsufficientPermission.into())
+                }
+            } else {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
         }
@@ -580,7 +580,10 @@ impl<'db> ShardLevelState<'db> {
             .into())
         }
 
-        let asset_scheme = self.asset_scheme(asset_type)?.expect("AssetScheme must exist when the asset exist");
+        let asset_scheme = self.asset_scheme(asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
+            shard_id: input.prev_out.shard_id,
+            asset_type: input.prev_out.asset_type,
+        })?;
         if asset_scheme.is_regulated() {
             let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
             if registrar == sender || approvers.contains(registrar) {
@@ -676,7 +679,10 @@ impl<'db> ShardLevelState<'db> {
             assert_eq!(self.shard_id, input.prev_out.shard_id);
             let shard_asset_type = (input.prev_out.asset_type, input.prev_out.shard_id);
             let asset_scheme =
-                self.asset_scheme(shard_asset_type.0)?.expect("AssetScheme must exist when the asset exist");
+                self.asset_scheme(shard_asset_type.0)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
+                    shard_id: input.prev_out.shard_id,
+                    asset_type: input.prev_out.asset_type,
+                })?;
             if asset_scheme.is_regulated() {
                 return Err(RuntimeError::CannotComposeRegulatedAsset.into())
             }
