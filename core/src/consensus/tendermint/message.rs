@@ -82,7 +82,7 @@ const MESSAGE_ID_REQUEST_PROPOSAL: u8 = 0x05;
 
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
-    ConsensusMessage(Bytes),
+    ConsensusMessage(Vec<Bytes>),
     ProposalBlock {
         signature: SchnorrSignature,
         view: View,
@@ -107,10 +107,10 @@ pub enum TendermintMessage {
 impl Encodable for TendermintMessage {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            TendermintMessage::ConsensusMessage(message) => {
+            TendermintMessage::ConsensusMessage(messages) => {
                 s.begin_list(2);
                 s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
-                s.append(message);
+                s.append_list::<Bytes, Bytes>(messages);
             }
             TendermintMessage::ProposalBlock {
                 signature,
@@ -176,8 +176,7 @@ impl Decodable for TendermintMessage {
                         expected: 2,
                     })
                 }
-                let bytes = rlp.at(1)?;
-                TendermintMessage::ConsensusMessage(bytes.as_val()?)
+                TendermintMessage::ConsensusMessage(rlp.list_at(1)?)
             }
             MESSAGE_ID_PROPOSAL_BLOCK => {
                 let item_count = rlp.item_count()?;
@@ -387,7 +386,12 @@ mod tests {
 
     #[test]
     fn encode_and_decode_tendermint_message_1() {
-        rlp_encode_and_decode_test!(TendermintMessage::ConsensusMessage(vec![1u8, 2u8]));
+        rlp_encode_and_decode_test!(TendermintMessage::ConsensusMessage(vec![vec![1u8, 2u8]]));
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_1_2() {
+        rlp_encode_and_decode_test!(TendermintMessage::ConsensusMessage(vec![vec![1u8, 2u8], vec![3u8, 4u8]]));
     }
 
     #[test]

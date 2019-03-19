@@ -212,8 +212,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
         let (result, receiver) = crossbeam::bounded(1);
         self.inner
-            .send(worker::Event::HandleMessage {
-                message: rlp.to_owned(),
+            .send(worker::Event::HandleMessages {
+                messages: vec![rlp.to_owned()],
                 result,
             })
             .unwrap();
