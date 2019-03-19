@@ -430,24 +430,36 @@ impl ExecuteClient for Client {
         params: &[Vec<Bytes>],
         indices: &[usize],
     ) -> Result<Vec<String>, ClientError> {
-        let mut results = vec![];
+        let mut results = Vec::with_capacity(indices.len());
         for (i, index) in indices.iter().enumerate() {
-            let input = &inputs[*index];
-            let param = &params[i];
-            let result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
-                (Ok(lock_script), Ok(unlock_script)) => {
-                    let script_result =
-                        execute(&unlock_script, &param, &lock_script, tx, VMConfig::default(), &input, false, self);
-                    match script_result {
-                        Ok(ScriptResult::Burnt) => "burnt",
-                        Ok(ScriptResult::Unlocked) => "unlocked",
-                        _ => "failed",
+            let input = inputs.get(*index);
+            let param = params.get(i);
+            let result = match (input, param) {
+                (Some(input), Some(param)) => {
+                    let lock_script = decode(&input.lock_script);
+                    let unlock_script = decode(&input.unlock_script);
+                    match (lock_script, unlock_script) {
+                        (Ok(lock_script), Ok(unlock_script)) => {
+                            match execute(
+                                &unlock_script,
+                                &param,
+                                &lock_script,
+                                tx,
+                                VMConfig::default(),
+                                &input,
+                                false,
+                                self,
+                            ) {
+                                Ok(ScriptResult::Burnt) => "burnt".to_string(),
+                                Ok(ScriptResult::Unlocked) => "unlocked".to_string(),
+                                _ => "failed".to_string(),
+                            }
+                        }
+                        _ => "invalid".to_string(),
                     }
                 }
-                _ => "invalid",
-            }
-            .to_string();
-
+                _ => "invalid".to_string(),
+            };
             results.push(result);
         }
         Ok(results)
