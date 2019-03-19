@@ -30,7 +30,7 @@ use super::message::Message;
 
 const BROADCAST_TIMER_TOKEN: TimerToken = 0;
 const BROADCAST_TIMER_INTERVAL: i64 = 1000;
-const MAX_HISTORY_SIZE: usize = 100;
+const MAX_HISTORY_SIZE: usize = 100_000;
 
 struct KnownTxs {
     history_set: HashSet<H256>,
