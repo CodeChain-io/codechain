@@ -517,7 +517,14 @@ impl<'db> ShardLevelState<'db> {
             .into())
         }
         if *asset.asset_type() != input.prev_out.asset_type {
-            return Err(RuntimeError::InvalidAssetType(input.prev_out.asset_type).into())
+            return Err(RuntimeError::UnexpectedAssetType {
+                index: input.prev_out.index,
+                mismatch: Mismatch {
+                    expected: *asset.asset_type(),
+                    found: input.prev_out.asset_type,
+                },
+            }
+            .into())
         }
         Ok(asset)
     }
@@ -553,6 +560,7 @@ impl<'db> ShardLevelState<'db> {
         let AssetOutPoint {
             index,
             tracker,
+            asset_type,
             ..
         } = input.prev_out;
         let asset = self.asset(tracker, index)?.ok_or_else(|| RuntimeError::AssetNotFound {
@@ -561,8 +569,18 @@ impl<'db> ShardLevelState<'db> {
             index,
         })?;
         assert_eq!(self.shard_id, input.prev_out.shard_id);
-        let asset_scheme =
-            self.asset_scheme(input.prev_out.asset_type)?.expect("AssetScheme must exist when the asset exist");
+        if asset_type != *asset.asset_type() {
+            return Err(RuntimeError::UnexpectedAssetType {
+                index,
+                mismatch: Mismatch {
+                    found: asset_type,
+                    expected: *asset.asset_type(),
+                },
+            }
+            .into())
+        }
+
+        let asset_scheme = self.asset_scheme(asset_type)?.expect("AssetScheme must exist when the asset exist");
         if asset_scheme.is_regulated() {
             let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
             if registrar == sender || approvers.contains(registrar) {
@@ -1550,7 +1568,13 @@ mod tests {
         let transfer_tracker = transfer.tracker();
 
         assert_eq!(
-            Err(StateError::Runtime(RuntimeError::InvalidAssetType(asset_type2))),
+            Err(StateError::Runtime(RuntimeError::UnexpectedAssetType {
+                index: 0,
+                mismatch: Mismatch {
+                    found: asset_type2,
+                    expected: asset_type1,
+                }
+            })),
             state.apply(&transfer, &sender, &[sender], &[], &get_test_client())
         );
 

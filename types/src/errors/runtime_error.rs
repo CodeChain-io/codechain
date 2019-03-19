@@ -70,7 +70,10 @@ pub enum Error {
         got: u64,
     },
     /// AssetType error other than format.
-    InvalidAssetType(H160),
+    UnexpectedAssetType {
+        index: usize,
+        mismatch: Mismatch<H160>,
+    },
     InvalidDecomposedInput {
         asset_type: H160,
         shard_id: ShardId,
@@ -117,7 +120,7 @@ const ERROR_ID_FAILED_TO_UNLOCK: u8 = 6;
 const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 9;
 const ERROR_ID_INVALID_ASSET_QUANTITY: u8 = 10;
-const ERROR_ID_INVALID_ASSET_TYPE: u8 = 11;
+const ERROR_ID_UNEXPECTED_ASSET_TYPE: u8 = 11;
 const ERROR_ID_INVALID_DECOMPOSED_INPUT: u8 = 13;
 const ERROR_ID_INVALID_DECOMPOSED_OUTPUT: u8 = 14;
 const ERROR_ID_INVALID_SHARD_ID: u8 = 15;
@@ -155,7 +158,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_INSUFFICIENT_BALANCE => 4,
             ERROR_ID_INSUFFICIENT_PERMISSION => 1,
             ERROR_ID_INVALID_ASSET_QUANTITY => 6,
-            ERROR_ID_INVALID_ASSET_TYPE => 2,
+            ERROR_ID_UNEXPECTED_ASSET_TYPE => 3,
             ERROR_ID_INVALID_DECOMPOSED_INPUT => 4,
             ERROR_ID_INVALID_DECOMPOSED_OUTPUT => 5,
             ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
@@ -233,7 +236,10 @@ impl Encodable for Error {
                 .append(index)
                 .append(expected)
                 .append(got),
-            Error::InvalidAssetType(addr) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_TYPE).append(addr),
+            Error::UnexpectedAssetType {
+                index,
+                mismatch,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_UNEXPECTED_ASSET_TYPE).append(index).append(mismatch),
             Error::InvalidDecomposedInput {
                 asset_type,
                 shard_id,
@@ -324,7 +330,10 @@ impl Decodable for Error {
                 expected: rlp.val_at(4)?,
                 got: rlp.val_at(5)?,
             },
-            ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
+            ERROR_ID_UNEXPECTED_ASSET_TYPE => Error::UnexpectedAssetType {
+                index: rlp.val_at(1)?,
+                mismatch: rlp.val_at(2)?,
+            },
             ERROR_ID_INVALID_DECOMPOSED_INPUT => Error::InvalidDecomposedInput {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
@@ -397,7 +406,7 @@ impl Display for Error {
                 "AssetTransfer must consume input asset completely. The quantity of asset({}:{}:{}) must be {}, but {}.",
                 shard_id, tracker, index, expected, got
             ),
-            Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
+            Error::UnexpectedAssetType{index, mismatch} => write!(f, "{}th input has an unexpected asset type: {}", index, mismatch),
             Error::InvalidDecomposedInput {
                 asset_type,
                 shard_id,
