@@ -90,15 +90,15 @@ impl TendermintExtension {
 
     fn broadcast_message(&self, message: Bytes) {
         let tokens = self.select_random_peers();
-        let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
+        let message = TendermintMessage::ConsensusMessage(vec![message]).rlp_bytes().into_vec();
         for token in tokens {
             self.api.send(&token, &message);
         }
     }
 
-    fn send_message(&self, token: &NodeId, message: Bytes) {
-        ctrace!(ENGINE, "Send message to {}", token);
-        let message = TendermintMessage::ConsensusMessage(message).rlp_bytes().into_vec();
+    fn send_votes(&self, token: &NodeId, messages: Vec<Bytes>) {
+        ctrace!(ENGINE, "Send messages({}) to {}", messages.len(), token);
+        let message = TendermintMessage::ConsensusMessage(messages).rlp_bytes().into_vec();
         self.api.send(token, &message);
     }
 
@@ -225,30 +225,33 @@ impl NetworkExtension<Event> for TendermintExtension {
     fn on_message(&mut self, token: &NodeId, data: &[u8]) {
         let m = UntrustedRlp::new(data);
         match m.as_val() {
-            Ok(TendermintMessage::ConsensusMessage(ref bytes)) => {
-                let (result, receiver) = crossbeam::bounded(1);
+            Ok(TendermintMessage::ConsensusMessage(ref messages)) => {
+                ctrace!(ENGINE, "Received messages({})", messages.len());
+                let (result, receiver) = crossbeam::bounded(messages.len());
                 self.inner
-                    .send(worker::Event::HandleMessage {
-                        message: bytes.clone(),
+                    .send(worker::Event::HandleMessages {
+                        messages: messages.clone(),
                         result,
                     })
                     .unwrap();
-                match receiver.recv().unwrap() {
-                    Err(EngineError::FutureMessage {
-                        future_height,
-                        current_height,
-                    }) => {
-                        cdebug!(
-                            ENGINE,
-                            "Could not handle future message from {}, in height {}",
+                for result in receiver.iter() {
+                    match result {
+                        Err(EngineError::FutureMessage {
                             future_height,
-                            current_height
-                        );
+                            current_height,
+                        }) => {
+                            cdebug!(
+                                ENGINE,
+                                "Could not handle future message from {}, in height {}",
+                                future_height,
+                                current_height
+                            );
+                        }
+                        Err(e) => {
+                            cinfo!(ENGINE, "Failed to handle message {:?}", e);
+                        }
+                        Ok(_) => {}
                     }
-                    Err(e) => {
-                        cinfo!(ENGINE, "Failed to handle message {:?}", e);
-                    }
-                    Ok(_) => {}
                 }
             }
             Ok(TendermintMessage::ProposalBlock {
@@ -334,8 +337,9 @@ impl NetworkExtension<Event> for TendermintExtension {
                     })
                     .unwrap();
 
-                for vote in receiver.iter() {
-                    self.send_message(token, vote.rlp_bytes().into_vec());
+                let votes: Vec<_> = receiver.iter().map(|vote| vote.rlp_bytes().into_vec()).collect();
+                if !votes.is_empty() {
+                    self.send_votes(token, votes);
                 }
             }
             _ => cinfo!(ENGINE, "Invalid message from peer {}", token),
