@@ -21,7 +21,6 @@ use ccore::BlockChainClient;
 use cnetwork::{Api, NetworkExtension, NodeId};
 use ctimer::TimerToken;
 use never::Never;
-use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
@@ -39,13 +38,6 @@ struct KnownTxs {
 }
 
 impl KnownTxs {
-    fn new() -> Self {
-        Self {
-            history_set: HashSet::new(),
-            history_queue: VecDeque::new(),
-        }
-    }
-
     fn push(&mut self, hash: H256) {
         debug_assert!(!self.history_set.contains(&hash));
         self.history_set.insert(hash);
@@ -62,7 +54,7 @@ impl KnownTxs {
 
 pub struct Extension {
     known_txs: KnownTxs,
-    peers: HashMap<NodeId, RwLock<KnownTxs>>,
+    peers: HashMap<NodeId, KnownTxs>,
     client: Arc<BlockChainClient>,
     api: Box<Api>,
 }
@@ -94,7 +86,7 @@ impl NetworkExtension<Never> for Extension {
     }
 
     fn on_node_added(&mut self, token: &NodeId, _version: u64) {
-        self.peers.insert(*token, RwLock::new(KnownTxs::new()));
+        self.peers.insert(*token, KnownTxs::default());
     }
     fn on_node_removed(&mut self, token: &NodeId) {
         self.peers.remove(token);
@@ -123,8 +115,7 @@ impl NetworkExtension<Never> for Extension {
                         transactions.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
                         *token,
                     );
-                    if let Some(peer) = self.peers.get(token) {
-                        let mut peer = peer.write();
+                    if let Some(peer) = self.peers.get_mut(token) {
                         let transactions: Vec<_> =
                             transactions.iter().map(|tx| tx.hash()).filter(|tx_hash| !peer.contains(tx_hash)).collect();
                         for unverified in transactions.iter() {
@@ -151,14 +142,13 @@ impl NetworkExtension<Never> for Extension {
 }
 
 impl Extension {
-    fn random_broadcast(&self) {
+    fn random_broadcast(&mut self) {
         let transactions = self.client.ready_transactions(0..(::std::u64::MAX)).transactions;
         if transactions.is_empty() {
             ctrace!(SYNC_TX, "No transactions to propagate");
             return
         }
-        for (token, peer) in &self.peers {
-            let mut peer = peer.write();
+        for (token, peer) in &mut self.peers {
             let unsent: Vec<_> = transactions
                 .iter()
                 .filter(|tx| !peer.contains(&tx.hash()))
