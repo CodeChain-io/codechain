@@ -30,14 +30,15 @@ use super::message::Message;
 
 const BROADCAST_TIMER_TOKEN: TimerToken = 0;
 const BROADCAST_TIMER_INTERVAL: i64 = 1000;
-const MAX_HISTORY_SIZE: usize = 100;
+const MAX_HISTORY_SIZE: usize = 100_000;
 
-struct Peer {
+#[derive(Default)]
+struct KnownTxs {
     history_set: HashSet<H256>,
     history_queue: VecDeque<H256>,
 }
 
-impl Peer {
+impl KnownTxs {
     fn new() -> Self {
         Self {
             history_set: HashSet::new(),
@@ -60,7 +61,8 @@ impl Peer {
 }
 
 pub struct Extension {
-    peers: HashMap<NodeId, RwLock<Peer>>,
+    known_txs: KnownTxs,
+    peers: HashMap<NodeId, RwLock<KnownTxs>>,
     client: Arc<BlockChainClient>,
     api: Box<Api>,
 }
@@ -70,6 +72,7 @@ impl Extension {
         api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
             .expect("Timer set succeeds");
         Extension {
+            known_txs: Default::default(),
             peers: Default::default(),
             client,
             api,
@@ -91,7 +94,7 @@ impl NetworkExtension<Never> for Extension {
     }
 
     fn on_node_added(&mut self, token: &NodeId, _version: u64) {
-        self.peers.insert(*token, RwLock::new(Peer::new()));
+        self.peers.insert(*token, RwLock::new(KnownTxs::new()));
     }
     fn on_node_removed(&mut self, token: &NodeId) {
         self.peers.remove(token);
@@ -101,6 +104,21 @@ impl NetworkExtension<Never> for Extension {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Transactions(transactions) => {
+                    let transactions: Vec<_> = {
+                        transactions
+                            .into_iter()
+                            .filter(|tx| {
+                                let hash = tx.hash();
+                                if self.known_txs.contains(&hash) {
+                                    false
+                                } else {
+                                    self.known_txs.push(hash);
+                                    true
+                                }
+                            })
+                            .collect()
+                    };
+
                     self.client.queue_transactions(
                         transactions.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
                         *token,
