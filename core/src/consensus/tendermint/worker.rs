@@ -119,8 +119,8 @@ pub enum Event {
         epoch_begin: bool,
         result: crossbeam::Sender<Result<(), Error>>,
     },
-    HandleMessage {
-        message: Vec<u8>,
+    HandleMessages {
+        messages: Vec<Vec<u8>>,
         result: crossbeam::Sender<Result<(), EngineError>>,
     },
     IsProposal {
@@ -258,11 +258,13 @@ impl Worker {
                             }) => {
                                 result.send(inner.on_new_block(&header, epoch_begin)).unwrap();
                             }
-                            Ok(Event::HandleMessage {
-                                message,
+                            Ok(Event::HandleMessages {
+                                messages,
                                 result,
                             }) => {
-                                result.send(inner.handle_message(&message, false)).unwrap();
+                                for message in messages {
+                                    result.send(inner.handle_message(&message, false)).unwrap();
+                                }
                             }
                             Ok(Event::IsProposal {
                                 block_number,

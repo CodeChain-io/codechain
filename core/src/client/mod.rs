@@ -35,7 +35,7 @@ use std::sync::Arc;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{AssetScheme, FindActionHandler, OwnedAsset, Text, TopLevelState, TopStateView};
+use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::invoice::{BlockInvoices, Invoice};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
@@ -46,7 +46,7 @@ use primitives::{Bytes, H160, H256, U256};
 use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::encoded;
-use crate::error::{BlockImportError, Error as CoreError};
+use crate::error::BlockImportError;
 use crate::scheme::CommonParams;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
@@ -321,7 +321,7 @@ pub trait TextClient {
 }
 
 pub trait ExecuteClient: ChainTimeInfo {
-    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> Result<Invoice, CoreError>;
+    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> StateResult<Invoice>;
 
     fn execute_vm(
         &self,
@@ -329,7 +329,7 @@ pub trait ExecuteClient: ChainTimeInfo {
         inputs: &[AssetTransferInput],
         params: &[Vec<Bytes>],
         indices: &[usize],
-    ) -> Result<Vec<String>, CoreError>;
+    ) -> Result<Vec<String>, Error>;
 }
 
 pub trait StateInfo {
