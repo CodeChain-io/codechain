@@ -27,6 +27,7 @@ use finally::finally;
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};
+use primitives::Bytes;
 use rand::prelude::SliceRandom;
 use rand::rngs::OsRng;
 use rand::Rng;
@@ -616,7 +617,7 @@ impl IoHandler<Message> for Handler {
                                 unreachable!("Node id for {}:{} must exist", stream_token, con.peer_addr())
                             });
                             let unencrypted = msg.unencrypted_data(con.session()).map_err(|e| format!("{:?}", e))?;
-                            self.client.on_message(msg.extension_name(), &remote_node_id, &unencrypted);
+                            self.client.on_message(msg.extension_name(), &remote_node_id, unencrypted);
                         }
                         Some(NetworkMessage::Negotiation(NegotiationMessage::Request {
                             extension_name,
@@ -678,7 +679,7 @@ impl IoHandler<Message> for Handler {
                                 unreachable!("Node id for {}:{} must exist", stream_token, con.peer_addr())
                             });
                             let unencrypted = msg.unencrypted_data(con.session()).map_err(|e| format!("{:?}", e))?;
-                            self.client.on_message(msg.extension_name(), &remote_node_id, &unencrypted);
+                            self.client.on_message(msg.extension_name(), &remote_node_id, unencrypted);
                         }
                         Some(NetworkMessage::Negotiation(NegotiationMessage::Request {
                             ..
@@ -1090,7 +1091,7 @@ pub enum Message {
         node_id: NodeId,
         extension_name: &'static str,
         need_encryption: bool,
-        data: Vec<u8>,
+        data: Arc<Bytes>,
     },
     Disconnect(SocketAddr),
     ApplyFilters,

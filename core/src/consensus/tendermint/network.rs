@@ -17,6 +17,7 @@
 use std::cmp;
 use std::collections::HashMap;
 use std::iter::Iterator;
+use std::sync::Arc;
 
 use ckey::SchnorrSignature;
 use cnetwork::{Api, NetworkExtension, NodeId};
@@ -90,45 +91,49 @@ impl TendermintExtension {
 
     fn broadcast_message(&self, message: Bytes) {
         let tokens = self.select_random_peers();
-        let message = TendermintMessage::ConsensusMessage(vec![message]).rlp_bytes().into_vec();
+        let message = Arc::new(TendermintMessage::ConsensusMessage(vec![message]).rlp_bytes().into_vec());
         for token in tokens {
-            self.api.send(&token, &message);
+            self.api.send(&token, Arc::clone(&message));
         }
     }
 
     fn send_votes(&self, token: &NodeId, messages: Vec<Bytes>) {
         ctrace!(ENGINE, "Send messages({}) to {}", messages.len(), token);
-        let message = TendermintMessage::ConsensusMessage(messages).rlp_bytes().into_vec();
-        self.api.send(token, &message);
+        let message = Arc::new(TendermintMessage::ConsensusMessage(messages).rlp_bytes().into_vec());
+        self.api.send(token, message);
     }
 
     fn broadcast_state(&self, vote_step: VoteStep, proposal: Option<H256>, lock_view: Option<View>, votes: BitSet) {
         ctrace!(ENGINE, "Broadcast state {:?} {:?} {:?}", vote_step, proposal, votes);
         let tokens = self.select_random_peers();
-        let message = TendermintMessage::StepState {
-            vote_step,
-            proposal,
-            lock_view,
-            known_votes: votes,
-        }
-        .rlp_bytes()
-        .into_vec();
+        let message = Arc::new(
+            TendermintMessage::StepState {
+                vote_step,
+                proposal,
+                lock_view,
+                known_votes: votes,
+            }
+            .rlp_bytes()
+            .into_vec(),
+        );
 
         for token in tokens {
-            self.api.send(&token, &message);
+            self.api.send(&token, Arc::clone(&message));
         }
     }
 
     fn broadcast_proposal_block(&self, signature: SchnorrSignature, view: View, message: Bytes) {
-        let message = TendermintMessage::ProposalBlock {
-            signature,
-            message,
-            view,
-        }
-        .rlp_bytes()
-        .into_vec();
+        let message = Arc::new(
+            TendermintMessage::ProposalBlock {
+                signature,
+                message,
+                view,
+            }
+            .rlp_bytes()
+            .into_vec(),
+        );
         for token in self.peers.keys() {
-            self.api.send(token, &message);
+            self.api.send(token, Arc::clone(&message));
         }
     }
 
@@ -155,13 +160,15 @@ impl TendermintExtension {
 
     fn request_proposal(&self, token: &NodeId, height: Height, view: View) {
         ctrace!(ENGINE, "Request proposal {} {} to {:?}", height, view, token);
-        let message = TendermintMessage::RequestProposal {
-            height,
-            view,
-        }
-        .rlp_bytes()
-        .into_vec();
-        self.api.send(&token, &message);
+        let message = Arc::new(
+            TendermintMessage::RequestProposal {
+                height,
+                view,
+            }
+            .rlp_bytes()
+            .into_vec(),
+        );
+        self.api.send(&token, message);
     }
 
     fn request_messages_to_all(&self, vote_step: VoteStep, requested_votes: BitSet) {
@@ -175,13 +182,15 @@ impl TendermintExtension {
 
     fn request_messages(&self, token: &NodeId, vote_step: VoteStep, requested_votes: BitSet) {
         ctrace!(ENGINE, "Request messages {:?} {:?} to {:?}", vote_step, requested_votes, token);
-        let message = TendermintMessage::RequestMessage {
-            vote_step,
-            requested_votes,
-        }
-        .rlp_bytes()
-        .into_vec();
-        self.api.send(&token, &message);
+        let message = Arc::new(
+            TendermintMessage::RequestMessage {
+                vote_step,
+                requested_votes,
+            }
+            .rlp_bytes()
+            .into_vec(),
+        );
+        self.api.send(&token, message);
     }
 
     fn set_timer_step(&self, step: Step, view: View, expired_token_nonce: TimerToken) {
@@ -302,7 +311,7 @@ impl NetworkExtension<Event> for TendermintExtension {
                     .unwrap();
 
                 while let Ok(message) = receiver.recv() {
-                    self.api.send(token, &message);
+                    self.api.send(token, Arc::new(message));
                 }
             }
             Ok(TendermintMessage::RequestProposal {
@@ -319,7 +328,7 @@ impl NetworkExtension<Event> for TendermintExtension {
                     })
                     .unwrap();
                 if let Ok(message) = receiver.recv() {
-                    self.api.send(token, &message);
+                    self.api.send(token, Arc::new(message));
                 }
             }
             Ok(TendermintMessage::RequestMessage {

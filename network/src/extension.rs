@@ -16,9 +16,11 @@
 
 use std::convert::From;
 use std::result;
+use std::sync::Arc;
 
 use cio::IoError;
 use ctimer::{TimerScheduleError, TimerToken};
+use primitives::Bytes;
 use time::Duration;
 
 use crate::NodeId;
@@ -47,7 +49,7 @@ impl From<TimerScheduleError> for Error {
 pub type Result<T> = result::Result<T, Error>;
 
 pub trait Api {
-    fn send(&self, node: &NodeId, message: &[u8]);
+    fn send(&self, node: &NodeId, message: Arc<Bytes>);
 
     fn set_timer(&self, timer: TimerToken, d: Duration) -> Result<()>;
     fn set_timer_once(&self, timer: TimerToken, d: Duration) -> Result<()>;

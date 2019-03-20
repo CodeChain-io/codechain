@@ -113,7 +113,7 @@ impl Extension {
             let request_id = self.last_request;
             self.last_request += 1;
             requests.push((request_id, request.clone()));
-            self.api.send(id, &Message::Request(request_id, request).rlp_bytes());
+            self.api.send(id, Arc::new(Message::Request(request_id, request).rlp_bytes().into_vec()));
         }
     }
 
@@ -136,7 +136,7 @@ impl Extension {
                 let request_id = self.last_request;
                 self.last_request += 1;
                 requests.push((request_id, request.clone()));
-                self.api.send(id, &Message::Request(request_id, request).rlp_bytes());
+                self.api.send(id, Arc::new(Message::Request(request_id, request).rlp_bytes().into_vec()));
 
                 let token = &self.tokens[id];
                 let token_info = self.tokens_info.get_mut(token).unwrap();
@@ -212,12 +212,15 @@ impl NetworkExtension<Event> for Extension {
         let chain_info = self.client.chain_info();
         self.api.send(
             id,
-            &Message::Status {
-                total_score: chain_info.best_proposal_score,
-                best_hash: chain_info.best_block_hash,
-                genesis_hash: chain_info.genesis_hash,
-            }
-            .rlp_bytes(),
+            Arc::new(
+                Message::Status {
+                    total_score: chain_info.best_proposal_score,
+                    best_hash: chain_info.best_block_hash,
+                    genesis_hash: chain_info.genesis_hash,
+                }
+                .rlp_bytes()
+                .into_vec(),
+            ),
         );
         let t = self.connected_nodes.insert(*id);
         debug_assert!(t, "{} is already added to peer list", id);
@@ -415,12 +418,15 @@ impl Extension {
         for id in &self.connected_nodes {
             self.api.send(
                 id,
-                &Message::Status {
-                    total_score: chain_info.best_proposal_score,
-                    best_hash: chain_info.best_block_hash,
-                    genesis_hash: chain_info.genesis_hash,
-                }
-                .rlp_bytes(),
+                Arc::new(
+                    Message::Status {
+                        total_score: chain_info.best_proposal_score,
+                        best_hash: chain_info.best_block_hash,
+                        genesis_hash: chain_info.genesis_hash,
+                    }
+                    .rlp_bytes()
+                    .into_vec(),
+                ),
             );
         }
     }
@@ -478,7 +484,7 @@ impl Extension {
             } => self.create_state_chunk_response(block_hash, tree_root),
         };
 
-        self.api.send(from, &Message::Response(id, response).rlp_bytes());
+        self.api.send(from, Arc::new(Message::Response(id, response).rlp_bytes().into_vec()));
     }
 
     fn is_valid_request(&self, request: &RequestMessage) -> bool {

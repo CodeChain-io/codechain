@@ -22,6 +22,7 @@ use cio::IoChannel;
 use crossbeam_channel as crossbeam;
 use ctimer::{TimeoutHandler, TimerApi, TimerLoop, TimerToken};
 use parking_lot::{Mutex, RwLock};
+use primitives::Bytes;
 use time::Duration;
 
 use crate::p2p::Message as P2pMessage;
@@ -35,11 +36,10 @@ struct ClientApi {
 }
 
 impl Api for ClientApi {
-    fn send(&self, id: &NodeId, message: &[u8]) {
+    fn send(&self, id: &NodeId, data: Arc<Bytes>) {
         let need_encryption = self.need_encryption;
         let extension_name = self.name;
         let node_id = *id;
-        let data = message.to_vec();
         let bytes = data.len();
         if let Err(err) = self.p2p_channel.send(P2pMessage::SendExtensionMessage {
             node_id,
@@ -167,7 +167,7 @@ impl Client {
                                     extension.on_timeout(token);
                                 }
                                 Ok(ExtensionMessage::Message(id, message)) => {
-                                    extension.on_message(&id, &message);
+                                    extension.on_message(&id, message.as_ref());
                                 }
                                 Err(crossbeam::TryRecvError::Empty) => continue, // Handle a spuriously wake-up
                                 Err(crossbeam::TryRecvError::Disconnected) => {
@@ -256,11 +256,11 @@ impl Client {
         }
     }
 
-    pub fn on_message(&self, name: &str, id: &NodeId, data: &[u8]) {
+    pub fn on_message(&self, name: &str, id: &NodeId, data: Arc<Bytes>) {
         let extensions = self.extensions.read();
         if let Some(extension) = extensions.get(name) {
             cdebug!(NETAPI, "`{}` receives {} bytes from {}", name, data.len(), id.into_addr());
-            if let Err(err) = extension.sender.lock().send(ExtensionMessage::Message(*id, data.to_vec())) {
+            if let Err(err) = extension.sender.lock().send(ExtensionMessage::Message(*id, data)) {
                 cwarn!(NETAPI, "{} cannot message {}: {:?}", name, id, err);
             }
         } else {
@@ -270,7 +270,7 @@ impl Client {
 }
 
 enum ExtensionMessage {
-    Message(NodeId, Vec<u8>),
+    Message(NodeId, Arc<Bytes>),
     NodeAdded(NodeId, u64),
     NodeRemoved(NodeId),
     Timeout(TimerToken),
@@ -288,7 +288,7 @@ mod tests {
     struct TestApi;
 
     impl Api for TestApi {
-        fn send(&self, _id: &NodeId, _message: &[u8]) {
+        fn send(&self, _id: &NodeId, _message: Arc<Bytes>) {
             unimplemented!()
         }
 
@@ -382,11 +382,11 @@ mod tests {
 
         // FIXME: The callback is asynchronous, find a way to test it.
 
-        client.on_message(&"e1".to_string(), &node_id1, &[]);
+        client.on_message(&"e1".to_string(), &node_id1, Default::default());
 
-        client.on_message(&"e2".to_string(), &node_id1, &[]);
+        client.on_message(&"e2".to_string(), &node_id1, Default::default());
 
-        client.on_message(&"e2".to_string(), &node_id5, &[]);
-        client.on_message(&"e2".to_string(), &node_id1, &[]);
+        client.on_message(&"e2".to_string(), &node_id5, Default::default());
+        client.on_message(&"e2".to_string(), &node_id1, Default::default());
     }
 }
