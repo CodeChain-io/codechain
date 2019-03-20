@@ -890,8 +890,8 @@ impl Worker {
             };
         } else if current_height < height {
             self.move_to_height(height);
-            let proposal_view = consensus_view(proposal).unwrap();
-            self.save_last_confirmed_view(proposal_view);
+            let prev_block_view = previous_block_view(proposal).unwrap();
+            self.save_last_confirmed_view(prev_block_view);
             self.proposal = Some(proposal.hash());
             self.move_to_step(Step::Prevote, false);
         }
@@ -1384,9 +1384,9 @@ impl Worker {
                 } else if self.height < header.number() {
                     height_changed = true;
                     cinfo!(ENGINE, "Received a commit: {:?}.", header.number());
-                    let view = consensus_view(&full_header).expect("Imported block already checked");
+                    let prev_block_view = previous_block_view(&full_header).expect("Imported block already checked");
                     self.move_to_height(header.number());
-                    self.save_last_confirmed_view(view);
+                    self.save_last_confirmed_view(prev_block_view);
                 }
             }
             if height_changed {
