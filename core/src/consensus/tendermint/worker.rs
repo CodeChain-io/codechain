@@ -31,7 +31,7 @@ use rlp::{Encodable, UntrustedRlp};
 use super::backup::{backup, restore, BackupView};
 use super::message::*;
 use super::network;
-use super::types::{BitSet, Height, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
+use super::types::{BitSet, Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::{
     BlockHash, ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
     SEAL_FIELDS,
@@ -79,7 +79,7 @@ struct Worker {
     /// Last majority
     last_two_thirds_majority: TwoThirdsMajority,
     /// hash of the proposed block, used for seal submission.
-    proposal: Option<H256>,
+    proposal: Proposal,
     /// The last confirmed view from the commit step.
     last_confirmed_view: View,
     /// Set used to determine the current validators.
@@ -175,7 +175,7 @@ impl Worker {
             votes: Default::default(),
             signer: Default::default(),
             last_two_thirds_majority: TwoThirdsMajority::Empty,
-            proposal: None,
+            proposal: Proposal::None,
             last_confirmed_view: 0,
             validators,
             extension,
@@ -564,7 +564,7 @@ impl Worker {
     fn increment_view(&mut self, n: View) {
         cinfo!(ENGINE, "increment_view: New view.");
         self.view += n;
-        self.proposal = None;
+        self.proposal = Proposal::None;
         self.votes_received = BitSet::new();
     }
 
@@ -574,7 +574,7 @@ impl Worker {
         self.last_two_thirds_majority = TwoThirdsMajority::Empty;
         self.height = height;
         self.view = 0;
-        self.proposal = None;
+        self.proposal = Proposal::None;
         self.votes_received = BitSet::new();
     }
 
@@ -604,13 +604,18 @@ impl Worker {
         }
 
         // need to reset vote
-        self.broadcast_state(vote_step, self.proposal, self.last_two_thirds_majority.view(), self.votes_received);
+        self.broadcast_state(
+            vote_step,
+            self.proposal.block_hash(),
+            self.last_two_thirds_majority.view(),
+            self.votes_received,
+        );
         match step {
             Step::Propose => {
                 cinfo!(ENGINE, "move_to_step: Propose.");
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
-                    if self.client().block_header(&BlockId::Hash(*hash)).is_some() {
-                        self.proposal = Some(*hash);
+                    if self.client().block(&BlockId::Hash(*hash)).is_some() {
+                        self.proposal = Proposal::new_imported(*hash);
                         self.move_to_step(Step::Prevote, is_restoring);
                     } else {
                         cwarn!(ENGINE, "Proposal is received but not imported");
@@ -647,8 +652,8 @@ impl Worker {
                 self.request_messages_to_all(vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
                     let block_hash = match &self.last_two_thirds_majority {
-                        TwoThirdsMajority::Empty => self.proposal,
-                        TwoThirdsMajority::Unlock(_) => self.proposal,
+                        TwoThirdsMajority::Empty => self.proposal.imported_block_hash(),
+                        TwoThirdsMajority::Unlock(_) => self.proposal.imported_block_hash(),
                         TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
                     };
                     self.generate_and_broadcast_message(block_hash, is_restoring);
@@ -862,7 +867,7 @@ impl Worker {
         let vote_step = VoteStep::new(self.height, self.view, self.step.to_step());
         let proposal_at_current_view = self.votes.get_block_hashes(&vote_step).first().cloned();
         if proposal_at_current_view == Some(proposal.hash()) {
-            self.proposal = Some(proposal.hash());
+            self.proposal = Proposal::new_imported(proposal.hash());
             let current_step = self.step.clone();
             match current_step {
                 TendermintState::Propose => {
@@ -904,7 +909,7 @@ impl Worker {
                 .first()
                 .cloned();
             if proposal_at_view_0 == Some(proposal.hash()) {
-                self.proposal = Some(proposal.hash());
+                self.proposal = Proposal::new_imported(proposal.hash())
             }
             self.move_to_step(Step::Prevote, false);
         }
@@ -945,8 +950,8 @@ impl Worker {
             self.view = backup.view;
             self.last_confirmed_view = backup.last_confirmed_view;
             if let Some(proposal) = backup.proposal {
-                if client.block_header(&BlockId::Hash(proposal)).is_some() {
-                    self.proposal = Some(proposal);
+                if client.block(&BlockId::Hash(proposal)).is_some() {
+                    self.proposal = Proposal::ProposalImported(proposal);
                 }
             }
 
@@ -1135,7 +1140,7 @@ impl Worker {
                 self.votes_received_changed = false;
                 self.broadcast_state(
                     self.vote_step(),
-                    self.proposal,
+                    self.proposal.block_hash(),
                     self.last_two_thirds_majority.view(),
                     self.votes_received,
                 );
@@ -1340,7 +1345,7 @@ impl Worker {
                 .expect("I am proposer"),
         );
 
-        self.proposal = Some(header.hash());
+        self.proposal = Proposal::new_imported(header.hash());
         self.broadcast_proposal_block(self.view, block);
     }
 
@@ -1558,8 +1563,16 @@ impl Worker {
                         proposed_view,
                         generated_view
                     );
-                    self.proposal = Some(header_view.hash());
+                    self.proposal = Proposal::new_imported(header_view.hash());
+                } else {
+                    self.proposal = Proposal::new_received(header_view.hash(), bytes.clone(), signature);
                 }
+                self.broadcast_state(
+                    VoteStep::new(self.height, self.view, self.step.to_step()),
+                    self.proposal.block_hash(),
+                    self.last_two_thirds_majority.view(),
+                    self.votes_received,
+                );
             }
 
             self.votes.vote(message);
@@ -1698,6 +1711,13 @@ impl Worker {
         if let Some((signature, _signer_index, block)) = self.proposal_at(request_height, request_view) {
             ctrace!(ENGINE, "Send proposal {}-{} to {:?}", request_height, request_view, token);
             self.send_proposal_block(signature, request_view, block, result);
+            return
+        }
+
+        if request_height == self.height && request_view == self.view {
+            if let Proposal::ProposalReceived(_hash, block, signature) = &self.proposal {
+                self.send_proposal_block(*signature, request_view, block.clone(), result);
+            }
         }
     }
 }
