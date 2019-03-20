@@ -406,3 +406,42 @@ impl TwoThirdsMajority {
         }
     }
 }
+
+pub enum Proposal {
+    ProposalReceived(H256, Bytes, SchnorrSignature),
+    ProposalImported(H256),
+    None,
+}
+
+impl Proposal {
+    pub fn new_received(hash: H256, block: Bytes, signature: SchnorrSignature) -> Self {
+        Proposal::ProposalReceived(hash, block, signature)
+    }
+
+    pub fn new_imported(hash: H256) -> Self {
+        Proposal::ProposalImported(hash)
+    }
+
+    pub fn block_hash(&self) -> Option<H256> {
+        match self {
+            Proposal::ProposalReceived(hash, ..) => Some(*hash),
+            Proposal::ProposalImported(hash) => Some(*hash),
+            Proposal::None => None,
+        }
+    }
+
+    pub fn imported_block_hash(&self) -> Option<H256> {
+        match self {
+            Proposal::ProposalReceived(..) => None,
+            Proposal::ProposalImported(hash) => Some(*hash),
+            Proposal::None => None,
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
+        match self {
+            Proposal::None => true,
+            _ => false,
+        }
+    }
+}
