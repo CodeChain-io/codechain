@@ -894,7 +894,18 @@ impl Worker {
             self.move_to_height(height);
             let prev_block_view = previous_block_view(proposal).unwrap();
             self.save_last_confirmed_view(prev_block_view);
-            self.proposal = Some(proposal.hash());
+            let proposal_at_view_0 = self
+                .votes
+                .get_block_hashes(&VoteStep {
+                    height,
+                    view: 0,
+                    step: Step::Propose,
+                })
+                .first()
+                .cloned();
+            if proposal_at_view_0 == Some(proposal.hash()) {
+                self.proposal = Some(proposal.hash());
+            }
             self.move_to_step(Step::Prevote, false);
         }
     }
