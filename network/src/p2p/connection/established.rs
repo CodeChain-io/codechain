@@ -15,11 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::io;
+use std::sync::Arc;
 
 use cio::IoManager;
 use mio::deprecated::EventLoop;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
+use primitives::Bytes;
 
 use super::super::message::{Message, Version};
 use super::super::stream::SignedStream;
@@ -58,7 +60,7 @@ impl EstablishedConnection {
         &mut self,
         extension_name: String,
         need_encryption: bool,
-        message: Vec<u8>,
+        message: Arc<Bytes>,
     ) -> Result<()> {
         let message = if need_encryption {
             ExtensionMessage::encrypted_from_unencrypted_data(extension_name, &message, self.stream.session())?
