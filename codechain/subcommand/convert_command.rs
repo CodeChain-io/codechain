@@ -31,7 +31,7 @@ pub fn run_convert_command(matches: &ArgMatches) -> Result<(), String> {
 
     let mut input = String::new();
     stdin().read_line(&mut input).map_err(|e| e.to_string())?;
-    let result = convert(from, to, &input, || get_network_id(matches))?;
+    let result = convert(from, to, &input.trim(), || get_network_id(matches))?;
     println!("{}", result);
     Ok(())
 }
