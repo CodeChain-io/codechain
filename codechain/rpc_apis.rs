@@ -19,7 +19,7 @@ use std::sync::Arc;
 use ccore::{AccountProvider, Client, Miner};
 use clogger::SLOGGER;
 use cnetwork::{EventSender, NetworkControl};
-use crpc::{MetaIoHandler, Params, Value};
+use crpc::{MetaIoHandler, Middleware, Params, Value};
 use csync::BlockSyncEvent;
 
 pub struct ApiDependencies {
@@ -31,7 +31,7 @@ pub struct ApiDependencies {
 }
 
 impl ApiDependencies {
-    pub fn extend_api(&self, enable_devel_api: bool, handler: &mut MetaIoHandler<()>) {
+    pub fn extend_api(&self, enable_devel_api: bool, handler: &mut MetaIoHandler<(), impl Middleware<()>>) {
         use crpc::v1::*;
         handler.extend_with(ChainClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         if enable_devel_api {
@@ -55,7 +55,7 @@ impl ApiDependencies {
     }
 }
 
-pub fn setup_rpc(mut handler: MetaIoHandler<()>) -> MetaIoHandler<()> {
+pub fn setup_rpc<M: Middleware<()>>(mut handler: MetaIoHandler<(), M>) -> MetaIoHandler<(), M> {
     handler.add_method("ping", |_params: Params| Ok(Value::String("pong".to_string())));
     handler.add_method("version", |_params: Params| Ok(Value::String(env!("CARGO_PKG_VERSION").to_string())));
     handler.add_method("commitHash", |_params: Params| Ok(Value::String(env!("VERGEN_SHA").to_string())));

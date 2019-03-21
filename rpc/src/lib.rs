@@ -26,7 +26,7 @@ extern crate codechain_state as cstate;
 extern crate codechain_sync as csync;
 extern crate codechain_types as ctypes;
 extern crate codechain_vm as cvm;
-extern crate jsonrpc_core;
+pub extern crate jsonrpc_core;
 extern crate jsonrpc_http_server;
 extern crate jsonrpc_ipc_server;
 extern crate jsonrpc_ws_server;
@@ -58,7 +58,7 @@ pub mod v1;
 
 pub use rustc_serialize::hex;
 
-pub use jsonrpc_core::{Compatibility, Error, MetaIoHandler, Params, Value};
+pub use jsonrpc_core::{Compatibility, Error, MetaIoHandler, Middleware, Params, Value};
 pub use jsonrpc_http_server::tokio_core::reactor::Remote;
 
 pub use jsonrpc_http_server::Server as HttpServer;
