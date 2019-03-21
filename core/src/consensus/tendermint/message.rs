@@ -20,6 +20,7 @@ use ccrypto::blake256;
 use ckey::{verify_schnorr, Public, SchnorrSignature};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use snap;
 
 use super::super::vote_collector::Message;
 use super::types::BitSet;
@@ -81,7 +82,7 @@ const MESSAGE_ID_REQUEST_PROPOSAL: u8 = 0x05;
 
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
-    ConsensusMessage(Bytes),
+    ConsensusMessage(Vec<Bytes>),
     ProposalBlock {
         signature: SchnorrSignature,
         view: View,
@@ -106,10 +107,10 @@ pub enum TendermintMessage {
 impl Encodable for TendermintMessage {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            TendermintMessage::ConsensusMessage(message) => {
+            TendermintMessage::ConsensusMessage(messages) => {
                 s.begin_list(2);
                 s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
-                s.append(message);
+                s.append_list::<Bytes, Bytes>(messages);
             }
             TendermintMessage::ProposalBlock {
                 signature,
@@ -120,7 +121,13 @@ impl Encodable for TendermintMessage {
                 s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
                 s.append(signature);
                 s.append(view);
-                s.append(message);
+
+                let compressed = {
+                    // TODO: Cache the Encoder object
+                    let mut snappy_encoder = snap::Encoder::new();
+                    snappy_encoder.compress_vec(message).expect("Compression always succeed")
+                };
+                s.append(&compressed);
             }
             TendermintMessage::StepState {
                 vote_step,
@@ -169,8 +176,7 @@ impl Decodable for TendermintMessage {
                         expected: 2,
                     })
                 }
-                let bytes = rlp.at(1)?;
-                TendermintMessage::ConsensusMessage(bytes.as_val()?)
+                TendermintMessage::ConsensusMessage(rlp.list_at(1)?)
             }
             MESSAGE_ID_PROPOSAL_BLOCK => {
                 let item_count = rlp.item_count()?;
@@ -182,11 +188,20 @@ impl Decodable for TendermintMessage {
                 }
                 let signature = rlp.at(1)?;
                 let view = rlp.at(2)?;
-                let message = rlp.at(3)?;
+                let compressed_message: Vec<u8> = rlp.val_at(3)?;
+                let uncompressed_message = {
+                    // TODO: Cache the Decoder object
+                    let mut snappy_decoder = snap::Decoder::new();
+                    snappy_decoder.decompress_vec(&compressed_message).map_err(|err| {
+                        cwarn!(SYNC, "Decompression failed while decoding a body response: {}", err);
+                        DecoderError::Custom("Invalid compression format")
+                    })?
+                };
+
                 TendermintMessage::ProposalBlock {
                     signature: signature.as_val()?,
                     view: view.as_val()?,
-                    message: message.as_val()?,
+                    message: uncompressed_message,
                 }
             }
             MESSAGE_ID_STEP_STATE => {
@@ -371,7 +386,12 @@ mod tests {
 
     #[test]
     fn encode_and_decode_tendermint_message_1() {
-        rlp_encode_and_decode_test!(TendermintMessage::ConsensusMessage(vec![1u8, 2u8]));
+        rlp_encode_and_decode_test!(TendermintMessage::ConsensusMessage(vec![vec![1u8, 2u8]]));
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_1_2() {
+        rlp_encode_and_decode_test!(TendermintMessage::ConsensusMessage(vec![vec![1u8, 2u8], vec![3u8, 4u8]]));
     }
 
     #[test]

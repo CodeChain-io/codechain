@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use ccrypto::aes::{self, SymmetricCipherError};
+use primitives::Bytes;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::session::Session;
@@ -31,7 +34,7 @@ pub enum Message {
     },
     Unencrypted {
         extension_name: String,
-        data: Vec<u8>,
+        data: Arc<Bytes>,
     },
 }
 
@@ -52,7 +55,7 @@ impl Message {
         Ok(Self::encrypted(extension_name, encrypted))
     }
 
-    pub fn unencrypted(extension_name: String, data: Vec<u8>) -> Self {
+    pub fn unencrypted(extension_name: String, data: Arc<Bytes>) -> Self {
         Message::Unencrypted {
             extension_name,
             data,
@@ -73,16 +76,16 @@ impl Message {
         }
     }
 
-    pub fn unencrypted_data(&self, session: &Session) -> Result<Vec<u8>, SymmetricCipherError> {
+    pub fn unencrypted_data(&self, session: &Session) -> Result<Arc<Bytes>, SymmetricCipherError> {
         match self {
             Message::Encrypted {
                 encrypted,
                 ..
-            } => aes::decrypt(encrypted, session.secret(), &session.nonce()),
+            } => Ok(Arc::new(aes::decrypt(encrypted, session.secret(), &session.nonce())?)),
             Message::Unencrypted {
                 data,
                 ..
-            } => Ok(data.clone()),
+            } => Ok(Arc::clone(data)),
         }
     }
 
@@ -113,7 +116,7 @@ impl Encodable for Message {
                 extension_name,
                 data,
             } => {
-                s.begin_list(3).append(&UNENCRYPTED_ID).append(extension_name).append(data);
+                s.begin_list(3).append(&UNENCRYPTED_ID).append(extension_name).append(data.as_ref());
             }
         }
     }
@@ -135,7 +138,7 @@ impl Decodable for Message {
             }),
             UNENCRYPTED_ID => Ok(Message::Unencrypted {
                 extension_name: rlp.val_at(1)?,
-                data: rlp.val_at(2)?,
+                data: Arc::new(rlp.val_at(2)?),
             }),
             _ => Err(DecoderError::Custom("Invalid id in extension message")),
         }
@@ -174,6 +177,6 @@ mod tests {
 
     #[test]
     fn encode_and_decode_unencrypted() {
-        rlp_encode_and_decode_test!(Message::unencrypted("a".to_string(), vec![1, 2, 3, 4]));
+        rlp_encode_and_decode_test!(Message::unencrypted("a".to_string(), Arc::new(vec![1, 2, 3, 4])));
     }
 }

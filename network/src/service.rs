@@ -75,11 +75,11 @@ impl Service {
         }))
     }
 
-    pub fn register_extension<T, E, F>(&self, factory: F) -> (Sender<E>, Arc<T>)
+    pub fn register_extension<T, E, F>(&self, factory: F) -> Sender<E>
     where
         T: 'static + Sized + NetworkExtension<E>,
         E: 'static + Sized + Send,
-        F: FnOnce(Arc<Api>) -> T, {
+        F: 'static + FnOnce(Box<Api>) -> T + Send, {
         self.client.register_extension(factory)
     }
 

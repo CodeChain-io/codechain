@@ -2985,10 +2985,9 @@ mod tests_tx {
 
         assert_eq!(
             Ok(Invoice::Failure(
-                RuntimeError::AssetNotFound {
+                RuntimeError::AssetSchemeNotFound {
+                    asset_type: asset_type4,
                     shard_id: shard3,
-                    tracker: mint_tracker4,
-                    index: 0,
                 }
                 .to_string()
             )),

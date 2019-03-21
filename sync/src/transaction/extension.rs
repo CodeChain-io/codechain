@@ -21,7 +21,6 @@ use ccore::BlockChainClient;
 use cnetwork::{Api, NetworkExtension, NodeId};
 use ctimer::TimerToken;
 use never::Never;
-use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
@@ -30,21 +29,15 @@ use super::message::Message;
 
 const BROADCAST_TIMER_TOKEN: TimerToken = 0;
 const BROADCAST_TIMER_INTERVAL: i64 = 1000;
-const MAX_HISTORY_SIZE: usize = 100;
+const MAX_HISTORY_SIZE: usize = 100_000;
 
-struct Peer {
+#[derive(Default)]
+struct KnownTxs {
     history_set: HashSet<H256>,
     history_queue: VecDeque<H256>,
 }
 
-impl Peer {
-    fn new() -> Self {
-        Self {
-            history_set: HashSet::new(),
-            history_queue: VecDeque::new(),
-        }
-    }
-
+impl KnownTxs {
     fn push(&mut self, hash: H256) {
         debug_assert!(!self.history_set.contains(&hash));
         self.history_set.insert(hash);
@@ -60,15 +53,19 @@ impl Peer {
 }
 
 pub struct Extension {
-    peers: RwLock<HashMap<NodeId, RwLock<Peer>>>,
+    known_txs: KnownTxs,
+    peers: HashMap<NodeId, KnownTxs>,
     client: Arc<BlockChainClient>,
-    api: Arc<Api>,
+    api: Box<Api>,
 }
 
 impl Extension {
-    pub fn new(client: Arc<BlockChainClient>, api: Arc<Api>) -> Self {
+    pub fn new(client: Arc<BlockChainClient>, api: Box<Api>) -> Self {
+        api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
+            .expect("Timer set succeeds");
         Extension {
-            peers: RwLock::new(HashMap::new()),
+            known_txs: Default::default(),
+            peers: Default::default(),
             client,
             api,
         }
@@ -76,42 +73,49 @@ impl Extension {
 }
 
 impl NetworkExtension<Never> for Extension {
-    fn name(&self) -> &'static str {
+    fn name() -> &'static str {
         "transaction-propagation"
     }
-    fn need_encryption(&self) -> bool {
+    fn need_encryption() -> bool {
         false
     }
 
-    fn versions(&self) -> &[u64] {
+    fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
     }
 
-    fn on_initialize(&self) {
-        self.api
-            .set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
-            .expect("Timer set succeeds");
+    fn on_node_added(&mut self, token: &NodeId, _version: u64) {
+        self.peers.insert(*token, KnownTxs::default());
+    }
+    fn on_node_removed(&mut self, token: &NodeId) {
+        self.peers.remove(token);
     }
 
-    fn on_node_added(&self, token: &NodeId, _version: u64) {
-        self.peers.write().insert(*token, RwLock::new(Peer::new()));
-    }
-    fn on_node_removed(&self, token: &NodeId) {
-        self.peers.write().remove(token);
-    }
-
-    fn on_message(&self, token: &NodeId, data: &[u8]) {
+    fn on_message(&mut self, token: &NodeId, data: &[u8]) {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Transactions(transactions) => {
+                    let transactions: Vec<_> = {
+                        transactions
+                            .into_iter()
+                            .filter(|tx| {
+                                let hash = tx.hash();
+                                if self.known_txs.contains(&hash) {
+                                    false
+                                } else {
+                                    self.known_txs.push(hash);
+                                    true
+                                }
+                            })
+                            .collect()
+                    };
+
                     self.client.queue_transactions(
                         transactions.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
                         *token,
                     );
-                    let peers = self.peers.read();
-                    if let Some(peer) = peers.get(token) {
-                        let mut peer = peer.write();
+                    if let Some(peer) = self.peers.get_mut(token) {
                         let transactions: Vec<_> =
                             transactions.iter().map(|tx| tx.hash()).filter(|tx_hash| !peer.contains(tx_hash)).collect();
                         for unverified in transactions.iter() {
@@ -129,7 +133,7 @@ impl NetworkExtension<Never> for Extension {
         }
     }
 
-    fn on_timeout(&self, timer: TimerToken) {
+    fn on_timeout(&mut self, timer: TimerToken) {
         match timer {
             BROADCAST_TIMER_TOKEN => self.random_broadcast(),
             _ => unreachable!(),
@@ -138,14 +142,13 @@ impl NetworkExtension<Never> for Extension {
 }
 
 impl Extension {
-    fn random_broadcast(&self) {
+    fn random_broadcast(&mut self) {
         let transactions = self.client.ready_transactions(0..(::std::u64::MAX)).transactions;
         if transactions.is_empty() {
             ctrace!(SYNC_TX, "No transactions to propagate");
             return
         }
-        for (token, peer) in self.peers.read().iter() {
-            let mut peer = peer.write();
+        for (token, peer) in &mut self.peers {
             let unsent: Vec<_> = transactions
                 .iter()
                 .filter(|tx| !peer.contains(&tx.hash()))
@@ -160,7 +163,7 @@ impl Extension {
             }
             cdebug!(SYNC_TX, "Send {} transactions to {}", unsent.len(), token);
             ctrace!(SYNC_TX, "Send {:?}", unsent_hashes);
-            self.api.send(token, &Message::Transactions(unsent).rlp_bytes());
+            self.api.send(token, Arc::new(Message::Transactions(unsent).rlp_bytes().into_vec()));
         }
     }
 }

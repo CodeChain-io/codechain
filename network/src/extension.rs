@@ -16,9 +16,11 @@
 
 use std::convert::From;
 use std::result;
+use std::sync::Arc;
 
 use cio::IoError;
 use ctimer::{TimerScheduleError, TimerToken};
+use primitives::Bytes;
 use time::Duration;
 
 use crate::NodeId;
@@ -46,27 +48,25 @@ impl From<TimerScheduleError> for Error {
 
 pub type Result<T> = result::Result<T, Error>;
 
-pub trait Api: Send + Sync {
-    fn send(&self, node: &NodeId, message: &[u8]);
+pub trait Api {
+    fn send(&self, node: &NodeId, message: Arc<Bytes>);
 
     fn set_timer(&self, timer: TimerToken, d: Duration) -> Result<()>;
     fn set_timer_once(&self, timer: TimerToken, d: Duration) -> Result<()>;
     fn clear_timer(&self, timer: TimerToken) -> Result<()>;
 }
 
-pub trait Extension<Event: Send>: Send + Sync {
-    fn name(&self) -> &'static str;
-    fn need_encryption(&self) -> bool;
-    fn versions(&self) -> &[u64];
+pub trait Extension<Event: Send> {
+    fn name() -> &'static str;
+    fn need_encryption() -> bool;
+    fn versions() -> &'static [u64];
 
-    fn on_initialize(&self);
+    fn on_node_added(&mut self, _node: &NodeId, _version: u64) {}
+    fn on_node_removed(&mut self, _node: &NodeId) {}
 
-    fn on_node_added(&self, _node: &NodeId, _version: u64) {}
-    fn on_node_removed(&self, _node: &NodeId) {}
+    fn on_message(&mut self, _node: &NodeId, _message: &[u8]) {}
 
-    fn on_message(&self, _node: &NodeId, _message: &[u8]) {}
+    fn on_timeout(&mut self, _token: TimerToken) {}
 
-    fn on_timeout(&self, _token: TimerToken) {}
-
-    fn on_event(&self, _event: Event) {}
+    fn on_event(&mut self, _event: Event) {}
 }

@@ -20,7 +20,6 @@ use std::sync::Arc;
 use cnetwork::{Api, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
 use ctimer::TimerToken;
 use never::Never;
-use parking_lot::RwLock;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Decodable, Encodable, UntrustedRlp};
@@ -33,18 +32,25 @@ use super::Config;
 pub struct Extension {
     config: Config,
     routing_table: Arc<RoutingTable>,
-    api: Arc<Api>,
-    nodes: RwLock<HashSet<NodeId>>, // FIXME: Find the optimized data structure for it
+    api: Box<Api>,
+    nodes: HashSet<NodeId>, // FIXME: Find the optimized data structure for it
     use_kademlia: bool,
 }
 
 impl Extension {
-    pub fn new(routing_table: Arc<RoutingTable>, config: Config, api: Arc<Api>, use_kademlia: bool) -> Self {
+    pub fn new(routing_table: Arc<RoutingTable>, config: Config, api: Box<Api>, use_kademlia: bool) -> Self {
+        if use_kademlia {
+            cinfo!(DISCOVERY, "Discovery starts with kademlia option");
+        } else {
+            cinfo!(DISCOVERY, "Discovery starts with unstructured option");
+        }
+        api.set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(config.t_refresh)))
+            .expect("Refresh msut be registered");
         Self {
             config,
             routing_table,
             api,
-            nodes: RwLock::new(HashSet::new()),
+            nodes: Default::default(),
             use_kademlia,
         }
     }
@@ -53,44 +59,30 @@ impl Extension {
 const REFRESH_TOKEN: TimerToken = 0;
 
 impl NetworkExtension<Never> for Extension {
-    fn name(&self) -> &'static str {
+    fn name() -> &'static str {
         "discovery"
     }
 
-    fn need_encryption(&self) -> bool {
+    fn need_encryption() -> bool {
         false
     }
 
-    fn versions(&self) -> &[u64] {
+    fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
     }
 
-    fn on_initialize(&self) {
-        let name = if self.use_kademlia {
-            "kademlia"
-        } else {
-            "unstructured"
-        };
-        cinfo!(DISCOVERY, "Discovery starts with {} option", name);
-        self.api
-            .set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(self.config.t_refresh)))
-            .expect("Refresh msut be registered");
+    fn on_node_added(&mut self, node: &NodeId, _version: u64) {
+        self.nodes.insert(*node);
+        self.api.send(&node, Arc::new(Message::Request(self.config.bucket_size).rlp_bytes().into_vec()));
     }
 
-    fn on_node_added(&self, node: &NodeId, _version: u64) {
-        let mut nodes = self.nodes.write();
-        nodes.insert(*node);
-        self.api.send(&node, &Message::Request(self.config.bucket_size).rlp_bytes());
+    fn on_node_removed(&mut self, node: &NodeId) {
+        self.nodes.remove(node);
     }
 
-    fn on_node_removed(&self, node: &NodeId) {
-        let mut nodes = self.nodes.write();
-        nodes.remove(node);
-    }
-
-    fn on_message(&self, node: &NodeId, message: &[u8]) {
-        let message = match Message::decode(&UntrustedRlp::new(&message)) {
+    fn on_message(&mut self, node: &NodeId, message: &[u8]) {
+        let message = match Message::decode(&UntrustedRlp::new(message)) {
             Ok(message) => message,
             Err(err) => {
                 cwarn!(DISCOVERY, "Invalid message from {} : {:?}", node, err);
@@ -120,8 +112,8 @@ impl NetworkExtension<Never> for Extension {
                     addresses.shuffle(&mut thread_rng());
                     addresses.into_iter().take(::std::cmp::min(self.config.bucket_size, len) as usize).collect()
                 };
-                let response = Message::Response(addresses).rlp_bytes();
-                self.api.send(&node, &response);
+                let response = Arc::new(Message::Response(addresses).rlp_bytes().into_vec());
+                self.api.send(&node, response);
             }
             Message::Response(addresses) => {
                 self.routing_table.touch_addresses(addresses);
@@ -129,14 +121,12 @@ impl NetworkExtension<Never> for Extension {
         }
     }
 
-    fn on_timeout(&self, timer: TimerToken) {
+    fn on_timeout(&mut self, timer: TimerToken) {
         match timer {
             REFRESH_TOKEN => {
-                let nodes = self.nodes.read();
-
-                let request = Message::Request(self.config.bucket_size).rlp_bytes();
-                for node in nodes.iter() {
-                    self.api.send(&node, &request);
+                let request = Arc::new(Message::Request(self.config.bucket_size).rlp_bytes().into_vec());
+                for node in &self.nodes {
+                    self.api.send(node, Arc::clone(&request));
                 }
             }
             _ => unreachable!(),

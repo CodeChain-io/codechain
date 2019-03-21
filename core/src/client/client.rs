@@ -23,7 +23,9 @@ use cio::IoChannel;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, Text, TopLevelState, TopStateView};
+use cstate::{
+    ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
+};
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::invoice::{BlockInvoices, Invoice};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
@@ -416,7 +418,7 @@ impl TextClient for Client {
 }
 
 impl ExecuteClient for Client {
-    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> Result<Invoice, Error> {
+    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> StateResult<Invoice> {
         let mut state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
         Ok(state.apply_shard_transaction(transaction, sender, &[], self)?)
     }
@@ -427,25 +429,37 @@ impl ExecuteClient for Client {
         inputs: &[AssetTransferInput],
         params: &[Vec<Bytes>],
         indices: &[usize],
-    ) -> Result<Vec<String>, Error> {
-        let mut results = vec![];
+    ) -> Result<Vec<String>, ClientError> {
+        let mut results = Vec::with_capacity(indices.len());
         for (i, index) in indices.iter().enumerate() {
-            let input = &inputs[*index];
-            let param = &params[i];
-            let result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
-                (Ok(lock_script), Ok(unlock_script)) => {
-                    let script_result =
-                        execute(&unlock_script, &param, &lock_script, tx, VMConfig::default(), &input, false, self);
-                    match script_result {
-                        Ok(ScriptResult::Burnt) => "burnt",
-                        Ok(ScriptResult::Unlocked) => "unlocked",
-                        _ => "failed",
+            let input = inputs.get(*index);
+            let param = params.get(i);
+            let result = match (input, param) {
+                (Some(input), Some(param)) => {
+                    let lock_script = decode(&input.lock_script);
+                    let unlock_script = decode(&input.unlock_script);
+                    match (lock_script, unlock_script) {
+                        (Ok(lock_script), Ok(unlock_script)) => {
+                            match execute(
+                                &unlock_script,
+                                &param,
+                                &lock_script,
+                                tx,
+                                VMConfig::default(),
+                                &input,
+                                false,
+                                self,
+                            ) {
+                                Ok(ScriptResult::Burnt) => "burnt".to_string(),
+                                Ok(ScriptResult::Unlocked) => "unlocked".to_string(),
+                                _ => "failed".to_string(),
+                            }
+                        }
+                        _ => "invalid".to_string(),
                     }
                 }
-                _ => "invalid",
-            }
-            .to_string();
-
+                _ => "invalid".to_string(),
+            };
             results.push(result);
         }
         Ok(results)
