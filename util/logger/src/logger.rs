@@ -23,8 +23,7 @@ use colored::Colorize;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
 use log::{LevelFilter, Log, Metadata, Record};
 
-use crate::slogger;
-use crate::structured_logger;
+use crate::{structured_logger, SLOGGER};
 
 pub struct Config {
     pub instance_id: usize,
@@ -99,7 +98,7 @@ impl Log for Logger {
             let rfc3339with_nano_second = "%Y-%m-%dT%H:%M:%S.%f%z";
             let timestamp = time::strftime(rfc3339with_nano_second, &time::now()).unwrap();
 
-            slogger.log(structured_logger::Log {
+            SLOGGER.log(structured_logger::Log {
                 level: log_level.to_string(),
                 target: log_target.to_string(),
                 message: log_message.to_string(),

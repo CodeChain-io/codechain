@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::{AccountProvider, Client, Miner};
-use clogger::slogger;
+use clogger::SLOGGER;
 use cnetwork::{EventSender, NetworkControl};
 use crpc::{MetaIoHandler, Params, Value};
 use csync::BlockSyncEvent;
@@ -61,7 +61,7 @@ pub fn setup_rpc(mut handler: MetaIoHandler<()>) -> MetaIoHandler<()> {
     handler.add_method("commitHash", |_params: Params| Ok(Value::String(env!("VERGEN_SHA").to_string())));
 
     handler.add_method("slog", |_params: Params| {
-        let logs = slogger.get_logs();
+        let logs = SLOGGER.get_logs();
         Ok(Value::Array(logs))
     });
     handler
