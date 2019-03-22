@@ -817,10 +817,6 @@ impl Worker {
             && self.height == vote_step.height
             && self.can_move_from_commit_to_propose()
         {
-            cinfo!(
-                ENGINE,
-                "Transition to Propose because all pre-commits are received and the canonical chain is appended"
-            );
             let height = self.height;
             self.move_to_height(height + 1);
             self.move_to_step(Step::Propose, is_restoring);
