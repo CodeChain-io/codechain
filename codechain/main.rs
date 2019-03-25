@@ -52,7 +52,9 @@ extern crate never;
 extern crate panic_hook;
 extern crate parking_lot;
 extern crate primitives;
+extern crate rlp;
 extern crate rpassword;
+extern crate rustc_hex;
 extern crate toml;
 
 mod config;

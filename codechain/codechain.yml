@@ -346,3 +346,11 @@ subcommands:
                       - public
                       - address
                       - accountId
+    - rlp:
+        about: rlp visualization utility
+        args:
+            - rlp:
+                  value_name: RLP
+                  required: false
+                  help: RLP value to visualize
+                  takes_value: true

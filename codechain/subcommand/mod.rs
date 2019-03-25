@@ -16,17 +16,20 @@
 
 mod account_command;
 mod convert_command;
+mod rlp_command;
 
 use clap::ArgMatches;
 
 use self::account_command::run_account_command;
 use self::convert_command::run_convert_command;
+use self::rlp_command::run_rlp_command;
 
 pub fn run_subcommand(matches: &ArgMatches) -> Result<(), String> {
     let subcommand = matches.subcommand.as_ref().unwrap();
     match subcommand.name.as_str() {
         "account" => run_account_command(&subcommand.matches),
         "convert" => run_convert_command(&subcommand.matches),
+        "rlp" => run_rlp_command(&subcommand.matches),
         _ => Err("Invalid subcommand".to_string()),
     }
 }
