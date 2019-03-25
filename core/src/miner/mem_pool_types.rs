@@ -210,7 +210,9 @@ pub struct MemPoolItem {
     /// Transaction origin.
     pub origin: TxOrigin,
     /// Insertion time
-    pub insertion_time: PoolingInstant,
+    pub inserted_block_number: PoolingInstant,
+    /// Insertion timstamp
+    pub inserted_timestamp: u64,
     /// ID assigned upon insertion, should be unique.
     pub insertion_id: u64,
     /// A timelock.
@@ -221,14 +223,16 @@ impl MemPoolItem {
     pub fn new(
         tx: SignedTransaction,
         origin: TxOrigin,
-        insertion_time: PoolingInstant,
+        inserted_block_number: PoolingInstant,
+        inserted_timestamp: u64,
         insertion_id: u64,
         timelock: TxTimelock,
     ) -> Self {
         MemPoolItem {
             tx,
             origin,
-            insertion_time,
+            inserted_block_number,
+            inserted_timestamp,
             insertion_id,
             timelock,
         }

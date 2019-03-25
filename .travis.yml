@@ -10,54 +10,67 @@ stages:
 jobs:
   include:
     - stage: test
+      name: osx
       os: osx
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then RUN_UNIT_TEST=1; fi
       install:
-        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" != "skip" ]]; then RUN_UNIT_TEST=1; fi
-        - test $RUN_UNIT_TEST && rustup toolchain install nightly-2018-12-06
-        - test $RUN_UNIT_TEST && rustup component add rustfmt-preview --toolchain nightly-2018-12-06
-        - test $RUN_UNIT_TEST && rustup component add clippy-preview --toolchain nightly-2018-12-06
         - nvm install 10
         - nvm use 10
         - npm install -g yarn
       before_script:
         - cargo fetch --verbose
       script:
-        - (test $RUN_UNIT_TEST && cargo +nightly-2018-12-06 fmt -- --check) || exit 1
-        - (test $RUN_UNIT_TEST && cargo +nightly-2018-12-06 clippy --all --all-targets -- -D warnings) || exit 1
-        - (test $RUN_UNIT_TEST && RUST_BACKTRACE=1 cargo test --verbose --all) || exit 1
-        - cd test && yarn && yarn lint || exit 1
+        - if [[ $RUN_UNIT_TEST ]]; then RUST_BACKTRACE=1 cargo test --verbose --all; fi
         - cargo build || exit 1
+        - cd test && yarn || exit 1
         - INT_TEST_FLAG=true && yarn start-short
         - yarn start-long
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - os: linux
+      name: linux
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then RUN_UNIT_TEST=1; fi
       install:
-        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" != "skip" ]]; then RUN_UNIT_TEST=1; fi
-        - test $RUN_UNIT_TEST && rustup toolchain install nightly-2018-12-06
-        - test $RUN_UNIT_TEST && rustup component add rustfmt-preview --toolchain nightly-2018-12-06
-        - test $RUN_UNIT_TEST && rustup component add clippy-preview --toolchain nightly-2018-12-06
         - nvm install 10
         - nvm use 10
         - npm install -g yarn
       before_script:
         - cargo fetch --verbose
       script:
-        - (test $RUN_UNIT_TEST && cargo +nightly-2018-12-06 fmt -- --check) || exit 1
-        - (test $RUN_UNIT_TEST && cargo +nightly-2018-12-06 clippy --all --all-targets -- -D warnings) || exit 1
-        - (test $RUN_UNIT_TEST && RUST_BACKTRACE=1 cargo test --verbose --all) || exit 1
-        - cd test && yarn && yarn lint || exit 1
+        - if [[ $RUN_UNIT_TEST ]]; then RUST_BACKTRACE=1 cargo test --verbose --all; fi
         - cargo build || exit 1
+        - cd test && yarn || exit 1
         - INT_TEST_FLAG=true && yarn start-short
         - yarn start-long
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
+    - os: linux
+      name: static
+      before_install:
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then CHECK_RUST=1; fi
+      install:
+        - if [[ $CHECK_RUST ]]; then
+            rustup toolchain install nightly-2018-12-06 || exit 1;
+            rustup component add rustfmt-preview --toolchain nightly-2018-12-06 || exit 1;
+            rustup component add clippy-preview --toolchain nightly-2018-12-06 || exit 1;
+          fi
+        - nvm install 10
+        - nvm use 10
+        - npm install -g yarn
+      script:
+        - if [[ $CHECK_RUST ]]; then
+            cargo +nightly-2018-12-06 fmt -- --check || FAILED=1;
+            cargo +nightly-2018-12-06 clippy --all --all-targets -- -D warnings || FAILED=1;
+          fi; test ! $FAILED
+        - cd test && yarn && yarn lint
     - stage: deploy
       name: deploy
       script: skip

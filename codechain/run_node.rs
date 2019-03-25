@@ -30,9 +30,9 @@ use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
-use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, SocketAddr};
+use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, RoutingTable, SocketAddr};
 use creactor::EventLoop;
-use csync::{BlockSyncExtension, SnapshotService, TransactionSyncExtension};
+use csync::{BlockSyncExtension, BlockSyncSender, SnapshotService, TransactionSyncExtension};
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
@@ -52,37 +52,43 @@ fn network_start(
     network_id: NetworkId,
     timer_loop: TimerLoop,
     cfg: &NetworkConfig,
+    routing_table: Arc<RoutingTable>,
 ) -> Result<Arc<NetworkService>, String> {
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
     let filters = Filters::new(cfg.whitelist.clone(), cfg.blacklist.clone());
-    let service = NetworkService::start(network_id, timer_loop, sockaddress, cfg.min_peers, cfg.max_peers, filters)
-        .map_err(|e| format!("Network service error: {:?}", e))?;
+    let service = NetworkService::start(
+        network_id,
+        timer_loop,
+        sockaddress,
+        cfg.bootstrap_addresses.clone(),
+        cfg.min_peers,
+        cfg.max_peers,
+        filters,
+        routing_table,
+    )
+    .map_err(|e| format!("Network service error: {:?}", e))?;
 
     Ok(service)
 }
 
-fn discovery_start(service: &NetworkService, cfg: &config::Network) -> Result<(), String> {
+fn discovery_start(
+    service: &NetworkService,
+    cfg: &config::Network,
+    routing_table: Arc<RoutingTable>,
+) -> Result<(), String> {
     let config = Config {
         bucket_size: cfg.discovery_bucket_size.unwrap(),
         t_refresh: cfg.discovery_refresh.unwrap(),
     };
-    match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
-        Some("unstructured") => {
-            cinfo!(DISCOVERY, "Node runs with unstructured discovery");
-            let discovery = service.new_extension(|api| Discovery::unstructured(config, api));
-            service.set_routing_table(&*discovery);
-            Ok(())
-        }
-        Some("kademlia") => {
-            cinfo!(DISCOVERY, "Node runs with kademlia discovery");
-            let discovery = service.new_extension(|api| Discovery::kademlia(config, api));
-            service.set_routing_table(&*discovery);
-            Ok(())
-        }
-        Some(discovery_type) => Err(format!("Unknown discovery {}", discovery_type)),
-        None => Ok(()),
-    }
+    let use_kademlia = match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
+        Some("unstructured") => false,
+        Some("kademlia") => true,
+        Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
+        None => return Ok(()),
+    };
+    service.register_extension(move |api| Discovery::new(routing_table, config, api, use_kademlia));
+    Ok(())
 }
 
 fn client_start(
@@ -96,7 +102,7 @@ fn client_start(
     let reseal_timer = timer_loop.new_timer_with_name("Client reseal timer");
     let service = ClientService::start(client_config, &scheme, db, miner, reseal_timer.clone())
         .map_err(|e| format!("Client service error: {}", e))?;
-    reseal_timer.set_handler(&service.client());
+    reseal_timer.set_handler(Arc::downgrade(&service.client()));
 
     Ok(service)
 }
@@ -259,7 +265,10 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
     let miner = new_miner(&config, &scheme, ap.clone(), Arc::clone(&db))?;
     let client = client_start(&client_config, &timer_loop, db, &scheme, miner.clone())?;
-    let mut some_sync = None;
+    miner.recover_from_db(client.client().as_ref());
+
+    let mut _maybe_sync = None;
+    let mut maybe_sync_sender = None;
 
     scheme.engine.register_chain_notify(client.client().as_ref());
 
@@ -267,28 +276,32 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
             let network_id = client.client().common_params().network_id;
-            let service = network_start(network_id, timer_loop, &network_config)?;
+            let routing_table = RoutingTable::new();
+            let service = network_start(network_id, timer_loop, &network_config, Arc::clone(&routing_table))?;
 
             if config.network.discovery.unwrap() {
-                discovery_start(&service, &config.network)?;
+                discovery_start(&service, &config.network, routing_table)?;
             } else {
                 cwarn!(DISCOVERY, "Node runs without discovery extension");
             }
 
             if config.network.sync.unwrap() {
-                let sync = service.new_extension(|api| BlockSyncExtension::new(client.client(), api));
+                let sync_sender = {
+                    let client = client.client();
+                    service.register_extension(move |api| BlockSyncExtension::new(client, api))
+                };
+                let sync = Arc::new(BlockSyncSender::from(sync_sender.clone()));
                 client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
-                some_sync = Some(sync);
+                _maybe_sync = Some(sync); // Hold sync to ensure it not to be destroyed.
+                maybe_sync_sender = Some(sync_sender);
             }
             if config.network.transaction_relay.unwrap() {
-                service.new_extension(|api| TransactionSyncExtension::new(client.client(), api));
+                let client = client.client();
+                service.register_extension(move |api| TransactionSyncExtension::new(client, api));
             }
 
             scheme.engine.register_network_extension_to_service(&service);
 
-            for address in network_config.bootstrap_addresses {
-                service.connect_to(address)?;
-            }
             service
         } else {
             Arc::new(DummyNetworkService::new())
@@ -300,7 +313,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         miner: Arc::clone(&miner),
         network_control: Arc::clone(&network_service),
         account_provider: ap,
-        block_sync: some_sync,
+        block_sync: maybe_sync_sender,
     });
 
     let _rpc_server = {

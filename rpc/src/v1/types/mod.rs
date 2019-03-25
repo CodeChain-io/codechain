@@ -39,7 +39,7 @@ pub use self::asset_scheme::AssetScheme;
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
 pub use self::text::Text;
-pub use self::transaction::Transaction;
+pub use self::transaction::{PendingTransactions, Transaction};
 pub use self::unsigned_transaction::UnsignedTransaction;
 pub use self::work::Work;
 
@@ -47,7 +47,7 @@ use serde::de::{self, Deserialize, Deserializer};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FilterStatus {
-    pub list: Vec<(::std::net::IpAddr, String)>,
+    pub list: Vec<(::cidr::IpCidr, String)>,
     pub enabled: bool,
 }
 

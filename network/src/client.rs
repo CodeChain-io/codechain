@@ -15,51 +15,48 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
+use std::thread::{Builder, JoinHandle};
 
 use cio::IoChannel;
-use ctimer::{TimerApi, TimerLoop, TimerToken};
-use parking_lot::RwLock;
+use crossbeam_channel as crossbeam;
+use ctimer::{TimeoutHandler, TimerApi, TimerLoop, TimerToken};
+use parking_lot::{Mutex, RwLock};
+use primitives::Bytes;
 use time::Duration;
 
 use crate::p2p::Message as P2pMessage;
 use crate::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionResult, NodeId};
 
 struct ClientApi {
-    extension: RwLock<Option<Weak<NetworkExtension>>>,
     p2p_channel: IoChannel<P2pMessage>,
     timer: TimerApi,
+    name: &'static str,
+    need_encryption: bool,
 }
 
 impl Api for ClientApi {
-    fn send(&self, id: &NodeId, message: &[u8]) {
-        let extension_guard = self.extension.read();
-        let some_extension = extension_guard.as_ref().expect("Extension should be initialized");
-        if let Some(extension) = some_extension.upgrade() {
-            let need_encryption = extension.need_encryption();
-            let extension_name = extension.name().to_string();
-            let node_id = *id;
-            let data = message.to_vec();
-            let bytes = data.len();
-            if let Err(err) = self.p2p_channel.send(P2pMessage::SendExtensionMessage {
-                node_id,
+    fn send(&self, id: &NodeId, data: Arc<Bytes>) {
+        let need_encryption = self.need_encryption;
+        let extension_name = self.name;
+        let node_id = *id;
+        let bytes = data.len();
+        if let Err(err) = self.p2p_channel.send(P2pMessage::SendExtensionMessage {
+            node_id,
+            extension_name,
+            need_encryption,
+            data,
+        }) {
+            cerror!(
+                NETAPI,
+                "`{}` cannot send {} bytes message to {} : {:?}",
                 extension_name,
-                need_encryption,
-                data,
-            }) {
-                cerror!(
-                    NETAPI,
-                    "`{}` cannot send {} bytes message to {} : {:?}",
-                    extension.name(),
-                    bytes,
-                    id.into_addr(),
-                    err
-                );
-            } else {
-                cdebug!(NETAPI, "`{}` sends {} bytes to {}", extension.name(), bytes, id.into_addr());
-            }
+                bytes,
+                id.into_addr(),
+                err
+            );
         } else {
-            cwarn!(NETAPI, "The extension already dropped");
+            cdebug!(NETAPI, "`{}` sends {} bytes to {}", extension_name, bytes, id.into_addr());
         }
     }
 
@@ -81,70 +78,148 @@ impl Api for ClientApi {
     }
 }
 
+struct Extension {
+    versions: Vec<u64>,
+    name: &'static str,
+    sender: Mutex<crossbeam::Sender<ExtensionMessage>>,
+    quit: Mutex<crossbeam::Sender<()>>,
+    join: Mutex<Option<JoinHandle<()>>>,
+}
+
+impl TimeoutHandler for Extension {
+    fn on_timeout(&self, token: TimerToken) {
+        if let Err(err) = self.sender.lock().send(ExtensionMessage::Timeout(token)) {
+            cwarn!(NETAPI, "{} cannot timeout {}: {:?}", self.name, token, err);
+        }
+    }
+}
+
+impl Drop for Extension {
+    fn drop(&mut self) {
+        let _ = self.quit.lock().send(());
+        if let Some(join) = self.join.lock().take() {
+            join.join().unwrap();
+        }
+    }
+}
+
 pub struct Client {
-    extensions: RwLock<HashMap<&'static str, Arc<NetworkExtension>>>,
+    extensions: RwLock<HashMap<&'static str, Arc<Extension>>>,
     p2p_channel: IoChannel<P2pMessage>,
     timer_loop: TimerLoop,
 }
 
-macro_rules! define_broadcast_method {
-    ($method_name: ident) => {
-        pub fn $method_name (&self) {
-            let extensions = self.extensions.read();
-            for (_, ref extension) in extensions.iter() {
-                extension.$method_name();
-            }
-        }
-    };
-    ($method_name: ident; $($var: ident, $t: ty);*) => {
-        pub fn $method_name (&self, $($var: $t), *) {
-            let extensions = self.extensions.read();
-            for (_, ref extension) in extensions.iter() {
-                extension.$method_name($($var),*);
-            }
-        }
-    };
-}
-
-macro_rules! define_method {
-    ($method_name: ident; $($var: ident, $t: ty);*) => {
-        pub fn $method_name (&self, name: &str, $($var: $t), *) {
-            let extensions = self.extensions.read();
-            if let Some(ref extension) = extensions.get(name) {
-                extension.$method_name($($var),*);
-            } else {
-                cdebug!(NETAPI, "{} doesn't exist.", name);
-            }
-        }
-    };
-}
-
 impl Client {
-    pub fn new_extension<T, F>(&self, factory: F) -> Arc<T>
+    pub fn register_extension<T, E, F>(&self, factory: F) -> crossbeam::Sender<E>
     where
-        T: 'static + Sized + NetworkExtension,
-        F: FnOnce(Arc<Api>) -> T, {
+        T: 'static + Sized + NetworkExtension<E>,
+        E: 'static + Sized + Send,
+        F: 'static + FnOnce(Box<Api>) -> T + Send, {
         let mut extensions = self.extensions.write();
-        let timer = self.timer_loop.new_timer();
-        let api = {
-            let p2p_channel = self.p2p_channel.clone();
-            Arc::new(ClientApi {
-                extension: RwLock::new(None),
-                p2p_channel,
-                timer,
-            })
-        };
-        let extension = Arc::new(factory(Arc::clone(&api) as Arc<Api>));
-        let name = extension.name();
-        *api.extension.write() = Some(Arc::downgrade(&extension) as Weak<NetworkExtension>);
-        api.timer.set_name(name);
-        api.timer.set_handler(&extension);
-        extension.on_initialize();
-        let trait_extension = Arc::clone(&extension) as Arc<NetworkExtension>;
-        if extensions.insert(name, trait_extension).is_some() {
+        let name = T::name();
+        let timer = self.timer_loop.new_timer_with_name(name);
+        let cloned_timer = timer.clone();
+        let p2p_channel = self.p2p_channel.clone();
+        let (channel, rx) = crossbeam::unbounded();
+        let sender = channel.clone().into();
+
+        let (quit_sender, quit_receiver) = crossbeam::bounded(1);
+        let (init_sender, init_receiver) = crossbeam::bounded(1);
+        let (event_sender, event_receiver) = crossbeam::unbounded();
+
+        let join = Some(
+            Builder::new()
+                .name(format!("{}.ext", name))
+                .spawn(move || {
+                    init_receiver.recv().expect("The main thread must send one message");
+                    let api = ClientApi {
+                        name,
+                        need_encryption: T::need_encryption(),
+                        p2p_channel,
+                        timer,
+                    };
+                    let mut extension = factory(Box::from(api));
+
+                    let mut s = crossbeam::Select::new();
+                    let rx_index = s.recv(&rx);
+                    let quit_index = s.recv(&quit_receiver);
+                    let mut event_closed = false;
+                    loop {
+                        let mut s = s.clone();
+                        // Not all extension uses event channel, so closing the event channel is natural thing.
+                        // TODO: Please make this dynamic selection simply.
+                        let event_index = if event_closed {
+                            // It's a trick using that the index increases sequentially form 0.
+                            // TODO: Please remove this magic number.
+                            ::std::usize::MAX
+                        } else {
+                            s.recv(&event_receiver)
+                        };
+                        match s.ready() {
+                            index if index == rx_index => match rx.try_recv() {
+                                Ok(ExtensionMessage::NodeAdded(id, version)) => {
+                                    extension.on_node_added(&id, version);
+                                }
+                                Ok(ExtensionMessage::NodeRemoved(id)) => {
+                                    extension.on_node_removed(&id);
+                                }
+                                Ok(ExtensionMessage::Timeout(token)) => {
+                                    extension.on_timeout(token);
+                                }
+                                Ok(ExtensionMessage::Message(id, message)) => {
+                                    extension.on_message(&id, message.as_ref());
+                                }
+                                Err(crossbeam::TryRecvError::Empty) => continue, // Handle a spuriously wake-up
+                                Err(crossbeam::TryRecvError::Disconnected) => {
+                                    cinfo!(NETAPI, "The channel for {} had been disconnected", name);
+                                    break
+                                }
+                            },
+                            index if index == quit_index => match quit_receiver.try_recv() {
+                                Ok(()) => break,
+                                Err(crossbeam::TryRecvError::Empty) => continue, // Handle a spuriously wake-up
+                                Err(crossbeam::TryRecvError::Disconnected) => {
+                                    cinfo!(NETAPI, "The quit channel for {} had been disconnected", name);
+                                    break
+                                }
+                            },
+                            index if index == event_index => {
+                                assert!(!event_closed);
+                                match event_receiver.try_recv() {
+                                    Ok(event) => {
+                                        extension.on_event(event);
+                                    }
+                                    Err(crossbeam::TryRecvError::Empty) => continue, // Handle a spuriously wake-up
+                                    Err(crossbeam::TryRecvError::Disconnected) => {
+                                        event_closed = true;
+                                        cdebug!(NETAPI, "The event channel for {} had been disconnected", name);
+                                        continue
+                                    }
+                                }
+                            }
+                            index => {
+                                unreachable!("{} is not an expected index of message queue", index);
+                            }
+                        }
+                    }
+                })
+                .unwrap(),
+        )
+        .into();
+
+        let extension = Arc::new(Extension {
+            name,
+            versions: T::versions().to_vec(),
+            sender,
+            quit: quit_sender.into(),
+            join,
+        });
+        cloned_timer.set_handler(Arc::downgrade(&extension));
+        if extensions.insert(name, extension).is_some() {
             unreachable!("Duplicated extension name : {}", name)
         }
-        extension
+        init_sender.send(()).unwrap();
+        event_sender
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
@@ -158,41 +233,62 @@ impl Client {
 
     pub fn extension_versions(&self) -> Vec<(String, Vec<u64>)> {
         let extensions = self.extensions.read();
-        extensions.iter().map(|(name, extension)| (name.to_string(), extension.versions().to_vec())).collect()
+        extensions.iter().map(|(name, extension)| (name.to_string(), extension.versions.clone())).collect()
     }
 
-    define_method!(on_node_added; id, &NodeId; version, u64);
-    define_broadcast_method!(on_node_removed; id, &NodeId);
-
-    pub fn on_message(&self, name: &str, id: &NodeId, data: &[u8]) {
+    pub fn on_node_removed(&self, id: &NodeId) {
         let extensions = self.extensions.read();
-        if let Some(ref extension) = extensions.get(name) {
+        for (name, extension) in extensions.iter() {
+            if let Err(err) = extension.sender.lock().send(ExtensionMessage::NodeRemoved(*id)) {
+                cwarn!(NETAPI, "{} cannot remove {}: {:?}", name, id, err);
+            }
+        }
+    }
+
+    pub fn on_node_added(&self, name: &str, id: &NodeId, version: u64) {
+        let extensions = self.extensions.read();
+        if let Some(extension) = extensions.get(name) {
+            if let Err(err) = extension.sender.lock().send(ExtensionMessage::NodeAdded(*id, version)) {
+                cwarn!(NETAPI, "{} cannot add {}:{}: {:?}", name, id, version, err);
+            }
+        } else {
+            cdebug!(NETAPI, "{} doesn't exist.", name);
+        }
+    }
+
+    pub fn on_message(&self, name: &str, id: &NodeId, data: Arc<Bytes>) {
+        let extensions = self.extensions.read();
+        if let Some(extension) = extensions.get(name) {
             cdebug!(NETAPI, "`{}` receives {} bytes from {}", name, data.len(), id.into_addr());
-            extension.on_message(id, data);
+            if let Err(err) = extension.sender.lock().send(ExtensionMessage::Message(*id, data)) {
+                cwarn!(NETAPI, "{} cannot message {}: {:?}", name, id, err);
+            }
         } else {
             cwarn!(NETAPI, "{} doesn't exist.", name);
         }
     }
 }
 
+enum ExtensionMessage {
+    Message(NodeId, Arc<Bytes>),
+    NodeAdded(NodeId, u64),
+    NodeRemoved(NodeId),
+    Timeout(TimerToken),
+}
+
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
-    use std::vec::Vec;
-
     use cio::IoService;
-    use ctimer::{TimeoutHandler, TimerLoop};
-    use parking_lot::Mutex;
-    use time::Duration;
+    use never::Never;
 
-    use super::{Api, Client, NetworkExtension, NetworkExtensionResult, NodeId};
+    use super::*;
     use crate::SocketAddr;
 
     #[allow(dead_code)]
     struct TestApi;
 
     impl Api for TestApi {
-        fn send(&self, _id: &NodeId, _message: &[u8]) {
+        fn send(&self, _id: &NodeId, _message: Arc<Bytes>) {
             unimplemented!()
         }
 
@@ -211,68 +307,65 @@ mod tests {
 
     #[derive(Debug, Eq, PartialEq)]
     enum Callback {
-        Initialize,
         NodeAdded,
         NodeRemoved,
         Message,
         Timeout,
     }
 
-    struct TestExtension {
-        name: &'static str,
-        callbacks: Mutex<Vec<Callback>>,
-    }
-
-    impl TestExtension {
-        fn new(name: &'static str) -> Self {
-            Self {
-                name,
-                callbacks: Mutex::new(vec![]),
+    macro_rules! define_test_extension {
+        ($type_name: tt, $name: expr) => {
+            struct $type_name {
+                callbacks: Mutex<Vec<Callback>>,
             }
-        }
+
+            impl $type_name {
+                fn new() -> Self {
+                    Self {
+                        callbacks: Mutex::new(vec![]),
+                    }
+                }
+            }
+
+            impl NetworkExtension<Never> for $type_name {
+                fn name() -> &'static str {
+                    $name
+                }
+
+                fn need_encryption() -> bool {
+                    false
+                }
+
+                fn versions() -> &'static [u64] {
+                    const VERSIONS: &[u64] = &[0];
+                    &VERSIONS
+                }
+
+                fn on_node_added(&mut self, _id: &NodeId, _version: u64) {
+                    let mut callbacks = self.callbacks.lock();
+                    callbacks.push(Callback::NodeAdded);
+                }
+
+                fn on_node_removed(&mut self, _id: &NodeId) {
+                    let mut callbacks = self.callbacks.lock();
+                    callbacks.push(Callback::NodeRemoved);
+                }
+
+                fn on_message(&mut self, _id: &NodeId, _message: &[u8]) {
+                    let mut callbacks = self.callbacks.lock();
+                    callbacks.push(Callback::Message);
+                }
+
+                fn on_timeout(&mut self, _timer_id: usize) {
+                    let mut callbacks = self.callbacks.lock();
+                    callbacks.push(Callback::Timeout);
+                }
+            }
+        };
     }
 
-    impl NetworkExtension for TestExtension {
-        fn name(&self) -> &'static str {
-            self.name
-        }
-
-        fn need_encryption(&self) -> bool {
-            false
-        }
-
-        fn versions(&self) -> &[u64] {
-            const VERSIONS: &[u64] = &[0];
-            &VERSIONS
-        }
-
-        fn on_initialize(&self) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::Initialize);
-        }
-
-        fn on_node_added(&self, _id: &NodeId, _version: u64) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::NodeAdded);
-        }
-
-        fn on_node_removed(&self, _id: &NodeId) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::NodeRemoved);
-        }
-
-        fn on_message(&self, _id: &NodeId, _message: &[u8]) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::Message);
-        }
-    }
-
-    impl TimeoutHandler for TestExtension {
-        fn on_timeout(&self, _timer_id: usize) {
-            let mut callbacks = self.callbacks.lock();
-            callbacks.push(Callback::Timeout);
-        }
-    }
+    define_test_extension!(TestExtension1, "e1");
+    define_test_extension!(TestExtension2, "e2");
 
     #[test]
     fn message_only_to_target() {
@@ -284,35 +377,16 @@ mod tests {
         let node_id1 = SocketAddr::v4(127, 0, 0, 1, 8081).into();
         let node_id5 = SocketAddr::v4(127, 0, 0, 1, 8085).into();
 
-        let e1 = client.new_extension(|_| TestExtension::new("e1"));
-        let e2 = client.new_extension(|_| TestExtension::new("e2"));
+        let _e1 = client.register_extension(|_| TestExtension1::new());
+        let _e2 = client.register_extension(|_| TestExtension2::new());
 
-        client.on_message(&"e1".to_string(), &node_id1, &[]);
-        {
-            let callbacks = e1.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
-            let callbacks = e2.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize]);
-        }
+        // FIXME: The callback is asynchronous, find a way to test it.
 
-        client.on_message(&"e2".to_string(), &node_id1, &[]);
-        {
-            let callbacks = e1.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
-            let callbacks = e2.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
-        }
+        client.on_message(&"e1".to_string(), &node_id1, Default::default());
 
-        client.on_message(&"e2".to_string(), &node_id5, &[]);
-        client.on_message(&"e2".to_string(), &node_id1, &[]);
-        {
-            let callbacks = e1.callbacks.lock();
-            assert_eq!(callbacks.deref(), &vec![Callback::Initialize, Callback::Message]);
-            let callbacks = e2.callbacks.lock();
-            assert_eq!(
-                callbacks.deref(),
-                &vec![Callback::Initialize, Callback::Message, Callback::Message, Callback::Message]
-            );
-        }
+        client.on_message(&"e2".to_string(), &node_id1, Default::default());
+
+        client.on_message(&"e2".to_string(), &node_id5, Default::default());
+        client.on_message(&"e2".to_string(), &node_id1, Default::default());
     }
 }

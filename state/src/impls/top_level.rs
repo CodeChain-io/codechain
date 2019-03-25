@@ -51,7 +51,9 @@ use ctypes::ShardId;
 use cvm::ChainTimeInfo;
 use hashdb::AsHashDB;
 use kvdb::DBTransaction;
-use primitives::{Bytes, H160, H256};
+#[cfg(test)]
+use primitives::H160;
+use primitives::{Bytes, H256};
 use util_error::UtilError;
 
 use crate::cache::{ShardCache, TopCache};
@@ -263,6 +265,10 @@ impl TopLevelState {
                 self.discard_checkpoint(FEE_CHECKPOINT);
                 Ok(invoice)
             }
+            Err(err @ StateError::Runtime(RuntimeError::InvalidSeq(_))) => {
+                self.revert_to_checkpoint(FEE_CHECKPOINT);
+                Err(err)
+            }
             Err(StateError::Runtime(err)) => {
                 self.discard_checkpoint(FEE_CHECKPOINT);
                 Ok(Invoice::Failure(err.to_string()))
@@ -346,17 +352,17 @@ impl TopLevelState {
         signer_public: &Public,
         client: &C,
     ) -> StateResult<Invoice> {
-        match action {
+        let (transaction, approvers) = match action {
             Action::MintAsset {
                 approvals,
                 approver,
-                administrator,
+                registrar,
                 ..
             }
             | Action::ChangeAssetScheme {
                 approvals,
                 approver,
-                administrator,
+                registrar,
                 ..
             } => {
                 if let Some(approver) = approver {
@@ -368,27 +374,25 @@ impl TopLevelState {
                         .into())
                     }
                 }
-                if let Some(administrator) = administrator {
-                    if !is_active_account(self, administrator)? {
+                if let Some(registrar) = registrar {
+                    if !is_active_account(self, registrar)? {
                         return Err(RuntimeError::NonActiveAccount {
-                            address: *administrator,
-                            name: "administrator of asset".to_string(),
+                            address: *registrar,
+                            name: "registrar of asset".to_string(),
                         }
                         .into())
                     }
                 }
                 let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's a shard transaction");
                 let transaction_tracker = transaction.tracker();
-                let approvers = approvals
-                    .iter()
-                    .map(|signature| {
-                        let public = recover(&signature, &transaction_tracker)?;
-                        self.public_to_owner_address(&public)
-                    })
-                    .collect::<StateResult<Vec<_>>>()?;
+                let approvers = approvals_to_approvers(
+                    approvals,
+                    |public| self.public_to_owner_address(public),
+                    &transaction_tracker,
+                )?;
                 let shard_ids = transaction.related_shards();
                 assert_eq!(1, shard_ids.len());
-                Ok(self.apply_shard_transaction_to_shard(&transaction, shard_ids[0], fee_payer, &approvers, client)?)
+                (transaction, approvers)
             }
             Action::IncreaseAssetSupply {
                 approvals,
@@ -396,16 +400,14 @@ impl TopLevelState {
             } => {
                 let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's a shard transaction");
                 let transaction_tracker = transaction.tracker();
-                let approvers = approvals
-                    .iter()
-                    .map(|signature| {
-                        let public = recover(&signature, &transaction_tracker)?;
-                        self.public_to_owner_address(&public)
-                    })
-                    .collect::<StateResult<Vec<_>>>()?;
+                let approvers = approvals_to_approvers(
+                    approvals,
+                    |public| self.public_to_owner_address(public),
+                    &transaction_tracker,
+                )?;
                 let shard_ids = transaction.related_shards();
                 assert_eq!(1, shard_ids.len());
-                Ok(self.apply_shard_transaction_to_shard(&transaction, shard_ids[0], fee_payer, &approvers, client)?)
+                (transaction, approvers)
             }
             Action::TransferAsset {
                 approvals,
@@ -423,14 +425,12 @@ impl TopLevelState {
                 debug_assert_eq!(network_id, transaction.network_id());
 
                 let transaction_tracker = transaction.tracker();
-                let approvers = approvals
-                    .iter()
-                    .map(|signature| {
-                        let public = recover(&signature, &transaction_tracker)?;
-                        self.public_to_owner_address(&public)
-                    })
-                    .collect::<StateResult<Vec<_>>>()?;
-                Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
+                let approvers = approvals_to_approvers(
+                    approvals,
+                    |public| self.public_to_owner_address(public),
+                    &transaction_tracker,
+                )?;
+                (transaction, approvers)
             }
             Action::UnwrapCCC {
                 burn:
@@ -442,48 +442,52 @@ impl TopLevelState {
                             },
                         ..
                     },
+                receiver,
                 ..
             } => {
+                if self.regular_account_exists_and_not_null_by_address(receiver)? {
+                    return Err(RuntimeError::InvalidTransferDestination.into())
+                }
                 let transaction = Option::<ShardTransaction>::from(action.clone()).expect("It's an unwrap transaction");
                 debug_assert_eq!(network_id, transaction.network_id());
                 let invoice = self.apply_shard_transaction(&transaction, fee_payer, &[], client)?;
                 if invoice == Invoice::Success {
-                    self.add_balance(fee_payer, *quantity)?;
+                    self.add_balance(receiver, *quantity)?;
                 }
-                Ok(invoice)
+                return Ok(invoice)
             }
             Action::Pay {
                 receiver,
                 quantity,
             } => {
                 self.transfer_balance(fee_payer, receiver, *quantity)?;
-                Ok(Invoice::Success)
+                return Ok(Invoice::Success)
             }
             Action::SetRegularKey {
                 key,
             } => {
                 self.set_regular_key(signer_public, key)?;
-                Ok(Invoice::Success)
+                return Ok(Invoice::Success)
             }
             Action::CreateShard {
                 users,
             } => {
                 self.create_shard(fee_payer, *signed_hash, users.clone())?;
-                Ok(Invoice::Success)
+                return Ok(Invoice::Success)
             }
             Action::SetShardOwners {
                 shard_id,
                 owners,
             } => {
                 self.change_shard_owners(*shard_id, owners, fee_payer)?;
-                Ok(Invoice::Success)
+                return Ok(Invoice::Success)
             }
             Action::SetShardUsers {
                 shard_id,
                 users,
             } => {
                 self.change_shard_users(*shard_id, users, fee_payer)?;
-                Ok(Invoice::Success)
+                return Ok(Invoice::Success)
             }
             Action::WrapCCC {
                 shard_id,
@@ -491,16 +495,21 @@ impl TopLevelState {
                 parameters,
                 quantity,
                 ..
-            } => Ok(self.apply_wrap_ccc(
-                network_id,
-                *shard_id,
-                tx_hash,
-                *lock_script_hash,
-                parameters.clone(),
-                *quantity,
-                fee_payer,
-                client,
-            )?),
+            } => {
+                self.sub_balance(fee_payer, *quantity)?;
+                let transaction = ShardTransaction::WrapCCC {
+                    network_id,
+                    shard_id: *shard_id,
+                    tx_hash,
+                    output: AssetWrapCCCOutput {
+                        lock_script_hash: *lock_script_hash,
+                        parameters: parameters.clone(),
+                        quantity: *quantity,
+                    },
+                };
+                let approvers = vec![]; // WrapCCC doesn't have approvers
+                (transaction, approvers)
+            }
             Action::Store {
                 content,
                 certifier,
@@ -508,57 +517,25 @@ impl TopLevelState {
             } => {
                 let text = Text::new(content, certifier);
                 self.store_text(signed_hash, text, signature)?;
-                Ok(Invoice::Success)
+                return Ok(Invoice::Success)
             }
             Action::Remove {
                 hash,
                 signature,
             } => {
                 self.remove_text(hash, signature)?;
-                Ok(Invoice::Success)
+                return Ok(Invoice::Success)
             }
             Action::Custom {
                 handler_id,
                 bytes,
             } => {
                 let handler = client.find_action_handler_for(*handler_id).expect("Unknown custom parsel applied!");
-                let invoice = handler.execute(bytes, self, fee_payer).expect("Custom action handler execution failed");
-                Ok(invoice)
+                let invoice = handler.execute(bytes, self, fee_payer)?;
+                return Ok(invoice)
             }
-        }
-    }
-
-    fn apply_wrap_ccc<C: ChainTimeInfo>(
-        &mut self,
-        network_id: NetworkId,
-        shard_id: ShardId,
-        tx_hash: H256,
-        lock_script_hash: H160,
-        parameters: Vec<Bytes>,
-        quantity: u64,
-        sender: &Address,
-        client: &C,
-    ) -> StateResult<Invoice> {
-        let shard_root = self.shard_root(shard_id)?.ok_or_else(|| RuntimeError::InvalidShardId(shard_id))?;
-        let shard_users = self.shard_users(shard_id)?.expect("Shard must exist");
-
-        self.sub_balance(sender, quantity)?;
-
-        let transaction = ShardTransaction::WrapCCC {
-            network_id,
-            shard_id,
-            tx_hash,
-            output: AssetWrapCCCOutput {
-                lock_script_hash,
-                parameters,
-                quantity,
-            },
         };
-
-        let shard_cache = self.shard_caches.entry(shard_id).or_default();
-        let mut shard_level_state = ShardLevelState::from_existing(shard_id, &mut self.db, shard_root, shard_cache)?;
-        shard_level_state.apply(&transaction, sender, &shard_users, &[], client)?;
-        Ok(Invoice::Success)
+        Ok(self.apply_shard_transaction(&transaction, fee_payer, &approvers, client)?)
     }
 
     pub fn apply_shard_transaction<C: ChainTimeInfo>(
@@ -724,7 +701,7 @@ impl TopLevelState {
         metadata: String,
         amount: u64,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
     ) -> TrieResult<bool> {
@@ -738,7 +715,7 @@ impl TopLevelState {
                     metadata,
                     amount,
                     approver,
-                    administrator,
+                    registrar,
                     allowed_script_hashes,
                     pool,
                 )?;
@@ -770,6 +747,22 @@ impl TopLevelState {
             None => Ok(false),
         }
     }
+}
+
+fn approvals_to_approvers<F>(
+    approvals: &[Signature],
+    public_to_owner_address: F,
+    tracker: &H256,
+) -> StateResult<Vec<Address>>
+where
+    F: Fn(&Public) -> StateResult<Address>, {
+    approvals
+        .iter()
+        .map(|signature| {
+            let public = recover(&signature, tracker).expect("An invalid approval is a syntax error");
+            public_to_owner_address(&public)
+        })
+        .collect()
 }
 
 // TODO: cloning for `State` shouldn't be possible in general; Remove this and use
@@ -1342,13 +1335,10 @@ mod tests_tx {
 
         let tx = transaction!(seq: 2, fee: 5, pay!(address().0, 10));
         assert_eq!(
-            Ok(Invoice::Failure(
-                RuntimeError::InvalidSeq(Mismatch {
-                    expected: 0,
-                    found: 2
-                })
-                .to_string()
-            )),
+            Err(StateError::Runtime(RuntimeError::InvalidSeq(Mismatch {
+                expected: 0,
+                found: 2
+            }))),
             state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
         );
 
@@ -1412,6 +1402,67 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 0, key: key))
+        ]);
+    }
+
+    #[test]
+    fn cannot_pay_to_regular_account() {
+        let mut state = get_temp_state();
+
+        let (sender, sender_public, _) = address();
+        let (master_account, master_public, _) = address();
+        let (regular_account, regular_public, _) = address();
+        set_top_level_state!(state, [
+            (account: sender => balance: 123),
+            (account: master_account => balance: 456),
+            (regular_key: master_public => regular_public)
+        ]);
+
+        let tx = transaction!(fee: 5, pay!(regular_account, 10));
+        assert_eq!(
+            Ok(Invoice::Failure(RuntimeError::InvalidTransferDestination.to_string())),
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 123 - 5)),
+            (account: master_account => (seq: 0, balance: 456, key: regular_public))
+        ]);
+    }
+
+    #[test]
+    fn regular_account_cannot_get_unwrapped_ccc() {
+        let mut state = get_temp_state();
+
+        let (sender, sender_public, _) = address();
+        let (master_account, master_public, _) = address();
+        let (regular_account, regular_public, _) = address();
+        let type_of_wccc = H160::zero();
+        let tracker = H256::random();
+        let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
+        let shard_id = 0;
+        set_top_level_state!(state, [
+            (account: sender => balance: 123),
+            (account: master_account => balance: 456),
+            (regular_key: master_public => regular_public),
+            (shard: shard_id => owners: [sender]),
+            (metadata: shards: 1),
+            (asset: (shard_id, tracker, 0) => { asset_type: type_of_wccc, quantity: 30, lock_script_hash: lock_script_hash })
+        ]);
+
+        let unwrap_ccc_tx = unwrap_ccc!(
+            asset_transfer_input!(asset_out_point!(tracker, 0, type_of_wccc, 30), vec![0x01]),
+            regular_account
+        );
+        let tx = transaction!(seq: 0, fee: 11, unwrap_ccc_tx);
+        assert_eq!(
+            Ok(Invoice::Failure(RuntimeError::InvalidTransferDestination.to_string())),
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client())
+        );
+
+        check_top_level_state!(state, [
+            (account: sender => (seq: 1, balance: 123 - 11)),
+            (account: master_account => (seq: 0, balance: 456, key: regular_public))
         ]);
     }
 
@@ -1894,6 +1945,7 @@ mod tests_tx {
     #[test]
     fn wrap_and_unwrap_ccc() {
         let (sender, sender_public, _) = address();
+        let (receiver, ..) = address();
 
         let shard_id = 0x0;
 
@@ -1915,17 +1967,19 @@ mod tests_tx {
         let asset_type = H160::zero();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
+            (account: receiver),
             (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
         let unwrap_ccc_tx =
-            unwrap_ccc!(asset_transfer_input!(asset_out_point!(tx_hash, 0, asset_type, 30), vec![0x01]));
+            unwrap_ccc!(asset_transfer_input!(asset_out_point!(tx_hash, 0, asset_type, 30), vec![0x01]), receiver);
         let tx = transaction!(seq: 1, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
 
         check_top_level_state!(state, [
-            (account: sender => (seq: 2, balance: 100 - 11 - 30 - 11 + 30)),
+            (account: sender => (seq: 2, balance: 100 - 11 - 30 - 11)),
+            (account: receiver => (seq: 0, balance: 30)),
             (asset: (tx_hash, 0, 0))
         ]);
     }
@@ -1933,6 +1987,7 @@ mod tests_tx {
     #[test]
     fn wrap_and_failed_unwrap() {
         let (sender, sender_public, _) = address();
+        let (receiver, ..) = address();
 
         let shard_id = 0x0;
 
@@ -1954,14 +2009,15 @@ mod tests_tx {
         let asset_type = H160::zero();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
+            (account: receiver),
             (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
         let failed_lock_script = vec![0x02];
-        let unwrap_ccc_tx = unwrap_ccc!(asset_transfer_input!(
-            asset_out_point!(tx_hash, 0, asset_type, 30),
-            failed_lock_script.clone()
-        ));
+        let unwrap_ccc_tx = unwrap_ccc!(
+            asset_transfer_input!(asset_out_point!(tx_hash, 0, asset_type, 30), failed_lock_script.clone()),
+            receiver
+        );
         let tx = transaction!(seq: 1, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(
@@ -1977,6 +2033,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 100 - 11 - 30 - 11)),
+            (account: receiver),
             (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
     }
@@ -2067,8 +2124,10 @@ mod tests_tx {
             (asset: (transfer_tx_tracker, 2, 0) => { asset_type: asset_type, quantity: 15 })
         ]);
 
-        let unwrap_ccc_tx =
-            unwrap_ccc!(asset_transfer_input!(asset_out_point!(transfer_tx_tracker, 1, asset_type, 5), vec![0x01]));
+        let unwrap_ccc_tx = unwrap_ccc!(
+            asset_transfer_input!(asset_out_point!(transfer_tx_tracker, 1, asset_type, 5), vec![0x01]),
+            sender
+        );
         let tx = transaction!(seq: 2, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(Ok(Invoice::Success), state.apply(&tx, &H256::random(), &sender_public, &get_test_client()));
@@ -2926,10 +2985,9 @@ mod tests_tx {
 
         assert_eq!(
             Ok(Invoice::Failure(
-                RuntimeError::AssetNotFound {
+                RuntimeError::AssetSchemeNotFound {
+                    asset_type: asset_type4,
                     shard_id: shard3,
-                    tracker: mint_tracker4,
-                    index: 0,
                 }
                 .to_string()
             )),
@@ -3164,7 +3222,7 @@ mod tests_tx {
 
 
     #[test]
-    fn regular_account_cannot_be_administrator() {
+    fn regular_account_cannot_be_registrar() {
         let (sender, sender_public, _) = address();
         let (master_account, master_public, _) = address();
         let (regular_account, regular_public, _) = address();
@@ -3183,7 +3241,7 @@ mod tests_tx {
         let transaction = mint_asset!(
             Box::new(asset_mint_output!(H160::random(), vec![], 30)),
             "metadata".to_string(),
-            administrator: regular_account
+            registrar: regular_account
         );
         let transaction_tracker = transaction.tracker().unwrap();
         let asset_type = Blake::blake(transaction_tracker);
@@ -3193,7 +3251,7 @@ mod tests_tx {
             Ok(Invoice::Failure(
                 RuntimeError::NonActiveAccount {
                     address: regular_account,
-                    name: "administrator of asset".to_string(),
+                    name: "registrar of asset".to_string(),
                 }
                 .to_string()
             )),

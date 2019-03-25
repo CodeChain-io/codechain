@@ -18,17 +18,17 @@
 use std::net::IpAddr;
 use std::sync::Arc;
 
+use cidr::IpCidr;
 use cio::{IoError, IoService};
 use ckey::{NetworkId, Public};
+use crossbeam_channel::Sender;
 use ctimer::TimerLoop;
 
 use crate::client::Client;
 use crate::control::{Control, Error as ControlError};
 use crate::filters::{FilterEntry, FiltersControl};
-use crate::p2p;
 use crate::routing_table::RoutingTable;
-use crate::DiscoveryApi;
-use crate::{Api, NetworkExtension, SocketAddr};
+use crate::{p2p, Api, NetworkExtension, SocketAddr};
 
 pub struct Service {
     p2p: IoService<p2p::Message>,
@@ -43,13 +43,13 @@ impl Service {
         network_id: NetworkId,
         timer_loop: TimerLoop,
         address: SocketAddr,
+        bootstrap_addresses: Vec<SocketAddr>,
         min_peers: usize,
         max_peers: usize,
         filters_control: Arc<FiltersControl>,
+        routing_table: Arc<RoutingTable>,
     ) -> Result<Arc<Self>, Error> {
         let p2p = IoService::start("P2P")?;
-
-        let routing_table = RoutingTable::new();
 
         let client = Client::new(p2p.channel(), timer_loop);
 
@@ -60,6 +60,7 @@ impl Service {
             Arc::clone(&client),
             Arc::clone(&routing_table),
             Arc::clone(&filters_control),
+            bootstrap_addresses,
             min_peers,
             max_peers,
         )?);
@@ -74,20 +75,17 @@ impl Service {
         }))
     }
 
-    pub fn new_extension<T, F>(&self, factory: F) -> Arc<T>
+    pub fn register_extension<T, E, F>(&self, factory: F) -> Sender<E>
     where
-        T: 'static + Sized + NetworkExtension,
-        F: FnOnce(Arc<Api>) -> T, {
-        self.client.new_extension(factory)
+        T: 'static + Sized + NetworkExtension<E>,
+        E: 'static + Sized + Send,
+        F: 'static + FnOnce(Box<Api>) -> T + Send, {
+        self.client.register_extension(factory)
     }
 
     pub fn connect_to(&self, address: SocketAddr) -> Result<(), String> {
         self.p2p.send_message(p2p::Message::RequestConnection(address)).map_err(|e| format!("{:?}", e))?;
         Ok(())
-    }
-
-    pub fn set_routing_table(&self, disc: &DiscoveryApi) {
-        disc.set_routing_table(Arc::clone(&self.routing_table));
     }
 }
 
@@ -140,12 +138,12 @@ impl Control for Service {
         Ok(self.p2p_handler.established_peers())
     }
 
-    fn add_to_whitelist(&self, addr: IpAddr, tag: Option<String>) -> Result<(), ControlError> {
+    fn add_to_whitelist(&self, addr: IpCidr, tag: Option<String>) -> Result<(), ControlError> {
         self.filters_control.add_to_whitelist(addr, tag);
         Ok(())
     }
 
-    fn remove_from_whitelist(&self, addr: &IpAddr) -> Result<(), ControlError> {
+    fn remove_from_whitelist(&self, addr: &IpCidr) -> Result<(), ControlError> {
         self.filters_control.remove_from_whitelist(addr);
         if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
             cerror!(NETWORK, "Error occurred while apply filters: {:?}", err);
@@ -153,7 +151,7 @@ impl Control for Service {
         Ok(())
     }
 
-    fn add_to_blacklist(&self, addr: IpAddr, tag: Option<String>) -> Result<(), ControlError> {
+    fn add_to_blacklist(&self, addr: IpCidr, tag: Option<String>) -> Result<(), ControlError> {
         self.filters_control.add_to_blacklist(addr, tag);
         if let Err(err) = self.p2p.send_message(p2p::Message::ApplyFilters) {
             cerror!(NETWORK, "Error occurred while apply filters: {:?}", err);
@@ -161,7 +159,7 @@ impl Control for Service {
         Ok(())
     }
 
-    fn remove_from_blacklist(&self, addr: &IpAddr) -> Result<(), ControlError> {
+    fn remove_from_blacklist(&self, addr: &IpCidr) -> Result<(), ControlError> {
         self.filters_control.remove_from_blacklist(addr);
         Ok(())
     }

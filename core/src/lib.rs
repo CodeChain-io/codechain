@@ -30,6 +30,7 @@ extern crate codechain_stratum as cstratum;
 extern crate codechain_timer as ctimer;
 extern crate codechain_types as ctypes;
 extern crate codechain_vm as cvm;
+extern crate crossbeam_channel;
 extern crate cuckoo;
 extern crate hashdb;
 extern crate journaldb;
@@ -48,12 +49,14 @@ extern crate rlp_compress;
 #[macro_use]
 extern crate rlp_derive;
 extern crate parking_lot;
+extern crate snap;
 extern crate table;
 extern crate time;
 extern crate util_error;
 
 #[macro_use]
 extern crate log;
+extern crate core;
 
 mod account_provider;
 pub mod block;
@@ -92,5 +95,7 @@ pub use crate::header::{Header, Seal};
 pub use crate::miner::{Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};
 pub use crate::scheme::Scheme;
 pub use crate::service::ClientService;
-pub use crate::transaction::{LocalizedTransaction, SignedTransaction, UnverifiedTransaction};
+pub use crate::transaction::{
+    LocalizedTransaction, PendingSignedTransactions, SignedTransaction, UnverifiedTransaction,
+};
 pub use crate::types::{BlockId, TransactionId};

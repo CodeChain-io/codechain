@@ -52,7 +52,13 @@ describe("network2 nodes", function() {
                     address,
                     nodeB.port
                 )
-            ).to.be.a("null");
+            ).to.be.null;
+
+            while (
+                !(await nodeA.sdk.rpc.network.isConnected(address, nodeB.port))
+            ) {
+                await wait(500);
+            }
         });
 
         it("getPeerCount", async function() {
@@ -91,8 +97,11 @@ describe("network2 nodes", function() {
             expect(await nodeA.sdk.rpc.network.disconnect(address, nodeB.port))
                 .to.be.null;
 
-            expect(await nodeA.sdk.rpc.network.getPeerCount()).to.equal(0);
-            expect(await nodeB.sdk.rpc.network.getPeerCount()).to.equal(0);
+            while (
+                await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)
+            ) {
+                await wait(500);
+            }
         });
 
         it("getPeerCount", async function() {

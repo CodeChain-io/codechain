@@ -136,6 +136,14 @@ impl RoutingTable {
         })
     }
 
+    pub fn is_banned(&self, target: &SocketAddr) -> bool {
+        let entries = self.entries.read();
+        match entries.get(target) {
+            Some(State::Banned) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_establishing_or_established(&self, target: &SocketAddr) -> bool {
         let entries = self.entries.read();
         match entries.get(target) {
@@ -294,7 +302,16 @@ impl RoutingTable {
                     secret_origin: *secret_origin,
                 }
             }
-            _ => return Err("Invalid state".to_string()),
+            State::Established {
+                ..
+            } => return Err("Cannot try establish. current state: established".to_string()),
+            State::Establishing1(_) => return Err("Cannot try establish. current state: establishing1".to_string()),
+            State::Establishing2 {
+                ..
+            } => return Err("Cannot try establish. current state: establishing2".to_string()),
+            State::Banned {
+                ..
+            } => return Err("Cannot try establish. current state: banned".to_string()),
         };
         *entry = new_state;
         Ok(entry.remote_public().cloned())
@@ -546,7 +563,16 @@ impl RoutingTable {
                 remote_public: *remote_public,
                 secret_origin: *secret_origin,
             },
-            _ => return Err("Initiator is not Establishing1".to_string()),
+            State::Candidate(_) => return Err("Cannot try establish. current state: candidate".to_string()),
+            State::Registered {
+                ..
+            } => return Err("Cannot try establish. current state: registered".to_string()),
+            State::Established {
+                ..
+            } => return Err("Cannot try establish. current state: established".to_string()),
+            State::Banned {
+                ..
+            } => return Err("Cannot try establish. current state: banned".to_string()),
         };
         *entry = new_state;
         Ok(())
@@ -610,4 +636,40 @@ fn decrypt_nonce(encrypted_bytes: &[u8], shared_secret: &Secret) -> Result<Nonce
 fn encrypt_nonce(nonce: Nonce, shared_secret: &Secret) -> Result<Bytes, SymmetricCipherError> {
     let iv = 0; // FIXME: Use proper iv
     Ok(aes::encrypt(&nonce.to_be_bytes(), shared_secret, &iv)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn encrypt_and_decrypt(secret: Secret, nonce: Nonce) {
+        assert_eq!(
+            nonce,
+            decrypt_nonce(&encrypt_nonce(nonce, &secret).unwrap(), &secret).unwrap(),
+            "nonce: {}, secret: {}",
+            nonce,
+            secret
+        );
+    }
+
+    #[test]
+    fn encrypt_and_decrypt_0() {
+        let secret = Secret::random();
+        let nonce = 0;
+        encrypt_and_decrypt(secret, nonce);
+    }
+
+    #[test]
+    fn encrypt_and_decrypt_u64_max() {
+        let secret = Secret::random();
+        let nonce = ::std::u64::MAX.into();
+        encrypt_and_decrypt(secret, nonce);
+    }
+
+    #[test]
+    fn encrypt_and_decrypt_u128_max() {
+        let secret = Secret::random();
+        let nonce = ::std::u128::MAX;
+        encrypt_and_decrypt(secret, nonce);
+    }
 }

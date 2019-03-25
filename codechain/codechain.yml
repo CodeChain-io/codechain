@@ -225,7 +225,7 @@ args:
         help: Do not use discovery
     - discovery:
         long: discovery
-        help: Decide which p2p discovery extension to use. Options are kademlia and unstructured. In a testing environment, an unstructured p2p network is desirable because it is more than sufficient when there are a few users.
+        help: Decide how to choose the addresses to be sent. Options are kademlia and unstructured. In a testing environment, an unstructured p2p network is desirable because it is more than sufficient when there are a few nodes(< 100).
         takes_value: true
         possible_values:
             - kademlia
@@ -317,4 +317,32 @@ subcommands:
                         help: Address of desired password change
                         required: true
                         index: 1
-
+    - convert:
+        about: Conversion utility
+        args:
+            - chain:
+                  short: c
+                  long: chain
+                  global: true
+                  help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, husky, saluki or a path to chain scheme file.
+                  takes_value: true
+            - from:
+                  short: f
+                  long: from
+                  required: true
+                  takes_value: true
+                  possible_values:
+                      - private
+                      - public
+                      - address
+                      - accountId
+            - to:
+                  short: t
+                  long: to
+                  required: true
+                  takes_value: true
+                  possible_values:
+                      - private
+                      - public
+                      - address
+                      - accountId

@@ -104,6 +104,7 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 
  - networkId: `NetworkID`
  - burn: `AssetTransferInput`
+ - receiver: `PlatformAddress`
 
 ### Pay Action
 
@@ -1375,19 +1376,20 @@ Errors: `KVDB Error`, `Invalid Params`
 [Back to **List of methods**](#list-of-methods)
 
 ## chain_getPendingTransactions
-Gets transactions in the current transaction queue.
+Gets transactions that have insertion_timestamps within the given range from the current transaction queue.
 
 ### Params
-No parameters
+ 1. from: `number | null` - The lower bound of collected pending transactions. If null, there is no lower bound.
+ 2. to: `number | null` - The upper bound of collected pending transactions. If null, there is no upper bound.
 
 ### Returns
-`Transaction[]`
+`{ transactions: Transaction[], lastTimestamp: number }`
 
 ### Request Example
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactions", "params": [], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactions", "params": [null, null], "id": null}' \
     localhost:8080
 ```
 
@@ -1395,8 +1397,9 @@ No parameters
 ```
 {
   "jsonrpc":"2.0",
-  "result":[
-    {
+  "result":{
+    "lastTimestamp": null,
+    "transactions": [{
       "blockHash":null,
       "blockNumber":null,
       "fee":"0xa",
@@ -1416,8 +1419,8 @@ No parameters
         }
       ],
       "v":0
-    }
-  ],
+    }]
+  },
   "id":null
 }
 ```
@@ -1425,10 +1428,11 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## chain_getPendingTransactionsCount
-Returns a count of the transactions that are in the current transaction queue.
+Returns a count of the transactions that have insertion_timestamps within the given range from the transaction queues.
 
 ### Params
-No parameters
+ 1. from: `number | null` - The lower bound of collected pending transactions. If null, there is no lower bound.
+ 2. to: `number | null` - The upper bound of collected pending transactions. If null, there is no upper bound.
 
 ### Returns
 `number`
@@ -1437,7 +1441,7 @@ No parameters
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactionsCount", "params": [], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactionsCount", "params": [null, null], "id": null}' \
     localhost:8080
 ```
 
@@ -1483,10 +1487,10 @@ It returns `null` if the given block number is not mined yet.
 [Back to **List of methods**](#list-of-methods)
 
 ## chain_executeTransaction
-Executes the transactions and returns the current shard root and the changed shard root.
+Executes the transactions and returns whether the execution is successful.
 
 ### Params
- 1. transaction: `Transaction`
+ 1. transaction: `UnsignedTransaction`
  2. sender: `PlatformAddress`
 
 ### Returns
@@ -1998,7 +2002,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## net_addToWhitelist
-Adds the address to the whitelist.
+Adds the CIDR block address to the whitelist.
 
 ### Params
  1. address: `string`
@@ -2011,7 +2015,7 @@ Adds the address to the whitelist.
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_addToWhitelist", "params": ["1.2.3.4", "tag"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "net_addToWhitelist", "params": ["1.2.3.0/24", "tag"], "id": 6}' \
     localhost:8080
 ```
 
@@ -2027,7 +2031,7 @@ Adds the address to the whitelist.
 [Back to **List of methods**](#list-of-methods)
 
 ## net_removeFromWhitelist
-Removes the address from the whitelist.
+Removes the CIDR block address from the whitelist.
 
 ### Params
  1. address: `string`
@@ -2039,7 +2043,7 @@ Removes the address from the whitelist.
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "net_removeFromWhitelist", "params": ["1.2.3.4"], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "net_removeFromWhitelist", "params": ["1.2.3.0/24"], "id": 6}' \
     localhost:8080
 ```
 
@@ -2055,7 +2059,7 @@ Removes the address from the whitelist.
 [Back to **List of methods**](#list-of-methods)
 
 ## net_addToBlacklist
-Adds the address to the blacklist.
+Adds the CIDR block address to the blacklist.
 
 ### Params
  1. address: `string`
@@ -2084,7 +2088,7 @@ Adds the address to the blacklist.
 [Back to **List of methods**](#list-of-methods)
 
 ## net_removeFromBlacklist
-Removes the address from the blacklist.
+Removes the CIDR block address from the blacklist.
 
 ### Params
  1. address: `string`
@@ -2224,7 +2228,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## net_getWhitelist
-Gets the address in the whitelist.
+Gets the CIDR block addresses in the whitelist.
 
 ### Params
 No parameters
@@ -2244,7 +2248,7 @@ No parameters
 ```
 {
   "jsonrpc":"2.0",
-  "result": { "list": [["1.2.3.4", "tag1"], ["1.2.3.5", "tag2"], ["1.2.3.6", "tag3"]], "enabled": true },
+  "result": { "list": [["1.2.3.0/24", "tag1"], ["1.2.3.5/32", "tag2"], ["1.2.3.6/32", "tag3"]], "enabled": true },
   "id":6
 }
 ```
@@ -2252,7 +2256,7 @@ No parameters
 [Back to **List of methods**](#list-of-methods)
 
 ## net_getBlacklist
-Gets the address in the blacklist.
+Gets the CIDR block addresses in the blacklist.
 
 ### Params
 No parameters
@@ -2272,7 +2276,7 @@ No parameters
 ```
 {
   "jsonrpc":"2.0",
-  "result": { "list": [["1.2.3.4", "tag1"], ["1.2.3.5", "tag2"], ["1.2.3.6", "tag3"]], "enabled": false },
+  "result": { "list": [["1.2.3.0/22", "tag1"], ["1.2.3.5/32", "tag2"], ["1.2.3.6/32", "tag3"]], "enabled": false },
   "id":6
 }
 ```

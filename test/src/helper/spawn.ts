@@ -441,7 +441,7 @@ export default class CodeChain {
         secret?: string;
         seq?: number;
         metadata?: string;
-        administrator?: PlatformAddress | string;
+        registrar?: PlatformAddress | string;
         awaitMint?: boolean;
     }) {
         const {
@@ -450,7 +450,7 @@ export default class CodeChain {
             recipient = await this.createP2PKHAddress(),
             secret,
             metadata = "",
-            administrator,
+            registrar,
             awaitMint = true
         } = params;
         const tx = this.sdk.core.createMintAssetTransaction({
@@ -458,7 +458,7 @@ export default class CodeChain {
                 shardId: 0,
                 metadata,
                 supply,
-                administrator
+                registrar
             },
             recipient
         });

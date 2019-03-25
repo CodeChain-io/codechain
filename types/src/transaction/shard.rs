@@ -34,7 +34,7 @@ pub enum ShardTransaction {
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         output: AssetMintOutput,
     },
@@ -51,7 +51,7 @@ pub enum ShardTransaction {
         asset_type: H160,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
     },
     IncreaseAssetSupply {
@@ -65,7 +65,7 @@ pub enum ShardTransaction {
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         inputs: Vec<AssetTransferInput>,
         output: AssetMintOutput,
@@ -78,6 +78,7 @@ pub enum ShardTransaction {
     UnwrapCCC {
         network_id: NetworkId,
         burn: AssetTransferInput,
+        receiver: Address,
     },
     WrapCCC {
         network_id: NetworkId,
@@ -368,7 +369,7 @@ impl PartialHashing for ShardTransaction {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output,
@@ -391,7 +392,7 @@ impl PartialHashing for ShardTransaction {
                         shard_id: *shard_id,
                         metadata: metadata.to_string(),
                         approver: *approver,
-                        administrator: *administrator,
+                        registrar: *registrar,
                         allowed_script_hashes: allowed_script_hashes.to_vec(),
                         inputs: new_inputs,
                         output: new_output,
@@ -429,6 +430,7 @@ impl PartialHashing for ShardTransaction {
             ShardTransaction::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => {
                 if !tag.sign_all_inputs || !tag.sign_all_outputs {
                     return Err(HashingError::InvalidFilter)
@@ -443,6 +445,7 @@ impl PartialHashing for ShardTransaction {
                             lock_script: Vec::new(),
                             unlock_script: Vec::new(),
                         },
+                        receiver: *receiver,
                     }
                     .rlp_bytes(),
                     &blake128(tag.get_tag()),
@@ -498,7 +501,7 @@ impl Decodable for ShardTransaction {
                         supply: d.val_at(6)?,
                     },
                     approver: d.val_at(7)?,
-                    administrator: d.val_at(8)?,
+                    registrar: d.val_at(8)?,
                     allowed_script_hashes: d.list_at(9)?,
                 })
             }
@@ -532,7 +535,7 @@ impl Decodable for ShardTransaction {
                     asset_type: d.val_at(3)?,
                     metadata: d.val_at(4)?,
                     approver: d.val_at(5)?,
-                    administrator: d.val_at(6)?,
+                    registrar: d.val_at(6)?,
                     allowed_script_hashes: d.list_at(7)?,
                 })
             }
@@ -568,7 +571,7 @@ impl Decodable for ShardTransaction {
                     shard_id: d.val_at(2)?,
                     metadata: d.val_at(3)?,
                     approver: d.val_at(4)?,
-                    administrator: d.val_at(5)?,
+                    registrar: d.val_at(5)?,
                     allowed_script_hashes: d.list_at(6)?,
                     inputs: d.list_at(7)?,
                     output: AssetMintOutput {
@@ -594,15 +597,16 @@ impl Decodable for ShardTransaction {
             }
             ASSET_UNWRAP_CCC_ID => {
                 let item_count = d.item_count()?;
-                if item_count != 3 {
+                if item_count != 4 {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
-                        expected: 3,
+                        expected: 4,
                     })
                 }
                 Ok(ShardTransaction::UnwrapCCC {
                     network_id: d.val_at(1)?,
                     burn: d.val_at(2)?,
+                    receiver: d.val_at(3)?,
                 })
             }
             _ => Err(DecoderError::Custom("Unexpected transaction")),
@@ -624,7 +628,7 @@ impl Encodable for ShardTransaction {
                         supply,
                     },
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
             } => {
                 s.begin_list(10)
@@ -636,7 +640,7 @@ impl Encodable for ShardTransaction {
                     .append(parameters)
                     .append(supply)
                     .append(approver)
-                    .append(administrator)
+                    .append(registrar)
                     .append_list(allowed_script_hashes);
             }
             ShardTransaction::TransferAsset {
@@ -660,7 +664,7 @@ impl Encodable for ShardTransaction {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
             } => {
                 s.begin_list(8)
@@ -670,7 +674,7 @@ impl Encodable for ShardTransaction {
                     .append(asset_type)
                     .append(metadata)
                     .append(approver)
-                    .append(administrator)
+                    .append(registrar)
                     .append_list(allowed_script_hashes);
             }
             ShardTransaction::IncreaseAssetSupply {
@@ -698,7 +702,7 @@ impl Encodable for ShardTransaction {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output:
@@ -714,7 +718,7 @@ impl Encodable for ShardTransaction {
                     .append(shard_id)
                     .append(metadata)
                     .append(approver)
-                    .append(administrator)
+                    .append(registrar)
                     .append_list(allowed_script_hashes)
                     .append_list(inputs)
                     .append(lock_script_hash)
@@ -731,8 +735,9 @@ impl Encodable for ShardTransaction {
             ShardTransaction::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => {
-                s.begin_list(3).append(&ASSET_UNWRAP_CCC_ID).append(network_id).append(burn);
+                s.begin_list(4).append(&ASSET_UNWRAP_CCC_ID).append(network_id).append(burn).append(receiver);
             }
             ShardTransaction::WrapCCC {
                 ..
@@ -1037,6 +1042,7 @@ mod tests {
                 lock_script: vec![0x30, 0x01],
                 unlock_script: vec![],
             },
+            receiver: Address::random(),
         };
         rlp_encode_and_decode_test!(tx);
     }

@@ -36,6 +36,7 @@ import { blake160 } from "codechain-sdk/lib/utils";
 import * as _ from "lodash";
 import "mocha";
 import {
+    aliceAddress,
     faucetAccointId,
     faucetAddress,
     faucetSecret
@@ -127,7 +128,7 @@ describe("transactions", function() {
             const increasedAmount = 300;
             const { asset } = await node.mintAsset({
                 supply: amount,
-                administrator: faucetAddress
+                registrar: faucetAddress
             });
             const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
                 shardId: asset.shardId,
@@ -158,7 +159,7 @@ describe("transactions", function() {
             );
         });
 
-        it("cannot increase without administrator", async function() {
+        it("cannot increase without registrar", async function() {
             const amount = 100;
             const increasedAmount = 300;
             const { asset } = await node.mintAsset({
@@ -188,7 +189,7 @@ describe("transactions", function() {
             const increasedAmount = 300;
             const { asset } = await node.mintAsset({
                 supply: amount,
-                administrator: faucetAddress
+                registrar: faucetAddress
             });
             const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
                 shardId: asset.shardId,
@@ -218,7 +219,7 @@ describe("transactions", function() {
         it("cannot be overflowed", async function() {
             const { asset } = await node.mintAsset({
                 supply: U64.MAX_VALUE,
-                administrator: faucetAddress
+                registrar: faucetAddress
             });
             const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
                 shardId: asset.shardId,
@@ -410,6 +411,34 @@ describe("transactions", function() {
                 expect(results![0]).to.be.true;
             });
         });
+    });
+
+    it("AssetTransfer - Nonexistent assetType", async function() {
+        const { asset } = await node.mintAsset({ supply: 1 });
+        const assetType = new H160("0000000000000000000000000000000000123456");
+        const transferAsset = node.sdk.core.createTransferAssetTransaction();
+        const input = node.sdk.core.createAssetTransferInput({
+            assetOutPoint: {
+                tracker: asset.outPoint.tracker,
+                index: asset.outPoint.index,
+                assetType,
+                shardId: asset.shardId,
+                quantity: asset.quantity,
+                lockScriptHash: asset.outPoint.lockScriptHash,
+                parameters: asset.outPoint.parameters
+            }
+        });
+        transferAsset.addInputs(input);
+        const recipient = await node.sdk.key.createAssetTransferAddress();
+        transferAsset.addOutputs({
+            quantity: asset.quantity,
+            assetType,
+            shardId: 0,
+            recipient
+        });
+        await node.signTransactionInput(transferAsset, 0);
+        const results = await node.sendAssetTransaction(transferAsset);
+        expect(results).deep.equal([false]);
     });
 
     it("Burn successful", async function() {
@@ -1088,13 +1117,27 @@ describe("transactions", function() {
             });
 
             it("Unwrap successful", async function() {
+                const beforeAliceBalance = await node.sdk.rpc.chain.getBalance(
+                    aliceAddress
+                );
                 const tx = node.sdk.core.createUnwrapCCCTransaction({
-                    burn: wrapTransaction.getAsset()
+                    burn: wrapTransaction.getAsset(),
+                    receiver: aliceAddress
                 });
                 await node.signTransactionBurn(tx, 0);
                 const results = await node.sendAssetTransaction(tx);
                 expect(results!.length).to.equal(1);
                 expect(results![0]).to.be.true;
+                expect(
+                    (await node.sdk.rpc.chain.getBalance(
+                        aliceAddress
+                    )).toEncodeObject()
+                ).eq(
+                    U64.plus(
+                        beforeAliceBalance,
+                        wrapTransaction.getAsset().quantity
+                    ).toEncodeObject()
+                );
             });
         });
 
@@ -1154,13 +1197,28 @@ describe("transactions", function() {
                     asset1.shardId
                 );
 
+                const beforeAliceBalance = await node.sdk.rpc.chain.getBalance(
+                    aliceAddress
+                );
                 const unwrapTx = node.sdk.core.createUnwrapCCCTransaction({
-                    burn: asset2!
+                    burn: asset2!,
+                    receiver: aliceAddress
                 });
                 await node.signTransactionBurn(unwrapTx, 0);
                 const results2 = await node.sendAssetTransaction(unwrapTx);
                 expect(results2!.length).to.equal(1);
                 expect(results2![0]).to.be.true;
+
+                expect(
+                    (await node.sdk.rpc.chain.getBalance(
+                        aliceAddress
+                    )).toEncodeObject()
+                ).eq(
+                    U64.plus(
+                        beforeAliceBalance,
+                        asset2!.quantity
+                    ).toEncodeObject()
+                );
             });
         });
 
@@ -1186,15 +1244,24 @@ describe("transactions", function() {
 
             it("Unwrap unsuccessful - Invalid asset type", async function() {
                 const tx = node.sdk.core.createUnwrapCCCTransaction({
-                    burn: mintTx.getMintedAsset()
+                    burn: mintTx.getMintedAsset(),
+                    receiver: aliceAddress
                 });
                 await node.signTransactionBurn(tx, 0);
+                const beforeAliceBalance = await node.sdk.rpc.chain.getBalance(
+                    aliceAddress
+                );
                 try {
                     await node.sendAssetTransaction(tx);
                     expect.fail();
                 } catch (e) {
                     expect(e).is.similarTo(ERROR.INVALID_TX_ASSET_TYPE);
                 }
+                expect(
+                    (await node.sdk.rpc.chain.getBalance(
+                        aliceAddress
+                    )).toEncodeObject()
+                ).eq(beforeAliceBalance.toEncodeObject());
             });
         });
     });

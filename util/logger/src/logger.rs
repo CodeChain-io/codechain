@@ -23,8 +23,7 @@ use colored::Colorize;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
 use log::{LevelFilter, Log, Metadata, Record};
 
-use crate::slogger;
-use crate::structured_logger;
+use crate::{structured_logger, SLOGGER};
 
 pub struct Config {
     pub instance_id: usize,
@@ -41,6 +40,7 @@ impl Config {
 pub struct Logger {
     instance_id: usize,
     filter: Filter,
+    stderr_is_tty: bool,
 }
 
 impl Logger {
@@ -52,9 +52,12 @@ impl Logger {
             builder.parse(&rust_log);
         }
 
+        let stderr_is_tty = atty::is(atty::Stream::Stderr);
+
         Self {
             instance_id: config.instance_id,
             filter: builder.build(),
+            stderr_is_tty,
         }
     }
 
@@ -73,14 +76,13 @@ impl Log for Logger {
             let thread_name = thread::current().name().unwrap_or_default().to_string();
             let timestamp = time::strftime("%Y-%m-%d %H:%M:%S %Z", &time::now()).unwrap();
 
-            let stderr_isatty = atty::is(atty::Stream::Stderr);
             let instance_id = self.instance_id;
-            let timestamp = if stderr_isatty {
+            let timestamp = if self.stderr_is_tty {
                 timestamp.bold()
             } else {
                 timestamp.normal()
             };
-            let colored_thread_name = if stderr_isatty {
+            let colored_thread_name = if self.stderr_is_tty {
                 thread_name.blue().bold()
             } else {
                 thread_name.normal()
@@ -96,7 +98,7 @@ impl Log for Logger {
             let rfc3339with_nano_second = "%Y-%m-%dT%H:%M:%S.%f%z";
             let timestamp = time::strftime(rfc3339with_nano_second, &time::now()).unwrap();
 
-            slogger.log(structured_logger::Log {
+            SLOGGER.log(structured_logger::Log {
                 level: log_level.to_string(),
                 target: log_target.to_string(),
                 message: log_message.to_string(),

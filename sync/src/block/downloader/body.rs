@@ -29,6 +29,7 @@ struct Target {
     transaction_root: H256,
 }
 
+#[derive(Default)]
 pub struct BodyDownloader {
     targets: Vec<Target>,
     downloading: HashSet<H256>,
@@ -36,14 +37,6 @@ pub struct BodyDownloader {
 }
 
 impl BodyDownloader {
-    pub fn new() -> Self {
-        Self {
-            targets: Vec::new(),
-            downloading: HashSet::new(),
-            downloaded: HashMap::new(),
-        }
-    }
-
     pub fn create_request(&mut self) -> Option<RequestMessage> {
         const MAX_BODY_REQEUST_LENGTH: usize = 128;
         let mut hashes = Vec::new();
@@ -78,7 +71,7 @@ impl BodyDownloader {
     }
 
     pub fn add_target(&mut self, header: &Header, parent: &Header) {
-        ctrace!(SYNC, "Add download target: {}", header.hash());
+        cdebug!(SYNC, "Add download target: {}", header.hash());
         self.targets.push(Target {
             hash: header.hash(),
             transaction_hash: parent.hash(),
@@ -91,7 +84,7 @@ impl BodyDownloader {
         if targets.is_empty() {
             return
         }
-        ctrace!(SYNC, "Remove download targets: {:?}", targets);
+        cdebug!(SYNC, "Remove download targets: {:?}", targets);
         for hash in targets {
             if let Some(index) = self.targets.iter().position(|t| t.hash == *hash) {
                 self.targets.remove(index);
@@ -102,6 +95,7 @@ impl BodyDownloader {
     }
 
     pub fn reset_downloading(&mut self, hashes: &[H256]) {
+        cdebug!(SYNC, "Remove downloading by timeout {:?}", hashes);
         for hash in hashes {
             self.downloading.remove(&hash);
         }

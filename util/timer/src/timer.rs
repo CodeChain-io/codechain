@@ -31,7 +31,7 @@ const TIMER_NAME_DEFAULT: TimerName = "UNNAMED_TIMER";
 pub type TimerToken = usize;
 
 pub trait TimeoutHandler: Send + Sync {
-    fn on_timeout(&self, _token: TimerToken) {}
+    fn on_timeout(&self, _token: TimerToken);
 }
 
 #[derive(Clone)]
@@ -96,12 +96,12 @@ pub enum ScheduleError {
 }
 
 impl TimerApi {
-    pub fn set_handler<T>(&self, handler: &Arc<T>)
+    pub fn set_handler<T>(&self, handler: Weak<T>)
     where
         T: 'static + TimeoutHandler, {
         let mut handler_guard = self.handler.write();
         assert!(handler_guard.is_none(), "Timer handler cannot be changed once it is set");
-        *handler_guard = Some(Arc::downgrade(handler) as Weak<TimeoutHandler>);
+        *handler_guard = Some(handler);
     }
 
     pub fn set_name(&self, name: TimerName) {
@@ -644,7 +644,7 @@ mod tests {
         tick() * 2
     }
 
-    fn new_timer<T>(timer_loop: &TimerLoop, name: TimerName, handler: &Arc<T>) -> TimerApi
+    fn new_timer<T>(timer_loop: &TimerLoop, name: TimerName, handler: Weak<T>) -> TimerApi
     where
         T: 'static + Sized + TimeoutHandler, {
         let timer = timer_loop.new_timer();
@@ -667,7 +667,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = new_timer(&timer_loop, "test", &handler);
+        let timer = new_timer(&timer_loop, "test", Arc::downgrade(&handler));
 
         let begin = Instant::now();
         timer.schedule_once(tick(), timer_token).unwrap();
@@ -695,7 +695,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = new_timer(&timer_loop, "test", &handler);
+        let timer = new_timer(&timer_loop, "test", Arc::downgrade(&handler));
 
         assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
         assert_eq!(timer.cancel(timer_token), Ok(true));
@@ -712,8 +712,8 @@ mod tests {
         let timer_loop = TimerLoop::new(1);
         let handler = Arc::new(CallbackHandler(|_| {}));
         let timer = timer_loop.new_timer();
-        timer.set_handler(&handler);
-        timer.set_handler(&handler);
+        timer.set_handler(Arc::downgrade(&handler));
+        timer.set_handler(Arc::downgrade(&handler));
     }
 
     #[test]
@@ -739,7 +739,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = new_timer(&timer_loop, "test", &handler);
+        let timer = new_timer(&timer_loop, "test", Arc::downgrade(&handler));
 
         assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
         drop(handler);
@@ -755,7 +755,7 @@ mod tests {
         let timer_token = 100;
         let timer_loop = TimerLoop::new(1);
         let handler = Arc::new(CallbackHandler(|_| {}));
-        let timer = new_timer(&timer_loop, "test", &handler);
+        let timer = new_timer(&timer_loop, "test", Arc::downgrade(&handler));
 
         assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
         assert_eq!(timer.schedule_once(tick(), timer_token), Err(ScheduleError::TokenAlreadyScheduled));
@@ -767,7 +767,7 @@ mod tests {
         let timer_token_2 = 200;
         let timer_loop = TimerLoop::new(1);
         let handler = Arc::new(CallbackHandler(|_| {}));
-        let timer = new_timer(&timer_loop, "test", &handler);
+        let timer = new_timer(&timer_loop, "test", Arc::downgrade(&handler));
 
         assert_eq!(timer.schedule_once(tick(), timer_token_1), Ok(()));
         assert_eq!(timer.schedule_once(tick(), timer_token_2), Ok(()));
@@ -787,7 +787,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = new_timer(&timer_loop, "test", &handler);
+        let timer = new_timer(&timer_loop, "test", Arc::downgrade(&handler));
 
         assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
         thread::sleep(long_tick());
@@ -818,7 +818,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = new_timer(&timer_loop, "test", &handler);
+        let timer = new_timer(&timer_loop, "test", Arc::downgrade(&handler));
 
         let begin = Instant::now();
         assert_eq!(timer.schedule_once(tick(), timer_token), Ok(()));
@@ -850,7 +850,7 @@ mod tests {
                 condvar.notify_all();
             }))
         };
-        let timer = new_timer(&timer_loop, "test", &handler);
+        let timer = new_timer(&timer_loop, "test", Arc::downgrade(&handler));
 
         let begin = Instant::now();
         timer.schedule_repeat(tick(), timer_token).unwrap();

@@ -17,6 +17,7 @@
 use std::net::IpAddr;
 use std::result::Result;
 
+use cidr::IpCidr;
 use ckey::Public;
 
 use crate::addr::SocketAddr;
@@ -32,11 +33,11 @@ pub trait Control: Send + Sync {
     fn get_peer_count(&self) -> Result<usize, Error>;
     fn established_peers(&self) -> Result<Vec<SocketAddr>, Error>;
 
-    fn add_to_whitelist(&self, addr: IpAddr, tag: Option<String>) -> Result<(), Error>;
-    fn remove_from_whitelist(&self, addr: &IpAddr) -> Result<(), Error>;
+    fn add_to_whitelist(&self, addr: IpCidr, tag: Option<String>) -> Result<(), Error>;
+    fn remove_from_whitelist(&self, addr: &IpCidr) -> Result<(), Error>;
 
-    fn add_to_blacklist(&self, addr: IpAddr, tag: Option<String>) -> Result<(), Error>;
-    fn remove_from_blacklist(&self, addr: &IpAddr) -> Result<(), Error>;
+    fn add_to_blacklist(&self, addr: IpCidr, tag: Option<String>) -> Result<(), Error>;
+    fn remove_from_blacklist(&self, addr: &IpCidr) -> Result<(), Error>;
 
     fn enable_whitelist(&self) -> Result<(), Error>;
     fn disable_whitelist(&self) -> Result<(), Error>;

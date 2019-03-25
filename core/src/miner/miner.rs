@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::iter::once;
+use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -37,14 +38,14 @@ use super::{MinerService, MinerStatus, TransactionImportResult};
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use crate::block::{Block, ClosedBlock, IsBlock};
 use crate::client::{
-    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
-    ResealTimer,
+    AccountData, BlockChain, BlockProducer, Client, ImportSealedBlock, MiningBlockChainClient, RegularKey,
+    RegularKeyOwner, ResealTimer,
 };
 use crate::consensus::{CodeChainEngine, EngineType};
 use crate::error::Error;
 use crate::header::Header;
 use crate::scheme::Scheme;
-use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::transaction::{PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
 use crate::types::{BlockId, TransactionId};
 
 /// Configures the behaviour of the miner.
@@ -183,6 +184,10 @@ impl Miner {
         }
     }
 
+    pub fn recover_from_db(&self, client: &Client) {
+        self.mem_pool.write().recover_from_db(client);
+    }
+
     /// Set a callback to be notified about imported transactions' hashes.
     pub fn add_transactions_listener(&self, f: Box<Fn(&[H256]) + Send + Sync>) {
         self.transaction_listener.write().push(f);
@@ -250,8 +255,8 @@ impl Miner {
         mem_pool: &mut MemPool,
     ) -> Vec<Result<TransactionImportResult, Error>> {
         let best_block_header = client.best_block_header().decode();
-        let insertion_time = client.chain_info().best_block_number;
-        let insertion_timestamp = client.chain_info().best_block_timestamp;
+        let current_block_number = client.chain_info().best_block_number;
+        let current_timestamp = client.chain_info().best_block_timestamp;
         let mut inserted = Vec::with_capacity(transactions.len());
         let mut to_insert = Vec::new();
         let mut tx_hashes = Vec::new();
@@ -307,7 +312,7 @@ impl Miner {
             }
         };
 
-        let insertion_results = mem_pool.add(to_insert, insertion_time, insertion_timestamp, &fetch_account);
+        let insertion_results = mem_pool.add(to_insert, current_block_number, current_timestamp, &fetch_account);
 
         debug_assert_eq!(insertion_results.len(), intermediate_results.iter().filter(|r| r.is_ok()).count());
         let mut insertion_results_index = 0;
@@ -445,7 +450,10 @@ impl Miner {
             let params = self.params.read().clone();
             let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
             let max_body_size = self.engine.params().max_body_size;
-            let transactions = mem_pool.top_transactions(max_body_size, Some(open_block.header().timestamp()));
+            const DEFAULT_RANGE: Range<u64> = 0..::std::u64::MAX;
+            let transactions = mem_pool
+                .top_transactions(max_body_size, Some(open_block.header().timestamp()), DEFAULT_RANGE)
+                .transactions;
 
             (transactions, open_block, last_work_hash)
         };
@@ -680,10 +688,10 @@ impl MinerService for Miner {
                     balance: chain.latest_balance(&a),
                 }
             };
-            let time = chain.chain_info().best_block_number;
-            let timestamp = chain.chain_info().best_block_timestamp;
+            let current_block_number = chain.chain_info().best_block_number;
+            let current_timestamp = chain.chain_info().best_block_timestamp;
             let mut mem_pool = self.mem_pool.write();
-            mem_pool.remove_old(&fetch_account, time, timestamp);
+            mem_pool.remove_old(&fetch_account, current_block_number, current_timestamp);
         }
 
         if !self.options.no_reseal_timer {
@@ -939,7 +947,8 @@ impl MinerService for Miner {
                         seq
                     })
                     .unwrap_or_else(|| {
-                        get_next_seq(self.ready_transactions(), &addresses)
+                        const DEFAULT_RANGE: Range<u64> = 0..::std::u64::MAX;
+                        get_next_seq(self.ready_transactions(DEFAULT_RANGE).transactions, &addresses)
                             .map(|seq| {
                                 cdebug!(RPC, "There are ready transactions for {}", platform_address);
                                 seq
@@ -959,13 +968,13 @@ impl MinerService for Miner {
         Ok((hash, seq))
     }
 
-    fn ready_transactions(&self) -> Vec<SignedTransaction> {
+    fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
         let max_body_size = self.engine.params().max_body_size;
-        self.mem_pool.read().top_transactions(max_body_size, None)
+        self.mem_pool.read().top_transactions(max_body_size, None, range)
     }
 
-    fn count_pending_transactions(&self) -> usize {
-        self.mem_pool.read().count_pending_transactions()
+    fn count_pending_transactions(&self, range: Range<u64>) -> usize {
+        self.mem_pool.read().count_pending_transactions(range)
     }
 
     /// Get a list of all future transactions.

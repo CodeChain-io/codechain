@@ -26,8 +26,8 @@ use super::message::VoteStep;
 use crate::block::{IsBlock, SealedBlock};
 use crate::error::Error;
 
-pub type Height = usize;
-pub type View = usize;
+pub type Height = u64;
+pub type View = u64;
 
 #[derive(Clone)]
 pub enum TendermintState {
@@ -44,6 +44,7 @@ pub enum TendermintState {
     Prevote,
     Precommit,
     Commit,
+    CommitTimedout,
 }
 
 impl TendermintState {
@@ -62,12 +63,21 @@ impl TendermintState {
             TendermintState::Prevote => Step::Prevote,
             TendermintState::Precommit => Step::Precommit,
             TendermintState::Commit => Step::Commit,
+            TendermintState::CommitTimedout => Step::Commit,
         }
     }
 
     pub fn is_commit(&self) -> bool {
         match self {
             TendermintState::Commit => true,
+            TendermintState::CommitTimedout => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_commit_timedout(&self) -> bool {
+        match self {
+            TendermintState::CommitTimedout => true,
             _ => false,
         }
     }
@@ -89,6 +99,7 @@ impl fmt::Debug for TendermintState {
             TendermintState::Prevote => write!(f, "TendermintState::Prevote"),
             TendermintState::Precommit => write!(f, "TendermintState::Precommit"),
             TendermintState::Commit => write!(f, "TendermintState::Commit"),
+            TendermintState::CommitTimedout => write!(f, "TendermintState::CommitTimedout"),
         }
     }
 }
@@ -361,5 +372,76 @@ impl<'a> TendermintSealView<'a> {
             .zip(signatures)
             .map(|(index, signature)| signature.map(|signature| (index, signature)))
             .collect::<Result<_, _>>()?)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum TwoThirdsMajority {
+    Empty,
+    Lock(View, H256),
+    Unlock(View),
+}
+
+impl TwoThirdsMajority {
+    pub fn from_message(view: View, block_hash: Option<H256>) -> Self {
+        match block_hash {
+            Some(block_hash) => TwoThirdsMajority::Lock(view, block_hash),
+            None => TwoThirdsMajority::Unlock(view),
+        }
+    }
+
+    pub fn view(&self) -> Option<View> {
+        match self {
+            TwoThirdsMajority::Empty => None,
+            TwoThirdsMajority::Lock(view, _) => Some(*view),
+            TwoThirdsMajority::Unlock(view) => Some(*view),
+        }
+    }
+
+    pub fn block_hash(&self) -> Option<H256> {
+        match self {
+            TwoThirdsMajority::Empty => None,
+            TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
+            TwoThirdsMajority::Unlock(_) => None,
+        }
+    }
+}
+
+pub enum Proposal {
+    ProposalReceived(H256, Bytes, SchnorrSignature),
+    ProposalImported(H256),
+    None,
+}
+
+impl Proposal {
+    pub fn new_received(hash: H256, block: Bytes, signature: SchnorrSignature) -> Self {
+        Proposal::ProposalReceived(hash, block, signature)
+    }
+
+    pub fn new_imported(hash: H256) -> Self {
+        Proposal::ProposalImported(hash)
+    }
+
+    pub fn block_hash(&self) -> Option<H256> {
+        match self {
+            Proposal::ProposalReceived(hash, ..) => Some(*hash),
+            Proposal::ProposalImported(hash) => Some(*hash),
+            Proposal::None => None,
+        }
+    }
+
+    pub fn imported_block_hash(&self) -> Option<H256> {
+        match self {
+            Proposal::ProposalReceived(..) => None,
+            Proposal::ProposalImported(hash) => Some(*hash),
+            Proposal::None => None,
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
+        match self {
+            Proposal::None => true,
+            _ => false,
+        }
     }
 }

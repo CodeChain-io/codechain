@@ -43,8 +43,9 @@ pub enum Error {
         shard_id: ShardId,
     },
     AssetSupplyOverflow,
-    CannotBurnCentralizedAsset,
-    CannotComposeCentralizedAsset,
+    CannotBurnRegulatedAsset,
+    CannotComposeRegulatedAsset,
+    FailedToHandleCustomAction(String),
     /// Script execution result is `Fail`
     FailedToUnlock {
         shard_id: ShardId,
@@ -69,7 +70,10 @@ pub enum Error {
         got: u64,
     },
     /// AssetType error other than format.
-    InvalidAssetType(H160),
+    UnexpectedAssetType {
+        index: usize,
+        mismatch: Mismatch<H160>,
+    },
     InvalidDecomposedInput {
         asset_type: H160,
         shard_id: ShardId,
@@ -110,13 +114,13 @@ pub enum Error {
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 1;
 const ERROR_ID_ASSET_SCHEME_DUPLICATED: u8 = 2;
 const ERROR_ID_ASSET_SCHEME_NOT_FOUND: u8 = 3;
-const ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET: u8 = 4;
-const ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET: u8 = 5;
+const ERROR_ID_CANNOT_BURN_REGULATED_ASSET: u8 = 4;
+const ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET: u8 = 5;
 const ERROR_ID_FAILED_TO_UNLOCK: u8 = 6;
 const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 9;
 const ERROR_ID_INVALID_ASSET_QUANTITY: u8 = 10;
-const ERROR_ID_INVALID_ASSET_TYPE: u8 = 11;
+const ERROR_ID_UNEXPECTED_ASSET_TYPE: u8 = 11;
 const ERROR_ID_INVALID_DECOMPOSED_INPUT: u8 = 13;
 const ERROR_ID_INVALID_DECOMPOSED_OUTPUT: u8 = 14;
 const ERROR_ID_INVALID_SHARD_ID: u8 = 15;
@@ -135,6 +139,7 @@ const ERROR_ID_INVALID_SCRIPT: u8 = 27;
 const ERROR_ID_INVALID_SEQ: u8 = 28;
 const ERROR_ID_ASSET_SUPPLY_OVERFLOW: u8 = 29;
 const ERROR_ID_NON_ACTIVE_ACCOUNT: u8 = 30;
+const ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION: u8 = 31;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -146,13 +151,14 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_ASSET_SCHEME_DUPLICATED => 3,
             ERROR_ID_ASSET_SCHEME_NOT_FOUND => 3,
             ERROR_ID_ASSET_SUPPLY_OVERFLOW => 1,
-            ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => 1,
-            ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => 1,
+            ERROR_ID_CANNOT_BURN_REGULATED_ASSET => 1,
+            ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET => 1,
+            ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION => 2,
             ERROR_ID_FAILED_TO_UNLOCK => 5,
             ERROR_ID_INSUFFICIENT_BALANCE => 4,
             ERROR_ID_INSUFFICIENT_PERMISSION => 1,
             ERROR_ID_INVALID_ASSET_QUANTITY => 6,
-            ERROR_ID_INVALID_ASSET_TYPE => 2,
+            ERROR_ID_UNEXPECTED_ASSET_TYPE => 3,
             ERROR_ID_INVALID_DECOMPOSED_INPUT => 4,
             ERROR_ID_INVALID_DECOMPOSED_OUTPUT => 5,
             ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
@@ -192,9 +198,12 @@ impl Encodable for Error {
                 shard_id,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(asset_type).append(shard_id),
             Error::AssetSupplyOverflow => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SUPPLY_OVERFLOW),
-            Error::CannotBurnCentralizedAsset => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET),
-            Error::CannotComposeCentralizedAsset => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET)
+            Error::CannotBurnRegulatedAsset => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_BURN_REGULATED_ASSET),
+            Error::CannotComposeRegulatedAsset => {
+                RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET)
+            }
+            Error::FailedToHandleCustomAction(detail) => {
+                RlpHelper::new_tagged_list(s, ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION).append(detail)
             }
             Error::FailedToUnlock {
                 shard_id,
@@ -227,7 +236,10 @@ impl Encodable for Error {
                 .append(index)
                 .append(expected)
                 .append(got),
-            Error::InvalidAssetType(addr) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_TYPE).append(addr),
+            Error::UnexpectedAssetType {
+                index,
+                mismatch,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_UNEXPECTED_ASSET_TYPE).append(index).append(mismatch),
             Error::InvalidDecomposedInput {
                 asset_type,
                 shard_id,
@@ -296,8 +308,9 @@ impl Decodable for Error {
                 shard_id: rlp.val_at(2)?,
             },
             ERROR_ID_ASSET_SUPPLY_OVERFLOW => Error::AssetSupplyOverflow,
-            ERROR_ID_CANNOT_BURN_CENTRALIZED_ASSET => Error::CannotBurnCentralizedAsset,
-            ERROR_ID_CANNOT_COMPOSE_CENTRALIZED_ASSET => Error::CannotComposeCentralizedAsset,
+            ERROR_ID_CANNOT_BURN_REGULATED_ASSET => Error::CannotBurnRegulatedAsset,
+            ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET => Error::CannotComposeRegulatedAsset,
+            ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION => Error::FailedToHandleCustomAction(rlp.val_at(1)?),
             ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock {
                 shard_id: rlp.val_at(1)?,
                 tracker: rlp.val_at(2)?,
@@ -317,7 +330,10 @@ impl Decodable for Error {
                 expected: rlp.val_at(4)?,
                 got: rlp.val_at(5)?,
             },
-            ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
+            ERROR_ID_UNEXPECTED_ASSET_TYPE => Error::UnexpectedAssetType {
+                index: rlp.val_at(1)?,
+                mismatch: rlp.val_at(2)?,
+            },
             ERROR_ID_INVALID_DECOMPOSED_INPUT => Error::InvalidDecomposedInput {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
@@ -364,8 +380,9 @@ impl Display for Error {
                 shard_id,
             } => write!(f, "Asset scheme not found: {}:{}", asset_type, shard_id),
             Error::AssetSupplyOverflow => write!(f, "Asset supply should not be overflowed"),
-            Error::CannotBurnCentralizedAsset => write!(f, "Cannot burn the centralized asset"),
-            Error::CannotComposeCentralizedAsset => write!(f, "Cannot compose the centralized asset"),
+            Error::CannotBurnRegulatedAsset => write!(f, "Cannot burn the regulated asset"),
+            Error::CannotComposeRegulatedAsset => write!(f, "Cannot compose the regulated asset"),
+            Error::FailedToHandleCustomAction(detail) => write!(f, "Cannot handle custom action: {}", detail),
             Error::FailedToUnlock {
                 shard_id,
                 tracker,
@@ -389,7 +406,7 @@ impl Display for Error {
                 "AssetTransfer must consume input asset completely. The quantity of asset({}:{}:{}) must be {}, but {}.",
                 shard_id, tracker, index, expected, got
             ),
-            Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
+            Error::UnexpectedAssetType{index, mismatch} => write!(f, "{}th input has an unexpected asset type: {}", index, mismatch),
             Error::InvalidDecomposedInput {
                 asset_type,
                 shard_id,

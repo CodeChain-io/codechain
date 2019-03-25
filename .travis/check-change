@@ -22,7 +22,6 @@
 #   > [[ `.travis/check` = skip ]] && exit 0 || echo "failed"
 # It'll silently continue the process even if the script had exited with non-zero code.
 
-set -xe
 # Everything that is normally printed to `stdout` in the script will be redirected to `stderr`
 # which will be visible in tty/Travis log.
 # Outputs that is printed to `fd 3` will be redirected to `stdout`,
@@ -30,52 +29,62 @@ set -xe
 exec 3>&1 1>&2 # fd 3 = fd 1; fd 1 = fd 2
 
 function return_to_travis {
-    STRATEGY="${1}"
-    echo ${STRATEGY} >&3
+    STRATEGY=$1
+    echo "${STRATEGY}" >&3
     exit 0
 }
 function skip_travis { return_to_travis "skip" ; }
 function noskip_travis { return_to_travis "noskip" ; }
 
-echo "Event type ${TRAVIS_EVENT_TYPE}"
-echo "Branch: ${TRAVIS_EVENT_TYPE}"
-echo "Commit: ${TRAVIS_COMMIT}"
-echo "Range: ${TRAVIS_COMMIT_RANGE}"
+echo "TRAVIS_EVENT_TYPE=${TRAVIS_EVENT_TYPE}"
+echo "TRAVIS_BRANCH=${TRAVIS_BRANCH}"
+echo "TRAVIS_COMMIT=${TRAVIS_COMMIT}"
+echo "TRAVIS_COMMIT_RANGE=${TRAVIS_COMMIT_RANGE}"
+
+set -xe
 
 case ${TRAVIS_EVENT_TYPE} in
 push)
     if [[ "${TRAVIS_BRANCH}" = master ]]
     then
-        CHANGES=$(git diff --name-only ${TRAVIS_COMMIT_RANGE})
-        RESULT=$?
-        if [[ ( -z "$CHANGES" ) && ( $RESULT -ne 0 ) ]]
+        COMMIT_FROM=${TRAVIS_COMMIT_RANGE%...*}
+        COMMIT_TO=${TRAVIS_COMMIT_RANGE#*...}
+
+        if ! git cat-file -e "${COMMIT_FROM}^{commit}"
+        then
+            # A--B (missing)
+            #  \__C
+            # When you push force B to C, Travis set $TRAVIS_COMMIT_RANGE to "B...C"
+            # B doesn't exist anymore, so we cannot fetch, nor find merge-base.
+            # Since we cannot find common ancestor(A), we should do full check.
+            echo "Don't skip for force push (maybe)"
+            noskip_travis
+        fi
+
+        if ! git merge-base --is-ancestor "${COMMIT_FROM}" "${COMMIT_TO}"
         then
             # A--B
             #  \__C
-            # When you push force B to C, Travis set $TRAVIS_COMMIT_RANGE to "B...C"
-            # B doesn't exist anymore, so we cannot fetch, find merge-base.
-            # We can tell whether B doesn't exists or not using git-diff.
-            # It'll exit by non-zero with empty output.
-            # Since we cannot find common ancestor(A), we should do full check.
+            # It is force push but now we can find B
             echo "Don't skip for force push"
             noskip_travis
-        else
-            # A--B--C
-            # Branch was forwarded A to B, or B to C. $TRAVIS_COMMIT_RANGE will be A...B or B...C
-            # NOTE:
-            #   When job for A->B contains non-target changes, and didn't finished yet,
-            #   a job B->C which only contains target changes will automatically cancel A->B
-            #   and can report B->C to success.
-            #   TODO: disable auto cancel on master
-            echo "Forward push"
-            COMMIT_RANGE=${TRAVIS_COMMIT_RANGE}
         fi
+
+        # A--B--C
+        # Branch was forwarded A to B, or B to C. $TRAVIS_COMMIT_RANGE will be A...B or B...C
+        # NOTE:
+        #   When job for A->B contains non-target changes, and didn't finished yet,
+        #   a job B->C which only contains target changes will automatically cancel A->B
+        #   and can report B->C to success.
+        #   TODO: disable auto cancel on master
+        echo "Forward push"
+        COMMIT_RANGE=${TRAVIS_COMMIT_RANGE}
     else
         # Whether it was force push or forward push,
         # we can find common ancestor of master and the branch.
         echo "Branch push"
         git fetch origin master:master;
-        BASE=`git merge-base master ${TRAVIS_COMMIT}`
+        BASE=$(git merge-base master "${TRAVIS_COMMIT}")
         COMMIT_RANGE="${BASE}...${TRAVIS_COMMIT}"
     fi
     ;;
@@ -92,7 +101,7 @@ esac
 
 git log --oneline --decorate --all --graph | head -n 10;
 echo "Check changes for: ${COMMIT_RANGE}"
-if ! git diff --name-only ${COMMIT_RANGE} | grep -qvE "$1"
+if ! git diff --name-only "${COMMIT_RANGE}" | grep -qvE "$1"
 then
     echo "Only '$1' were updated, or there's no change, not running the CI."
     skip_travis

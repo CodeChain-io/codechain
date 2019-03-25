@@ -16,6 +16,18 @@
 
 #![allow(deprecated)]
 
+extern crate cidr;
+extern crate codechain_crypto as ccrypto;
+extern crate codechain_io as cio;
+extern crate codechain_key as ckey;
+#[macro_use]
+extern crate codechain_logger as clogger;
+extern crate codechain_timer as ctimer;
+extern crate codechain_types as ctypes;
+extern crate core;
+extern crate crossbeam_channel;
+extern crate finally;
+extern crate limited_table;
 #[macro_use]
 extern crate log;
 extern crate mio;
@@ -25,33 +37,20 @@ extern crate rand;
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;
-
-extern crate codechain_crypto as ccrypto;
-extern crate codechain_io as cio;
-extern crate codechain_key as ckey;
-extern crate codechain_timer as ctimer;
-extern crate codechain_types as ctypes;
-extern crate finally;
-extern crate limited_table;
+extern crate never;
 extern crate table as ctable;
 extern crate time;
 extern crate token_generator;
 
-#[macro_use]
-extern crate codechain_logger as clogger;
-extern crate core;
-
 mod addr;
 mod client;
 mod config;
-mod discovery;
 mod extension;
 mod filters;
 mod node_id;
 mod routing_table;
 mod service;
 mod stream;
-mod test;
 
 pub mod control;
 mod p2p;
@@ -60,13 +59,21 @@ pub mod session;
 pub use crate::addr::SocketAddr;
 pub use crate::config::Config as NetworkConfig;
 pub use crate::control::{Control as NetworkControl, Error as NetworkControlError};
-pub use crate::discovery::Api as DiscoveryApi;
 pub use crate::extension::{
     Api, Error as NetworkExtensionError, Extension as NetworkExtension, Result as NetworkExtensionResult,
 };
 pub use crate::node_id::{IntoSocketAddr, NodeId};
 pub use crate::service::{Error as NetworkServiceError, Service as NetworkService};
-pub use crate::test::{Call as TestNetworkCall, TestClient as TestNetworkClient};
 
 pub use crate::filters::{FilterEntry, Filters, FiltersControl};
 pub use crate::routing_table::RoutingTable;
+
+pub type EventSender<E> = crossbeam_channel::Sender<E>;
+pub type EventReceiver<E> = crossbeam_channel::Receiver<E>;
+
+pub fn unbounded_event_callback<E>() -> (EventSender<E>, EventReceiver<E>) {
+    crossbeam_channel::unbounded()
+}
+pub fn once_event_callback<E>() -> (EventSender<E>, EventReceiver<E>) {
+    crossbeam_channel::bounded(1)
+}

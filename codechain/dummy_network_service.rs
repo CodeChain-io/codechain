@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cidr::IpCidr;
 use std::net::IpAddr;
 
 use ckey::Public;
@@ -65,19 +66,19 @@ impl NetworkControl for DummyNetworkService {
         Err(NetworkControlError::Disabled)
     }
 
-    fn add_to_whitelist(&self, _addr: IpAddr, _tag: Option<String>) -> Result<(), NetworkControlError> {
+    fn add_to_whitelist(&self, _addr: IpCidr, _tag: Option<String>) -> Result<(), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 
-    fn remove_from_whitelist(&self, _addr: &IpAddr) -> Result<(), NetworkControlError> {
+    fn remove_from_whitelist(&self, _addr: &IpCidr) -> Result<(), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 
-    fn add_to_blacklist(&self, _addr: IpAddr, _tag: Option<String>) -> Result<(), NetworkControlError> {
+    fn add_to_blacklist(&self, _addr: IpCidr, _tag: Option<String>) -> Result<(), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 
-    fn remove_from_blacklist(&self, _addr: &IpAddr) -> Result<(), NetworkControlError> {
+    fn remove_from_blacklist(&self, _addr: &IpCidr) -> Result<(), NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 

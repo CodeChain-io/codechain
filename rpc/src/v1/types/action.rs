@@ -35,7 +35,7 @@ pub enum Action {
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
-        administrator: Option<PlatformAddress>,
+        registrar: Option<PlatformAddress>,
         allowed_script_hashes: Vec<H160>,
 
         output: Box<AssetMintOutput>,
@@ -52,7 +52,7 @@ pub enum Action {
 
         metadata: String,
         approvals: Vec<Signature>,
-        expiration: Option<u64>,
+        expiration: Option<Uint>,
     },
     #[serde(rename_all = "camelCase")]
     ChangeAssetScheme {
@@ -61,7 +61,7 @@ pub enum Action {
         asset_type: H160,
         metadata: String,
         approver: Option<PlatformAddress>,
-        administrator: Option<PlatformAddress>,
+        registrar: Option<PlatformAddress>,
         allowed_script_hashes: Vec<H160>,
 
         approvals: Vec<Signature>,
@@ -81,7 +81,7 @@ pub enum Action {
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
-        administrator: Option<PlatformAddress>,
+        registrar: Option<PlatformAddress>,
         allowed_script_hashes: Vec<H160>,
         inputs: Vec<AssetTransferInput>,
         output: Box<AssetMintOutput>,
@@ -100,6 +100,7 @@ pub enum Action {
     UnwrapCCC {
         network_id: NetworkId,
         burn: AssetTransferInput,
+        receiver: PlatformAddress,
     },
     Pay {
         receiver: PlatformAddress,
@@ -154,7 +155,7 @@ pub enum ActionWithTracker {
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
-        administrator: Option<PlatformAddress>,
+        registrar: Option<PlatformAddress>,
         allowed_script_hashes: Vec<H160>,
 
         output: Box<AssetMintOutput>,
@@ -173,7 +174,7 @@ pub enum ActionWithTracker {
 
         metadata: String,
         approvals: Vec<Signature>,
-        expiration: Option<u64>,
+        expiration: Option<Uint>,
 
         tracker: H256,
     },
@@ -184,7 +185,7 @@ pub enum ActionWithTracker {
         asset_type: H160,
         metadata: String,
         approver: Option<PlatformAddress>,
-        administrator: Option<PlatformAddress>,
+        registrar: Option<PlatformAddress>,
         allowed_script_hashes: Vec<H160>,
 
         approvals: Vec<Signature>,
@@ -208,7 +209,7 @@ pub enum ActionWithTracker {
         shard_id: ShardId,
         metadata: String,
         approver: Option<PlatformAddress>,
-        administrator: Option<PlatformAddress>,
+        registrar: Option<PlatformAddress>,
         allowed_script_hashes: Vec<H160>,
         inputs: Vec<AssetTransferInput>,
         output: Box<AssetMintOutput>,
@@ -231,6 +232,7 @@ pub enum ActionWithTracker {
     UnwrapCCC {
         network_id: NetworkId,
         burn: Box<AssetTransferInput>,
+        receiver: PlatformAddress,
 
         tracker: H256,
     },
@@ -287,7 +289,7 @@ impl ActionWithTracker {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
 
                 output,
@@ -297,7 +299,7 @@ impl ActionWithTracker {
                 shard_id,
                 metadata,
                 approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
                 allowed_script_hashes,
                 output: Box::new((*output).into()),
                 approvals,
@@ -320,7 +322,7 @@ impl ActionWithTracker {
                 orders: orders.into_iter().map(From::from).collect(),
                 metadata,
                 approvals,
-                expiration,
+                expiration: expiration.map(From::from),
                 tracker: tracker.unwrap(),
             },
             ActionType::ChangeAssetScheme {
@@ -329,7 +331,7 @@ impl ActionWithTracker {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 approvals,
             } => ActionWithTracker::ChangeAssetScheme {
@@ -338,7 +340,7 @@ impl ActionWithTracker {
                 asset_type,
                 metadata,
                 approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
                 allowed_script_hashes,
                 approvals,
                 tracker: tracker.unwrap(),
@@ -362,7 +364,7 @@ impl ActionWithTracker {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output,
@@ -372,7 +374,7 @@ impl ActionWithTracker {
                 shard_id,
                 metadata,
                 approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                administrator: administrator.map(|administrator| PlatformAddress::new_v1(network_id, administrator)),
+                registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
                 allowed_script_hashes,
                 inputs: inputs.into_iter().map(From::from).collect(),
                 output: Box::new((*output).into()),
@@ -394,9 +396,11 @@ impl ActionWithTracker {
             ActionType::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => ActionWithTracker::UnwrapCCC {
                 network_id,
                 burn: Box::new(burn.into()),
+                receiver: PlatformAddress::new_v1(network_id, receiver),
                 tracker: tracker.unwrap(),
             },
             ActionType::Pay {
@@ -486,7 +490,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 output,
                 approvals,
@@ -495,8 +499,8 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     Some(approver) => Some(approver.try_into_address()?),
                     None => None,
                 };
-                let administrator = match administrator {
-                    Some(administrator) => Some(administrator.try_into_address()?),
+                let registrar = match registrar {
+                    Some(registrar) => Some(registrar.try_into_address()?),
                     None => None,
                 };
                 let output_content = Result::<AssetMintOutputType, FromHexError>::from(*output)?;
@@ -505,7 +509,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     shard_id,
                     metadata,
                     approver,
-                    administrator,
+                    registrar,
                     allowed_script_hashes,
                     output: Box::new(output_content),
                     approvals,
@@ -532,7 +536,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     orders,
                     metadata,
                     approvals,
-                    expiration,
+                    expiration: expiration.map(From::from),
                 }
             }
             Action::ChangeAssetScheme {
@@ -541,7 +545,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
 
                 approvals,
@@ -550,8 +554,8 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     Some(approver) => Some(approver.try_into_address()?),
                     None => None,
                 };
-                let administrator = match administrator {
-                    Some(administrator) => Some(administrator.try_into_address()?),
+                let registrar = match registrar {
+                    Some(registrar) => Some(registrar.try_into_address()?),
                     None => None,
                 };
                 ActionType::ChangeAssetScheme {
@@ -560,7 +564,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     asset_type,
                     metadata,
                     approver,
-                    administrator,
+                    registrar,
                     allowed_script_hashes,
                     approvals,
                 }
@@ -586,7 +590,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output,
@@ -597,8 +601,8 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     Some(approver) => Some(approver.try_into_address()?),
                     None => None,
                 };
-                let administrator = match administrator {
-                    Some(administrator) => Some(administrator.try_into_address()?),
+                let registrar = match registrar {
+                    Some(registrar) => Some(registrar.try_into_address()?),
                     None => None,
                 };
                 let output_content = Result::<AssetMintOutputType, FromHexError>::from(*output)?;
@@ -607,7 +611,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     shard_id,
                     metadata,
                     approver,
-                    administrator,
+                    registrar,
                     allowed_script_hashes,
                     inputs: inputs.into_iter().map(|input| input.into()).collect(),
                     output: Box::new(output_content),
@@ -632,9 +636,11 @@ impl From<Action> for Result<ActionType, ConversionError> {
             Action::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => ActionType::UnwrapCCC {
                 network_id,
                 burn: burn.into(),
+                receiver: receiver.try_into_address()?,
             },
             Action::Pay {
                 receiver,
@@ -731,7 +737,7 @@ mod tests {
             shard_id: 0,
             metadata: "string with 'a single quotation'".to_string(),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
 
             output: AssetMintOutput {
@@ -745,20 +751,20 @@ mod tests {
             tracker: Default::default(),
         };
         let s = to_string(&mint).unwrap();
-        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'a single quotation'","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"tracker":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
+        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'a single quotation'","approver":null,"registrar":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"tracker":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
         assert_eq!(&s, expected);
     }
 
     #[test]
     fn parse_metadata_with_single_quotations() {
-        let input = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'a single quotation'","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[]}"#;
+        let input = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'a single quotation'","approver":null,"registrar":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[]}"#;
         let mint = from_str(input).unwrap();
         let expected = Action::MintAsset {
             network_id: "ab".into(),
             shard_id: 0,
             metadata: "string with 'a single quotation'".to_string(),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
 
             output: AssetMintOutput {
@@ -775,14 +781,14 @@ mod tests {
 
     #[test]
     fn parse_metadata_with_apostrophe() {
-        let input = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[]}"#;
+        let input = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"registrar":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[]}"#;
         let mint = from_str(input).unwrap();
         let expected = Action::MintAsset {
             network_id: "ab".into(),
             shard_id: 0,
             metadata: "string with 'an apostrophe’".to_string(),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
 
             output: AssetMintOutput {
@@ -804,7 +810,7 @@ mod tests {
             shard_id: 0,
             metadata: "string with 'an apostrophe’".to_string(),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
 
             output: AssetMintOutput {
@@ -818,7 +824,7 @@ mod tests {
             tracker: Default::default(),
         };
         let s = to_string(&mint).unwrap();
-        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"administrator":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"tracker":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
+        let expected = r#"{"type":"mintAsset","networkId":"ab","shardId":0,"metadata":"string with 'an apostrophe’","approver":null,"registrar":null,"allowedScriptHashes":[],"output":{"lockScriptHash":"0x0000000000000000000000000000000000000000","parameters":[],"supply":"0x1"},"approvals":[],"tracker":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
         assert_eq!(&s, expected);
     }
 }

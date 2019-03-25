@@ -32,6 +32,7 @@
 
 use std::collections::HashMap;
 use std::mem;
+use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
@@ -65,7 +66,7 @@ use crate::error::BlockImportError;
 use crate::header::Header as BlockHeader;
 use crate::miner::{Miner, MinerService, TransactionImportResult};
 use crate::scheme::Scheme;
-use crate::transaction::{LocalizedTransaction, SignedTransaction};
+use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use crate::types::{BlockId, TransactionId, VerificationQueueInfo as QueueInfo};
 
 /// Test client.
@@ -192,7 +193,7 @@ impl TestBlockChainClient {
         }
     }
     /// Add a block to test client with designated author.
-    pub fn add_block_with_author(&self, author: Option<Address>, n: usize, transaction_length: usize) {
+    pub fn add_block_with_author(&self, author: Option<Address>, n: usize, transaction_length: usize) -> H256 {
         let mut header = BlockHeader::new();
         header.set_score(From::from(n));
         header.set_parent_hash(*self.last_hash.read());
@@ -225,7 +226,7 @@ impl TestBlockChainClient {
         let mut rlp = RlpStream::new_list(2);
         rlp.append(&header);
         rlp.append_list(&transactions);
-        self.import_block(rlp.as_raw().to_vec()).unwrap();
+        self.import_block(rlp.as_raw().to_vec()).unwrap()
     }
 
     /// Make a bad block by setting invalid extra data.
@@ -341,6 +342,10 @@ impl Seq for TestBlockChainClient {
             _ => None,
         }
     }
+
+    fn latest_seq(&self, address: &Address) -> u64 {
+        self.seq(address, BlockId::Latest).unwrap()
+    }
 }
 
 impl Balance for TestBlockChainClient {
@@ -362,7 +367,7 @@ impl AccountData for TestBlockChainClient {}
 
 impl RegularKeyOwner for TestBlockChainClient {
     fn regular_key_owner(&self, _address: &Address, _state: StateOrBlock) -> Option<Address> {
-        unimplemented!()
+        Some(Address::default())
     }
 }
 
@@ -490,12 +495,12 @@ impl BlockChainClient for TestBlockChainClient {
         self.miner.import_external_tranasctions(self, transactions);
     }
 
-    fn ready_transactions(&self) -> Vec<SignedTransaction> {
-        self.miner.ready_transactions()
+    fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
+        self.miner.ready_transactions(range)
     }
 
-    fn count_pending_transactions(&self) -> usize {
-        self.miner.count_pending_transactions()
+    fn count_pending_transactions(&self, range: Range<u64>) -> usize {
+        self.miner.count_pending_transactions(range)
     }
 
 

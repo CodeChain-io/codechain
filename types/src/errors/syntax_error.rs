@@ -52,6 +52,7 @@ pub enum Error {
     InvalidComposedOutputAmount {
         got: u64,
     },
+    InvalidCustomAction,
     InvalidDecomposedInputAmount {
         asset_type: H160,
         shard_id: ShardId,
@@ -76,6 +77,7 @@ pub enum Error {
     /// Errors on orders
     /// origin_outputs of order is not satisfied.
     InvalidOriginOutputs(H256),
+    InvalidApproval(String),
     /// Max metadata size is exceeded.
     MetadataTooBig,
     OrderRecipientsAreSame,
@@ -87,6 +89,10 @@ pub enum Error {
     CannotChangeWcccAssetScheme,
     DisabledTransaction,
     InvalidSignerOfWrapCCC,
+    InvalidSpentQuantity {
+        asset_quantity_from: u64,
+        spent_quantity: u64,
+    },
 }
 
 const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 1;
@@ -106,6 +112,7 @@ const ERROR_ID_INVALID_ORDER_IN_OUT_INDICES: u8 = 14;
 const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 15;
 const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 16;
 const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 17;
+const ERROR_ID_INVALID_APPROVAL: u8 = 18;
 const ERROR_ID_METADATA_TOO_BIG: u8 = 20;
 const ERROR_ID_ORDER_RECIPIENTS_ARE_SAME: u8 = 21;
 const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 22;
@@ -115,6 +122,8 @@ const ERROR_ID_ZERO_QUANTITY: u8 = 26;
 const ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME: u8 = 27;
 const ERROR_ID_DISABLED_TRANSACTION: u8 = 28;
 const ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC: u8 = 29;
+const ERROR_ID_INVALID_CUSTOM_ACTION: u8 = 30;
+const ERROR_ID_INVALID_SPENT_QUANTITY: u8 = 31;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -131,6 +140,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_INSUFFICIENT_FEE => 3,
             ERROR_ID_INVALID_ASSET_TYPE => 2,
             ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT => 2,
+            ERROR_ID_INVALID_CUSTOM_ACTION => 1,
             ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT => 4,
             ERROR_ID_INVALID_NETWORK_ID => 2,
             ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => 4,
@@ -139,6 +149,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => 2,
             ERROR_ID_INVALID_ORDER_PARAMETERS => 2,
             ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
+            ERROR_ID_INVALID_APPROVAL => 2,
             ERROR_ID_METADATA_TOO_BIG => 1,
             ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => 1,
             ERROR_ID_TEXT_CONTENT_TOO_BIG => 1,
@@ -148,6 +159,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => 1,
             ERROR_ID_DISABLED_TRANSACTION => 1,
             ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => 1,
+            ERROR_ID_INVALID_SPENT_QUANTITY => 3,
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         })
     }
@@ -179,6 +191,7 @@ impl Encodable for Error {
             Error::InvalidComposedOutputAmount {
                 got,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT).append(got),
+            Error::InvalidCustomAction => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_CUSTOM_ACTION),
             Error::InvalidDecomposedInputAmount {
                 asset_type,
                 shard_id,
@@ -209,6 +222,7 @@ impl Encodable for Error {
             Error::InvalidOriginOutputs(order_hash) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORIGIN_OUTPUTS).append(order_hash)
             }
+            Error::InvalidApproval(err) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_APPROVAL).append(err),
             Error::MetadataTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_METADATA_TOO_BIG),
             Error::OrderRecipientsAreSame => RlpHelper::new_tagged_list(s, ERROR_ID_ORDER_RECIPIENTS_ARE_SAME),
             Error::TextContentTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_TEXT_CONTENT_TOO_BIG),
@@ -220,6 +234,12 @@ impl Encodable for Error {
             }
             Error::DisabledTransaction => RlpHelper::new_tagged_list(s, ERROR_ID_DISABLED_TRANSACTION),
             Error::InvalidSignerOfWrapCCC => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC),
+            Error::InvalidSpentQuantity {
+                asset_quantity_from,
+                spent_quantity,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SPENT_QUANTITY)
+                .append(asset_quantity_from)
+                .append(spent_quantity),
         };
     }
 }
@@ -245,6 +265,7 @@ impl Decodable for Error {
             ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT => Error::InvalidComposedOutputAmount {
                 got: rlp.val_at(1)?,
             },
+            ERROR_ID_INVALID_CUSTOM_ACTION => Error::InvalidCustomAction,
             ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT => Error::InvalidDecomposedInputAmount {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
@@ -261,6 +282,7 @@ impl Decodable for Error {
             ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => Error::InvalidOrderLockScriptHash(rlp.val_at(1)?),
             ERROR_ID_INVALID_ORDER_PARAMETERS => Error::InvalidOrderParameters(rlp.val_at(1)?),
             ERROR_ID_INVALID_ORIGIN_OUTPUTS => Error::InvalidOriginOutputs(rlp.val_at(1)?),
+            ERROR_ID_INVALID_APPROVAL => Error::InvalidApproval(rlp.val_at(1)?),
             ERROR_ID_METADATA_TOO_BIG => Error::MetadataTooBig,
             ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => Error::OrderRecipientsAreSame,
             ERROR_ID_TEXT_CONTENT_TOO_BIG => Error::TextContentTooBig,
@@ -270,6 +292,10 @@ impl Decodable for Error {
             ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => Error::CannotChangeWcccAssetScheme,
             ERROR_ID_DISABLED_TRANSACTION => Error::DisabledTransaction,
             ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => Error::InvalidSignerOfWrapCCC,
+            ERROR_ID_INVALID_SPENT_QUANTITY => Error::InvalidSpentQuantity {
+                asset_quantity_from: rlp.val_at(1)?,
+                spent_quantity: rlp.val_at(2)?,
+            },
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -298,6 +324,7 @@ impl Display for Error {
             Error::InvalidComposedOutputAmount {
                 got,
             } => write!(f, "The composed output is note valid. The supply must be 1, but {}.", got),
+            Error::InvalidCustomAction => write!(f, "CustomAction handlerId is invalid"),
             Error::InvalidDecomposedInputAmount {
                 asset_type,
                 shard_id,
@@ -314,6 +341,7 @@ impl Display for Error {
             Error::InvalidOrderLockScriptHash (lock_script_hash) => write!(f, "The lock script hash of the order is different from the output: {}", lock_script_hash),
             Error::InvalidOrderParameters (parameters) => write!(f, "The parameters of the order is different from the output: {:?}", parameters),
             Error::InvalidOriginOutputs (order_hash) => write!(f, "The order({}) is invalid because its origin outputs are wrong", order_hash),
+            Error::InvalidApproval(err) => write!(f, "Transaction has an invalid approval :{}", err),
             Error::MetadataTooBig  => write!(f, "Metadata size is too big."),
             Error::OrderRecipientsAreSame  => write!(f, "Both the lock script hash and parameters should not be same between maker and relayer"),
             Error::TextContentTooBig  => write!(f, "The content of the text is too big"),
@@ -323,6 +351,12 @@ impl Display for Error {
             Error::CannotChangeWcccAssetScheme => write!(f, "Cannot change the asset scheme of WCCC"),
             Error::DisabledTransaction => write!(f, "Used the disabled transaction"),
             Error::InvalidSignerOfWrapCCC => write!(f, "The signer of WrapCCC must be matched"),
+            Error::InvalidSpentQuantity {
+                asset_quantity_from,
+                spent_quantity,
+            } => {
+                write!(f, "The spentQuantity value {} in an OrderOnTransfer cannot exceed the assetQuantityFrom value {}", spent_quantity, asset_quantity_from)
+            }
         }
     }
 }

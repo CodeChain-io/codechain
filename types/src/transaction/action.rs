@@ -17,7 +17,7 @@
 use std::collections::{HashMap, HashSet};
 
 use ccrypto::Blake;
-use ckey::{Address, NetworkId, Public, Signature};
+use ckey::{recover, Address, NetworkId, Public, Signature};
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -50,7 +50,7 @@ pub enum Action {
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         output: Box<AssetMintOutput>,
         approvals: Vec<Signature>,
@@ -71,7 +71,7 @@ pub enum Action {
         asset_type: H160,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         approvals: Vec<Signature>,
     },
@@ -87,7 +87,7 @@ pub enum Action {
         shard_id: ShardId,
         metadata: String,
         approver: Option<Address>,
-        administrator: Option<Address>,
+        registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         inputs: Vec<AssetTransferInput>,
         output: Box<AssetMintOutput>,
@@ -102,6 +102,7 @@ pub enum Action {
     UnwrapCCC {
         network_id: NetworkId,
         burn: AssetTransferInput,
+        receiver: Address,
     },
     Pay {
         receiver: Address,
@@ -355,7 +356,44 @@ impl Action {
                 return Err(SyntaxError::InvalidSignerOfWrapCCC)
             }
         }
+        if let Some(approvals) = self.approvals() {
+            let tracker = self.tracker().unwrap();
+
+            for approval in approvals {
+                recover(approval, &tracker).map_err(|err| SyntaxError::InvalidApproval(err.to_string()))?;
+            }
+        }
         Ok(())
+    }
+
+    fn approvals(&self) -> Option<&[Signature]> {
+        match self {
+            Action::MintAsset {
+                approvals,
+                ..
+            }
+            | Action::TransferAsset {
+                approvals,
+                ..
+            }
+            | Action::ChangeAssetScheme {
+                approvals,
+                ..
+            }
+            | Action::IncreaseAssetSupply {
+                approvals,
+                ..
+            }
+            | Action::ComposeAsset {
+                approvals,
+                ..
+            }
+            | Action::DecomposeAsset {
+                approvals,
+                ..
+            } => Some(approvals),
+            _ => None,
+        }
     }
 
     fn network_id(&self) -> Option<NetworkId> {
@@ -401,7 +439,7 @@ impl From<Action> for Option<ShardTransaction> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 output,
                 ..
@@ -410,7 +448,7 @@ impl From<Action> for Option<ShardTransaction> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 output: *output,
             }),
@@ -434,7 +472,7 @@ impl From<Action> for Option<ShardTransaction> {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 ..
             } => Some(ShardTransaction::ChangeAssetScheme {
@@ -443,7 +481,7 @@ impl From<Action> for Option<ShardTransaction> {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
             }),
             Action::IncreaseAssetSupply {
@@ -463,7 +501,7 @@ impl From<Action> for Option<ShardTransaction> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output,
@@ -473,7 +511,7 @@ impl From<Action> for Option<ShardTransaction> {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output: *output,
@@ -491,9 +529,11 @@ impl From<Action> for Option<ShardTransaction> {
             Action::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => Some(ShardTransaction::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             }),
             _ => None,
         }
@@ -508,7 +548,7 @@ impl Encodable for Action {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 output,
                 approvals,
@@ -522,7 +562,7 @@ impl Encodable for Action {
                     .append(&output.parameters)
                     .append(&output.supply)
                     .append(approver)
-                    .append(administrator)
+                    .append(registrar)
                     .append_list(allowed_script_hashes)
                     .append_list(approvals);
             }
@@ -553,7 +593,7 @@ impl Encodable for Action {
                 asset_type,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 approvals,
             } => {
@@ -564,7 +604,7 @@ impl Encodable for Action {
                     .append(asset_type)
                     .append(metadata)
                     .append(approver)
-                    .append(administrator)
+                    .append(registrar)
                     .append_list(allowed_script_hashes)
                     .append_list(approvals);
             }
@@ -590,7 +630,7 @@ impl Encodable for Action {
                 shard_id,
                 metadata,
                 approver,
-                administrator,
+                registrar,
                 allowed_script_hashes,
                 inputs,
                 output,
@@ -602,7 +642,7 @@ impl Encodable for Action {
                     .append(shard_id)
                     .append(metadata)
                     .append(approver)
-                    .append(administrator)
+                    .append(registrar)
                     .append_list(allowed_script_hashes)
                     .append_list(inputs)
                     .append(&output.lock_script_hash)
@@ -626,8 +666,9 @@ impl Encodable for Action {
             Action::UnwrapCCC {
                 network_id,
                 burn,
+                receiver,
             } => {
-                s.begin_list(3).append(&UNWRAP_CCC).append(network_id).append(burn);
+                s.begin_list(4).append(&UNWRAP_CCC).append(network_id).append(burn).append(receiver);
             }
             Action::Pay {
                 receiver,
@@ -739,7 +780,7 @@ impl Decodable for Action {
                         supply: rlp.val_at(6)?,
                     }),
                     approver: rlp.val_at(7)?,
-                    administrator: rlp.val_at(8)?,
+                    registrar: rlp.val_at(8)?,
                     allowed_script_hashes: rlp.list_at(9)?,
                     approvals: rlp.list_at(10)?,
                 })
@@ -777,7 +818,7 @@ impl Decodable for Action {
                     asset_type: rlp.val_at(3)?,
                     metadata: rlp.val_at(4)?,
                     approver: rlp.val_at(5)?,
-                    administrator: rlp.val_at(6)?,
+                    registrar: rlp.val_at(6)?,
                     allowed_script_hashes: rlp.list_at(7)?,
                     approvals: rlp.list_at(8)?,
                 })
@@ -815,7 +856,7 @@ impl Decodable for Action {
                     shard_id: rlp.val_at(2)?,
                     metadata: rlp.val_at(3)?,
                     approver: rlp.val_at(4)?,
-                    administrator: rlp.val_at(5)?,
+                    registrar: rlp.val_at(5)?,
                     allowed_script_hashes: rlp.list_at(6)?,
                     inputs: rlp.list_at(7)?,
                     output: Box::new(AssetMintOutput {
@@ -843,15 +884,16 @@ impl Decodable for Action {
             }
             UNWRAP_CCC => {
                 let item_count = rlp.item_count()?;
-                if item_count != 3 {
+                if item_count != 4 {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
-                        expected: 3,
+                        expected: 4,
                     })
                 }
                 Ok(Action::UnwrapCCC {
                     network_id: rlp.val_at(1)?,
                     burn: rlp.val_at(2)?,
+                    receiver: rlp.val_at(3)?,
                 })
             }
             PAY => {
@@ -1058,6 +1100,12 @@ fn verify_input_and_output_consistent_with_order(
 
         let order = &order_tx.order;
 
+        if order_tx.spent_quantity > order.asset_quantity_from {
+            return Err(SyntaxError::InvalidSpentQuantity {
+                asset_quantity_from: order.asset_quantity_from,
+                spent_quantity: order_tx.spent_quantity,
+            })
+        }
         // NOTE: If asset_quantity_fee is zero, asset_type_fee can be same as asset_type_from or asset_type_to.
         // But, asset_type_fee is compared at the last, so here's safe by the logic.
 
@@ -1161,7 +1209,7 @@ mod tests {
                 supply: 10000,
             }),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![Signature::random(), Signature::random(), Signature::random(), Signature::random()],
         });
@@ -1179,7 +1227,7 @@ mod tests {
                 supply: 10000,
             }),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![Signature::random()],
         });
@@ -1197,7 +1245,7 @@ mod tests {
                 supply: 10000,
             }),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![Signature::random()],
         });
@@ -1215,7 +1263,7 @@ mod tests {
                 supply: 10000,
             }),
             approver: None,
-            administrator: None,
+            registrar: None,
             allowed_script_hashes: vec![],
             approvals: vec![Signature::random()],
         });
@@ -1290,7 +1338,7 @@ mod tests {
             asset_type: H160::random(),
             metadata: "some asset scheme metadata".to_string(),
             approver: Some(Address::random()),
-            administrator: Some(Address::random()),
+            registrar: Some(Address::random()),
             allowed_script_hashes: vec![H160::random(), H160::random(), H160::random()],
             approvals: vec![],
         });
@@ -2024,6 +2072,7 @@ mod tests {
                 lock_script: vec![0x30, 0x01],
                 unlock_script: vec![],
             },
+            receiver: Address::random(),
         };
         assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000), Err(SyntaxError::ZeroQuantity));
 
@@ -2042,6 +2091,7 @@ mod tests {
                 lock_script: vec![0x30, 0x01],
                 unlock_script: vec![],
             },
+            receiver: Address::random(),
         };
         assert_eq!(
             tx_invalid_asset_type.verify(NetworkId::default(), 1000, 1000, 1000),
