@@ -28,14 +28,14 @@
     "@types/elliptic": "^6.4.4",
     "@types/lodash": "^4.14.118",
     "@types/mkdirp": "^0.5.2",
-    "@types/mocha": "^5.2.5",
+    "@types/mocha": "^5.2.6",
     "@types/ncp": "^2.0.1",
-    "@types/node": "^10.12.12",
+    "@types/node": "^11.11.6",
     "@types/seedrandom": "^2.4.27",
-    "mocha": "^5.2.0",
+    "mocha": "^6.0.2",
     "prettier": "^1.15.3",
-    "tslint": "^5.11.0",
-    "tslint-config-prettier": "^1.17.0",
+    "tslint": "^5.14.0",
+    "tslint-config-prettier": "^1.18.0",
     "tslint-no-unused-expression-chai": "^0.1.4"
   },
   "dependencies": {
@@ -43,8 +43,8 @@
     "blakejs": "^1.1.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "codechain-primitives": "^0.4.6",
-    "codechain-sdk": "https://github.com/HoOngEe/codechain-sdk-js.git#range-pendingTx-lib",
+    "codechain-primitives": "^0.4.8",
+    "codechain-sdk": "^0.6.0",
     "crypto": "^1.0.1",
     "dgram": "^1.0.1",
     "elliptic": "^6.4.1",
@@ -56,7 +56,7 @@
     "rlp": "^2.1.0",
     "seedrandom": "^2.4.4",
     "snappy": "^6.1.2",
-    "ts-node": "^7.0.1",
-    "typescript": "^3.2.2"
+    "ts-node": "^8.0.3",
+    "typescript": "^3.3.4000"
   }
 }

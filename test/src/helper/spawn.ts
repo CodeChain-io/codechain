@@ -192,8 +192,8 @@ export default class CodeChain {
             this.isTestFailed = true;
             if (!disableLog) {
                 const logStream = createWriteStream(this.logPath);
-                this.process!.stdout.pipe(logStream);
-                this.process!.stderr.pipe(logStream);
+                this.process!.stdout!.pipe(logStream);
+                this.process!.stderr!.pipe(logStream);
             }
 
             this.process
@@ -204,7 +204,7 @@ export default class CodeChain {
                     reject(Error(`CodeChain exited with code ${code}`));
                 });
 
-            const readline = createReadline({ input: this.process!.stderr });
+            const readline = createReadline({ input: this.process!.stderr! });
             readline.on("line", (line: string) => {
                 if (line.includes("Initialization complete")) {
                     this.isTestFailed = false;
