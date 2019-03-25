@@ -240,6 +240,9 @@ where
 
         // Main
         let count = setting.count;
+        if count == 0 {
+            return Ok(0.0)
+        }
         let mut rng = SmallRng::seed_from_u64(setting.seed);
         let transactions = match setting.option {
             TPSTestOption::PayOnly => {
@@ -335,20 +338,19 @@ where
         };
 
         let last_hash = transactions.last().unwrap().hash();
-        let mut start_time = None;
 
-        for tx in transactions.into_iter().rev() {
-            if tx.seq == base_seq {
-                start_time = Some(PreciseTime::now());
-            }
+        let first_transaction = transactions[0].clone();
+        for tx in transactions.into_iter().skip(1) {
             self.miner.import_own_transaction(&*self.client, tx).map_err(errors::transaction_core)?;
         }
+        let start_time = PreciseTime::now();
+        self.miner.import_own_transaction(&*self.client, first_transaction).map_err(errors::transaction_core)?;
         while !self.client.is_pending_queue_empty() {
             thread::sleep(Duration::from_millis(50));
         }
         while self.client.invoice(&last_hash.into()).is_none() {}
 
         let end_time = PreciseTime::now();
-        Ok(tps(count, start_time.unwrap(), end_time))
+        Ok(tps(count, start_time, end_time))
     }
 }
