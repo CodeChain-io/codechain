@@ -141,6 +141,7 @@ impl Extension {
                 let token = &self.tokens[id];
                 let token_info = self.tokens_info.get_mut(token).unwrap();
 
+                let _ = self.api.clear_timer(*token);
                 self.api
                     .set_timer_once(*token, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
                     .expect("Timer set succeeds");
