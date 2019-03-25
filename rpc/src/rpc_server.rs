@@ -28,7 +28,7 @@ pub fn start_http<M: jsonrpc_core::Metadata>(
     addr: &SocketAddr,
     cors_domains: Option<Vec<String>>,
     allowed_hosts: Option<Vec<String>>,
-    handler: jsonrpc_core::MetaIoHandler<M>,
+    handler: jsonrpc_core::MetaIoHandler<M, impl jsonrpc_core::Middleware<M>>,
 ) -> Result<HttpServer, io::Error>
 where
     M: Default, {
@@ -52,7 +52,7 @@ where
 /// Start ipc server asynchronously and returns result with `Server` handle on success or an error.
 pub fn start_ipc<M: jsonrpc_core::Metadata>(
     addr: &str,
-    handler: jsonrpc_core::MetaIoHandler<M>,
+    handler: jsonrpc_core::MetaIoHandler<M, impl jsonrpc_core::Middleware<M>>,
 ) -> Result<IpcServer, io::Error>
 where
     M: Default, {
@@ -62,7 +62,7 @@ where
 /// Start WS server and return `Server` handle.
 pub fn start_ws<M: jsonrpc_core::Metadata>(
     addr: &SocketAddr,
-    handler: jsonrpc_core::MetaIoHandler<M>,
+    handler: jsonrpc_core::MetaIoHandler<M, impl jsonrpc_core::Middleware<M>>,
     max_connections: usize,
 ) -> Result<WsServer, WsError>
 where

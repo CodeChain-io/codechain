@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 use std::time::Instant;
@@ -22,7 +23,9 @@ use cio::IoChannel;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, Text, TopLevelState, TopStateView};
+use cstate::{
+    ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
+};
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::invoice::{BlockInvoices, Invoice};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
@@ -53,7 +56,7 @@ use crate::error::{BlockImportError, Error, ImportError, SchemeError};
 use crate::miner::{Miner, MinerService};
 use crate::scheme::{CommonParams, Scheme};
 use crate::service::ClientIoMessage;
-use crate::transaction::{LocalizedTransaction, SignedTransaction, UnverifiedTransaction};
+use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, UnverifiedTransaction};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -415,7 +418,7 @@ impl TextClient for Client {
 }
 
 impl ExecuteClient for Client {
-    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> Result<Invoice, Error> {
+    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> StateResult<Invoice> {
         let mut state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
         Ok(state.apply_shard_transaction(transaction, sender, &[], self)?)
     }
@@ -426,25 +429,37 @@ impl ExecuteClient for Client {
         inputs: &[AssetTransferInput],
         params: &[Vec<Bytes>],
         indices: &[usize],
-    ) -> Result<Vec<String>, Error> {
-        let mut results = vec![];
+    ) -> Result<Vec<String>, ClientError> {
+        let mut results = Vec::with_capacity(indices.len());
         for (i, index) in indices.iter().enumerate() {
-            let input = &inputs[*index];
-            let param = &params[i];
-            let result = match (decode(&input.lock_script), decode(&input.unlock_script)) {
-                (Ok(lock_script), Ok(unlock_script)) => {
-                    let script_result =
-                        execute(&unlock_script, &param, &lock_script, tx, VMConfig::default(), &input, false, self);
-                    match script_result {
-                        Ok(ScriptResult::Burnt) => "burnt",
-                        Ok(ScriptResult::Unlocked) => "unlocked",
-                        _ => "failed",
+            let input = inputs.get(*index);
+            let param = params.get(i);
+            let result = match (input, param) {
+                (Some(input), Some(param)) => {
+                    let lock_script = decode(&input.lock_script);
+                    let unlock_script = decode(&input.unlock_script);
+                    match (lock_script, unlock_script) {
+                        (Ok(lock_script), Ok(unlock_script)) => {
+                            match execute(
+                                &unlock_script,
+                                &param,
+                                &lock_script,
+                                tx,
+                                VMConfig::default(),
+                                &input,
+                                false,
+                                self,
+                            ) {
+                                Ok(ScriptResult::Burnt) => "burnt".to_string(),
+                                Ok(ScriptResult::Unlocked) => "unlocked".to_string(),
+                                _ => "failed".to_string(),
+                            }
+                        }
+                        _ => "invalid".to_string(),
                     }
                 }
-                _ => "invalid",
-            }
-            .to_string();
-
+                _ => "invalid".to_string(),
+            };
             results.push(result);
         }
         Ok(results)
@@ -637,12 +652,12 @@ impl BlockChainClient for Client {
         }
     }
 
-    fn ready_transactions(&self) -> Vec<SignedTransaction> {
-        self.importer.miner.ready_transactions()
+    fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
+        self.importer.miner.ready_transactions(range)
     }
 
-    fn count_pending_transactions(&self) -> usize {
-        self.importer.miner.count_pending_transactions()
+    fn count_pending_transactions(&self, range: Range<u64>) -> usize {
+        self.importer.miner.count_pending_transactions(range)
     }
 
     fn is_pending_queue_empty(&self) -> bool {
@@ -843,7 +858,7 @@ impl ChainTimeInfo for Client {
 }
 
 impl FindActionHandler for Client {
-    fn find_action_handler_for(&self, id: u64) -> Option<&Arc<ActionHandler>> {
+    fn find_action_handler_for(&self, id: u64) -> Option<&ActionHandler> {
         self.engine.find_action_handler_for(id)
     }
 }

@@ -18,8 +18,11 @@ use std::io;
 use std::net::SocketAddr;
 
 use crate::rpc_apis;
-use crpc::{start_http, start_ipc, start_ws, HttpServer, IpcServer, WsError, WsErrorKind, WsServer};
-use crpc::{Compatibility, MetaIoHandler};
+use crpc::{
+    jsonrpc_core, start_http, start_ipc, start_ws, HttpServer, IpcServer, MetaIoHandler, Middleware, WsError,
+    WsErrorKind, WsServer,
+};
+use serde_json;
 
 #[derive(Debug, PartialEq)]
 pub struct RpcHttpConfig {
@@ -117,8 +120,53 @@ pub fn rpc_ws_start(
     }
 }
 
-fn setup_rpc_server(enable_devel_api: bool, deps: &rpc_apis::ApiDependencies) -> MetaIoHandler<()> {
-    let mut handler = MetaIoHandler::with_compatibility(Compatibility::Both);
+fn setup_rpc_server(
+    enable_devel_api: bool,
+    deps: &rpc_apis::ApiDependencies,
+) -> MetaIoHandler<(), impl Middleware<()>> {
+    let mut handler = MetaIoHandler::with_middleware(LogMiddleware::new());
     deps.extend_api(enable_devel_api, &mut handler);
     rpc_apis::setup_rpc(handler)
+}
+
+struct LogMiddleware {}
+
+impl<M: jsonrpc_core::Metadata> jsonrpc_core::Middleware<M> for LogMiddleware {
+    type Future = jsonrpc_core::FutureResponse;
+
+    fn on_request<F, X>(&self, request: jsonrpc_core::Request, meta: M, next: F) -> Self::Future
+    where
+        F: FnOnce(jsonrpc_core::Request, M) -> X + Send,
+        X: futures::Future<Item = Option<jsonrpc_core::Response>, Error = ()> + Send + 'static, {
+        match &request {
+            jsonrpc_core::Request::Single(call) => Self::print_call(call),
+            jsonrpc_core::Request::Batch(calls) => {
+                for call in calls {
+                    Self::print_call(call);
+                }
+            }
+        }
+        Box::new(next(request, meta))
+    }
+}
+
+impl LogMiddleware {
+    fn new() -> Self {
+        LogMiddleware {}
+    }
+
+    fn print_call(call: &jsonrpc_core::Call) {
+        match call {
+            jsonrpc_core::Call::MethodCall(method_call) => {
+                cinfo!(
+                    RPC,
+                    "RPC call({}({}))",
+                    method_call.method,
+                    serde_json::to_string(&method_call.params).unwrap()
+                );
+            }
+            jsonrpc_core::Call::Notification(_) => {}
+            jsonrpc_core::Call::Invalid(_) => {}
+        }
+    }
 }

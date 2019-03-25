@@ -17,7 +17,7 @@
 use std::collections::{HashMap, HashSet};
 
 use ccrypto::Blake;
-use ckey::{Address, NetworkId, Public, Signature};
+use ckey::{recover, Address, NetworkId, Public, Signature};
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -356,7 +356,44 @@ impl Action {
                 return Err(SyntaxError::InvalidSignerOfWrapCCC)
             }
         }
+        if let Some(approvals) = self.approvals() {
+            let tracker = self.tracker().unwrap();
+
+            for approval in approvals {
+                recover(approval, &tracker).map_err(|err| SyntaxError::InvalidApproval(err.to_string()))?;
+            }
+        }
         Ok(())
+    }
+
+    fn approvals(&self) -> Option<&[Signature]> {
+        match self {
+            Action::MintAsset {
+                approvals,
+                ..
+            }
+            | Action::TransferAsset {
+                approvals,
+                ..
+            }
+            | Action::ChangeAssetScheme {
+                approvals,
+                ..
+            }
+            | Action::IncreaseAssetSupply {
+                approvals,
+                ..
+            }
+            | Action::ComposeAsset {
+                approvals,
+                ..
+            }
+            | Action::DecomposeAsset {
+                approvals,
+                ..
+            } => Some(approvals),
+            _ => None,
+        }
     }
 
     fn network_id(&self) -> Option<NetworkId> {

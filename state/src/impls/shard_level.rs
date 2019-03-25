@@ -324,7 +324,6 @@ impl<'db> ShardLevelState<'db> {
             if input.prev_out.shard_id != self.shard_id {
                 continue
             }
-            self.check_input_asset(input, sender, approvers)?;
             self.kill_asset(input.prev_out.tracker, input.prev_out.index);
             deleted_asset.push((input.prev_out.tracker, input.prev_out.index, input.prev_out.quantity));
         }
@@ -417,11 +416,11 @@ impl<'db> ShardLevelState<'db> {
                 shard_id: self.shard_id,
             })?;
 
-            if !asset_scheme.is_regulated() {
-                return Err(RuntimeError::InsufficientPermission.into())
-            }
-            let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
-            if registrar != sender && !approvers.contains(registrar) {
+            if let Some(registrar) = asset_scheme.registrar().as_ref() {
+                if registrar != sender && !approvers.contains(registrar) {
+                    return Err(RuntimeError::InsufficientPermission.into())
+                }
+            } else {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
         }
@@ -452,11 +451,11 @@ impl<'db> ShardLevelState<'db> {
                 index,
             })?;
 
-            if !asset_scheme.is_regulated() {
-                return Err(RuntimeError::InsufficientPermission.into())
-            }
-            let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
-            if registrar != sender && !approvers.contains(registrar) {
+            if let Some(registrar) = asset_scheme.registrar().as_ref() {
+                if registrar != sender && !approvers.contains(registrar) {
+                    return Err(RuntimeError::InsufficientPermission.into())
+                }
+            } else {
                 return Err(RuntimeError::InsufficientPermission.into())
             }
         }
@@ -486,40 +485,58 @@ impl<'db> ShardLevelState<'db> {
         input: &AssetTransferInput,
         sender: &Address,
         approvers: &[Address],
-    ) -> StateResult<OwnedAsset> {
-        assert_eq!(self.shard_id, input.prev_out.shard_id);
-        let asset_scheme =
-            self.asset_scheme(input.prev_out.asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
-                shard_id: input.prev_out.shard_id,
-                asset_type: input.prev_out.asset_type,
-            })?;
+    ) -> StateResult<(OwnedAsset, bool)> {
+        let AssetOutPoint {
+            index,
+            tracker,
+            asset_type,
+            shard_id,
+            quantity,
+        } = input.prev_out;
 
-        if let Some(approver) = asset_scheme.approver().as_ref() {
-            if sender != approver && !approvers.contains(approver) {
-                return Err(RuntimeError::NotApproved(*approver).into())
+        assert_eq!(self.shard_id, shard_id);
+        let asset_scheme = self.asset_scheme(asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
+            shard_id,
+            asset_type,
+        })?;
+
+        let from_regulator = match (asset_scheme.approver().as_ref(), asset_scheme.registrar().as_ref()) {
+            (_, Some(registrar)) if sender == registrar => true, // registrar ignores approvers
+            (Some(approver), _) => {
+                if sender != approver && !approvers.contains(approver) {
+                    return Err(RuntimeError::NotApproved(*approver).into())
+                }
+                false
             }
-        }
+            (None, _) => false,
+        };
 
-        let asset =
-            self.asset(input.prev_out.tracker, input.prev_out.index)?.ok_or_else(|| RuntimeError::AssetNotFound {
-                shard_id: input.prev_out.shard_id,
-                tracker: input.prev_out.tracker,
-                index: input.prev_out.index,
-            })?;
-        if asset.quantity() != input.prev_out.quantity {
+        let asset = self.asset(tracker, index)?.ok_or_else(|| RuntimeError::AssetNotFound {
+            shard_id,
+            tracker,
+            index,
+        })?;
+        if asset.quantity() != quantity {
             return Err(RuntimeError::InvalidAssetQuantity {
-                shard_id: self.shard_id,
-                tracker: input.prev_out.tracker,
-                index: input.prev_out.index,
+                shard_id,
+                tracker,
+                index,
                 expected: asset.quantity(),
-                got: input.prev_out.quantity,
+                got: quantity,
             }
             .into())
         }
-        if *asset.asset_type() != input.prev_out.asset_type {
-            return Err(RuntimeError::InvalidAssetType(input.prev_out.asset_type).into())
+        if *asset.asset_type() != asset_type {
+            return Err(RuntimeError::UnexpectedAssetType {
+                index,
+                mismatch: Mismatch {
+                    expected: *asset.asset_type(),
+                    found: asset_type,
+                },
+            }
+            .into())
         }
-        Ok(asset)
+        Ok((asset, from_regulator))
     }
 
     fn check_output_script_hash(&self, output: &AssetTransferOutput) -> StateResult<()> {
@@ -550,27 +567,9 @@ impl<'db> ShardLevelState<'db> {
     ) -> StateResult<()> {
         debug_assert!(!burn || order.is_none());
 
-        let AssetOutPoint {
-            index,
-            tracker,
-            ..
-        } = input.prev_out;
-        let asset = self.asset(tracker, index)?.ok_or_else(|| RuntimeError::AssetNotFound {
-            shard_id: self.shard_id,
-            tracker,
-            index,
-        })?;
-        assert_eq!(self.shard_id, input.prev_out.shard_id);
-        let asset_scheme =
-            self.asset_scheme(input.prev_out.asset_type)?.expect("AssetScheme must exist when the asset exist");
-        if asset_scheme.is_regulated() {
-            let registrar = asset_scheme.registrar().as_ref().expect("Regulated asset has registrar");
-            if registrar == sender || approvers.contains(registrar) {
-                return Ok(())
-            } else if burn {
-                // Only the registrar can burn the regulated asset
-                return Err(RuntimeError::CannotBurnRegulatedAsset.into())
-            }
+        let (asset, from_regulator) = self.check_input_asset(input, sender, approvers)?;
+        if from_regulator {
+            return Ok(()) // Don't execute scripts when regulator sends the transaction.
         }
 
         let to_hash: &PartialHashing = if let Some(order) = order {
@@ -620,8 +619,8 @@ impl<'db> ShardLevelState<'db> {
             ctrace!(TX, "Cannot run unlock/lock script {:?}", reason);
             RuntimeError::FailedToUnlock {
                 shard_id: self.shard_id,
-                tracker,
-                index,
+                tracker: input.prev_out.tracker,
+                index: input.prev_out.index,
                 reason,
             }
             .into()
@@ -652,13 +651,15 @@ impl<'db> ShardLevelState<'db> {
             if input.prev_out.shard_id != self.shard_id {
                 continue
             }
-            self.check_input_asset(input, sender, approvers)?;
             self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
             assert_eq!(self.shard_id, input.prev_out.shard_id);
             let shard_asset_type = (input.prev_out.asset_type, input.prev_out.shard_id);
             let asset_scheme =
-                self.asset_scheme(shard_asset_type.0)?.expect("AssetScheme must exist when the asset exist");
+                self.asset_scheme(shard_asset_type.0)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
+                    shard_id: input.prev_out.shard_id,
+                    asset_type: input.prev_out.asset_type,
+                })?;
             if asset_scheme.is_regulated() {
                 return Err(RuntimeError::CannotComposeRegulatedAsset.into())
             }
@@ -764,7 +765,6 @@ impl<'db> ShardLevelState<'db> {
                 .into())
             }
 
-            self.check_input_asset(input, sender, approvers)?;
             self.check_and_run_input_script(input, transaction, None, false, sender, approvers, client)?;
 
             self.kill_asset(input.prev_out.tracker, input.prev_out.index);
@@ -838,7 +838,6 @@ impl<'db> ShardLevelState<'db> {
         let approvers = [];
         self.check_and_run_input_script(burn, transaction, None, true, sender, &approvers, client)?;
 
-        self.check_input_asset(burn, sender, &approvers)?;
         self.kill_asset(burn.prev_out.tracker, burn.prev_out.index);
         let asset_type = H160::zero();
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
@@ -1550,7 +1549,13 @@ mod tests {
         let transfer_tracker = transfer.tracker();
 
         assert_eq!(
-            Err(StateError::Runtime(RuntimeError::InvalidAssetType(asset_type2))),
+            Err(StateError::Runtime(RuntimeError::UnexpectedAssetType {
+                index: 0,
+                mismatch: Mismatch {
+                    found: asset_type2,
+                    expected: asset_type1,
+                }
+            })),
             state.apply(&transfer, &sender, &[sender], &[], &get_test_client())
         );
 

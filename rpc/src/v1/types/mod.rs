@@ -39,7 +39,7 @@ pub use self::asset_scheme::AssetScheme;
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
 pub use self::text::Text;
-pub use self::transaction::Transaction;
+pub use self::transaction::{PendingTransactions, Transaction};
 pub use self::unsigned_transaction::UnsignedTransaction;
 pub use self::work::Work;
 

@@ -17,21 +17,21 @@
 use std::sync::Arc;
 
 use ccore::{AccountProvider, Client, Miner};
-use clogger::slogger;
-use cnetwork::NetworkControl;
-use crpc::{MetaIoHandler, Params, Value};
-use csync::BlockSyncExtension;
+use clogger::SLOGGER;
+use cnetwork::{EventSender, NetworkControl};
+use crpc::{MetaIoHandler, Middleware, Params, Value};
+use csync::BlockSyncEvent;
 
 pub struct ApiDependencies {
     pub client: Arc<Client>,
     pub miner: Arc<Miner>,
     pub network_control: Arc<NetworkControl>,
     pub account_provider: Arc<AccountProvider>,
-    pub block_sync: Option<Arc<BlockSyncExtension>>,
+    pub block_sync: Option<EventSender<BlockSyncEvent>>,
 }
 
 impl ApiDependencies {
-    pub fn extend_api(&self, enable_devel_api: bool, handler: &mut MetaIoHandler<()>) {
+    pub fn extend_api(&self, enable_devel_api: bool, handler: &mut MetaIoHandler<(), impl Middleware<()>>) {
         use crpc::v1::*;
         handler.extend_with(ChainClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         if enable_devel_api {
@@ -55,13 +55,13 @@ impl ApiDependencies {
     }
 }
 
-pub fn setup_rpc(mut handler: MetaIoHandler<()>) -> MetaIoHandler<()> {
+pub fn setup_rpc<M: Middleware<()>>(mut handler: MetaIoHandler<(), M>) -> MetaIoHandler<(), M> {
     handler.add_method("ping", |_params: Params| Ok(Value::String("pong".to_string())));
     handler.add_method("version", |_params: Params| Ok(Value::String(env!("CARGO_PKG_VERSION").to_string())));
     handler.add_method("commitHash", |_params: Params| Ok(Value::String(env!("VERGEN_SHA").to_string())));
 
     handler.add_method("slog", |_params: Params| {
-        let logs = slogger.get_logs();
+        let logs = SLOGGER.get_logs();
         Ok(Value::Array(logs))
     });
     handler

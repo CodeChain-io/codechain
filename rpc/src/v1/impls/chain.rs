@@ -35,7 +35,9 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
+use super::super::types::{
+    AssetScheme, Block, BlockNumberAndHash, OwnedAsset, PendingTransactions, Text, Transaction, UnsignedTransaction,
+};
 
 pub struct ChainClient<C, M>
 where
@@ -300,12 +302,12 @@ where
         Ok(self.client.block(&BlockId::Hash(block_hash)).map(|block| block.transactions_count()))
     }
 
-    fn get_pending_transactions(&self) -> Result<Vec<Transaction>> {
-        Ok(self.client.ready_transactions().into_iter().map(|signed| signed.into()).collect())
+    fn get_pending_transactions(&self, from: Option<u64>, to: Option<u64>) -> Result<PendingTransactions> {
+        Ok(self.client.ready_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)).into())
     }
 
-    fn get_pending_transactions_count(&self) -> Result<usize> {
-        Ok(self.client.count_pending_transactions())
+    fn get_pending_transactions_count(&self, from: Option<u64>, to: Option<u64>) -> Result<usize> {
+        Ok(self.client.count_pending_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)))
     }
 
     fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {

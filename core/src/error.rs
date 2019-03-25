@@ -298,7 +298,6 @@ impl From<StateError> for Error {
         match err {
             StateError::Trie(err) => Error::Trie(err),
             StateError::Runtime(err) => Error::Runtime(err),
-            StateError::Key(err) => Error::Key(err),
         }
     }
 }

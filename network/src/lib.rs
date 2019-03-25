@@ -37,6 +37,7 @@ extern crate rand;
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;
+extern crate never;
 extern crate table as ctable;
 extern crate time;
 extern crate token_generator;
@@ -66,3 +67,13 @@ pub use crate::service::{Error as NetworkServiceError, Service as NetworkService
 
 pub use crate::filters::{FilterEntry, Filters, FiltersControl};
 pub use crate::routing_table::RoutingTable;
+
+pub type EventSender<E> = crossbeam_channel::Sender<E>;
+pub type EventReceiver<E> = crossbeam_channel::Receiver<E>;
+
+pub fn unbounded_event_callback<E>() -> (EventSender<E>, EventReceiver<E>) {
+    crossbeam_channel::unbounded()
+}
+pub fn once_event_callback<E>() -> (EventSender<E>, EventReceiver<E>) {
+    crossbeam_channel::bounded(1)
+}

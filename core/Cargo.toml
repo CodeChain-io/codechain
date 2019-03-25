@@ -17,6 +17,7 @@ codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
 codechain-stratum = { path = "../stratum" }
 codechain-vm = { path = "../vm" }
+crossbeam-channel = "0.3"
 cuckoo = { git = "https://github.com/CodeChain-io/rust-cuckoo.git", rev = "280cab9c" }
 hashdb = { path = "../util/hashdb" }
 hyper = { git = "https://github.com/paritytech/hyper", default-features = false }
@@ -34,6 +35,7 @@ rand = "0.6.1"
 rlp = { path = "../util/rlp" }
 rlp_compress = { path = "../util/rlp_compress" }
 rlp_derive = { path = "../util/rlp_derive" }
+snap = "0.2"
 table = { path = "../util/table" }
 time = "0.1"
 util-error = { path = "../util/error" }

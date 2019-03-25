@@ -52,7 +52,7 @@ pub enum Action {
 
         metadata: String,
         approvals: Vec<Signature>,
-        expiration: Option<u64>,
+        expiration: Option<Uint>,
     },
     #[serde(rename_all = "camelCase")]
     ChangeAssetScheme {
@@ -174,7 +174,7 @@ pub enum ActionWithTracker {
 
         metadata: String,
         approvals: Vec<Signature>,
-        expiration: Option<u64>,
+        expiration: Option<Uint>,
 
         tracker: H256,
     },
@@ -322,7 +322,7 @@ impl ActionWithTracker {
                 orders: orders.into_iter().map(From::from).collect(),
                 metadata,
                 approvals,
-                expiration,
+                expiration: expiration.map(From::from),
                 tracker: tracker.unwrap(),
             },
             ActionType::ChangeAssetScheme {
@@ -536,7 +536,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     orders,
                     metadata,
                     approvals,
-                    expiration,
+                    expiration: expiration.map(From::from),
                 }
             }
             Action::ChangeAssetScheme {

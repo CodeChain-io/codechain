@@ -223,7 +223,7 @@ pub fn add_then_remove_old(bencher: &mut Bencher) {
     };
 
     let keypair = &Random.generate().unwrap();
-    let current_time = 100;
+    let current_block_number = 100;
     let current_timestamp = 100;
 
     let mut inputs: Vec<MemPoolInput> = Vec::with_capacity(NUM_TXS);
@@ -236,9 +236,9 @@ pub fn add_then_remove_old(bencher: &mut Bencher) {
         let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
         let mut mem_pool = MemPool::with_limits(10000, usize::max_value(), 3, db.clone());
         for input in inputs {
-            mem_pool.add(vec![input.clone()], current_time, current_timestamp, &old_fetch_account);
+            mem_pool.add(vec![input.clone()], current_block_number, current_timestamp, &old_fetch_account);
         }
-        mem_pool.remove_old(&new_fetch_account, current_time, current_timestamp);
+        mem_pool.remove_old(&new_fetch_account, current_block_number, current_timestamp);
         black_box(mem_pool);
     });
 }

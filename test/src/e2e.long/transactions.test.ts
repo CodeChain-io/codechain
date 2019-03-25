@@ -413,6 +413,34 @@ describe("transactions", function() {
         });
     });
 
+    it("AssetTransfer - Nonexistent assetType", async function() {
+        const { asset } = await node.mintAsset({ supply: 1 });
+        const assetType = new H160("0000000000000000000000000000000000123456");
+        const transferAsset = node.sdk.core.createTransferAssetTransaction();
+        const input = node.sdk.core.createAssetTransferInput({
+            assetOutPoint: {
+                tracker: asset.outPoint.tracker,
+                index: asset.outPoint.index,
+                assetType,
+                shardId: asset.shardId,
+                quantity: asset.quantity,
+                lockScriptHash: asset.outPoint.lockScriptHash,
+                parameters: asset.outPoint.parameters
+            }
+        });
+        transferAsset.addInputs(input);
+        const recipient = await node.sdk.key.createAssetTransferAddress();
+        transferAsset.addOutputs({
+            quantity: asset.quantity,
+            assetType,
+            shardId: 0,
+            recipient
+        });
+        await node.signTransactionInput(transferAsset, 0);
+        const results = await node.sendAssetTransaction(transferAsset);
+        expect(results).deep.equal([false]);
+    });
+
     it("Burn successful", async function() {
         const { asset } = await node.mintAsset({ supply: 1 });
         const tx1 = node.sdk.core.createTransferAssetTransaction();

@@ -16,7 +16,6 @@
 
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use ccore::encoded::Header as EncodedHeader;
@@ -24,12 +23,11 @@ use ccore::{
     Block, BlockChainClient, BlockId, BlockImportError, BlockInfo, ChainInfo, ChainNotify, Client, Header, ImportBlock,
     ImportError, Seal, UnverifiedTransaction,
 };
-use cnetwork::{Api, NetworkExtension, NodeId};
+use cnetwork::{Api, EventSender, NetworkExtension, NodeId};
 use cstate::FindActionHandler;
 use ctimer::TimerToken;
 use ctypes::transaction::Action;
 use ctypes::BlockNumber;
-use parking_lot::{Mutex, RwLock};
 use primitives::{H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -37,7 +35,6 @@ use rlp::{Encodable, UntrustedRlp};
 use time::Duration;
 use token_generator::TokenGenerator;
 
-use super::super::block::BlockSyncInfo;
 use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
 
@@ -58,51 +55,71 @@ pub struct TokenInfo {
 }
 
 pub struct Extension {
-    requests: RwLock<HashMap<NodeId, Vec<(u64, RequestMessage)>>>,
-    connected_nodes: RwLock<HashSet<NodeId>>,
-    header_downloaders: RwLock<HashMap<NodeId, HeaderDownloader>>,
-    body_downloader: Mutex<BodyDownloader>,
-    tokens: RwLock<HashMap<NodeId, TimerToken>>,
-    tokens_info: RwLock<HashMap<TimerToken, TokenInfo>>,
-    token_generator: Mutex<TokenGenerator>,
+    requests: HashMap<NodeId, Vec<(u64, RequestMessage)>>,
+    connected_nodes: HashSet<NodeId>,
+    header_downloaders: HashMap<NodeId, HeaderDownloader>,
+    body_downloader: BodyDownloader,
+    tokens: HashMap<NodeId, TimerToken>,
+    tokens_info: HashMap<TimerToken, TokenInfo>,
+    token_generator: TokenGenerator,
     client: Arc<Client>,
-    api: Arc<Api>,
-    last_request: AtomicUsize,
+    api: Box<Api>,
+    last_request: u64,
 }
 
 impl Extension {
-    pub fn new(client: Arc<Client>, api: Arc<Api>) -> Extension {
+    pub fn new(client: Arc<Client>, api: Box<Api>) -> Extension {
+        api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
+
+        let mut header = client.best_header();
+        let mut hollow_headers = vec![header.decode()];
+        while client.block_body(&BlockId::Hash(header.hash())).is_none() {
+            header = client
+                .block_header(&BlockId::Hash(header.parent_hash()))
+                .expect("Every imported header must have parent");
+            hollow_headers.push(header.decode());
+        }
+        let mut body_downloader = BodyDownloader::default();
+        for neighbors in hollow_headers.windows(2).rev() {
+            let child = &neighbors[0];
+            let parent = &neighbors[1];
+            cdebug!(SYNC, "Adding block #{} (hash: {}) for initial body download target", child.number(), child.hash());
+            body_downloader.add_target(child, parent);
+        }
+        cinfo!(SYNC, "Sync extension initialized");
         Extension {
-            requests: RwLock::new(HashMap::new()),
+            requests: Default::default(),
             connected_nodes: Default::default(),
-            header_downloaders: RwLock::new(HashMap::new()),
-            body_downloader: Mutex::new(BodyDownloader::new()),
-            tokens: RwLock::new(HashMap::new()),
-            tokens_info: RwLock::new(HashMap::new()),
-            token_generator: Mutex::new(TokenGenerator::new(SYNC_EXPIRE_TOKEN_BEGIN, SYNC_EXPIRE_TOKEN_END)),
+            header_downloaders: Default::default(),
+            body_downloader,
+            tokens: Default::default(),
+            tokens_info: Default::default(),
+            token_generator: TokenGenerator::new(SYNC_EXPIRE_TOKEN_BEGIN, SYNC_EXPIRE_TOKEN_END),
             client,
             api,
-            last_request: AtomicUsize::new(0),
+            last_request: Default::default(),
         }
     }
 
-    fn dismiss_request(&self, id: &NodeId, request_id: u64) {
-        if let Some(requests) = self.requests.write().get_mut(id) {
+    fn dismiss_request(&mut self, id: &NodeId, request_id: u64) {
+        if let Some(requests) = self.requests.get_mut(id) {
             requests.retain(|(i, _)| *i != request_id);
         }
     }
 
-    fn send_header_request(&self, id: &NodeId, request: RequestMessage) {
-        if let Some(requests) = self.requests.write().get_mut(id) {
+    fn send_header_request(&mut self, id: &NodeId, request: RequestMessage) {
+        if let Some(requests) = self.requests.get_mut(id) {
             ctrace!(SYNC, "Send header request to {}", id);
-            let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
+            let request_id = self.last_request;
+            self.last_request += 1;
             requests.push((request_id, request.clone()));
-            self.api.send(id, &Message::Request(request_id, request).rlp_bytes());
+            self.api.send(id, Arc::new(Message::Request(request_id, request).rlp_bytes().into_vec()));
         }
     }
 
-    fn send_body_request(&self, id: &NodeId) {
-        if let Some(requests) = self.requests.write().get_mut(id) {
+    fn send_body_request(&mut self, id: &NodeId) {
+        self.check_sync_variable();
+        if let Some(requests) = self.requests.get_mut(id) {
             let have_body_request = {
                 requests.iter().any(|r| match r {
                     (_, RequestMessage::Bodies(..)) => true,
@@ -114,134 +131,143 @@ impl Extension {
                 return
             }
 
-            if let Some(request) = self.body_downloader.lock().create_request() {
+            if let Some(request) = self.body_downloader.create_request() {
                 cdebug!(SYNC, "Request body to {} {:?}", id, request);
-                let request_id = self.last_request.fetch_add(1, Ordering::Relaxed) as u64;
+                let request_id = self.last_request;
+                self.last_request += 1;
                 requests.push((request_id, request.clone()));
-                self.api.send(id, &Message::Request(request_id, request).rlp_bytes());
+                self.api.send(id, Arc::new(Message::Request(request_id, request).rlp_bytes().into_vec()));
 
-                let tokens = self.tokens.read();
-                let mut tokens_info = self.tokens_info.write();
+                let token = &self.tokens[id];
+                let token_info = self.tokens_info.get_mut(token).unwrap();
 
-                let token = tokens.get(id).unwrap();
-                let token_info = tokens_info.get_mut(token).unwrap();
-
+                let _ = self.api.clear_timer(*token);
                 self.api
                     .set_timer_once(*token, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
                     .expect("Timer set succeeds");
                 token_info.request_id = Some(request_id);
             }
         }
+        self.check_sync_variable();
+    }
+
+    fn check_sync_variable(&self) {
+        let mut has_error = false;
+        for id in self.header_downloaders.keys() {
+            let requests = match self.requests.get(id) {
+                Some(requests) => requests,
+                None => continue,
+            };
+
+            let body_requests: Vec<RequestMessage> = requests
+                .iter()
+                .filter_map(|r| match r {
+                    (_, RequestMessage::Bodies(..)) => Some(r.1.clone()),
+                    _ => None,
+                })
+                .collect();
+
+            if body_requests.len() > 1 {
+                cerror!(SYNC, "Body request length {} > 1, body_requests: {:?}", body_requests.len(), body_requests);
+                has_error = true;
+            }
+
+            let token = &self.tokens[id];
+            let token_info = &self.tokens_info[token];
+
+            match (token_info.request_id, body_requests.len()) {
+                (Some(_), 1) => {}
+                (None, 0) => {}
+                _ => {
+                    cerror!(
+                        SYNC,
+                        "request_id: {:?}, body_requests.len(): {}, body_requests: {:?}",
+                        token_info.request_id,
+                        body_requests.len(),
+                        body_requests
+                    );
+                    has_error = true;
+                }
+            }
+        }
+
+        debug_assert!(!has_error);
     }
 }
 
-impl NetworkExtension for Extension {
-    fn name(&self) -> &'static str {
+impl NetworkExtension<Event> for Extension {
+    fn name() -> &'static str {
         "block-propagation"
     }
-    fn need_encryption(&self) -> bool {
+    fn need_encryption() -> bool {
         false
     }
 
-    fn versions(&self) -> &[u64] {
+    fn versions() -> &'static [u64] {
         const VERSIONS: &[u64] = &[0];
         &VERSIONS
     }
 
-    fn on_initialize(&self) {
-        self.api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
-
-        let mut header = self.client.best_header();
-        let mut hollow_headers = vec![header.decode()];
-        while self.client.block_body(&BlockId::Hash(header.hash())).is_none() {
-            header = self
-                .client
-                .block_header(&BlockId::Hash(header.parent_hash()))
-                .expect("Every imported header must have parent");
-            hollow_headers.push(header.decode());
-        }
-        for neighbors in hollow_headers.windows(2).rev() {
-            let child = &neighbors[0];
-            let parent = &neighbors[1];
-            cdebug!(SYNC, "Adding block #{} (hash: {}) for initial body download target", child.number(), child.hash());
-            self.body_downloader.lock().add_target(child, parent);
-        }
-        cinfo!(SYNC, "Sync extension initialized");
-    }
-
-    fn on_node_added(&self, id: &NodeId, _version: u64) {
-        let mut requests = self.requests.write();
-        let mut connected_nodes = self.connected_nodes.write();
-        let mut tokens = self.tokens.write();
-        let mut tokens_info = self.tokens_info.write();
-        let mut token_generator = self.token_generator.lock();
-
+    fn on_node_added(&mut self, id: &NodeId, _version: u64) {
         cinfo!(SYNC, "New peer detected #{}", id);
         let chain_info = self.client.chain_info();
         self.api.send(
             id,
-            &Message::Status {
-                total_score: chain_info.best_proposal_score,
-                best_hash: chain_info.best_block_hash,
-                genesis_hash: chain_info.genesis_hash,
-            }
-            .rlp_bytes(),
+            Arc::new(
+                Message::Status {
+                    total_score: chain_info.best_proposal_score,
+                    best_hash: chain_info.best_block_hash,
+                    genesis_hash: chain_info.genesis_hash,
+                }
+                .rlp_bytes()
+                .into_vec(),
+            ),
         );
-        let t = connected_nodes.insert(*id);
+        let t = self.connected_nodes.insert(*id);
         debug_assert!(t, "{} is already added to peer list", id);
 
-        let token = token_generator.gen().expect("Token generator is full");
+        let token = self.token_generator.gen().expect("Token generator is full");
         let token_info = TokenInfo {
             node_id: *id,
             request_id: None,
         };
 
-        let t = requests.insert(*id, Vec::new());
+        let t = self.requests.insert(*id, Vec::new());
         debug_assert_eq!(None, t);
-        let t = tokens_info.insert(token, token_info);
+        let t = self.tokens_info.insert(token, token_info);
         debug_assert_eq!(None, t);
-        let t = tokens.insert(*id, token);
+        let t = self.tokens.insert(*id, token);
         debug_assert_eq!(None, t);
         debug_assert!(t.is_none());
     }
 
-    fn on_node_removed(&self, id: &NodeId) {
-        let mut requests = self.requests.write();
-        let mut connected_nodes = self.connected_nodes.write();
-        let mut header_downloaders = self.header_downloaders.write();
-        let mut body_downloader = self.body_downloader.lock();
-        let mut tokens = self.tokens.write();
-        let mut tokens_info = self.tokens_info.write();
-        let mut token_generator = self.token_generator.lock();
-
-        if connected_nodes.remove(id) {
+    fn on_node_removed(&mut self, id: &NodeId) {
+        if self.connected_nodes.remove(id) {
             cinfo!(SYNC, "Peer removed #{}", id);
 
-            header_downloaders.remove(id);
+            self.header_downloaders.remove(id);
 
-            for (_, request) in requests.remove(id).into_iter().flatten() {
+            for (_, request) in self.requests.remove(id).into_iter().flatten() {
                 if let RequestMessage::Bodies(hashes) = request {
-                    body_downloader.reset_downloading(&hashes);
+                    self.body_downloader.reset_downloading(&hashes);
                 }
             }
 
-            if let Some(token) = tokens.remove(id) {
+            if let Some(token) = self.tokens.remove(id) {
                 self.api.clear_timer(token).expect("Timer cancel failed");
-                tokens_info.remove(&token);
-                token_generator.restore(token);
+                self.tokens_info.remove(&token);
+                self.token_generator.restore(token);
             }
         }
     }
 
-    fn on_message(&self, id: &NodeId, data: &[u8]) {
-        {
-            let requests = self.requests.read();
-            if !requests.contains_key(id) {
-                cdebug!(SYNC, "Message received after the node disconnected");
-                debug_assert!(!self.tokens.read().contains_key(id));
-                return
-            }
+    fn on_message(&mut self, id: &NodeId, data: &[u8]) {
+        if !self.requests.contains_key(id) {
+            cdebug!(SYNC, "Message received after the node disconnected");
+            debug_assert!(!self.tokens.contains_key(id));
+            return
         }
+
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Status {
@@ -257,21 +283,20 @@ impl NetworkExtension for Extension {
         }
     }
 
-    fn on_timeout(&self, token: TimerToken) {
+    fn on_timeout(&mut self, token: TimerToken) {
         match token {
             SYNC_TIMER_TOKEN => {
                 let best_proposal_score = self.client.chain_info().best_proposal_score;
-                let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+                let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
                 peer_ids.shuffle(&mut thread_rng());
 
                 for id in peer_ids {
-                    if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
-                        if let Some(request) = peer.create_request() {
-                            self.send_header_request(&id, request);
-                        }
+                    let request = self.header_downloaders.get_mut(&id).and_then(|peer| peer.create_request());
+                    if let Some(request) = request {
+                        self.send_header_request(&id, request);
                     }
 
-                    let peer_score = if let Some(peer) = self.header_downloaders.read().get(&id) {
+                    let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
                         peer.total_score()
                     } else {
                         U256::zero()
@@ -283,9 +308,9 @@ impl NetworkExtension for Extension {
                 }
             }
             SYNC_EXPIRE_TOKEN_BEGIN...SYNC_EXPIRE_TOKEN_END => {
+                self.check_sync_variable();
                 let (id, request_id) = {
-                    let mut tokens_info = self.tokens_info.write();
-                    let token_info = match tokens_info.get_mut(&token) {
+                    let token_info = match self.tokens_info.get_mut(&token) {
                         Some(info) => info,
                         None => return,
                     };
@@ -299,12 +324,12 @@ impl NetworkExtension for Extension {
                     }
                 };
 
-                if let Some(requests) = self.requests.write().get_mut(&id) {
+                if let Some(requests) = self.requests.get_mut(&id) {
                     let expired_request = requests.iter().find(|(r, _)| *r == request_id);
                     if let Some((_, request)) = expired_request {
                         match request {
                             RequestMessage::Bodies(hashes) => {
-                                self.body_downloader.lock().reset_downloading(&hashes);
+                                self.body_downloader.reset_downloading(&hashes);
                             }
                             _ => unreachable!(),
                         }
@@ -312,26 +337,54 @@ impl NetworkExtension for Extension {
                 }
 
                 self.dismiss_request(&id, request_id);
+                self.check_sync_variable();
             }
             _ => unreachable!(),
         }
     }
+
+    fn on_event(&mut self, event: Event) {
+        match event {
+            Event::GetPeers(channel) => {
+                for peer in self.header_downloaders.keys() {
+                    channel.send(*peer).unwrap();
+                }
+            }
+            Event::NewHeaders {
+                imported,
+                enacted,
+                retracted,
+            } => {
+                self.new_headers(imported, enacted, retracted);
+            }
+            Event::NewBlocks {
+                imported,
+                invalid,
+            } => {
+                self.new_blocks(imported, invalid);
+            }
+        }
+    }
 }
 
-impl ChainNotify for Extension {
-    fn new_headers(
-        &self,
+pub enum Event {
+    GetPeers(EventSender<NodeId>),
+    NewHeaders {
         imported: Vec<H256>,
-        _invalid: Vec<H256>,
         enacted: Vec<H256>,
         retracted: Vec<H256>,
-        _sealed: Vec<H256>,
-        _duration: u64,
-        _new_best_proposal: Option<H256>,
-    ) {
-        let peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+    },
+    NewBlocks {
+        imported: Vec<H256>,
+        invalid: Vec<H256>,
+    },
+}
+
+impl Extension {
+    fn new_headers(&mut self, imported: Vec<H256>, enacted: Vec<H256>, retracted: Vec<H256>) {
+        let peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
         for id in peer_ids {
-            if let Some(peer) = self.header_downloaders.write().get_mut(&id) {
+            if let Some(peer) = self.header_downloaders.get_mut(&id) {
                 peer.mark_as_imported(imported.clone());
             }
         }
@@ -342,58 +395,53 @@ impl ChainNotify for Extension {
         headers_to_download.sort_unstable_by_key(|header| header.number());
         headers_to_download.dedup_by_key(|header| header.hash());
 
-        headers_to_download
+        let headers: Vec<_> = headers_to_download
             .into_iter()
             .filter(|header| self.client.block_body(&BlockId::Hash(header.hash())).is_none())
-            .for_each(|header| {
-                let parent = self
-                    .client
-                    .block_header(&BlockId::Hash(header.parent_hash()))
-                    .expect("Enacted header must have parent");
-                self.body_downloader.lock().add_target(&header.decode(), &parent.decode());
-            });
-        self.body_downloader.lock().remove_target(&retracted);
+            .collect(); // FIXME: No need to collect here if self is not borrowed.
+        for header in headers {
+            let parent = self
+                .client
+                .block_header(&BlockId::Hash(header.parent_hash()))
+                .expect("Enacted header must have parent");
+            self.body_downloader.add_target(&header.decode(), &parent.decode());
+        }
+        self.body_downloader.remove_target(&retracted);
     }
 
-    fn new_blocks(
-        &self,
-        imported: Vec<H256>,
-        invalid: Vec<H256>,
-        _enacted: Vec<H256>,
-        _retracted: Vec<H256>,
-        _sealed: Vec<H256>,
-        _duration: u64,
-    ) {
-        self.body_downloader.lock().remove_target(&imported);
-        self.body_downloader.lock().remove_target(&invalid);
+    fn new_blocks(&mut self, imported: Vec<H256>, invalid: Vec<H256>) {
+        self.body_downloader.remove_target(&imported);
+        self.body_downloader.remove_target(&invalid);
 
 
         let chain_info = self.client.chain_info();
-        let peer_ids = self.connected_nodes.read();
 
-        for id in &*peer_ids {
+        for id in &self.connected_nodes {
             self.api.send(
                 id,
-                &Message::Status {
-                    total_score: chain_info.best_proposal_score,
-                    best_hash: chain_info.best_block_hash,
-                    genesis_hash: chain_info.genesis_hash,
-                }
-                .rlp_bytes(),
+                Arc::new(
+                    Message::Status {
+                        total_score: chain_info.best_proposal_score,
+                        best_hash: chain_info.best_block_hash,
+                        genesis_hash: chain_info.genesis_hash,
+                    }
+                    .rlp_bytes()
+                    .into_vec(),
+                ),
             );
         }
     }
 }
 
 impl Extension {
-    fn on_peer_status(&self, from: &NodeId, total_score: U256, best_hash: H256, genesis_hash: H256) {
+    fn on_peer_status(&mut self, from: &NodeId, total_score: U256, best_hash: H256, genesis_hash: H256) {
         // Validity check
         if genesis_hash != self.client.chain_info().genesis_hash {
             cinfo!(SYNC, "Genesis hash mismatch with peer {}", from);
             return
         }
 
-        match self.header_downloaders.write().entry(*from) {
+        match self.header_downloaders.entry(*from) {
             Entry::Occupied(mut peer) => {
                 if !peer.get_mut().update(total_score, best_hash) {
                     cwarn!(SYNC, "Peer #{} status updated but score is less than before", from);
@@ -408,7 +456,7 @@ impl Extension {
     }
 
     fn on_peer_request(&self, from: &NodeId, id: u64, request: RequestMessage) {
-        if !self.header_downloaders.read().contains_key(from) {
+        if !self.header_downloaders.contains_key(from) {
             cinfo!(SYNC, "Request from invalid peer #{} received", from);
             return
         }
@@ -437,7 +485,7 @@ impl Extension {
             } => self.create_state_chunk_response(block_hash, tree_root),
         };
 
-        self.api.send(from, &Message::Response(id, response).rlp_bytes());
+        self.api.send(from, Arc::new(Message::Response(id, response).rlp_bytes().into_vec()));
     }
 
     fn is_valid_request(&self, request: &RequestMessage) -> bool {
@@ -506,8 +554,8 @@ impl Extension {
         unimplemented!()
     }
 
-    fn on_peer_response(&self, from: &NodeId, id: u64, mut response: ResponseMessage) {
-        let last_request = self.requests.read()[from].iter().find(|(i, _)| *i == id).cloned();
+    fn on_peer_response(&mut self, from: &NodeId, id: u64, mut response: ResponseMessage) {
+        let last_request = self.requests[from].iter().find(|(i, _)| *i == id).cloned();
         if let Some((_, request)) = last_request {
             if let ResponseMessage::Headers(headers) = &mut response {
                 headers.sort_unstable_by_key(|h| h.number());
@@ -523,13 +571,14 @@ impl Extension {
                     self.on_header_response(from, &headers)
                 }
                 ResponseMessage::Bodies(bodies) => {
+                    self.check_sync_variable();
                     let hashes = match request {
                         RequestMessage::Bodies(hashes) => hashes,
                         _ => unreachable!(),
                     };
                     assert_eq!(bodies.len(), hashes.len());
-                    if let Some(token) = self.tokens.read().get(from) {
-                        if let Some(token_info) = self.tokens_info.write().get_mut(token) {
+                    if let Some(token) = self.tokens.get(from) {
+                        if let Some(token_info) = self.tokens_info.get_mut(token) {
                             if token_info.request_id.is_none() {
                                 ctrace!(SYNC, "Expired before handling response");
                                 return
@@ -540,6 +589,7 @@ impl Extension {
                     }
                     self.dismiss_request(from, id);
                     self.on_body_response(hashes, bodies);
+                    self.check_sync_variable();
                 }
                 _ => unimplemented!(),
             }
@@ -609,9 +659,9 @@ impl Extension {
         }
     }
 
-    fn on_header_response(&self, from: &NodeId, headers: &[Header]) {
+    fn on_header_response(&mut self, from: &NodeId, headers: &[Header]) {
         ctrace!(SYNC, "Received header response from({}) with length({})", from, headers.len());
-        let mut completed = if let Some(peer) = self.header_downloaders.write().get_mut(from) {
+        let mut completed = if let Some(peer) = self.header_downloaders.get_mut(from) {
             let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
             peer.import_headers(&encoded);
             peer.downloaded()
@@ -633,20 +683,20 @@ impl Extension {
             }
         }
 
-        if let Some(peer) = self.header_downloaders.write().get_mut(from) {
+        let request = self.header_downloaders.get_mut(from).and_then(|peer| {
             peer.mark_as_imported(exists);
-            if let Some(request) = peer.create_request() {
-                self.send_header_request(from, request);
-            }
+            peer.create_request()
+        });
+        if let Some(request) = request {
+            self.send_header_request(from, request);
         }
     }
 
-    fn on_body_response(&self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedTransaction>>) {
+    fn on_body_response(&mut self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedTransaction>>) {
         ctrace!(SYNC, "Received body response with lenth({}) {:?}", hashes.len(), hashes);
         {
-            let mut body_downloader = self.body_downloader.lock();
-            body_downloader.import_bodies(hashes, bodies);
-            let completed = body_downloader.drain();
+            self.body_downloader.import_bodies(hashes, bodies);
+            let completed = self.body_downloader.drain();
             for (hash, transactions) in completed {
                 let header = self
                     .client
@@ -673,11 +723,11 @@ impl Extension {
         }
 
         let total_score = self.client.chain_info().best_proposal_score;
-        let mut peer_ids: Vec<_> = self.header_downloaders.read().keys().cloned().collect();
+        let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
         peer_ids.shuffle(&mut thread_rng());
 
         for id in peer_ids {
-            let peer_score = if let Some(peer) = self.header_downloaders.read().get(&id) {
+            let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
                 peer.total_score()
             } else {
                 U256::zero()
@@ -690,8 +740,48 @@ impl Extension {
     }
 }
 
-impl BlockSyncInfo for Extension {
-    fn get_peers(&self) -> Vec<NodeId> {
-        self.header_downloaders.read().keys().cloned().collect()
+pub struct BlockSyncSender(EventSender<Event>);
+
+impl From<EventSender<Event>> for BlockSyncSender {
+    fn from(sender: EventSender<Event>) -> Self {
+        BlockSyncSender(sender)
+    }
+}
+
+impl ChainNotify for BlockSyncSender {
+    fn new_headers(
+        &self,
+        imported: Vec<H256>,
+        _invalid: Vec<H256>,
+        enacted: Vec<H256>,
+        retracted: Vec<H256>,
+        _sealed: Vec<H256>,
+        _duration: u64,
+        _new_best_proposal: Option<H256>,
+    ) {
+        self.0
+            .send(Event::NewHeaders {
+                imported,
+                enacted,
+                retracted,
+            })
+            .unwrap();
+    }
+
+    fn new_blocks(
+        &self,
+        imported: Vec<H256>,
+        invalid: Vec<H256>,
+        _enacted: Vec<H256>,
+        _retracted: Vec<H256>,
+        _sealed: Vec<H256>,
+        _duration: u64,
+    ) {
+        self.0
+            .send(Event::NewBlocks {
+                imported,
+                invalid,
+            })
+            .unwrap();
     }
 }

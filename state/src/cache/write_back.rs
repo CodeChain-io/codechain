@@ -19,14 +19,14 @@ use std::collections::hash_map::Entry as HashMapEntry;
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::vec::Vec;
 
 use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
 
 use super::CacheableItem;
 
-static TOUCHED_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+static TOUCHED_COUNT: AtomicUsize = AtomicUsize::new(0);
 fn touched_count() -> usize {
     TOUCHED_COUNT.fetch_add(1, Ordering::SeqCst)
 }
