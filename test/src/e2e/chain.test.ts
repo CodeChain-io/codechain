@@ -24,6 +24,7 @@ import {
     H256,
     H512,
     MintAsset,
+    SignedTransaction,
     U64
 } from "codechain-sdk/lib/core/classes";
 import "mocha";
@@ -240,15 +241,15 @@ describe("chain", function() {
             await node.sdk.rpc.chain.sendSignedTransaction(signed);
         });
 
-        it("getTransactionByTracker", async function() {
+        it("getTransactionsByTracker", async function() {
             expect(
-                ((await node.sdk.rpc.chain.getTransactionByTracker(
+                ((await node.sdk.rpc.chain.getTransactionsByTracker(
                     tx.tracker()
-                )) as any).unsigned
-            ).to.deep.equal(tx);
+                )) as any).map((tx: SignedTransaction) => tx.unsigned)
+            ).to.deep.equal([tx]);
             expect(
-                await node.sdk.rpc.chain.getTransactionByTracker(invalidH256)
-            ).to.be.null;
+                await node.sdk.rpc.chain.getTransactionsByTracker(invalidH256)
+            ).to.deep.equal([]);
         });
 
         it("getTransactionResultsByTracker", async function() {

@@ -392,7 +392,8 @@ impl AssetClient for Client {
             Some(_) => {}
         }
 
-        let localized = self.transaction_by_tracker(&tracker).expect("There is a successful transaction");
+        let localized =
+            self.transactions_by_tracker(&tracker).last().cloned().expect("There is a successful transaction");
         let transaction = if let Some(tx) = Option::<ShardTransaction>::from(localized.action.clone()) {
             tx
         } else {
@@ -704,10 +705,10 @@ impl BlockChainClient for Client {
         self.transaction_address(id).and_then(|address| chain.invoice(&address))
     }
 
-    fn transaction_by_tracker(&self, tracker: &H256) -> Option<LocalizedTransaction> {
+    fn transactions_by_tracker(&self, tracker: &H256) -> Vec<LocalizedTransaction> {
         let chain = self.block_chain();
-        let address = self.transaction_addresses(tracker)?;
-        address.into_iter().map(Into::into).map(|address| chain.transaction(&address)).next()?
+        let address = self.transaction_addresses(tracker).unwrap_or_default();
+        address.into_iter().map(Into::into).filter_map(|address| chain.transaction(&address)).collect()
     }
 
     fn invoices_by_tracker(&self, tracker: &H256) -> Vec<Invoice> {

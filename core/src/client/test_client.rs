@@ -547,7 +547,7 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn transaction_by_tracker(&self, _: &H256) -> Option<LocalizedTransaction> {
+    fn transactions_by_tracker(&self, _: &H256) -> Vec<LocalizedTransaction> {
         unimplemented!();
     }
 
