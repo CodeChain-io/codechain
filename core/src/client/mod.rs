@@ -263,7 +263,7 @@ pub trait BlockChainClient:
     fn invoice(&self, id: &TransactionId) -> Option<Invoice>;
 
     /// Get the transaction with given tracker.
-    fn transaction_by_tracker(&self, tracker: &H256) -> Option<LocalizedTransaction>;
+    fn transactions_by_tracker(&self, tracker: &H256) -> Vec<LocalizedTransaction>;
 
     fn invoices_by_tracker(&self, tracker: &H256) -> Vec<Invoice>;
 }

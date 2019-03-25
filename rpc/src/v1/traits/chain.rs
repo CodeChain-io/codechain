@@ -42,8 +42,8 @@ build_rpc_trait! {
         fn get_transaction_result(&self, H256) -> Result<Option<bool>>;
 
         /// Gets transaction with given transaction tracker.
-        # [rpc(name = "chain_getTransactionByTracker")]
-        fn get_transaction_by_tracker(&self, H256) -> Result<Option<Transaction>>;
+        # [rpc(name = "chain_getTransactionsByTracker")]
+        fn get_transactions_by_tracker(&self, H256) -> Result<Vec<Transaction>>;
 
         /// Gets transaction results with given transaction tracker.
         # [rpc(name = "chain_getTransactionResultsByTracker")]

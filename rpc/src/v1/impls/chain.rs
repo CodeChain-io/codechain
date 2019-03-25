@@ -105,12 +105,17 @@ where
         Ok(self.client.invoice(&transaction_hash.into()).map(|invoice| invoice.to_bool()))
     }
 
-    fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
-        Ok(self.client.transaction_by_tracker(&tracker).map(|tx| {
-            let transaction_id = tx.hash().into();
-            let invoice = self.client.invoice(&transaction_id).expect("Invoice must exist when transaction exists");
-            Transaction::from(tx, invoice.to_bool())
-        }))
+    fn get_transactions_by_tracker(&self, tracker: H256) -> Result<Vec<Transaction>> {
+        Ok(self
+            .client
+            .transactions_by_tracker(&tracker)
+            .into_iter()
+            .map(|tx| {
+                let transaction_id = tx.hash().into();
+                let invoice = self.client.invoice(&transaction_id).expect("Invoice must exist when transaction exists");
+                Transaction::from(tx, invoice.to_bool())
+            })
+            .collect())
     }
 
     fn get_transaction_results_by_tracker(&self, tracker: H256) -> Result<Vec<bool>> {

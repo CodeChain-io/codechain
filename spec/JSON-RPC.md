@@ -289,7 +289,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_sendSignedTransaction](#chain_sendsignedtransaction)
  * [chain_getTransaction](#chain_gettransaction)
  * [chain_getTransactionResult](#chain_gettransactionresult)
- * [chain_getTransactionByTracker](#chain_gettransactionbytracker)
+ * [chain_getTransactionsByTracker](#chain_gettransactionsbytracker)
  * [chain_getTransactionResultsByTracker](#chain_getTransactionResultsByTracker)
  * [chain_getAssetSchemeByTracker](#chain_getassetschemebytracker)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
@@ -817,14 +817,14 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getTransactionByTracker
-Gets a transaction with the given tracker.
+## chain_getTransactionsByTracker
+Gets transactions with the given tracker.
 
 ### Params
  1. tracker - `H256`
 
 ### Returns
-`null` | `Transaction`
+`Transaction[]`
 
 Errors: `Invalid Params`
 
@@ -832,7 +832,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionByTracker", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionsByTracker", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
     localhost:8080
 ```
 
@@ -840,7 +840,7 @@ Errors: `Invalid Params`
 ```
 {
     "jsonrpc": "2.0",
-    "result": {
+    "result": [{
         "action": {
           "type":"pay",
           "amount":"0xa",
@@ -855,7 +855,7 @@ Errors: `Invalid Params`
         "seq": 4,
         "transactionIndex": 0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
-    }
+    }],
     "id": null,
 }
 ```
