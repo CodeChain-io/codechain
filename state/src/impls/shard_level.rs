@@ -793,6 +793,7 @@ impl<'db> ShardLevelState<'db> {
             if output.shard_id != self.shard_id {
                 continue
             }
+            self.check_output_script_hash(output, sender, approvers)?;
             self.create_asset(
                 transaction_tracker,
                 index,
