@@ -332,7 +332,7 @@ impl<'db> ShardLevelState<'db> {
             if output.shard_id != self.shard_id {
                 continue
             }
-            self.check_output_script_hash(output)?;
+            self.check_output_script_hash(output, sender, approvers)?;
             self.create_asset(
                 transaction_tracker,
                 index,
@@ -539,7 +539,12 @@ impl<'db> ShardLevelState<'db> {
         Ok((asset, from_regulator))
     }
 
-    fn check_output_script_hash(&self, output: &AssetTransferOutput) -> StateResult<()> {
+    fn check_output_script_hash(
+        &self,
+        output: &AssetTransferOutput,
+        sender: &Address,
+        approvers: &[Address],
+    ) -> StateResult<()> {
         let asset_scheme = {
             assert_eq!(self.shard_id, output.shard_id);
             self.asset_scheme(output.asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
@@ -547,6 +552,12 @@ impl<'db> ShardLevelState<'db> {
                 shard_id: self.shard_id,
             })?
         };
+        if let Some(registrar) = asset_scheme.registrar().as_ref() {
+            if sender == registrar || approvers.contains(registrar) {
+                return Ok(())
+            }
+        }
+
         let lock_script_hash = output.lock_script_hash;
         if asset_scheme.is_allowed_script_hash(&lock_script_hash) {
             Ok(())
