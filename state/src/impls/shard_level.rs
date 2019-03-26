@@ -443,12 +443,10 @@ impl<'db> ShardLevelState<'db> {
         asset_type: &H160,
         output: &AssetMintOutput,
     ) -> StateResult<()> {
-        let index = 0;
         {
-            let asset_scheme = self.asset_scheme(*asset_type)?.ok_or(RuntimeError::AssetNotFound {
+            let asset_scheme = self.asset_scheme(*asset_type)?.ok_or(RuntimeError::AssetSchemeNotFound {
+                asset_type: *asset_type,
                 shard_id: self.shard_id,
-                tracker: transaction_tracker,
-                index,
             })?;
 
             if let Some(registrar) = asset_scheme.registrar().as_ref() {
@@ -467,7 +465,7 @@ impl<'db> ShardLevelState<'db> {
         let previous_supply = asset_scheme.increase_supply(output.supply)?;
         self.create_asset(
             transaction_tracker,
-            index,
+            0,
             *asset_type,
             output.lock_script_hash,
             output.parameters.clone(),
@@ -475,7 +473,7 @@ impl<'db> ShardLevelState<'db> {
             None,
         )?;
         ctrace!(TX, "Increased asset supply {:?} {:?} {:?}", asset_type, previous_supply, output.supply);
-        ctrace!(TX, "Created asset on {}:{}:{}", self.shard_id, transaction_tracker, index);
+        ctrace!(TX, "Created asset on {}:{}", self.shard_id, transaction_tracker);
 
         Ok(())
     }
