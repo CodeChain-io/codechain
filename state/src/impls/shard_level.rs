@@ -332,7 +332,7 @@ impl<'db> ShardLevelState<'db> {
             if output.shard_id != self.shard_id {
                 continue
             }
-            self.check_output_script_hash(output)?;
+            self.check_output_script_hash(output, sender, approvers)?;
             self.create_asset(
                 transaction_tracker,
                 index,
@@ -400,6 +400,19 @@ impl<'db> ShardLevelState<'db> {
         Ok(())
     }
 
+    fn approved_by_registrar(&self, asset_type: H160, sender: &Address, approvers: &[Address]) -> StateResult<bool> {
+        let asset_scheme = self.asset_scheme(asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
+            asset_type,
+            shard_id: self.shard_id,
+        })?;
+
+        if let Some(registrar) = asset_scheme.registrar() {
+            Ok(registrar == sender || approvers.contains(registrar))
+        } else {
+            Ok(false)
+        }
+    }
+
     fn change_asset_scheme(
         &mut self,
         sender: &Address,
@@ -410,20 +423,10 @@ impl<'db> ShardLevelState<'db> {
         registrar: &Option<Address>,
         allowed_script_hashes: &[H160],
     ) -> StateResult<()> {
-        {
-            let asset_scheme = self.asset_scheme(*asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
-                asset_type: *asset_type,
-                shard_id: self.shard_id,
-            })?;
-
-            if let Some(registrar) = asset_scheme.registrar().as_ref() {
-                if registrar != sender && !approvers.contains(registrar) {
-                    return Err(RuntimeError::InsufficientPermission.into())
-                }
-            } else {
-                return Err(RuntimeError::InsufficientPermission.into())
-            }
+        if !self.approved_by_registrar(*asset_type, sender, approvers)? {
+            return Err(RuntimeError::InsufficientPermission.into())
         }
+
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, *asset_type)?;
         asset_scheme.change_data(
             metadata.to_string(),
@@ -443,21 +446,8 @@ impl<'db> ShardLevelState<'db> {
         asset_type: &H160,
         output: &AssetMintOutput,
     ) -> StateResult<()> {
-        let index = 0;
-        {
-            let asset_scheme = self.asset_scheme(*asset_type)?.ok_or(RuntimeError::AssetNotFound {
-                shard_id: self.shard_id,
-                tracker: transaction_tracker,
-                index,
-            })?;
-
-            if let Some(registrar) = asset_scheme.registrar().as_ref() {
-                if registrar != sender && !approvers.contains(registrar) {
-                    return Err(RuntimeError::InsufficientPermission.into())
-                }
-            } else {
-                return Err(RuntimeError::InsufficientPermission.into())
-            }
+        if !self.approved_by_registrar(*asset_type, sender, approvers)? {
+            return Err(RuntimeError::InsufficientPermission.into())
         }
 
         // This assertion should be filtered while verifying action.
@@ -467,7 +457,7 @@ impl<'db> ShardLevelState<'db> {
         let previous_supply = asset_scheme.increase_supply(output.supply)?;
         self.create_asset(
             transaction_tracker,
-            index,
+            0,
             *asset_type,
             output.lock_script_hash,
             output.parameters.clone(),
@@ -475,7 +465,7 @@ impl<'db> ShardLevelState<'db> {
             None,
         )?;
         ctrace!(TX, "Increased asset supply {:?} {:?} {:?}", asset_type, previous_supply, output.supply);
-        ctrace!(TX, "Created asset on {}:{}:{}", self.shard_id, transaction_tracker, index);
+        ctrace!(TX, "Created asset on {}:{}", self.shard_id, transaction_tracker);
 
         Ok(())
     }
@@ -495,21 +485,18 @@ impl<'db> ShardLevelState<'db> {
         } = input.prev_out;
 
         assert_eq!(self.shard_id, shard_id);
-        let asset_scheme = self.asset_scheme(asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
-            shard_id,
-            asset_type,
-        })?;
-
-        let from_regulator = match (asset_scheme.approver().as_ref(), asset_scheme.registrar().as_ref()) {
-            (_, Some(registrar)) if sender == registrar => true, // registrar ignores approvers
-            (Some(approver), _) => {
+        let approved_by_regulator = self.approved_by_registrar(asset_type, sender, approvers)?;
+        if !approved_by_regulator {
+            let asset_scheme = self.asset_scheme(asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
+                shard_id,
+                asset_type,
+            })?;
+            if let Some(approver) = asset_scheme.approver() {
                 if sender != approver && !approvers.contains(approver) {
                     return Err(RuntimeError::NotApproved(*approver).into())
                 }
-                false
             }
-            (None, _) => false,
-        };
+        }
 
         let asset = self.asset(tracker, index)?.ok_or_else(|| RuntimeError::AssetNotFound {
             shard_id,
@@ -536,10 +523,15 @@ impl<'db> ShardLevelState<'db> {
             }
             .into())
         }
-        Ok((asset, from_regulator))
+        Ok((asset, approved_by_regulator))
     }
 
-    fn check_output_script_hash(&self, output: &AssetTransferOutput) -> StateResult<()> {
+    fn check_output_script_hash(
+        &self,
+        output: &AssetTransferOutput,
+        sender: &Address,
+        approvers: &[Address],
+    ) -> StateResult<()> {
         let asset_scheme = {
             assert_eq!(self.shard_id, output.shard_id);
             self.asset_scheme(output.asset_type)?.ok_or_else(|| RuntimeError::AssetSchemeNotFound {
@@ -547,6 +539,12 @@ impl<'db> ShardLevelState<'db> {
                 shard_id: self.shard_id,
             })?
         };
+        if let Some(registrar) = asset_scheme.registrar().as_ref() {
+            if sender == registrar || approvers.contains(registrar) {
+                return Ok(())
+            }
+        }
+
         let lock_script_hash = output.lock_script_hash;
         if asset_scheme.is_allowed_script_hash(&lock_script_hash) {
             Ok(())
@@ -782,6 +780,7 @@ impl<'db> ShardLevelState<'db> {
             if output.shard_id != self.shard_id {
                 continue
             }
+            self.check_output_script_hash(output, sender, approvers)?;
             self.create_asset(
                 transaction_tracker,
                 index,
