@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod block_invoices;
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
-mod invoice;
-pub use self::block_invoices::BlockInvoices;
-pub use self::invoice::Invoice;
+use primitives::H256;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Invoice {
+    pub tracker: Option<H256>,
+    pub hash: H256,
+    pub error: Option<String>,
+}

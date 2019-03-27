@@ -25,7 +25,6 @@ use std::sync::Arc;
 use ckey::Address;
 use cstate::{ActionHandler, StateResult, TopLevelState};
 use ctypes::errors::RuntimeError;
-use ctypes::invoice::Invoice;
 use rlp::{Decodable, UntrustedRlp};
 
 use self::action_data::{StakeAccount, Stakeholders};
@@ -71,7 +70,7 @@ impl ActionHandler for Stake {
         Ok(())
     }
 
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> StateResult<Invoice> {
+    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> StateResult<()> {
         let action = Action::decode(&UntrustedRlp::new(bytes))
             .map_err(|err| RuntimeError::FailedToHandleCustomAction(err.to_string()))?;
         match action {
@@ -87,12 +86,7 @@ impl ActionHandler for Stake {
     }
 }
 
-fn transfer_ccs(
-    state: &mut TopLevelState,
-    sender: &Address,
-    receiver: &Address,
-    quantity: u64,
-) -> StateResult<Invoice> {
+fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address, quantity: u64) -> StateResult<()> {
     let mut stakeholders = Stakeholders::load_from_state(state)?;
     let mut sender_account = StakeAccount::load_from_state(state, sender)?;
     let mut receiver_account = StakeAccount::load_from_state(state, receiver)?;
@@ -107,7 +101,7 @@ fn transfer_ccs(
     sender_account.save_to_state(state)?;
     receiver_account.save_to_state(state)?;
 
-    Ok(Invoice::Success)
+    Ok(())
 }
 
 fn delegate_ccs(
@@ -116,7 +110,7 @@ fn delegate_ccs(
     delegatee: &Address,
     quantity: u64,
     validators: &ValidatorSet,
-) -> StateResult<Invoice> {
+) -> StateResult<()> {
     // TODO: remove parent hash from validator set.
     if !validators.contains_address(&Default::default(), delegatee) {
         return Err(RuntimeError::FailedToHandleCustomAction("Cannot delegate to non-validator".into()).into())
@@ -129,7 +123,7 @@ fn delegate_ccs(
 
     delegation.save_to_state(state)?;
     delegator.save_to_state(state)?;
-    Ok(Invoice::Success)
+    Ok(())
 }
 
 pub fn get_stakes(state: &TopLevelState) -> StateResult<HashMap<Address, u64>> {
@@ -187,7 +181,7 @@ mod tests {
         assert_eq!(Ok(()), stake.init(&mut state));
 
         let result = transfer_ccs(&mut state, &address1, &address2, 10);
-        assert_eq!(Ok(Invoice::Success), result);
+        assert_eq!(Ok(()), result);
 
         let account1 = StakeAccount::load_from_state(&state, &address1).unwrap();
         let account2 = StakeAccount::load_from_state(&state, &address2).unwrap();
@@ -242,7 +236,7 @@ mod tests {
             quantity: 40,
         };
         let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
-        assert_eq!(result, Ok(Invoice::Success));
+        assert_eq!(result, Ok(()));
 
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
         let delegation = Delegation::load_from_state(&state, &delegator).unwrap();

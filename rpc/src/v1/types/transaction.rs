@@ -53,14 +53,14 @@ impl From<PendingSignedTransactions> for PendingTransactions {
     }
 }
 
-impl Transaction {
-    pub fn from(p: LocalizedTransaction, result: bool) -> Self {
+impl From<LocalizedTransaction> for Transaction {
+    fn from(p: LocalizedTransaction) -> Self {
         let sig = p.signature();
         Self {
             block_number: Some(p.block_number),
             block_hash: Some(p.block_hash),
             transaction_index: Some(p.transaction_index),
-            result: Some(result),
+            result: Some(true),
             seq: p.seq,
             fee: p.fee.into(),
             network_id: p.network_id,

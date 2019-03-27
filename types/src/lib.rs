@@ -25,7 +25,6 @@ extern crate serde;
 extern crate serde_derive;
 
 pub mod errors;
-pub mod invoice;
 pub mod machine;
 pub mod transaction;
 pub mod util;

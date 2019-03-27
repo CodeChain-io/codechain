@@ -24,6 +24,7 @@ import {
 import "mocha";
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
+import { faucetAddress } from "../helper/constants";
 
 describe("Timelock", function() {
     let node: CodeChain;
@@ -36,7 +37,7 @@ describe("Timelock", function() {
     });
 
     async function sendTxWithTimelock(timelock: Timelock): Promise<H256> {
-        const { asset } = await node.mintAsset({ supply: 1 });
+        const asset = await node.mintAsset({ supply: 1 });
         const tx = node.sdk.core.createTransferAssetTransaction();
         tx.addInputs(
             asset.createTransferInput({
@@ -50,7 +51,7 @@ describe("Timelock", function() {
             recipient: await node.createP2PKHAddress()
         });
         await node.signTransactionInput(tx, 0);
-        await node.sendAssetTransaction(tx, { awaitResult: false });
+        await node.sendAssetTransaction(tx);
         return tx.tracker();
     }
 
@@ -105,7 +106,7 @@ describe("Timelock", function() {
     });
 
     it("A relative timelock for failed transaction's output", async function() {
-        const { asset } = await node.mintAsset({ supply: 1 });
+        const asset = await node.mintAsset({ supply: 1 });
         const failedTx = node.sdk.core.createTransferAssetTransaction();
         failedTx.addInputs(asset);
         failedTx.addOutputs({
@@ -114,9 +115,16 @@ describe("Timelock", function() {
             shardId: asset.shardId,
             recipient: await node.createP2PKHAddress()
         });
-        const results1 = await node.sendAssetTransaction(failedTx);
-        expect(results1!.length).to.equal(1);
-        expect(results1![0]).to.be.false;
+        const blockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        await node.sdk.rpc.devel.stopSealing();
+        await node.sendPayTx({ seq, quantity: 1 });
+        const hash = await node.sendAssetTransaction(failedTx, {
+            seq: seq + 1
+        });
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
+        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
 
         const output0 = failedTx.getTransferredAsset(0);
         const tx = node.sdk.core.createTransferAssetTransaction();
@@ -136,7 +144,7 @@ describe("Timelock", function() {
         });
         await node.signTransactionInput(tx, 0);
         try {
-            await node.sendAssetTransaction(tx, { awaitResult: false });
+            await node.sendAssetTransaction(tx);
             expect.fail();
         } catch (e) {
             expect(e.data).to.have.string("Timelocked");
@@ -207,13 +215,13 @@ describe("Timelock", function() {
         });
         await node.signTransactionInput(tx, 0);
         const { fee } = options;
-        await node.sendAssetTransaction(tx, { awaitResult: false, fee });
+        await node.sendAssetTransaction(tx, { fee });
         return tx.tracker();
     }
 
     describe("The future items should move to the current queue", async function() {
         it("Minted at block 1, send transfer with Timelock::Block(10) and then replace it with no timelock", async function() {
-            const { asset } = await node.mintAsset({ supply: 1 });
+            const asset = await node.mintAsset({ supply: 1 });
             await node.sdk.rpc.devel.stopSealing();
             const tracker1 = await sendTransferTx(asset, {
                 type: "block",
@@ -240,7 +248,7 @@ describe("Timelock", function() {
         });
 
         async function createUTXOs(count: number): Promise<Asset[]> {
-            const { asset } = await node.mintAsset({ supply: count });
+            const asset = await node.mintAsset({ supply: count });
             const transferTx = node.sdk.core.createTransferAssetTransaction();
             transferTx.addInputs(asset);
             transferTx.addOutputs(
@@ -277,7 +285,7 @@ describe("Timelock", function() {
             tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
-            await node.sendAssetTransaction(tx, { awaitResult: false });
+            await node.sendAssetTransaction(tx);
 
             expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.tracker(), false);
@@ -314,7 +322,7 @@ describe("Timelock", function() {
             tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
-            await node.sendAssetTransaction(tx, { awaitResult: false });
+            await node.sendAssetTransaction(tx);
 
             expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.tracker(), false);
@@ -351,7 +359,7 @@ describe("Timelock", function() {
             tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
-            await node.sendAssetTransaction(tx, { awaitResult: false });
+            await node.sendAssetTransaction(tx);
 
             expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.tracker(), false);
@@ -383,7 +391,7 @@ describe("Timelock", function() {
             tx.addOutputs({ quantity: 2, recipient, assetType, shardId });
             await node.signTransactionInput(tx, 0);
             await node.signTransactionInput(tx, 1);
-            await node.sendAssetTransaction(tx, { awaitResult: false });
+            await node.sendAssetTransaction(tx);
 
             expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tx.tracker(), false);

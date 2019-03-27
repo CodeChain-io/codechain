@@ -17,7 +17,6 @@
 use std::mem;
 use std::sync::Arc;
 
-use ctypes::invoice::{BlockInvoices, Invoice};
 use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
@@ -26,7 +25,7 @@ use rlp::RlpStream;
 
 use super::block_info::BestBlockChanged;
 use super::body_db::{BodyDB, BodyProvider};
-use super::extras::{BlockDetails, EpochTransitions, TransactionAddress, TransactionAddresses, EPOCH_KEY_PREFIX};
+use super::extras::{BlockDetails, EpochTransitions, TransactionAddress, EPOCH_KEY_PREFIX};
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::{tree_route, ImportRoute};
@@ -35,6 +34,7 @@ use crate::consensus::epoch::{PendingTransition as PendingEpochTransition, Trans
 use crate::consensus::CodeChainEngine;
 use crate::db::{self, Readable, Writable};
 use crate::encoded;
+use crate::invoice::Invoice;
 use crate::transaction::LocalizedTransaction;
 use crate::views::{BlockView, HeaderView};
 
@@ -146,7 +146,9 @@ impl BlockChain {
         self.headerchain.insert_header(batch, &new_header, engine);
         self.body_db.insert_body(batch, &new_block);
         self.body_db.update_best_block(batch, &best_block_changed);
-        self.invoice_db.insert_invoice(batch, &new_block_hash, invoices);
+        for invoice in invoices {
+            self.invoice_db.insert_invoice(batch, invoice.hash, invoice.tracker, invoice.error);
+        }
 
         if let Some(best_block_hash) = best_block_changed.new_best_hash() {
             let mut pending_best_block_hash = self.pending_best_block_hash.write();
@@ -563,8 +565,8 @@ impl BodyProvider for BlockChain {
         self.body_db.transaction_address(hash)
     }
 
-    fn transaction_addresses_by_tracker(&self, tracker: &H256) -> Option<TransactionAddresses> {
-        self.body_db.transaction_addresses_by_tracker(tracker)
+    fn transaction_address_by_tracker(&self, tracker: &H256) -> Option<TransactionAddress> {
+        self.body_db.transaction_address_by_tracker(tracker)
     }
 
     fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
@@ -574,18 +576,16 @@ impl BodyProvider for BlockChain {
 
 impl InvoiceProvider for BlockChain {
     /// Returns true if invoices for given hash is known
-    fn is_known_invoice(&self, hash: &H256) -> bool {
-        self.invoice_db.is_known_invoice(hash)
+    fn is_known_error_hint(&self, hash: &H256) -> bool {
+        self.invoice_db.is_known_error_hint(hash)
     }
 
-    /// Get invoices of block with given hash.
-    fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices> {
-        self.invoice_db.block_invoices(hash)
+    fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)> {
+        self.invoice_db.error_hints_by_tracker(tracker)
     }
 
-    /// Get transaction invoice.
-    fn invoice(&self, address: &TransactionAddress) -> Option<Invoice> {
-        self.invoice_db.invoice(address)
+    fn error_hint(&self, hash: &H256) -> Option<String> {
+        self.invoice_db.error_hint(hash)
     }
 }
 

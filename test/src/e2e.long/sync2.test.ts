@@ -47,13 +47,16 @@ describe("sync 2 nodes", function() {
                     await wait(500);
                 }
 
-                const transaction = await nodeA.sendPayTx({
-                    awaitResult: true
-                });
+                const blockNumber = await nodeA.sdk.rpc.chain.getBestBlockNumber();
+                const transaction = await nodeA.sendPayTx();
+                await nodeA.waitBlockNumber(blockNumber + 1);
                 await nodeB.waitBlockNumberSync(nodeA);
-                expect(await nodeB.getBestBlockHash()).to.deep.equal(
-                    transaction.blockHash
-                );
+                expect(
+                    await nodeA.sdk.rpc.chain.getTransaction(transaction.hash())
+                ).not.null;
+                expect(
+                    await nodeB.sdk.rpc.chain.getTransaction(transaction.hash())
+                ).not.null;
             }).timeout(30_000);
 
             describe("A-B diverged", function() {
@@ -188,122 +191,6 @@ describe("sync 2 nodes", function() {
                     }).timeout(30_000);
                 });
             });
-
-            describe("One fails", function() {
-                let tx1: any;
-                let tx2: any;
-                beforeEach(async function() {
-                    const recipient1 = await nodeA.createP2PKHAddress();
-                    const recipient2 = await nodeA.createP2PKHAddress();
-                    const { asset: assetA } = await nodeA.mintAsset({
-                        supply: 100,
-                        recipient: recipient1
-                    });
-                    const { asset: assetB } = await nodeB.mintAsset({
-                        supply: 100,
-                        recipient: recipient1
-                    });
-
-                    expect(assetA).to.deep.equal(assetB);
-                    const asset = assetA;
-
-                    tx1 = nodeA.sdk.core.createTransferAssetTransaction();
-                    tx1.addInputs(asset);
-                    tx1.addOutputs(
-                        {
-                            assetType: asset.assetType,
-                            recipient: recipient2,
-                            quantity: 10
-                        },
-                        {
-                            assetType: asset.assetType,
-                            recipient: recipient1,
-                            quantity: 90
-                        }
-                    );
-
-                    await nodeA.signTransactionInput(tx1, 0);
-                    const results1 = await nodeA.sendAssetTransaction(tx1);
-                    expect(results1!.length).to.equal(1);
-                    expect(results1![0]).to.be.true;
-
-                    tx2 = nodeA.sdk.core.createTransferAssetTransaction();
-                    tx2.addInputs(asset);
-                    tx2.addOutputs({
-                        assetType: asset.assetType,
-                        recipient: recipient2,
-                        quantity: 100
-                    });
-
-                    await nodeA.signTransactionInput(tx2, 0);
-                    const resultsA = await nodeA.sendAssetTransaction(tx2);
-                    expect(resultsA!.length).to.equal(1);
-                    expect(resultsA![0]).to.be.false;
-
-                    // FIXME
-                    tx2._fee = null;
-                    tx2._seq = null;
-                    const resultsB = await nodeB.sendAssetTransaction(tx2);
-                    expect(resultsB!.length).to.equal(1);
-                    expect(resultsB![0]).to.be.true;
-
-                    expect(await nodeA.getBestBlockNumber()).to.equal(
-                        (await nodeB.getBestBlockNumber()) + 1
-                    );
-                });
-
-                describe("nodeA becomes ahead", function() {
-                    it("It should be synced when A-B connected", async function() {
-                        await nodeA.connect(nodeB);
-                        await nodeB.waitBlockNumberSync(nodeA);
-
-                        expect(await nodeA.getBestBlockHash()).to.deep.equal(
-                            await nodeB.getBestBlockHash()
-                        );
-                        const resultsA = await nodeA.sdk.rpc.chain.getTransactionResultsByTracker(
-                            tx2.tracker()
-                        );
-                        expect(resultsA!.length).to.equal(1);
-                        expect(resultsA![0]).to.be.false;
-
-                        const resultsB = await nodeB.sdk.rpc.chain.getTransactionResultsByTracker(
-                            tx2.tracker()
-                        );
-                        expect(resultsB!.length).to.equal(1);
-                        expect(resultsB![0]).to.be.false;
-                    }).timeout(30_000);
-                });
-
-                describe("nodeB becomes ahead", function() {
-                    beforeEach(async function() {
-                        await nodeB.sendPayTx();
-                        await nodeB.sendPayTx();
-                        expect(await nodeB.getBestBlockNumber()).to.equal(
-                            (await nodeA.getBestBlockNumber()) + 1
-                        );
-                    });
-
-                    it("It should be synced when A-B connected", async function() {
-                        await nodeA.connect(nodeB);
-                        await nodeB.waitBlockNumberSync(nodeA);
-                        expect(await nodeA.getBestBlockHash()).to.deep.equal(
-                            await nodeB.getBestBlockHash()
-                        );
-
-                        const resultsA = await nodeA.sdk.rpc.chain.getTransactionResultsByTracker(
-                            tx2.tracker()
-                        );
-                        expect(resultsA!.length).to.equal(1);
-                        expect(resultsA![0]).to.be.true;
-
-                        const resultsB = await nodeB.sdk.rpc.chain.getTransactionResultsByTracker(
-                            tx2.tracker()
-                        );
-                        expect(resultsB!.length).to.equal(1);
-                        expect(resultsB![0]).to.be.true;
-                    }).timeout(30_000);
-                });
-            });
         });
     });
 
@@ -327,15 +214,14 @@ describe("sync 2 nodes", function() {
         });
 
         it("transactions must not be propagated", async function() {
-            for (let i = 0; i < testSize; i++) {
+            for (let seq = 0; seq < testSize; seq++) {
                 await nodeA.sendPayTx({
-                    seq: i,
-                    awaitResult: false
+                    seq
                 });
                 expect(
                     (await nodeA.sdk.rpc.chain.getPendingTransactions())
                         .transactions.length
-                ).to.equal(i + 1);
+                ).to.equal(seq + 1);
             }
             await wait(2000);
             expect(

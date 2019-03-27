@@ -140,7 +140,7 @@ describe("chain", function() {
         expect(pending.transactions.length).to.equal(0);
     });
 
-    it("sendPayTx, getTransactionResult, getTransaction", async function() {
+    it("sendPayTx, getTransaction", async function() {
         const tx = node.sdk.core.createPayTransaction({
             recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             quantity: 0
@@ -153,12 +153,10 @@ describe("chain", function() {
                 seq
             })
         );
-        expect(await node.sdk.rpc.chain.getTransactionResult(hash)).to.be.true;
+        expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
         const signed = await node.sdk.rpc.chain.getTransaction(hash);
-        if (signed == null) {
-            throw Error("Cannot get the transaction");
-        }
-        expect(signed.unsigned).to.deep.equal(tx);
+        expect(signed).not.null;
+        expect(signed!.unsigned).to.deep.equal(tx);
     });
 
     it("getRegularKey, getRegularKeyOwner", async function() {
@@ -243,13 +241,13 @@ describe("chain", function() {
 
         it("getTransactionsByTracker", async function() {
             expect(
-                ((await node.sdk.rpc.chain.getTransactionsByTracker(
+                (await node.sdk.rpc.chain.getTransactionByTracker(
                     tx.tracker()
-                )) as any).map((tx: SignedTransaction) => tx.unsigned)
-            ).to.deep.equal([tx]);
+                ))!.unsigned
+            ).to.deep.equal(tx);
             expect(
-                await node.sdk.rpc.chain.getTransactionsByTracker(invalidH256)
-            ).to.deep.equal([]);
+                await node.sdk.rpc.chain.getTransactionByTracker(invalidH256)
+            ).be.null;
         });
 
         it("getTransactionResultsByTracker", async function() {
@@ -365,7 +363,7 @@ describe("chain", function() {
     });
 
     it("isAssetSpent", async function() {
-        const { asset } = await node.mintAsset({ supply: 10 });
+        const asset = await node.mintAsset({ supply: 10 });
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.tracker,
@@ -384,7 +382,8 @@ describe("chain", function() {
             quantity: "0xa"
         });
         await node.signTransactionInput(tx, 0);
-        expect(await node.sendAssetTransaction(tx)).deep.equal([true]);
+        const hash = await node.sendAssetTransaction(tx);
+        expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
         expect(
             await node.sdk.rpc.chain.isAssetSpent(
                 asset.outPoint.tracker,
@@ -440,7 +439,7 @@ describe("chain", function() {
                 faucetAddress.value
             ])
             .then(result => {
-                expect(result).to.be.true;
+                expect(result).to.be.null;
             });
     });
 

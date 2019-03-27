@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashSet;
 use std::iter::once;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -463,7 +464,13 @@ impl Miner {
 
         let mut tx_count: usize = 0;
         let tx_total = transactions.len();
+        let mut invald_tx_users = HashSet::new();
         for tx in transactions {
+            let signer_public = tx.signer_public();
+            if invald_tx_users.contains(&signer_public) {
+                // The previous transaction has failed
+                continue
+            }
             let hash = tx.hash();
             let start = Instant::now();
             // Check whether transaction type is allowed for sender
@@ -477,6 +484,7 @@ impl Miner {
                 // already have transaction - ignore
                 Err(Error::History(HistoryError::TransactionAlreadyImported)) => {}
                 Err(e) => {
+                    invald_tx_users.insert(signer_public);
                     invalid_transactions.push(hash);
                     cdebug!(
                         MINER,
@@ -495,13 +503,13 @@ impl Miner {
         }
         ctrace!(MINER, "Pushed {}/{} transactions", tx_count, tx_total);
 
-        let (transactions_root, results_root) = {
+        let transactions_root = {
             let parent_hash = open_block.header().parent_hash();
             let parent_header = chain.block_header(&BlockId::Hash(*parent_hash)).expect("Parent header MUST exist");
             let parent_view = parent_header.view();
-            (parent_view.transactions_root(), parent_view.results_root())
+            parent_view.transactions_root()
         };
-        let block = open_block.close(transactions_root, results_root)?;
+        let block = open_block.close(transactions_root)?;
 
         let fetch_seq = |p: &Public| {
             let address = public_to_address(p);

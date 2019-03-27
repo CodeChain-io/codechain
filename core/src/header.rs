@@ -51,8 +51,6 @@ pub struct Header {
     transactions_root: H256,
     /// State root.
     state_root: H256,
-    /// Block invoices root.
-    results_root: H256,
 
     /// Block score.
     score: U256,
@@ -77,7 +75,6 @@ impl Default for Header {
 
             transactions_root: BLAKE_NULL_RLP,
             state_root: BLAKE_NULL_RLP,
-            results_root: BLAKE_NULL_RLP,
 
             score: U256::default(),
             seal: vec![],
@@ -86,6 +83,8 @@ impl Default for Header {
         }
     }
 }
+
+const SIZE_WITHOUT_SEAL: usize = 8;
 
 impl Header {
     /// Create a new, default-valued, header.
@@ -124,10 +123,7 @@ impl Header {
     pub fn state_root(&self) -> &H256 {
         &self.state_root
     }
-    /// Get the results root field of the header.
-    pub fn results_root(&self) -> &H256 {
-        &self.results_root
-    }
+
     /// Get the transactions root field of the header.
     pub fn transactions_root(&self) -> &H256 {
         &self.transactions_root
@@ -187,12 +183,6 @@ impl Header {
         self.transactions_root = a;
         self.note_dirty()
     }
-    /// Set the invoices root field of the header.
-    pub fn set_results_root(&mut self, a: H256) {
-        self.results_root = a;
-        self.note_dirty()
-    }
-
     /// Set the score field of the header.
     pub fn set_score(&mut self, a: U256) {
         self.score = a;
@@ -233,16 +223,16 @@ impl Header {
     /// Place this header into an RLP stream `s`, optionally `with_seal`.
     pub fn stream_rlp(&self, s: &mut RlpStream, with_seal: &Seal) {
         s.begin_list(
-            9 + match with_seal {
-                Seal::With => self.seal.len(),
-                _ => 0,
-            },
+            SIZE_WITHOUT_SEAL
+                + match with_seal {
+                    Seal::With => self.seal.len(),
+                    _ => 0,
+                },
         );
         s.append(&self.parent_hash);
         s.append(&self.author);
         s.append(&self.state_root);
         s.append(&self.transactions_root);
-        s.append(&self.results_root);
         s.append(&self.score);
         s.append(&self.number);
         s.append(&self.timestamp);
@@ -280,17 +270,16 @@ impl Decodable for Header {
             author: r.val_at(1)?,
             state_root: r.val_at(2)?,
             transactions_root: r.val_at(3)?,
-            results_root: r.val_at(4)?,
-            score: r.val_at(5)?,
-            number: r.val_at(6)?,
-            timestamp: cmp::min(r.val_at::<U256>(7)?, u64::max_value().into()).as_u64(),
-            extra_data: r.val_at(8)?,
+            score: r.val_at(4)?,
+            number: r.val_at(5)?,
+            timestamp: cmp::min(r.val_at::<U256>(6)?, u64::max_value().into()).as_u64(),
+            extra_data: r.val_at(7)?,
             seal: vec![],
             hash: RefCell::new(Some(blake256(r.as_raw()))),
             bare_hash: RefCell::new(None),
         };
 
-        for i in 9..r.item_count()? {
+        for i in SIZE_WITHOUT_SEAL..r.item_count()? {
             blockheader.seal.push(r.at(i)?.as_raw().to_vec())
         }
 

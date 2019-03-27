@@ -48,9 +48,13 @@ describe("sync 3 nodes", function() {
             });
 
             it("It should be synced when the first node created a block", async function() {
-                const transaction = await nodes[0].sendPayTx({
-                    awaitResult: true
-                });
+                const blockNumber = await nodes[0].getBestBlockNumber();
+                const payTx = await nodes[0].sendPayTx();
+                const transaction = (await nodes[0].sdk.rpc.chain.getTransaction(
+                    payTx.hash()
+                ))!;
+                expect(transaction).not.null;
+                await nodes[0].waitBlockNumber(blockNumber + 1);
                 for (let i = 1; i < NUM_NODES; i++) {
                     await nodes[i].waitBlockNumberSync(nodes[i - 1]);
                     expect(await nodes[i].getBestBlockHash()).to.deep.equal(
@@ -124,7 +128,11 @@ describe("sync 3 nodes", function() {
         });
 
         it("It should be synced when the first node created a block", async function() {
-            const transaction = await nodes[0].sendPayTx();
+            const payTx = await nodes[0].sendPayTx();
+            const transaction = (await nodes[0].sdk.rpc.chain.getTransaction(
+                payTx.hash()
+            ))!;
+            expect(transaction).not.null;
             for (let i = 1; i <= numHalf; i++) {
                 await nodes[0].waitBlockNumberSync(nodes[i]);
                 expect(await nodes[i].getBestBlockHash()).to.deep.equal(

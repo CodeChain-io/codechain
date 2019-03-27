@@ -19,7 +19,7 @@ use std::fmt;
 use cmerkle::TrieError;
 use ctypes::errors::RuntimeError;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Error {
     Trie(TrieError),
     Runtime(RuntimeError),

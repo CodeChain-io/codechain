@@ -96,11 +96,6 @@ impl Header {
         self.view().transactions_root()
     }
 
-    /// Returns the invoices trie root
-    pub fn results_root(&self) -> H256 {
-        self.view().results_root()
-    }
-
     /// Score of this block
     pub fn score(&self) -> U256 {
         self.view().score()
@@ -258,11 +253,6 @@ impl Block {
     /// Returns the transaction trie root.
     pub fn transactions_root(&self) -> H256 {
         self.header_view().transactions_root()
-    }
-
-    /// Returns the invoices trie root
-    pub fn results_root(&self) -> H256 {
-        self.header_view().results_root()
     }
 
     /// Score of this block

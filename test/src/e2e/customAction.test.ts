@@ -22,6 +22,7 @@ const expect = chai.expect;
 import { toHex } from "codechain-primitives/lib";
 import "mocha";
 import {
+    bobAddress,
     faucetAddress,
     faucetSecret,
     hitActionHandlerId
@@ -63,11 +64,7 @@ describe("customAction", function() {
                     })
             );
 
-            expect(
-                await node.sdk.rpc.chain.getTransactionResult(hash, {
-                    timeout: 120 * 1000
-                })
-            ).to.be.true;
+            expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
 
             const actionData = await node.sdk.rpc.engine.getCustomActionData(
                 hitActionHandlerId,
@@ -129,7 +126,23 @@ describe("customAction", function() {
         });
 
         it("should fail on handling error", async function() {
-            const hash = await node.sdk.rpc.chain.sendSignedTransaction(
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const blockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+
+            await node.sdk.rpc.devel.stopSealing();
+            const hash1 = await node.sdk.rpc.chain.sendSignedTransaction(
+                node.sdk.core
+                    .createPayTransaction({
+                        recipient: bobAddress,
+                        quantity: 1
+                    })
+                    .sign({
+                        secret: faucetSecret,
+                        seq,
+                        fee: 10
+                    })
+            );
+            const hash2 = await node.sdk.rpc.chain.sendSignedTransaction(
                 node.sdk.core
                     .createCustomTransaction({
                         handlerId: hitActionHandlerId,
@@ -137,16 +150,18 @@ describe("customAction", function() {
                     })
                     .sign({
                         secret: faucetSecret,
-                        seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                        seq: seq + 1,
                         fee: 10
                     })
             );
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
 
-            expect(
-                await node.sdk.rpc.chain.getTransactionResult(hash, {
-                    timeout: 120 * 1000
-                })
-            ).to.be.false;
+            const block = (await node.sdk.rpc.chain.getBlock(blockNumber + 1))!;
+            expect(block).not.be.null;
+            expect(block.transactions.length).equal(1);
+            expect(block.transactions[0].hash().value).equal(hash1.value);
+            expect(await node.sdk.rpc.chain.getErrorHint(hash2)).not.be.null;
         });
     });
 

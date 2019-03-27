@@ -17,7 +17,6 @@
 use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
-use ctypes::invoice::Invoice;
 use ctypes::{BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H160, H256};
 
@@ -42,8 +41,8 @@ build_rpc_trait! {
         fn get_transaction_result(&self, H256) -> Result<Option<bool>>;
 
         /// Gets transaction with given transaction tracker.
-        # [rpc(name = "chain_getTransactionsByTracker")]
-        fn get_transactions_by_tracker(&self, H256) -> Result<Vec<Transaction>>;
+        # [rpc(name = "chain_getTransactionByTracker")]
+        fn get_transaction_by_tracker(&self, H256) -> Result<Option<Transaction>>;
 
         /// Gets transaction results with given transaction tracker.
         # [rpc(name = "chain_getTransactionResultsByTracker")]
@@ -155,7 +154,7 @@ build_rpc_trait! {
 
         /// Execute Transactions
         # [rpc(name = "chain_executeTransaction")]
-        fn execute_transaction(&self, UnsignedTransaction, PlatformAddress) -> Result<Invoice>;
+        fn execute_transaction(&self, UnsignedTransaction, PlatformAddress) -> Result<Option<String>>;
 
         /// Execute AssetTransfer transaction inputs in VM
         # [rpc(name = "chain_executeVM")]

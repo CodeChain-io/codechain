@@ -49,18 +49,15 @@ describe("Reward = 50, 1 miner", function() {
         await node.sdk.rpc.devel.stopSealing();
         await node.sendPayTx({
             fee: 10,
-            seq: 0,
-            awaitResult: false
+            seq: 0
         });
         await node.sendPayTx({
             fee: 10,
-            seq: 1,
-            awaitResult: false
+            seq: 1
         });
         await node.sendPayTx({
             fee: 15,
-            seq: 2,
-            awaitResult: false
+            seq: 2
         });
         await node.sdk.rpc.devel.startSealing();
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(

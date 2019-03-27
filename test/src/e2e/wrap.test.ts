@@ -54,14 +54,8 @@ describe("WrapCCC", function() {
         });
 
         await node.sdk.rpc.chain.sendSignedTransaction(signedWrapCCC);
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(
-                signedWrapCCC.hash(),
-                {
-                    timeout: 30_000
-                }
-            )
-        ).to.be.true;
+        expect(await node.sdk.rpc.chain.getTransaction(signedWrapCCC.hash()))
+            .not.null;
 
         const schemeAfterWrap = (await node.sdk.rpc.chain.getAssetSchemeByType(
             H160.zero(),
@@ -85,12 +79,8 @@ describe("WrapCCC", function() {
             seq: seq + 1,
             fee: 10
         });
-        await node.sdk.rpc.chain.sendSignedTransaction(signedBurn);
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(signedBurn.hash(), {
-                timeout: 30_000
-            })
-        ).to.be.true;
+        const hash = await node.sdk.rpc.chain.sendSignedTransaction(signedBurn);
+        expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
 
         const schemeAfterBurn = (await node.sdk.rpc.chain.getAssetSchemeByType(
             H160.zero(),
@@ -123,15 +113,10 @@ describe("WrapCCC", function() {
             fee: 10
         });
 
-        await node.sdk.rpc.chain.sendSignedTransaction(signedWrapCCC);
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(
-                signedWrapCCC.hash(),
-                {
-                    timeout: 30_000
-                }
-            )
-        ).to.be.true;
+        const hash = await node.sdk.rpc.chain.sendSignedTransaction(
+            signedWrapCCC
+        );
+        expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
 
         const changeAssetScheme = node.sdk.core.createChangeAssetSchemeTransaction(
             {

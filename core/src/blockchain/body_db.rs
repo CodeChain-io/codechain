@@ -283,7 +283,7 @@ pub trait BodyProvider {
     /// Get the address of parcel with given hash.
     fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress>;
 
-    fn transaction_addresses_by_tracker(&self, tracker: &H256) -> Option<TransactionAddresses>;
+    fn transaction_address_by_tracker(&self, tracker: &H256) -> Option<TransactionAddress>;
 
     /// Get the block body (uncles and parcels).
     fn block_body(&self, hash: &H256) -> Option<encoded::Body>;
@@ -300,8 +300,9 @@ impl BodyProvider for BodyDB {
         Some(result)
     }
 
-    fn transaction_addresses_by_tracker(&self, tracker: &H256) -> Option<TransactionAddresses> {
-        Some(self.db.read_with_cache(db::COL_EXTRA, &mut *self.transaction_address_cache.lock(), tracker)?)
+    fn transaction_address_by_tracker(&self, tracker: &H256) -> Option<TransactionAddress> {
+        let addresses = self.db.read_with_cache(db::COL_EXTRA, &mut *self.transaction_address_cache.lock(), tracker)?;
+        addresses.into_iter().next()
     }
 
     /// Get block body data

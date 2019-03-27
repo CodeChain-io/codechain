@@ -69,6 +69,7 @@ mod db;
 pub mod encoded;
 mod error;
 mod header;
+mod invoice;
 mod miner;
 mod scheme;
 mod service;

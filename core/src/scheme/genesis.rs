@@ -35,8 +35,6 @@ pub struct Genesis {
     pub parent_hash: H256,
     /// Transactions root.
     pub transactions_root: H256,
-    /// Results root.
-    pub results_root: H256,
     /// State root.
     pub state_root: Option<H256>,
     /// The genesis block's extra data field.
@@ -52,7 +50,6 @@ impl From<cjson::scheme::Genesis> for Genesis {
             timestamp: g.timestamp.map_or(0, Into::into),
             parent_hash: g.parent_hash.map_or_else(H256::zero, Into::into),
             transactions_root: g.transactions_root.map_or_else(|| BLAKE_NULL_RLP, Into::into),
-            results_root: g.results_root.map_or_else(|| BLAKE_NULL_RLP, Into::into),
             state_root: g.state_root.map(Into::into),
             extra_data: g.extra_data.map_or_else(Vec::new, Into::into),
         }

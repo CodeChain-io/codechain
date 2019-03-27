@@ -20,7 +20,7 @@ import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 import { blake256, signEcdsa } from "codechain-sdk/lib/utils";
 import * as _ from "lodash";
 import "mocha";
-import { faucetAddress, faucetSecret } from "../helper/constants";
+import { bobAddress, faucetAddress, faucetSecret } from "../helper/constants";
 import { makeRandomH256 } from "../helper/random";
 import CodeChain from "../helper/spawn";
 
@@ -55,11 +55,7 @@ describe("store & remove", function() {
             });
 
         const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(storeHash, {
-                timeout: 300 * 1000
-            })
-        ).to.be.true;
+        expect(await node.sdk.rpc.chain.getTransaction(storeHash)).not.null;
 
         const text = await node.sdk.rpc.chain.getText(storeHash);
         expect(text).not.to.be.null;
@@ -77,14 +73,12 @@ describe("store & remove", function() {
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
             });
 
+        const blockNumber = await node.getBestBlockNumber();
         const removeHash = await node.sdk.rpc.chain.sendSignedTransaction(
             remove
         );
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(removeHash, {
-                timeout: 300 * 1000
-            })
-        ).to.be.true;
+        await node.waitBlockNumber(blockNumber + 1);
+        expect(await node.sdk.rpc.chain.getTransaction(removeHash)).not.null;
     });
 
     it("storing with wrong certifier fails", async function() {
@@ -94,6 +88,15 @@ describe("store & remove", function() {
             wrongPrivKey
         );
 
+        const blockNumber = await node.getBestBlockNumber();
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        const pay = node.sdk.core
+            .createPayTransaction({ recipient: bobAddress, quantity: 1 })
+            .sign({
+                secret: faucetSecret,
+                fee: 10,
+                seq
+            });
         const store = node.sdk.core
             .createStoreTransaction({
                 content,
@@ -103,17 +106,26 @@ describe("store & remove", function() {
             .sign({
                 secret: faucetSecret,
                 fee: 10,
-                seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                seq: seq + 1
             });
+        await node.sdk.rpc.devel.stopSealing();
+        await node.sdk.rpc.chain.sendSignedTransaction(pay);
         const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(storeHash, {
-                timeout: 1000
-            })
-        ).to.be.false;
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
+        expect(await node.sdk.rpc.chain.getErrorHint(storeHash)).not.be.null;
     });
 
     it("storing with invalid signature fails", async function() {
+        const blockNumber = await node.getBestBlockNumber();
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        const pay = node.sdk.core
+            .createPayTransaction({ recipient: bobAddress, quantity: 1 })
+            .sign({
+                secret: faucetSecret,
+                fee: 10,
+                seq
+            });
         const store = node.sdk.core
             .createStoreTransaction({
                 content,
@@ -123,18 +135,27 @@ describe("store & remove", function() {
             .sign({
                 secret: faucetSecret,
                 fee: 10,
-                seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                seq: seq + 1
             });
 
+        await node.sdk.rpc.devel.stopSealing();
+        await node.sdk.rpc.chain.sendSignedTransaction(pay);
         const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(storeHash, {
-                timeout: 1000
-            })
-        ).to.be.false;
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
+        expect(await node.sdk.rpc.chain.getErrorHint(storeHash)).not.be.null;
     });
 
     it("removal on nothing fails", async function() {
+        const blockNumber = await node.getBestBlockNumber();
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        const pay = node.sdk.core
+            .createPayTransaction({ recipient: bobAddress, quantity: 1 })
+            .sign({
+                secret: faucetSecret,
+                fee: 10,
+                seq
+            });
         const remove = node.sdk.core
             .createRemoveTransaction({
                 hash: makeRandomH256(),
@@ -143,17 +164,17 @@ describe("store & remove", function() {
             .sign({
                 secret: faucetSecret,
                 fee: 10,
-                seq: await node.sdk.rpc.chain.getSeq(faucetAddress)
+                seq: seq + 1
             });
 
+        await node.sdk.rpc.devel.stopSealing();
+        await node.sdk.rpc.chain.sendSignedTransaction(pay);
         const removeHash = await node.sdk.rpc.chain.sendSignedTransaction(
             remove
         );
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(removeHash, {
-                timeout: 300 * 1000
-            })
-        ).to.be.false;
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
+        expect(await node.sdk.rpc.chain.getErrorHint(removeHash)).not.be.null;
     });
 
     afterEach(async function() {

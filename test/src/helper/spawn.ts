@@ -17,6 +17,7 @@
 import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
 import {
+    Asset,
     AssetTransferAddress,
     AssetTransferInput,
     ComposeAsset,
@@ -362,7 +363,7 @@ export default class CodeChain {
     public async pay(
         recipient: string | PlatformAddress,
         quantity: U64 | string | number
-    ) {
+    ): Promise<H256> {
         const tx = this.sdk.core
             .createPayTransaction({
                 recipient,
@@ -373,13 +374,7 @@ export default class CodeChain {
                 seq: await this.sdk.rpc.chain.getSeq(faucetAddress),
                 fee: 10
             });
-        const hash = await this.sdk.rpc.chain.sendSignedTransaction(tx);
-        const result = (await this.sdk.rpc.chain.getTransactionResult(hash, {
-            timeout: 300 * 1000
-        })) as boolean | null;
-        if (!result) {
-            throw Error("An error occurred while pay");
-        }
+        return this.sdk.rpc.chain.sendSignedTransaction(tx);
     }
 
     public async sendTransaction(
@@ -409,14 +404,12 @@ export default class CodeChain {
         options?: {
             seq?: number;
             fee?: number;
-            awaitResult?: boolean;
             secret?: string;
         }
-    ) {
+    ): Promise<H256> {
         const {
             seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
             fee = 10,
-            awaitResult = true,
             secret = faucetSecret
         } = options || {};
         const signed = tx.sign({
@@ -424,15 +417,7 @@ export default class CodeChain {
             fee: fee + this.id,
             seq
         });
-        await this.sdk.rpc.chain.sendSignedTransaction(signed);
-        if (awaitResult) {
-            return this.sdk.rpc.chain.getTransactionResultsByTracker(
-                tx.tracker(),
-                {
-                    timeout: 300 * 1000
-                }
-            );
-        }
+        return this.sdk.rpc.chain.sendSignedTransaction(signed);
     }
 
     public async mintAsset(params: {
@@ -443,7 +428,7 @@ export default class CodeChain {
         metadata?: string;
         registrar?: PlatformAddress | string;
         awaitMint?: boolean;
-    }) {
+    }): Promise<Asset> {
         const {
             supply,
             seq,
@@ -464,17 +449,9 @@ export default class CodeChain {
         });
         await this.sendAssetTransaction(tx, {
             secret,
-            seq,
-            awaitResult: awaitMint
+            seq
         });
-        if (!awaitMint) {
-            return { asset: tx.getMintedAsset() };
-        }
-        const asset = await this.sdk.rpc.chain.getAsset(tx.tracker(), 0, 0);
-        if (asset === null) {
-            throw Error(`Failed to mint asset`);
-        }
-        return { asset };
+        return tx.getMintedAsset();
     }
 
     public async signTransactionInput(
@@ -501,13 +478,11 @@ export default class CodeChain {
         key: any,
         options?: {
             seq?: number;
-            awaitResult?: boolean;
             secret?: any;
         }
-    ) {
+    ): Promise<H256> {
         const {
             seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
-            awaitResult = true,
             secret = faucetSecret
         } = options || {};
         const tx = this.sdk.core
@@ -520,17 +495,11 @@ export default class CodeChain {
                 seq
             });
 
-        const hash = await this.sdk.rpc.chain.sendSignedTransaction(tx);
-        if (awaitResult) {
-            return (await this.sdk.rpc.chain.getTransactionResult(hash, {
-                timeout: 300 * 1000
-            })) as boolean;
-        }
+        return this.sdk.rpc.chain.sendSignedTransaction(tx);
     }
 
     public async sendPayTx(options?: {
         seq?: number;
-        awaitResult?: boolean;
         recipient?: PlatformAddress | string;
         quantity?: number;
         secret?: any;
@@ -538,7 +507,6 @@ export default class CodeChain {
     }): Promise<SignedTransaction> {
         const {
             seq = (await this.sdk.rpc.chain.getSeq(faucetAddress)) || 0,
-            awaitResult = true,
             recipient = "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
             quantity = 0,
             secret = faucetSecret,
@@ -554,15 +522,7 @@ export default class CodeChain {
                 fee,
                 seq
             });
-        const hash = await this.sdk.rpc.chain.sendSignedTransaction(tx);
-        if (awaitResult) {
-            await this.sdk.rpc.chain.getTransactionResult(hash, {
-                timeout: 300 * 1000
-            });
-            return (await this.sdk.rpc.chain.getTransaction(
-                hash
-            )) as SignedTransaction;
-        }
+        await this.sdk.rpc.chain.sendSignedTransaction(tx);
         return tx;
     }
 
