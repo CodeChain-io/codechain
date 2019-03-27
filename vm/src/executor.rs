@@ -370,10 +370,10 @@ pub trait ChainTimeInfo {
     fn best_block_timestamp(&self) -> u64;
 
     /// Get the block height of the transaction.
-    fn transaction_block_age(&self, hash: &H256) -> Option<u64>;
+    fn transaction_block_age(&self, tracker: &H256) -> Option<u64>;
 
     /// Get the how many seconds elapsed since transaction is confirmed, according to block timestamp.
-    fn transaction_time_age(&self, hash: &H256) -> Option<u64>;
+    fn transaction_time_age(&self, tracker: &H256) -> Option<u64>;
 }
 
 #[cfg(test)]

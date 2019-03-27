@@ -589,8 +589,8 @@ impl TransactionInfo for Client {
         self.transaction_address(id).map(|addr| addr.block_hash)
     }
 
-    fn transaction_header(&self, hash: &H256) -> Option<::encoded::Header> {
-        self.transaction_addresses(hash)
+    fn transaction_header(&self, tracker: &H256) -> Option<::encoded::Header> {
+        self.transaction_addresses(tracker)
             .and_then(|addr| {
                 addr.into_iter()
                     .find(|addr| {
@@ -848,12 +848,12 @@ impl ChainTimeInfo for Client {
         self.chain_info().best_block_timestamp
     }
 
-    fn transaction_block_age(&self, hash: &H256) -> Option<u64> {
-        self.transaction_block_number(hash).map(|block_number| self.chain_info().best_block_number - block_number)
+    fn transaction_block_age(&self, tracker: &H256) -> Option<u64> {
+        self.transaction_block_number(tracker).map(|block_number| self.chain_info().best_block_number - block_number)
     }
 
-    fn transaction_time_age(&self, hash: &H256) -> Option<u64> {
-        self.transaction_block_timestamp(hash)
+    fn transaction_time_age(&self, tracker: &H256) -> Option<u64> {
+        self.transaction_block_timestamp(tracker)
             .map(|block_timestamp| self.chain_info().best_block_timestamp - block_timestamp)
     }
 }
