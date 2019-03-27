@@ -16,7 +16,7 @@ Although CCVM itself doesn’t have any type notations, some instructions treat 
 ### Byte array -> Integer:
 
 * A byte array MUST fit in 8 bytes.
-* A byte array is decoded with little-endian byte ordering.
+* A byte array is decoded with big-endian byte ordering.
 * All items are decoded as an unsigned integer.
 * An empty array is decoded as a 0 in an integer.
 
@@ -108,6 +108,6 @@ The specification about the tag is [here](Tag-encoding.md)
    - 2: BlockAge
    - 3: Time
    - 4: TimeAge
- 2. Pop one more item from stack, which is the value of the timelock. It must be a big-endian encoded, 64-bit unsigned integer. The script will fail if the length of the item exceeds 8.
+ 2. Pop one more item from stack, which is the value of the timelock. It must be a 64-bit unsigned integer. The script will fail if the length of the item exceeds 8.
  2. Check the condition given the type and the value referring to the block number and the timestamp of the best block. See the `Timelock` section in [Transaction](Transaction.md) for more details.
  3. Push true if the condition is met, false otherwise.
