@@ -300,7 +300,6 @@ export class Mock {
         ]);
         const transactionsRoot = new H256("45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0");
         const stateRoot = new H256("09f943122bfbb85adda8209ba72514374f71826fd874e08855b64bc95498cb02");
-        const resultsRoot = new H256("45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0");
         const score = new U256(131072);
         const seal: any[] = [];
         const header = new Header(
@@ -311,7 +310,6 @@ export class Mock {
             extraData,
             transactionsRoot,
             stateRoot,
-            resultsRoot,
             score,
             seal
         );
@@ -327,7 +325,6 @@ export class Mock {
         const extraData = Buffer.alloc(0);
         const transactionsRoot = new H256("45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0");
         const stateRoot = new H256("09f943122bfbb85adda8209ba72514374f71826fd874e08855b64bc95498cb02");
-        const resultsRoot = new H256("45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0");
         const score = new U256(999999999999999);
         const seal: any[] = [];
         const header = new Header(
@@ -338,7 +335,6 @@ export class Mock {
             extraData,
             transactionsRoot,
             stateRoot,
-            resultsRoot,
             score,
             seal
         );
@@ -354,7 +350,6 @@ export class Mock {
         const extraData = Buffer.alloc(0);
         const transactionsRoot = new H256("45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0");
         const stateRoot = new H256("09f943122bfbb85adda8209ba72514374f71826fd874e08855b64bc95498cb02");
-        const resultsRoot = new H256("45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0");
         const score = new U256(999999999999999);
         const seal: any[] = [];
         const header = new Header(
@@ -365,7 +360,6 @@ export class Mock {
             extraData,
             transactionsRoot,
             stateRoot,
-            resultsRoot,
             score,
             seal
         );

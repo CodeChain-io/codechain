@@ -35,7 +35,7 @@ describe("Sealing test", function() {
 
     it("stopSealing then startSealing", async function() {
         await node.sdk.rpc.devel.stopSealing();
-        await node.sendPayTx({ awaitResult: false });
+        await node.sendPayTx();
         expect(await node.getBestBlockNumber()).to.equal(0);
         await node.sdk.rpc.devel.startSealing();
         expect(await node.getBestBlockNumber()).to.equal(1);
@@ -60,13 +60,13 @@ describe("Future queue", function() {
     it("all pending transactions must be mined", async function() {
         const seq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
 
-        await node.sendPayTx({ awaitResult: false, seq: seq + 3 });
+        await node.sendPayTx({ seq: seq + 3 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
-        await node.sendPayTx({ awaitResult: false, seq: seq + 2 });
+        await node.sendPayTx({ seq: seq + 2 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
-        await node.sendPayTx({ awaitResult: false, seq: seq + 1 });
+        await node.sendPayTx({ seq: seq + 1 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
-        await node.sendPayTx({ awaitResult: false, seq: seq });
+        await node.sendPayTx({ seq: seq });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(
             seq + 4
         );
@@ -120,13 +120,13 @@ describe("Timelock", function() {
         });
         await node.signTransactionInput(tx, 0);
         const { fee } = options;
-        await node.sendAssetTransaction(tx, { awaitResult: false, fee });
+        await node.sendAssetTransaction(tx, { fee });
         return tx.tracker();
     }
 
     describe("The current items should move to the future queue", async function() {
         it("Minted at block 1, send transfer without timelock and then replace it with Timelock::Block(3)", async function() {
-            const { asset } = await node.mintAsset({ supply: 1 });
+            const asset = await node.mintAsset({ supply: 1 });
             await node.sdk.rpc.devel.stopSealing();
             const txhash1 = await sendTransferTx(asset, undefined);
             const txhash2 = await sendTransferTx(

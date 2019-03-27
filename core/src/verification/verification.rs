@@ -235,11 +235,5 @@ pub fn verify_block_final(expected: &Header, got: &Header) -> Result<(), Error> 
             found: *got.state_root(),
         })))
     }
-    if expected.results_root() != got.results_root() {
-        return Err(From::from(BlockError::InvalidResultsRoot(Mismatch {
-            expected: *expected.results_root(),
-            found: *got.results_root(),
-        })))
-    }
     Ok(())
 }

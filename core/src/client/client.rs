@@ -27,7 +27,6 @@ use cstate::{
     ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
-use ctypes::invoice::{BlockInvoices, Invoice};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
@@ -47,9 +46,7 @@ use super::{
     TextClient, TransactionInfo,
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
-use crate::blockchain::{
-    BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress, TransactionAddresses,
-};
+use crate::blockchain::{BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress};
 use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::{BlockImportError, Error, ImportError, SchemeError};
@@ -192,20 +189,8 @@ impl Client {
         }
     }
 
-    fn transaction_addresses(&self, tracker: &H256) -> Option<TransactionAddresses> {
-        self.block_chain().transaction_addresses_by_tracker(tracker)
-    }
-
-    fn transaction_address_of_successful_transaction(&self, hash: &H256) -> Option<TransactionAddress> {
-        self.transaction_addresses(hash).and_then(|transaction_address| {
-            transaction_address
-                .into_iter()
-                .filter(|transaction_address| {
-                    self.invoice(&(*transaction_address).into()).map_or(false, |invoice| invoice == Invoice::Success)
-                })
-                .take(1)
-                .next()
-        })
+    fn transaction_addresses(&self, tracker: &H256) -> Option<TransactionAddress> {
+        self.block_chain().transaction_address_by_tracker(tracker)
     }
 
     /// Import transactions from the IO queue
@@ -376,7 +361,7 @@ impl AssetClient for Client {
         shard_id: ShardId,
         block_id: BlockId,
     ) -> TrieResult<Option<bool>> {
-        let tx_address = match self.transaction_address_of_successful_transaction(&tracker) {
+        let tx_address = match self.transaction_addresses(&tracker) {
             Some(itx_address) => itx_address,
             None => return Ok(None),
         };
@@ -392,8 +377,7 @@ impl AssetClient for Client {
             Some(_) => {}
         }
 
-        let localized =
-            self.transactions_by_tracker(&tracker).last().cloned().expect("There is a successful transaction");
+        let localized = self.transaction_by_tracker(&tracker).expect("There is a successful transaction");
         let transaction = if let Some(tx) = Option::<ShardTransaction>::from(localized.action.clone()) {
             tx
         } else {
@@ -419,9 +403,9 @@ impl TextClient for Client {
 }
 
 impl ExecuteClient for Client {
-    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> StateResult<Invoice> {
+    fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> StateResult<()> {
         let mut state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
-        Ok(state.apply_shard_transaction(transaction, sender, &[], self)?)
+        state.apply_shard_transaction(transaction, sender, &[], self)
     }
 
     fn execute_vm(
@@ -577,11 +561,6 @@ impl BlockInfo for Client {
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block(&hash))
     }
-
-    fn block_invoices(&self, id: &BlockId) -> Option<BlockInvoices> {
-        let chain = self.block_chain();
-        Self::block_hash(&chain, id).and_then(|hash| chain.block_invoices(&hash))
-    }
 }
 
 impl TransactionInfo for Client {
@@ -590,16 +569,7 @@ impl TransactionInfo for Client {
     }
 
     fn transaction_header(&self, tracker: &H256) -> Option<::encoded::Header> {
-        self.transaction_addresses(tracker)
-            .and_then(|addr| {
-                addr.into_iter()
-                    .find(|addr| {
-                        let invoice = self.invoice(&TransactionId::from(*addr)).expect("Transaction must exist");
-                        invoice == Invoice::Success
-                    })
-                    .map(|hash| hash.block_hash)
-            })
-            .and_then(|hash| self.block_header(&hash.into()))
+        self.transaction_addresses(tracker).map(|addr| addr.block_hash).and_then(|hash| self.block_header(&hash.into()))
     }
 }
 
@@ -700,27 +670,20 @@ impl BlockChainClient for Client {
         self.transaction_address(id).and_then(|address| chain.transaction(&address))
     }
 
-    fn invoice(&self, id: &TransactionId) -> Option<Invoice> {
+    fn error_hint(&self, hash: &H256) -> Option<String> {
         let chain = self.block_chain();
-        self.transaction_address(id).and_then(|address| chain.invoice(&address))
+        chain.error_hint(hash)
     }
 
-    fn transactions_by_tracker(&self, tracker: &H256) -> Vec<LocalizedTransaction> {
+    fn transaction_by_tracker(&self, tracker: &H256) -> Option<LocalizedTransaction> {
         let chain = self.block_chain();
-        let address = self.transaction_addresses(tracker).unwrap_or_default();
-        address.into_iter().map(Into::into).filter_map(|address| chain.transaction(&address)).collect()
+        let address = self.transaction_addresses(tracker);
+        address.and_then(|address| chain.transaction(&address))
     }
 
-    fn invoices_by_tracker(&self, tracker: &H256) -> Vec<Invoice> {
-        self.transaction_addresses(tracker)
-            .map(|address| {
-                address
-                    .into_iter()
-                    .map(Into::into)
-                    .map(|address| self.invoice(&address).expect("The invoice must exist"))
-                    .collect()
-            })
-            .unwrap_or_default()
+    fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)> {
+        let chain = self.block_chain();
+        chain.error_hints_by_tracker(tracker)
     }
 }
 

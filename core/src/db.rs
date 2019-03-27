@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -33,8 +33,10 @@ pub const COL_BODIES: Option<u32> = Some(2);
 pub const COL_EXTRA: Option<u32> = Some(3);
 /// Column for MemPool Data
 pub const COL_MEMPOOL: Option<u32> = Some(4);
+/// Column for Transaction error hints
+pub const COL_ERROR_HINT: Option<u32> = Some(5);
 /// Number of columns in DB
-pub const NUM_COLUMNS: Option<u32> = Some(5);
+pub const NUM_COLUMNS: Option<u32> = Some(6);
 
 /// Modes for updating caches.
 #[derive(Clone, Copy)]

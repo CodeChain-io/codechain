@@ -154,7 +154,7 @@ mod tests {
         let db = scheme.ensure_genesis_state(db).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![], false).unwrap();
-        let b = b.close(*genesis_header.transactions_root(), *genesis_header.results_root()).unwrap();
+        let b = b.close(*genesis_header.transactions_root()).unwrap();
         if let Some(seal) = scheme.engine.generate_seal(b.block(), &genesis_header).seal_fields() {
             (b, seal)
         } else {

@@ -17,7 +17,6 @@
 use std::io::Write;
 use std::ops::{self, Add, AddAssign, Deref, Sub, SubAssign};
 
-use ctypes::invoice::BlockInvoices;
 use ctypes::BlockNumber;
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 use primitives::{H256, H264, U256};
@@ -37,12 +36,10 @@ enum ExtrasIndex {
     ParcelAddress = 2,
     /// Transaction address index
     TransactionAddress = 3,
-    /// Block invoices index
-    BlockInvoices = 4,
     /// Epoch transition data index.
-    EpochTransitions = 5,
+    EpochTransitions = 4,
     /// Pending epoch transition data index.
-    PendingEpochTransition = 6,
+    PendingEpochTransition = 5,
 }
 
 fn with_index(hash: &H256, i: ExtrasIndex) -> H264 {
@@ -90,14 +87,6 @@ impl Key<TransactionAddress> for H256 {
 
     fn key(&self) -> H264 {
         with_index(self, ExtrasIndex::ParcelAddress)
-    }
-}
-
-impl Key<BlockInvoices> for H256 {
-    type Target = H264;
-
-    fn key(&self) -> H264 {
-        with_index(self, ExtrasIndex::BlockInvoices)
     }
 }
 

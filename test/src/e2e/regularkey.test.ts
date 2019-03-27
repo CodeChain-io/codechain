@@ -18,6 +18,7 @@ import { expect } from "chai";
 import "mocha";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
+import { faucetAddress } from "../helper/constants";
 
 describe("solo - 1 node", function() {
     let node: CodeChain;
@@ -79,20 +80,16 @@ describe("solo - 1 node", function() {
     });
 
     it("Try to use the master key instead of the regular key", async function() {
-        try {
-            await node.sendPayTx({ secret: privKey });
-            expect.fail("It must fail");
-        } catch (e) {
-            expect(e).is.similarTo(ERROR.NOT_ENOUGH_BALANCE);
-        }
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        const blockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        await node.sdk.rpc.devel.stopSealing();
+        const hash = await node.setRegularKey(pubKey, { seq });
+        const tx = await node.sendPayTx({ seq: seq + 1 });
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
 
-        await node.setRegularKey(pubKey);
-        const tx = await node.sendPayTx({ awaitResult: false });
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(tx.hash(), {
-                timeout: 300 * 1000
-            })
-        ).to.be.false;
+        expect(await node.sdk.rpc.chain.getErrorHint(hash)).be.null;
+        expect(await node.sdk.rpc.chain.getErrorHint(tx.hash())).not.be.null;
     });
 
     it("Try to use the key of another account as its regular key", async function() {
@@ -102,8 +99,23 @@ describe("solo - 1 node", function() {
             { networkId: "tc" }
         ).toString();
 
-        await node.sendPayTx({ quantity: 5, recipient: address });
-        expect(await node.setRegularKey(pubKey)).to.be.false;
+        await node.sdk.rpc.devel.stopSealing();
+        const blockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        const tx1 = await node.sendPayTx({
+            quantity: 5,
+            recipient: address,
+            seq
+        });
+        const hash2 = await node.setRegularKey(pubKey, { seq: seq + 1 });
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
+
+        const block = (await node.sdk.rpc.chain.getBlock(blockNumber + 1))!;
+        expect(block).not.be.null;
+        expect(block.transactions.length).equal(1);
+        expect(block.transactions[0].hash().value).equal(tx1.hash().value);
+        expect(await node.sdk.rpc.chain.getErrorHint(hash2)).not.be.null;
     }).timeout(10_000);
 
     it("Try to use the regulary key already used in another account", async function() {
@@ -116,13 +128,27 @@ describe("solo - 1 node", function() {
 
         await node.sendPayTx({ quantity: 100, recipient: address });
         const seq = await node.sdk.rpc.chain.getSeq(address);
-        expect(
-            await node.setRegularKey(pubKey, {
-                seq,
-                secret: newPrivKey
-            })
-        ).to.be.true;
-        expect(await node.setRegularKey(pubKey)).to.be.false;
+
+        const blockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+
+        await node.sdk.rpc.devel.stopSealing();
+        const hash1 = await node.setRegularKey(pubKey, {
+            seq,
+            secret: newPrivKey
+        });
+        const hash2 = await node.setRegularKey(pubKey, {
+            seq: seq + 1
+        });
+        await node.sdk.rpc.devel.startSealing();
+
+        await node.waitBlockNumber(blockNumber);
+
+        const block = (await node.sdk.rpc.chain.getBlock(blockNumber + 1))!;
+        expect(block).not.be.null;
+        expect(block.transactions.length).equal(1);
+        expect(block.transactions[0].hash().value).equal(hash1.value);
+
+        expect(await node.sdk.rpc.chain.getErrorHint(hash2)).not.null;
     });
 
     afterEach(async function() {

@@ -53,11 +53,7 @@ describe("CreateShard", function() {
             ])
         ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx);
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(tx.hash(), {
-                timeout: 300 * 1000
-            })
-        ).to.be.true;
+        expect(await node.sdk.rpc.chain.getTransaction(tx.hash())).not.null;
         const afterShardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
             [tx.hash(), null]
@@ -178,11 +174,7 @@ describe("CreateShard", function() {
             ])
         ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx1);
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(tx1.hash(), {
-                timeout: 300 * 1000
-            })
-        ).to.be.true;
+        expect(await node.sdk.rpc.chain.getTransaction(tx1.hash())).not.null;
         expect(
             await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
                 tx1.hash(),
@@ -200,11 +192,7 @@ describe("CreateShard", function() {
             ])
         ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx2);
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(tx2.hash(), {
-                timeout: 300 * 1000
-            })
-        ).to.be.true;
+        expect(await node.sdk.rpc.chain.getTransaction(tx2.hash())).not.null;
         expect(
             await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
                 tx2.hash(),
@@ -245,6 +233,12 @@ describe("CreateShard", function() {
         );
 
         const bobSeq: number = (await node.sdk.rpc.chain.getSeq(bobAddress))!;
+        const pay = node.sdk.core
+            .createPayTransaction({
+                recipient: aliceAddress,
+                quantity: 1
+            })
+            .sign({ secret: bobSecret, seq: bobSeq, fee: 10 });
         const mint = node.sdk.core
             .createMintAssetTransaction({
                 scheme: {
@@ -254,11 +248,15 @@ describe("CreateShard", function() {
                 },
                 recipient: await node.createP2PKHAddress()
             })
-            .sign({ secret: bobSecret, seq: bobSeq, fee: 10 });
-        await node.sdk.rpc.chain.sendSignedTransaction(mint);
+            .sign({ secret: bobSecret, seq: bobSeq + 1, fee: 10 });
 
-        expect(await node.sdk.rpc.chain.getTransactionResult(mint.hash())).to.be
-            .false;
+        await node.sdk.rpc.devel.stopSealing();
+        const blockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        await node.sdk.rpc.chain.sendSignedTransaction(pay);
+        await node.sdk.rpc.chain.sendSignedTransaction(mint);
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
+
         const hint = await node.sdk.rpc.chain.getErrorHint(mint.hash());
         expect(hint).includes("permission");
     });
@@ -299,8 +297,7 @@ describe("CreateShard", function() {
             .sign({ secret: aliceSecret, seq: aliceSeq, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(mint);
 
-        expect(await node.sdk.rpc.chain.getTransactionResult(mint.hash())).to.be
-            .true;
+        expect(await node.sdk.rpc.chain.getTransaction(mint.hash())).not.null;
         const hint = await node.sdk.rpc.chain.getErrorHint(mint.hash());
         expect(hint).to.be.null;
     });
@@ -338,14 +335,27 @@ describe("CreateShard", function() {
         });
         const signedMint1 = mint1.sign({
             secret: bobSecret,
-            seq: bobSeq,
+            seq: bobSeq + 1,
             fee: 30
         });
-        await node.sdk.rpc.chain.sendSignedTransaction(signedMint1);
 
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(signedMint1.hash())
-        ).to.be.false;
+        const blockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
+        await node.sdk.rpc.devel.stopSealing();
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({
+                    recipient: aliceAddress,
+                    quantity: 1
+                })
+                .sign({
+                    secret: bobSecret,
+                    seq: bobSeq,
+                    fee: 10
+                })
+        );
+        await node.sdk.rpc.chain.sendSignedTransaction(signedMint1);
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
         expect(
             await node.sdk.rpc.chain.getTransactionResultsByTracker(
                 mint1.tracker()
@@ -381,9 +391,8 @@ describe("CreateShard", function() {
         });
         await node.sdk.rpc.chain.sendSignedTransaction(signedMint2);
 
-        expect(
-            await node.sdk.rpc.chain.getTransactionResult(signedMint2.hash())
-        ).to.be.true;
+        expect(await node.sdk.rpc.chain.getTransaction(signedMint2.hash())).not
+            .null;
         expect(
             await node.sdk.rpc.chain.getTransactionResultsByTracker(
                 mint2.tracker()

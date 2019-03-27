@@ -31,7 +31,7 @@ import {
     validator2Address,
     validator3Address
 } from "../helper/constants";
-import { PromiseExpect } from "../helper/promise";
+import { PromiseExpect, wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
 const RLP = require("rlp");
@@ -146,10 +146,15 @@ describe("Staking", function() {
         receiverAddress: PlatformAddress;
         quantity: number;
         fee?: number;
-    }): Promise<boolean> {
+        seq?: number;
+    }): Promise<H256> {
         const { fee = 10 } = params;
+        const seq =
+            params.seq == null
+                ? await nodes[0].sdk.rpc.chain.getSeq(params.senderAddress)
+                : params.seq;
 
-        const hash = await promiseExpect.shouldFulfill(
+        return promiseExpect.shouldFulfill(
             "sendSignTransaction",
             nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 nodes[0].sdk.core
@@ -165,20 +170,11 @@ describe("Staking", function() {
                     })
                     .sign({
                         secret: params.senderSecret,
-                        seq: await nodes[0].sdk.rpc.chain.getSeq(
-                            params.senderAddress
-                        ),
-                        fee: fee
+                        seq,
+                        fee
                     })
             )
         );
-
-        return (await promiseExpect.shouldFulfill(
-            "getTransactionResult",
-            nodes[0].sdk.rpc.chain.getTransactionResult(hash, {
-                timeout: 120 * 1000
-            })
-        ))!;
     }
 
     async function delegateToken(params: {
@@ -187,10 +183,15 @@ describe("Staking", function() {
         receiverAddress: PlatformAddress;
         quantity: number;
         fee?: number;
-    }): Promise<boolean> {
+        seq?: number;
+    }): Promise<H256> {
         const { fee = 10 } = params;
+        const seq =
+            params.seq == null
+                ? await nodes[0].sdk.rpc.chain.getSeq(params.senderAddress)
+                : params.seq;
 
-        const hash = await promiseExpect.shouldFulfill(
+        return promiseExpect.shouldFulfill(
             "sendSignTransaction",
             nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 nodes[0].sdk.core
@@ -206,20 +207,11 @@ describe("Staking", function() {
                     })
                     .sign({
                         secret: params.senderSecret,
-                        seq: await nodes[0].sdk.rpc.chain.getSeq(
-                            params.senderAddress
-                        ),
-                        fee: fee
+                        seq,
+                        fee
                     })
             )
         );
-
-        return (await promiseExpect.shouldFulfill(
-            "getTransactionResult",
-            nodes[0].sdk.rpc.chain.getTransactionResult(hash, {
-                timeout: 120 * 1000
-            })
-        ))!;
     }
 
     it("should have proper initial stake tokens", async function() {
@@ -240,14 +232,15 @@ describe("Staking", function() {
     it("should send stake tokens", async function() {
         await connectEachOther();
 
-        const result = await sendStakeToken({
+        const hash = await sendStakeToken({
             senderAddress: faucetAddress,
             senderSecret: faucetSecret,
             receiverAddress: validator0Address,
             quantity: 100
         });
-
-        expect(result).to.be.true;
+        while ((await nodes[0].sdk.rpc.chain.getTransaction(hash)) == null) {
+            await wait(500);
+        }
 
         const { amounts, stakeholders } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
@@ -272,14 +265,15 @@ describe("Staking", function() {
     it("can delegate tokens", async function() {
         await connectEachOther();
 
-        const result = await delegateToken({
+        const hash = await delegateToken({
             senderAddress: faucetAddress,
             senderSecret: faucetSecret,
             receiverAddress: validator0Address,
             quantity: 100
         });
-
-        expect(result).to.be.true;
+        while ((await nodes[0].sdk.rpc.chain.getTransaction(hash)) == null) {
+            await wait(500);
+        }
 
         const { amounts } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
@@ -306,40 +300,73 @@ describe("Staking", function() {
 
     it("cannot delegate to non-validator", async function() {
         await connectEachOther();
+        // give some ccc to pay fee
+        const pay1 = await nodes[0].sendPayTx({
+            recipient: validator0Address,
+            quantity: 100000
+        });
+
+        while (
+            (await nodes[0].sdk.rpc.chain.getTransaction(pay1.hash())) == null
+        ) {
+            await wait(500);
+        }
         // give some ccs to delegate.
-        await sendStakeToken({
+
+        const hash1 = await sendStakeToken({
             senderAddress: faucetAddress,
             senderSecret: faucetSecret,
             receiverAddress: validator0Address,
             quantity: 200
         });
-        // give some ccc to pay fee
-        await nodes[0].sendPayTx({
-            recipient: validator0Address,
-            quantity: 100000
+        while ((await nodes[0].sdk.rpc.chain.getTransaction(hash1)) == null) {
+            await wait(500);
+        }
+
+        const blockNumber = await nodes[0].getBestBlockNumber();
+        const seq = await nodes[0].sdk.rpc.chain.getSeq(validator0Address);
+        const pay = await nodes[0].sendPayTx({
+            recipient: faucetAddress,
+            secret: validator0Secret,
+            quantity: 1,
+            seq
         });
 
         // delegate
-        const result = await delegateToken({
+        const hash = await delegateToken({
             senderAddress: validator0Address,
             senderSecret: validator0Secret,
             receiverAddress: faucetAddress,
-            quantity: 100
+            quantity: 100,
+            seq: seq + 1
         });
+        await nodes[0].waitBlockNumber(blockNumber + 1);
 
-        expect(result).to.be.false;
+        while (
+            (await nodes[0].sdk.rpc.chain.getTransaction(pay.hash())) == null
+        ) {
+            await wait(500);
+        }
+        const err0 = await nodes[0].sdk.rpc.chain.getErrorHint(hash);
+        const err1 = await nodes[1].sdk.rpc.chain.getErrorHint(hash);
+        const err2 = await nodes[2].sdk.rpc.chain.getErrorHint(hash);
+        const err3 = await nodes[3].sdk.rpc.chain.getErrorHint(hash);
+        expect(err0 || err1 || err2 || err3).not.null;
     });
 
     it("get fee in proportion to holding stakes", async function() {
         await connectEachOther();
         // faucet: 100000
-        await sendStakeToken({
+        const hash = await sendStakeToken({
             senderAddress: faucetAddress,
             senderSecret: faucetSecret,
             receiverAddress: validator0Address,
             quantity: 50000,
             fee: 1000
         });
+        while ((await nodes[0].sdk.rpc.chain.getTransaction(hash)) == null) {
+            await wait(500);
+        }
         // faucet: 50000, val0: 50000,
 
         const balance = await nodes[0].sdk.rpc.chain.getBalance(
@@ -351,21 +378,27 @@ describe("Staking", function() {
     it("get fee even if it delegated stakes to other", async function() {
         await connectEachOther();
         // faucet: 100000
-        await sendStakeToken({
+        const hash1 = await sendStakeToken({
             senderAddress: faucetAddress,
             senderSecret: faucetSecret,
             receiverAddress: validator0Address,
             quantity: 50000,
             fee: 1000
         });
+        while ((await nodes[0].sdk.rpc.chain.getTransaction(hash1)) == null) {
+            await wait(500);
+        }
         // faucet: 50000, val0: 50000,
-        await delegateToken({
+        const hash2 = await delegateToken({
             senderAddress: validator0Address,
             senderSecret: validator0Secret,
             receiverAddress: validator1Address,
             quantity: 50000,
             fee: 100
         });
+        while ((await nodes[0].sdk.rpc.chain.getTransaction(hash2)) == null) {
+            await wait(500);
+        }
         // faucet: 50000, val0: 0 (delegated 50000 to val1), val1: 0
         const balance = await nodes[0].sdk.rpc.chain.getBalance(
             validator0Address

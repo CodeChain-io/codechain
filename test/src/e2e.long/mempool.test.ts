@@ -34,8 +34,8 @@ describe("Memory pool size test", function() {
 
     it("To self", async function() {
         const sending = [];
-        for (let i = 0; i < sizeLimit * 2; i++) {
-            sending.push(nodeA.sendPayTx({ seq: i, awaitResult: false }));
+        for (let seq = 0; seq < sizeLimit * 2; seq++) {
+            sending.push(nodeA.sendPayTx({ seq }));
         }
         await Promise.all(sending);
         const pendingTransactions = await nodeA.sdk.rpc.chain.getPendingTransactions();
@@ -59,10 +59,9 @@ describe("Memory pool size test", function() {
         });
 
         it("More than limit", async function() {
-            for (let i = 0; i < sizeLimit * 2; i++) {
+            for (let seq = 0; seq < sizeLimit * 2; seq++) {
                 await nodeA.sendPayTx({
-                    seq: i,
-                    awaitResult: false
+                    seq
                 });
             }
 
@@ -79,11 +78,10 @@ describe("Memory pool size test", function() {
 
         it("Rejected by limit and reaccepted", async function() {
             const sent = [];
-            for (let i = 0; i < sizeLimit * 2; i++) {
+            for (let seq = 0; seq < sizeLimit * 2; seq++) {
                 sent.push(
                     await nodeA.sendPayTx({
-                        seq: i,
-                        awaitResult: false
+                        seq
                     })
                 );
             }

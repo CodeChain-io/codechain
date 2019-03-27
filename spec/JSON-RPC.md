@@ -32,7 +32,6 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - author: `PlatformAddress`
  - extraData: `any[]`
  - hash: `H256`
- - resultsRoot: `H256`
  - number: `number`
  - transactions: `Transaction[]`
  - transactionsRoot: `H256`
@@ -289,7 +288,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_sendSignedTransaction](#chain_sendsignedtransaction)
  * [chain_getTransaction](#chain_gettransaction)
  * [chain_getTransactionResult](#chain_gettransactionresult)
- * [chain_getTransactionsByTracker](#chain_gettransactionsbytracker)
+ * [chain_getTransactionByTracker](#chain_gettransactionbytracker)
  * [chain_getTransactionResultsByTracker](#chain_getTransactionResultsByTracker)
  * [chain_getAssetSchemeByTracker](#chain_getassetschemebytracker)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
@@ -558,7 +557,6 @@ Errors: `Invalid Params`
 
     ],
     "hash":"0x0e9cbbe0ecc774de3b5d05827ffb5c541bc7b7ff63de253d17272cf0fea1b7af",
-    "resultsRoot":"0x6db236c944eda064237e88be9cddf7766ce877fe0c4414ac5999f4f5429750fd",
     "number":5,
     "transactions":[
       {
@@ -621,7 +619,6 @@ Errors: `Invalid Params`
 
     ],
     "hash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
-    "resultsRoot":"0x3a14d04383882243a684a6b0e779905f7883b12b5fb3ebf738facfcd2095b77a",
     "number":5,
     "transactions":[
       {
@@ -817,14 +814,14 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getTransactionsByTracker
-Gets transactions with the given tracker.
+## chain_getTransactionByTracker
+Gets transaction with the given tracker.
 
 ### Params
  1. tracker - `H256`
 
 ### Returns
-`Transaction[]`
+`Transaction`
 
 Errors: `Invalid Params`
 
@@ -840,7 +837,7 @@ Errors: `Invalid Params`
 ```
 {
     "jsonrpc": "2.0",
-    "result": [{
+    "result": {
         "action": {
           "type":"pay",
           "amount":"0xa",
@@ -855,7 +852,7 @@ Errors: `Invalid Params`
         "seq": 4,
         "transactionIndex": 0,
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
-    }],
+    },
     "id": null,
 }
 ```
@@ -1494,7 +1491,7 @@ Executes the transactions and returns whether the execution is successful.
  2. sender: `PlatformAddress`
 
 ### Returns
- `boolean`
+ `null` | `string`
 
 Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 
@@ -1510,9 +1507,7 @@ Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 ```
 {
   "jsonrpc":"2.0",
-  "result":[
-    true
-  ],
+  "result":null,
   "id":null
 }
 ```

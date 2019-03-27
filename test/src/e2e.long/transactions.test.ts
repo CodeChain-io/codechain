@@ -64,9 +64,8 @@ describe("transactions", function() {
                     scheme,
                     recipient
                 });
-                const results = await node.sendAssetTransaction(tx);
-                expect(results!.length).to.equal(1);
-                expect(results![0]).to.be.true;
+                const hash = await node.sendAssetTransaction(tx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
         });
 
@@ -126,7 +125,7 @@ describe("transactions", function() {
         it("can increase total supply", async function() {
             const amount = 100;
             const increasedAmount = 300;
-            const { asset } = await node.mintAsset({
+            const asset = await node.mintAsset({
                 supply: amount,
                 registrar: faucetAddress
             });
@@ -137,9 +136,8 @@ describe("transactions", function() {
                 supply: increasedAmount
             });
 
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.true;
+            const hash = await node.sendAssetTransaction(tx);
+            expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
 
             const assetScheme = await node.sdk.rpc.chain.getAssetSchemeByType(
                 asset.assetType,
@@ -162,7 +160,7 @@ describe("transactions", function() {
         it("cannot increase without registrar", async function() {
             const amount = 100;
             const increasedAmount = 300;
-            const { asset } = await node.mintAsset({
+            const asset = await node.mintAsset({
                 supply: amount
             });
             const tx = node.sdk.core.createIncreaseAssetSupplyTransaction({
@@ -172,9 +170,16 @@ describe("transactions", function() {
                 supply: increasedAmount
             });
 
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.false;
+            await node.sdk.rpc.devel.stopSealing();
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const blockNumber = await node.getBestBlockNumber();
+            const pay = await node.sendPayTx({ seq, quantity: 1 });
+            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
 
             const additionalAsset = await node.sdk.rpc.chain.getAsset(
                 tx.tracker(),
@@ -187,7 +192,7 @@ describe("transactions", function() {
         it("outsider cannot increase", async function() {
             const amount = 100;
             const increasedAmount = 300;
-            const { asset } = await node.mintAsset({
+            const asset = await node.mintAsset({
                 supply: amount,
                 registrar: faucetAddress
             });
@@ -198,15 +203,22 @@ describe("transactions", function() {
                 supply: increasedAmount
             });
 
-            await node.sendTransaction(tx, { account: outsider });
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const pay = await node.sendPayTx({ quantity: 1 });
+            const hash = await node.sendTransaction(tx, { account: outsider });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
             const results = await node.sdk.rpc.chain.getTransactionResultsByTracker(
                 tx.tracker(),
                 {
                     timeout: 300 * 1000
                 }
             );
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.false;
+            expect(results).deep.equal([false]);
 
             const additionalAsset = await node.sdk.rpc.chain.getAsset(
                 tx.tracker(),
@@ -217,7 +229,7 @@ describe("transactions", function() {
         });
 
         it("cannot be overflowed", async function() {
-            const { asset } = await node.mintAsset({
+            const asset = await node.mintAsset({
                 supply: U64.MAX_VALUE,
                 registrar: faucetAddress
             });
@@ -228,9 +240,16 @@ describe("transactions", function() {
                 supply: 1
             });
 
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.false;
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const pay = await node.sendPayTx({ seq, quantity: 1 });
+            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
 
             const additionalAsset = await node.sdk.rpc.chain.getAsset(
                 tx.tracker(),
@@ -246,7 +265,7 @@ describe("transactions", function() {
         const amount = 100;
 
         beforeEach(async function() {
-            const { asset } = await node.mintAsset({ supply: amount });
+            const asset = await node.mintAsset({ supply: amount });
             input = asset;
         });
 
@@ -266,9 +285,9 @@ describe("transactions", function() {
                     }))
                 );
                 await node.signTransactionInput(tx, 0);
-                const results = await node.sendAssetTransaction(tx);
-                expect(results!.length).to.equal(1);
-                expect(results![0]).to.be.true;
+
+                const hash = await node.sendAssetTransaction(tx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
         });
 
@@ -365,9 +384,9 @@ describe("transactions", function() {
         const amount2 = 20;
 
         beforeEach(async function() {
-            let { asset } = await node.mintAsset({ supply: amount1 });
+            let asset = await node.mintAsset({ supply: amount1 });
             input1 = asset;
-            ({ asset } = await node.mintAsset({ supply: amount2 }));
+            asset = await node.mintAsset({ supply: amount2 });
             input2 = asset;
         });
 
@@ -406,15 +425,14 @@ describe("transactions", function() {
                 );
                 await node.signTransactionInput(tx, 0);
                 await node.signTransactionInput(tx, 1);
-                const results = await node.sendAssetTransaction(tx);
-                expect(results!.length).to.equal(1);
-                expect(results![0]).to.be.true;
+                const hash = await node.sendAssetTransaction(tx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
         });
     });
 
     it("AssetTransfer - Nonexistent assetType", async function() {
-        const { asset } = await node.mintAsset({ supply: 1 });
+        const asset = await node.mintAsset({ supply: 1 });
         const assetType = new H160("0000000000000000000000000000000000123456");
         const transferAsset = node.sdk.core.createTransferAssetTransaction();
         const input = node.sdk.core.createAssetTransferInput({
@@ -437,12 +455,25 @@ describe("transactions", function() {
             recipient
         });
         await node.signTransactionInput(transferAsset, 0);
-        const results = await node.sendAssetTransaction(transferAsset);
-        expect(results).deep.equal([false]);
+        await node.sdk.rpc.devel.stopSealing();
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        const blockNumber = await node.getBestBlockNumber();
+        const pay = await node.sendPayTx({
+            seq,
+            quantity: 1,
+            recipient: aliceAddress
+        });
+        const hash = await node.sendAssetTransaction(transferAsset, {
+            seq: seq + 1
+        });
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
+        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
+        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
     });
 
     it("Burn successful", async function() {
-        const { asset } = await node.mintAsset({ supply: 1 });
+        const asset = await node.mintAsset({ supply: 1 });
         const tx1 = node.sdk.core.createTransferAssetTransaction();
         tx1.addInputs(asset);
         tx1.addOutputs({
@@ -452,17 +483,15 @@ describe("transactions", function() {
             quantity: 1
         });
         await node.signTransactionInput(tx1, 0);
-        const results1 = await node.sendAssetTransaction(tx1);
-        expect(results1!.length).to.equal(1);
-        expect(results1![0]).to.be.true;
+        const hash1 = await node.sendAssetTransaction(tx1);
+        expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
         const transferredAsset = tx1.getTransferredAsset(0);
         const tx2 = node.sdk.core.createTransferAssetTransaction();
         tx2.addBurns(transferredAsset);
         await node.signTransactionBurn(tx2, 0);
-        const results2 = await node.sendAssetTransaction(tx2);
-        expect(results2!.length).to.equal(1);
-        expect(results2![0]).to.be.true;
+        const hash2 = await node.sendAssetTransaction(tx2);
+        expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
         expect(
             await node.sdk.rpc.chain.getAsset(tx2.tracker(), 0, asset.shardId)
@@ -470,7 +499,7 @@ describe("transactions", function() {
     });
 
     it("Burn unsuccessful(ZeroQuantity)", async function() {
-        const { asset } = await node.mintAsset({ supply: 1 });
+        const asset = await node.mintAsset({ supply: 1 });
         const tx1 = node.sdk.core.createTransferAssetTransaction();
         tx1.addInputs(asset);
         tx1.addOutputs({
@@ -480,9 +509,8 @@ describe("transactions", function() {
             quantity: 1
         });
         await node.signTransactionInput(tx1, 0);
-        const esults = await node.sendAssetTransaction(tx1);
-        expect(esults!.length).to.equal(1);
-        expect(esults![0]).to.be.true;
+        const hash = await node.sendAssetTransaction(tx1);
+        expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
 
         const tx2 = node.sdk.core.createTransferAssetTransaction();
         const {
@@ -514,7 +542,7 @@ describe("transactions", function() {
     });
 
     it("Cannot transfer P2PKHBurn asset", async function() {
-        const { asset } = await node.mintAsset({ supply: 1 });
+        const asset = await node.mintAsset({ supply: 1 });
         const tx1 = node.sdk.core.createTransferAssetTransaction();
         tx1.addInputs(asset);
         tx1.addOutputs({
@@ -524,9 +552,8 @@ describe("transactions", function() {
             quantity: 1
         });
         await node.signTransactionInput(tx1, 0);
-        const results1 = await node.sendAssetTransaction(tx1);
-        expect(results1!.length).to.equal(1);
-        expect(results1![0]).to.be.true;
+        const hash1 = await node.sendAssetTransaction(tx1);
+        expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
         const transferredAsset = tx1.getTransferredAsset(0);
         const tx2 = node.sdk.core.createTransferAssetTransaction();
@@ -541,29 +568,48 @@ describe("transactions", function() {
             tx2.input(0)!,
             tx2.hashWithoutScript()
         );
-        const results2 = await node.sendAssetTransaction(tx2);
-        expect(results2!.length).to.equal(1);
-        expect(results2![0]).to.be.false;
+        await node.sdk.rpc.devel.stopSealing();
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        const blockNumber = await node.getBestBlockNumber();
+        const pay = await node.sendPayTx({
+            recipient: faucetAddress,
+            seq,
+            quantity: 1
+        });
+        const hash2 = await node.sendAssetTransaction(tx2, { seq: seq + 1 });
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
+        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
+        expect(await node.sdk.rpc.chain.getErrorHint(hash2)).not.null;
         expect(
             await node.sdk.rpc.chain.getAsset(tx1.tracker(), 0, asset.shardId)
         ).not.to.be.null;
+        expect(
+            await node.sdk.rpc.chain.getAsset(tx2.tracker(), 0, asset.shardId)
+        ).be.null;
     });
 
     it("Cannot burn P2PKH asset", async function() {
-        const { asset } = await node.mintAsset({ supply: 1 });
+        const asset = await node.mintAsset({ supply: 1 });
         const tx = node.sdk.core.createTransferAssetTransaction();
         tx.addBurns(asset);
         await node.signTransactionP2PKH(tx.burn(0)!, tx.hashWithoutScript());
 
-        const results = await node.sendAssetTransaction(tx);
-        expect(results!.length).to.equal(1);
-        expect(results![0]).to.be.false;
+        await node.sdk.rpc.devel.stopSealing();
+        const blockNumber = await node.getBestBlockNumber();
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        const pay = await node.sendPayTx({ seq, quantity: 1 });
+        const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+        await node.sdk.rpc.devel.startSealing();
+        await node.waitBlockNumber(blockNumber + 1);
+        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
+        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
     });
 
     describe("ScriptError", function() {
         it("Cannot transfer with invalid unlock script", async function() {
             const Opcode = Script.Opcode;
-            const { asset } = await node.mintAsset({ supply: 1 });
+            const asset = await node.mintAsset({ supply: 1 });
             const tx = node.sdk.core
                 .createTransferAssetTransaction()
                 .addInputs(asset)
@@ -575,14 +621,22 @@ describe("transactions", function() {
                 });
             tx.input(0)!.setLockScript(P2PKH.getLockScript());
             tx.input(0)!.setUnlockScript(Buffer.from([Opcode.NOP])); // Invalid Opcode for unlock_script
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.false;
+
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const pay = await node.sendPayTx({ seq, quantity: 1 });
+            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
         });
 
         it("Cannot transfer trivially fail script", async function() {
             const triviallyFail = Buffer.from([0x03]); // Opcode.FAIL
-            const { asset } = await node.mintAsset({
+            const asset = await node.mintAsset({
                 supply: 1,
                 recipient: AssetTransferAddress.fromTypeAndPayload(
                     0,
@@ -604,15 +658,22 @@ describe("transactions", function() {
             tx.input(0)!.setLockScript(triviallyFail);
             tx.input(0)!.setUnlockScript(Buffer.from([]));
 
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.false;
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const pay = await node.sendPayTx({ seq, quantity: 1 });
+            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
         });
 
         it("Can transfer trivially success script", async function() {
             const Opcode = Script.Opcode;
             const triviallySuccess = Buffer.from([Opcode.PUSH, 1]);
-            const { asset } = await node.mintAsset({
+            const asset = await node.mintAsset({
                 supply: 1,
                 recipient: AssetTransferAddress.fromTypeAndPayload(
                     0,
@@ -634,9 +695,8 @@ describe("transactions", function() {
             tx.input(0)!.setLockScript(triviallySuccess);
             tx.input(0)!.setUnlockScript(Buffer.from([]));
 
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.true;
+            const hash = await node.sendAssetTransaction(tx);
+            expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
         });
 
         it("Cannot transfer when lock script left multiple values in stack", async function() {
@@ -646,7 +706,7 @@ describe("transactions", function() {
                 1,
                 Opcode.DUP
             ]);
-            const { asset } = await node.mintAsset({
+            const asset = await node.mintAsset({
                 supply: 1,
                 recipient: AssetTransferAddress.fromTypeAndPayload(
                     0,
@@ -668,9 +728,16 @@ describe("transactions", function() {
             tx.input(0)!.setLockScript(leaveMultipleValue);
             tx.input(0)!.setUnlockScript(Buffer.from([]));
 
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.false;
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const pay = await node.sendPayTx({ seq, quantity: 1 });
+            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
         });
     });
 
@@ -713,35 +780,25 @@ describe("transactions", function() {
         });
 
         it("approver sends a transaction", async function() {
-            const result = await node
-                .sendTransaction(transferTx, {
-                    account: approver
-                })
-                .then(hash => {
-                    return node.sdk.rpc.chain.getTransactionResult(hash, {
-                        timeout: 300 * 1000
-                    });
-                });
-            if (result == null) {
-                throw Error("Cannot get the result");
-            }
-            expect(result).to.be.true;
+            const hash = await node.sendTransaction(transferTx, {
+                account: approver
+            });
+            expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
         });
 
-        it("nonApprover sends a transaction", async function() {
-            const result = await node
-                .sendTransaction(transferTx, {
-                    account: nonApprover
-                })
-                .then(hash => {
-                    return node.sdk.rpc.chain.getTransactionResult(hash, {
-                        timeout: 300 * 1000
-                    });
-                });
-            if (result == null) {
-                throw Error("Cannot get the result");
-            }
-            expect(result).to.be.false;
+        it("nonApprover cannot send a transaction", async function() {
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const pay = await node.sendPayTx({ quantity: 1 });
+            const hash = await node.sendTransaction(transferTx, {
+                account: nonApprover
+            });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
         });
     });
 
@@ -823,9 +880,17 @@ describe("transactions", function() {
             await node.sdk.key.signTransactionInput(tx, 0);
             tx.addBurns(assets[2]);
             await node.sdk.key.signTransactionBurn(tx, 0);
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.false;
+
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const pay = await node.sendPayTx({ seq, quantity: 1 });
+            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
         });
 
         it("Can add burns after signing with the signature tag of single input", async function() {
@@ -843,9 +908,8 @@ describe("transactions", function() {
             });
             tx.addBurns(assets[2]);
             await node.sdk.key.signTransactionBurn(tx, 0);
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.true;
+            const hash = await node.sendAssetTransaction(tx);
+            expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
         });
 
         // FIXME: (WIP) It fails
@@ -862,9 +926,17 @@ describe("transactions", function() {
             await node.sdk.key.signTransactionInput(tx, 0);
             tx.addInputs(assets[1]);
             await node.sdk.key.signTransactionInput(tx, 1);
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.false;
+
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const pay = await node.sendPayTx({ seq, quantity: 1 });
+            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
         });
 
         it("Can add inputs after signing with the signature tag of single input", async function() {
@@ -882,9 +954,8 @@ describe("transactions", function() {
             });
             tx.addInputs(assets[1]);
             await node.sdk.key.signTransactionInput(tx, 1);
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.true;
+            const hash = await node.sendAssetTransaction(tx);
+            expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
         });
 
         it("Can't add outputs after signing the signature tag of all outputs", async function() {
@@ -904,9 +975,17 @@ describe("transactions", function() {
                 quantity: 500,
                 recipient: address2
             });
-            const resutls = await node.sendAssetTransaction(tx);
-            expect(resutls!.length).to.equal(1);
-            expect(resutls![0]).to.be.false;
+
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const pay = await node.sendPayTx({ seq, quantity: 1 });
+            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
         });
 
         it("Can add outputs after signing the signature tag of some outputs", async function() {
@@ -931,9 +1010,11 @@ describe("transactions", function() {
                 quantity: 500,
                 recipient: address2
             });
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.true;
+
+            const blockNumber = await node.getBestBlockNumber();
+            const hash = await node.sendAssetTransaction(tx);
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
         });
 
         it("Can only change the output protected by signature", async function() {
@@ -966,9 +1047,17 @@ describe("transactions", function() {
                 .parameters;
             ((tx as any)._transaction.outputs[0]
                 .parameters as any) = address2Param;
-            const results = await node.sendAssetTransaction(tx);
-            expect(results!.length).to.equal(1);
-            expect(results![0]).to.be.false;
+
+            await node.sdk.rpc.devel.stopSealing();
+            const blockNumber = await node.getBestBlockNumber();
+            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+            const pay = await node.sendPayTx({ seq, quantity: 1 });
+            const hash1 = await node.sendAssetTransaction(tx, { seq: seq + 1 });
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+            expect(await node.sdk.rpc.chain.getErrorHint(hash1)).not.null;
 
             ((tx as any)._transaction.outputs[0]
                 .parameters as any) = address1Param;
@@ -984,9 +1073,8 @@ describe("transactions", function() {
 
             ((tx as any)._transaction.outputs[1]
                 .parameters as any) = address1Param;
-            const results2 = await node.sendAssetTransaction(tx);
-            expect(results2!.length).to.equal(1);
-            expect(results2![0]).to.be.true;
+            const hash2 = await node.sendAssetTransaction(tx);
+            expect(await node.sdk.rpc.chain.getTransaction(hash2)).not.null;
         });
 
         describe("many outputs", function() {
@@ -1016,9 +1104,9 @@ describe("transactions", function() {
                         quantity: 1000 - length,
                         recipient: address1
                     });
-                    const results = await node.sendAssetTransaction(tx);
-                    expect(results!.length).to.equal(1);
-                    expect(results![0]).to.be.true;
+                    const hash = await node.sendAssetTransaction(tx);
+                    expect(await node.sdk.rpc.chain.getTransaction(hash)).not
+                        .null;
                 }).timeout(length * 10 + 5_000);
             });
         });
@@ -1043,16 +1131,12 @@ describe("transactions", function() {
                         fee: 10
                     });
 
+                const blockNumber = await node.getBestBlockNumber();
                 const hash = await node.sdk.rpc.chain.sendSignedTransaction(
                     transaction
                 );
-                const result = await node.sdk.rpc.chain.getTransactionResult(
-                    hash,
-                    {
-                        timeout: 120 * 1000
-                    }
-                );
-                expect(result).to.be.true;
+                await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
         });
 
@@ -1104,16 +1188,12 @@ describe("transactions", function() {
                         fee: 10
                     });
 
+                const blockNumber = await node.getBestBlockNumber();
                 const hash = await node.sdk.rpc.chain.sendSignedTransaction(
                     wrapTransaction
                 );
-                const result = await node.sdk.rpc.chain.getTransactionResult(
-                    hash,
-                    {
-                        timeout: 120 * 1000
-                    }
-                );
-                expect(result).to.be.true;
+                await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Unwrap successful", async function() {
@@ -1125,9 +1205,8 @@ describe("transactions", function() {
                     receiver: aliceAddress
                 });
                 await node.signTransactionBurn(tx, 0);
-                const results = await node.sendAssetTransaction(tx);
-                expect(results!.length).to.equal(1);
-                expect(results![0]).to.be.true;
+                const hash = await node.sendAssetTransaction(tx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
                 expect(
                     (await node.sdk.rpc.chain.getBalance(
                         aliceAddress
@@ -1162,16 +1241,12 @@ describe("transactions", function() {
                         fee: 10
                     });
 
+                const blockNumber = await node.getBestBlockNumber();
                 const hash = await node.sdk.rpc.chain.sendSignedTransaction(
                     wrapTransaction
                 );
-                const result = await node.sdk.rpc.chain.getTransactionResult(
-                    hash,
-                    {
-                        timeout: 120 * 1000
-                    }
-                );
-                expect(result).to.be.true;
+                await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Transfer then Unwrap successful", async function() {
@@ -1187,9 +1262,8 @@ describe("transactions", function() {
                     quantity
                 });
                 await node.signTransactionInput(transferTx, 0);
-                const results1 = await node.sendAssetTransaction(transferTx);
-                expect(results1!.length).to.equal(1);
-                expect(results1![0]).to.be.true;
+                const hash1 = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
                 const asset2 = await node.sdk.rpc.chain.getAsset(
                     transferTx.tracker(),
@@ -1205,9 +1279,8 @@ describe("transactions", function() {
                     receiver: aliceAddress
                 });
                 await node.signTransactionBurn(unwrapTx, 0);
-                const results2 = await node.sendAssetTransaction(unwrapTx);
-                expect(results2!.length).to.equal(1);
-                expect(results2![0]).to.be.true;
+                const hash2 = await node.sendAssetTransaction(unwrapTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash2)).not.null;
 
                 expect(
                     (await node.sdk.rpc.chain.getBalance(
@@ -1237,9 +1310,8 @@ describe("transactions", function() {
                     scheme,
                     recipient
                 });
-                const results = await node.sendAssetTransaction(mintTx);
-                expect(results!.length).to.equal(1);
-                expect(results![0]).to.be.true;
+                const hash = await node.sendAssetTransaction(mintTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Unwrap unsuccessful - Invalid asset type", async function() {

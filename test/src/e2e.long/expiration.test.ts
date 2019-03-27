@@ -44,7 +44,7 @@ describe("TransferAsset expiration test", function() {
             // 1. Create an asset for TransferAsset
             let assets = [];
             for (let i = 0; i < numTx; i++) {
-                const { asset } = await node.mintAsset({ supply: 1 });
+                const asset = await node.mintAsset({ supply: 1 });
                 assets.push(asset);
             }
 
@@ -68,8 +68,7 @@ describe("TransferAsset expiration test", function() {
                 });
                 await node.signTransactionInput(tx, 0);
                 await node.sendAssetTransaction(tx, {
-                    seq: seq + i,
-                    awaitResult: false
+                    seq: seq + i
                 });
 
                 trackers.push(tx.tracker());

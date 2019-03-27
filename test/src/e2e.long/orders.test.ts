@@ -48,10 +48,10 @@ describe("orders", function() {
 
             beforeEach(async function() {
                 aliceAddress = await node.createP2PKHAddress();
-                gold = (await node.mintAsset({
+                gold = await node.mintAsset({
                     supply: 10000,
                     recipient: aliceAddress
-                })).asset;
+                });
             });
 
             it("Wrong order - originOutputs are wrong (asset type from/to is same)", async function() {
@@ -68,8 +68,9 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitResults = await node.sendAssetTransaction(splitTx);
-                expect(splitResults).deep.equal([true]);
+                const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
+                    .null;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map((g: Asset) =>
@@ -141,14 +142,14 @@ describe("orders", function() {
             beforeEach(async function() {
                 aliceAddress = await node.createP2PKHAddress();
                 bobAddress = await node.createP2PKHAddress();
-                gold = (await node.mintAsset({
+                gold = await node.mintAsset({
                     supply: 10000,
                     recipient: aliceAddress
-                })).asset;
-                silver = (await node.mintAsset({
+                });
+                silver = await node.mintAsset({
                     supply: 10000,
                     recipient: bobAddress
-                })).asset;
+                });
             });
 
             it("Correct order, correct transfer", async function() {
@@ -205,8 +206,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Correct order, correct transfer - Many originOutputs", async function() {
@@ -224,8 +225,9 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitResults = await node.sendAssetTransaction(splitTx);
-                expect(splitResults).deep.equal([true]);
+                const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
+                    .null;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map(g =>
@@ -288,8 +290,8 @@ describe("orders", function() {
                     )
                 );
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             }).timeout(10_000);
 
             it("Correct order, correct transfer - Output(to) is empty", async function() {
@@ -340,8 +342,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Correct order, correct transfer - Splitted output", async function() {
@@ -404,8 +406,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Correct two orders, correct transfer - Ratio is same", async function() {
@@ -481,8 +483,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Correct two orders, correct transfer - Ratio is different", async function() {
@@ -560,8 +562,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Correct order, correct transfer - Charlie get some of asset without order", async function() {
@@ -580,8 +582,9 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitResults = await node.sendAssetTransaction(splitTx);
-                expect(splitResults).deep.equal([true]);
+                const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
+                    .null;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map(g =>
@@ -642,8 +645,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 2);
                 await node.signTransactionInput(transferTx, 3);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Correct order, wrong transfer - Output(from) is empty", async function() {
@@ -1378,8 +1381,9 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitResults = await node.sendAssetTransaction(splitTx);
-                expect(splitResults).deep.equal([true]);
+                const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
+                    .null;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map(g =>
@@ -1431,8 +1435,22 @@ describe("orders", function() {
                     });
                 await node.signTransactionInput(transferTx, 1);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([false]);
+                await node.sdk.rpc.devel.stopSealing();
+                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+                const blockNumber = await node.getBestBlockNumber();
+                const pay = await node.sendPayTx({
+                    recipient: faucetAddress,
+                    seq,
+                    quantity: 1
+                });
+                const hash = await node.sendAssetTransaction(transferTx, {
+                    seq: seq + 1
+                });
+                await node.sdk.rpc.devel.startSealing();
+                await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                    .null;
+                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
             }).timeout(10_000);
 
             it("Wrong order - originOutputs are wrong (few outputs)", async function() {
@@ -1450,8 +1468,9 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitResults = await node.sendAssetTransaction(splitTx);
-                expect(splitResults).deep.equal([true]);
+                const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
+                    .null;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map(g =>
@@ -1516,8 +1535,22 @@ describe("orders", function() {
                     )
                 );
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([false]);
+                await node.sdk.rpc.devel.stopSealing();
+                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+                const blockNumber = await node.getBestBlockNumber();
+                const pay = await node.sendPayTx({
+                    recipient: faucetAddress,
+                    seq,
+                    quantity: 1
+                });
+                const hash = await node.sendAssetTransaction(transferTx, {
+                    seq: seq + 1
+                });
+                await node.sdk.rpc.devel.startSealing();
+                await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                    .null;
+                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
             }).timeout(10_000);
 
             it("Wrong order - originOutputs are wrong (many outputs)", async function() {
@@ -1535,8 +1568,9 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitResults = await node.sendAssetTransaction(splitTx);
-                expect(splitResults).deep.equal([true]);
+                const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
+                    .null;
 
                 const splitGolds = splitTx.getTransferredAssets();
                 const splitGoldInputs = splitGolds.map(g =>
@@ -1599,8 +1633,22 @@ describe("orders", function() {
                     )
                 );
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([false]);
+                await node.sdk.rpc.devel.stopSealing();
+                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+                const blockNumber = await node.getBestBlockNumber();
+                const pay = await node.sendPayTx({
+                    recipient: faucetAddress,
+                    seq,
+                    quantity: 1
+                });
+                const hash = await node.sendAssetTransaction(transferTx, {
+                    seq: seq + 1
+                });
+                await node.sdk.rpc.devel.startSealing();
+                await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                    .null;
+                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
             }).timeout(10_000);
 
             it("Wrong order - Ratio is wrong (from is zero)", async function() {
@@ -1870,8 +1918,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx1, 0);
                 await node.signTransactionInput(transferTx1, 1);
 
-                const results1 = await node.sendAssetTransaction(transferTx1);
-                expect(results1).deep.equal([true]);
+                const hash1 = await node.sendAssetTransaction(transferTx1);
+                expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
                 const orderConsumed = order.consume(50);
                 const transferTx2 = node.sdk.core
@@ -1915,9 +1963,8 @@ describe("orders", function() {
                 // Sign on input 0 is not needed
                 await node.signTransactionInput(transferTx2, 1);
 
-                const results2 = await node.sendAssetTransaction(transferTx2);
-                expect(results2).deep.equal([true]);
-                2;
+                const hash2 = await node.sendAssetTransaction(transferTx2);
+                expect(await node.sdk.rpc.chain.getTransaction(hash2)).not.null;
             }).timeout(10_000);
 
             it("Successful mutual partial fills", async function() {
@@ -1992,8 +2039,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx1, 0);
                 await node.signTransactionInput(transferTx1, 1);
 
-                const results1 = await node.sendAssetTransaction(transferTx1);
-                expect(results1).deep.equal([true]);
+                const hash1 = await node.sendAssetTransaction(transferTx1);
+                expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
                 const aliceOrderConsumed = aliceOrder.consume(10);
                 const bobOrderConsumed = bobOrder.consume(100);
@@ -2043,8 +2090,8 @@ describe("orders", function() {
                     });
                 // Sign on both inputs 0, 1 are not needed
 
-                const results2 = await node.sendAssetTransaction(transferTx2);
-                expect(results2).deep.equal([true]);
+                const hash2 = await node.sendAssetTransaction(transferTx2);
+                expect(await node.sdk.rpc.chain.getTransaction(hash2)).not.null;
             }).timeout(10_000);
 
             it("Successful partial cancel", async function() {
@@ -2101,8 +2148,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx1, 0);
                 await node.signTransactionInput(transferTx1, 1);
 
-                const results1 = await node.sendAssetTransaction(transferTx1);
-                expect(results1).deep.equal([true]);
+                const hash1 = await node.sendAssetTransaction(transferTx1);
+                expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
                 const transferTx2 = node.sdk.core
                     .createTransferAssetTransaction()
@@ -2127,8 +2174,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx2, 0);
                 await node.signTransactionInput(transferTx2, 1);
 
-                const results2 = await node.sendAssetTransaction(transferTx2);
-                expect(results2).deep.equal([true]);
+                const hash2 = await node.sendAssetTransaction(transferTx2);
+                expect(await node.sdk.rpc.chain.getTransaction(hash2)).not.null;
             });
         }).timeout(10_000);
 
@@ -2147,18 +2194,18 @@ describe("orders", function() {
                 bobAddress = await node.createP2PKHAddress();
                 charlieAddress = await node.createP2PKHAddress();
                 const FeeOwnerAddress = await node.createP2PKHAddress();
-                gold = (await node.mintAsset({
+                gold = await node.mintAsset({
                     supply: 10000,
                     recipient: aliceAddress
-                })).asset;
-                silver = (await node.mintAsset({
+                });
+                silver = await node.mintAsset({
                     supply: 10000,
                     recipient: bobAddress
-                })).asset;
-                bronze = (await node.mintAsset({
+                });
+                bronze = await node.mintAsset({
                     supply: 10000,
                     recipient: FeeOwnerAddress
-                })).asset;
+                });
 
                 const bronzeInput = bronze.createTransferInput();
                 const transferTx1 = node.sdk.core
@@ -2194,8 +2241,9 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitResults = await node.sendAssetTransaction(splitTx);
-                expect(splitResults).deep.equal([true]);
+                const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
+                    .null;
 
                 const splitFees = splitTx.getTransferredAssets();
                 const splitFeeInputs = splitFees.map(g =>
@@ -2272,8 +2320,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
                 await node.signTransactionInput(transferTx, 2);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Correct order, correct transfer", async function() {
@@ -2348,8 +2396,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
                 await node.signTransactionInput(transferTx, 2);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Correct two orders, correct transfer - Ratio is same", async function() {
@@ -2376,8 +2424,9 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitResults = await node.sendAssetTransaction(splitTx);
-                expect(splitResults).deep.equal([true]);
+                const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
+                    .null;
 
                 const splitFees = splitTx.getTransferredAssets();
                 const aliceFeeInput = splitFees[0].createTransferInput();
@@ -2490,8 +2539,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 2);
                 await node.signTransactionInput(transferTx, 3);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Correct two orders, correct transfer - Ratio is different, fee Recipient intrecepts leftover", async function() {
@@ -2518,8 +2567,9 @@ describe("orders", function() {
                     );
                 await node.signTransactionInput(splitTx, 0);
 
-                const splitResults = await node.sendAssetTransaction(splitTx);
-                expect(splitResults).deep.equal([true]);
+                const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
+                    .null;
 
                 const splitFees = splitTx.getTransferredAssets();
                 const aliceFeeInput = splitFees[0].createTransferInput();
@@ -2638,8 +2688,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 2);
                 await node.signTransactionInput(transferTx, 3);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
             it("Wrong order - feeInput Omitted in OriginOutputs", async function() {
@@ -2714,8 +2764,22 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
                 await node.signTransactionInput(transferTx, 2);
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([false]);
+                await node.sdk.rpc.devel.stopSealing();
+                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+                const blockNumber = await node.getBestBlockNumber();
+                const pay = await node.sendPayTx({
+                    recipient: faucetAddress,
+                    seq,
+                    quantity: 1
+                });
+                const hash = await node.sendAssetTransaction(transferTx, {
+                    seq: seq + 1
+                });
+                await node.sdk.rpc.devel.startSealing();
+                await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                    .null;
+                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
             });
         });
 
@@ -2728,7 +2792,7 @@ describe("orders", function() {
                 assets = [];
                 for (let i = 0; i < 5; i++) {
                     const address = await node.createP2PKHAddress();
-                    const { asset } = await node.mintAsset({
+                    const asset = await node.mintAsset({
                         supply: 10000,
                         recipient: address
                     });
@@ -2784,8 +2848,8 @@ describe("orders", function() {
                     )
                 );
 
-                const results = await node.sendAssetTransaction(transferTx);
-                expect(results).deep.equal([true]);
+                const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             }).timeout(10_000);
         });
     });

@@ -70,35 +70,33 @@ impl<'a> HeaderView<'a> {
         self.rlp.val_at(3)
     }
 
-    /// Returns block invoices root.
-    pub fn results_root(&self) -> H256 {
-        self.rlp.val_at(4)
-    }
-
     /// Returns block score.
     pub fn score(&self) -> U256 {
-        self.rlp.val_at(5)
+        self.rlp.val_at(4)
     }
 
     /// Returns block number.
     pub fn number(&self) -> BlockNumber {
-        self.rlp.val_at(6)
+        self.rlp.val_at(5)
     }
 
     /// Returns timestamp.
     pub fn timestamp(&self) -> u64 {
-        self.rlp.val_at(7)
+        self.rlp.val_at(6)
     }
 
     /// Returns block extra data.
     pub fn extra_data(&self) -> Bytes {
-        self.rlp.val_at(8)
+        self.rlp.val_at(7)
     }
 
     /// Returns a vector of post-RLP-encoded seal fields.
     pub fn seal(&self) -> Vec<Bytes> {
-        let mut seal = vec![];
-        for i in 9..self.rlp.item_count() {
+        const SIZE_WITHOUT_SEAL: usize = 8;
+
+        let item_count = self.rlp.item_count();
+        let mut seal = Vec::with_capacity(item_count - SIZE_WITHOUT_SEAL);
+        for i in SIZE_WITHOUT_SEAL..item_count {
             seal.push(self.rlp.at(i).as_raw().to_vec());
         }
         seal

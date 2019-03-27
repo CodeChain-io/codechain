@@ -25,7 +25,6 @@ use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
-use ctypes::invoice::Invoice;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H160, H256};
@@ -95,31 +94,24 @@ where
 
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
         let id = transaction_hash.into();
-        Ok(self.client.transaction(&id).map(|tx| {
-            let invoice = self.client.invoice(&id).expect("Invoice must exist when transaction exists");
-            Transaction::from(tx, invoice.to_bool())
-        }))
+        Ok(self.client.transaction(&id).map(From::from))
     }
 
     fn get_transaction_result(&self, transaction_hash: H256) -> Result<Option<bool>> {
-        Ok(self.client.invoice(&transaction_hash.into()).map(|invoice| invoice.to_bool()))
+        Ok(Some(self.client.error_hint(&transaction_hash).is_none()))
     }
 
-    fn get_transactions_by_tracker(&self, tracker: H256) -> Result<Vec<Transaction>> {
-        Ok(self
-            .client
-            .transactions_by_tracker(&tracker)
-            .into_iter()
-            .map(|tx| {
-                let transaction_id = tx.hash().into();
-                let invoice = self.client.invoice(&transaction_id).expect("Invoice must exist when transaction exists");
-                Transaction::from(tx, invoice.to_bool())
-            })
-            .collect())
+    fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
+        Ok(self.client.transaction_by_tracker(&tracker).map(From::from))
     }
 
     fn get_transaction_results_by_tracker(&self, tracker: H256) -> Result<Vec<bool>> {
-        Ok(self.client.invoices_by_tracker(&tracker).into_iter().map(|invoice| invoice.to_bool()).collect())
+        Ok(self
+            .client
+            .error_hints_by_tracker(&tracker)
+            .into_iter()
+            .map(|(_hash, error_hint)| error_hint.is_none())
+            .collect())
     }
 
     fn get_asset_scheme_by_tracker(
@@ -192,11 +184,7 @@ where
     }
 
     fn get_error_hint(&self, transaction_hash: H256) -> Result<Option<String>> {
-        if let Some(Invoice::Failure(error_string)) = self.client.invoice(&transaction_hash.into()) {
-            Ok(Some(error_string))
-        } else {
-            Ok(None)
-        }
+        Ok(self.client.error_hint(&transaction_hash))
     }
 
     fn get_regular_key(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<Public>> {
@@ -269,38 +257,12 @@ where
 
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {
         let id = BlockId::Number(block_number);
-        Ok(self.client.block(&id).map(|block| {
-            let invoices: Vec<_> = self
-                .client
-                .block_invoices(&id)
-                .unwrap_or_else(|| {
-                    assert_eq!(0, block_number);
-                    Default::default()
-                })
-                .invoices
-                .into_iter()
-                .map(|invoice| invoice.to_bool())
-                .collect();
-            Block::from_core(block.decode(), self.client.common_params().network_id, &invoices)
-        }))
+        Ok(self.client.block(&id).map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 
     fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
         let id = BlockId::Hash(block_hash);
-        Ok(self.client.block(&id).map(|block| {
-            let invoices: Vec<_> = self
-                .client
-                .block_invoices(&id)
-                .unwrap_or_else(|| {
-                    assert_eq!(0, block.number());
-                    Default::default()
-                })
-                .invoices
-                .into_iter()
-                .map(|invoice| invoice.to_bool())
-                .collect();
-            Block::from_core(block.decode(), self.client.common_params().network_id, &invoices)
-        }))
+        Ok(self.client.block(&id).map(|block| Block::from_core(block.decode(), self.client.common_params().network_id)))
     }
 
     fn get_block_transaction_count_by_hash(&self, block_hash: H256) -> Result<Option<usize>> {
@@ -323,11 +285,15 @@ where
         Ok(self.client.common_params().network_id)
     }
 
-    fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Invoice> {
+    fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Option<String>> {
         let sender_address = sender.try_address().map_err(errors::core)?;
         let action = ::std::result::Result::from(tx.action).map_err(errors::conversion)?;
         if let Some(transaction) = action.asset_transaction() {
-            Ok(self.client.execute_transaction(&transaction, sender_address).map_err(errors::core)?)
+            let result = self.client.execute_transaction(&transaction, sender_address);
+            match result {
+                Ok(()) => Ok(None),
+                Err(err) => Ok(Some(err.to_string())),
+            }
         } else {
             Err(errors::asset_transaction_only())
         }

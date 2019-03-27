@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -348,7 +348,7 @@ where
         while !self.client.is_pending_queue_empty() {
             thread::sleep(Duration::from_millis(50));
         }
-        while self.client.invoice(&last_hash.into()).is_none() {}
+        while self.client.transaction(&last_hash.into()).is_none() {}
 
         let end_time = PreciseTime::now();
         Ok(tps(count, start_time, end_time))

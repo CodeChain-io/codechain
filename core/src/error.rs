@@ -98,8 +98,6 @@ pub enum BlockError {
     PowOutOfBounds(OutOfBounds<U256>),
     /// Some low-level aspect of the seal is incorrect.
     InvalidSeal,
-    /// Invoices trie root header field is invalid.
-    InvalidResultsRoot(Mismatch<H256>),
     /// Timestamp header field is invalid.
     InvalidTimestamp(OutOfBounds<u64>),
     /// Timestamp header field is too far in future.
@@ -150,7 +148,6 @@ impl fmt::Display for BlockError {
             InvalidProofOfWork => "Invalid proof of work.".into(),
             PowOutOfBounds(oob) => format!("Invalid proof of work: {}", oob),
             InvalidSeal => "Block has invalid seal.".into(),
-            InvalidResultsRoot(mis) => format!("Invalid results trie root in header: {}", mis),
             InvalidTimestamp(oob) => format!("Invalid timestamp in header: {}", oob),
             TemporarilyInvalid(oob) => format!("Future timestamp in header: {}", oob),
             InvalidParentHash(mis) => format!("Invalid parent hash: {}", mis),
