@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use ctypes::transaction::ShardTransaction;
 use kvdb::{DBTransaction, KeyValueDB};
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 use rlp::RlpStream;
 use rlp_compress::{blocks_swapper, compress, decompress};
@@ -37,8 +37,8 @@ pub struct BodyDB {
     parcel_address_cache: RwLock<HashMap<H256, TransactionAddress>>,
     pending_parcel_addresses: RwLock<HashMap<H256, Option<TransactionAddress>>>,
 
-    transaction_address_cache: RwLock<HashMap<H256, TransactionAddresses>>,
-    pending_transaction_addresses: RwLock<HashMap<H256, Option<TransactionAddresses>>>,
+    transaction_address_cache: Mutex<HashMap<H256, TransactionAddresses>>,
+    pending_transaction_addresses: Mutex<HashMap<H256, Option<TransactionAddresses>>>,
 
     db: Arc<KeyValueDB>,
 }
@@ -53,8 +53,8 @@ impl BodyDB {
             parcel_address_cache: RwLock::new(HashMap::new()),
             pending_parcel_addresses: RwLock::new(HashMap::new()),
 
-            transaction_address_cache: RwLock::new(HashMap::new()),
-            pending_transaction_addresses: RwLock::new(HashMap::new()),
+            transaction_address_cache: Default::default(),
+            pending_transaction_addresses: Default::default(),
 
             db,
         };
@@ -88,7 +88,7 @@ impl BodyDB {
 
     pub fn update_best_block(&self, batch: &mut DBTransaction, best_block_changed: &BestBlockChanged) {
         let mut pending_parcel_addresses = self.pending_parcel_addresses.write();
-        let mut pending_transaction_addresses = self.pending_transaction_addresses.write();
+        let mut pending_transaction_addresses = self.pending_transaction_addresses.lock();
         batch.extend_with_option_cache(
             db::COL_EXTRA,
             &mut *pending_parcel_addresses,
@@ -108,8 +108,8 @@ impl BodyDB {
         let mut parcel_address_cache = self.parcel_address_cache.write();
         let mut pending_parcel_addresses = self.pending_parcel_addresses.write();
 
-        let mut transaction_address_cache = self.transaction_address_cache.write();
-        let mut pending_transaction_addresses = self.pending_transaction_addresses.write();
+        let mut transaction_address_cache = self.transaction_address_cache.lock();
+        let mut pending_transaction_addresses = self.pending_transaction_addresses.lock();
 
         let new_parcels = mem::replace(&mut *pending_parcel_addresses, HashMap::new());
         let (retracted_parcels, enacted_parcels) =
@@ -296,12 +296,12 @@ impl BodyProvider for BodyDB {
 
     /// Get the address of parcel with given hash.
     fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.parcel_address_cache, hash)?;
+        let result = self.db.read_with_cache(db::COL_EXTRA, &mut *self.parcel_address_cache.write(), hash)?;
         Some(result)
     }
 
     fn transaction_addresses_by_tracker(&self, tracker: &H256) -> Option<TransactionAddresses> {
-        Some(self.db.read_with_cache(db::COL_EXTRA, &self.transaction_address_cache, tracker)?)
+        Some(self.db.read_with_cache(db::COL_EXTRA, &mut *self.transaction_address_cache.lock(), tracker)?)
     }
 
     /// Get block body data

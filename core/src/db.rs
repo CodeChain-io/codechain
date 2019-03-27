@@ -190,21 +190,19 @@ pub trait Readable {
         R: Deref<Target = [u8]>;
 
     /// Returns value for given key either in cache or in database.
-    fn read_with_cache<K, T, C>(&self, col: Option<u32>, cache: &RwLock<C>, key: &K) -> Option<T>
+    fn read_with_cache<K, T, C>(&self, col: Option<u32>, cache: &mut C, key: &K) -> Option<T>
     where
         K: Key<T> + Eq + Hash + Clone,
         T: Clone + rlp::Decodable,
         C: Cache<K, T>, {
         {
-            let read = cache.read();
-            if let Some(v) = read.get(key) {
+            if let Some(v) = cache.get(key) {
                 return Some(v.clone())
             }
         }
 
         self.read(col, key).map(|value: T| {
-            let mut write = cache.write();
-            write.insert(key.clone(), value.clone());
+            cache.insert(key.clone(), value.clone());
             value
         })
     }
