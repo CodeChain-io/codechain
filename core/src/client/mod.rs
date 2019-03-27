@@ -84,14 +84,14 @@ pub trait TransactionInfo {
     /// Get the hash of block that contains the transaction, if any.
     fn transaction_block(&self, id: &TransactionId) -> Option<H256>;
 
-    fn transaction_header(&self, hash: &H256) -> Option<::encoded::Header>;
+    fn transaction_header(&self, tracker: &H256) -> Option<::encoded::Header>;
 
-    fn transaction_block_number(&self, hash: &H256) -> Option<BlockNumber> {
-        self.transaction_header(hash).map(|header| header.number())
+    fn transaction_block_number(&self, tracker: &H256) -> Option<BlockNumber> {
+        self.transaction_header(tracker).map(|header| header.number())
     }
 
-    fn transaction_block_timestamp(&self, hash: &H256) -> Option<u64> {
-        self.transaction_header(hash).map(|header| header.timestamp())
+    fn transaction_block_timestamp(&self, tracker: &H256) -> Option<u64> {
+        self.transaction_header(tracker).map(|header| header.timestamp())
     }
 }
 

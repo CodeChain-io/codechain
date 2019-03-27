@@ -423,7 +423,7 @@ impl TransactionInfo for TestBlockChainClient {
         None // Simple default.
     }
 
-    fn transaction_header(&self, _hash: &H256) -> Option<::encoded::Header> {
+    fn transaction_header(&self, _tracker: &H256) -> Option<::encoded::Header> {
         None
     }
 }
