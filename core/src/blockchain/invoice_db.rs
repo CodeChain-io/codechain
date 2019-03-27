@@ -79,7 +79,7 @@ impl InvoiceProvider for InvoiceDB {
 
     /// Get invoices of block with given hash.
     fn block_invoices(&self, hash: &H256) -> Option<BlockInvoices> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.invoice_cache, hash)?;
+        let result = self.db.read_with_cache(db::COL_EXTRA, &mut *self.invoice_cache.write(), hash)?;
         Some(result)
     }
 

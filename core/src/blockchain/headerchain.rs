@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 use rlp_compress::{blocks_swapper, compress, decompress};
 
@@ -49,7 +49,7 @@ pub struct HeaderChain {
     // cache
     header_cache: RwLock<HashMap<H256, Bytes>>,
     detail_cache: RwLock<HashMap<H256, BlockDetails>>,
-    hash_cache: RwLock<HashMap<BlockNumber, H256>>,
+    hash_cache: Mutex<HashMap<BlockNumber, H256>>,
 
     db: Arc<KeyValueDB>,
 
@@ -100,8 +100,8 @@ impl HeaderChain {
             best_proposal_header_hash: RwLock::new(best_proposal_header_hash),
 
             header_cache: RwLock::new(HashMap::new()),
-            detail_cache: RwLock::new(HashMap::new()),
-            hash_cache: RwLock::new(HashMap::new()),
+            detail_cache: Default::default(),
+            hash_cache: Default::default(),
 
             db,
 
@@ -173,7 +173,7 @@ impl HeaderChain {
         let mut best_header_hash = self.best_header_hash.write();
         let mut best_proposal_header_hash = self.best_proposal_header_hash.write();
         let mut write_block_details = self.detail_cache.write();
-        let mut write_hashes = self.hash_cache.write();
+        let mut write_hashes = self.hash_cache.lock();
         // update best block
         if let Some(hash) = pending_best_header_hash.take() {
             *best_header_hash = hash;
@@ -368,7 +368,7 @@ impl HeaderProvider for HeaderChain {
 
     /// Get the familial details concerning a block.
     fn block_details(&self, hash: &H256) -> Option<BlockDetails> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.detail_cache, hash)?;
+        let result = self.db.read_with_cache(db::COL_EXTRA, &mut *self.detail_cache.write(), hash)?;
         Some(result)
     }
 
@@ -378,7 +378,7 @@ impl HeaderProvider for HeaderChain {
         if self.best_header().number() < index {
             return None
         }
-        let result = self.db.read_with_cache(db::COL_EXTRA, &self.hash_cache, &index)?;
+        let result = self.db.read_with_cache(db::COL_EXTRA, &mut *self.hash_cache.lock(), &index)?;
         Some(result)
     }
 
