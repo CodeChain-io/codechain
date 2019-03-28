@@ -76,15 +76,13 @@ describe("Timelock", function() {
             await checkTx(tracker, true);
         });
 
-
-        it(`Minted at block 1, send transfer with Timelock::BlockAge(0)`, async function() { 
+        it(`Minted at block 1, send transfer with Timelock::BlockAge(0)`, async function() {
             const tracker = await sendTxWithTimelock({
                 type: "blockAge",
                 value: 0
             });
             await checkTx(tracker, true);
         });
-
 
         it("send transfer with Timelock::Time(0)", async function() {
             const tracker = await sendTxWithTimelock({
@@ -237,7 +235,7 @@ describe("Timelock", function() {
             expect(await node.getBestBlockNumber()).to.equal(2);
             await checkTx(tracker1, false);
             await checkTx(tracker2, true);
-        });
+        }).timeout(10_000);
     });
 
     describe("Multiple timelocks", async function() {
