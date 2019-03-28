@@ -39,7 +39,7 @@ pub enum Instruction {
     Ripemd160,
     Keccak256,
     Blake160,
-    ChkTimelock,
+    ChkTimelock(u8),
 }
 
 pub fn is_valid_unlock_script(instrs: &[Instruction]) -> bool {

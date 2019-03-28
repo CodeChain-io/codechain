@@ -21,6 +21,7 @@ use crate::opcode;
 pub enum DecoderError {
     ScriptTooShort,
     InvalidOpCode(u8),
+    InvalidImmediateValue(u8),
 }
 
 pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
@@ -77,7 +78,13 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
             opcode::RIPEMD160 => result.push(Instruction::Ripemd160),
             opcode::KECCAK256 => result.push(Instruction::Keccak256),
             opcode::BLAKE160 => result.push(Instruction::Blake160),
-            opcode::CHKTIMELOCK => result.push(Instruction::ChkTimelock),
+            opcode::CHKTIMELOCK => {
+                let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
+                if val < 1 || val > 4 {
+                    return Err(DecoderError::InvalidImmediateValue(val))
+                }
+                result.push(Instruction::ChkTimelock(val));
+            }
             invalid_opcode => return Err(DecoderError::InvalidOpCode(invalid_opcode)),
         }
     }
@@ -141,7 +148,6 @@ mod tests {
     test_no_argument_opcode!(RIPEMD160, Ripemd160);
     test_no_argument_opcode!(KECCAK256, Keccak256);
     test_no_argument_opcode!(BLAKE160, Blake160);
-    test_no_argument_opcode!(CHKTIMELOCK, ChkTimelock);
 
     #[test]
     #[allow(non_snake_case)]
@@ -152,5 +158,22 @@ mod tests {
             Ok(vec![Instruction::PushB(blobs[0].to_vec()), Instruction::PushB(blobs[1].to_vec())])
         );
         assert_eq!(decode([&[opcode::PUSHB, 4], &blobs[0][..]].concat().as_slice()), Err(DecoderError::ScriptTooShort));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn ChkTimelock() {
+        assert_eq!(decode(&[opcode::CHKTIMELOCK]), Err(DecoderError::ScriptTooShort));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 0]), Err(DecoderError::InvalidImmediateValue(0)));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 5]), Err(DecoderError::InvalidImmediateValue(5)));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 1]), Ok(vec![Instruction::ChkTimelock(1)]));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 2]), Ok(vec![Instruction::ChkTimelock(2)]));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 3]), Ok(vec![Instruction::ChkTimelock(3)]));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 4]), Ok(vec![Instruction::ChkTimelock(4)]));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 1, opcode::CHKTIMELOCK]), Err(DecoderError::ScriptTooShort));
+        assert_eq!(
+            decode(&[opcode::CHKTIMELOCK, 1, opcode::CHKTIMELOCK, 2]),
+            Ok(vec![Instruction::ChkTimelock(1), Instruction::ChkTimelock(2)])
+        );
     }
 }
