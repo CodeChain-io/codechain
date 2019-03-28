@@ -101,10 +101,10 @@ import CodeChain from "../helper/spawn";
     while (true) {
         let flag = true;
         for (let i = 0; i < 4; i++) {
-            const result =
-                (await nodes[i].sdk.rpc.chain.getTransaction(
-                    transactions[numTransactions - 1].hash()
-                )) != null;
+            const hash = transactions[numTransactions - 1].hash();
+            const result = await nodes[i].sdk.rpc.chain.containTransaction(
+                hash
+            );
 
             console.log(`Node ${i} result: ${result}`);
             if (!result) {

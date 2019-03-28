@@ -54,6 +54,9 @@ describe("WrapCCC", function() {
         });
 
         await node.sdk.rpc.chain.sendSignedTransaction(signedWrapCCC);
+        expect(
+            await node.sdk.rpc.chain.containTransaction(signedWrapCCC.hash())
+        ).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(signedWrapCCC.hash()))
             .not.null;
 
@@ -80,6 +83,7 @@ describe("WrapCCC", function() {
             fee: 10
         });
         const hash = await node.sdk.rpc.chain.sendSignedTransaction(signedBurn);
+        expect(await node.sdk.rpc.chain.containTransaction(hash)).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
 
         const schemeAfterBurn = (await node.sdk.rpc.chain.getAssetSchemeByType(
@@ -116,6 +120,7 @@ describe("WrapCCC", function() {
         const hash = await node.sdk.rpc.chain.sendSignedTransaction(
             signedWrapCCC
         );
+        expect(await node.sdk.rpc.chain.containTransaction(hash)).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
 
         const changeAssetScheme = node.sdk.core.createChangeAssetSchemeTransaction(

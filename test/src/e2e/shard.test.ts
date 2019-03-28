@@ -53,6 +53,7 @@ describe("CreateShard", function() {
             ])
         ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx);
+        expect(await node.sdk.rpc.chain.containTransaction(tx.hash())).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(tx.hash())).not.null;
         const afterShardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
@@ -174,6 +175,7 @@ describe("CreateShard", function() {
             ])
         ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx1);
+        expect(await node.sdk.rpc.chain.containTransaction(tx1.hash())).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(tx1.hash())).not.null;
         expect(
             await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
@@ -192,6 +194,7 @@ describe("CreateShard", function() {
             ])
         ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx2);
+        expect(await node.sdk.rpc.chain.containTransaction(tx2.hash())).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(tx2.hash())).not.null;
         expect(
             await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
@@ -297,6 +300,8 @@ describe("CreateShard", function() {
             .sign({ secret: aliceSecret, seq: aliceSeq, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(mint);
 
+        expect(await node.sdk.rpc.chain.containTransaction(mint.hash())).be
+            .true;
         expect(await node.sdk.rpc.chain.getTransaction(mint.hash())).not.null;
         const hint = await node.sdk.rpc.chain.getErrorHint(mint.hash());
         expect(hint).to.be.null;
@@ -391,6 +396,8 @@ describe("CreateShard", function() {
         });
         await node.sdk.rpc.chain.sendSignedTransaction(signedMint2);
 
+        expect(await node.sdk.rpc.chain.containTransaction(signedMint2.hash()))
+            .be.true;
         expect(await node.sdk.rpc.chain.getTransaction(signedMint2.hash())).not
             .null;
         expect(

@@ -69,6 +69,8 @@ describe("orders", function() {
                 await node.signTransactionInput(splitTx, 0);
 
                 const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.containTransaction(splitHash))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
                     .null;
 
@@ -207,6 +209,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -226,6 +230,8 @@ describe("orders", function() {
                 await node.signTransactionInput(splitTx, 0);
 
                 const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.containTransaction(splitHash))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
                     .null;
 
@@ -291,6 +297,8 @@ describe("orders", function() {
                 );
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             }).timeout(10_000);
 
@@ -343,6 +351,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -407,6 +417,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -484,6 +496,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -563,6 +577,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -583,6 +599,8 @@ describe("orders", function() {
                 await node.signTransactionInput(splitTx, 0);
 
                 const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.containTransaction(splitHash))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
                     .null;
 
@@ -646,6 +664,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 3);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -1382,6 +1402,8 @@ describe("orders", function() {
                 await node.signTransactionInput(splitTx, 0);
 
                 const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.containTransaction(splitHash))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
                     .null;
 
@@ -1448,6 +1470,10 @@ describe("orders", function() {
                 });
                 await node.sdk.rpc.devel.startSealing();
                 await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .false;
+                expect(await node.sdk.rpc.chain.containTransaction(pay.hash()))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
                     .null;
                 expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
@@ -1469,6 +1495,8 @@ describe("orders", function() {
                 await node.signTransactionInput(splitTx, 0);
 
                 const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.containTransaction(splitHash))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
                     .null;
 
@@ -1548,6 +1576,10 @@ describe("orders", function() {
                 });
                 await node.sdk.rpc.devel.startSealing();
                 await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.containTransaction(pay.hash()))
+                    .be.true;
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .false;
                 expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
                     .null;
                 expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
@@ -1569,6 +1601,8 @@ describe("orders", function() {
                 await node.signTransactionInput(splitTx, 0);
 
                 const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.containTransaction(splitHash))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
                     .null;
 
@@ -1646,6 +1680,8 @@ describe("orders", function() {
                 });
                 await node.sdk.rpc.devel.startSealing();
                 await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.containTransaction(pay.hash()))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
                     .null;
                 expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
@@ -1919,6 +1955,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx1, 1);
 
                 const hash1 = await node.sendAssetTransaction(transferTx1);
+                expect(await node.sdk.rpc.chain.containTransaction(hash1)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
                 const orderConsumed = order.consume(50);
@@ -1964,6 +2002,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx2, 1);
 
                 const hash2 = await node.sendAssetTransaction(transferTx2);
+                expect(await node.sdk.rpc.chain.containTransaction(hash2)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash2)).not.null;
             }).timeout(10_000);
 
@@ -2040,6 +2080,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx1, 1);
 
                 const hash1 = await node.sendAssetTransaction(transferTx1);
+                expect(await node.sdk.rpc.chain.containTransaction(hash1)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
                 const aliceOrderConsumed = aliceOrder.consume(10);
@@ -2091,6 +2133,8 @@ describe("orders", function() {
                 // Sign on both inputs 0, 1 are not needed
 
                 const hash2 = await node.sendAssetTransaction(transferTx2);
+                expect(await node.sdk.rpc.chain.containTransaction(hash2)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash2)).not.null;
             }).timeout(10_000);
 
@@ -2149,6 +2193,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx1, 1);
 
                 const hash1 = await node.sendAssetTransaction(transferTx1);
+                expect(await node.sdk.rpc.chain.containTransaction(hash1)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
                 const transferTx2 = node.sdk.core
@@ -2175,6 +2221,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx2, 1);
 
                 const hash2 = await node.sendAssetTransaction(transferTx2);
+                expect(await node.sdk.rpc.chain.containTransaction(hash2)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash2)).not.null;
             });
         }).timeout(10_000);
@@ -2242,6 +2290,8 @@ describe("orders", function() {
                 await node.signTransactionInput(splitTx, 0);
 
                 const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.containTransaction(splitHash))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
                     .null;
 
@@ -2321,6 +2371,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 2);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -2397,6 +2449,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 2);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -2425,6 +2479,8 @@ describe("orders", function() {
                 await node.signTransactionInput(splitTx, 0);
 
                 const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.containTransaction(splitHash))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
                     .null;
 
@@ -2540,6 +2596,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 3);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -2568,6 +2626,8 @@ describe("orders", function() {
                 await node.signTransactionInput(splitTx, 0);
 
                 const splitHash = await node.sendAssetTransaction(splitTx);
+                expect(await node.sdk.rpc.chain.containTransaction(splitHash))
+                    .be.true;
                 expect(await node.sdk.rpc.chain.getTransaction(splitHash)).not
                     .null;
 
@@ -2689,6 +2749,8 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 3);
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             });
 
@@ -2777,6 +2839,10 @@ describe("orders", function() {
                 });
                 await node.sdk.rpc.devel.startSealing();
                 await node.waitBlockNumber(blockNumber + 1);
+                expect(await node.sdk.rpc.chain.containTransaction(pay.hash()))
+                    .be.true;
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .false;
                 expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
                     .null;
                 expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
@@ -2849,6 +2915,8 @@ describe("orders", function() {
                 );
 
                 const hash = await node.sendAssetTransaction(transferTx);
+                expect(await node.sdk.rpc.chain.containTransaction(hash)).be
+                    .true;
                 expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             }).timeout(10_000);
         });

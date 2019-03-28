@@ -36,9 +36,9 @@ build_rpc_trait! {
         # [rpc(name = "chain_getTransaction")]
         fn get_transaction(&self, H256) -> Result<Option<Transaction>>;
 
-        /// Gets transaction result with given transaction hash.
-        # [rpc(name = "chain_getTransactionResult")]
-        fn get_transaction_result(&self, H256) -> Result<Option<bool>>;
+        /// Query whether the chain has the transaction with given transaction hash.
+        # [rpc(name = "chain_containTransaction")]
+        fn contain_transaction(&self, H256) -> Result<bool>;
 
         /// Gets transaction with given transaction tracker.
         # [rpc(name = "chain_getTransactionByTracker")]

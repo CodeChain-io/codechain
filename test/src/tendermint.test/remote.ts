@@ -59,10 +59,8 @@ import CodeChain from "../helper/spawn";
     await node.sdk.rpc.chain.sendSignedTransaction(transactions[0]);
 
     while (true) {
-        const result =
-            (await node.sdk.rpc.chain.getTransaction(
-                transactions[numTransactions - 1].hash()
-            )) != null;
+        const hash = transactions[numTransactions - 1].hash();
+        const result = await node.sdk.rpc.chain.containTransaction(hash);
         console.log(`Node result: ${result}`);
         if (result) {
             break;
