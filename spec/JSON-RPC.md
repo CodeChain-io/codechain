@@ -285,11 +285,9 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getBlockByNumber](#chain_getblockbynumber)
  * [chain_getBlockByHash](#chain_getblockbyhash)
  * [chain_getBlockTransactionCountByHash](#chain_getblocktransactioncountbyhash)
- * [chain_sendSignedTransaction](#chain_sendsignedtransaction)
  * [chain_getTransaction](#chain_gettransaction)
  * [chain_containTransaction](#chain_containtransaction)
  * [chain_getTransactionByTracker](#chain_gettransactionbytracker)
- * [chain_getTransactionResultsByTracker](#chain_getTransactionResultsByTracker)
  * [chain_getAssetSchemeByTracker](#chain_getassetschemebytracker)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
  * [chain_getAsset](#chain_getasset)
@@ -305,12 +303,16 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getShardRoot](#chain_getshardroot)
  * [chain_getShardOwners](#chain_getshardowners)
  * [chain_getShardUsers](#chain_getshardusers)
- * [chain_getPendingTransactions](#chain_getpendingtransactions)
- * [chain_getPendingTransactionsCount](#chain_getpendingtransactionscount)
  * [chain_getMiningReward](#chain_getminingreward)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_executeVM](#chain_executevm)
  * [chain_getNetworkId](#chain_getnetworkid)
+***
+ * [mempool_sendSignedTransaction](#mempool_sendsignedtransaction)
+ * [mempool_getErrorHint](#mempool_geterrorhint)
+ * [mempool_getTransactionResultsByTracker](#mempool_getTransactionResultsByTracker)
+ * [mempool_getPendingTransactions](#mempool_getpendingtransactions)
+ * [mempool_getPendingTransactionsCount](#mempool_getpendingtransactionscount)
 ***
  * [engine_getCoinbase](#engine_getcoinbase)
  * [engine_getBlockReward](#engine_getblockreward)
@@ -678,36 +680,6 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_sendSignedTransaction
-Sends a signed transaction, returning its hash.
-
-### Params
- 1. bytes: `hexadecimal string` - RLP encoded hex string of SignedTransaction
-
-### Returns
-`H256` - transaction hash
-
-Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Seq`, `Invalid Params`, `Invalid NetworkId`
-
-### Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_sendSignedTransaction", "params": ["0xf85e040a11d70294a6594b7196808d161b6fb137e781abbc251385d90ab841291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"], "id": null}' \
-    localhost:8080
-```
-
-### Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
-  "id":null
-}
-```
-
-[Back to **List of methods**](#list-of-methods)
-
 ## chain_getTransaction
 Gets a transaction with the given hash.
 
@@ -782,36 +754,6 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getErrorHint
-Gets a hint to find out why the transaction failed.
-
-### Params
- 1. transaction hash - `H256`
-
-### Returns
-`null` | `string` - `null` if there is no hint, `string` if the transaction failed.
-
-Errors: `Invalid Params`
-
-### Request Example
-```
-  curl \                                                          
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getErrorHint", "params": ["0x31de93320082d6d5f0026fca4fe513cb76197dd2ad99cb0802040801148ec717"], "id": null}' \
-    localhost:8080
-```
-
-### Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":"Text verification has failed: Invalid Signature",
-  "id":null
-}
-```
-
-[Back to **List of methods**](#list-of-methods)
-
 ## chain_getTransactionByTracker
 Gets transaction with the given tracker.
 
@@ -852,36 +794,6 @@ Errors: `Invalid Params`
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
     },
     "id": null,
-}
-```
-
-[Back to **List of methods**](#list-of-methods)
-
-## chain_getTransactionResultsByTracker
-Gets transaction results with the given tracker.
-
-### Params
- 1. tracker - `H256`
-
-### Returns
-`boolean[]`
-
-Errors: `Invalid Params`
-
-### Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionResultsByTracker", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
-    localhost:8080
-```
-
-### Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result": [false, true],
-  "id":null
 }
 ```
 
@@ -1370,87 +1282,6 @@ Errors: `KVDB Error`, `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getPendingTransactions
-Gets transactions that have insertion_timestamps within the given range from the current transaction queue.
-
-### Params
- 1. from: `number | null` - The lower bound of collected pending transactions. If null, there is no lower bound.
- 2. to: `number | null` - The upper bound of collected pending transactions. If null, there is no upper bound.
-
-### Returns
-`{ transactions: Transaction[], lastTimestamp: number }`
-
-### Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactions", "params": [null, null], "id": null}' \
-    localhost:8080
-```
-
-### Response Example
-```
-{
-  "jsonrpc":"2.0",
-  "result":{
-    "lastTimestamp": null,
-    "transactions": [{
-      "blockHash":null,
-      "blockNumber":null,
-      "fee":"0xa",
-      "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
-      "networkId":"cc",
-      "seq":"0x0",
-      "transactionIndex":null,
-      "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
-      "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
-      "transactions":[
-        {
-          "pay":{
-            "seq": 1,
-            "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
-            "value":"0x0"
-          }
-        }
-      ],
-      "v":0
-    }]
-  },
-  "id":null
-}
-```
-
-[Back to **List of methods**](#list-of-methods)
-
-## chain_getPendingTransactionsCount
-Returns a count of the transactions that have insertion_timestamps within the given range from the transaction queues.
-
-### Params
- 1. from: `number | null` - The lower bound of collected pending transactions. If null, there is no lower bound.
- 2. to: `number | null` - The upper bound of collected pending transactions. If null, there is no upper bound.
-
-### Returns
-`number`
-
-### Request Example
-```
-  curl \
-    -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getPendingTransactionsCount", "params": [null, null], "id": null}' \
-    localhost:8080
-```
-
-### Response Example
-```
-{
-    "jsonrpc":"2.0",
-    "result":4,
-    "id":null
-}
-```
-
-[Back to **List of methods**](#list-of-methods)
-
 ## chain_getMiningReward
 Gets the mining reward of the given block number.
 Unlike `engine_getBlockReward`, it returns the actual amount received, including the transaction fee.
@@ -1571,6 +1402,177 @@ No parameters
   "jsonrpc":"2.0",
   "result": 17,
   "id":6
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_sendSignedTransaction
+Sends a signed transaction, returning its hash.
+
+### Params
+ 1. bytes: `hexadecimal string` - RLP encoded hex string of SignedTransaction
+
+### Returns
+`H256` - transaction hash
+
+Errors: `Invalid RLP`, `Verification Failed`, `Already Imported`, `Not Enough Balance`, `Too Low Fee`, `Too Cheap to Replace`, `Invalid Seq`, `Invalid Params`, `Invalid NetworkId`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_sendSignedTransaction", "params": ["0xf85e040a11d70294a6594b7196808d161b6fb137e781abbc251385d90ab841291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6",
+  "id":null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_getErrorHint
+Gets a hint to find out why the transaction failed.
+
+### Params
+ 1. transaction hash - `H256`
+
+### Returns
+`null` | `string` - `null` if there is no hint, `string` if the transaction failed.
+
+Errors: `Invalid Params`
+
+### Request Example
+```
+  curl \                                                          
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_getErrorHint", "params": ["0x31de93320082d6d5f0026fca4fe513cb76197dd2ad99cb0802040801148ec717"], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":"Text verification has failed: Invalid Signature",
+  "id":null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_getTransactionResultsByTracker
+Gets transaction results with the given tracker.
+
+### Params
+ 1. tracker - `H256`
+
+### Returns
+`boolean[]`
+
+Errors: `Invalid Params`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_getTransactionResultsByTracker", "params": ["0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc"], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": [false, true],
+  "id":null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_getPendingTransactions
+Gets transactions that have insertion_timestamps within the given range from the current transaction queue.
+
+### Params
+ 1. from: `number | null` - The lower bound of collected pending transactions. If null, there is no lower bound.
+ 2. to: `number | null` - The upper bound of collected pending transactions. If null, there is no upper bound.
+
+### Returns
+`{ transactions: Transaction[], lastTimestamp: number }`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_getPendingTransactions", "params": [null, null], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "lastTimestamp": null,
+    "transactions": [{
+      "blockHash":null,
+      "blockNumber":null,
+      "fee":"0xa",
+      "hash":"0x8ae3363ccdcc02d8d662d384deee34fb89d1202124e8065f0d6c84ab31e68d8a",
+      "networkId":"cc",
+      "seq":"0x0",
+      "transactionIndex":null,
+      "r":"0x22605d6b9fb713d3a415e02eeed8b4a630e0d867c91bf7d9b7721f94159c0fe1",
+      "s":"0x772f19f1c27f1db8b28289caa9e99ad756878fd56b2415c25cd47cc737f7e0c2",
+      "transactions":[
+        {
+          "pay":{
+            "seq": 1,
+            "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7",
+            "value":"0x0"
+          }
+        }
+      ],
+      "v":0
+    }]
+  },
+  "id":null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_getPendingTransactionsCount
+Returns a count of the transactions that have insertion_timestamps within the given range from the transaction queues.
+
+### Params
+ 1. from: `number | null` - The lower bound of collected pending transactions. If null, there is no lower bound.
+ 2. to: `number | null` - The upper bound of collected pending transactions. If null, there is no upper bound.
+
+### Returns
+`number`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_getPendingTransactionsCount", "params": [null, null], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+    "jsonrpc":"2.0",
+    "result":4,
+    "id":null
 }
 ```
 

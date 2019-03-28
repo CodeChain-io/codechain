@@ -17,36 +17,30 @@
 use std::sync::Arc;
 
 use ccore::{
-    AssetClient, BlockId, EngineInfo, ExecuteClient, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner,
-    Shard, SignedTransaction, TextClient,
+    AssetClient, BlockId, EngineInfo, ExecuteClient, MiningBlockChainClient, RegularKey, RegularKeyOwner, Shard,
+    TextClient,
 };
 use ccrypto::Blake;
-use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H160, H256};
-use rlp::UntrustedRlp;
 
 use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{
-    AssetScheme, Block, BlockNumberAndHash, OwnedAsset, PendingTransactions, Text, Transaction, UnsignedTransaction,
-};
+use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
 
-pub struct ChainClient<C, M>
+pub struct ChainClient<C>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + RegularKeyOwner + ExecuteClient + EngineInfo,
-    M: MinerService, {
+    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + RegularKeyOwner + ExecuteClient + EngineInfo, {
     client: Arc<C>,
-    miner: Arc<M>,
 }
 
-impl<C, M> ChainClient<C, M>
+impl<C> ChainClient<C>
 where
     C: AssetClient
         + MiningBlockChainClient
@@ -56,17 +50,15 @@ where
         + ExecuteClient
         + EngineInfo
         + TextClient,
-    M: MinerService,
 {
-    pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
+    pub fn new(client: Arc<C>) -> Self {
         ChainClient {
             client,
-            miner,
         }
     }
 }
 
-impl<C, M> Chain for ChainClient<C, M>
+impl<C> Chain for ChainClient<C>
 where
     C: AssetClient
         + MiningBlockChainClient
@@ -78,20 +70,7 @@ where
         + FindActionHandler
         + TextClient
         + 'static,
-    M: MinerService + 'static,
 {
-    fn send_signed_transaction(&self, raw: Bytes) -> Result<H256> {
-        UntrustedRlp::new(&raw.into_vec())
-            .as_val()
-            .map_err(|e| errors::rlp(&e))
-            .and_then(|tx| SignedTransaction::try_new(tx).map_err(errors::transaction_core))
-            .and_then(|signed| {
-                let hash = signed.hash();
-                self.miner.import_own_transaction(&*self.client, signed).map_err(errors::transaction_core).map(|_| hash)
-            })
-            .map(Into::into)
-    }
-
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
         let id = transaction_hash.into();
         Ok(self.client.transaction(&id).map(From::from))
@@ -103,15 +82,6 @@ where
 
     fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
         Ok(self.client.transaction_by_tracker(&tracker).map(From::from))
-    }
-
-    fn get_transaction_results_by_tracker(&self, tracker: H256) -> Result<Vec<bool>> {
-        Ok(self
-            .client
-            .error_hints_by_tracker(&tracker)
-            .into_iter()
-            .map(|(_hash, error_hint)| error_hint.is_none())
-            .collect())
     }
 
     fn get_asset_scheme_by_tracker(
@@ -181,10 +151,6 @@ where
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         let address = aaddress.try_address().map_err(errors::core)?;
         Ok(self.client.balance(address, block_id.into()).map(Into::into))
-    }
-
-    fn get_error_hint(&self, transaction_hash: H256) -> Result<Option<String>> {
-        Ok(self.client.error_hint(&transaction_hash))
     }
 
     fn get_regular_key(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<Public>> {
@@ -267,14 +233,6 @@ where
 
     fn get_block_transaction_count_by_hash(&self, block_hash: H256) -> Result<Option<usize>> {
         Ok(self.client.block(&BlockId::Hash(block_hash)).map(|block| block.transactions_count()))
-    }
-
-    fn get_pending_transactions(&self, from: Option<u64>, to: Option<u64>) -> Result<PendingTransactions> {
-        Ok(self.client.ready_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)).into())
-    }
-
-    fn get_pending_transactions_count(&self, from: Option<u64>, to: Option<u64>) -> Result<usize> {
-        Ok(self.client.count_pending_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)))
     }
 
     fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {

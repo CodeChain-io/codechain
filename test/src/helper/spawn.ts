@@ -534,7 +534,7 @@ export default class CodeChain {
                 )
                 .join("");
             this.sdk.rpc
-                .sendRpcRequest("chain_sendSignedTransaction", [`0x${bytes}`])
+                .sendRpcRequest("mempool_sendSignedTransaction", [`0x${bytes}`])
                 .then(result => {
                     try {
                         resolve(new H256(result));

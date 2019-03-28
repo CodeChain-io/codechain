@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cjson::bytes::Bytes;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
 use ctypes::{BlockNumber, ShardId};
@@ -22,16 +21,10 @@ use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
 
-use super::super::types::{
-    AssetScheme, Block, BlockNumberAndHash, OwnedAsset, PendingTransactions, Text, Transaction, UnsignedTransaction,
-};
+use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
 
 build_rpc_trait! {
     pub trait Chain {
-        /// Sends signed transaction, returning its hash.
-        # [rpc(name = "chain_sendSignedTransaction")]
-        fn send_signed_transaction(&self, Bytes) -> Result<H256>;
-
         /// Gets transaction with given hash.
         # [rpc(name = "chain_getTransaction")]
         fn get_transaction(&self, H256) -> Result<Option<Transaction>>;
@@ -43,10 +36,6 @@ build_rpc_trait! {
         /// Gets transaction with given transaction tracker.
         # [rpc(name = "chain_getTransactionByTracker")]
         fn get_transaction_by_tracker(&self, H256) -> Result<Option<Transaction>>;
-
-        /// Gets transaction results with given transaction tracker.
-        # [rpc(name = "chain_getTransactionResultsByTracker")]
-        fn get_transaction_results_by_tracker(&self, H256) -> Result<Vec<bool>>;
 
         /// Gets asset scheme with given transaction tracker.
         # [rpc(name = "chain_getAssetSchemeByTracker")]
@@ -75,10 +64,6 @@ build_rpc_trait! {
         /// Gets balance with given account.
         # [rpc(name = "chain_getBalance")]
         fn get_balance(&self, PlatformAddress, Option<u64>) -> Result<Option<Uint>>;
-
-        /// Gets a hint to find out why the transaction failed.
-        # [rpc(name = "chain_getErrorHint")]
-        fn get_error_hint(&self, H256) -> Result<Option<String>>;
 
         /// Gets regular key with given account
         # [rpc(name = "chain_getRegularKey")]
@@ -135,14 +120,6 @@ build_rpc_trait! {
         ///Gets the count of transactions in a block with given hash.
          # [rpc(name = "chain_getBlockTransactionCountByHash")]
         fn get_block_transaction_count_by_hash(&self, H256) -> Result<Option<usize>>;
-
-        /// Gets transactions in the current mem pool.
-        # [rpc(name = "chain_getPendingTransactions")]
-        fn get_pending_transactions(&self, Option<u64>, Option<u64>) -> Result<PendingTransactions>;
-
-       /// Gets the count of transactions in the current mem pool.
-        # [rpc(name = "chain_getPendingTransactionsCount")]
-        fn get_pending_transactions_count(&self, Option<u64>, Option<u64>) -> Result<usize>;
 
         /// Gets the mining given block number
         # [rpc(name = "chain_getMiningReward")]
