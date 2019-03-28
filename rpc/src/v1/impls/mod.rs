@@ -18,6 +18,7 @@ mod account;
 mod chain;
 mod devel;
 mod engine;
+mod mempool;
 mod miner;
 mod net;
 
@@ -25,5 +26,6 @@ pub use self::account::AccountClient;
 pub use self::chain::ChainClient;
 pub use self::devel::DevelClient;
 pub use self::engine::EngineClient;
+pub use self::mempool::MempoolClient;
 pub use self::miner::MinerClient;
 pub use self::net::NetClient;

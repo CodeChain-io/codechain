@@ -33,7 +33,8 @@ pub struct ApiDependencies {
 impl ApiDependencies {
     pub fn extend_api(&self, enable_devel_api: bool, handler: &mut MetaIoHandler<(), impl Middleware<()>>) {
         use crpc::v1::*;
-        handler.extend_with(ChainClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
+        handler.extend_with(ChainClient::new(Arc::clone(&self.client)).to_delegate());
+        handler.extend_with(MempoolClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         if enable_devel_api {
             handler.extend_with(
                 DevelClient::new(Arc::clone(&self.client), Arc::clone(&self.miner), self.block_sync.clone())
