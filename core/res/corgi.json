@@ -42,7 +42,12 @@
         "timeoutPrevoteDelta": 5000,
         "timeoutPrecommit": 10000,
         "timeoutPrecommitDelta": 5000,
-        "timeoutCommit": 10000
+        "timeoutCommit": 10000,
+        "genesisStakes": {
+          "wccq959puf2uj2587x86am0ycxeqjqgnrm9uy7qyjhr": 5000000,
+          "wccqynrhc8ux3kve58x0f0n7zeysxcmlh8ukyjfmr5y": 3000000,
+          "wccq93qypjsc5xqufqhx6exc0ktcxjnshy82q56e5zv": 2000000
+        }
       }
     }
   },
