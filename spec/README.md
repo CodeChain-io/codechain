@@ -24,4 +24,5 @@ CodeChain is a programmable blockchain supporting multiple asset types. You can 
   * [Digital Signature](Digital-Signature.md)
 * [JSON RPC](JSON-RPC.md)
 * [Stratum](Stratum.md)
-
+* Custom Action
+  * [Staking](Staking.md)
