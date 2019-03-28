@@ -68,25 +68,23 @@ describe("Timelock", function() {
     }
 
     describe("Transaction should go into the current queue", async function() {
-        [1, 2].forEach(function(target) {
-            it(`Minted at block 1, send transfer with Timelock::Block(${target})`, async function() {
-                const tracker = await sendTxWithTimelock({
-                    type: "block",
-                    value: target
-                });
-                await checkTx(tracker, true);
+        it(`Minted at block 1, send transfer with Timelock::Block(0)`, async function() {
+            const tracker = await sendTxWithTimelock({
+                type: "block",
+                value: 0
             });
+            await checkTx(tracker, true);
         });
 
-        [0, 1].forEach(function(target) {
-            it(`Minted at block 1, send transfer with Timelock::BlockAge(${target})`, async function() {
-                const tracker = await sendTxWithTimelock({
-                    type: "blockAge",
-                    value: target
-                });
-                await checkTx(tracker, true);
+
+        it(`Minted at block 1, send transfer with Timelock::BlockAge(0)`, async function() { 
+            const tracker = await sendTxWithTimelock({
+                type: "blockAge",
+                value: 0
             });
+            await checkTx(tracker, true);
         });
+
 
         it("send transfer with Timelock::Time(0)", async function() {
             const tracker = await sendTxWithTimelock({
@@ -168,8 +166,10 @@ describe("Timelock", function() {
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
+            await checkTx(tracker, false);
+            await node.sdk.rpc.devel.startSealing();
 
-            expect(await node.getBestBlockNumber()).to.equal(3);
+            expect(await node.getBestBlockNumber()).to.equal(4);
             await checkTx(tracker, true);
         });
 
@@ -180,14 +180,14 @@ describe("Timelock", function() {
                 value: 3
             });
 
-            for (let i = 1; i <= 3; i++) {
+            for (let i = 1; i <= 4; i++) {
                 expect(await node.getBestBlockNumber()).to.equal(i);
                 await checkTx(tracker, false);
 
                 await node.sdk.rpc.devel.startSealing();
             }
 
-            expect(await node.getBestBlockNumber()).to.equal(4);
+            expect(await node.getBestBlockNumber()).to.equal(5);
             await checkTx(tracker, true);
         });
     });
@@ -292,12 +292,13 @@ describe("Timelock", function() {
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
-            expect(await node.getBestBlockNumber()).to.equal(4);
+            await node.sdk.rpc.devel.startSealing();
+            expect(await node.getBestBlockNumber()).to.equal(5);
             await checkTx(tx.tracker(), false);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
-            expect(await node.getBestBlockNumber()).to.equal(6);
+            expect(await node.getBestBlockNumber()).to.equal(7);
             await checkTx(tx.tracker(), true);
         }).timeout(10_000);
 
@@ -329,12 +330,13 @@ describe("Timelock", function() {
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
-            expect(await node.getBestBlockNumber()).to.equal(4);
+            await node.sdk.rpc.devel.startSealing();
+            expect(await node.getBestBlockNumber()).to.equal(5);
             await checkTx(tx.tracker(), false);
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
-            expect(await node.getBestBlockNumber()).to.equal(6);
+            expect(await node.getBestBlockNumber()).to.equal(7);
             await checkTx(tx.tracker(), true);
         }).timeout(10_000);
 
@@ -366,7 +368,8 @@ describe("Timelock", function() {
 
             await node.sdk.rpc.devel.startSealing();
             await node.sdk.rpc.devel.startSealing();
-            expect(await node.getBestBlockNumber()).to.equal(4);
+            await node.sdk.rpc.devel.startSealing();
+            expect(await node.getBestBlockNumber()).to.equal(5);
             await checkTx(tx.tracker(), true);
         }).timeout(10_000);
 

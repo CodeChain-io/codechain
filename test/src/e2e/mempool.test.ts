@@ -143,12 +143,13 @@ describe("Timelock", function() {
             await checkTx(txhash2, false);
 
             await node.sdk.rpc.devel.startSealing();
-            expect(await node.getBestBlockNumber()).to.equal(2);
+            await node.sdk.rpc.devel.startSealing();
+            expect(await node.getBestBlockNumber()).to.equal(3);
             await checkTx(txhash1, false);
             await checkTx(txhash2, false);
 
             await node.sdk.rpc.devel.startSealing();
-            expect(await node.getBestBlockNumber()).to.equal(3);
+            expect(await node.getBestBlockNumber()).to.equal(4);
             await checkTx(txhash1, false);
             await checkTx(txhash2, true);
         });

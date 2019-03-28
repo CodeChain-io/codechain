@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Range;
 use std::sync::Arc;
@@ -26,7 +25,6 @@ use kvdb::{DBTransaction, KeyValueDB};
 use primitives::H256;
 use rlp;
 use table::Table;
-use time::get_time;
 
 use super::backup;
 use super::mem_pool_types::{
@@ -963,12 +961,12 @@ impl MemPool {
     /// Checks the given timelock with the current time/timestamp.
     fn should_wait_timelock(timelock: &TxTimelock, best_block_number: BlockNumber, best_block_timestamp: u64) -> bool {
         if let Some(block_number) = timelock.block {
-            if block_number > best_block_number + 1 {
+            if block_number > best_block_number {
                 return true
             }
         }
         if let Some(timestamp) = timelock.timestamp {
-            if timestamp > cmp::max(get_time().sec as u64, best_block_timestamp) {
+            if timestamp > best_block_timestamp {
                 return true
             }
         }
