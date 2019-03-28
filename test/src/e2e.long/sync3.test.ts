@@ -50,6 +50,11 @@ describe("sync 3 nodes", function() {
             it("It should be synced when the first node created a block", async function() {
                 const blockNumber = await nodes[0].getBestBlockNumber();
                 const payTx = await nodes[0].sendPayTx();
+                expect(
+                    await nodes[0].sdk.rpc.chain.containTransaction(
+                        payTx.hash()
+                    )
+                ).be.true;
                 const transaction = (await nodes[0].sdk.rpc.chain.getTransaction(
                     payTx.hash()
                 ))!;
@@ -129,6 +134,9 @@ describe("sync 3 nodes", function() {
 
         it("It should be synced when the first node created a block", async function() {
             const payTx = await nodes[0].sendPayTx();
+            expect(
+                await nodes[0].sdk.rpc.chain.containTransaction(payTx.hash())
+            ).be.true;
             const transaction = (await nodes[0].sdk.rpc.chain.getTransaction(
                 payTx.hash()
             ))!;

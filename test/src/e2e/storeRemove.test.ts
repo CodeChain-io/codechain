@@ -55,6 +55,7 @@ describe("store & remove", function() {
             });
 
         const storeHash = await node.sdk.rpc.chain.sendSignedTransaction(store);
+        expect(await node.sdk.rpc.chain.containTransaction(storeHash)).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(storeHash)).not.null;
 
         const text = await node.sdk.rpc.chain.getText(storeHash);
@@ -78,6 +79,7 @@ describe("store & remove", function() {
             remove
         );
         await node.waitBlockNumber(blockNumber + 1);
+        expect(await node.sdk.rpc.chain.containTransaction(removeHash)).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(removeHash)).not.null;
     });
 

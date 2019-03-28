@@ -556,7 +556,7 @@ codechain-primitives@^0.4.6, codechain-primitives@^0.4.8:
 
 "codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#result-lib":
   version "0.5.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#f01c81a59a436fb7acbde29f78cdacd7f3c09b8e"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#1ffe5f6905d27d995b0c14864cd95745b8d396ac"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"

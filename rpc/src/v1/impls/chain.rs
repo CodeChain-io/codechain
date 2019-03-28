@@ -97,8 +97,8 @@ where
         Ok(self.client.transaction(&id).map(From::from))
     }
 
-    fn get_transaction_result(&self, transaction_hash: H256) -> Result<Option<bool>> {
-        Ok(Some(self.client.error_hint(&transaction_hash).is_none()))
+    fn contain_transaction(&self, transaction_hash: H256) -> Result<bool> {
+        Ok(self.client.transaction_block(&transaction_hash.into()).is_some())
     }
 
     fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
