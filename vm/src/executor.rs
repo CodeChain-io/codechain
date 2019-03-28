@@ -302,11 +302,10 @@ where
                 let value = stack.pop()?;
                 stack.push(Item(H160::blake(value).to_vec()))?;
             }
-            Instruction::ChkTimelock => {
-                let timelock_type = stack.pop()?.assert_len(1)?.as_ref()[0] as u8;
+            Instruction::ChkTimelock(timelock_type) => {
                 let value_item = stack.pop()?;
                 let value = read_u64(value_item)?;
-                match timelock_type {
+                match *timelock_type {
                     TIMELOCK_TYPE_BLOCK => {
                         stack.push(Item::from(client.best_block_number() >= value))?;
                     }
