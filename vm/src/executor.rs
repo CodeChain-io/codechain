@@ -18,6 +18,7 @@ use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
 use ctypes::transaction::{AssetTransferInput, HashingError, PartialHashing};
 use ctypes::util::tag::Tag;
+use ctypes::BlockNumber;
 
 use primitives::{H160, H256};
 
@@ -168,6 +169,8 @@ pub fn execute<C>(
     cur: &AssetTransferInput,
     burn: bool,
     client: &C,
+    parent_block_number: BlockNumber,
+    parent_block_timestamp: u64,
 ) -> Result<ScriptResult, RuntimeError>
 where
     C: ChainTimeInfo, {
@@ -307,19 +310,23 @@ where
                 let value = read_u64(value_item)?;
                 match *timelock_type {
                     TIMELOCK_TYPE_BLOCK => {
-                        stack.push(Item::from(client.best_block_number() >= value))?;
+                        stack.push(Item::from(parent_block_number >= value))?;
                     }
                     TIMELOCK_TYPE_BLOCK_AGE => {
                         stack.push(Item::from(
-                            client.transaction_block_age(&cur.prev_out.tracker).map_or(false, |age| age >= value),
+                            client
+                                .transaction_block_age(&cur.prev_out.tracker, parent_block_number)
+                                .map_or(false, |age| age >= value),
                         ))?;
                     }
                     TIMELOCK_TYPE_TIME => {
-                        stack.push(Item::from(client.best_block_timestamp() >= value))?;
+                        stack.push(Item::from(parent_block_timestamp >= value))?;
                     }
                     TIMELOCK_TYPE_TIME_AGE => {
                         stack.push(Item::from(
-                            client.transaction_time_age(&cur.prev_out.tracker).map_or(false, |age| age >= value),
+                            client
+                                .transaction_time_age(&cur.prev_out.tracker, parent_block_timestamp)
+                                .map_or(false, |age| age >= value),
                         ))?;
                     }
                     _ => return Err(RuntimeError::InvalidTimelockType),
@@ -363,17 +370,11 @@ fn check_multi_sig(tx_hash: &H256, mut pubkey: Vec<Public>, mut signatures: Vec<
 }
 
 pub trait ChainTimeInfo {
-    /// Get the best block number.
-    fn best_block_number(&self) -> u64;
-
-    /// Get the best block timestamp.
-    fn best_block_timestamp(&self) -> u64;
-
     /// Get the block height of the transaction.
-    fn transaction_block_age(&self, tracker: &H256) -> Option<u64>;
+    fn transaction_block_age(&self, tracker: &H256, parent_block_number: BlockNumber) -> Option<u64>;
 
     /// Get the how many seconds elapsed since transaction is confirmed, according to block timestamp.
-    fn transaction_time_age(&self, tracker: &H256) -> Option<u64>;
+    fn transaction_time_age(&self, tracker: &H256, parent_timestamp: u64) -> Option<u64>;
 }
 
 #[cfg(test)]

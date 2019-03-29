@@ -54,12 +54,12 @@ fn simple_success() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Push(1)], &transaction, VMConfig::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Push(1)], &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 
     assert_eq!(
-        execute(&[], &[], &[Instruction::Success], &transaction, VMConfig::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Success], &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -87,11 +87,11 @@ fn simple_failure() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[Instruction::Push(0)], &[], &[], &transaction, VMConfig::default(), &input, false, &client),
+        execute(&[Instruction::Push(0)], &[], &[], &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
     assert_eq!(
-        execute(&[], &[], &[Instruction::Fail], &transaction, VMConfig::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Fail], &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
 }
@@ -119,7 +119,7 @@ fn simple_burn() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Burn], &transaction, VMConfig::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Burn], &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Ok(ScriptResult::Burnt)
     );
 }
@@ -147,7 +147,7 @@ fn underflow() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Pop], &transaction, VMConfig::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Pop], &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Err(RuntimeError::StackUnderflow)
     );
 }
@@ -186,7 +186,9 @@ fn out_of_memory() {
             config,
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Err(RuntimeError::OutOfMemory)
     );
@@ -215,7 +217,7 @@ fn invalid_unlock_script() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[Instruction::Nop], &[], &[], &transaction, VMConfig::default(), &input, false, &client),
+        execute(&[Instruction::Nop], &[], &[], &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
 }
@@ -252,7 +254,9 @@ fn conditional_burn() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -265,7 +269,9 @@ fn conditional_burn() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Burnt)
     );
@@ -303,7 +309,9 @@ fn _blake256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -316,7 +324,9 @@ fn _blake256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     );
@@ -329,7 +339,9 @@ fn _blake256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -342,7 +354,9 @@ fn _blake256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     );
@@ -388,7 +402,9 @@ fn _ripemd160() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -401,7 +417,9 @@ fn _ripemd160() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     );
@@ -414,7 +432,9 @@ fn _ripemd160() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -427,7 +447,9 @@ fn _ripemd160() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     );
@@ -473,7 +495,9 @@ fn _sha256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -486,7 +510,9 @@ fn _sha256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     );
@@ -499,7 +525,9 @@ fn _sha256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -512,7 +540,9 @@ fn _sha256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     );
@@ -558,7 +588,9 @@ fn _keccak256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -571,7 +603,9 @@ fn _keccak256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     );
@@ -584,7 +618,9 @@ fn _keccak256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     );
@@ -597,7 +633,9 @@ fn _keccak256() {
             VMConfig::default(),
             &input,
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     );
@@ -640,7 +678,9 @@ fn timelock_invalid_type() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &TestClient::default()
+            &TestClient::default(),
+            0,
+            0
         ),
         Err(RuntimeError::InvalidTimelockType)
     )
@@ -657,7 +697,9 @@ fn timelock_invalid_value() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &TestClient::default()
+            &TestClient::default(),
+            0,
+            0
         ),
         Err(RuntimeError::TypeMismatch)
     )
@@ -665,7 +707,7 @@ fn timelock_invalid_value() {
 
 #[test]
 fn timelock_block_number_success() {
-    let client = TestClient::new(10, 0, None, None);
+    let client = TestClient::new(None, None);
     assert_eq!(
         execute(
             &[],
@@ -675,7 +717,9 @@ fn timelock_block_number_success() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            10,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     )
@@ -683,7 +727,7 @@ fn timelock_block_number_success() {
 
 #[test]
 fn timelock_block_number_fail() {
-    let client = TestClient::new(9, 0, None, None);
+    let client = TestClient::new(None, None);
     assert_eq!(
         execute(
             &[],
@@ -693,7 +737,9 @@ fn timelock_block_number_fail() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            9,
+            0
         ),
         Ok(ScriptResult::Fail)
     )
@@ -702,7 +748,7 @@ fn timelock_block_number_fail() {
 #[test]
 fn timelock_block_timestamp_success() {
     // 0x5BD02BF2, 2018-10-24T08:23:14+00:00
-    let client = TestClient::new(0, 1_540_369_394, None, None);
+    let client = TestClient::new(None, None);
     assert_eq!(
         execute(
             &[],
@@ -712,7 +758,9 @@ fn timelock_block_timestamp_success() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            0,
+            1_540_369_394
         ),
         Ok(ScriptResult::Unlocked)
     )
@@ -721,7 +769,7 @@ fn timelock_block_timestamp_success() {
 #[test]
 fn timelock_block_timestamp_fail() {
     // 0x5BD02BF1, 2018-10-24T08:23:13+00:00
-    let client = TestClient::new(0, 1_540_369_393, None, None);
+    let client = TestClient::new(None, None);
     assert_eq!(
         execute(
             &[],
@@ -731,7 +779,9 @@ fn timelock_block_timestamp_fail() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            0,
+            1_540_369_393
         ),
         Ok(ScriptResult::Fail)
     )
@@ -739,7 +789,7 @@ fn timelock_block_timestamp_fail() {
 
 #[test]
 fn timelock_block_age_fail_due_to_none() {
-    let client = TestClient::new(0, 0, None, None);
+    let client = TestClient::new(None, None);
     assert_eq!(
         execute(
             &[],
@@ -749,7 +799,9 @@ fn timelock_block_age_fail_due_to_none() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     )
@@ -757,7 +809,7 @@ fn timelock_block_age_fail_due_to_none() {
 
 #[test]
 fn timelock_block_age_fail() {
-    let client = TestClient::new(0, 0, Some(4), None);
+    let client = TestClient::new(Some(4), None);
     assert_eq!(
         execute(
             &[],
@@ -767,7 +819,9 @@ fn timelock_block_age_fail() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     )
@@ -775,7 +829,7 @@ fn timelock_block_age_fail() {
 
 #[test]
 fn timelock_block_age_success() {
-    let client = TestClient::new(0, 0, Some(5), None);
+    let client = TestClient::new(Some(5), None);
     assert_eq!(
         execute(
             &[],
@@ -785,7 +839,9 @@ fn timelock_block_age_success() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     )
@@ -793,7 +849,7 @@ fn timelock_block_age_success() {
 
 #[test]
 fn timelock_time_age_fail_due_to_none() {
-    let client = TestClient::new(0, 0, None, None);
+    let client = TestClient::new(None, None);
     assert_eq!(
         execute(
             &[],
@@ -803,7 +859,9 @@ fn timelock_time_age_fail_due_to_none() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     )
@@ -812,7 +870,7 @@ fn timelock_time_age_fail_due_to_none() {
 #[test]
 fn timelock_time_age_fail() {
     // 0x278D00 seconds = 2592000 seconds = 30 days
-    let client = TestClient::new(0, 0, None, Some(2_591_999));
+    let client = TestClient::new(None, Some(2_591_999));
     assert_eq!(
         execute(
             &[],
@@ -822,7 +880,9 @@ fn timelock_time_age_fail() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Fail)
     )
@@ -830,7 +890,7 @@ fn timelock_time_age_fail() {
 
 #[test]
 fn timelock_time_age_success() {
-    let client = TestClient::new(0, 0, None, Some(2_592_000));
+    let client = TestClient::new(None, Some(2_592_000));
     assert_eq!(
         execute(
             &[],
@@ -840,7 +900,9 @@ fn timelock_time_age_success() {
             VMConfig::default(),
             &dummy_input(),
             false,
-            &client
+            &client,
+            0,
+            0
         ),
         Ok(ScriptResult::Unlocked)
     )
@@ -869,7 +931,7 @@ fn copy_stack_underflow() {
         unlock_script: Vec::new(),
     };
     assert_eq!(
-        execute(&[], &[], &[Instruction::Copy(1)], &transaction, VMConfig::default(), &input, false, &client),
+        execute(&[], &[], &[Instruction::Copy(1)], &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Err(RuntimeError::StackUnderflow)
     );
 }
