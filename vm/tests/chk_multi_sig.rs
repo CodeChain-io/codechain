@@ -73,7 +73,7 @@ fn valid_multi_sig_0_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Err(RuntimeError::InvalidSigCount)
     );
 }
@@ -127,7 +127,7 @@ fn valid_multi_sig_1_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -183,7 +183,7 @@ fn valid_multi_sig_2_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -242,7 +242,7 @@ fn valid_multi_sig_2_of_3_110() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -301,7 +301,7 @@ fn valid_multi_sig_2_of_3_101() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -360,7 +360,7 @@ fn valid_multi_sig_2_of_3_011() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -414,7 +414,7 @@ fn invalid_multi_sig_1_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
 }
@@ -471,7 +471,7 @@ fn invalid_multi_sig_2_of_2() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
 }
@@ -538,7 +538,7 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
 }
@@ -594,7 +594,7 @@ fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
 }
@@ -648,7 +648,7 @@ fn invalid_multi_sig_with_less_sig_than_m() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Err(RuntimeError::TypeMismatch)
     );
 }
@@ -704,7 +704,7 @@ fn invalid_multi_sig_with_more_sig_than_m() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Err(RuntimeError::InvalidFilter)
     );
 }
@@ -770,7 +770,7 @@ fn invalid_multi_sig_with_too_many_arg() {
     ];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
         Err(RuntimeError::InvalidSigCount)
     );
 }

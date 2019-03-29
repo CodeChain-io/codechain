@@ -462,6 +462,10 @@ impl Miner {
         let mut invalid_transactions = Vec::new();
         let block_number = open_block.block().header().number();
 
+        let parent_header = {
+            let parent_hash = open_block.header().parent_hash();
+            chain.block_header(&BlockId::Hash(*parent_hash)).expect("Parent header MUST exist")
+        };
         let mut tx_count: usize = 0;
         let tx_total = transactions.len();
         let mut invald_tx_users = HashSet::new();
@@ -474,11 +478,10 @@ impl Miner {
             let hash = tx.hash();
             let start = Instant::now();
             // Check whether transaction type is allowed for sender
-            let result = self
-                .engine
-                .machine()
-                .verify_transaction(&tx, open_block.header(), chain, true)
-                .and_then(|_| open_block.push_transaction(tx, None, chain));
+            let result =
+                self.engine.machine().verify_transaction(&tx, open_block.header(), chain, true).and_then(|_| {
+                    open_block.push_transaction(tx, None, chain, parent_header.number(), parent_header.timestamp())
+                });
 
             match result {
                 // already have transaction - ignore
