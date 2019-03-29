@@ -17,7 +17,9 @@
                 "timeoutPrecommitDelta": 1000,
                 "timeoutCommit": 1000,
                 "genesisStakes": {
-                    "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": 100000
+                    "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": 70000,
+                    "tccq9qvruafmf9vegjhkl0ruunkwp0d4lc8fgxknzh5": 20000,
+                    "tccq8snvxt5vfwthja7z7880dgs63x4njw2n5e5zm4h": 10000
                 }
             }
         }
@@ -28,7 +30,7 @@
         "maxTransferMetadataSize": "0x0100",
         "maxTextContentSize": "0x0200",
         "networkID": "tc",
-        "minPayCost" : 10,
+        "minPayCost" : 12,
         "minSetRegularKeyCost" : 10,
         "minCreateShardCost" : 10,
         "minSetShardOwnersCost" : 10,
