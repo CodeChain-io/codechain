@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { expect } from "chai";
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
+chai.use(chaiAsPromised);
 import "mocha";
 import {
     aliceAddress,
@@ -26,10 +28,12 @@ import {
 } from "../helper/constants";
 import CodeChain from "../helper/spawn";
 
+const expect = chai.expect;
+
 describe("CreateShard", function() {
     let node: CodeChain;
     before(async function() {
-        node = new CodeChain();
+        node = new CodeChain({ argv: ["--allow-create-shard"] });
         await node.start();
     });
 
@@ -407,6 +411,46 @@ describe("CreateShard", function() {
         ).deep.equal([false, true]);
         expect(await node.sdk.rpc.chain.getErrorHint(signedMint2.hash())).to.be
             .null;
+    });
+
+    after(async function() {
+        await node.clean();
+    });
+});
+
+describe("Cannot create shard without allow-create-shard flag", function() {
+    let node: CodeChain;
+    before(async function() {
+        node = new CodeChain();
+        await node.start();
+    });
+
+    it("Create 1 shard", async function() {
+        const seq: number = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
+
+        await node.sdk.rpc.chain.sendSignedTransaction(
+            node.sdk.core
+                .createPayTransaction({ recipient: aliceAddress, quantity: 1 })
+                .sign({ secret: faucetSecret, seq, fee: 10 })
+        );
+
+        const tx = node.sdk.core
+            .createCreateShardTransaction({ users: [aliceAddress] })
+            .sign({ secret: faucetSecret, seq: seq + 1, fee: 10 });
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
+                tx.hash(),
+                null
+            ])
+        ).be.null;
+        expect(node.sdk.rpc.chain.sendSignedTransaction(tx)).be.rejected;
+        expect(await node.sdk.rpc.chain.containTransaction(tx.hash())).be.false;
+        expect(await node.sdk.rpc.chain.getTransaction(tx.hash())).be.null;
+        const afterShardId = await node.sdk.rpc.sendRpcRequest(
+            "chain_getShardIdByHash",
+            [tx.hash(), null]
+        );
+        expect(afterShardId).be.null;
     });
 
     after(async function() {
