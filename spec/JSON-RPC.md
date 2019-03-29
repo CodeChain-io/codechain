@@ -286,7 +286,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getBlockByHash](#chain_getblockbyhash)
  * [chain_getBlockTransactionCountByHash](#chain_getblocktransactioncountbyhash)
  * [chain_getTransaction](#chain_gettransaction)
- * [chain_containTransaction](#chain_containtransaction)
+ * [chain_containsTransaction](#chain_containstransaction)
  * [chain_getTransactionByTracker](#chain_gettransactionbytracker)
  * [chain_getAssetSchemeByTracker](#chain_getassetschemebytracker)
  * [chain_getAssetSchemeByType](#chain_getassetschemebytype)
@@ -724,8 +724,8 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_containTransaction
-Returns true if the transaction with the given hass is in the chain.
+## chain_containsTransaction
+Returns true if the transaction with the given hash is in the chain.
 
 ### Params
  1. transaction hash - `H256`
@@ -739,7 +739,7 @@ Errors: `Invalid Params`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_containTransaction", "params": ["0xad708d48755ac36685280a45ec213941e21c41644c781bf2f487fd6c7e4b2ebb"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_containsTransaction", "params": ["0xad708d48755ac36685280a45ec213941e21c41644c781bf2f487fd6c7e4b2ebb"], "id": null}' \
     localhost:8080
 ```
 
