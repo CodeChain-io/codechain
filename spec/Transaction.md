@@ -2,6 +2,8 @@
 
 Only a platform account can generate a transaction.
 The transaction generator pays the transaction fees.
+Transactions that cost less than the [minimum fee](Minimum-Fee.md) are rejected.
+The minumum fee is different for each transaction type.
 
 The seq must be identical with the payer’s account seq.
 The account seq will be increased by 1 after a transaction is added to the block.
