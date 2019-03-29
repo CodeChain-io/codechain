@@ -1180,14 +1180,14 @@ fn verify_input_and_output_consistent_with_order(
     Ok(())
 }
 
-fn is_ratio_equal(a: u64, b: u64, c: u64, d: u64) -> bool {
-    // a:b = c:d
-    u128::from(a) * u128::from(d) == u128::from(b) * u128::from(c)
+fn is_ratio_equal(from: u64, fee: u64, spent: u64, fee_given: u64) -> bool {
+    // from:fee = spent:fee_given
+    u128::from(from) * u128::from(fee_given) == u128::from(fee) * u128::from(spent)
 }
 
-fn is_ratio_greater_or_equal(a: u64, b: u64, c: u64, d: u64) -> bool {
-    // a:b <= c:d
-    u128::from(a) * u128::from(d) >= u128::from(b) * u128::from(c)
+fn is_ratio_greater_or_equal(from: u64, to: u64, spent: u64, output: u64) -> bool {
+    // from:to <= spent:output
+    u128::from(from) * u128::from(output) >= u128::from(to) * u128::from(spent)
 }
 
 #[cfg(test)]
