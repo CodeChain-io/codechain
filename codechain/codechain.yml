@@ -168,6 +168,10 @@ args:
         value_name: LIMIT
         help: Maximum amount of transactions in the queue (waiting to be included in next block).
         takes_value: true
+    - allow-create-shard:
+        long: allow-create-shard
+        help: Make the miner allow CreateShard transactions
+        takes_value: false
     - notify-work:
         long: notify-work
         value_name: URLS
