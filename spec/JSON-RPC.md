@@ -1450,7 +1450,7 @@ Errors: `Invalid Params`
 
 ### Request Example
 ```
-  curl \                                                          
+  curl \
     -H 'Content-Type: application/json' \
     -d '{"jsonrpc": "2.0", "method": "mempool_getErrorHint", "params": ["0x31de93320082d6d5f0026fca4fe513cb76197dd2ad99cb0802040801148ec717"], "id": null}' \
     localhost:8080
