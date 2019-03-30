@@ -562,19 +562,11 @@ impl ResealTimer for TestBlockChainClient {
 }
 
 impl ChainTimeInfo for TestBlockChainClient {
-    fn best_block_number(&self) -> u64 {
-        0
-    }
-
-    fn best_block_timestamp(&self) -> u64 {
-        0
-    }
-
-    fn transaction_block_age(&self, _: &H256) -> Option<u64> {
+    fn transaction_block_age(&self, _: &H256, _parent_block_number: BlockNumber) -> Option<u64> {
         Some(0)
     }
 
-    fn transaction_time_age(&self, _: &H256) -> Option<u64> {
+    fn transaction_time_age(&self, _: &H256, _parent_timestamp: u64) -> Option<u64> {
         Some(0)
     }
 }

@@ -75,6 +75,7 @@ pub struct MinerOptions {
     /// then `new_fee > old_fee + old_fee >> mem_pool_fee_bump_shift` should be satisfied to replace.
     /// Local transactions ignore this option.
     pub mem_pool_fee_bump_shift: usize,
+    pub allow_create_shard: bool,
     /// How many historical work packages can we store before running out?
     pub work_queue_size: usize,
 }
@@ -92,6 +93,7 @@ impl Default for MinerOptions {
             mem_pool_size: 8192,
             mem_pool_memory_limit: Some(2 * 1024 * 1024),
             mem_pool_fee_bump_shift: 3,
+            allow_create_shard: false,
             work_queue_size: 20,
         }
     }
@@ -269,6 +271,9 @@ impl Miner {
                 if client.transaction_block(&TransactionId::Hash(hash)).is_some() {
                     cdebug!(MINER, "Rejected transaction {:?}: already in the blockchain", hash);
                     return Err(HistoryError::TransactionAlreadyImported.into())
+                }
+                if !self.is_allowed_transaction(&tx.action) {
+                    cdebug!(MINER, "Rejected transaction {:?}: {:?} is not allowed transaction", hash, tx.action);
                 }
                 match self
                     .engine
@@ -462,6 +467,10 @@ impl Miner {
         let mut invalid_transactions = Vec::new();
         let block_number = open_block.block().header().number();
 
+        let parent_header = {
+            let parent_hash = open_block.header().parent_hash();
+            chain.block_header(&BlockId::Hash(*parent_hash)).expect("Parent header MUST exist")
+        };
         let mut tx_count: usize = 0;
         let tx_total = transactions.len();
         let mut invald_tx_users = HashSet::new();
@@ -471,14 +480,19 @@ impl Miner {
                 // The previous transaction has failed
                 continue
             }
+            if !self.is_allowed_transaction(&tx.action) {
+                invald_tx_users.insert(signer_public);
+                invalid_transactions.push(tx.hash());
+                continue
+            }
+
             let hash = tx.hash();
             let start = Instant::now();
             // Check whether transaction type is allowed for sender
-            let result = self
-                .engine
-                .machine()
-                .verify_transaction(&tx, open_block.header(), chain, true)
-                .and_then(|_| open_block.push_transaction(tx, None, chain));
+            let result =
+                self.engine.machine().verify_transaction(&tx, open_block.header(), chain, true).and_then(|_| {
+                    open_block.push_transaction(tx, None, chain, parent_header.number(), parent_header.timestamp())
+                });
 
             match result {
                 // already have transaction - ignore
@@ -596,6 +610,18 @@ impl Miner {
                 None
             }
         })
+    }
+
+    fn is_allowed_transaction(&self, action: &Action) -> bool {
+        if let Action::CreateShard {
+            ..
+        } = action
+        {
+            if !self.options.allow_create_shard {
+                return false
+            }
+        }
+        true
     }
 }
 

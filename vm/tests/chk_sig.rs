@@ -76,7 +76,7 @@ fn valid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -123,7 +123,7 @@ fn invalid_pay_to_public_key() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script[..], &[], &lock_script, &transaction, VMConfig::default(), &input, false, &client),
+        execute(&unlock_script[..], &[], &lock_script, &transaction, VMConfig::default(), &input, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
 }
@@ -203,7 +203,7 @@ fn sign_all_input_all_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -282,7 +282,7 @@ fn sign_single_input_all_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -361,7 +361,7 @@ fn sign_all_input_partial_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -440,7 +440,7 @@ fn sign_single_input_partial_output() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client, 0, 0),
         Ok(ScriptResult::Unlocked)
     );
 }
@@ -497,7 +497,7 @@ fn distinguish_sign_single_input_with_sign_all() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
 }
@@ -555,7 +555,7 @@ fn distinguish_sign_single_output_with_sign_all() {
     let lock_script = vec![Instruction::PushB(pubkey), Instruction::ChkSig];
 
     assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client),
+        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &input0, false, &client, 0, 0),
         Ok(ScriptResult::Fail)
     );
 }
