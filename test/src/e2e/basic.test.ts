@@ -30,7 +30,7 @@ describe("solo - 1 node", function() {
     });
 
     it("getNodeVersion", async function() {
-        expect(await node.sdk.rpc.node.getNodeVersion()).to.equal("0.1.0");
+        expect(await node.sdk.rpc.node.getNodeVersion()).to.equal("1.0.0");
     });
 
     it("getCommitHash", async function() {
