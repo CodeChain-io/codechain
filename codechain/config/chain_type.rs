@@ -23,6 +23,7 @@ use never::Never;
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChainType {
+    Mainnet,
     Solo,
     #[serde(rename = "simple_poa")]
     SimplePoA,
@@ -47,6 +48,7 @@ impl FromStr for ChainType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let scheme = match s {
+            "mainnet" => ChainType::Mainnet,
             "solo" => ChainType::Solo,
             "simple_poa" => ChainType::SimplePoA,
             "tendermint" => ChainType::Tendermint,
@@ -64,6 +66,7 @@ impl FromStr for ChainType {
 impl fmt::Display for ChainType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match self {
+            ChainType::Mainnet => "mainnet",
             ChainType::Solo => "solo",
             ChainType::SimplePoA => "simple_poa",
             ChainType::Tendermint => "tendermint",
@@ -80,6 +83,7 @@ impl fmt::Display for ChainType {
 impl ChainType {
     pub fn scheme(&self) -> Result<Scheme, String> {
         match self {
+            ChainType::Mainnet => Ok(Scheme::new_mainnet()),
             ChainType::Solo => Ok(Scheme::new_test_solo()),
             ChainType::SimplePoA => Ok(Scheme::new_test_simple_poa()),
             ChainType::Tendermint => Ok(Scheme::new_test_tendermint()),

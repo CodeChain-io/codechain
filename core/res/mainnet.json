@@ -1,0 +1,152 @@
+{
+  "name": "Mainnet",
+  "engine": {
+    "tendermint": {
+      "params": {
+        "blockReward": "0x0",
+        "validators": [
+          "0xf20d1f33aa0ffffbe0fd4c7cbd411a76253fe878ff18dd37467710b79737923e4cfd678a2a19ec136f95731e11c3140794ea4a4a79407e04fb999bcbdb805669",
+          "0xe92eef358d12cf3370701bfc5c8fe793ec6e04248082c507a137f2bdbcc58be426504e58c3a41f4dbf4fc617ec4a97de814edbd5afc25a912bdafe8dca2d571f",
+          "0x52d864081274124a0fb2e3cd8deb2173d50aa83b8eb243dc3ecd533f2b368e2a787332f840240ea838c6b459866e54700d1efadce51d0b427157e6a591ab9e91",
+          "0x80bb170ac87f5ed2eb7ffd6645f4533f52408823780ad5d07898d50a51d2b7d5800c26b27b498bf41129cda973fa7244f582f17fd11c2c89f3ce320bb53fca09",
+          "0xdab8e6c698a883efc4a3f2c9b238b4a30fd754fa63ea2011752c9111afd0744f719818a68c7f4ce9a23e9f41b158f06f6f8ac83ee01772a9782e3e7082188c70",
+          "0xf957b5d09135b27590e3c4c4c8882f9c7f2369a7284ed57f8aac8e44b25ebd951e1e19f240da67b7a013bfe6219ffb2eb2e480b12749305286d84ce0384abffb",
+          "0x8930f589f08009f24e343b98f537270f3c3257b67aa2b98927c483880ee6bba1bafa633648cd23c10eb402fa7188010c4fa369112afbcd84b777242dcf55db27",
+          "0x7b0827eded6bddb593dbe673a56ac386ef756420022d0fe7675e756a5f987df91c2bcd2bfcbfd147ac82d884f308d7229f3dc440b280565379a42fa9671ea6ab",
+          "0x1cbad34ab72d605b9794b58e2c0cfcd7c9c9d7f4e70c9b94c2111ccd041c1e57cfcd538aae46d20d769e3b3bc771c886d14fde8e0ade46a5f2de816aaca8d569",
+          "0xe772c7c7633c0e8fd058095582dbcfe7e5b23a70772e2418e61038434d018c595352657d11387aa714b0c88f2a6fa56f9531ee0ff96eb0574a1f8116e098d9d5",
+          "0xe10e032bec018adb03c60a4b3361cea1208d24b75ada988c6e32a3dafa98691292fdcba02b256024f68a6c1bdaaea79cbac2715336068fffcf28df6e6565d6b9",
+          "0xd0df5b08e1bf1c92429682d24797df87c9571ecffa34beb4706c58b4ab48ab388e5c45676541e16199de2c001bd2b73068b4021b6a20b844b27952a0b2e1963f",
+          "0x3bfa57c8fdf769956f1892ce9b659d187a6220e300eaf17947efbe7c8f62231d98a56490648e3e4fd727b98daa5130ef7b3667f0dd5325ad6ad27b78e86b03b1",
+          "0x75bbf6da733b7040b3993e62ccf7624dc8b2cf474560d86d2018529aa46952dc593127f591d0644526647cc5e39a0ff0580decefb2cfdc5ad6b044c57ae4cd67",
+          "0xc83bd76ed414e07b4ab3a98a17308061e3d21ba73b6863e251fcb5a65090a301643e6cf73be73a55fdaa0fc6a4e479da54747a91834860dc618d50292a702eb1",
+          "0xffc9f62b9d1be823c037cbf05a51a281930fa5e90ac6882da46f6fb0d85fb69bd3bd27bd12a7bf9ed7b19cf83c44a00446c7b6619fa4ab0137976de73cb2d913",
+          "0xf970a148265dc13682cd5073c12432568cea65ae222d4ea912476136f80c048adbe57640be71f73eab56e90edf97c6e928485010c3073665b57d5269369c8a9d",
+          "0x79d8a8de23a49caf340bc26f080d6aef7a4f8eac01e7bf9f12b9656028276bec22d1cceaec3e330504e46dbd1f44ecd9e8fb27becb5d4b0c74cfc81e6f6e75eb",
+          "0x5facedaefd54f016ec27dee0e93c763f061f21e487a44d604842f91c3f498d3e6fd6ab8137a9b096a1c01d82f59ffd66513c6bb7a4eeb5588ebf232fed460b03",
+          "0x801821fff381563d2c4f780d891780bb477f6848443b4435a23139874e128dff8ee80b55062f35808435ef988a59d94a85cb03a478b444cc5092307dab5cb11b",
+          "0x09eecdf642657644af39bdb7e45d0fc42055ffd714c8c95d91e73319dfddb02993f4334e1ae01e3f754543bf88ea05286f9e7635dce74aeb04040d98ce560cb0",
+          "0x2817b56caf11097df6d309ad5ecc141a55c46c7655d0a652459774e4a6ed1ce06173ae90c8864cdb29036d6be6668ae425c45c16adfdc481f7255b479ab4916b",
+          "0xbd774d4f8436a99b2fc14f82bbeb768274c837cc599d546c6e0ae6b502fcc2db82f6f6136be19beb17873a85e05712b66d4f239ae287e273cb01612152c34054",
+          "0x93fd1985e286339a23e9390a16db1a623f2892a02e53e7cb82e4c7e1a985f21105a6e55fed10a34a67c4b3666bbb2d09bfae6dc75f41f8b645dd1df3ae5c7c2e",
+          "0xd3031b2bdb8a4a7f385dea9c76711d2a17f701c15634c23933cca10f498a97787eceaf615b4ae119e0d8321297b98979e3e6e0d5a0b7f3907bbfb20f80e1871b",
+          "0x1281c2a8487b603f4b0b425a904ec8e452a4007681a44a6d921ea0d8b3f9935719c480da91e008cb8222f89a035467b2a745aad047e20e175a486671a842fefd",
+          "0x145fd961d8a426c8093ba7c2f3c1b93340d5c5811ce77e6c9f0d5a9f8afce723de288ed85cfb7ddcc4bd7a566d7dd3284731c1bff1daf2cd9dd65952d52e6e7b",
+          "0xeadc3603822aa54fa0744bfea8a0cf25cf8bcfd18ab332c63e53b62b176571347d96cc878e6a316fb42239373c12b6f0d8e8b4e1b2592bf83993ac494507c30e",
+          "0x7a6145d4272c9b1990dfb69eecd228dcbdde4791762273c7d33648d7c112ef4a6dd8a5d05f5ce1caa85f973db6b28ca57a883ea00fcc129d910a9a263812ef9c",
+          "0x9c4e8a98e56163c9c1a4f7d6bde0c8d30df8403007db063f467fc815afa4ad9ff4c49380021688c50064eb1480a03ca343680efa5c0a2ffeec42f5d0c7a1398e"
+        ],
+        "timeoutPropose": 10000,
+        "timeoutProposeDelta": 5000,
+        "timeoutPrevote": 10000,
+        "timeoutPrevoteDelta": 5000,
+        "timeoutPrecommit": 10000,
+        "timeoutPrecommitDelta": 5000,
+        "timeoutCommit": 10000,
+        "genesisStakes": {
+          "cccq8u8se8k00vcqk4pl707qe9v60hs3jj27g4rqkm9": 1000000,
+          "cccq9hpz4m5sx0ea42l2hfm8nja0xzzsnx0vv0p7mzw": 1000000,
+          "cccqxgwashdy0fp5cwlvp4ntkzmy3xvjedfjgfzrxf7": 1000000,
+          "cccq9g0ayvrvmzcs2qf8yygat0dg9073g5xccd3sydw": 1000000,
+          "cccq8r9as2drgp4xwfzz7t0xc9k977y8mw7hus3zq8e": 1000000,
+          "cccqx7ycl2awx6awqyjf9ns4532xj7eg63w6v6hlnu0": 1000000,
+          "cccq826j0p6fvpk02p0n5th7ukqu5clrnyldcxgrgtz": 1000000,
+          "cccqyhk4388mymckk40ctf0skgkl8nf89f6sgpzwzke": 1000000,
+          "cccqxgupxd5j0squ7t8w3etxjf0fn2z4axz0spycqum": 1000000,
+          "cccq8dhpcfqt94mx8dntxxd6420782vtd4tpvpgcgjh": 1000000
+        }
+      }
+    }
+  },
+  "params": {
+    "maxExtraDataSize": "0x20",
+    "maxAssetSchemeMetadataSize": "0x0400",
+    "maxTransferMetadataSize": "0x0100",
+    "maxTextContentSize": "0x0200",
+    "networkID": "cc",
+    "minPayCost" : 100,
+    "minSetRegularKeyCost" : 10000,
+    "minCreateShardCost" : 1000000,
+    "minSetShardOwnersCost" : 100000,
+    "minSetShardUsersCost" : 10000,
+    "minWrapCccCost" : 100000,
+    "minCustomCost" : 0,
+    "minStoreCost" : 5000,
+    "minRemoveCost" : 5000,
+    "minMintAssetCost" : 100000,
+    "minTransferAssetCost" : 100,
+    "minChangeAssetSchemeCost" : 100000,
+    "minIncreaseAssetSupplyCost" : 100000,
+    "minComposeAssetCost" : 100000,
+    "minDecomposeAssetCost" : 100000,
+    "minUnwrapCccCost" : 100,
+    "maxBodySize": 4194304,
+    "snapshotPeriod": 16384
+  },
+  "genesis": {
+    "seal": {
+      "tendermint": {
+        "prev_view": "0x0",
+        "cur_view": "0x0",
+        "precommits": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    "score": "0x20000",
+    "author": "cccq8n3x49sh3jp85xrqgupu42sgtvgmqyg5uf8rguw",
+    "timestamp": "0x00",
+    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "extraData": "0x"
+  },
+  "accounts": {
+    "cccq8u8se8k00vcqk4pl707qe9v60hs3jj27g4rqkm9": {
+      "balance": "10000000000"
+    },
+    "cccq9hpz4m5sx0ea42l2hfm8nja0xzzsnx0vv0p7mzw": {
+      "balance": "10000000000"
+    },
+    "cccqxgwashdy0fp5cwlvp4ntkzmy3xvjedfjgfzrxf7": {
+      "balance": "10000000000"
+    },
+    "cccq9g0ayvrvmzcs2qf8yygat0dg9073g5xccd3sydw": {
+      "balance": "10000000000"
+    },
+    "cccq8r9as2drgp4xwfzz7t0xc9k977y8mw7hus3zq8e": {
+      "balance": "10000000000"
+    },
+    "cccqx7ycl2awx6awqyjf9ns4532xj7eg63w6v6hlnu0": {
+      "balance": "10000000000"
+    },
+    "cccq826j0p6fvpk02p0n5th7ukqu5clrnyldcxgrgtz": {
+      "balance": "10000000000"
+    },
+    "cccqyhk4388mymckk40ctf0skgkl8nf89f6sgpzwzke": {
+      "balance": "10000000000"
+    },
+    "cccqxgupxd5j0squ7t8w3etxjf0fn2z4axz0spycqum": {
+      "balance": "10000000000"
+    },
+    "cccq8dhpcfqt94mx8dntxxd6420782vtd4tpvpgcgjh": {
+      "balance": "10000000000"
+    }
+  },
+  "shards": {
+    "0": {
+      "seq": 0,
+      "owners": [
+        "cccq8u8se8k00vcqk4pl707qe9v60hs3jj27g4rqkm9",
+        "cccq9hpz4m5sx0ea42l2hfm8nja0xzzsnx0vv0p7mzw",
+        "cccqxgwashdy0fp5cwlvp4ntkzmy3xvjedfjgfzrxf7",
+        "cccq9g0ayvrvmzcs2qf8yygat0dg9073g5xccd3sydw",
+        "cccq8r9as2drgp4xwfzz7t0xc9k977y8mw7hus3zq8e",
+        "cccqx7ycl2awx6awqyjf9ns4532xj7eg63w6v6hlnu0",
+        "cccq826j0p6fvpk02p0n5th7ukqu5clrnyldcxgrgtz",
+        "cccqyhk4388mymckk40ctf0skgkl8nf89f6sgpzwzke",
+        "cccqxgupxd5j0squ7t8w3etxjf0fn2z4axz0spycqum",
+        "cccq8dhpcfqt94mx8dntxxd6420782vtd4tpvpgcgjh"
+      ],
+      "users": []
+    }
+  }
+}
