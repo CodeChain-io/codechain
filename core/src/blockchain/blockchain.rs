@@ -134,7 +134,7 @@ impl BlockChain {
         ctrace!(BLOCKCHAIN, "Inserting block #{}({}) to the blockchain.", new_header.number(), new_block_hash);
 
         if self.is_known(&new_block_hash) {
-            ctrace!(BLOCKCHAIN, "Block #{}({}) is already known.", new_header.number(), new_block_hash);
+            cdebug!(BLOCKCHAIN, "Block #{}({}) is already known.", new_header.number(), new_block_hash);
             return ImportRoute::none()
         }
 
@@ -194,7 +194,7 @@ impl BlockChain {
         if parent_details_of_new_block.total_score + new_header.score() > self.best_proposal_block_detail().total_score
             && engine.can_change_canon_chain(&new_header)
         {
-            ctrace!(
+            cinfo!(
                 BLOCKCHAIN,
                 "Block #{}({}) has higher total score, changing the best proposal/canonical chain.",
                 new_header.number(),

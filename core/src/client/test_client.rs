@@ -286,7 +286,7 @@ impl TestBlockChainClient {
         let sender_address = public_to_address(&signed.signer_public());
         self.set_balance(sender_address, 10_000_000_000_000_000_000);
         let hash = signed.hash();
-        let res = self.miner.import_external_tranasctions(self, vec![signed.into()]);
+        let res = self.miner.import_external_transactions(self, vec![signed.into()]);
         let res = res.into_iter().next().unwrap().expect("Successful import");
         assert_eq!(res, TransactionImportResult::Current);
         hash
@@ -487,7 +487,7 @@ impl BlockChainClient for TestBlockChainClient {
         // import right here
         let transactions =
             transactions.into_iter().filter_map(|bytes| UntrustedRlp::new(&bytes).as_val().ok()).collect();
-        self.miner.import_external_tranasctions(self, transactions);
+        self.miner.import_external_transactions(self, transactions);
     }
 
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
@@ -562,19 +562,11 @@ impl ResealTimer for TestBlockChainClient {
 }
 
 impl ChainTimeInfo for TestBlockChainClient {
-    fn best_block_number(&self) -> u64 {
-        0
-    }
-
-    fn best_block_timestamp(&self) -> u64 {
-        0
-    }
-
-    fn transaction_block_age(&self, _: &H256) -> Option<u64> {
+    fn transaction_block_age(&self, _: &H256, _parent_block_number: BlockNumber) -> Option<u64> {
         Some(0)
     }
 
-    fn transaction_time_age(&self, _: &H256) -> Option<u64> {
+    fn transaction_time_age(&self, _: &H256, _parent_timestamp: u64) -> Option<u64> {
         Some(0)
     }
 }

@@ -113,7 +113,7 @@ pub trait MinerService: Send + Sync {
         Self: Sized;
 
     /// Imports transactions to mem pool.
-    fn import_external_tranasctions<C: MiningBlockChainClient>(
+    fn import_external_transactions<C: MiningBlockChainClient>(
         &self,
         client: &C,
         transactions: Vec<UnverifiedTransaction>,

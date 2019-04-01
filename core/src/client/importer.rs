@@ -381,7 +381,7 @@ impl Importer {
             ctrace!(CLIENT, "Importing header {}", header.number());
 
             if bad.contains(&hash) || bad.contains(header.parent_hash()) {
-                ctrace!(CLIENT, "Bad header detected : {}", hash);
+                cinfo!(CLIENT, "Bad header detected : {}", hash);
                 bad.insert(hash);
                 continue
             }

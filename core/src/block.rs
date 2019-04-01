@@ -23,6 +23,7 @@ use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelSta
 use ctypes::errors::HistoryError;
 use ctypes::machine::{LiveBlock, Transactions};
 use ctypes::util::unexpected::Mismatch;
+use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -169,6 +170,8 @@ impl<'x> OpenBlock<'x> {
         tx: SignedTransaction,
         h: Option<H256>,
         client: &C,
+        parent_block_number: BlockNumber,
+        parent_block_timestamp: u64,
     ) -> Result<(), Error> {
         if self.block.transactions_set.contains(&tx.hash()) {
             return Err(HistoryError::TransactionAlreadyImported.into())
@@ -176,7 +179,14 @@ impl<'x> OpenBlock<'x> {
 
         let hash = tx.hash();
         let tracker = tx.tracker();
-        let error = match self.block.state.apply(&tx, &hash, &tx.signer_public(), client) {
+        let error = match self.block.state.apply(
+            &tx,
+            &hash,
+            &tx.signer_public(),
+            client,
+            parent_block_number,
+            parent_block_timestamp,
+        ) {
             Ok(()) => {
                 self.block.transactions_set.insert(h.unwrap_or(hash));
                 self.block.transactions.push(tx);
@@ -201,9 +211,11 @@ impl<'x> OpenBlock<'x> {
         &mut self,
         transactions: &[SignedTransaction],
         client: &C,
+        parent_block_number: BlockNumber,
+        parent_block_timestamp: u64,
     ) -> Result<(), Error> {
         for tx in transactions {
-            self.push_transaction(tx.clone(), None, client)?;
+            self.push_transaction(tx.clone(), None, client, parent_block_number, parent_block_timestamp)?;
         }
         Ok(())
     }
@@ -443,7 +455,7 @@ pub fn enact<C: ChainTimeInfo + FindActionHandler>(
     let mut b = OpenBlock::try_new(engine, db, parent, Address::default(), vec![], is_epoch_begin)?;
 
     b.populate_from(header);
-    b.push_transactions(transactions, client)?;
+    b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
 
     b.close_and_lock(*parent.transactions_root())
 }

@@ -45,7 +45,7 @@ impl Extension {
             cinfo!(DISCOVERY, "Discovery starts with unstructured option");
         }
         api.set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(config.t_refresh)))
-            .expect("Refresh msut be registered");
+            .expect("Refresh must be registered");
         Self {
             config,
             routing_table,

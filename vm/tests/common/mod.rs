@@ -14,21 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
 use primitives::H256;
 
 pub struct TestClient {
-    block_number: u64,
-    block_timestamp: u64,
     block_age: Option<u64>,
     time_age: Option<u64>,
 }
 
 impl TestClient {
-    pub fn new(block_number: u64, block_timestamp: u64, block_age: Option<u64>, time_age: Option<u64>) -> Self {
+    pub fn new(block_age: Option<u64>, time_age: Option<u64>) -> Self {
         TestClient {
-            block_number,
-            block_timestamp,
             block_age,
             time_age,
         }
@@ -37,24 +34,16 @@ impl TestClient {
 
 impl Default for TestClient {
     fn default() -> Self {
-        Self::new(0, 0, Some(0), Some(0))
+        Self::new(Some(0), Some(0))
     }
 }
 
 impl ChainTimeInfo for TestClient {
-    fn best_block_number(&self) -> u64 {
-        self.block_number
-    }
-
-    fn best_block_timestamp(&self) -> u64 {
-        self.block_timestamp
-    }
-
-    fn transaction_block_age(&self, _: &H256) -> Option<u64> {
+    fn transaction_block_age(&self, _: &H256, _parent_block_number: BlockNumber) -> Option<u64> {
         self.block_age
     }
 
-    fn transaction_time_age(&self, _: &H256) -> Option<u64> {
+    fn transaction_time_age(&self, _: &H256, _parent_timestamp: u64) -> Option<u64> {
         self.time_age
     }
 }

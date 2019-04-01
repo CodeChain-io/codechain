@@ -120,14 +120,14 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
 
         let is_known = read_guard.get(&message.round()).map_or(false, |c| c.messages.contains(message));
         if is_known {
-            ctrace!(ENGINE, "Known message: {:?}.", message);
+            cdebug!(ENGINE, "Known message: {:?}.", message);
             return true
         }
 
         // The reason not using `message.round() <= oldest` is to allow precommit messages on Commit step.
         let is_old = read_guard.keys().next().map_or(true, |oldest| message.round() < oldest);
         if is_old {
-            ctrace!(ENGINE, "Old message {:?}.", message);
+            cdebug!(ENGINE, "Old message {:?}.", message);
             return true
         }
 

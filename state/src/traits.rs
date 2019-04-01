@@ -17,7 +17,7 @@
 use ckey::{public_to_address, Address, Public, Signature};
 use cmerkle::Result as TrieResult;
 use ctypes::transaction::ShardTransaction;
-use ctypes::ShardId;
+use ctypes::{BlockNumber, ShardId};
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H160, H256};
 
@@ -143,6 +143,8 @@ pub trait ShardState {
         shard_owners: &[Address],
         approvers: &[Address],
         client: &C,
+        parent_block_number: BlockNumber,
+        parent_block_timestamp: u64,
     ) -> StateResult<()>;
 }
 

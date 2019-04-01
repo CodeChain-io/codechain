@@ -97,7 +97,7 @@ impl QueueSignal {
         if !self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) {
             let channel = self.message_channel.lock().clone();
             if let Err(e) = channel.send_sync(self.message.clone()) {
-                debug!("Error sending verified message: {:?}", e);
+                cwarn!(ENGINE, "Error sending verified message: {:?}", e);
             }
         }
     }
@@ -111,7 +111,7 @@ impl QueueSignal {
         if !self.signalled.compare_and_swap(false, true, AtomicOrdering::Relaxed) {
             let channel = self.message_channel.lock().clone();
             if let Err(e) = channel.send(self.message.clone()) {
-                debug!("Error sending verified message: {:?}", e);
+                cwarn!(ENGINE, "Error sending verified message: {:?}", e);
             }
         }
     }

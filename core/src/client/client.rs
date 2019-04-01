@@ -203,7 +203,7 @@ impl Client {
         self.notify(|notify| {
             notify.transactions_received(hashes.clone(), peer_id);
         });
-        let results = self.importer.miner.import_external_tranasctions(self, transactions);
+        let results = self.importer.miner.import_external_transactions(self, transactions);
         results.len()
     }
 
@@ -405,7 +405,14 @@ impl TextClient for Client {
 impl ExecuteClient for Client {
     fn execute_transaction(&self, transaction: &ShardTransaction, sender: &Address) -> StateResult<()> {
         let mut state = Client::state_at(&self, BlockId::Latest).expect("Latest state MUST exist");
-        state.apply_shard_transaction(transaction, sender, &[], self)
+        state.apply_shard_transaction(
+            transaction,
+            sender,
+            &[],
+            self,
+            self.best_block_header().number(),
+            self.best_block_header().timestamp(),
+        )
     }
 
     fn execute_vm(
@@ -434,6 +441,8 @@ impl ExecuteClient for Client {
                                 &input,
                                 false,
                                 self,
+                                self.best_block_header().number(),
+                                self.best_block_header().timestamp(),
                             ) {
                                 Ok(ScriptResult::Burnt) => "burnt".to_string(),
                                 Ok(ScriptResult::Unlocked) => "unlocked".to_string(),
@@ -527,7 +536,7 @@ impl EngineClient for Client {
         match self.io_channel.lock().send(ClientIoMessage::UpdateBestAsCommitted(block_hash)) {
             Ok(_) => {}
             Err(e) => {
-                cdebug!(CLIENT, "Error while triggering the best block update: {}", e);
+                cerror!(CLIENT, "Error while triggering the best block update: {}", e);
             }
         }
     }
@@ -609,7 +618,7 @@ impl BlockChainClient for Client {
         let queue_size = self.queue_transactions.load(AtomicOrdering::Relaxed);
         ctrace!(EXTERNAL_PARCEL, "Queue size: {}", queue_size);
         if queue_size > MAX_MEM_POOL_SIZE {
-            debug!("Ignoring {} transactions: queue is full", transactions.len());
+            cwarn!(EXTERNAL_PARCEL, "Ignoring {} transactions: queue is full", transactions.len());
         } else {
             let len = transactions.len();
             match self.io_channel.lock().send(ClientIoMessage::NewTransactions(transactions, peer_id)) {
@@ -617,7 +626,7 @@ impl BlockChainClient for Client {
                     self.queue_transactions.fetch_add(len, AtomicOrdering::SeqCst);
                 }
                 Err(e) => {
-                    debug!("Ignoring {} transactions: error queueing: {}", len, e);
+                    cwarn!(EXTERNAL_PARCEL, "Ignoring {} transactions: error queueing: {}", len, e);
                 }
             }
         }
@@ -784,7 +793,7 @@ impl ImportSealedBlock for Client {
             let header = block.header().clone();
 
             let route = self.importer.commit_block(block, &header, &block_data, self);
-            ctrace!(CLIENT, "Imported sealed block #{} ({})", number, h);
+            cinfo!(CLIENT, "Imported sealed block #{} ({})", number, h);
             route
         };
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
@@ -803,21 +812,12 @@ impl ImportSealedBlock for Client {
 impl MiningBlockChainClient for Client {}
 
 impl ChainTimeInfo for Client {
-    fn best_block_number(&self) -> BlockNumber {
-        self.chain_info().best_block_number
+    fn transaction_block_age(&self, tracker: &H256, parent_block_number: BlockNumber) -> Option<u64> {
+        self.transaction_block_number(tracker).map(|block_number| parent_block_number - block_number)
     }
 
-    fn best_block_timestamp(&self) -> u64 {
-        self.chain_info().best_block_timestamp
-    }
-
-    fn transaction_block_age(&self, tracker: &H256) -> Option<u64> {
-        self.transaction_block_number(tracker).map(|block_number| self.chain_info().best_block_number - block_number)
-    }
-
-    fn transaction_time_age(&self, tracker: &H256) -> Option<u64> {
-        self.transaction_block_timestamp(tracker)
-            .map(|block_timestamp| self.chain_info().best_block_timestamp - block_timestamp)
+    fn transaction_time_age(&self, tracker: &H256, parent_timestamp: u64) -> Option<u64> {
+        self.transaction_block_timestamp(tracker).map(|block_timestamp| parent_timestamp - block_timestamp)
     }
 }
 

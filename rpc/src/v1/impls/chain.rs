@@ -76,8 +76,12 @@ where
         Ok(self.client.transaction(&id).map(From::from))
     }
 
-    fn contain_transaction(&self, transaction_hash: H256) -> Result<bool> {
+    fn contains_transaction(&self, transaction_hash: H256) -> Result<bool> {
         Ok(self.client.transaction_block(&transaction_hash.into()).is_some())
+    }
+
+    fn contain_transaction(&self, transaction_hash: H256) -> Result<bool> {
+        self.contains_transaction(transaction_hash)
     }
 
     fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
