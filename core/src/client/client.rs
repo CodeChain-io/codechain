@@ -536,7 +536,7 @@ impl EngineClient for Client {
         match self.io_channel.lock().send(ClientIoMessage::UpdateBestAsCommitted(block_hash)) {
             Ok(_) => {}
             Err(e) => {
-                cdebug!(CLIENT, "Error while triggering the best block update: {}", e);
+                cerror!(CLIENT, "Error while triggering the best block update: {}", e);
             }
         }
     }
@@ -618,7 +618,7 @@ impl BlockChainClient for Client {
         let queue_size = self.queue_transactions.load(AtomicOrdering::Relaxed);
         ctrace!(EXTERNAL_PARCEL, "Queue size: {}", queue_size);
         if queue_size > MAX_MEM_POOL_SIZE {
-            debug!("Ignoring {} transactions: queue is full", transactions.len());
+            cwarn!(EXTERNAL_PARCEL, "Ignoring {} transactions: queue is full", transactions.len());
         } else {
             let len = transactions.len();
             match self.io_channel.lock().send(ClientIoMessage::NewTransactions(transactions, peer_id)) {
@@ -626,7 +626,7 @@ impl BlockChainClient for Client {
                     self.queue_transactions.fetch_add(len, AtomicOrdering::SeqCst);
                 }
                 Err(e) => {
-                    debug!("Ignoring {} transactions: error queueing: {}", len, e);
+                    cwarn!(EXTERNAL_PARCEL, "Ignoring {} transactions: error queueing: {}", len, e);
                 }
             }
         }
@@ -793,7 +793,7 @@ impl ImportSealedBlock for Client {
             let header = block.header().clone();
 
             let route = self.importer.commit_block(block, &header, &block_data, self);
-            ctrace!(CLIENT, "Imported sealed block #{} ({})", number, h);
+            cinfo!(CLIENT, "Imported sealed block #{} ({})", number, h);
             route
         };
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);

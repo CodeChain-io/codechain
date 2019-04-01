@@ -49,7 +49,7 @@ impl EngineSigner {
         self.account_provider = ap;
         self.signer = Some((address, public));
         self.decrypted_account = None;
-        cdebug!(ENGINE, "Setting Engine signer to {}", address);
+        cinfo!(ENGINE, "Setting Engine signer to {}", address);
     }
 
     // TODO: remove decrypted_account after some timeout
@@ -61,7 +61,7 @@ impl EngineSigner {
         self.account_provider = ap;
         self.signer = Some((address, public));
         self.decrypted_account = Some(account);
-        cdebug!(ENGINE, "Setting Engine signer to {} (retaining)", address);
+        cinfo!(ENGINE, "Setting Engine signer to {} (retaining)", address);
     }
 
     /// Sign a consensus message hash.

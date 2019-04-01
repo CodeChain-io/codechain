@@ -121,7 +121,7 @@ impl NetworkExtension<Never> for Extension {
                         for unverified in transactions.iter() {
                             peer.push(*unverified);
                         }
-                        cdebug!(SYNC_TX, "Receive {} transactions from {}", transactions.len(), token);
+                        cinfo!(SYNC_TX, "Receive {} transactions from {}", transactions.len(), token);
                         ctrace!(SYNC_TX, "Receive {:?}", transactions);
                     } else {
                         cwarn!(SYNC_TX, "Message from {} but it's already removed", token);
@@ -161,7 +161,7 @@ impl Extension {
             for h in unsent_hashes.iter() {
                 peer.push(*h);
             }
-            cdebug!(SYNC_TX, "Send {} transactions to {}", unsent.len(), token);
+            cinfo!(SYNC_TX, "Send {} transactions to {}", unsent.len(), token);
             ctrace!(SYNC_TX, "Send {:?}", unsent_hashes);
             self.api.send(token, Arc::new(Message::Transactions(unsent).rlp_bytes().into_vec()));
         }

@@ -198,7 +198,7 @@ impl Worker {
                     match msg {
                         Ok((extension, client)) => (extension, client),
                         Err(crossbeam::RecvError) => {
-                            cwarn!(ENGINE, "The tendermint extension is not initalized.");
+                            cerror!(ENGINE, "The tendermint extension is not initalized.");
                             return
                         }
                     }
@@ -207,7 +207,7 @@ impl Worker {
                     match msg {
                         Ok(()) => {},
                         Err(crossbeam::RecvError) => {
-                            cwarn!(ENGINE, "The quit channel for tendermint thread had been closed.");
+                            cerror!(ENGINE, "The quit channel for tendermint thread had been closed.");
                         }
                     }
                     return
@@ -323,7 +323,7 @@ impl Worker {
                                 inner.get_all_votes_and_authors(&vote_step, &requested, result);
                             }
                             Err(crossbeam::RecvError) => {
-                                cwarn!(ENGINE, "The event channel for tendermint thread had been closed.");
+                                cerror!(ENGINE, "The event channel for tendermint thread had been closed.");
                                 break
                             }
                         }
@@ -332,7 +332,7 @@ impl Worker {
                         match msg {
                             Ok(()) => {},
                             Err(crossbeam::RecvError) => {
-                                cwarn!(ENGINE, "The quit channel for tendermint thread had been closed.");
+                                cerror!(ENGINE, "The quit channel for tendermint thread had been closed.");
                             }
                         }
                         break

@@ -237,7 +237,7 @@ impl Miner {
             );
 
             if should_disable_sealing {
-                ctrace!(MINER, "Miner sleeping");
+                cdebug!(MINER, "Miner sleeping");
                 sealing_work.enabled = false;
                 sealing_work.queue.reset();
                 false
@@ -245,7 +245,7 @@ impl Miner {
                 true
             }
         } else {
-            ctrace!(MINER, "requires_reseal: sealing is disabled");
+            cdebug!(MINER, "requires_reseal: sealing is disabled");
             false
         }
     }
@@ -500,7 +500,7 @@ impl Miner {
                 Err(e) => {
                     invald_tx_users.insert(signer_public);
                     invalid_transactions.push(hash);
-                    cdebug!(
+                    cinfo!(
                         MINER,
                         "Error adding transaction to block: number={}. tx_hash={:?}, Error: {:?}",
                         block_number,
@@ -515,7 +515,7 @@ impl Miner {
                 } // imported ok
             }
         }
-        ctrace!(MINER, "Pushed {}/{} transactions", tx_count, tx_total);
+        cdebug!(MINER, "Pushed {}/{} transactions", tx_count, tx_total);
 
         let transactions_root = {
             let parent_hash = open_block.header().parent_hash();
@@ -551,7 +551,7 @@ impl Miner {
             && !self.options.force_sealing
             && Instant::now() <= *self.next_mandatory_reseal.read()
         {
-            ctrace!(MINER, "seal_block_internally: no sealing.");
+            cdebug!(MINER, "seal_block_internally: no sealing.");
             return false
         }
         ctrace!(MINER, "seal_block_internally: attempting internal seal.");
