@@ -203,7 +203,7 @@ impl Client {
         self.notify(|notify| {
             notify.transactions_received(hashes.clone(), peer_id);
         });
-        let results = self.importer.miner.import_external_tranasctions(self, transactions);
+        let results = self.importer.miner.import_external_transactions(self, transactions);
         results.len()
     }
 

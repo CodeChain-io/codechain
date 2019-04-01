@@ -887,7 +887,7 @@ impl MinerService for Miner {
         ret.map(f)
     }
 
-    fn import_external_tranasctions<C: MiningBlockChainClient>(
+    fn import_external_transactions<C: MiningBlockChainClient>(
         &self,
         client: &C,
         transactions: Vec<UnverifiedTransaction>,
