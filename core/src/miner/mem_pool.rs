@@ -958,6 +958,11 @@ impl MemPool {
         self.current.queue.iter().any(|tx| tx.origin.is_local())
     }
 
+    /// Returns Some(true) if the given transaction is local and None for not found.
+    pub fn is_local_transaction(&self, tx_hash: H256) -> Option<bool> {
+        self.by_hash.get(&tx_hash).and_then(|found_item| Some(found_item.origin.is_local()))
+    }
+
     /// Checks the given timelock with the current time/timestamp.
     fn should_wait_timelock(timelock: &TxTimelock, best_block_number: BlockNumber, best_block_timestamp: u64) -> bool {
         if let Some(block_number) = timelock.block {
