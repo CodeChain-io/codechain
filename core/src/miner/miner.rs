@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 
 use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
 use cstate::{FindActionHandler, TopLevelState};
-use ctypes::errors::HistoryError;
+use ctypes::errors::{HistoryError, RuntimeError};
 use ctypes::transaction::{Action, IncompleteTransaction, Timelock};
 use ctypes::{BlockNumber, Header};
 use cvm::ChainTimeInfo;
@@ -127,6 +127,7 @@ pub struct Miner {
 
     accounts: Option<Arc<AccountProvider>>,
     notifiers: RwLock<Vec<Box<dyn NotifyWork>>>,
+    malicious_users: RwLock<HashSet<Address>>,
 }
 
 impl Miner {
@@ -184,6 +185,7 @@ impl Miner {
             sealing_enabled: AtomicBool::new(true),
             accounts,
             notifiers: RwLock::new(notifiers),
+            malicious_users: RwLock::new(HashSet::new()),
         }
     }
 
@@ -502,6 +504,11 @@ impl Miner {
         let mut invalid_tx_users = HashSet::new();
         for tx in transactions {
             let signer_public = tx.signer_public();
+            let signer_address = public_to_address(&signer_public);
+            if self.malicious_users.read().contains(&signer_address) {
+                invalid_transactions.push(tx.hash());
+                continue
+            }
             if invalid_tx_users.contains(&signer_public) {
                 // The previous transaction has failed
                 continue
@@ -524,6 +531,20 @@ impl Miner {
                 // already have transaction - ignore
                 Err(Error::History(HistoryError::TransactionAlreadyImported)) => {}
                 Err(e) => {
+                    match e {
+                        Error::Runtime(RuntimeError::AssetSupplyOverflow)
+                        | Error::Runtime(RuntimeError::InvalidScript) => {
+                            if !self
+                                .mem_pool
+                                .read()
+                                .is_local_transaction(hash)
+                                .expect("The tx is clearly fetched from the mempool")
+                            {
+                                self.malicious_users.write().insert(signer_address);
+                            }
+                        }
+                        _ => {}
+                    }
                     invalid_tx_users.insert(signer_public);
                     invalid_transactions.push(hash);
                     cinfo!(
