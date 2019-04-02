@@ -499,15 +499,15 @@ impl Miner {
 
         let mut tx_count: usize = 0;
         let tx_total = transactions.len();
-        let mut invald_tx_users = HashSet::new();
+        let mut invalid_tx_users = HashSet::new();
         for tx in transactions {
             let signer_public = tx.signer_public();
-            if invald_tx_users.contains(&signer_public) {
+            if invalid_tx_users.contains(&signer_public) {
                 // The previous transaction has failed
                 continue
             }
             if !self.is_allowed_transaction(&tx.action) {
-                invald_tx_users.insert(signer_public);
+                invalid_tx_users.insert(signer_public);
                 invalid_transactions.push(tx.hash());
                 continue
             }
@@ -524,7 +524,7 @@ impl Miner {
                 // already have transaction - ignore
                 Err(Error::History(HistoryError::TransactionAlreadyImported)) => {}
                 Err(e) => {
-                    invald_tx_users.insert(signer_public);
+                    invalid_tx_users.insert(signer_public);
                     invalid_transactions.push(hash);
                     cinfo!(
                         MINER,
