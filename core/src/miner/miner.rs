@@ -271,6 +271,23 @@ impl Miner {
             .into_iter()
             .map(|tx| {
                 let hash = tx.hash();
+                // FIXME: Refactoring is needed. recover_public is calling in verify_transaction_unordered.
+                let signer_public = tx.recover_public()?;
+                let signer_address = public_to_address(&signer_public);
+                let origin = self
+                    .accounts
+                    .as_ref()
+                    .and_then(|accounts| match accounts.has_public(&signer_public) {
+                        Ok(true) => Some(TxOrigin::Local),
+                        Ok(false) => None,
+                        Err(_) => None,
+                    })
+                    .unwrap_or(default_origin);
+
+                if self.malicious_users.read().contains(&signer_address) {
+                    // FIXME: just to skip, think about another way.
+                    return Ok(())
+                }
                 if client.transaction_block(&TransactionId::Hash(hash)).is_some() {
                     cdebug!(MINER, "Rejected transaction {:?}: already in the blockchain", hash);
                     return Err(HistoryError::TransactionAlreadyImported.into())
@@ -278,7 +295,7 @@ impl Miner {
                 if !self.is_allowed_transaction(&tx.action) {
                     cdebug!(MINER, "Rejected transaction {:?}: {:?} is not allowed transaction", hash, tx.action);
                 }
-                match tx
+                let tx = tx
                     .verify_basic()
                     .map_err(From::from)
                     .and_then(|_| {
@@ -286,33 +303,34 @@ impl Miner {
                         self.engine.verify_transaction_with_params(&tx, &common_params)
                     })
                     .and_then(|_| CodeChainMachine::verify_transaction_seal(tx, &fake_header))
-                {
-                    Err(e) => {
+                    .map_err(|e| {
+                        match e {
+                            Error::Syntax(_) if !origin.is_local() => {
+                                self.malicious_users.write().insert(signer_address);
+                            }
+                            _ => {}
+                        }
                         cdebug!(MINER, "Rejected transaction {:?} with invalid signature: {:?}", hash, e);
-                        Err(e)
+                        e
+                    })?;
+
+                // This check goes here because verify_transaction takes SignedTransaction parameter
+                self.engine.machine().verify_transaction(&tx, &fake_header, client, false).map_err(|e| {
+                    match e {
+                        Error::Syntax(_) if !origin.is_local() => {
+                            self.malicious_users.write().insert(signer_address);
+                        }
+                        _ => {}
                     }
-                    Ok(tx) => {
-                        // This check goes here because verify_transaction takes SignedTransaction parameter
-                        self.engine.machine().verify_transaction(&tx, &fake_header, client, false)?;
+                    e
+                })?;
 
-                        let origin = self
-                            .accounts
-                            .as_ref()
-                            .and_then(|accounts| match accounts.has_public(&tx.signer_public()) {
-                                Ok(true) => Some(TxOrigin::Local),
-                                Ok(false) => None,
-                                Err(_) => None,
-                            })
-                            .unwrap_or(default_origin);
+                let timelock = self.calculate_timelock(&tx, client)?;
+                let tx_hash = tx.hash();
 
-                        let timelock = self.calculate_timelock(&tx, client)?;
-                        let tx_hash = tx.hash();
-
-                        to_insert.push(MemPoolInput::new(tx, origin, timelock));
-                        tx_hashes.push(tx_hash);
-                        Ok(())
-                    }
-                }
+                to_insert.push(MemPoolInput::new(tx, origin, timelock));
+                tx_hashes.push(tx_hash);
+                Ok(())
             })
             .collect();
 
