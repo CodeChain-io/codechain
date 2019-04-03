@@ -178,6 +178,7 @@ pub trait TopState {
     fn remove_text(&mut self, key: &H256, sig: &Signature) -> StateResult<()>;
 
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()>;
+    fn remove_action_data(&mut self, key: &H256);
 }
 
 pub trait StateWithCache {
