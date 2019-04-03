@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use cidr::IpCidr;
+use std::collections::HashMap;
 use std::net::IpAddr;
 
+use cidr::IpCidr;
 use ckey::Public;
 use cnetwork::{FilterEntry, NetworkControl, NetworkControlError, SocketAddr};
 
@@ -103,6 +104,10 @@ impl NetworkControl for DummyNetworkService {
     }
 
     fn get_blacklist(&self) -> Result<(Vec<FilterEntry>, bool), NetworkControlError> {
+        Err(NetworkControlError::Disabled)
+    }
+
+    fn recent_network_usage(&self) -> Result<HashMap<&'static str, usize>, NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 }

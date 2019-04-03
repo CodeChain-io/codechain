@@ -44,16 +44,16 @@ impl EstablishedConnection {
         }
     }
 
-    fn write(&mut self, message: &Message) {
-        self.stream.write(message);
+    fn write(&mut self, message: &Message) -> usize {
+        self.stream.write(message)
     }
 
-    pub fn enqueue_negotiation_request(&mut self, name: String, extension_versions: Vec<Version>) {
-        self.write(&Message::Negotiation(NegotiationMessage::request(name, extension_versions)));
+    pub fn enqueue_negotiation_request(&mut self, name: String, extension_versions: Vec<Version>) -> usize {
+        self.write(&Message::Negotiation(NegotiationMessage::request(name, extension_versions)))
     }
 
-    pub fn enqueue_negotiation_response(&mut self, name: String, version: u64) {
-        self.write(&Message::Negotiation(NegotiationMessage::allowed(name, version)));
+    pub fn enqueue_negotiation_response(&mut self, name: String, version: u64) -> usize {
+        self.write(&Message::Negotiation(NegotiationMessage::allowed(name, version)))
     }
 
     pub fn enqueue_extension_message(
@@ -61,14 +61,14 @@ impl EstablishedConnection {
         extension_name: String,
         need_encryption: bool,
         message: Arc<Bytes>,
-    ) -> Result<()> {
+    ) -> Result<usize> {
         let message = if need_encryption {
             ExtensionMessage::encrypted_from_unencrypted_data(extension_name, &message, self.stream.session())?
         } else {
             ExtensionMessage::unencrypted(extension_name, message)
         };
-        self.write(&Message::Extension(message));
-        Ok(())
+
+        Ok(self.write(&Message::Extension(message)))
     }
 
     fn interest(&self) -> Ready {
