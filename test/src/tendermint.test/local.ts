@@ -102,7 +102,7 @@ import CodeChain from "../helper/spawn";
         let flag = true;
         for (let i = 0; i < 4; i++) {
             const hash = transactions[numTransactions - 1].hash();
-            const result = await nodes[i].sdk.rpc.chain.containTransaction(
+            const result = await nodes[i].sdk.rpc.chain.containsTransaction(
                 hash
             );
 

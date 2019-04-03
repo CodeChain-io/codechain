@@ -509,7 +509,7 @@ code-point-at@^1.0.0:
   resolved "https://registry.yarnpkg.com/code-point-at/-/code-point-at-1.1.0.tgz#0d070b4d043a5bea33a2f1a40e2edb3d9a4ccf77"
   integrity sha1-DQcLTQQ6W+ozovGkDi7bPZpMz3c=
 
-codechain-keystore@^0.6.0:
+codechain-keystore@^0.6.0, codechain-keystore@^0.6.1:
   version "0.6.1"
   resolved "https://registry.yarnpkg.com/codechain-keystore/-/codechain-keystore-0.6.1.tgz#b0b27fec28afe1b31bd42a2858d2d5fb59838252"
   integrity sha512-kj68DBW11kj1AwP5C+nLau/yNlOcTVCiISf3GzPpJSVVi+E34SZ+1WQdZZBsbIgJ4nN3xGPnfzEERqgfKy6mNg==
@@ -521,6 +521,22 @@ codechain-keystore@^0.6.0:
     lowdb "^1.0.0"
     lowdb-session-storage-adapter "^1.0.0"
     uuid "^3.3.2"
+
+codechain-primitives@0.5.0, codechain-primitives@^0.5.0:
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.5.0.tgz#dd8fe3bfe4a9972300e6972a06d6aee594b38732"
+  integrity sha512-wN3uwZ9Bb5XNF5po2YVMtfJ2DJ7ds6dllq2IZpkjqSoXADvDG5qU9nxTocueo7m1l7IMkq4F510F9ViKaTbkKA==
+  dependencies:
+    bignumber.js "^7.2.1"
+    blakejs "^1.1.0"
+    bn.js "^4.11.8"
+    buffer "^5.2.1"
+    elliptic "^6.4.1"
+    hmac-drbg "^1.0.1"
+    lodash "^4.17.11"
+    node-forge "^0.7.6"
+    ripemd160 "^2.0.2"
+    rlp "^2.1.0"
 
 codechain-primitives@^0.3.0:
   version "0.3.5"
@@ -538,29 +554,14 @@ codechain-primitives@^0.3.0:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-codechain-primitives@^0.4.6, codechain-primitives@^0.4.8:
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.4.8.tgz#5206ebcf92c0d225924931493b05c384d48fc63e"
-  integrity sha512-yEPinaK3y0pdMgmp7EjYkru2FL0XjXZ6sjdT4KmlGchqEuLUJsZ3V+MOyGlumdW7TSR7gpHl5+szyRPxUndMrQ==
-  dependencies:
-    bignumber.js "^7.2.1"
-    blakejs "^1.1.0"
-    bn.js "^4.11.8"
-    buffer "^5.2.1"
-    elliptic "^6.4.1"
-    hmac-drbg "^1.0.1"
-    lodash "^4.17.11"
-    node-forge "^0.7.6"
-    ripemd160 "^2.0.2"
-    rlp "^2.1.0"
-
-"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#result-lib":
-  version "0.5.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#4ed32333c517d656b41b1bb904690d7b27a2aa84"
+codechain-sdk@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-1.0.1.tgz#aa6e4dc8d70e0e4bdf7a91a93a194b498c2daace"
+  integrity sha512-nieKsR4qsWZb1+uNPQ0JTU9pnLpd+nuh3fh0XuboNsLkSUAuLWNngGKwG7QlUzbjceb2wLrqgPBQu61owxDLEQ==
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"
-    codechain-primitives "^0.4.6"
+    codechain-primitives "0.5.0"
     jayson "^2.0.6"
     lodash "^4.17.10"
     node-fetch "^2.1.2"

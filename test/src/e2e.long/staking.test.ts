@@ -252,7 +252,7 @@ describe("Staking", function() {
             receiverAddress: validator0Address,
             quantity: 100
         });
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash))) {
             await wait(500);
         }
 
@@ -289,7 +289,7 @@ describe("Staking", function() {
             receiverAddress: validator0Address,
             quantity: 100
         });
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash))) {
             await wait(500);
         }
 
@@ -329,7 +329,7 @@ describe("Staking", function() {
         });
 
         while (
-            !(await nodes[0].sdk.rpc.chain.containTransaction(pay1.hash()))
+            !(await nodes[0].sdk.rpc.chain.containsTransaction(pay1.hash()))
         ) {
             await wait(500);
         }
@@ -341,7 +341,7 @@ describe("Staking", function() {
             receiverAddress: validator0Address,
             quantity: 200
         });
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash1))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash1))) {
             await wait(500);
         }
 
@@ -364,7 +364,9 @@ describe("Staking", function() {
         });
         await nodes[0].waitBlockNumber(blockNumber + 1);
 
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(pay.hash()))) {
+        while (
+            !(await nodes[0].sdk.rpc.chain.containsTransaction(pay.hash()))
+        ) {
             await wait(500);
         }
         const err0 = await nodes[0].sdk.rpc.chain.getErrorHint(hash);
@@ -386,7 +388,7 @@ describe("Staking", function() {
             quantity: 50000,
             fee
         });
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash))) {
             await wait(500);
         }
         // faucet: 20000, alice: 20000, bob: 10000, val0: 50000,
@@ -482,7 +484,7 @@ describe("Staking", function() {
             quantity: 50000,
             fee: 1000
         });
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash1))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash1))) {
             await wait(500);
         }
 
@@ -491,7 +493,7 @@ describe("Staking", function() {
             recipient: validator0Address,
             quantity: fee
         })).hash();
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(payHash))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(payHash))) {
             await wait(500);
         }
 
@@ -504,7 +506,7 @@ describe("Staking", function() {
             fee
         });
 
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash2))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash2))) {
             await wait(500);
         }
         // faucet: 20000, alice: 20000, bob: 10000, val0: 0 (delegated 50000 to val1), val1: 0
@@ -622,7 +624,7 @@ describe("Staking", function() {
             quantity: 30000,
             fee: 1000
         });
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash1))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash1))) {
             await wait(500);
         }
 
@@ -634,7 +636,7 @@ describe("Staking", function() {
             quantity: 30000,
             fee: 1000
         });
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash2))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash2))) {
             await wait(500);
         }
 
@@ -644,7 +646,7 @@ describe("Staking", function() {
             quantity: fee,
             fee
         })).hash();
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(payHash))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(payHash))) {
             await wait(500);
         }
 
@@ -657,7 +659,7 @@ describe("Staking", function() {
             fee
         });
 
-        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash3))) {
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash3))) {
             await wait(500);
         }
         // faucet: 20000, alice: 20000, bob: 10000, val0: 0 (delegated 30000 to val1), val1: 30000
