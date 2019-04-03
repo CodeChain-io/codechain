@@ -42,6 +42,12 @@ pub enum Error {
         asset_type: H160,
         shard_id: ShardId,
     },
+    InvalidSeqOfAssetScheme {
+        asset_type: H160,
+        shard_id: ShardId,
+        expected: usize,
+        actual: usize,
+    },
     AssetSupplyOverflow,
     CannotBurnRegulatedAsset,
     CannotComposeRegulatedAsset,
@@ -117,6 +123,7 @@ const ERROR_ID_ASSET_SCHEME_NOT_FOUND: u8 = 3;
 const ERROR_ID_CANNOT_BURN_REGULATED_ASSET: u8 = 4;
 const ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET: u8 = 5;
 const ERROR_ID_FAILED_TO_UNLOCK: u8 = 6;
+const ERROR_ID_INVALID_SEQ_OF_ASSET_SCHEME: u8 = 7;
 const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 8;
 const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 9;
 const ERROR_ID_INVALID_ASSET_QUANTITY: u8 = 10;
@@ -150,6 +157,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_ASSET_NOT_FOUND => 4,
             ERROR_ID_ASSET_SCHEME_DUPLICATED => 3,
             ERROR_ID_ASSET_SCHEME_NOT_FOUND => 3,
+            ERROR_ID_INVALID_SEQ_OF_ASSET_SCHEME => 5,
             ERROR_ID_ASSET_SUPPLY_OVERFLOW => 1,
             ERROR_ID_CANNOT_BURN_REGULATED_ASSET => 1,
             ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET => 1,
@@ -197,6 +205,16 @@ impl Encodable for Error {
                 asset_type,
                 shard_id,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(asset_type).append(shard_id),
+            Error::InvalidSeqOfAssetScheme {
+                asset_type,
+                shard_id,
+                expected,
+                actual,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SEQ_OF_ASSET_SCHEME)
+                .append(asset_type)
+                .append(shard_id)
+                .append(expected)
+                .append(actual),
             Error::AssetSupplyOverflow => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SUPPLY_OVERFLOW),
             Error::CannotBurnRegulatedAsset => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_BURN_REGULATED_ASSET),
             Error::CannotComposeRegulatedAsset => {
@@ -307,6 +325,12 @@ impl Decodable for Error {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
             },
+            ERROR_ID_INVALID_SEQ_OF_ASSET_SCHEME => Error::InvalidSeqOfAssetScheme {
+                asset_type: rlp.val_at(1)?,
+                shard_id: rlp.val_at(2)?,
+                expected: rlp.val_at(3)?,
+                actual: rlp.val_at(4)?,
+            },
             ERROR_ID_ASSET_SUPPLY_OVERFLOW => Error::AssetSupplyOverflow,
             ERROR_ID_CANNOT_BURN_REGULATED_ASSET => Error::CannotBurnRegulatedAsset,
             ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET => Error::CannotComposeRegulatedAsset,
@@ -379,6 +403,12 @@ impl Display for Error {
                 asset_type,
                 shard_id,
             } => write!(f, "Asset scheme not found: {}:{}", asset_type, shard_id),
+            Error::InvalidSeqOfAssetScheme {
+                asset_type,
+                shard_id,
+                expected,
+                actual,
+            } => write!(f, "Already used seq of asset scheme {}:{}. expected: {}, actual: {}", asset_type, shard_id, expected, actual),
             Error::AssetSupplyOverflow => write!(f, "Asset supply should not be overflowed"),
             Error::CannotBurnRegulatedAsset => write!(f, "Cannot burn the regulated asset"),
             Error::CannotComposeRegulatedAsset => write!(f, "Cannot compose the regulated asset"),
