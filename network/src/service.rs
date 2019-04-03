@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
+use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
 
@@ -196,6 +196,10 @@ impl Control for Service {
 
     fn get_blacklist(&self) -> Result<(Vec<FilterEntry>, bool), ControlError> {
         Ok(self.filters_control.get_blacklist())
+    }
+
+    fn recent_network_usage(&self) -> Result<HashMap<&'static str, usize>, ControlError> {
+        Ok(self.p2p_handler.recent_network_usage())
     }
 }
 

@@ -93,10 +93,10 @@ impl SignedStream {
         }
     }
 
-    pub fn write<M>(&mut self, message: &M)
+    pub fn write<M>(&mut self, message: &M) -> usize
     where
         M: Encodable, {
-        self.stream.write(&SignedMessage::new(message, &self.session));
+        self.stream.write(&SignedMessage::new(message, &self.session))
     }
 
     pub fn flush(&mut self) -> Result<()> {

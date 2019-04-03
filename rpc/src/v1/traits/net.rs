@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 
 use cidr::IpCidr;
@@ -77,5 +78,8 @@ build_rpc_trait! {
 
         #[rpc(name = "net_getBlacklist")]
         fn get_blacklist(&self) -> Result<FilterStatus>;
+
+        #[rpc(name = "net_recentNetworkUsage")]
+        fn recent_network_usage(&self) -> Result<HashMap<&'static str, usize>>;
     }
 }

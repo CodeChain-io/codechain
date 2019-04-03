@@ -56,20 +56,20 @@ impl OutgoingConnection {
         Ready::writable() | Ready::readable() | UnixReady::hup()
     }
 
-    pub fn send_sync(&mut self, recipient_pub_key: Option<Public>) {
+    pub fn send_sync(&mut self, recipient_pub_key: Option<Public>) -> usize {
         if let Some(recipient_pub_key) = recipient_pub_key {
             self.stream.write(&OutgoingMessage::Sync2 {
                 initiator_pub_key: self.initiator_pub_key,
                 network_id: self.network_id,
                 initiator_port: self.initiator_port,
                 recipient_pub_key,
-            });
+            })
         } else {
             self.stream.write(&OutgoingMessage::Sync1 {
                 initiator_pub_key: self.initiator_pub_key,
                 network_id: self.network_id,
                 initiator_port: self.initiator_port,
-            });
+            })
         }
     }
 
