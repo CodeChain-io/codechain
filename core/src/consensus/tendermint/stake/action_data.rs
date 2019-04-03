@@ -149,8 +149,8 @@ impl<'a> Delegation<'a> {
     }
 
     #[cfg(test)]
-    pub fn get_quantity(&self, delegator: &Address) -> StakeQuantity {
-        self.delegatees.get(delegator).cloned().unwrap_or(0)
+    pub fn get_quantity(&self, delegatee: &Address) -> StakeQuantity {
+        self.delegatees.get(delegatee).cloned().unwrap_or(0)
     }
 
     #[cfg(test)]
@@ -373,23 +373,23 @@ mod tests {
         let mut state = helpers::get_temp_state();
 
         // Prepare
-        let delegatee = Address::random();
-        let delegators: Vec<_> = (0..10).map(|_| Address::random()).collect();
+        let delegator = Address::random();
+        let delegatees: Vec<_> = (0..10).map(|_| Address::random()).collect();
         let delegation_amount: HashMap<&Address, StakeQuantity> =
-            delegators.iter().map(|address| (address, rng.gen_range(0, 100))).collect();
+            delegatees.iter().map(|address| (address, rng.gen_range(0, 100))).collect();
 
         // Do delegate
-        let mut delegation = Delegation::load_from_state(&state, &delegatee).unwrap();
-        for delegator in delegators.iter() {
-            delegation.add_quantity(*delegator, delegation_amount[delegator]).unwrap()
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        for delegatee in delegatees.iter() {
+            delegation.add_quantity(*delegatee, delegation_amount[delegatee]).unwrap()
         }
         delegation.save_to_state(&mut state).unwrap();
 
         // assert
-        let delegation = Delegation::load_from_state(&state, &delegatee).unwrap();
-        assert_eq!(delegation.iter().count(), delegators.len());
-        for delegator in delegators.iter() {
-            assert_eq!(delegation.get_quantity(delegator), delegation_amount[delegator]);
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegation.iter().count(), delegatees.len());
+        for delegatee in delegatees.iter() {
+            assert_eq!(delegation.get_quantity(delegatee), delegation_amount[delegatee]);
         }
     }
 }
