@@ -280,6 +280,42 @@ describe("Staking", function() {
         );
     }).timeout(60_000);
 
+    it("doesn't leave zero balance account after transfer", async function() {
+        await connectEachOther();
+
+        const hash = await sendStakeToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 70000
+        });
+        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash))) {
+            await wait(500);
+        }
+
+        const { amounts, stakeholders } = await getAllStakingInfo();
+        expect(amounts).to.be.deep.equal([
+            null,
+            toHex(RLP.encode(70000)),
+            null,
+            null,
+            null,
+            toHex(RLP.encode(20000)),
+            toHex(RLP.encode(10000))
+        ]);
+        expect(stakeholders).to.be.equal(
+            toHex(
+                RLP.encode(
+                    [
+                        aliceAddress.accountId.toEncodeObject(),
+                        validator0Address.accountId.toEncodeObject(),
+                        bobAddress.accountId.toEncodeObject()
+                    ].sort()
+                )
+            )
+        );
+    }).timeout(60_000);
+
     it("can delegate tokens", async function() {
         await connectEachOther();
 
@@ -309,6 +345,46 @@ describe("Staking", function() {
             toHex(
                 RLP.encode([
                     [validator0Address.accountId.toEncodeObject(), 100]
+                ])
+            ),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        ]);
+    });
+
+    it("doesn't leave zero balanced account after delegate", async function() {
+        await connectEachOther();
+
+        const hash = await delegateToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 70000
+        });
+        while (!(await nodes[0].sdk.rpc.chain.containTransaction(hash))) {
+            await wait(500);
+        }
+
+        const { amounts } = await getAllStakingInfo();
+        expect(amounts).to.be.deep.equal([
+            null,
+            null,
+            null,
+            null,
+            null,
+            toHex(RLP.encode(20000)),
+            toHex(RLP.encode(10000))
+        ]);
+
+        const delegations = await getAllDelegation();
+        expect(delegations).to.be.deep.equal([
+            toHex(
+                RLP.encode([
+                    [validator0Address.accountId.toEncodeObject(), 70000]
                 ])
             ),
             null,

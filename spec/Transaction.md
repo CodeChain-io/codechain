@@ -20,13 +20,8 @@ enum Action {
     MintAsset { ..., },
     TransferAsset { ..., },
     ChangeAssetScheme { ..., },
-    ComposeAsset { ..., },
-    DecomposeAsset { ..., },
     Pay { ..., },
     SetRegularKey { ..., },
-    CreateShard { ..., },
-    SetShardOwners { ..., },
-    SetShardUsers { ..., },
     WrapCCC { ..., },
     UnwrapCCC { ..., },
     Store { ..., },
@@ -148,39 +143,6 @@ ChangeAssetScheme {
 }
 ```
 
-## ComposeAsset
-
-It creates a new asset that holds the input assets.
-The composed asset can be used as a regular asset, but it can be decomposed as well.
-
-```rust
-ComposeAsset {
-    network_id: NetworkId,
-    shard_id: ShardId,
-    metadata: String,
-    approver: Option<PlatformAddress>,
-    registrar: Option<PlatformAddress>,
-    inputs: Vec<AssetTransferInput>,
-    output: Box<AssetMintOutput>,
-
-    approvals: Vec<Signature>,
-}
-```
-
-## DecomposeAsset
-
-It decomposes the composed asset.
-
-```rust
-DecomposeAsset {
-    network_id: NetworkId,
-    input: Box<AssetTransferInput>,
-    outputs: Vec<AssetTransferOutput>,
-
-    approvals: Vec<Signature>,
-}
-```
-
 ## Pay
 
 `Pay` sends `value` amount of CCC to the `receiver`.
@@ -200,42 +162,6 @@ It overwrites the existing one if a key already exists.
 ```rust
 SetRegularKey {
     key: Public,
-}
-```
-
-## Create Shard
-
-It creates a new shard.
-The payer becomes the owner of the shard.
-
-```rust
-CreateShard {
-    users: Vec<Address>,
-}
-```
-
-## SetShardOwners
-
-It changes the owner of the shard.
-Only the shard owner can send this transaction.
-The payer must be one of the new owners.
-
-```rust
-SetShardOwners {
-    shard_id: ShardId,
-    owners: Vec<Address>,
-}
-```
-
-## SetShardUsers
-
-It changes the users of the shard.
-Only the shard owner can send this transaction.
-
-```rust
-SetShardUsers {
-    shard_id: ShardId,
-    users: Vec<Address>,
 }
 ```
 
