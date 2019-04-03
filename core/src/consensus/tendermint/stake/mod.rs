@@ -57,16 +57,14 @@ impl ActionHandler for Stake {
     fn init(&self, state: &mut TopLevelState) -> StateResult<()> {
         let mut stakeholders = Stakeholders::load_from_state(state)?;
         for (address, amount) in self.genesis_stakes.iter() {
-            if *amount > 0 {
-                let account = StakeAccount {
-                    address,
-                    balance: *amount,
-                };
-                stakeholders.update(&account);
-                account.save_to_state(state)?;
-            }
-            stakeholders.save_to_state(state)?;
+            let account = StakeAccount {
+                address,
+                balance: *amount,
+            };
+            account.save_to_state(state)?;
+            stakeholders.update_by_increased_balance(&account);
         }
+        stakeholders.save_to_state(state)?;
         Ok(())
     }
 
@@ -90,12 +88,13 @@ fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address,
     let mut stakeholders = Stakeholders::load_from_state(state)?;
     let mut sender_account = StakeAccount::load_from_state(state, sender)?;
     let mut receiver_account = StakeAccount::load_from_state(state, receiver)?;
+    let sender_delegations = Delegation::load_from_state(state, sender)?;
 
     sender_account.subtract_balance(quantity)?;
     receiver_account.add_balance(quantity)?;
 
-    stakeholders.update(&sender_account);
-    stakeholders.update(&receiver_account);
+    stakeholders.update_by_decreased_balance(&sender_account, &sender_delegations);
+    stakeholders.update_by_increased_balance(&receiver_account);
 
     stakeholders.save_to_state(state)?;
     sender_account.save_to_state(state)?;
@@ -120,6 +119,7 @@ fn delegate_ccs(
 
     delegator.subtract_balance(quantity)?;
     delegation.add_quantity(*delegatee, quantity)?;
+    // delegation does not touch stakeholders
 
     delegation.save_to_state(state)?;
     delegator.save_to_state(state)?;
@@ -139,10 +139,13 @@ pub fn get_stakes(state: &TopLevelState) -> StateResult<HashMap<Address, u64>> {
 
 #[cfg(test)]
 mod tests {
+    use super::action_data::get_account_key;
     use super::*;
+
     use ckey::{public_to_address, Public};
     use consensus::validator_set::new_validator_set;
     use cstate::tests::helpers;
+    use cstate::TopStateView;
     use rlp::Encodable;
 
     #[test]
@@ -210,6 +213,7 @@ mod tests {
         let account1 = StakeAccount::load_from_state(&state, &address1).unwrap();
         let account2 = StakeAccount::load_from_state(&state, &address2).unwrap();
         assert_eq!(account1.balance, 0);
+        assert_eq!(state.action_data(&get_account_key(&address1)).unwrap(), None);
         assert_eq!(account2.balance, 100);
         let stakeholders = Stakeholders::load_from_state(&state).unwrap();
         assert!(!stakeholders.contains(&address1));
@@ -243,6 +247,42 @@ mod tests {
         assert_eq!(delegator_account.balance, 60);
         assert_eq!(delegation.iter().count(), 1);
         assert_eq!(delegation.get_quantity(&delegatee), 40);
+
+        // Should not be touched
+        let delegatee_account = StakeAccount::load_from_state(&state, &delegatee).unwrap();
+        let delegation_untouched = Delegation::load_from_state(&state, &delegatee).unwrap();
+        assert_eq!(delegatee_account.balance, 100);
+        assert_eq!(delegation_untouched.iter().count(), 0);
+    }
+
+    #[test]
+    fn delegate_all() {
+        let delegatee_public = Public::random();
+        let delegatee = public_to_address(&delegatee_public);
+        let delegator = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegatee, 100);
+            genesis_stakes.insert(delegator, 100);
+            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+        };
+        assert_eq!(Ok(()), stake.init(&mut state));
+
+        let action = Action::DelegateCCS {
+            address: delegatee,
+            quantity: 100,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        assert_eq!(result, Ok(()));
+
+        let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegator_account.balance, 0);
+        assert_eq!(state.action_data(&get_account_key(&delegator)).unwrap(), None);
+        assert_eq!(delegation.iter().count(), 1);
+        assert_eq!(delegation.get_quantity(&delegatee), 100);
 
         // Should not be touched
         let delegatee_account = StakeAccount::load_from_state(&state, &delegatee).unwrap();

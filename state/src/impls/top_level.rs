@@ -967,6 +967,10 @@ impl TopState for TopLevelState {
         *action_data = data.into();
         Ok(())
     }
+
+    fn remove_action_data(&mut self, key: &H256) {
+        self.top_cache.remove_action_data(key)
+    }
 }
 
 fn is_active_account(state: &TopStateView, address: &Address) -> TrieResult<bool> {
