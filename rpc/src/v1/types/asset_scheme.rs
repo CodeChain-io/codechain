@@ -30,6 +30,7 @@ pub struct AssetScheme {
     registrar: Option<PlatformAddress>,
     allowed_script_hashes: Vec<H160>,
     pool: Vec<Asset>,
+    seq: u64,
 }
 
 impl AssetScheme {
@@ -44,6 +45,7 @@ impl AssetScheme {
                 .map(|registrar| PlatformAddress::new_v1(network_id, *registrar)),
             allowed_script_hashes: asset_scheme.allowed_script_hashes().to_owned(),
             pool: asset_scheme.pool().iter().map(|asset| asset.clone().into()).collect(),
+            seq: asset_scheme.seq() as u64,
         }
     }
 }

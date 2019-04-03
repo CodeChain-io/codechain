@@ -148,12 +148,14 @@ describe("solo - 1 node", function() {
             { actionType: 0x13, actionLength: 12 },
             { actionType: 0x14, actionLength: 8 }, // TransferAsset
             { actionType: 0x14, actionLength: 10 },
-            { actionType: 0x15, actionLength: 8 }, // ChangeAssetScheme
-            { actionType: 0x15, actionLength: 10 },
+            { actionType: 0x15, actionLength: 9 }, // ChangeAssetScheme
+            { actionType: 0x15, actionLength: 11 },
             { actionType: 0x16, actionLength: 11 }, // ComposeAsset
             { actionType: 0x16, actionLength: 13 },
             { actionType: 0x17, actionLength: 4 }, // DecomposeAsset
-            { actionType: 0x17, actionLength: 6 }
+            { actionType: 0x17, actionLength: 6 },
+            { actionType: 0x18, actionLength: 8 }, // IncreaseAssetSupply
+            { actionType: 0x18, actionLength: 10 }
         ].forEach(function(params: {
             actionType: number;
             actionLength: number;
