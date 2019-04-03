@@ -16,11 +16,7 @@
 
 import { expect } from "chai";
 import { H256 } from "codechain-primitives/lib";
-import {
-    Asset,
-    AssetTransferAddress,
-    Timelock
-} from "codechain-sdk/lib/core/classes";
+import { Asset, Timelock } from "codechain-sdk/lib/core/classes";
 import "mocha";
 import { faucetAddress } from "../helper/constants";
 import CodeChain from "../helper/spawn";

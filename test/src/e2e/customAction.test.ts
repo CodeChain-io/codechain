@@ -64,7 +64,7 @@ describe("customAction", function() {
                     })
             );
 
-            expect(await node.sdk.rpc.chain.containTransaction(hash)).be.true;
+            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
             expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
 
             const actionData = await node.sdk.rpc.engine.getCustomActionData(

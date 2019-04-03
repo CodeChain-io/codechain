@@ -30,7 +30,7 @@ import CodeChain from "../helper/spawn";
 
 const expect = chai.expect;
 
-describe("CreateShard", function() {
+describe.skip("CreateShard", function() {
     let node: CodeChain;
     before(async function() {
         node = new CodeChain({ argv: ["--allow-create-shard"] });
@@ -57,7 +57,7 @@ describe("CreateShard", function() {
             ])
         ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx);
-        expect(await node.sdk.rpc.chain.containTransaction(tx.hash())).be.true;
+        expect(await node.sdk.rpc.chain.containsTransaction(tx.hash())).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(tx.hash())).not.null;
         const afterShardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",
@@ -179,7 +179,8 @@ describe("CreateShard", function() {
             ])
         ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx1);
-        expect(await node.sdk.rpc.chain.containTransaction(tx1.hash())).be.true;
+        expect(await node.sdk.rpc.chain.containsTransaction(tx1.hash())).be
+            .true;
         expect(await node.sdk.rpc.chain.getTransaction(tx1.hash())).not.null;
         expect(
             await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
@@ -198,7 +199,8 @@ describe("CreateShard", function() {
             ])
         ).to.be.null;
         await node.sdk.rpc.chain.sendSignedTransaction(tx2);
-        expect(await node.sdk.rpc.chain.containTransaction(tx2.hash())).be.true;
+        expect(await node.sdk.rpc.chain.containsTransaction(tx2.hash())).be
+            .true;
         expect(await node.sdk.rpc.chain.getTransaction(tx2.hash())).not.null;
         expect(
             await node.sdk.rpc.sendRpcRequest("chain_getShardIdByHash", [
@@ -304,7 +306,7 @@ describe("CreateShard", function() {
             .sign({ secret: aliceSecret, seq: aliceSeq, fee: 10 });
         await node.sdk.rpc.chain.sendSignedTransaction(mint);
 
-        expect(await node.sdk.rpc.chain.containTransaction(mint.hash())).be
+        expect(await node.sdk.rpc.chain.containsTransaction(mint.hash())).be
             .true;
         expect(await node.sdk.rpc.chain.getTransaction(mint.hash())).not.null;
         const hint = await node.sdk.rpc.chain.getErrorHint(mint.hash());
@@ -400,7 +402,7 @@ describe("CreateShard", function() {
         });
         await node.sdk.rpc.chain.sendSignedTransaction(signedMint2);
 
-        expect(await node.sdk.rpc.chain.containTransaction(signedMint2.hash()))
+        expect(await node.sdk.rpc.chain.containsTransaction(signedMint2.hash()))
             .be.true;
         expect(await node.sdk.rpc.chain.getTransaction(signedMint2.hash())).not
             .null;
@@ -418,7 +420,7 @@ describe("CreateShard", function() {
     });
 });
 
-describe("Cannot create shard without allow-create-shard flag", function() {
+describe.skip("Cannot create shard without allow-create-shard flag", function() {
     let node: CodeChain;
     before(async function() {
         node = new CodeChain();
@@ -444,7 +446,8 @@ describe("Cannot create shard without allow-create-shard flag", function() {
             ])
         ).be.null;
         expect(node.sdk.rpc.chain.sendSignedTransaction(tx)).be.rejected;
-        expect(await node.sdk.rpc.chain.containTransaction(tx.hash())).be.false;
+        expect(await node.sdk.rpc.chain.containsTransaction(tx.hash())).be
+            .false;
         expect(await node.sdk.rpc.chain.getTransaction(tx.hash())).be.null;
         const afterShardId = await node.sdk.rpc.sendRpcRequest(
             "chain_getShardIdByHash",

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
-import { AssetTransferAddress, PlatformAddress } from "codechain-primitives";
+import { AssetAddress, PlatformAddress } from "codechain-primitives";
 import {
     AssetScheme,
     AssetTransferInput,
@@ -200,7 +200,7 @@ describe("solo - 1 node", function() {
         let scheme: AssetScheme;
         let input: AssetTransferInput;
         let output: AssetTransferOutput;
-        let recipient: AssetTransferAddress;
+        let recipient: AssetAddress;
 
         before(async function() {
             recipient = await node.createP2PKHAddress();
