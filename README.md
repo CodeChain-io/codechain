@@ -20,9 +20,9 @@ cargo build --release
 
 This will produce an executable in the `./target/release` directory.
 
-##Setup
+## Setup
 
-###Using Docker
+### Using Docker
 
 CodeChain supports the use of Docker to provide an easy and seamless installation process by providing a single package that gives the user everything he/she
 needs to get CodeChain up and running. In order to get the installation package, run the following command after installing Docker:
@@ -53,9 +53,9 @@ docker run -it codechain-io/codechain:branch_or_tag_name
 
 This should result in CodeChain running.
 
-###Building From Source
+### Building From Source
 
-####Build Dependencies
+#### Build Dependencies
 CodeChain requires Rust version 1.32.0 to build. Using [rustup](https://rustup.rs/ "rustup URL") is recommended.
 
 - For Linux Systems:
@@ -88,14 +88,14 @@ git clone git@github.com:CodeChain-io/codechain.git
 cd codechain
 ```
 
-####Build as Release Version
+#### Build as Release Version
 ```sh
 cargo build --release
 ```
 
 This will produce an executable in the ./target/release directory.
 
-###Using CodeChain SDK
+### Using CodeChain SDK
 
 Before starting to use the CodeChain SDK, please install node.js by going to this [page](https://nodejs.org/en/).
 

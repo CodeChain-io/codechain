@@ -16,11 +16,7 @@
 
 import { expect } from "chai";
 import { H256 } from "codechain-primitives/lib";
-import {
-    Asset,
-    AssetTransferAddress,
-    Timelock
-} from "codechain-sdk/lib/core/classes";
+import { Asset, AssetAddress, Timelock } from "codechain-sdk/lib/core/classes";
 import "mocha";
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
@@ -239,7 +235,7 @@ describe("Timelock", function() {
     });
 
     describe("Multiple timelocks", async function() {
-        let recipient: AssetTransferAddress;
+        let recipient: AssetAddress;
 
         beforeEach(async function() {
             recipient = await node.createP2PKHAddress();

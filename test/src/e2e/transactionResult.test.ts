@@ -53,7 +53,7 @@ describe("transaction result", function() {
                 mint.tracker()
             )
         ).deep.equal([true]);
-        expect(await node.sdk.rpc.chain.containTransaction(signedMint.hash()))
+        expect(await node.sdk.rpc.chain.containsTransaction(signedMint.hash()))
             .be.true;
         expect(await node.sdk.rpc.chain.getTransaction(signedMint.hash())).not
             .null;
@@ -145,18 +145,18 @@ describe("transaction result", function() {
         ).deep.equal([false, true]);
 
         expect(
-            await node.sdk.rpc.chain.containTransaction(signedTransfer1.hash())
+            await node.sdk.rpc.chain.containsTransaction(signedTransfer1.hash())
         ).be.false;
         expect(await node.sdk.rpc.chain.getErrorHint(signedTransfer1.hash()))
             .not.null;
 
-        expect(await node.sdk.rpc.chain.containTransaction(signedMint.hash()))
+        expect(await node.sdk.rpc.chain.containsTransaction(signedMint.hash()))
             .be.true;
         expect(await node.sdk.rpc.chain.getTransaction(signedMint.hash())).not
             .null;
 
         expect(
-            await node.sdk.rpc.chain.containTransaction(signedTransfer2.hash())
+            await node.sdk.rpc.chain.containsTransaction(signedTransfer2.hash())
         ).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(signedTransfer2.hash()))
             .not.null;

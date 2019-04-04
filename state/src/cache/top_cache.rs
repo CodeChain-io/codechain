@@ -155,7 +155,6 @@ impl TopCache {
         self.action_data.get_mut(a, db)
     }
 
-    #[allow(dead_code)]
     pub fn remove_action_data(&self, address: &H256) {
         self.action_data.remove(address)
     }

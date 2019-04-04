@@ -32,6 +32,7 @@ pub struct AssetScheme {
     registrar: Option<Address>,
     allowed_script_hashes: Vec<H160>,
     pool: Vec<Asset>,
+    seq: usize,
 }
 
 impl AssetScheme {
@@ -49,6 +50,7 @@ impl AssetScheme {
             registrar,
             allowed_script_hashes,
             pool: Vec::new(),
+            seq: 0,
         }
     }
 
@@ -67,6 +69,7 @@ impl AssetScheme {
             registrar,
             allowed_script_hashes,
             pool,
+            seq: 0,
         }
     }
 
@@ -88,6 +91,10 @@ impl AssetScheme {
 
     pub fn allowed_script_hashes(&self) -> &[H160] {
         &self.allowed_script_hashes
+    }
+
+    pub fn seq(&self) -> usize {
+        self.seq
     }
 
     pub fn is_permissioned(&self) -> bool {
@@ -130,6 +137,10 @@ impl AssetScheme {
         Ok(previous)
     }
 
+    pub fn increase_seq(&mut self) {
+        self.seq += 1;
+    }
+
     pub fn reduce_supply(&mut self, quantity: u64) -> u64 {
         assert!(self.supply >= quantity, "AssetScheme supply shouldn't be depleted");
         let previous = self.supply;
@@ -148,26 +159,36 @@ impl Default for AssetScheme {
 
 impl Encodable for AssetScheme {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(7)
-            .append(&PREFIX)
+        if self.seq == 0 {
+            s.begin_list(7);
+        } else {
+            s.begin_list(8);
+        }
+        s.append(&PREFIX)
             .append(&self.metadata)
             .append(&self.supply)
             .append(&self.approver)
             .append(&self.registrar)
             .append_list(&self.allowed_script_hashes)
             .append_list(&self.pool);
+        if self.seq != 0 {
+            s.append(&self.seq);
+        }
     }
 }
 
 impl Decodable for AssetScheme {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let item_count = rlp.item_count()?;
-        if item_count != 7 {
-            return Err(DecoderError::RlpInvalidLength {
-                got: item_count,
-                expected: 7,
-            })
-        }
+        let seq = match rlp.item_count()? {
+            7 => 0,
+            8 => rlp.val_at(7)?,
+            item_count => {
+                return Err(DecoderError::RlpInvalidLength {
+                    got: item_count,
+                    expected: 7,
+                })
+            }
+        };
 
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {
@@ -181,6 +202,7 @@ impl Decodable for AssetScheme {
             registrar: rlp.val_at(4)?,
             allowed_script_hashes: rlp.list_at(5)?,
             pool: rlp.list_at(6)?,
+            seq,
         })
     }
 }
