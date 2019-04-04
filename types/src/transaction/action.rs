@@ -69,6 +69,7 @@ pub enum Action {
         network_id: NetworkId,
         shard_id: ShardId,
         asset_type: H160,
+        seq: usize,
         metadata: String,
         approver: Option<Address>,
         registrar: Option<Address>,
@@ -79,6 +80,7 @@ pub enum Action {
         network_id: NetworkId,
         shard_id: ShardId,
         asset_type: H160,
+        seq: usize,
         output: Box<AssetMintOutput>,
         approvals: Vec<Signature>,
     },
@@ -470,6 +472,7 @@ impl From<Action> for Option<ShardTransaction> {
                 network_id,
                 shard_id,
                 asset_type,
+                seq,
                 metadata,
                 approver,
                 registrar,
@@ -479,6 +482,7 @@ impl From<Action> for Option<ShardTransaction> {
                 network_id,
                 shard_id,
                 asset_type,
+                seq,
                 metadata,
                 approver,
                 registrar,
@@ -488,12 +492,14 @@ impl From<Action> for Option<ShardTransaction> {
                 network_id,
                 shard_id,
                 asset_type,
+                seq,
                 output,
                 ..
             } => Some(ShardTransaction::IncreaseAssetSupply {
                 network_id,
                 shard_id,
                 asset_type,
+                seq,
                 output: *output,
             }),
             Action::ComposeAsset {
@@ -591,17 +597,19 @@ impl Encodable for Action {
                 network_id,
                 shard_id,
                 asset_type,
+                seq,
                 metadata,
                 approver,
                 registrar,
                 allowed_script_hashes,
                 approvals,
             } => {
-                s.begin_list(9)
+                s.begin_list(10)
                     .append(&CHANGE_ASSET_SCHEME)
                     .append(network_id)
                     .append(shard_id)
                     .append(asset_type)
+                    .append(seq)
                     .append(metadata)
                     .append(approver)
                     .append(registrar)
@@ -612,14 +620,16 @@ impl Encodable for Action {
                 network_id,
                 shard_id,
                 asset_type,
+                seq,
                 output,
                 approvals,
             } => {
-                s.begin_list(8)
+                s.begin_list(9)
                     .append(&INCREASE_ASSET_SUPPLY)
                     .append(network_id)
                     .append(shard_id)
                     .append(asset_type)
+                    .append(seq)
                     .append(&output.lock_script_hash)
                     .append(&output.parameters)
                     .append(&output.supply)
@@ -806,41 +816,43 @@ impl Decodable for Action {
             }
             CHANGE_ASSET_SCHEME => {
                 let item_count = rlp.item_count()?;
-                if item_count != 9 {
+                if item_count != 10 {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
-                        expected: 9,
+                        expected: 10,
                     })
                 }
                 Ok(Action::ChangeAssetScheme {
                     network_id: rlp.val_at(1)?,
                     shard_id: rlp.val_at(2)?,
                     asset_type: rlp.val_at(3)?,
-                    metadata: rlp.val_at(4)?,
-                    approver: rlp.val_at(5)?,
-                    registrar: rlp.val_at(6)?,
-                    allowed_script_hashes: rlp.list_at(7)?,
-                    approvals: rlp.list_at(8)?,
+                    seq: rlp.val_at(4)?,
+                    metadata: rlp.val_at(5)?,
+                    approver: rlp.val_at(6)?,
+                    registrar: rlp.val_at(7)?,
+                    allowed_script_hashes: rlp.list_at(8)?,
+                    approvals: rlp.list_at(9)?,
                 })
             }
             INCREASE_ASSET_SUPPLY => {
                 let item_count = rlp.item_count()?;
-                if item_count != 8 {
+                if item_count != 9 {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
-                        expected: 8,
+                        expected: 9,
                     })
                 }
                 Ok(Action::IncreaseAssetSupply {
                     network_id: rlp.val_at(1)?,
                     shard_id: rlp.val_at(2)?,
                     asset_type: rlp.val_at(3)?,
+                    seq: rlp.val_at(4)?,
                     output: Box::new(AssetMintOutput {
-                        lock_script_hash: rlp.val_at(4)?,
-                        parameters: rlp.val_at(5)?,
-                        supply: rlp.val_at(6)?,
+                        lock_script_hash: rlp.val_at(5)?,
+                        parameters: rlp.val_at(6)?,
+                        supply: rlp.val_at(7)?,
                     }),
-                    approvals: rlp.list_at(7)?,
+                    approvals: rlp.list_at(8)?,
                 })
             }
             COMPOSE_ASSET => {
@@ -1336,6 +1348,7 @@ mod tests {
             network_id: "ab".into(),
             shard_id: 1,
             asset_type: H160::random(),
+            seq: 0,
             metadata: "some asset scheme metadata".to_string(),
             approver: Some(Address::random()),
             registrar: Some(Address::random()),

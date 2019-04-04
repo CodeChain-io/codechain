@@ -26,7 +26,7 @@ use rlp::{Decodable, Encodable, Rlp, RlpStream};
 
 use super::CUSTOM_ACTION_HANDLER_ID;
 
-fn get_account_key(address: &Address) -> H256 {
+pub fn get_account_key(address: &Address) -> H256 {
     ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 2).append(&"Account").append(address).into_key()
 }
 
@@ -35,7 +35,7 @@ lazy_static! {
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"StakeholderAddresses").into_key();
 }
 
-fn get_delegation_key(address: &Address) -> H256 {
+pub fn get_delegation_key(address: &Address) -> H256 {
     ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 2).append(&"Delegation").append(address).into_key()
 }
 
@@ -64,8 +64,12 @@ impl<'a> StakeAccount<'a> {
 
     pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
         let account_key = get_account_key(self.address);
-        let rlp = rlp::encode(&self.balance);
-        state.update_action_data(&account_key, rlp.into_vec())?;
+        if self.balance != 0 {
+            let rlp = rlp::encode(&self.balance);
+            state.update_action_data(&account_key, rlp.into_vec())?;
+        } else {
+            state.remove_action_data(&account_key);
+        }
         Ok(())
     }
 
@@ -97,7 +101,12 @@ impl Stakeholders {
     }
 
     pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
-        state.update_action_data(&*STAKEHOLDER_ADDRESSES_KEY, encode_set(&self.0))?;
+        let key = *STAKEHOLDER_ADDRESSES_KEY;
+        if !self.0.is_empty() {
+            state.update_action_data(&key, encode_set(&self.0))?;
+        } else {
+            state.remove_action_data(&key);
+        }
         Ok(())
     }
 
@@ -106,10 +115,15 @@ impl Stakeholders {
         self.0.contains(address)
     }
 
-    pub fn update(&mut self, account: &StakeAccount) {
+    pub fn update_by_increased_balance(&mut self, account: &StakeAccount) {
         if account.balance > 0 {
             self.0.insert(*account.address);
-        } else {
+        }
+    }
+
+    pub fn update_by_decreased_balance(&mut self, account: &StakeAccount, delegation: &Delegation) {
+        assert!(account.address == delegation.delegator);
+        if account.balance == 0 && delegation.sum() == 0 {
             self.0.remove(account.address);
         }
     }
@@ -138,8 +152,12 @@ impl<'a> Delegation<'a> {
 
     pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
         let key = get_delegation_key(self.delegator);
-        let encoded = encode_map(&self.delegatees);
-        state.update_action_data(&key, encoded)?;
+        if !self.delegatees.is_empty() {
+            let encoded = encode_map(&self.delegatees);
+            state.update_action_data(&key, encoded)?;
+        } else {
+            state.remove_action_data(&key);
+        }
         Ok(())
     }
 
@@ -149,8 +167,8 @@ impl<'a> Delegation<'a> {
     }
 
     #[cfg(test)]
-    pub fn get_quantity(&self, delegator: &Address) -> StakeQuantity {
-        self.delegatees.get(delegator).cloned().unwrap_or(0)
+    pub fn get_quantity(&self, delegatee: &Address) -> StakeQuantity {
+        self.delegatees.get(delegatee).cloned().unwrap_or(0)
     }
 
     #[cfg(test)]
@@ -297,6 +315,24 @@ mod tests {
     }
 
     #[test]
+    fn balance_subtract_all_should_remove_entry_from_db() {
+        let mut state = helpers::get_temp_state();
+        let address = Address::random();
+
+        let mut account = StakeAccount::load_from_state(&state, &address).unwrap();
+        account.add_balance(100).unwrap();
+        account.save_to_state(&mut state).unwrap();
+
+        let mut account = StakeAccount::load_from_state(&state, &address).unwrap();
+        let result = account.subtract_balance(100);
+        assert!(result.is_ok());
+        account.save_to_state(&mut state).unwrap();
+
+        let data = state.action_data(&get_account_key(&address)).unwrap();
+        assert_eq!(data, None);
+    }
+
+    #[test]
     fn stakeholders_track() {
         let mut rng = rng();
         let mut state = helpers::get_temp_state();
@@ -311,7 +347,7 @@ mod tests {
 
         let mut stakeholders = Stakeholders::load_from_state(&state).unwrap();
         for account in &accounts {
-            stakeholders.update(account);
+            stakeholders.update_by_increased_balance(account);
         }
         stakeholders.save_to_state(&mut state).unwrap();
 
@@ -334,18 +370,17 @@ mod tests {
 
         let mut stakeholders = Stakeholders::load_from_state(&state).unwrap();
         for account in &accounts {
-            stakeholders.update(account);
+            stakeholders.update_by_increased_balance(account);
         }
         stakeholders.save_to_state(&mut state).unwrap();
 
+        let mut stakeholders = Stakeholders::load_from_state(&state).unwrap();
         for account in &mut accounts {
             if rand::random() {
                 account.balance = 0;
             }
-        }
-        let mut stakeholders = Stakeholders::load_from_state(&state).unwrap();
-        for account in &accounts {
-            stakeholders.update(account);
+            let delegation = Delegation::load_from_state(&state, account.address).unwrap();
+            stakeholders.update_by_decreased_balance(account, &delegation);
         }
         stakeholders.save_to_state(&mut state).unwrap();
 
@@ -354,6 +389,40 @@ mod tests {
             let tracked = stakeholders.contains(account.address);
             let has_balance = account.balance > 0;
             assert!(tracked && has_balance || !tracked && !has_balance);
+        }
+    }
+
+    #[test]
+    fn stakeholders_doesnt_untrack_if_delegation_exists() {
+        let mut state = helpers::get_temp_state();
+        let addresses: Vec<_> = (1..100).map(|_| Address::random()).collect();
+        let mut accounts: Vec<_> = addresses
+            .iter()
+            .map(|address| StakeAccount {
+                address,
+                balance: 100,
+            })
+            .collect();
+
+        let mut stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        for account in &accounts {
+            stakeholders.update_by_increased_balance(account);
+        }
+        stakeholders.save_to_state(&mut state).unwrap();
+
+        let mut stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        for account in &mut accounts {
+            // like self-delegate
+            let mut delegation = Delegation::load_from_state(&state, account.address).unwrap();
+            delegation.add_quantity(*account.address, account.balance).unwrap();
+            account.balance = 0;
+            stakeholders.update_by_decreased_balance(account, &delegation);
+        }
+        stakeholders.save_to_state(&mut state).unwrap();
+
+        let stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        for account in &accounts {
+            assert!(stakeholders.contains(account.address));
         }
     }
 
@@ -373,23 +442,23 @@ mod tests {
         let mut state = helpers::get_temp_state();
 
         // Prepare
-        let delegatee = Address::random();
-        let delegators: Vec<_> = (0..10).map(|_| Address::random()).collect();
+        let delegator = Address::random();
+        let delegatees: Vec<_> = (0..10).map(|_| Address::random()).collect();
         let delegation_amount: HashMap<&Address, StakeQuantity> =
-            delegators.iter().map(|address| (address, rng.gen_range(0, 100))).collect();
+            delegatees.iter().map(|address| (address, rng.gen_range(0, 100))).collect();
 
         // Do delegate
-        let mut delegation = Delegation::load_from_state(&state, &delegatee).unwrap();
-        for delegator in delegators.iter() {
-            delegation.add_quantity(*delegator, delegation_amount[delegator]).unwrap()
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        for delegatee in delegatees.iter() {
+            delegation.add_quantity(*delegatee, delegation_amount[delegatee]).unwrap()
         }
         delegation.save_to_state(&mut state).unwrap();
 
         // assert
-        let delegation = Delegation::load_from_state(&state, &delegatee).unwrap();
-        assert_eq!(delegation.iter().count(), delegators.len());
-        for delegator in delegators.iter() {
-            assert_eq!(delegation.get_quantity(delegator), delegation_amount[delegator]);
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegation.iter().count(), delegatees.len());
+        for delegatee in delegatees.iter() {
+            assert_eq!(delegation.get_quantity(delegatee), delegation_amount[delegatee]);
         }
     }
 }

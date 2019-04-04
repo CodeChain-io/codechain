@@ -153,7 +153,7 @@ describe("chain", function() {
                 seq
             })
         );
-        expect(await node.sdk.rpc.chain.containTransaction(hash)).be.true;
+        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
         const signed = await node.sdk.rpc.chain.getTransaction(hash);
         expect(signed).not.null;
         expect(signed!.unsigned).to.deep.equal(tx);
@@ -383,7 +383,7 @@ describe("chain", function() {
         });
         await node.signTransactionInput(tx, 0);
         const hash = await node.sendAssetTransaction(tx);
-        expect(await node.sdk.rpc.chain.containTransaction(hash)).be.true;
+        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
         expect(
             await node.sdk.rpc.chain.isAssetSpent(

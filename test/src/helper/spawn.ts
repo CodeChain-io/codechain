@@ -18,7 +18,7 @@ import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
 import {
     Asset,
-    AssetTransferAddress,
+    AssetAddress,
     AssetTransferInput,
     ComposeAsset,
     DecomposeAsset,
@@ -422,7 +422,7 @@ export default class CodeChain {
 
     public async mintAsset(params: {
         supply: U64 | number;
-        recipient?: string | AssetTransferAddress;
+        recipient?: string | AssetAddress;
         secret?: string;
         seq?: number;
         metadata?: string;

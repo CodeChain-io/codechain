@@ -157,6 +157,7 @@ impl<'db> ShardLevelState<'db> {
             ShardTransaction::ChangeAssetScheme {
                 shard_id,
                 asset_type,
+                seq,
                 metadata,
                 approver,
                 registrar,
@@ -168,6 +169,7 @@ impl<'db> ShardLevelState<'db> {
                     sender,
                     approvers,
                     asset_type,
+                    *seq,
                     metadata,
                     approver,
                     registrar,
@@ -178,10 +180,11 @@ impl<'db> ShardLevelState<'db> {
                 shard_id,
                 asset_type,
                 output,
+                seq,
                 ..
             } => {
                 assert_eq!(*shard_id, self.shard_id);
-                self.increase_asset_supply(transaction.tracker(), sender, approvers, asset_type, output)
+                self.increase_asset_supply(transaction.tracker(), *seq, sender, approvers, asset_type, output)
             }
             ShardTransaction::ComposeAsset {
                 metadata,
@@ -456,6 +459,7 @@ impl<'db> ShardLevelState<'db> {
         sender: &Address,
         approvers: &[Address],
         asset_type: &H160,
+        seq: usize,
         metadata: &str,
         approver: &Option<Address>,
         registrar: &Option<Address>,
@@ -466,12 +470,23 @@ impl<'db> ShardLevelState<'db> {
         }
 
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, *asset_type)?;
+        if asset_scheme.seq() != seq {
+            return Err(RuntimeError::InvalidSeqOfAssetScheme {
+                asset_type: *asset_type,
+                shard_id: self.shard_id,
+                expected: asset_scheme.seq(),
+                actual: seq,
+            }
+            .into())
+        }
+
         asset_scheme.change_data(
             metadata.to_string(),
             approver.clone(),
             registrar.clone(),
             allowed_script_hashes.to_vec(),
         );
+        asset_scheme.increase_seq();
 
         Ok(())
     }
@@ -479,6 +494,7 @@ impl<'db> ShardLevelState<'db> {
     fn increase_asset_supply(
         &mut self,
         transaction_tracker: H256,
+        seq: usize,
         sender: &Address,
         approvers: &[Address],
         asset_type: &H160,
@@ -492,7 +508,17 @@ impl<'db> ShardLevelState<'db> {
         assert!(output.supply > 0, "Supply increasing quantity must be specified and greater than 0");
 
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, *asset_type)?;
+        if seq != asset_scheme.seq() {
+            return Err(RuntimeError::InvalidSeqOfAssetScheme {
+                asset_type: *asset_type,
+                shard_id: self.shard_id,
+                expected: asset_scheme.seq(),
+                actual: seq,
+            }
+            .into())
+        }
         let previous_supply = asset_scheme.increase_supply(output.supply)?;
+        asset_scheme.increase_seq();
         self.create_asset(
             transaction_tracker,
             0,
@@ -502,7 +528,7 @@ impl<'db> ShardLevelState<'db> {
             output.supply,
             None,
         )?;
-        ctrace!(TX, "Increased asset supply {:?} {:?} {:?}", asset_type, previous_supply, output.supply);
+        ctrace!(TX, "Increased asset supply {:?} {:?} => {:?}", asset_type, previous_supply, output.supply);
         ctrace!(TX, "Created asset on {}:{}", self.shard_id, transaction_tracker);
 
         Ok(())
@@ -2439,6 +2465,7 @@ mod tests {
             network_id: "tc".into(),
             shard_id: SHARD_ID,
             asset_type,
+            seq: 0,
             metadata: "New metadata".to_string(),
             approver: Some(approver),
             registrar: None,
@@ -2485,6 +2512,7 @@ mod tests {
             network_id: "tc".into(),
             shard_id: SHARD_ID,
             asset_type,
+            seq: 0,
             output: AssetMintOutput {
                 lock_script_hash: H160::random(),
                 parameters: vec![],

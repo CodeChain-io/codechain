@@ -49,6 +49,7 @@ pub enum ShardTransaction {
         network_id: NetworkId,
         shard_id: ShardId,
         asset_type: H160,
+        seq: usize,
         metadata: String,
         approver: Option<Address>,
         registrar: Option<Address>,
@@ -58,6 +59,7 @@ pub enum ShardTransaction {
         network_id: NetworkId,
         shard_id: ShardId,
         asset_type: H160,
+        seq: usize,
         output: AssetMintOutput,
     },
     ComposeAsset {
@@ -523,38 +525,40 @@ impl Decodable for ShardTransaction {
             }
             ASSET_SCHEME_CHANGE_ID => {
                 let item_count = d.item_count()?;
-                if item_count != 8 {
+                if item_count != 9 {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
-                        expected: 8,
+                        expected: 9,
                     })
                 }
                 Ok(ShardTransaction::ChangeAssetScheme {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
                     asset_type: d.val_at(3)?,
-                    metadata: d.val_at(4)?,
-                    approver: d.val_at(5)?,
-                    registrar: d.val_at(6)?,
-                    allowed_script_hashes: d.list_at(7)?,
+                    seq: d.val_at(4)?,
+                    metadata: d.val_at(5)?,
+                    approver: d.val_at(6)?,
+                    registrar: d.val_at(7)?,
+                    allowed_script_hashes: d.list_at(8)?,
                 })
             }
             ASSET_INCREASE_SUPPLY_ID => {
                 let item_count = d.item_count()?;
-                if item_count != 7 {
+                if item_count != 8 {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
-                        expected: 7,
+                        expected: 8,
                     })
                 }
                 Ok(ShardTransaction::IncreaseAssetSupply {
                     network_id: d.val_at(1)?,
                     shard_id: d.val_at(2)?,
                     asset_type: d.val_at(3)?,
+                    seq: d.val_at(4)?,
                     output: AssetMintOutput {
-                        lock_script_hash: d.val_at(4)?,
-                        parameters: d.val_at(5)?,
-                        supply: d.val_at(6)?,
+                        lock_script_hash: d.val_at(5)?,
+                        parameters: d.val_at(6)?,
+                        supply: d.val_at(7)?,
                     },
                 })
             }
@@ -662,16 +666,18 @@ impl Encodable for ShardTransaction {
                 network_id,
                 shard_id,
                 asset_type,
+                seq,
                 metadata,
                 approver,
                 registrar,
                 allowed_script_hashes,
             } => {
-                s.begin_list(8)
+                s.begin_list(9)
                     .append(&ASSET_SCHEME_CHANGE_ID)
                     .append(network_id)
                     .append(shard_id)
                     .append(asset_type)
+                    .append(seq)
                     .append(metadata)
                     .append(approver)
                     .append(registrar)
@@ -681,6 +687,7 @@ impl Encodable for ShardTransaction {
                 network_id,
                 shard_id,
                 asset_type,
+                seq,
                 output:
                     AssetMintOutput {
                         lock_script_hash,
@@ -688,11 +695,12 @@ impl Encodable for ShardTransaction {
                         supply,
                     },
             } => {
-                s.begin_list(7)
+                s.begin_list(8)
                     .append(&ASSET_INCREASE_SUPPLY_ID)
                     .append(network_id)
                     .append(shard_id)
                     .append(asset_type)
+                    .append(seq)
                     .append(lock_script_hash)
                     .append(parameters)
                     .append(supply);

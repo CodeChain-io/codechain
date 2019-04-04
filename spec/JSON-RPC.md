@@ -82,23 +82,6 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - approvals: `Signature[]`
  - expiration: `Expiration time` | `null`
 
-### ComposeAsset Action
-
- - networkId: `NetworkID`
- - shardId: `number`
- - metadata: `string`
- - inputs: `AssetTransferInput[]`
- - output: `AssetMintOutput`
- - approver: `PlatformAddress` | `null`
- - approvals: `Signature[]`
-
-### DecomposeAsset Action
-
- - networkId: `NetworkID`
- - input: `AssetTransferInput`
- - outputs: `AssetTransferOutput[]`
- - approvals: `Signature[]`
-
 ### UnwrapCCC Action
 
  - networkId: `NetworkID`
@@ -115,22 +98,6 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 
  - type: "setRegularKey"
  - key: `H512`
-
-### CreateShard Action
- - type: "createShard"
- - users: `PlatformAddress[]`
-
-### SetShardOwners Action
-
- - type: "setShardOwners"
- - shardId: `number`
- - owners: `PlatformAddress[]`
-
-### SetShardUsers Action
-
- - type: "setShardUsers"
- - shardId: `number`
- - users: `PlatformAddress[]`
 
 ### WrapCCC Action
 
@@ -179,8 +146,8 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 
 ## Transactions
 
- - type: "assetMint" | "assetTransfer" | "assetCompose" | "assetDecompose" | "assetUnwrapCCC"
- - data: `AssetMintData` | `AssetTransferData` | `AssetComposeData` | `AssetDecomposeData` | `AssetUnwrapCCCData`
+ - type: "assetMint" | "assetTransfer" | "assetUnwrapCCC"
+ - data: `AssetMintData` | `AssetTransferData` | `AssetUnwrapCCCData`
 
 ### Transaction in Response
 
