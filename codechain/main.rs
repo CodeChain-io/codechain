@@ -48,7 +48,7 @@ extern crate fdlimit;
 extern crate finally_block;
 extern crate kvdb;
 extern crate kvdb_rocksdb;
-extern crate never;
+extern crate never_type;
 extern crate panic_hook;
 extern crate parking_lot;
 extern crate primitives;

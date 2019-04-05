@@ -18,7 +18,7 @@ use std::str::FromStr;
 use std::{fmt, fs};
 
 use ccore::Scheme;
-use never::Never;
+use never_type::Never;
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]

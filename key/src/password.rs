@@ -18,7 +18,7 @@ use std::str::FromStr;
 use std::{fmt, ptr};
 
 use crypto::Password as CryptoPassword;
-use never::Never;
+use never_type::Never;
 
 #[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Password(String);
