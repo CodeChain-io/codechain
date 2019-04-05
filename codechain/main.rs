@@ -45,7 +45,7 @@ extern crate codechain_types as ctypes;
 extern crate ctrlc;
 extern crate env_logger;
 extern crate fdlimit;
-extern crate finally;
+extern crate finally_block;
 extern crate kvdb;
 extern crate kvdb_rocksdb;
 extern crate never;
