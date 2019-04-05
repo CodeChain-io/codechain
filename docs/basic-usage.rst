@@ -15,7 +15,7 @@ JSON-RPC, you can use Curl or `JavaScript SDK <https://api.codechain.io/>`_.
 
 Blockchain Configuration
 ========================
-When configuring CodeChain's blockchain type, you can set it to either ``Solo`` or ``Tendermint``.
+You can run your network using ``Solo`` or ``Tendermint`` consensus, or you can join an existing network.
 
 Solo Configuration
 ------------------
@@ -45,6 +45,21 @@ the node with a secret key of 1, use this command:
 ::
 
     codechain --db-path db/db1 --port 3486 --jsonrpc-port 8081 --engine-signer tccqr8a9rqj09j9l6ahe7yq9xfjj8h5xw3p7vpcgner -c tendermint --bootstrap-addresses 127.0.0.1:3485
+
+Connect to the existing network
+--------------------------------
+You can participate in the Corgi or Main network.
+
+You could get information about Corgi at this `link <https://corgi.codechain.io/>`_.
+In order to participate in the Corgi network, you should use the command below:
+::
+
+    codechain --chain corgi --no-miner --bootstrap-addresses "52.68.160.158:3485" "52.87.80.242:3485" "13.52.125.202:3485" "18.184.72.190:3485" "13.124.7.55:3485"
+
+In order to participate in the Main network, you should use the command below:
+::
+
+    codechain --no-miner --bootstrap-addresses "13.115.159.65:3485" "18.205.137.116:3485" "13.52.129.93:3485" "18.194.21.237:3485" "13.124.155.240:3485"
 
 Checking if CodeChain is Configured Properly
 ============================================
