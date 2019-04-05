@@ -124,6 +124,10 @@ build_rpc_trait! {
          # [rpc(name = "chain_getBlockTransactionCountByHash")]
         fn get_block_transaction_count_by_hash(&self, H256) -> Result<Option<usize>>;
 
+        ///Gets the minimum transaction fee of the given name.
+         # [rpc(name = "chain_getMinTransactionFee")]
+        fn get_min_transaction_fee(&self, String, u64) -> Result<Option<u64>>;
+
         /// Gets the mining given block number
         # [rpc(name = "chain_getMiningReward")]
         fn get_mining_reward(&self, u64) -> Result<Option<u64>>;

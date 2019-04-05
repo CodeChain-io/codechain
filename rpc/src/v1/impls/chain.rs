@@ -239,6 +239,30 @@ where
         Ok(self.client.block(&BlockId::Hash(block_hash)).map(|block| block.transactions_count()))
     }
 
+    fn get_min_transaction_fee(&self, action_type: String, _block_number: u64) -> Result<Option<u64>> {
+        let common_parameters = self.client.common_params();
+        Ok(match action_type.as_str() {
+            "mintAsset" => Some(common_parameters.min_asset_mint_cost),
+            "transferAsset" => Some(common_parameters.min_asset_transfer_cost),
+            "changeAssetScheme" => Some(common_parameters.min_asset_scheme_change_cost),
+            "increaseAssetSupply" => Some(common_parameters.min_asset_supply_increase_cost),
+            "unwrapCCC" => Some(common_parameters.min_asset_unwrap_ccc_cost),
+            "pay" => Some(common_parameters.min_pay_transaction_cost),
+            "setRegularKey" => Some(common_parameters.min_set_regular_key_tranasction_cost),
+            "createShard" => Some(common_parameters.min_create_shard_transaction_cost),
+            "setShardOwners" => Some(common_parameters.min_set_shard_owners_transaction_cost),
+            "setShardUsers" => Some(common_parameters.min_set_shard_users_transaction_cost),
+            "wrapCCC" => Some(common_parameters.min_wrap_ccc_transaction_cost),
+            "store" => Some(common_parameters.min_store_transaction_cost),
+            "remove" => Some(common_parameters.min_remove_transaction_cost),
+            "custom" => Some(common_parameters.min_custom_transaction_cost),
+            "composeAsset" => Some(common_parameters.min_asset_compose_cost),
+            "decomposeAsset" => Some(common_parameters.min_asset_decompose_cost),
+
+            _ => None,
+        })
+    }
+
     fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {
         Ok(self.client.mining_reward(block_number))
     }
