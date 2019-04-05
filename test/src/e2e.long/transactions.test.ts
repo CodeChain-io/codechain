@@ -51,6 +51,16 @@ describe("transactions", function() {
         await node.start();
     });
 
+    describe("Pay", async function() {
+        it("Allow zero pay", async function() {
+            const pay = await node.sendPayTx({ quantity: 0 });
+            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
+                .true;
+            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
+                .null;
+        });
+    });
+
     describe("AssetMint", async function() {
         [1, 100, U64.MAX_VALUE].forEach(function(supply) {
             it(`Mint successful - supply ${supply}`, async function() {
