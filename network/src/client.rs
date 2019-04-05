@@ -279,7 +279,7 @@ enum ExtensionMessage {
 #[cfg(test)]
 mod tests {
     use cio::IoService;
-    use never::Never;
+    use never_type::Never;
 
     use super::*;
     use crate::SocketAddr;

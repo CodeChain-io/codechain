@@ -18,7 +18,7 @@ extern crate codechain_crypto as crypto;
 #[macro_use]
 extern crate lazy_static;
 extern crate bech32;
-extern crate never;
+extern crate never_type;
 extern crate parking_lot;
 extern crate primitives;
 extern crate rand;

@@ -10,7 +10,7 @@ codechain-logger = { path = "../util/logger" }
 codechain-network = { path = "../network" }
 codechain-timer = { path = "../util/timer" }
 log = "0.4.6"
-never = { git = "https://github.com/CodeChain-io/rust-never.git" }
+never-type = "0.1.0"
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rand = "0.6.1"

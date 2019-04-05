@@ -36,7 +36,7 @@ extern crate rand;
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;
-extern crate never;
+extern crate never_type;
 extern crate table as ctable;
 extern crate time;
 extern crate token_generator;
