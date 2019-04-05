@@ -433,7 +433,6 @@ dependencies = [
  "codechain-types 0.1.0",
  "crossbeam-channel 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "finally-block 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mio 0.6.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)",

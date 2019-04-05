@@ -27,7 +27,6 @@ extern crate codechain_types as ctypes;
 extern crate core;
 extern crate crossbeam_channel;
 extern crate finally_block;
-extern crate limited_table;
 #[macro_use]
 extern crate log;
 extern crate mio;
