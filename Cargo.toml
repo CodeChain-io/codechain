@@ -33,7 +33,7 @@ codechain-vm = { path = "vm" }
 codechain-stratum = { path = "stratum" }
 ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
-finally = { git = "https://github.com/CodeChain-io/rust-finally.git" }
+finally-block = "0.1"
 futures = "0.1"
 kvdb = { path = "util/kvdb" }
 kvdb-rocksdb = { path = "util/kvdb-rocksdb" }
