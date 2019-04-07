@@ -306,6 +306,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [net_disableBlacklist](#net_disableblacklist)
  * [net_getWhitelist](#net_getwhitelist)
  * [net_getBlacklist](#net_getblacklist)
+ * [net_recentNetworkUsage](#net_recentnetworkusage)
 ***
  * [account_getList](#account_getlist)
  * [account_create](#account_create)
@@ -2239,6 +2240,38 @@ No parameters
 {
   "jsonrpc":"2.0",
   "result": { "list": [["1.2.3.0/22", "tag1"], ["1.2.3.5/32", "tag2"], ["1.2.3.6/32", "tag3"]], "enabled": false },
+  "id":6
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## net_recentNetworkUsage
+Gets the recent network usage.
+The return type is an object.
+The key of the object is a string, but what the keys are depend on the implementation.
+The value of the object is the size of bytes that the node sent in the recent period.
+The exact timespan of the recent is also an implementation dependent.
+
+### Params
+No parameters
+
+### Returns
+{ `string`: `number` }
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_recentNetworkUsage", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{"::handshake":750,"::negotiation":2210,"block-propagation":13445,"discovery":1667,"tendermint":164},
   "id":6
 }
 ```
