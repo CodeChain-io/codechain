@@ -162,6 +162,9 @@ impl<'a> Delegation<'a> {
     }
 
     pub fn add_quantity(&mut self, delegatee: Address, quantity: StakeQuantity) -> StateResult<()> {
+        if quantity == 0 {
+            return Ok(())
+        }
         *self.delegatees.entry(delegatee).or_insert(0) += quantity;
         Ok(())
     }
@@ -460,5 +463,42 @@ mod tests {
         for delegatee in delegatees.iter() {
             assert_eq!(delegation.get_quantity(delegatee), delegation_amount[delegatee]);
         }
+    }
+
+    #[test]
+    fn delegation_zero_add_should_not_be_included() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let delegator = Address::random();
+        let delegatee1 = Address::random();
+        let delegatee2 = Address::random();
+
+        // Do delegate
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.add_quantity(delegatee1, 100).unwrap();
+        delegation.add_quantity(delegatee2, 0).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        let delegated = delegation.iter().collect::<Vec<_>>();
+        assert_eq!(&delegated, &[(&delegatee1, &100)]);
+    }
+
+    #[test]
+    fn delegation_empty_removed_from_state() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let delegator = Address::random();
+        let delegatee = Address::random();
+
+        // Do delegate
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.add_quantity(delegatee, 0).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        let result = state.action_data(&get_delegation_key(&delegator)).unwrap();
+        assert_eq!(result, None);
     }
 }
