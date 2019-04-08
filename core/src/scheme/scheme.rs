@@ -331,14 +331,6 @@ impl Scheme {
         load_bundled!("mainnet")
     }
 
-    pub fn new_husky() -> Self {
-        load_bundled!("husky")
-    }
-
-    pub fn new_saluki() -> Self {
-        load_bundled!("saluki")
-    }
-
     pub fn new_corgi() -> Self {
         load_bundled!("corgi")
     }

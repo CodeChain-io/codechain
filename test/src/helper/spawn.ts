@@ -49,7 +49,8 @@ export type ChainType =
     | "tendermint"
     | "cuckoo"
     | "blake_pow"
-    | "husky"
+    | "corgi"
+    | "mainnet"
     | SchemeFilepath;
 
 export default class CodeChain {

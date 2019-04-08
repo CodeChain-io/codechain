@@ -31,8 +31,6 @@ pub enum ChainType {
     Cuckoo,
     #[serde(rename = "blake_pow")]
     BlakePoW,
-    Husky,
-    Saluki,
     Corgi,
     Custom(String),
 }
@@ -54,8 +52,6 @@ impl FromStr for ChainType {
             "tendermint" => ChainType::Tendermint,
             "cuckoo" => ChainType::Cuckoo,
             "blake_pow" => ChainType::BlakePoW,
-            "husky" => ChainType::Husky,
-            "saluki" => ChainType::Saluki,
             "corgi" => ChainType::Corgi,
             other => ChainType::Custom(other.into()),
         };
@@ -72,8 +68,6 @@ impl fmt::Display for ChainType {
             ChainType::Tendermint => "tendermint",
             ChainType::Cuckoo => "cuckoo",
             ChainType::BlakePoW => "blake_pow",
-            ChainType::Husky => "husky",
-            ChainType::Saluki => "saluki",
             ChainType::Corgi => "corgi",
             ChainType::Custom(custom) => custom,
         })
@@ -89,8 +83,6 @@ impl ChainType {
             ChainType::Tendermint => Ok(Scheme::new_test_tendermint()),
             ChainType::Cuckoo => Ok(Scheme::new_test_cuckoo()),
             ChainType::BlakePoW => Ok(Scheme::new_test_blake_pow()),
-            ChainType::Husky => Ok(Scheme::new_husky()),
-            ChainType::Saluki => Ok(Scheme::new_saluki()),
             ChainType::Corgi => Ok(Scheme::new_corgi()),
             ChainType::Custom(filename) => {
                 let file = fs::File::open(filename)
