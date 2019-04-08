@@ -349,3 +349,5 @@ subcommands:
                       - public
                       - address
                       - accountId
+    - commit-hash:
+          about: Print the commit hash at the built time.
