@@ -45,10 +45,10 @@ extern crate codechain_types as ctypes;
 extern crate ctrlc;
 extern crate env_logger;
 extern crate fdlimit;
-extern crate finally;
+extern crate finally_block;
 extern crate kvdb;
 extern crate kvdb_rocksdb;
-extern crate never;
+extern crate never_type;
 extern crate panic_hook;
 extern crate parking_lot;
 extern crate primitives;
@@ -86,7 +86,8 @@ fn main() -> Result<(), String> {
 
 fn run() -> Result<(), String> {
     let yaml = load_yaml!("codechain.yml");
-    let matches = clap::App::from_yaml(yaml).get_matches();
+    let version = env!("CARGO_PKG_VERSION");
+    let matches = clap::App::from_yaml(yaml).version(version).get_matches();
 
     match matches.subcommand {
         Some(_) => run_subcommand(&matches),

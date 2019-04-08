@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use cnetwork::{Api, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
 use ctimer::TimerToken;
-use never::Never;
+use never_type::Never;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Decodable, Encodable, UntrustedRlp};

@@ -26,8 +26,7 @@ extern crate codechain_timer as ctimer;
 extern crate codechain_types as ctypes;
 extern crate core;
 extern crate crossbeam_channel;
-extern crate finally;
-extern crate limited_table;
+extern crate finally_block;
 #[macro_use]
 extern crate log;
 extern crate mio;
@@ -37,7 +36,7 @@ extern crate rand;
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;
-extern crate never;
+extern crate never_type;
 extern crate table as ctable;
 extern crate time;
 extern crate token_generator;

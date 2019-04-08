@@ -1,6 +1,6 @@
 [package]
 name = "codechain"
-version = "1.1.0"
+version = "1.1.1"
 license = "AGPL-3.0"
 authors = ["CodeChain Team <codechain@kodebox.io>"]
 exclude = [
@@ -33,13 +33,13 @@ codechain-vm = { path = "vm" }
 codechain-stratum = { path = "stratum" }
 ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
-finally = { git = "https://github.com/CodeChain-io/rust-finally.git" }
+finally-block = "0.1"
 futures = "0.1"
 kvdb = { path = "util/kvdb" }
 kvdb-rocksdb = { path = "util/kvdb-rocksdb" }
 log = "0.4.6"
 env_logger = "0.5.3"
-never = { git = "https://github.com/CodeChain-io/rust-never.git" }
+never-type = "0.1.0"
 panic_hook = { path = "util/panic_hook" }
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

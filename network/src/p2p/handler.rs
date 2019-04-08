@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoChannel, IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use ckey::NetworkId;
-use finally::finally;
+use finally_block::finally;
 use mio::deprecated::EventLoop;
 use mio::{PollOpt, Ready, Token};
 use parking_lot::{Mutex, RwLock};

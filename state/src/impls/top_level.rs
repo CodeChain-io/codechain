@@ -259,10 +259,18 @@ impl TopLevelState {
         client: &C,
         parent_block_number: BlockNumber,
         parent_block_timestamp: u64,
+        current_block_timestamp: u64,
     ) -> StateResult<()> {
         self.create_checkpoint(FEE_CHECKPOINT);
-        let result =
-            self.apply_internal(tx, signed_hash, signer_public, client, parent_block_number, parent_block_timestamp);
+        let result = self.apply_internal(
+            tx,
+            signed_hash,
+            signer_public,
+            client,
+            parent_block_number,
+            parent_block_timestamp,
+            current_block_timestamp,
+        );
         match result {
             Ok(()) => {
                 self.discard_checkpoint(FEE_CHECKPOINT);
@@ -292,6 +300,7 @@ impl TopLevelState {
         client: &C,
         parent_block_number: BlockNumber,
         parent_block_timestamp: u64,
+        current_block_timestamp: u64,
     ) -> StateResult<()> {
         let (fee_payer, restricted_master_key) = if self.regular_account_exists_and_not_null(signer_public)? {
             let regular_account = self.get_regular_account_mut(signer_public)?;
@@ -332,6 +341,7 @@ impl TopLevelState {
             client,
             parent_block_number,
             parent_block_timestamp,
+            current_block_timestamp,
         );
         match &result {
             Ok(()) => {
@@ -344,6 +354,7 @@ impl TopLevelState {
         result
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn apply_action<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
         action: &Action,
@@ -355,6 +366,7 @@ impl TopLevelState {
         client: &C,
         parent_block_number: BlockNumber,
         parent_block_timestamp: u64,
+        _current_block_timestamp: u64,
     ) -> StateResult<()> {
         let (transaction, approvers) = match action {
             Action::MintAsset {
@@ -1354,7 +1366,7 @@ mod tests_tx {
                 expected: 0,
                 found: 2
             }))),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1377,7 +1389,7 @@ mod tests_tx {
                 cost: 5,
             }
             .into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1394,7 +1406,7 @@ mod tests_tx {
 
         let receiver = 1u64.into();
         let tx = transaction!(fee: 5, pay!(receiver, 10));
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 5)),
@@ -1411,7 +1423,7 @@ mod tests_tx {
         set_top_level_state!(state, [(account: sender => balance: 5)]);
 
         let tx = transaction!(fee: 5, set_regular_key!(key));
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 0, key: key))
@@ -1434,7 +1446,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, pay!(regular_account, 10));
         assert_eq!(
             Err(RuntimeError::InvalidTransferDestination.into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1470,7 +1482,7 @@ mod tests_tx {
         let tx = transaction!(seq: 0, fee: 11, unwrap_ccc_tx);
         assert_eq!(
             Err(RuntimeError::InvalidTransferDestination.into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1490,7 +1502,7 @@ mod tests_tx {
         let key = regular_keypair.public();
         let tx = transaction!(fee: 5, set_regular_key!(*key));
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 10, key: *key))
@@ -1498,7 +1510,7 @@ mod tests_tx {
 
         let tx = transaction!(seq: 1, fee: 5, Action::CreateShard { users: vec![] });
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), regular_keypair.public(), &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), regular_keypair.public(), &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 15 - 5 - 5)),
@@ -1521,7 +1533,7 @@ mod tests_tx {
         let key = regular_keypair.public();
         let tx = transaction!(fee: 5, set_regular_key!(*key));
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 10, key: *key)),
@@ -1531,7 +1543,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, set_regular_key!(*key));
         assert_eq!(
             Err(RuntimeError::RegularKeyAlreadyInUse.into()),
-            state.apply(&tx, &H256::random(), &sender_public2, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public2, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1554,7 +1566,7 @@ mod tests_tx {
         let tx = transaction! (fee: 5, set_regular_key!(sender_public2));
         assert_eq!(
             Err(RuntimeError::RegularKeyAlreadyInUseAsPlatformAccount.into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1577,7 +1589,7 @@ mod tests_tx {
 
         let (_, regular_public2, _) = address();
         let tx = transaction! (fee: 5, set_regular_key!(regular_public2));
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0, 0));
 
         assert_eq!(Ok(false), state.regular_account_exists_and_not_null(&regular_public));
         check_top_level_state!(state, [
@@ -1614,7 +1626,7 @@ mod tests_tx {
         );
         let transfer_tx = transaction!(seq: 0, fee: 11, transfer);
 
-        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &regular_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &regular_public, &get_test_client(), 0, 0, 0));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 25 - 11))
         ]);
@@ -1656,7 +1668,7 @@ mod tests_tx {
         );
         let transfer_tx = transaction!(seq: 0, fee: 11, transfer);
 
-        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &regular_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &regular_public, &get_test_client(), 0, 0, 0));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 25 - 11))
         ]);
@@ -1679,7 +1691,7 @@ mod tests_tx {
         assert_eq!(Ok(false), state.regular_account_exists_and_not_null(&regular_public));
 
         let tx = transaction!(fee: 5, Action::CreateShard { users: vec![] });
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0, 0));
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 20)),
             (account: regular_address => (seq: 1, balance: 20 - 5)),
@@ -1702,7 +1714,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, pay!(regular_address, 5));
         assert_eq!(
             Err(RuntimeError::InvalidTransferDestination.into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1726,7 +1738,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, pay!(receiver_address, 5));
         assert_eq!(
             Err(RuntimeError::CannotUseMasterKey.into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1753,7 +1765,7 @@ mod tests_tx {
                 cost: 30,
             }
             .into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1790,7 +1802,7 @@ mod tests_tx {
         let asset_type = Blake::blake(transaction_tracker);
         let tx = transaction!(fee: 11, transaction);
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11)),
@@ -1826,7 +1838,7 @@ mod tests_tx {
         let asset_type = Blake::blake(transaction_tracker);
         let tx = transaction!(fee: 5, transaction);
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 5)),
@@ -1856,7 +1868,7 @@ mod tests_tx {
         let mint_tx = transaction!(fee: 20, mint);
         let asset_type = Blake::blake(mint_tracker);
 
-        assert_eq!(Ok(()), state.apply(&mint_tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&mint_tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 120 - 20)),
@@ -1879,7 +1891,7 @@ mod tests_tx {
 
         let transfer_tx = transaction!(seq: 1, fee: 30, transfer);
 
-        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 120 - 20 - 30)),
@@ -1917,7 +1929,7 @@ mod tests_tx {
         );
         let tx = transaction!(fee: 11, transaction.clone());
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11))
@@ -1931,7 +1943,7 @@ mod tests_tx {
                 shard_id
             }
             .into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -1959,7 +1971,7 @@ mod tests_tx {
         let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, quantity));
         let tx_hash = tx.hash();
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         let asset_type = H160::zero();
         check_top_level_state!(state, [
@@ -1972,7 +1984,7 @@ mod tests_tx {
             unwrap_ccc!(asset_transfer_input!(asset_out_point!(tx_hash, 0, asset_type, 30), vec![0x01]), receiver);
         let tx = transaction!(seq: 1, fee: 11, unwrap_ccc_tx);
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 100 - 11 - 30 - 11)),
@@ -2001,7 +2013,7 @@ mod tests_tx {
         let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, quantity));
         let tx_hash = tx.hash();
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         let asset_type = H160::zero();
         check_top_level_state!(state, [
@@ -2023,7 +2035,7 @@ mod tests_tx {
                 found: Blake::blake(&failed_lock_script),
             })
             .into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -2057,7 +2069,7 @@ mod tests_tx {
                 cost: 30,
             }
             .into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -2085,7 +2097,7 @@ mod tests_tx {
         let tx = transaction!(fee: 11, wrap_ccc!(lock_script_hash, quantity));
         let tx_hash = tx.hash();
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         let asset_type = H160::zero();
         check_top_level_state!(state, [
@@ -2107,7 +2119,7 @@ mod tests_tx {
 
         let tx = transaction!(seq: 1, fee: 11, transfer_tx);
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 100 - 30 - 11 - 11)),
@@ -2123,7 +2135,7 @@ mod tests_tx {
         );
         let tx = transaction!(seq: 2, fee: 11, unwrap_ccc_tx);
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 3, balance: 100 - 30 - 11 - 11 - 11 + 5)),
@@ -2152,7 +2164,7 @@ mod tests_tx {
         let store_tx = transaction!(fee: 10, store!(content.clone(), sender, signature));
         let dummy_signed_hash = H256::random();
 
-        assert_eq!(Ok(()), state.apply(&store_tx, &dummy_signed_hash, &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&store_tx, &dummy_signed_hash, &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 10)),
@@ -2162,7 +2174,7 @@ mod tests_tx {
         let signature = sign(&sender_private, &dummy_signed_hash).unwrap();
         let remove_tx = transaction!(seq: 1, fee: 10, remove!(dummy_signed_hash, signature));
 
-        assert_eq!(Ok(()), state.apply(&remove_tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&remove_tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 0)),
@@ -2190,7 +2202,7 @@ mod tests_tx {
 
         assert_eq!(
             Err(RuntimeError::TextVerificationFail("Invalid Signature".to_string()).into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -2204,7 +2216,7 @@ mod tests_tx {
 
         assert_eq!(
             Err(RuntimeError::TextVerificationFail("Certifier and signer are different".to_string()).into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -2231,7 +2243,7 @@ mod tests_tx {
 
         assert_eq!(
             Err(RuntimeError::TextNotExist.into()),
-            state.apply(&remove_tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&remove_tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -2289,7 +2301,7 @@ mod tests_tx {
         assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash1));
         assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
 
-        assert_eq!(Ok(()), state.apply(&tx1, &signed_hash1, &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx1, &signed_hash1, &sender_public, &get_test_client(), 0, 0, 0));
 
         assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
         assert_eq!(Ok(Some(0)), state.shard_id_by_hash(&signed_hash1));
@@ -2301,7 +2313,7 @@ mod tests_tx {
             (shard: 1)
         ]);
 
-        assert_eq!(Ok(()), state.apply(&tx2, &signed_hash2, &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx2, &signed_hash2, &sender_public, &get_test_client(), 0, 0, 0));
         assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
         assert_eq!(Ok(Some(0)), state.shard_id_by_hash(&signed_hash1));
         assert_eq!(Ok(Some(1)), state.shard_id_by_hash(&signed_hash2));
@@ -2342,7 +2354,7 @@ mod tests_tx {
         assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash1));
         assert_eq!(Ok(None), state.shard_id_by_hash(&signed_hash2));
 
-        assert_eq!(Ok(()), state.apply(&tx1, &signed_hash1, &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx1, &signed_hash1, &sender_public, &get_test_client(), 0, 0, 0));
 
         assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
         assert_eq!(Ok(Some(2)), state.shard_id_by_hash(&signed_hash1));
@@ -2357,7 +2369,7 @@ mod tests_tx {
         ]);
 
         let tx2 = transaction!(seq: 1, fee: 5, Action::CreateShard { users: vec![] });
-        assert_eq!(Ok(()), state.apply(&tx2, &signed_hash2, &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx2, &signed_hash2, &sender_public, &get_test_client(), 0, 0, 0));
         assert_eq!(Ok(None), state.shard_id_by_hash(&invalid_hash));
         assert_eq!(Ok(Some(2)), state.shard_id_by_hash(&signed_hash1));
         assert_eq!(Ok(Some(3)), state.shard_id_by_hash(&signed_hash2));
@@ -2381,7 +2393,7 @@ mod tests_tx {
         ]);
 
         let tx = transaction!(fee: 5, Action::CreateShard { users: vec![] });
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         let invalid_shard_id = 3;
         check_top_level_state!(state, [
@@ -2403,7 +2415,7 @@ mod tests_tx {
         ]);
 
         let tx = transaction!(fee: 5, Action::CreateShard { users: users.clone() });
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         let invalid_shard_id = 3;
         check_top_level_state!(state, [
@@ -2436,7 +2448,7 @@ mod tests_tx {
 
         assert_eq!(
             Err(RuntimeError::InvalidShardId(0).into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -2473,7 +2485,7 @@ mod tests_tx {
 
         assert_eq!(
             Err(RuntimeError::InvalidShardId(100).into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 120))
@@ -2497,7 +2509,7 @@ mod tests_tx {
         ]);
 
         let tx = transaction!(fee: 5, set_shard_owners!(owners.clone()));
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 5)),
@@ -2524,7 +2536,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, set_shard_owners!(owners));
         assert_eq!(
             Err(RuntimeError::NewOwnersMustContainSender.into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 100)),
@@ -2552,7 +2564,7 @@ mod tests_tx {
 
         assert_eq!(
             Err(RuntimeError::InsufficientPermission.into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -2579,7 +2591,7 @@ mod tests_tx {
 
         assert_eq!(
             Err(RuntimeError::InvalidShardId(invalid_shard_id).into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -2608,7 +2620,7 @@ mod tests_tx {
         let tx = transaction!(fee: 5, set_shard_owners!(owners));
         assert_eq!(
             Err(StateError::Runtime(RuntimeError::InsufficientPermission)),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -2644,7 +2656,7 @@ mod tests_tx {
 
         let tx = transaction!(fee: 20, mint);
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 20)),
@@ -2674,7 +2686,7 @@ mod tests_tx {
 
         let tx = transaction!(fee: 5, set_shard_users!(new_users.clone()));
 
-        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 5))
         ]);
@@ -2706,7 +2718,7 @@ mod tests_tx {
 
         assert_eq!(
             Err(RuntimeError::InsufficientPermission.into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 100)),
@@ -2763,7 +2775,7 @@ mod tests_tx {
                 got: 10,
             }
             .into()),
-            state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0)
+            state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0, 0)
         );
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 25)),
@@ -2829,7 +2841,7 @@ mod tests_tx {
         let transfer_tracker = transfer.tracker().unwrap();
         let transfer_tx = transaction!(seq: 0, fee: 11, transfer);
 
-        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0, 0));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 25 - 11)),
             (scheme: (shard3, asset_type3) => { supply: 10 }),
@@ -2896,7 +2908,7 @@ mod tests_tx {
         let transfer_tracker = transfer.tracker().unwrap();
         let transfer_tx = transaction!(seq: 0, fee: 11, transfer);
 
-        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0));
+        assert_eq!(Ok(()), state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0, 0));
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 25 - 11)),
             (scheme: (shard3, asset_type3) => { supply: 10 }),
@@ -2969,7 +2981,7 @@ mod tests_tx {
                 shard_id: shard3,
             }
             .into()),
-            state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0)
+            state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0, 0)
         );
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 25)),
@@ -3046,7 +3058,7 @@ mod tests_tx {
                 got: 10,
             }
             .into()),
-            state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0)
+            state.apply(&transfer_tx, &H256::random(), &signer_public, &get_test_client(), 0, 0, 0)
         );
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 25)),
@@ -3081,7 +3093,7 @@ mod tests_tx {
                 name: "shard user".to_string(),
             }
             .into()),
-            state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0, 0)
         );
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 25))
@@ -3110,7 +3122,7 @@ mod tests_tx {
                 name: "shard user".to_string(),
             }
             .into()),
-            state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0, 0)
         );
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 25))
@@ -3139,7 +3151,7 @@ mod tests_tx {
                 name: "shard owner".to_string(),
             }
             .into()),
-            state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &regular_public, &get_test_client(), 0, 0, 0)
         );
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 25))
@@ -3178,7 +3190,7 @@ mod tests_tx {
                 name: "approver of asset".to_string(),
             }
             .into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [
@@ -3221,7 +3233,7 @@ mod tests_tx {
                 name: "registrar of asset".to_string(),
             }
             .into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0)
+            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
         );
 
         check_top_level_state!(state, [

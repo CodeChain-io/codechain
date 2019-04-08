@@ -27,6 +27,10 @@ pub fn run_subcommand(matches: &ArgMatches) -> Result<(), String> {
     match subcommand.name.as_str() {
         "account" => run_account_command(&subcommand.matches),
         "convert" => run_convert_command(&subcommand.matches),
+        "commit-hash" => {
+            println!("{}", env!("VERGEN_SHA"));
+            Ok(())
+        }
         _ => Err("Invalid subcommand".to_string()),
     }
 }

@@ -209,7 +209,7 @@ dependencies = [
 
 [[package]]
 name = "codechain"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "app_dirs 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cidr 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -232,12 +232,12 @@ dependencies = [
  "ctrlc 1.1.1 (git+https://github.com/paritytech/rust-ctrlc.git)",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "fdlimit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "finally 0.1.0 (git+https://github.com/CodeChain-io/rust-finally.git)",
+ "finally-block 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "kvdb 0.1.0",
  "kvdb-rocksdb 0.1.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)",
+ "never-type 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "panic_hook 0.1.0",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
@@ -315,7 +315,7 @@ dependencies = [
  "codechain-timer 0.1.0",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)",
+ "never-type 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -353,7 +353,7 @@ dependencies = [
  "bech32 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-crypto 0.1.0",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)",
+ "never-type 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -432,11 +432,10 @@ dependencies = [
  "codechain-timer 0.1.0",
  "codechain-types 0.1.0",
  "crossbeam-channel 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "finally 0.1.0 (git+https://github.com/CodeChain-io/rust-finally.git)",
- "limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)",
+ "finally-block 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mio 0.6.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)",
+ "never-type 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -444,7 +443,7 @@ dependencies = [
  "rlp_derive 0.1.0",
  "table 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
- "token-generator 0.1.0 (git+https://github.com/CodeChain-io/rust-token-generator.git)",
+ "token-generator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -552,7 +551,7 @@ dependencies = [
  "kvdb 0.1.0",
  "kvdb-memorydb 0.1.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)",
+ "never-type 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -560,7 +559,7 @@ dependencies = [
  "snap 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
- "token-generator 0.1.0 (git+https://github.com/CodeChain-io/rust-token-generator.git)",
+ "token-generator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "trie-standardmap 0.1.0",
  "util-error 0.1.0",
 ]
@@ -856,9 +855,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "finally"
+name = "finally-block"
 version = "0.1.0"
-source = "git+https://github.com/CodeChain-io/rust-finally.git#e3cc545345189c1b4565e3b69073cef7b76f64e4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "fixed-hash"
@@ -1238,7 +1237,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "limited-table"
 version = "0.1.0"
-source = "git+https://github.com/CodeChain-io/rust-limited-table.git#1dcc3240bf0bb0c9f7d9b3d23e7b262791bcd859"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "slab 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1412,9 +1411,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "never"
+name = "never-type"
 version = "0.1.0"
-source = "git+https://github.com/CodeChain-io/rust-never.git#0f597209fb05e368dff534cb9646ef90d65a55ca"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "nodrop"
@@ -2180,9 +2179,9 @@ dependencies = [
 [[package]]
 name = "token-generator"
 version = "0.1.0"
-source = "git+https://github.com/CodeChain-io/rust-token-generator.git#7313b70c8cffef191b1f26ac83bee843eb15c67a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)",
+ "limited-table 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2653,7 +2652,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum ethereum-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "35b3c5a18bc5e73a32a110ac743ec04b02bbbcd3b71d3118d40a6113d509378a"
 "checksum ethereum-types-serialize 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4ac59a21a9ce98e188f3dace9eb67a6c4a3c67ec7fbc7218cb827852679dc002"
 "checksum fdlimit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b1ee15a7050e5580b3712877157068ea713b245b080ff302ae2ca973cfcd9baa"
-"checksum finally 0.1.0 (git+https://github.com/CodeChain-io/rust-finally.git)" = "<none>"
+"checksum finally-block 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fb881f88714a5f816e69131f0103e2c4b444e3a2a8741077b4b68586f2d32129"
 "checksum fixed-hash 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b18d6fd718fb4396e7a9c93ac59ba7143501467ca7a143c145b5555a571d5576"
 "checksum fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 "checksum fuchsia-zircon 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "2e9763c69ebaae630ba35f74888db465e49e259ba1bc0eda7d06f4a067615d82"
@@ -2690,7 +2689,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a374c89b9db55895453a74c1e38861d9deec0b01b405a82516e9d5de4820dea1"
 "checksum lazycell 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ddba4c30a78328befecec92fc94970e53b3ae385827d28620f0f5bb2493081e0"
 "checksum libc 0.2.48 (registry+https://github.com/rust-lang/crates.io-index)" = "e962c7641008ac010fa60a7dfdc1712449f29c44ef2d4702394aea943ee75047"
-"checksum limited-table 0.1.0 (git+https://github.com/CodeChain-io/rust-limited-table.git)" = "<none>"
+"checksum limited-table 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5edd8173067e26a4f03c90698a4de70084862bbbe0c7f2dfe65a1274c35a4d3e"
 "checksum linked-hash-map 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7860ec297f7008ff7a1e3382d7f7e1dcd69efc94751a2284bafc3d013c2aa939"
 "checksum linked-hash-map 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "70fb39025bc7cdd76305867c4eccf2f2dcf6e9a57f5b21a93e1c2d86cd03ec9e"
 "checksum local-encoding 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e1ceb20f39ff7ae42f3ff9795f3986b1daad821caaa1e1732a0944103a5a1a66"
@@ -2709,7 +2708,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum miow 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f2f3b1cf331de6896aabf6e9d55dca90356cc9960cca7eaaf408a355ae919"
 "checksum miow 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "396aa0f2003d7df8395cb93e09871561ccc3e785f0acb369170e8cc74ddf9226"
 "checksum net2 0.2.32 (registry+https://github.com/rust-lang/crates.io-index)" = "9044faf1413a1057267be51b5afba8eb1090bd2231c693664aa1db716fe1eae0"
-"checksum never 0.1.0 (git+https://github.com/CodeChain-io/rust-never.git)" = "<none>"
+"checksum never-type 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c026cbdf8890d6cab75bd177f36e948bf3a512c61f3e93898fd288f571da6551"
 "checksum nodrop 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "9a2228dca57108069a5262f2ed8bd2e82496d2e074a06d1ccc7ce1687b6ae0a2"
 "checksum num-integer 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "e83d528d2677f0518c570baf2b7abdcf0cd2d248860b68507bdcb3e91d4c0cea"
 "checksum num-traits 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "630de1ef5cc79d0cdd78b7e33b81f083cbfe90de0f4b2b2f07f905867c70e9fe"
@@ -2796,7 +2795,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
 "checksum time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "d825be0eb33fda1a7e68012d51e9c7f451dc1a69391e7fdc197060bb8c56667b"
 "checksum tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e9175261fbdb60781fcd388a4d6cc7e14764a2b629a7ad94abb439aed223a44f"
-"checksum token-generator 0.1.0 (git+https://github.com/CodeChain-io/rust-token-generator.git)" = "<none>"
+"checksum token-generator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e4069a8f845bbba2310f3c7c11a59fed768e74701afe2fc33883b06ed3b61462"
 "checksum tokio 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "7d00555353b013e170ed8bc4e13f648a317d1fd12157dbcae13f7013f6cf29f5"
 "checksum tokio-core 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)" = "aeeffbbb94209023feaef3c196a41cbcdafa06b4a6f893f68779bb5e53796f71"
 "checksum tokio-executor 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "8cac2a7883ff3567e9d66bb09100d09b33d90311feca0206c7ca034bc0c55113"

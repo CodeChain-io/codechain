@@ -20,7 +20,7 @@ use std::sync::Arc;
 use ccore::BlockChainClient;
 use cnetwork::{Api, NetworkExtension, NodeId};
 use ctimer::TimerToken;
-use never::Never;
+use never_type::Never;
 use primitives::H256;
 use rlp::{Encodable, UntrustedRlp};
 use time::Duration;

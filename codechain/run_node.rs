@@ -36,7 +36,7 @@ use csync::{BlockSyncExtension, BlockSyncSender, SnapshotService, TransactionSyn
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
-use finally::finally;
+use finally_block::finally;
 use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::{Condvar, Mutex};
