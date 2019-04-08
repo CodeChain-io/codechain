@@ -20,7 +20,7 @@ use std::sync::{Arc, Weak};
 use std::time::Instant;
 
 use cio::IoChannel;
-use ckey::{Address, PlatformAddress, Public};
+use ckey::{Address, NetworkId, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
@@ -892,7 +892,31 @@ impl BlockProducer for Client {
     }
 }
 
-impl MiningBlockChainClient for Client {}
+impl MiningBlockChainClient for Client {
+    fn get_malicious_users(&self) -> Vec<Address> {
+        self.importer.miner.get_malicious_users()
+    }
+
+    fn release_malicious_users(&self, prisoner_vec: Vec<Address>) {
+        self.importer.miner.release_malicious_users(prisoner_vec)
+    }
+
+    fn imprison_malicious_users(&self, prisoner_vec: Vec<Address>) {
+        self.importer.miner.imprison_malicious_users(prisoner_vec)
+    }
+
+    fn get_immune_users(&self) -> Vec<Address> {
+        self.importer.miner.get_immune_users()
+    }
+
+    fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
+        self.importer.miner.register_immune_users(immune_user_vec)
+    }
+
+    fn get_network_id(&self) -> NetworkId {
+        self.common_params(BlockId::Latest).unwrap().network_id()
+    }
+}
 
 impl ChainTimeInfo for Client {
     fn transaction_block_age(&self, tracker: &H256, parent_block_number: BlockNumber) -> Option<u64> {
