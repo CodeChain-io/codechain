@@ -21,11 +21,11 @@ A hexadecimal string for XXX-bit unsigned integer
 
 ## NetworkID
 
-A two-letter string to denote a network. For example, "cc" is for the main network, and "tc" is for the Husky test network. See [the specification](List-of-Network-Id.md).
+A two-letter string to denote a network. For example, "cc" is for the main network, and "wc" is for the Corgi test network. See [the specification](List-of-Network-Id.md).
 
 ## PlatformAddress
 
-A string that starts with "(NetworkID)c", and Bech32 string follows. For example, "cccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the main network, and "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the Husky test network. See [the specification](CodeChain-Address.md#1-platform-account-address-format).
+A string that starts with "(NetworkID)c", and Bech32 string follows. For example, "cccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the main network, and "wccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the Corgi test network. See [the specification](CodeChain-Address.md#1-platform-account-address-format).
 
 ## Block
 
