@@ -17,6 +17,7 @@
 use cjson::bytes::Bytes;
 use primitives::H256;
 
+use ckey::PlatformAddress;
 use jsonrpc_core::Result;
 
 use super::super::types::PendingTransactions;
@@ -42,5 +43,20 @@ build_rpc_trait! {
        /// Gets the count of transactions in the current mem pool.
         # [rpc(name = "mempool_getPendingTransactionsCount")]
         fn get_pending_transactions_count(&self, Option<u64>, Option<u64>) -> Result<usize>;
+
+        #[rpc(name = "mempool_getBannedAccounts")]
+        fn get_banned_accounts(&self) -> Result<Vec<PlatformAddress>>;
+
+        #[rpc(name = "mempool_unbanAccounts")]
+        fn unban_accounts(&self, Vec<PlatformAddress>) -> Result<()>;
+
+        #[rpc(name = "mempool_banAccounts")]
+        fn ban_accounts(&self, Vec<PlatformAddress>) -> Result<()>;
+
+        #[rpc(name = "mempool_getImmuneAccounts")]
+        fn get_immune_accounts(&self) -> Result<Vec<PlatformAddress>>;
+
+        #[rpc(name = "mempool_registerImmuneAccounts")]
+        fn register_immune_accounts(&self, Vec<PlatformAddress>) -> Result<()>;
     }
 }
