@@ -362,7 +362,31 @@ impl BlockProducer for TestBlockChainClient {
     }
 }
 
-impl MiningBlockChainClient for TestBlockChainClient {}
+impl MiningBlockChainClient for TestBlockChainClient {
+    fn get_malicious_users(&self) -> Vec<Address> {
+        self.miner.get_malicious_users()
+    }
+
+    fn release_malicious_users(&self, prisoner_vec: Vec<Address>) {
+        self.miner.release_malicious_users(prisoner_vec)
+    }
+
+    fn imprison_malicious_users(&self, prisoner_vec: Vec<Address>) {
+        self.miner.imprison_malicious_users(prisoner_vec)
+    }
+
+    fn get_immune_users(&self) -> Vec<Address> {
+        self.miner.get_immune_users()
+    }
+
+    fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
+        self.miner.register_immune_users(immune_user_vec)
+    }
+
+    fn get_network_id(&self) -> NetworkId {
+        NetworkId::default()
+    }
+}
 
 impl AccountData for TestBlockChainClient {
     fn seq(&self, address: &Address, id: BlockId) -> Option<u64> {

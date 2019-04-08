@@ -16,8 +16,9 @@
 
 use std::sync::Arc;
 
-use ccore::{BlockChainClient, SignedTransaction};
+use ccore::{BlockChainClient, MiningBlockChainClient, SignedTransaction};
 use cjson::bytes::Bytes;
+use ckey::{Address, PlatformAddress};
 use primitives::H256;
 use rlp::UntrustedRlp;
 
@@ -41,7 +42,7 @@ impl<C> MempoolClient<C> {
 
 impl<C> Mempool for MempoolClient<C>
 where
-    C: BlockChainClient + 'static,
+    C: BlockChainClient + MiningBlockChainClient + 'static,
 {
     fn send_signed_transaction(&self, raw: Bytes) -> Result<H256> {
         UntrustedRlp::new(&raw.into_vec())
@@ -77,5 +78,38 @@ where
 
     fn get_pending_transactions_count(&self, from: Option<u64>, to: Option<u64>) -> Result<usize> {
         Ok(self.client.count_pending_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)))
+    }
+
+    fn get_banned_accounts(&self) -> Result<Vec<PlatformAddress>> {
+        let malicious_user_vec = self.client.get_malicious_users();
+        let network_id = self.client.get_network_id();
+        Ok(malicious_user_vec.into_iter().map(|address| PlatformAddress::new_v1(network_id, address)).collect())
+    }
+
+    fn unban_accounts(&self, prisoner_list: Vec<PlatformAddress>) -> Result<()> {
+        let prisoner_vec: Vec<Address> = prisoner_list.into_iter().map(PlatformAddress::into_address).collect();
+
+        self.client.release_malicious_users(prisoner_vec);
+        Ok(())
+    }
+
+    fn ban_accounts(&self, prisoner_list: Vec<PlatformAddress>) -> Result<()> {
+        let prisoner_vec: Vec<Address> = prisoner_list.into_iter().map(PlatformAddress::into_address).collect();
+
+        self.client.imprison_malicious_users(prisoner_vec);
+        Ok(())
+    }
+
+    fn get_immune_accounts(&self) -> Result<Vec<PlatformAddress>> {
+        let immune_user_vec = self.client.get_immune_users();
+        let network_id = self.client.get_network_id();
+        Ok(immune_user_vec.into_iter().map(|address| PlatformAddress::new_v1(network_id, address)).collect())
+    }
+
+    fn register_immune_accounts(&self, immune_user_list: Vec<PlatformAddress>) -> Result<()> {
+        let immune_user_vec: Vec<Address> = immune_user_list.into_iter().map(PlatformAddress::into_address).collect();
+
+        self.client.register_immune_users(immune_user_vec);
+        Ok(())
     }
 }
