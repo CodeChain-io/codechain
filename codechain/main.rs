@@ -86,7 +86,8 @@ fn main() -> Result<(), String> {
 
 fn run() -> Result<(), String> {
     let yaml = load_yaml!("codechain.yml");
-    let matches = clap::App::from_yaml(yaml).get_matches();
+    let version = env!("CARGO_PKG_VERSION");
+    let matches = clap::App::from_yaml(yaml).version(version).get_matches();
 
     match matches.subcommand {
         Some(_) => run_subcommand(&matches),
