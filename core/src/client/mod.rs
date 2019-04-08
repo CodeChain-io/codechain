@@ -32,7 +32,7 @@ pub use self::test_client::TestBlockChainClient;
 use std::ops::Range;
 use std::sync::Arc;
 
-use ckey::{Address, PlatformAddress, Public};
+use ckey::{Address, NetworkId, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
@@ -271,7 +271,25 @@ pub trait BlockProducer {
 }
 
 /// Extended client interface used for mining
-pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + FindActionHandler {}
+pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + FindActionHandler {
+    /// Returns malicious users who sent failing transactions.
+    fn get_malicious_users(&self) -> Vec<Address>;
+
+    /// Release designated users from the malicious user list.
+    fn release_malicious_users(&self, prisoner_vec: Vec<Address>);
+
+    /// Append designated users to the malicious user list.
+    fn imprison_malicious_users(&self, prisoner_vec: Vec<Address>);
+
+    /// Returns users immune from getting banned.
+    fn get_immune_users(&self) -> Vec<Address>;
+
+    /// Append designated users to the immune user list.
+    fn register_immune_users(&self, immune_user_vec: Vec<Address>);
+
+    /// Returns network id.
+    fn get_network_id(&self) -> NetworkId;
+}
 
 /// Provides methods to access database.
 pub trait DatabaseClient {

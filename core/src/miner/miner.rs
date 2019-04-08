@@ -16,6 +16,7 @@
 
 use std::collections::HashSet;
 use std::iter::once;
+use std::iter::FromIterator;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -1122,6 +1123,35 @@ impl MinerService for Miner {
     fn stop_sealing(&self) {
         cdebug!(MINER, "Stop sealing");
         self.sealing_enabled.store(false, Ordering::Relaxed);
+    }
+
+    fn get_malicious_users(&self) -> Vec<Address> {
+        Vec::from_iter(self.malicious_users.read().iter().map(Clone::clone))
+    }
+
+    fn release_malicious_users(&self, prisoner_vec: Vec<Address>) {
+        let mut malicious_users = self.malicious_users.write();
+        for address in prisoner_vec {
+            malicious_users.remove(&address);
+        }
+    }
+
+    fn imprison_malicious_users(&self, prisoner_vec: Vec<Address>) {
+        let mut malicious_users = self.malicious_users.write();
+        for address in prisoner_vec {
+            malicious_users.insert(address);
+        }
+    }
+
+    fn get_immune_users(&self) -> Vec<Address> {
+        Vec::from_iter(self.immune_users.read().iter().map(Clone::clone))
+    }
+
+    fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
+        let mut immune_users = self.immune_users.write();
+        for address in immune_user_vec {
+            immune_users.insert(address);
+        }
     }
 }
 
