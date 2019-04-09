@@ -33,7 +33,7 @@ extern crate kvdb;
 extern crate kvdb_memorydb;
 #[macro_use]
 extern crate log;
-extern crate never;
+extern crate never_type;
 extern crate primitives;
 extern crate rand;
 extern crate rlp;

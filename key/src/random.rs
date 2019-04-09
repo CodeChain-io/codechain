@@ -19,7 +19,7 @@ use std::cell::RefCell;
 #[cfg(test)]
 use std::{mem, thread};
 
-use never::Never;
+use never_type::Never;
 use rand::rngs::OsRng;
 #[cfg(test)]
 use rand::SeedableRng;

@@ -300,10 +300,13 @@ impl Stream {
         }
     }
 
-    pub fn write<M>(&mut self, message: &M)
+    pub fn write<M>(&mut self, message: &M) -> usize
     where
         M: Encodable, {
-        self.try_stream.write_bytes(message.rlp_bytes().to_vec());
+        let bytes = message.rlp_bytes().to_vec();
+        let result = bytes.len();
+        self.try_stream.write_bytes(bytes);
+        result
     }
 
     pub fn flush(&mut self) -> Result<()> {

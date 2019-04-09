@@ -42,7 +42,7 @@ pub fn run_account_command(matches: &ArgMatches) -> Result<(), String> {
     let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
     let keystore = KeyStore::open(Box::new(dir)).unwrap();
     let ap = AccountProvider::new(keystore);
-    let chain = get_global_argument(matches, "chain").unwrap_or_else(|| "solo".into());
+    let chain = get_global_argument(matches, "chain").unwrap_or_else(|| "mainnet".into());
     let chain_type: ChainType = chain.parse().unwrap();
     let network_id: NetworkId = chain_type.scheme().map(|scheme| scheme.params().network_id)?;
 

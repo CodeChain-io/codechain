@@ -11,17 +11,16 @@ codechain-logger = { path = "../util/logger" }
 codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
 crossbeam-channel = "0.3"
-finally = { git = "https://github.com/CodeChain-io/rust-finally.git" }
+finally-block = "0.1"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
-limited-table = { git = "https://github.com/CodeChain-io/rust-limited-table.git" }
 log = "0.4.6"
 mio = "0.6.16"
-never = { git = "https://github.com/CodeChain-io/rust-never.git" }
+never-type = "0.1.0"
 parking_lot = "0.6.0"
 rand = "0.6.1"
 rlp = { path = "../util/rlp" }
 rlp_derive = { path = "../util/rlp_derive" }
 table = { path = "../util/table" }
 time = "0.1"
-token-generator = { git = "https://github.com/CodeChain-io/rust-token-generator.git" }
+token-generator = "0.1.0"
 cidr = "0.0.4"
