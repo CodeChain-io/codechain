@@ -27,10 +27,9 @@ describe("discovery5 nodes", function() {
         nodes = [new CodeChain()];
         bootstrapNode = nodes[0];
 
-        const startBootstrap = bootstrapNode.start([
-            "--discovery-refresh",
-            "50"
-        ]);
+        const startBootstrap = bootstrapNode.start({
+            argv: ["--discovery-refresh", "50"]
+        });
 
         const nonBootstrapNodes = [];
         for (let i = 1; i < numOfNodes; i++) {
@@ -43,12 +42,14 @@ describe("discovery5 nodes", function() {
 
         await Promise.all(
             nonBootstrapNodes.map(node =>
-                node.start([
-                    "--bootstrap-addresses",
-                    `127.0.0.1:${bootstrapNode.port}`,
-                    "--discovery-refresh",
-                    "50"
-                ])
+                node.start({
+                    argv: [
+                        "--bootstrap-addresses",
+                        `127.0.0.1:${bootstrapNode.port}`,
+                        "--discovery-refresh",
+                        "50"
+                    ]
+                })
             )
         );
     });
