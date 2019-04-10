@@ -17,8 +17,8 @@
 import { expect } from "chai";
 import { H160, H256, U256 } from "codechain-primitives/lib";
 import "mocha";
-import { Header } from "../helper/mock/cHeader";
 import { Mock } from "../helper/mock";
+import { Header } from "../helper/mock/cHeader";
 import CodeChain from "../helper/spawn";
 
 describe("Test onChain block communication", async function() {

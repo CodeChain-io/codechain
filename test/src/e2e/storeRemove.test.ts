@@ -15,10 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
-import "../helper/chai-similar";
 import { PlatformAddress } from "codechain-sdk/lib/core/classes";
 import { blake256, signEcdsa } from "codechain-sdk/lib/utils";
-import * as _ from "lodash";
 import "mocha";
 import { bobAddress, faucetAddress, faucetSecret } from "../helper/constants";
 import { makeRandomH256 } from "../helper/random";

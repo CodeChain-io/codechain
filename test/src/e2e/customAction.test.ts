@@ -15,10 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { fail } from "assert";
-import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
-chai.use(chaiAsPromised);
-const expect = chai.expect;
+import { expect } from "chai";
 import { toHex } from "codechain-primitives/lib";
 import "mocha";
 import {

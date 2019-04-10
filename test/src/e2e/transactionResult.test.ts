@@ -19,7 +19,6 @@ import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 import "mocha";
-import { arraysAreEqual } from "tslint/lib/utils";
 import { aliceAddress, faucetAddress, faucetSecret } from "../helper/constants";
 import CodeChain from "../helper/spawn";
 
