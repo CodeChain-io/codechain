@@ -522,22 +522,6 @@ codechain-keystore@^0.6.0:
     lowdb-session-storage-adapter "^1.0.0"
     uuid "^3.3.2"
 
-codechain-primitives@0.5.0, codechain-primitives@^0.5.0:
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.5.0.tgz#dd8fe3bfe4a9972300e6972a06d6aee594b38732"
-  integrity sha512-wN3uwZ9Bb5XNF5po2YVMtfJ2DJ7ds6dllq2IZpkjqSoXADvDG5qU9nxTocueo7m1l7IMkq4F510F9ViKaTbkKA==
-  dependencies:
-    bignumber.js "^7.2.1"
-    blakejs "^1.1.0"
-    bn.js "^4.11.8"
-    buffer "^5.2.1"
-    elliptic "^6.4.1"
-    hmac-drbg "^1.0.1"
-    lodash "^4.17.11"
-    node-forge "^0.7.6"
-    ripemd160 "^2.0.2"
-    rlp "^2.1.0"
-
 codechain-primitives@^0.3.0:
   version "0.3.5"
   resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-0.3.5.tgz#13bb72c341ea27a4640baee791609c28db18c29e"
@@ -554,13 +538,29 @@ codechain-primitives@^0.3.0:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#seq-lib":
-  version "1.0.1"
-  resolved "https://github.com/sgkim126/codechain-sdk-js.git#6228c69f9fabaab2cf1041be53ab565076773d05"
+codechain-primitives@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/codechain-primitives/-/codechain-primitives-1.0.0.tgz#adb8d5e2270a2be2054f2f3d89dd75779de45b04"
+  integrity sha512-g40E2uZr0197TjxiXaI4HEL8YCoeZua6Rj3BH2+0XvhhBcDluua5STH5N3SnPImER8hQYDPHd+3sM+ayt0Pyng==
+  dependencies:
+    bignumber.js "^7.2.1"
+    blakejs "^1.1.0"
+    bn.js "^4.11.8"
+    buffer "^5.2.1"
+    elliptic "^6.4.1"
+    hmac-drbg "^1.0.1"
+    lodash "^4.17.11"
+    node-forge "^0.7.6"
+    ripemd160 "^2.0.2"
+    rlp "^2.1.0"
+
+"codechain-sdk@https://github.com/sgkim126/codechain-sdk-js.git#mul-lib":
+  version "1.1.0"
+  resolved "https://github.com/sgkim126/codechain-sdk-js.git#be2b889b249df9e759dd7e65cfd97d98a2da939d"
   dependencies:
     buffer "5.1.0"
     codechain-keystore "^0.6.0"
-    codechain-primitives "0.5.0"
+    codechain-primitives "^1.0.0"
     jayson "^2.0.6"
     lodash "^4.17.10"
     node-fetch "^2.1.2"
