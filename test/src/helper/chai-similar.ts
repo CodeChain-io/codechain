@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { U64 } from "codechain-primitives";
-import * as _ from "lodash";
 
 export const $else = Symbol("else");
 

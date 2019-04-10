@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import "mocha";
 import * as chai from "chai";
-import { similar, $else, $anyOf, $anything } from "./chai-similar";
+import "mocha";
+import { $anyOf, $anything, $else, similar } from "./chai-similar";
 
 chai.use(similar);
 

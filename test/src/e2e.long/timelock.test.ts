@@ -18,9 +18,9 @@ import { expect } from "chai";
 import { H256 } from "codechain-primitives/lib";
 import { Asset, AssetAddress, Timelock } from "codechain-sdk/lib/core/classes";
 import "mocha";
+import { faucetAddress } from "../helper/constants";
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
-import { faucetAddress } from "../helper/constants";
 
 describe("Timelock", function() {
     let node: CodeChain;

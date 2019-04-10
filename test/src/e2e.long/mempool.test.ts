@@ -15,10 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
+import { SignedTransaction } from "codechain-sdk/lib/core/classes";
 import "mocha";
 import { wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
-import { SignedTransaction } from "codechain-sdk/lib/core/classes";
 
 describe("Memory pool size test", function() {
     let nodeA: CodeChain;

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::net::{self, IpAddr};
 use std::sync::Arc;
 
@@ -125,5 +126,9 @@ impl Net for NetClient {
             list: list.into_iter().map(|x| (x.cidr, x.tag)).collect(),
             enabled,
         })
+    }
+
+    fn recent_network_usage(&self) -> Result<HashMap<&'static str, usize>> {
+        Ok(self.network_control.recent_network_usage().map_err(|e| errors::network_control(&e))?)
     }
 }
