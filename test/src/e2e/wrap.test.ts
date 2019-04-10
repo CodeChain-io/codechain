@@ -24,15 +24,69 @@ import {
     faucetAddress,
     faucetSecret
 } from "../helper/constants";
+import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
 
 const expect = chai.expect;
 
 describe("WrapCCC", function() {
     let node: CodeChain;
-    before(async function() {
+    beforeEach(async function() {
         node = new CodeChain();
         await node.start();
+    });
+
+    [1, 100].forEach(function(amount) {
+        it(`Wrap {amount}`, async function() {
+            const recipient = await node.createP2PKHAddress();
+            const transaction = node.sdk.core
+                .createWrapCCCTransaction({
+                    shardId: 0,
+                    recipient,
+                    quantity: amount,
+                    payer: PlatformAddress.fromAccountId(faucetAccointId, {
+                        networkId: "tc"
+                    })
+                })
+                .sign({
+                    secret: faucetSecret,
+                    seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                    fee: 10
+                });
+
+            const blockNumber = await node.getBestBlockNumber();
+            const hash = await node.sdk.rpc.chain.sendSignedTransaction(
+                transaction
+            );
+            await node.waitBlockNumber(blockNumber + 1);
+            expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
+            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
+        });
+    });
+
+    it("Wrap 0 CCC fails", async function() {
+        const recipient = await node.createP2PKHAddress();
+        const transaction = node.sdk.core
+            .createWrapCCCTransaction({
+                shardId: 0,
+                recipient,
+                quantity: 0,
+                payer: PlatformAddress.fromAccountId(faucetAccointId, {
+                    networkId: "tc"
+                })
+            })
+            .sign({
+                secret: faucetSecret,
+                seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                fee: 10
+            });
+
+        try {
+            await node.sdk.rpc.chain.sendSignedTransaction(transaction);
+            expect.fail();
+        } catch (e) {
+            expect(e).is.similarTo(ERROR.INVALID_TX_ZERO_QUANTITY);
+        }
     });
 
     it("WCCC can be burnt", async function() {
@@ -64,7 +118,7 @@ describe("WrapCCC", function() {
             H160.zero(),
             shardId
         ))!;
-        expect(schemeAfterWrap.supply.isEqualTo(30)).to.be.true;
+        expect(schemeAfterWrap.supply.toString(10)).be.equal("30");
 
         const blockNumberBeforeBurn = await node.sdk.rpc.chain.getBestBlockNumber();
 
@@ -144,7 +198,7 @@ describe("WrapCCC", function() {
         ).to.be.rejected;
     }).timeout(30_000);
 
-    after(async function() {
+    afterEach(async function() {
         await node.clean();
     });
 });
