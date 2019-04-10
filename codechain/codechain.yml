@@ -350,4 +350,4 @@ subcommands:
                       - address
                       - accountId
     - commit-hash:
-          about: Print the commit hash at the built time.
+          about: Print the commit hash at the build time.
