@@ -44,6 +44,26 @@ export const bobAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
     { networkId: "tc" }
 ); // tccq8snvxt5vfwthja7z7880dgs63x4njw2n5e5zm4h
 
+export const carolSecret =
+    "40716f4fe0ad552d60dbfc8a0984482ac7191d1d9411c418fe1d15c93694ad47";
+export const carolPublic = SDK.util.getPublicFromPrivate(carolSecret);
+// aa9c8ece2f2716f92609a6b7148a0673a242351a0b3171115d9fb3e5a5f880dff8bc38706fcf4c905eb6642c4c2662340d196fed444e787678c8d07ea0f62684
+export const carolAccountId = SDK.util.getAccountIdFromPrivate(carolSecret); // 72ead359812d6337d95ab2f43beeeead6429354a
+export const carolAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
+    carolAccountId,
+    { networkId: "tc" }
+); // tccq9ew456esykkxd7et2e0gwlwa6kkg2f4fg4q3t2m
+
+export const daveSecret =
+    "922fcf44a30d5ae71c5be6aeb60e629e818d6030ba4c79168c20c594af5390d0";
+export const davePublic = SDK.util.getPublicFromPrivate(carolSecret);
+// aa9c8ece2f2716f92609a6b7148a0673a242351a0b3171115d9fb3e5a5f880dff8bc38706fcf4c905eb6642c4c2662340d196fed444e787678c8d07ea0f62684
+export const daveAccountId = SDK.util.getAccountIdFromPrivate(carolSecret); // 72ead359812d6337d95ab2f43beeeead6429354a
+export const daveAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
+    carolAccountId,
+    { networkId: "tc" }
+); // tccq9ew456esykkxd7et2e0gwlwa6kkg2f4fg4q3t2m
+
 export const invalidSecret =
     "0000000000000000000000000000000000000000000000000000000000000000";
 export const invalidAddress = "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3";
