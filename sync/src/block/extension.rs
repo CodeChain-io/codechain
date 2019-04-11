@@ -662,12 +662,14 @@ impl Extension {
 
     fn on_header_response(&mut self, from: &NodeId, headers: &[Header]) {
         ctrace!(SYNC, "Received header response from({}) with length({})", from, headers.len());
-        let mut completed = if let Some(peer) = self.header_downloaders.get_mut(from) {
+        let (mut completed, pivot_score_changed) = if let Some(peer) = self.header_downloaders.get_mut(from) {
+            let before_pivot_score = peer.pivot_score();
             let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
             peer.import_headers(&encoded);
-            peer.downloaded()
+            let after_pivot_score = peer.pivot_score();
+            (peer.downloaded(), before_pivot_score != after_pivot_score)
         } else {
-            Vec::new()
+            (Vec::new(), false)
         };
         completed.sort_unstable_by_key(|header| header.number());
 
@@ -688,8 +690,10 @@ impl Extension {
             peer.mark_as_imported(exists);
             peer.create_request()
         });
-        if let Some(request) = request {
-            self.send_header_request(from, request);
+        if pivot_score_changed {
+            if let Some(request) = request {
+                self.send_header_request(from, request);
+            }
         }
     }
 
