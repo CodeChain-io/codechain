@@ -21,11 +21,11 @@ A hexadecimal string for XXX-bit unsigned integer
 
 ## NetworkID
 
-A two-letter string to denote a network. For example, "cc" is for the main network, and "tc" is for the Husky test network. See [the specification](List-of-Network-Id.md).
+A two-letter string to denote a network. For example, "cc" is for the main network, and "wc" is for the Corgi test network. See [the specification](List-of-Network-Id.md).
 
 ## PlatformAddress
 
-A string that starts with "(NetworkID)c", and Bech32 string follows. For example, "cccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the main network, and "tccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the Husky test network. See [the specification](CodeChain-Address.md#1-platform-account-address-format).
+A string that starts with "(NetworkID)c", and Bech32 string follows. For example, "cccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the main network, and "wccqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqz6sxn0" is for the Corgi test network. See [the specification](CodeChain-Address.md#1-platform-account-address-format).
 
 ## Block
 
@@ -67,20 +67,41 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - networkId: `NetworkID`
  - shardId: `number`
  - metadata: `string`
- - output: `AssetMintOutput`
  - approver: `PlatformAddress` | `null`
+ - registrar: `PlatformAddress` | `null`
+ - allowedScriptHashes: `H160[]`
+ - output: `AssetMintOutput`
  - approvals: `Signature[]`
 
 ### TransferAsset Action
 
  - networkId: `NetworkID`
- - metadata: `string`
  - burns: `AssetTransferInput[]`
  - inputs: `AssetTransferInput[]`
  - outputs: `AssetTransferOutput[]`
  - orders: `OrderOnTransfer[]`
+ - metadata: `string`
  - approvals: `Signature[]`
  - expiration: `Expiration time` | `null`
+
+### ChangeAssetScheme Action
+
+ - networkId: `NetworkID`
+ - shardId: `number`
+ - assetType: `H160`
+ - metadata: `string`
+ - approver: `PlatformAddress` | `null`
+ - registrar: `PlatformAddress` | `null`
+ - allowedScriptHashes: `H160[]`
+ - approvals: `Signature[]`
+
+### IncreaseAssetSupply Action
+
+ - networkId: `NetWorkID`
+ - shardId: `number`
+ - assetType: `H160`
+ - output: `AssetMintOutput`
+ - approvals: `Signarture[]`
 
 ### UnwrapCCC Action
 
@@ -91,25 +112,30 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 ### Pay Action
 
  - type: "pay"
+ - networkId: `NetworkID`
  - receiver: `PlatformAddress`
- - amount: `U64`
+ - quantity: `U64`
 
 ### SetRegularKey Action
 
  - type: "setRegularKey"
+ - networkId: `NetworkID`
  - key: `H512`
 
 ### WrapCCC Action
 
  - type: "wrapCCC"
+ - networkId: `NetworkID`
  - shardId: `number`
  - lockScriptHash: `H160`
- - parameters: `number[][]`
- - amount: `U64`
+ - parameters: `string[]`
+ - quantity: `U64`
+ - payer: `PlatformAddress`
 
 ### Store Action
 
  - type: "store"
+ - networkId: `NetworkID`
  - content: `string`
  - certifier: `PlatformAddress`
  - signature: `Signature`
@@ -117,27 +143,29 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
 ### Remove Action
 
  - type: "remove"
+ - networkId: `NetworkID`
  - hash: `H256` - transaction hash
  - signature: `Signature`
 
 ### Custom Action
 
  - type: "custom"
+ - networkId: `NetworkID`
  - handlerId: `number`
  - bytes: `string`
 
 ## AssetScheme
 
- - amount: `U64`
+ - supply: `U64`
  - metadata: `string`
  - approver: `PlatformAddress` | `null`
 
 ## Asset
 
- - amount: `U64`
+ - quantity: `U64`
  - assetType: `H160`
  - lockScriptHash: `H160`
- - parameters: `number[][]`
+ - parameters: `string[]`
 
 ## Text
 
@@ -156,8 +184,8 @@ When `Transaction` is included in any response, there will be an additional fiel
 ### AssetMintOutput
 
  - lockScriptHash: `H160`
- - parameters: `number[][]`
- - amount: `U64` | `null`
+ - parameters: `string[]`
+ - quantity: `U64` | `null`
 
 ### AssetTransferInput
 
@@ -177,15 +205,15 @@ When `Transaction` is included in any response, there will be an additional fiel
  - index: `number`
  - assetType: `H160`
  - shardId: `number`
- - amount: `U64`
+ - quantity: `U64`
 
 ### AssetTransferOutput
 
  - lockScriptHash: `H160`
- - parameters: `number[][]`
+ - parameters: `string[]`
  - assetType: `H160`
  - shardId: `number`
- - amount: `U64`
+ - quantity: `U64`
 
 ### Order
 
@@ -195,18 +223,18 @@ When `Transaction` is included in any response, there will be an additional fiel
  - shardIdFrom: `number`
  - shardIdTo: `number`
  - shardIdFee: `number`
- - assetAmountFrom: `U64`
- - assetAmountTo: `U64`
- - assetAmountFee: `U64`
+ - assetQuantityFrom: `U64`
+ - assetQuantityTo: `U64`
+ - assetQuantityFee: `U64`
  - originOutputs: `AssetOutPoint[]`
  - expiration: `number`
  - lockScriptHash: `H160`
- - parameters: `number[][]`
+ - parameters: `string[]`
 
 ### OrderOnTransfer
 
  - order: `Order`
- - spentAmount: `U64`
+ - spentQuantity: `U64`
  - inputIndices: `number[]`
  - outputIndices: `number[]`
 
@@ -306,6 +334,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [net_disableBlacklist](#net_disableblacklist)
  * [net_getWhitelist](#net_getwhitelist)
  * [net_getBlacklist](#net_getblacklist)
+ * [net_recentNetworkUsage](#net_recentnetworkusage)
 ***
  * [account_getList](#account_getlist)
  * [account_create](#account_create)
@@ -531,7 +560,7 @@ Errors: `Invalid Params`
       {
         "action":{
           "type":"pay",
-          "amount":"0x3b9aca00",
+          "quantity":"0x3b9aca00",
           "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd"
         },
         "blockHash":"0x0e9cbbe0ecc774de3b5d05827ffb5c541bc7b7ff63de253d17272cf0fea1b7af",
@@ -593,7 +622,7 @@ Errors: `Invalid Params`
       {
         "action":{
           "type":"pay",
-          "amount":"0xa",
+          "quantity":"0xa",
           "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
         },
         "blockHash":"0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
@@ -673,7 +702,7 @@ Errors: `Invalid Params`
     "result": {
         "action": {
           "type":"pay",
-          "amount":"0xa",
+          "quantity":"0xa",
           "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
         },
         "blockHash": "0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50",
@@ -747,7 +776,7 @@ Errors: `Invalid Params`
     "result": {
         "action": {
           "type":"pay",
-          "amount":"0xa",
+          "quantity":"0xa",
           "receiver": "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"
           "hash": "0x24df02abcd4e984e90253dc344e89b8431bbb319c66643bfef566dfdf46ec6bc",
         },
@@ -792,7 +821,7 @@ Errors: `KVDB Error`, `Invalid Params`
 {
   "jsonrpc":"2.0",
   "result":{
-    "amount":100,
+    "supply":100,
     "metadata":"",
     "approver":null
   },
@@ -828,7 +857,7 @@ Errors: `KVDB Error`, `Invalid Params`
 {
   "jsonrpc":"2.0",
   "result":{
-    "amount":100,
+    "supply":100,
     "metadata":"",
     "approver":null
   },
@@ -865,7 +894,7 @@ Errors: `KVDB Error`, `Invalid Params`
 {
   "jsonrpc":"2.0",
   "result":{
-    "amount":100,
+    "quantity":100,
     "assetType":"0x53000000000000002ec1193ecd52e2833ffc10b45bea1fda49f857e34db67c68",
     "lockScriptHash":"0x0000000000000000000000000000000000000000",
     "parameters":[
@@ -1251,7 +1280,7 @@ Errors: `KVDB Error`, `Invalid Params`
 
 ## chain_getMiningReward
 Gets the mining reward of the given block number.
-Unlike `engine_getBlockReward`, it returns the actual amount received, including the transaction fee.
+Unlike `engine_getBlockReward`, it returns the actual quantity received, including the transaction fee.
 It returns `null` if the given block number is not mined yet.
 
 ### Params
@@ -1295,7 +1324,7 @@ Errors: `Invalid RLP`, `Execution Failed`, `Invalid Params`, `Invalid NetworkId`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeTransaction", "params": [{"type":"assetMint","data":{"networkId":"cc","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"amount":10000},"approver":null,"nonce":0}}, "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeTransaction", "params": [{"type":"assetMint","data":{"networkId":"cc","shardId":0,"metadata":"{\"name\":\"Gold\",\"description\":\"An asset example\",\"icon_url\":\"https://gold.image/\"}","output":{"lockScriptHash":"0xf42a65ea518ba236c08b261c34af0521fa3cd1aa505e1c18980919cb8945f8f3","parameters":[],"quantity":10000},"approver":null,"nonce":0}}, "cccqzn9jjm3j6qg69smd7cn0eup4w7z2yu9myd6c4d7"], "id": null}' \
     localhost:8080
 ```
 
@@ -1329,7 +1358,7 @@ Errors: `Transfer Only`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeVM", "params": [{"type":"assetTransfer","data":{"networkId":"tc","burns":[],"inputs":[{"prevOut":{"transactionHash":"0x56774a7e53abd17d70789af6d6f89b4ac23048c07430d1fbe7a8fe0688ecd250","index":0,"assetType":"0x53000000ec7f404207fc5f6bfaad91ed3bf4532b94f508fbea86223409eb189c","amount":"0x64"},"timelock":null,"lockScript":[53,1,148,17,34,255,128],"unlockScript":[50,65,57,113,98,163,242,125,128,229,140,240,213,154,218,70,232,138,150,84,215,67,109,128,156,81,100,57,53,194,83,70,149,63,53,138,140,11,7,42,34,206,32,244,60,3,191,57,24,132,44,10,175,13,218,20,62,152,175,40,8,240,76,185,246,37,0,50,1,3,50,64,179,217,97,169,96,174,90,169,141,98,170,45,70,139,251,168,8,238,200,83,24,49,115,158,81,199,69,29,229,191,88,173,232,249,178,39,56,223,68,148,75,92,15,236,37,56,88,197,38,111,93,69,232,65,2,247,239,134,191,115,159,238,196,201]}],"outputs":[{"lockScriptHash":"0x5f5960a7bca6ceeeb0c97bc717562914e7a1de04","parameters":[[170,45,255,58,152,57,253,189,84,170,233,14,217,172,65,78,188,106,99,109]],"assetType":"0x53000000ec7f404207fc5f6bfaad91ed3bf4532b94f508fbea86223409eb189c","amount":"0x64"}],"orders":[]}}, [[[123,110,101,117,85,125,64,83,80,25,37,104,84,81,160,50,198,212,89,125]]], [0]], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeVM", "params": [{"type":"assetTransfer","data":{"networkId":"tc","burns":[],"inputs":[{"prevOut":{"transactionHash":"0x56774a7e53abd17d70789af6d6f89b4ac23048c07430d1fbe7a8fe0688ecd250","index":0,"assetType":"0x53000000ec7f404207fc5f6bfaad91ed3bf4532b94f508fbea86223409eb189c","quantity":"0x64"},"timelock":null,"lockScript":[53,1,148,17,34,255,128],"unlockScript":[50,65,57,113,98,163,242,125,128,229,140,240,213,154,218,70,232,138,150,84,215,67,109,128,156,81,100,57,53,194,83,70,149,63,53,138,140,11,7,42,34,206,32,244,60,3,191,57,24,132,44,10,175,13,218,20,62,152,175,40,8,240,76,185,246,37,0,50,1,3,50,64,179,217,97,169,96,174,90,169,141,98,170,45,70,139,251,168,8,238,200,83,24,49,115,158,81,199,69,29,229,191,88,173,232,249,178,39,56,223,68,148,75,92,15,236,37,56,88,197,38,111,93,69,232,65,2,247,239,134,191,115,159,238,196,201]}],"outputs":[{"lockScriptHash":"0x5f5960a7bca6ceeeb0c97bc717562914e7a1de04","parameters":[[170,45,255,58,152,57,253,189,84,170,233,14,217,172,65,78,188,106,99,109]],"assetType":"0x53000000ec7f404207fc5f6bfaad91ed3bf4532b94f508fbea86223409eb189c","quantity":"0x64"}],"orders":[]}}, [[[123,110,101,117,85,125,64,83,80,25,37,104,84,81,160,50,198,212,89,125]]], [0]], "id": null}' \
     localhost:8080
 ```
 
@@ -2245,6 +2274,38 @@ No parameters
 
 [Back to **List of methods**](#list-of-methods)
 
+## net_recentNetworkUsage
+Gets the recent network usage.
+The return type is an object.
+The key of the object is a string, but what the keys are depend on the implementation.
+The value of the object is the size of bytes that the node sent in the recent period.
+The exact timespan of the recent is also an implementation dependent.
+
+### Params
+No parameters
+
+### Returns
+{ `string`: `number` }
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "net_recentNetworkUsage", "params": [], "id": 6}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{"::handshake":750,"::negotiation":2210,"block-propagation":13445,"discovery":1667,"tendermint":164},
+  "id":6
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
 ## account_getList
 Gets a list of accounts.
 
@@ -2420,7 +2481,7 @@ Errors: `Keystore Error`, `Wrong Password`, `No Such Account`, `Not Unlocked`, `
 ```
 curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "account_sendTransaction", "params": [{"action":{ "type":"pay", "amount":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "seq": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
+    -d '{"jsonrpc": "2.0", "method": "account_sendTransaction", "params": [{"action":{ "type":"pay", "quantity":"0x3b9aca00", "receiver":"sccqra5felweesff3epv9wfu05a47sxh89yuvzw7mqd" }, "fee":"0x5f5e100", "networkId":"sc", "seq": null}, "cccqqfz3sx7fr7uxqa5kl63qjdw9zrntru5kcdsjywj", null], "id": 6}' \
     localhost:8080
 ```
 

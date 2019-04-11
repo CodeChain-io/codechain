@@ -13,9 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
-import { H160 } from "codechain-primitives";
-import { H256 } from "codechain-primitives";
-import { U256 } from "codechain-primitives";
+import { H160, H256, U256 } from "codechain-primitives";
 import { SignedTransaction } from "codechain-sdk/lib/core/SignedTransaction";
 import { BlockSyncMessage, Emitter, IBodiesq, IHeadersq, MessageType, ResponseMessage } from "./blockSyncMessage";
 import { Header } from "./cHeader";

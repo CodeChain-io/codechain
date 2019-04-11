@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::iter::FromIterator;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoChannel, IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
@@ -111,6 +111,8 @@ pub struct Handler {
 
     bootstrap_addresses: Vec<SocketAddr>,
 
+    network_usage_in_10_seconds: Mutex<HashMap<&'static str, VecDeque<(Instant, usize)>>>,
+
     min_peers: usize,
     max_peers: usize,
 
@@ -160,6 +162,8 @@ impl Handler {
             remote_node_ids_reverse: Default::default(),
 
             client,
+
+            network_usage_in_10_seconds: Default::default(),
 
             bootstrap_addresses,
             min_peers,
@@ -227,6 +231,20 @@ impl Handler {
             cwarn!(NETWORK, "Cannot create a connection to {}", socket_address);
         }
         Ok(())
+    }
+
+    pub fn recent_network_usage(&self) -> HashMap<&'static str, usize> {
+        let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
+        let mut result = HashMap::with_capacity(network_usage_in_10_seconds.len());
+        let now = Instant::now();
+        for (name, times) in &mut *network_usage_in_10_seconds {
+            remove_outdated_network_usage(times, &now);
+            let total = times.iter().map(|(_, usage)| usage).sum();
+            if total != 0 {
+                result.insert(*name, total);
+            }
+        }
+        result
     }
 }
 
@@ -365,7 +383,14 @@ impl IoHandler<Message> for Handler {
                             return Err(err.into())
                         }
                     };
-                    con.send_sync(maybe_remote_public);
+                    let network_message_size = con.send_sync(maybe_remote_public);
+                    {
+                        let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
+                        insert_network_usage(
+                            network_usage_in_10_seconds.entry("::handshake").or_default(),
+                            network_message_size,
+                        );
+                    }
                     io.register_timer_once(wait_ack_timer(stream), RTT);
                     io.update_registration(stream);
                 } else {
@@ -404,14 +429,14 @@ impl IoHandler<Message> for Handler {
             } => {
                 let stream =
                     *self.remote_node_ids_reverse.read().get(&node_id).ok_or_else(|| Error::InvalidNode(node_id))?;
-                match stream {
+                let network_message_size = match stream {
                     FIRST_OUTBOUND...LAST_OUTBOUND => {
                         let mut outbound_connections = self.outbound_connections.write();
                         if let Some(con) = outbound_connections.get_mut(&stream) {
                             let _f = finally(|| {
                                 io.update_registration(stream);
                             });
-                            con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?;
+                            con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?
                         } else {
                             return Err(format!("{} is an invalid stream", stream).into())
                         }
@@ -422,13 +447,18 @@ impl IoHandler<Message> for Handler {
                             let _f = finally(|| {
                                 io.update_registration(stream);
                             });
-                            con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?;
+                            con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?
                         } else {
                             return Err(format!("{} is an invalid stream", stream).into())
                         }
                     }
                     _ => unreachable!("{} is an invalid stream", stream),
-                }
+                };
+                let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
+                insert_network_usage(
+                    network_usage_in_10_seconds.entry(extension_name).or_default(),
+                    network_message_size,
+                );
             }
             Message::Disconnect(socket_address) => {
                 if let Some(stream) = self.remote_node_ids_reverse.read().get(&socket_address.into()) {
@@ -503,8 +533,16 @@ impl IoHandler<Message> for Handler {
                         token
                     );
 
+                    let mut network_message_size = 0;
                     for (name, versions) in self.client.extension_versions() {
-                        connection.enqueue_negotiation_request(name.clone(), versions);
+                        network_message_size += connection.enqueue_negotiation_request(name.clone(), versions);
+                    }
+                    {
+                        let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
+                        insert_network_usage(
+                            network_usage_in_10_seconds.entry("::negotiation").or_default(),
+                            network_message_size,
+                        );
                     }
                     let t = outbound_connections.insert(token, connection);
                     assert!(t.is_none());
@@ -643,7 +681,12 @@ impl IoHandler<Message> for Handler {
                                 unreachable!("Node id for {}:{} must exist", stream_token, con.peer_addr())
                             });
                             self.client.on_node_added(&extension_name, &remote_node_id, version);
-                            con.enqueue_negotiation_response(extension_name, version);
+                            let network_message_size = con.enqueue_negotiation_response(extension_name, version);
+                            let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
+                            insert_network_usage(
+                                network_usage_in_10_seconds.entry("::negotiation").or_default(),
+                                network_message_size,
+                            );
                         }
                         Some(NetworkMessage::Negotiation(NegotiationMessage::Response {
                             ..
@@ -730,11 +773,11 @@ impl IoHandler<Message> for Handler {
                                 should_update.store(false, Ordering::SeqCst);
                                 return Err(format!("An invalid network id({}) from {}", network_id, from).into())
                             }
-                            if let Some((encrypted_nonce, local_public, session)) =
+                            let network_message_size = if let Some((encrypted_nonce, local_public, session)) =
                                 self.routing_table.set_recipient_establish1(from, initiator_pub_key)?
                             {
                                 cinfo!(NETWORK, "Send ack to {}", from);
-                                con.send_ack(local_public, encrypted_nonce);
+                                let network_message_size = con.send_ack(local_public, encrypted_nonce);
                                 let t = self
                                     .establishing_incoming_session
                                     .lock()
@@ -743,11 +786,18 @@ impl IoHandler<Message> for Handler {
                                 io.clear_timer(wait_sync_timer(stream_token));
                                 should_update.store(false, Ordering::SeqCst);
                                 io.deregister_stream(stream_token);
+                                network_message_size
                             } else {
                                 cinfo!(NETWORK, "Send nack to {}", from);
-                                con.send_nack();
+                                let network_message_size = con.send_nack();
                                 io.register_timer_once(wait_sync_timer(stream_token), WAIT_SYNC);
-                            }
+                                network_message_size
+                            };
+                            let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
+                            insert_network_usage(
+                                network_usage_in_10_seconds.entry("::handshake").or_default(),
+                                network_message_size,
+                            );
                         }
                         Some(OutgoingMessage::Sync2 {
                             initiator_pub_key,
@@ -761,12 +811,12 @@ impl IoHandler<Message> for Handler {
                                 io.deregister_stream(stream_token);
                                 return Err(format!("An invalid network id({}) from {}", network_id, from).into())
                             }
-                            if let Some((encrypted_nonce, local_public, session)) = self
+                            let network_message_size = if let Some((encrypted_nonce, local_public, session)) = self
                                 .routing_table
                                 .set_recipient_establish2(from, recipient_pub_key, initiator_pub_key)?
                             {
                                 cinfo!(NETWORK, "Send ack to {}", from);
-                                con.send_ack(local_public, encrypted_nonce);
+                                let network_message_size = con.send_ack(local_public, encrypted_nonce);
                                 let t = self
                                     .establishing_incoming_session
                                     .lock()
@@ -775,11 +825,18 @@ impl IoHandler<Message> for Handler {
                                 io.clear_timer(wait_sync_timer(stream_token));
                                 should_update.store(false, Ordering::SeqCst);
                                 io.deregister_stream(stream_token);
+                                network_message_size
                             } else {
                                 cinfo!(NETWORK, "Send nack to {}", from);
-                                con.send_nack();
+                                let network_message_size = con.send_nack();
                                 io.register_timer_once(wait_sync_timer(stream_token), WAIT_SYNC);
-                            }
+                                network_message_size
+                            };
+                            let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
+                            insert_network_usage(
+                                network_usage_in_10_seconds.entry("::handshake").or_default(),
+                                network_message_size,
+                            );
                         }
                         None => {
                             should_update.store(false, Ordering::SeqCst);
@@ -1120,4 +1177,19 @@ impl ::std::fmt::Display for Error {
             Error::SymmetricCipher(err) => ::std::fmt::Debug::fmt(&err, f),
         }
     }
+}
+
+fn remove_outdated_network_usage(usage_per_extension: &mut VecDeque<(Instant, usize)>, now: &Instant) {
+    while let Some((time, size)) = usage_per_extension.pop_front() {
+        if *now < time {
+            usage_per_extension.push_front((time, size));
+            break
+        }
+    }
+}
+
+fn insert_network_usage(usage_per_extension: &mut VecDeque<(Instant, usize)>, network_message_size: usize) {
+    let now = Instant::now();
+    remove_outdated_network_usage(usage_per_extension, &now);
+    usage_per_extension.push_back((now + Duration::from_secs(10), network_message_size));
 }

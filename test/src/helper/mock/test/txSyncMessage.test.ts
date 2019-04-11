@@ -1,6 +1,6 @@
-import * as TxSyncMessage from "../transactionSyncMessage";
 import { expect } from "chai";
 import "mocha";
+import * as TxSyncMessage from "../transactionSyncMessage";
 
 describe("Check TransactionSyncMessage RLP encoding", function() {
     it("TransactionSyncMessage RLP encoding test", function() {

@@ -101,10 +101,23 @@ esac
 
 git log --oneline --decorate --all --graph | head -n 10;
 echo "Check changes for: ${COMMIT_RANGE}"
-if ! git diff --name-only "${COMMIT_RANGE}" | grep -qvE "$1"
-then
+
+# `grep` uses return value to report both result and error.
+# So `set -e` should be disabled to catch them.
+set +e
+git diff --name-only "${COMMIT_RANGE}" | grep -qvE "$1"
+case $? in
+0) 
+    noskip_travis
+    ;;
+1)
     echo "Only '$1' were updated, or there's no change, not running the CI."
     skip_travis
-fi
+    ;;
+*) 
+    echo "Error in grep pattern"
+    exit -1
+    ;;
+esac
 
 noskip_travis

@@ -14,18 +14,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { H256 } from "codechain-primitives/lib";
+import { expect } from "chai";
 import "mocha";
-import { createTestSuite } from "./invalidBlockPropagation.helper";
+import CodeChain from "../helper/spawn";
 
-const INVALID_TRANSACTIONS_ROOT = new H256(
-    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-);
-const params = {
-    ttransactionRoot: INVALID_TRANSACTIONS_ROOT
-};
-createTestSuite(
-    5,
-    "OnChain invalid transactionRoot block propagation test",
-    params
-);
+describe("Pay", async function() {
+    let node: CodeChain;
+    before(async function() {
+        node = new CodeChain();
+        await node.start();
+    });
+
+    it("Allow zero pay", async function() {
+        const pay = await node.sendPayTx({ quantity: 0 });
+        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
+            .true;
+        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
+    });
+
+    afterEach(function() {
+        if (this.currentTest!.state === "failed") {
+            node.testFailed(this.currentTest!.fullTitle());
+        }
+    });
+
+    after(async function() {
+        await node.clean();
+    });
+});

@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { wait } from "../helper/promise";
-import CodeChain from "../helper/spawn";
-
-import "mocha";
-
 import { expect } from "chai";
 import { H256 } from "codechain-primitives";
+import "mocha";
 import { faucetAddress } from "../helper/constants";
+import { wait } from "../helper/promise";
+import CodeChain from "../helper/spawn";
 
 describe("TransferAsset expiration test", function() {
     let node: CodeChain;

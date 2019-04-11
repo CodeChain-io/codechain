@@ -186,6 +186,7 @@ impl<'x> OpenBlock<'x> {
             client,
             parent_block_number,
             parent_block_timestamp,
+            self.block.header.timestamp(),
         ) {
             Ok(()) => {
                 self.block.transactions_set.insert(h.unwrap_or(hash));

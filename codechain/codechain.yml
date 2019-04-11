@@ -1,5 +1,4 @@
 name: codechain
-version: "0.1.0"
 version_short: "v"
 author: CodeChain Team <codechain@kodebox.io>
 about: CodeChian client
@@ -49,7 +48,7 @@ args:
     - chain:
         short: c
         long: chain
-        help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, husky, saluki or a path to chain scheme file.
+        help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, corgi, mainnet or a path to chain scheme file.
         takes_value: true
     - db-path:
         long: db-path
@@ -286,7 +285,7 @@ subcommands:
                 short: c
                 long: chain
                 global: true
-                help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, husky, saluki or a path to chain scheme file.
+                help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, corgi, mainnet or a path to chain scheme file.
                 takes_value: true
         subcommands:
             - create:
@@ -328,7 +327,7 @@ subcommands:
                   short: c
                   long: chain
                   global: true
-                  help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, husky, saluki or a path to chain scheme file.
+                  help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, corgi, mainnet or a path to chain scheme file.
                   takes_value: true
             - from:
                   short: f
@@ -350,3 +349,5 @@ subcommands:
                       - public
                       - address
                       - accountId
+    - commit-hash:
+          about: Print the commit hash at the build time.

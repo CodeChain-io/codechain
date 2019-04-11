@@ -1,7 +1,7 @@
-import * as Message from "../message";
 import { expect } from "chai";
-import { U128, H512 } from "codechain-primitives";
+import { H512, U128 } from "codechain-primitives";
 import "mocha";
+import * as Message from "../message";
 
 describe("Check P2P Message RLP encoding", function() {
     it("Sync1 RLP encoding test", function() {

@@ -14,18 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import CodeChain from "../helper/spawn";
-
-import { fail } from "assert";
 import { expect } from "chai";
-import { toHex } from "codechain-primitives/lib";
 import "mocha";
-import {
-    faucetAddress,
-    faucetSecret,
-    hitActionHandlerId
-} from "../helper/constants";
-import { ERROR } from "../helper/error";
+import CodeChain from "../helper/spawn";
 
 const RLP = require("rlp");
 

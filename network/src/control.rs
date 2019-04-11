@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::net::IpAddr;
 use std::result::Result;
 
@@ -47,6 +48,8 @@ pub trait Control: Send + Sync {
 
     fn get_whitelist(&self) -> Result<(Vec<FilterEntry>, bool), Error>;
     fn get_blacklist(&self) -> Result<(Vec<FilterEntry>, bool), Error>;
+
+    fn recent_network_usage(&self) -> Result<HashMap<&'static str, usize>, Error>;
 }
 
 #[derive(Clone, Debug)]

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 import { H256 } from "codechain-primitives";
 import { U256 } from "codechain-primitives";
-import {compressSync, uncompress, uncompressSync} from "snappy";
+import { compressSync, uncompressSync } from "snappy";
 
 const RLP = require("rlp");
 const EventEmitter = require("events");
