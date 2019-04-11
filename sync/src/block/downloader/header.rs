@@ -100,6 +100,10 @@ impl HeaderDownloader {
         }
     }
 
+    pub fn pivot_score(&self) -> U256 {
+        self.pivot.total_score
+    }
+
     pub fn is_idle(&self) -> bool {
         let can_request = self.request_time.is_none() && self.total_score > self.pivot.total_score;
 
