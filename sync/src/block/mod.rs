@@ -17,5 +17,6 @@
 mod downloader;
 mod extension;
 mod message;
+mod request_limiter;
 
 pub use self::extension::{BlockSyncSender, Event as BlockSyncEvent, Extension as BlockSyncExtension};

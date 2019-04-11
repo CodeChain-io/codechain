@@ -37,6 +37,7 @@ use token_generator::TokenGenerator;
 
 use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
+use super::request_limiter::RequestLimiter;
 
 const SYNC_TIMER_TOKEN: TimerToken = 0;
 const SYNC_EXPIRE_TOKEN_BEGIN: TimerToken = SYNC_TIMER_TOKEN + 1;
@@ -47,6 +48,9 @@ const SYNC_TIMER_INTERVAL: i64 = 1000;
 const SYNC_EXPIRE_REQUEST_INTERVAL: i64 = 15000;
 
 const SNAPSHOT_PERIOD: u64 = (1 << 14);
+
+const REQUEST_LIMIT_PERIOD: u64 = 1; // second
+const REQUEST_LIMIT_CAPACITY: usize = 20;
 
 #[derive(Debug, PartialEq)]
 pub struct TokenInfo {
@@ -59,6 +63,7 @@ pub struct Extension {
     connected_nodes: HashSet<NodeId>,
     header_downloaders: HashMap<NodeId, HeaderDownloader>,
     body_downloader: BodyDownloader,
+    request_limits: HashMap<NodeId, RequestLimiter>,
     tokens: HashMap<NodeId, TimerToken>,
     tokens_info: HashMap<TimerToken, TokenInfo>,
     token_generator: TokenGenerator,
@@ -92,6 +97,7 @@ impl Extension {
             connected_nodes: Default::default(),
             header_downloaders: Default::default(),
             body_downloader,
+            request_limits: Default::default(),
             tokens: Default::default(),
             tokens_info: Default::default(),
             token_generator: TokenGenerator::new(SYNC_EXPIRE_TOKEN_BEGIN, SYNC_EXPIRE_TOKEN_END),
@@ -239,6 +245,11 @@ impl NetworkExtension<Event> for Extension {
         let t = self.tokens.insert(*id, token);
         debug_assert_eq!(None, t);
         debug_assert!(t.is_none());
+        let t = self.request_limits.insert(
+            *id,
+            RequestLimiter::new(REQUEST_LIMIT_CAPACITY, ::std::time::Duration::from_secs(REQUEST_LIMIT_PERIOD)),
+        );
+        debug_assert!(t.is_none());
     }
 
     fn on_node_removed(&mut self, id: &NodeId) {
@@ -258,6 +269,8 @@ impl NetworkExtension<Event> for Extension {
                 self.tokens_info.remove(&token);
                 self.token_generator.restore(token);
             }
+
+            self.request_limits.remove(id);
         }
     }
 
@@ -456,7 +469,7 @@ impl Extension {
         cinfo!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
     }
 
-    fn on_peer_request(&self, from: &NodeId, id: u64, request: RequestMessage) {
+    fn on_peer_request(&mut self, from: &NodeId, id: u64, request: RequestMessage) {
         if !self.header_downloaders.contains_key(from) {
             cinfo!(SYNC, "Request from invalid peer #{} received", from);
             return
@@ -465,6 +478,13 @@ impl Extension {
         if !self.is_valid_request(&request) {
             cinfo!(SYNC, "Invalid request received from peer #{}", from);
             return
+        }
+
+        if let Some(limiter) = self.request_limits.get_mut(from) {
+            if !limiter.try() {
+                ctrace!(SYNC, "Rate limit reached #{}", from);
+                return
+            }
         }
 
         let response = match request {
