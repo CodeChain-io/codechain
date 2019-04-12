@@ -303,6 +303,7 @@ impl BlockChain {
             pending_total_score: best_block_detail.total_score,
             genesis_hash: self.genesis_hash(),
             best_block_hash: best_block_header.hash(),
+            best_proposal_block_hash,
             best_block_number: best_block_detail.number,
             best_block_timestamp: best_block_header.timestamp(),
         }
