@@ -216,7 +216,7 @@ impl NetworkExtension<Event> for Extension {
             Arc::new(
                 Message::Status {
                     total_score: chain_info.best_proposal_score,
-                    best_hash: chain_info.best_block_hash,
+                    best_hash: chain_info.best_proposal_block_hash,
                     genesis_hash: chain_info.genesis_hash,
                 }
                 .rlp_bytes()
@@ -422,7 +422,7 @@ impl Extension {
                 Arc::new(
                     Message::Status {
                         total_score: chain_info.best_proposal_score,
-                        best_hash: chain_info.best_block_hash,
+                        best_hash: chain_info.best_proposal_block_hash,
                         genesis_hash: chain_info.genesis_hash,
                     }
                     .rlp_bytes()
