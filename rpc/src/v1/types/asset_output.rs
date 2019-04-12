@@ -16,6 +16,7 @@
 extern crate rustc_serialize;
 
 use std::iter::FromIterator;
+use std::ops::Deref;
 
 use cjson::uint::Uint;
 use ctypes::transaction::{AssetMintOutput as AssetMintOutputType, AssetTransferOutput as AssetTransferOutputType};
@@ -37,7 +38,7 @@ impl From<AssetTransferOutputType> for AssetTransferOutput {
     fn from(from: AssetTransferOutputType) -> Self {
         AssetTransferOutput {
             lock_script_hash: from.lock_script_hash,
-            parameters: from.parameters.iter().map(|bytes| bytes.to_hex()).collect(),
+            parameters: from.parameters.iter().map(Deref::deref).map(<[u8]>::to_hex).collect(),
             asset_type: from.asset_type,
             shard_id: from.shard_id,
             quantity: from.quantity.into(),
@@ -49,7 +50,7 @@ impl From<AssetTransferOutput> for Result<AssetTransferOutputType, FromHexError>
     fn from(from: AssetTransferOutput) -> Self {
         Ok(AssetTransferOutputType {
             lock_script_hash: from.lock_script_hash,
-            parameters: Result::from_iter(from.parameters.iter().map(|hexstr| hexstr.from_hex()))?,
+            parameters: Result::from_iter(from.parameters.iter().map(Deref::deref).map(FromHex::from_hex))?,
             asset_type: from.asset_type,
             shard_id: from.shard_id,
             quantity: from.quantity.into(),
@@ -69,7 +70,7 @@ impl From<AssetMintOutputType> for AssetMintOutput {
     fn from(from: AssetMintOutputType) -> Self {
         AssetMintOutput {
             lock_script_hash: from.lock_script_hash,
-            parameters: from.parameters.iter().map(|bytes| bytes.to_hex()).collect(),
+            parameters: from.parameters.iter().map(Deref::deref).map(<[u8]>::to_hex).collect(),
             supply: from.supply.into(),
         }
     }
@@ -79,7 +80,7 @@ impl From<AssetMintOutput> for Result<AssetMintOutputType, FromHexError> {
     fn from(from: AssetMintOutput) -> Self {
         Ok(AssetMintOutputType {
             lock_script_hash: from.lock_script_hash,
-            parameters: Result::from_iter(from.parameters.iter().map(|hexstr| hexstr.from_hex()))?,
+            parameters: Result::from_iter(from.parameters.iter().map(Deref::deref).map(FromHex::from_hex))?,
             supply: from.supply.into(),
         })
     }

@@ -137,7 +137,7 @@ impl Stack {
 
     fn pop(&mut self) -> Result<Item, RuntimeError> {
         let item = self.stack.pop();
-        self.memory_usage -= item.as_ref().map_or(0, |i| i.len());
+        self.memory_usage -= item.as_ref().map_or(0, Item::len);
         item.ok_or(RuntimeError::StackUnderflow)
     }
 

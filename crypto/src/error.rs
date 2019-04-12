@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use rcrypto;
-use ring;
-
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
@@ -48,32 +45,39 @@ quick_error! {
     }
 }
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum SymmError wraps PrivSymmErr {
-        RustCrypto(e: rcrypto::symmetriccipher::SymmetricCipherError) {
-            display("symmetric crypto error")
-            from()
-        }
-        Ring(e: ring::error::Unspecified) {
-            display("symmetric crypto error")
-            cause(e)
-            from()
-        }
-        Offset(x: usize) {
-            display("offset {} greater than slice length", x)
-        }
-    }
-}
+#[allow(deprecated)]
+mod errors {
+    use rcrypto;
+    use ring;
 
-impl From<ring::error::Unspecified> for SymmError {
-    fn from(e: ring::error::Unspecified) -> SymmError {
-        SymmError(PrivSymmErr::Ring(e))
+    quick_error! {
+        #[derive(Debug)]
+        pub enum SymmError wraps PrivSymmErr {
+            RustCrypto(e: rcrypto::symmetriccipher::SymmetricCipherError) {
+                display("symmetric crypto error")
+                    from()
+            }
+            Ring(e: ring::error::Unspecified) {
+                display("symmetric crypto error")
+                    cause(e)
+                    from()
+            }
+            Offset(x: usize) {
+                display("offset {} greater than slice length", x)
+            }
+        }
     }
-}
 
-impl From<rcrypto::symmetriccipher::SymmetricCipherError> for SymmError {
-    fn from(e: rcrypto::symmetriccipher::SymmetricCipherError) -> SymmError {
-        SymmError(PrivSymmErr::RustCrypto(e))
+    impl From<ring::error::Unspecified> for SymmError {
+        fn from(e: ring::error::Unspecified) -> SymmError {
+            SymmError(PrivSymmErr::Ring(e))
+        }
+    }
+
+    impl From<rcrypto::symmetriccipher::SymmetricCipherError> for SymmError {
+        fn from(e: rcrypto::symmetriccipher::SymmetricCipherError) -> SymmError {
+            SymmError(PrivSymmErr::RustCrypto(e))
+        }
     }
 }
+pub use self::errors::SymmError;

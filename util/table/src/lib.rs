@@ -72,7 +72,7 @@ where
 
     /// Check if there is any element in this Table
     pub fn is_empty(&self) -> bool {
-        self.map.is_empty() || self.map.values().all(|v| v.is_empty())
+        self.map.is_empty() || self.map.values().all(HashMap::is_empty)
     }
 
     /// Get mutable reference for single Table row.
@@ -117,7 +117,7 @@ where
     /// Table however will not be aware that row is empty.
     /// You can use this method to explicitly remove row entry from the Table.
     pub fn clear_if_empty(&mut self, row: &Row) -> bool {
-        let is_empty = self.map.get(row).map_or(false, |m| m.is_empty());
+        let is_empty = self.map.get(row).map_or(false, HashMap::is_empty);
         if is_empty {
             self.map.remove(row);
         }

@@ -58,7 +58,7 @@ impl Config {
 
     pub fn miner_options(&self) -> Result<MinerOptions, String> {
         let (reseal_on_own_transaction, reseal_on_external_transaction) =
-            match self.mining.reseal_on_txs.as_ref().map(|s| s.as_str()) {
+            match self.mining.reseal_on_txs.as_ref().map(String::as_str) {
                 Some("all") => (true, true),
                 Some("own") => (true, false),
                 Some("ext") => (false, true),

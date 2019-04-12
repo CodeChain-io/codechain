@@ -23,7 +23,6 @@ extern crate primitives;
 
 use elastic_array::{ElasticArray128, ElasticArray32};
 use primitives::Bytes;
-use std::io;
 
 /// Required length of prefixes.
 pub const PREFIX_LEN: usize = 12;
@@ -31,15 +30,22 @@ pub const PREFIX_LEN: usize = 12;
 /// Database value.
 pub type DBValue = ElasticArray128<u8>;
 
-error_chain! {
-    types {
-        Error, ErrorKind, ResultExt, Result;
-    }
+#[allow(deprecated)]
+mod errors {
+    use std::io;
 
-    foreign_links {
-        Io(io::Error);
+    error_chain! {
+        types {
+            Error, ErrorKind, ResultExt, Result;
+        }
+
+        foreign_links {
+            Io(io::Error);
+        }
     }
 }
+
+pub use self::errors::{Error, ErrorKind, Result, ResultExt};
 
 /// Write parcel. Batches a sequence of put/delete operations for efficiency.
 #[derive(Default, Clone, PartialEq)]

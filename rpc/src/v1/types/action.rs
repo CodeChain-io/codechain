@@ -625,7 +625,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     approver,
                     registrar,
                     allowed_script_hashes,
-                    inputs: inputs.into_iter().map(|input| input.into()).collect(),
+                    inputs: inputs.into_iter().map(From::from).collect(),
                     output: Box::new(output_content),
                     approvals,
                 }
