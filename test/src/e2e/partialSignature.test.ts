@@ -18,14 +18,45 @@ import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
-import { Asset, AssetAddress, H256 } from "codechain-sdk/lib/core/classes";
+import {
+    Asset,
+    AssetAddress,
+    H256,
+    Transaction
+} from "codechain-sdk/lib/core/classes";
 import * as _ from "lodash";
 import "mocha";
 import { faucetAddress } from "../helper/constants";
 import CodeChain from "../helper/spawn";
+import { AssetTransaction } from "codechain-sdk/lib/core/Transaction";
+
+// If one only sends certainly failing trasactions, the miner would not generate any block.
+// So to clearly check the result failed, insert the failing transactions inbetween succeessful ones.
+async function expectTransactionFail(
+    node: CodeChain,
+    targetTx: Transaction & AssetTransaction
+) {
+    await node.sdk.rpc.devel.stopSealing();
+
+    const blockNumber = await node.getBestBlockNumber();
+    const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+    const signedDummyTx = await node.sendPayTx({ seq, quantity: 1 });
+    const targetTxHash = await node.sendAssetTransaction(targetTx, {
+        seq: seq + 1
+    });
+
+    await node.sdk.rpc.devel.startSealing();
+    await node.waitBlockNumber(blockNumber + 1);
+
+    expect(await node.sdk.rpc.chain.containsTransaction(signedDummyTx.hash()))
+        .be.true;
+    expect(await node.sdk.rpc.chain.getErrorHint(targetTxHash)).not.null;
+    expect(await node.sdk.rpc.chain.containsTransaction(targetTxHash)).be.false;
+}
 
 describe("Partial signature", function() {
     let node: CodeChain;
+
     before(async function() {
         node = new CodeChain();
         await node.start();
@@ -109,18 +140,7 @@ describe("Partial signature", function() {
         tx.addBurns(assets[2]);
         await node.sdk.key.signTransactionBurn(tx, 0);
 
-        await node.sdk.rpc.devel.stopSealing();
-        const blockNumber = await node.getBestBlockNumber();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const pay = await node.sendPayTx({ seq, quantity: 1 });
-        const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
+        await expectTransactionFail(node, tx);
     });
 
     it("Can add burns after signing with the signature tag of single input", async function() {
@@ -158,18 +178,7 @@ describe("Partial signature", function() {
         tx.addInputs(assets[1]);
         await node.sdk.key.signTransactionInput(tx, 1);
 
-        await node.sdk.rpc.devel.stopSealing();
-        const blockNumber = await node.getBestBlockNumber();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const pay = await node.sendPayTx({ seq, quantity: 1 });
-        const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
+        await expectTransactionFail(node, tx);
     });
 
     it("Can add inputs after signing with the signature tag of single input", async function() {
@@ -210,18 +219,7 @@ describe("Partial signature", function() {
             recipient: address2
         });
 
-        await node.sdk.rpc.devel.stopSealing();
-        const blockNumber = await node.getBestBlockNumber();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const pay = await node.sendPayTx({ seq, quantity: 1 });
-        const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
+        await expectTransactionFail(node, tx);
     });
 
     it("Can add outputs after signing the signature tag of some outputs", async function() {
@@ -282,18 +280,7 @@ describe("Partial signature", function() {
         const address2Param = (tx as any)._transaction.outputs[1].parameters;
         ((tx as any)._transaction.outputs[0].parameters as any) = address2Param;
 
-        await node.sdk.rpc.devel.stopSealing();
-        const blockNumber = await node.getBestBlockNumber();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const pay = await node.sendPayTx({ seq, quantity: 1 });
-        const hash1 = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash1)).not.null;
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.containsTransaction(hash1)).be.false;
+        await expectTransactionFail(node, tx);
 
         ((tx as any)._transaction.outputs[0].parameters as any) = address1Param;
         // FIXME

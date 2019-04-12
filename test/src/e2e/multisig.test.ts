@@ -20,7 +20,8 @@ import {
     AssetAddress,
     H160,
     Script,
-    TransferAsset
+    TransferAsset,
+    Transaction
 } from "codechain-sdk/lib/core/classes";
 import {
     blake160,
@@ -29,7 +30,6 @@ import {
 } from "codechain-sdk/lib/utils";
 import "mocha";
 import {
-    aliceAddress,
     alicePublic,
     aliceSecret,
     bobPublic,
@@ -39,12 +39,38 @@ import {
     daveSecret,
     faucetAddress
 } from "../helper/constants";
+import { AssetTransaction } from "codechain-sdk/lib/core/Transaction";
 import CodeChain from "../helper/spawn";
 
 const { PUSH, PUSHB, CHKMULTISIG } = Script.Opcode;
 
+// If one only sends certainly failing trasactions, the miner would not generate any block.
+// So to clearly check the result failed, insert the failing transactions inbetween succeessful ones.
+async function expectTransactionFail(
+    node: CodeChain,
+    targetTx: Transaction & AssetTransaction
+) {
+    await node.sdk.rpc.devel.stopSealing();
+
+    const blockNumber = await node.getBestBlockNumber();
+    const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+    const signedDummyTx = await node.sendPayTx({ seq, quantity: 1 });
+    const targetTxHash = await node.sendAssetTransaction(targetTx, {
+        seq: seq + 1
+    });
+
+    await node.sdk.rpc.devel.startSealing();
+    await node.waitBlockNumber(blockNumber + 1);
+
+    expect(await node.sdk.rpc.chain.containsTransaction(signedDummyTx.hash()))
+        .be.true;
+    expect(await node.sdk.rpc.chain.containsTransaction(targetTxHash)).be.false;
+    expect(await node.sdk.rpc.chain.getErrorHint(targetTxHash)).not.null;
+}
+
 describe("Multisig", function() {
     let node: CodeChain;
+
     beforeEach(async function() {
         node = new CodeChain();
         await node.start();
@@ -168,27 +194,7 @@ describe("Multisig", function() {
                     ])
                 );
 
-            await node.sdk.rpc.devel.stopSealing();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const blockNumber = await node.getBestBlockNumber();
-            const pay = await node.sendPayTx({
-                seq,
-                quantity: 1,
-                recipient: aliceAddress
-            });
-            const hash = await node.sendAssetTransaction(transfer, {
-                seq: seq + 1
-            });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await expectTransactionFail(node, transfer);
         });
     });
 
@@ -341,27 +347,7 @@ describe("Multisig", function() {
                     ])
                 );
 
-            await node.sdk.rpc.devel.stopSealing();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const blockNumber = await node.getBestBlockNumber();
-            const pay = await node.sendPayTx({
-                seq,
-                quantity: 1,
-                recipient: aliceAddress
-            });
-            const hash = await node.sendAssetTransaction(transfer, {
-                seq: seq + 1
-            });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await expectTransactionFail(node, transfer);
         });
     });
 
@@ -530,27 +516,7 @@ describe("Multisig", function() {
                     ])
                 );
 
-            await node.sdk.rpc.devel.stopSealing();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const blockNumber = await node.getBestBlockNumber();
-            const pay = await node.sendPayTx({
-                seq,
-                quantity: 1,
-                recipient: aliceAddress
-            });
-            const hash = await node.sendAssetTransaction(transfer, {
-                seq: seq + 1
-            });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await expectTransactionFail(node, transfer);
         });
 
         it("fail to unlock with the third and the first key - signature unordered", async function() {
@@ -580,27 +546,7 @@ describe("Multisig", function() {
                     ])
                 );
 
-            await node.sdk.rpc.devel.stopSealing();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const blockNumber = await node.getBestBlockNumber();
-            const pay = await node.sendPayTx({
-                seq,
-                quantity: 1,
-                recipient: aliceAddress
-            });
-            const hash = await node.sendAssetTransaction(transfer, {
-                seq: seq + 1
-            });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await expectTransactionFail(node, transfer);
         });
 
         it("fail to unlock with the third and the second key - signature unordered", async function() {
@@ -630,27 +576,7 @@ describe("Multisig", function() {
                     ])
                 );
 
-            await node.sdk.rpc.devel.stopSealing();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const blockNumber = await node.getBestBlockNumber();
-            const pay = await node.sendPayTx({
-                seq,
-                quantity: 1,
-                recipient: aliceAddress
-            });
-            const hash = await node.sendAssetTransaction(transfer, {
-                seq: seq + 1
-            });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await expectTransactionFail(node, transfer);
         });
 
         it("fail to unlock if the first key is unknown", async function() {
@@ -680,27 +606,7 @@ describe("Multisig", function() {
                     ])
                 );
 
-            await node.sdk.rpc.devel.stopSealing();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const blockNumber = await node.getBestBlockNumber();
-            const pay = await node.sendPayTx({
-                seq,
-                quantity: 1,
-                recipient: aliceAddress
-            });
-            const hash = await node.sendAssetTransaction(transfer, {
-                seq: seq + 1
-            });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await expectTransactionFail(node, transfer);
         });
 
         it("fail to unlock if the second key is unknown", async function() {
@@ -730,27 +636,7 @@ describe("Multisig", function() {
                     ])
                 );
 
-            await node.sdk.rpc.devel.stopSealing();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const blockNumber = await node.getBestBlockNumber();
-            const pay = await node.sendPayTx({
-                seq,
-                quantity: 1,
-                recipient: aliceAddress
-            });
-            const hash = await node.sendAssetTransaction(transfer, {
-                seq: seq + 1
-            });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await expectTransactionFail(node, transfer);
         });
 
         it("fail to unlock if the same key signs twice", async function() {
@@ -780,27 +666,7 @@ describe("Multisig", function() {
                     ])
                 );
 
-            await node.sdk.rpc.devel.stopSealing();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const blockNumber = await node.getBestBlockNumber();
-            const pay = await node.sendPayTx({
-                seq,
-                quantity: 1,
-                recipient: aliceAddress
-            });
-            const hash = await node.sendAssetTransaction(transfer, {
-                seq: seq + 1
-            });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await expectTransactionFail(node, transfer);
         });
     });
 
