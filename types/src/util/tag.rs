@@ -78,19 +78,16 @@ mod tests {
         assert_eq!(tag.sign_all_inputs, true);
         assert_eq!(tag.sign_all_outputs, false);
         assert_eq!(tag.filter_len, 8);
-        assert_eq!(
-            tag.filter.clone(),
-            vec![
-                0b1000_0000,
-                0b0100_0000,
-                0b0010_0000,
-                0b0001_0000,
-                0b0000_1000,
-                0b0000_0100,
-                0b0000_0010,
-                0b0000_0001
-            ]
-        );
+        assert_eq!(tag.filter.clone(), vec![
+            0b1000_0000,
+            0b0100_0000,
+            0b0010_0000,
+            0b0001_0000,
+            0b0000_1000,
+            0b0000_0100,
+            0b0000_0010,
+            0b0000_0001
+        ]);
     }
 
     #[test]

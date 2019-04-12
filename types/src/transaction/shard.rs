@@ -920,16 +920,13 @@ mod tests {
     fn fail_if_output_has_more_asset() {
         let asset_type = H160::random();
         let output_quantity = 100;
-        assert!(!is_input_and_output_consistent(
-            &[],
-            &[AssetTransferOutput {
-                lock_script_hash: H160::random(),
-                parameters: vec![],
-                asset_type,
-                shard_id: 0,
-                quantity: output_quantity,
-            }]
-        ));
+        assert!(!is_input_and_output_consistent(&[], &[AssetTransferOutput {
+            lock_script_hash: H160::random(),
+            parameters: vec![],
+            asset_type,
+            shard_id: 0,
+            quantity: output_quantity,
+        }]));
     }
 
     #[test]

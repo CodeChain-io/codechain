@@ -109,10 +109,10 @@ fn ciphertext_path() -> &'static str {
 fn secret_store_load_pat_files() {
     let dir = RootDiskDirectory::at(pat_path());
     let store = KeyStore::open(Box::new(dir)).unwrap();
-    assert_eq!(
-        store.accounts().unwrap(),
-        vec!["0x3fc74504d2b491d73079975e302279540bf6e44e".into(), "0x41178717678e402bdb663d98fe47669d93b29603".into()]
-    );
+    assert_eq!(store.accounts().unwrap(), vec![
+        "0x3fc74504d2b491d73079975e302279540bf6e44e".into(),
+        "0x41178717678e402bdb663d98fe47669d93b29603".into()
+    ]);
 }
 
 #[test]
@@ -128,10 +128,10 @@ fn decrypting_files_with_short_ciphertext() {
     let dir = RootDiskDirectory::at(ciphertext_path());
     let store = KeyStore::open(Box::new(dir)).unwrap();
     let accounts = store.accounts().unwrap();
-    assert_eq!(
-        accounts,
-        vec!["0x77a477c745390977a72f44437ac1dac19b705571".into(), "0x8267cb8df20e1dc57fef31322e16bddd83d4cc3d".into()]
-    );
+    assert_eq!(accounts, vec![
+        "0x77a477c745390977a72f44437ac1dac19b705571".into(),
+        "0x8267cb8df20e1dc57fef31322e16bddd83d4cc3d".into()
+    ]);
 
     let message = Default::default();
 

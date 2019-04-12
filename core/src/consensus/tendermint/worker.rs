@@ -918,16 +918,13 @@ impl Worker {
     }
 
     fn backup(&self) {
-        backup(
-            self.client().get_kvdb().as_ref(),
-            BackupView {
-                height: &self.height,
-                view: &self.view,
-                step: &self.step.to_step(),
-                votes: &self.votes.get_all(),
-                last_confirmed_view: &self.last_confirmed_view,
-            },
-        );
+        backup(self.client().get_kvdb().as_ref(), BackupView {
+            height: &self.height,
+            view: &self.view,
+            step: &self.step.to_step(),
+            votes: &self.votes.get_all(),
+            last_confirmed_view: &self.last_confirmed_view,
+        });
     }
 
     fn restore(&mut self) {
