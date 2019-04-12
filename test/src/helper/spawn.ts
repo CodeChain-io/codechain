@@ -65,6 +65,7 @@ export default class CodeChain {
     private readonly _chain: ChainType;
     private readonly _rpcPort: number;
     private readonly argv: string[];
+    private readonly env: { [key: string]: string };
     private isTestFailed: boolean;
     private process?: ChildProcess;
     private readonly keyFileMovePromise?: Promise<{}>;
@@ -112,9 +113,10 @@ export default class CodeChain {
             argv?: string[];
             additionalKeysPath?: string;
             rpcPort?: number;
+            env?: { [key: string]: string };
         } = {}
     ) {
-        const { chain, argv, additionalKeysPath } = options;
+        const { chain, argv, additionalKeysPath, env } = options;
         this._id = CodeChain.idCounter++;
 
         const { rpcPort = 8081 + this.id } = options;
@@ -146,6 +148,7 @@ export default class CodeChain {
         this._sdk = new SDK({ server: `http://localhost:${this.rpcPort}` });
         this._chain = chain || "solo";
         this.argv = argv || [];
+        this.env = env || {};
         this.isTestFailed = false;
     }
 
@@ -186,7 +189,11 @@ export default class CodeChain {
                 ],
                 {
                     cwd: projectRoot,
-                    env: process.env
+                    env: {
+                        ...process.env,
+                        ENABLE_DELEGATIONS: "true",
+                        ...this.env
+                    }
                 }
             );
 
