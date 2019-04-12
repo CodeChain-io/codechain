@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 extern crate rustc_serialize;
 
+use std::convert::TryFrom;
 use std::iter::FromIterator;
 use std::ops::Deref;
 
@@ -46,8 +47,9 @@ impl From<AssetTransferOutputType> for AssetTransferOutput {
     }
 }
 
-impl From<AssetTransferOutput> for Result<AssetTransferOutputType, FromHexError> {
-    fn from(from: AssetTransferOutput) -> Self {
+impl TryFrom<AssetTransferOutput> for AssetTransferOutputType {
+    type Error = FromHexError;
+    fn try_from(from: AssetTransferOutput) -> Result<Self, Self::Error> {
         Ok(AssetTransferOutputType {
             lock_script_hash: from.lock_script_hash,
             parameters: Result::from_iter(from.parameters.iter().map(Deref::deref).map(FromHex::from_hex))?,
@@ -76,8 +78,9 @@ impl From<AssetMintOutputType> for AssetMintOutput {
     }
 }
 
-impl From<AssetMintOutput> for Result<AssetMintOutputType, FromHexError> {
-    fn from(from: AssetMintOutput) -> Self {
+impl TryFrom<AssetMintOutput> for AssetMintOutputType {
+    type Error = FromHexError;
+    fn try_from(from: AssetMintOutput) -> Result<Self, Self::Error> {
         Ok(AssetMintOutputType {
             lock_script_hash: from.lock_script_hash,
             parameters: Result::from_iter(from.parameters.iter().map(Deref::deref).map(FromHex::from_hex))?,

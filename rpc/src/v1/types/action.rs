@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::iter::FromIterator;
+use std::convert::TryFrom;
 
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public, Signature};
 use ctypes::transaction::{Action as ActionType, AssetMintOutput as AssetMintOutputType};
 use ctypes::ShardId;
 use primitives::{Bytes, H160, H256};
-use rustc_serialize::hex::{FromHex, FromHexError, ToHex};
+use rustc_serialize::hex::{FromHex, ToHex};
 
 use super::super::errors::ConversionError;
 use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, OrderOnTransfer};
@@ -489,9 +489,9 @@ impl ActionWithTracker {
     }
 }
 
-// FIXME: Use TryFrom.
-impl From<Action> for Result<ActionType, ConversionError> {
-    fn from(from: Action) -> Self {
+impl TryFrom<Action> for ActionType {
+    type Error = ConversionError;
+    fn try_from(from: Action) -> Result<Self, Self::Error> {
         Ok(match from {
             Action::MintAsset {
                 network_id,
@@ -511,7 +511,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     Some(registrar) => Some(registrar.try_into_address()?),
                     None => None,
                 };
-                let output_content = Result::<AssetMintOutputType, FromHexError>::from(*output)?;
+                let output_content = AssetMintOutputType::try_from(*output)?;
                 ActionType::MintAsset {
                     network_id,
                     shard_id,
@@ -534,13 +534,13 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 approvals,
                 expiration,
             } => {
-                let iter_outputs = outputs.into_iter().map(From::from);
-                let orders = orders.into_iter().map(From::from).collect::<Result<_, _>>()?;
+                let outputs = outputs.into_iter().map(TryFrom::try_from).collect::<Result<_, _>>()?;
+                let orders = orders.into_iter().map(TryFrom::try_from).collect::<Result<_, _>>()?;
                 ActionType::TransferAsset {
                     network_id,
                     burns: burns.into_iter().map(From::from).collect(),
                     inputs: inputs.into_iter().map(From::from).collect(),
-                    outputs: Result::from_iter(iter_outputs)?,
+                    outputs,
                     orders,
                     metadata,
                     approvals,
@@ -587,7 +587,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                 output,
                 approvals,
             } => {
-                let output_content = Result::<AssetMintOutputType, FromHexError>::from(*output)?;
+                let output_content = AssetMintOutputType::try_from(*output)?;
                 ActionType::IncreaseAssetSupply {
                     network_id,
                     shard_id,
@@ -617,7 +617,7 @@ impl From<Action> for Result<ActionType, ConversionError> {
                     Some(registrar) => Some(registrar.try_into_address()?),
                     None => None,
                 };
-                let output_content = Result::<AssetMintOutputType, FromHexError>::from(*output)?;
+                let output_content = AssetMintOutputType::try_from(*output)?;
                 ActionType::ComposeAsset {
                     network_id,
                     shard_id,
@@ -637,11 +637,11 @@ impl From<Action> for Result<ActionType, ConversionError> {
 
                 approvals,
             } => {
-                let iter_outputs = outputs.into_iter().map(From::from);
+                let outputs = outputs.into_iter().map(TryFrom::try_from).collect::<Result<_, _>>()?;
                 ActionType::DecomposeAsset {
                     network_id,
                     input: (*input).into(),
-                    outputs: Result::from_iter(iter_outputs)?,
+                    outputs,
                     approvals,
                 }
             }
