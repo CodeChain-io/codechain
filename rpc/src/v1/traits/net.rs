@@ -80,6 +80,6 @@ build_rpc_trait! {
         fn get_blacklist(&self) -> Result<FilterStatus>;
 
         #[rpc(name = "net_recentNetworkUsage")]
-        fn recent_network_usage(&self) -> Result<HashMap<&'static str, usize>>;
+        fn recent_network_usage(&self) -> Result<HashMap<String, usize>>;
     }
 }
