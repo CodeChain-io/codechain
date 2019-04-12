@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::convert::{TryFrom, TryInto};
+
 use cjson::uint::Uint;
 use ckey::NetworkId;
 use ctypes::transaction::IncompleteTransaction;
@@ -31,14 +33,14 @@ pub struct UnsignedTransaction {
     pub action: Action,
 }
 
-// FIXME: Use TryFrom.
-impl From<UnsignedTransaction> for Result<(IncompleteTransaction, Option<u64>), Error> {
-    fn from(tx: UnsignedTransaction) -> Self {
+impl TryFrom<UnsignedTransaction> for (IncompleteTransaction, Option<u64>) {
+    type Error = Error;
+    fn try_from(tx: UnsignedTransaction) -> Result<Self, Self::Error> {
         Ok((
             IncompleteTransaction {
                 fee: tx.fee.into(),
                 network_id: tx.network_id,
-                action: Result::from(tx.action).map_err(errors::conversion)?,
+                action: tx.action.try_into().map_err(errors::conversion)?,
             },
             tx.seq,
         ))

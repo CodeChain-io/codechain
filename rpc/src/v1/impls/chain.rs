@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 
 use ccore::{
@@ -273,7 +274,7 @@ where
 
     fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Option<String>> {
         let sender_address = sender.try_address().map_err(errors::core)?;
-        let action = ::std::result::Result::from(tx.action).map_err(errors::conversion)?;
+        let action = Action::try_from(tx.action).map_err(errors::conversion)?;
         if let Some(transaction) = action.asset_transaction() {
             let result = self.client.execute_transaction(&transaction, sender_address);
             match result {
@@ -291,7 +292,7 @@ where
         params: Vec<Vec<BytesArray>>,
         indices: Vec<usize>,
     ) -> Result<Vec<String>> {
-        let action = ::std::result::Result::from(tx.action).map_err(errors::conversion)?;
+        let action = tx.action.try_into().map_err(errors::conversion)?;
         if let Action::TransferAsset {
             inputs,
             ..
