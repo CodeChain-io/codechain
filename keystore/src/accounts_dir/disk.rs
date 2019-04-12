@@ -15,6 +15,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
@@ -29,11 +30,11 @@ const IGNORED_FILES: &[&str] = &["thumbs.db"];
 
 #[cfg(not(windows))]
 fn restrict_permissions_to_owner(file_path: &Path) -> Result<(), i32> {
-    use libc;
+    use libc::{chmod, S_IRUSR, S_IWUSR};
     use std::ffi;
 
     let cstr = ffi::CString::new(&*file_path.to_string_lossy()).map_err(|_| -1)?;
-    match unsafe { libc::chmod(cstr.as_ptr(), libc::S_IWUSR | libc::S_IRUSR) } {
+    match unsafe { chmod(cstr.as_ptr(), S_IWUSR | S_IRUSR) } {
         0 => Ok(()),
         x => Err(x),
     }
@@ -146,7 +147,7 @@ where
             .into_iter()
             .filter_map(|path| {
                 let filename = Some(
-                    path.file_name().and_then(|n| n.to_str()).expect("Keys have valid UTF8 names only.").to_owned(),
+                    path.file_name().and_then(OsStr::to_str).expect("Keys have valid UTF8 names only.").to_owned(),
                 );
                 fs::File::open(path.clone())
                     .map_err(Into::into)

@@ -402,7 +402,7 @@ impl IoHandler<Message> for Handler {
         Ok(())
     }
 
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn message(&self, io: &IoContext<Message>, message: Message) -> IoHandlerResult<()> {
         match message {
             Message::RequestConnection(socket_address) => {
@@ -591,7 +591,7 @@ impl IoHandler<Message> for Handler {
         Ok(())
     }
 
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn stream_readable(&self, io: &IoContext<Message>, stream_token: StreamToken) -> IoHandlerResult<()> {
         match stream_token {
             ACCEPT => {

@@ -2078,7 +2078,7 @@ mod tests_tx {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn wrap_ccc_and_transfer_and_unwrap_ccc() {
         let (sender, sender_public, _) = address();
 
@@ -2279,7 +2279,7 @@ mod tests_tx {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn apply_create_shard() {
         let mut state = get_temp_state();
         let (sender, sender_public, _) = address();
@@ -2327,7 +2327,7 @@ mod tests_tx {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn apply_create_shard_when_there_are_default_shards() {
         let mut state = get_temp_state();
         let (sender, sender_public, _) = address();
@@ -2789,7 +2789,7 @@ mod tests_tx {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn multi_shard_transfer() {
         let shard3 = 3;
         let shard4 = 4;
@@ -2856,7 +2856,7 @@ mod tests_tx {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn multi_shard_transfer_in_cross_order() {
         let shard3 = 3;
         let shard4 = 4;
@@ -2923,7 +2923,7 @@ mod tests_tx {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn multi_shard_transfer_failed_if_the_shard_id_of_input_is_not_valid() {
         let shard3 = 3;
         let shard4 = 4;
@@ -2997,7 +2997,7 @@ mod tests_tx {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn multi_shard_transfer_failed_if_the_input_amount_is_not_valid() {
         let shard3 = 3;
         let shard4 = 4;

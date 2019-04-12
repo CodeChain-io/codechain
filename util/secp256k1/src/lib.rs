@@ -576,7 +576,7 @@ mod tests {
     macro_rules! hex (($hex:expr) => (hex::decode($hex).unwrap()));
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn capabilities() {
         let none = Secp256k1::with_caps(ContextFlag::None);
         let sign = Secp256k1::with_caps(ContextFlag::SignOnly);

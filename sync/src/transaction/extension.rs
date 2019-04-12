@@ -17,7 +17,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use ccore::BlockChainClient;
+use ccore::{BlockChainClient, UnverifiedTransaction};
 use cnetwork::{Api, NetworkExtension, NodeId};
 use ctimer::TimerToken;
 use never_type::Never;
@@ -116,8 +116,11 @@ impl NetworkExtension<Never> for Extension {
                         *token,
                     );
                     if let Some(peer) = self.peers.get_mut(token) {
-                        let transactions: Vec<_> =
-                            transactions.iter().map(|tx| tx.hash()).filter(|tx_hash| !peer.contains(tx_hash)).collect();
+                        let transactions: Vec<_> = transactions
+                            .iter()
+                            .map(UnverifiedTransaction::hash)
+                            .filter(|tx_hash| !peer.contains(tx_hash))
+                            .collect();
                         for unverified in transactions.iter() {
                             peer.push(*unverified);
                         }
@@ -157,7 +160,7 @@ impl Extension {
             if unsent.is_empty() {
                 continue
             }
-            let unsent_hashes = unsent.iter().map(|p| p.hash()).collect::<Vec<_>>();
+            let unsent_hashes = unsent.iter().map(UnverifiedTransaction::hash).collect::<Vec<_>>();
             for h in unsent_hashes.iter() {
                 peer.push(*h);
             }

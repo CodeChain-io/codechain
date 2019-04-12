@@ -104,7 +104,7 @@ impl NetworkExtension<Never> for Extension {
 
                     addresses
                         .into_iter()
-                        .map(|kademlia_id| kademlia_id.into())
+                        .map(From::from)
                         .take(::std::cmp::min(self.config.bucket_size, len) as usize)
                         .collect()
                 } else {
