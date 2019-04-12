@@ -77,6 +77,13 @@ impl HeaderDownloader {
         if self.total_score < total_score {
             self.total_score = total_score;
             self.best_hash = best_hash;
+
+            if self.client.block_header(&BlockId::Hash(best_hash)).is_some() {
+                self.pivot = Pivot {
+                    hash: best_hash,
+                    total_score,
+                }
+            }
             true
         } else {
             false
@@ -129,7 +136,11 @@ impl HeaderDownloader {
     /// Expects importing headers matches requested header
     pub fn import_headers(&mut self, headers: &[Header]) {
         let first_header_hash = headers.first().expect("First header must exist").hash();
-        if first_header_hash == self.pivot.hash {
+
+        // This happens when best_hash is imported by other peer.
+        if self.best_hash == self.pivot.hash {
+            ctrace!(SYNC, "Ignore received headers, pivot already reached the best hash");
+        } else if first_header_hash == self.pivot.hash {
             for header in headers.iter() {
                 self.downloaded.insert(header.hash(), header.clone());
             }
@@ -161,6 +172,13 @@ impl HeaderDownloader {
     pub fn mark_as_imported(&mut self, hashes: Vec<H256>) {
         for hash in hashes {
             self.downloaded.remove(&hash);
+
+            if self.best_hash == hash {
+                self.pivot = Pivot {
+                    hash,
+                    total_score: self.total_score,
+                }
+            }
         }
     }
 }
