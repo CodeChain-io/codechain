@@ -2470,10 +2470,9 @@ mod tests_tx {
         let asset_type = H160::zero();
         let transfer = transfer_asset!(
             inputs:
-                asset_transfer_inputs![(
-                    asset_out_point!(H256::random(), 0, asset_type, shard_id, 30),
-                    vec![0x30, 0x01]
-                )],
+                asset_transfer_inputs![(asset_out_point!(H256::random(), 0, asset_type, shard_id, 30), vec![
+                    0x30, 0x01
+                ])],
             asset_transfer_outputs![
                 (H160::random(), vec![vec![1]], asset_type, shard_id, 10),
                 (H160::random(), vec![], asset_type, shard_id, 5),
