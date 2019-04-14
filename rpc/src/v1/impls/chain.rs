@@ -27,7 +27,7 @@ use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockNumber, ShardId};
-use primitives::{Bytes as BytesArray, H160, H256};
+use primitives::{H160, H256};
 
 use jsonrpc_core::Result;
 
@@ -286,12 +286,7 @@ where
         }
     }
 
-    fn execute_vm(
-        &self,
-        tx: UnsignedTransaction,
-        params: Vec<Vec<BytesArray>>,
-        indices: Vec<usize>,
-    ) -> Result<Vec<String>> {
+    fn execute_vm(&self, tx: UnsignedTransaction, indices: Vec<usize>) -> Result<Vec<String>> {
         let action = tx.action.try_into().map_err(errors::conversion)?;
         if let Action::TransferAsset {
             inputs,
@@ -299,7 +294,7 @@ where
         } = &action
         {
             let transaction = Option::<ShardTransactionType>::from(action.clone()).unwrap();
-            Ok(self.client.execute_vm(&transaction, inputs, &params, &indices).map_err(errors::core)?)
+            Ok(self.client.execute_vm(&transaction, inputs, &indices).map_err(errors::core)?)
         } else {
             Err(errors::transfer_only())
         }

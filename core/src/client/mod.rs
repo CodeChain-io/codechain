@@ -324,7 +324,6 @@ pub trait ExecuteClient: ChainTimeInfo {
         &self,
         tx: &PartialHashing,
         inputs: &[AssetTransferInput],
-        params: &[Vec<Bytes>],
         indices: &[usize],
     ) -> Result<Vec<String>, Error>;
 }

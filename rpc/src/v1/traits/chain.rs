@@ -17,7 +17,7 @@
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
 use ctypes::{BlockNumber, ShardId};
-use primitives::{Bytes as BytesArray, H160, H256};
+use primitives::{H160, H256};
 
 use jsonrpc_core::Result;
 
@@ -142,6 +142,6 @@ build_rpc_trait! {
 
         /// Execute AssetTransfer transaction inputs in VM
         # [rpc(name = "chain_executeVM")]
-        fn execute_vm(&self, UnsignedTransaction, Vec<Vec<BytesArray>>, Vec<usize>) -> Result<Vec<String>>;
+        fn execute_vm(&self, UnsignedTransaction, Vec<usize>) -> Result<Vec<String>>;
     }
 }

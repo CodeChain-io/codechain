@@ -27,7 +27,7 @@ use cstate::{
     ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
-use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
+use ctypes::transaction::{AssetOutPoint, AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
@@ -419,34 +419,47 @@ impl ExecuteClient for Client {
         &self,
         tx: &PartialHashing,
         inputs: &[AssetTransferInput],
-        params: &[Vec<Bytes>],
         indices: &[usize],
     ) -> Result<Vec<String>, ClientError> {
         let mut results = Vec::with_capacity(indices.len());
-        for (i, index) in indices.iter().enumerate() {
+        for index in indices.iter() {
             let input = inputs.get(*index);
-            let param = params.get(i);
-            let result = match (input, param) {
-                (Some(input), Some(param)) => {
-                    let lock_script = decode(&input.lock_script);
-                    let unlock_script = decode(&input.unlock_script);
-                    match (lock_script, unlock_script) {
-                        (Ok(lock_script), Ok(unlock_script)) => {
-                            match execute(
-                                &unlock_script,
-                                &param,
-                                &lock_script,
-                                tx,
-                                VMConfig::default(),
-                                &input,
-                                false,
-                                self,
-                                self.best_block_header().number(),
-                                self.best_block_header().timestamp(),
-                            ) {
-                                Ok(ScriptResult::Burnt) => "burnt".to_string(),
-                                Ok(ScriptResult::Unlocked) => "unlocked".to_string(),
-                                _ => "failed".to_string(),
+            let result = match input {
+                Some(input) => {
+                    let AssetOutPoint {
+                        index,
+                        tracker,
+                        asset_type: _,
+                        shard_id,
+                        quantity: _,
+                    } = input.prev_out;
+                    let asset = self.get_asset(tracker, index, shard_id, BlockId::Latest);
+                    match asset {
+                        Ok(Some(asset)) => {
+                            let param = &asset.parameters();
+
+                            let lock_script = decode(&input.lock_script);
+                            let unlock_script = decode(&input.unlock_script);
+                            match (lock_script, unlock_script) {
+                                (Ok(lock_script), Ok(unlock_script)) => {
+                                    match execute(
+                                        &unlock_script,
+                                        &param,
+                                        &lock_script,
+                                        tx,
+                                        VMConfig::default(),
+                                        &input,
+                                        false,
+                                        self,
+                                        self.best_block_header().number(),
+                                        self.best_block_header().timestamp(),
+                                    ) {
+                                        Ok(ScriptResult::Burnt) => "burnt".to_string(),
+                                        Ok(ScriptResult::Unlocked) => "unlocked".to_string(),
+                                        _ => "failed".to_string(),
+                                    }
+                                }
+                                _ => "invalid".to_string(),
                             }
                         }
                         _ => "invalid".to_string(),
