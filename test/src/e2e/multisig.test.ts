@@ -26,7 +26,8 @@ import {
 import {
     blake160,
     encodeSignatureTag,
-    signEcdsa
+    signEcdsa,
+    SignatureTag
 } from "codechain-sdk/lib/utils";
 import "mocha";
 import {
@@ -68,8 +69,37 @@ async function expectTransactionFail(
     expect(await node.sdk.rpc.chain.getErrorHint(targetTxHash)).not.null;
 }
 
+function createUnlockScript(
+    tag: SignatureTag,
+    ...signatures: Array<string>
+): Buffer {
+    const encodedTag = encodeSignatureTag(tag);
+    const inputArray = [PUSHB, encodedTag.byteLength, ...encodedTag];
+
+    signatures.forEach((sigInstance: string) => {
+        inputArray.push(PUSHB, 65, ...Buffer.from(sigInstance, "hex"));
+    });
+
+    return Buffer.from(inputArray);
+}
+
+function createLockScript(
+    atLeast: number,
+    total: number,
+    ...publics: Array<string>
+): Buffer {
+    const inputArray = [PUSH, atLeast];
+    publics.forEach((publicInstance: string) => {
+        inputArray.push(PUSHB, 64, ...Buffer.from(publicInstance, "hex"));
+    });
+    inputArray.push(PUSH, total, CHKMULTISIG);
+
+    return Buffer.from(inputArray);
+}
+
 describe("Multisig", function() {
     let node: CodeChain;
+    const defaultTag: SignatureTag = { input: "all", output: "all" };
 
     beforeEach(async function() {
         node = new CodeChain();
@@ -77,19 +107,7 @@ describe("Multisig", function() {
     });
 
     describe("1 of 2", async function() {
-        const lockScript = Buffer.from([
-            PUSH,
-            1,
-            PUSHB,
-            64,
-            ...Buffer.from(alicePublic, "hex"),
-            PUSHB,
-            64,
-            ...Buffer.from(bobPublic, "hex"),
-            PUSH,
-            2,
-            CHKMULTISIG
-        ]);
+        const lockScript = createLockScript(1, 2, alicePublic, bobPublic);
         const lockScriptHash = new H160(blake160(lockScript));
 
         let transfer: TransferAsset;
@@ -113,31 +131,20 @@ describe("Multisig", function() {
                     shardId: asset.shardId,
                     recipient: await node.createP2PKHAddress()
                 });
+            transfer.input(0)!.setLockScript(lockScript);
         });
 
         it("unlock with the first key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature = signEcdsa(hashWithoutScript.value, aliceSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
-                .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature, "hex")
-                    ])
-                );
-
+                .setUnlockScript(createUnlockScript(defaultTag, signature));
             const hash = await node.sendAssetTransaction(transfer);
             expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
             expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
@@ -145,26 +152,14 @@ describe("Multisig", function() {
 
         it("unlock with the second key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature = signEcdsa(hashWithoutScript.value, bobSecret);
-
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
-                .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature, "hex")
-                    ])
-                );
+                .setUnlockScript(createUnlockScript(defaultTag, signature));
 
             const hash = await node.sendAssetTransaction(transfer);
             expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
@@ -173,48 +168,28 @@ describe("Multisig", function() {
 
         it("fail to unlock with the unknown key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature = signEcdsa(hashWithoutScript.value, carolSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
-                .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature, "hex")
-                    ])
-                );
+                .setUnlockScript(createUnlockScript(defaultTag, signature));
 
             await expectTransactionFail(node, transfer);
         });
     });
 
     describe("1 of 3", async function() {
-        const lockScript = Buffer.from([
-            PUSH,
+        const lockScript = createLockScript(
             1,
-            PUSHB,
-            64,
-            ...Buffer.from(alicePublic, "hex"),
-            PUSHB,
-            64,
-            ...Buffer.from(bobPublic, "hex"),
-            PUSHB,
-            64,
-            ...Buffer.from(carolPublic, "hex"),
-            PUSH,
             3,
-            CHKMULTISIG
-        ]);
+            alicePublic,
+            bobPublic,
+            carolPublic
+        );
         const lockScriptHash = new H160(blake160(lockScript));
 
         let transfer: TransferAsset;
@@ -242,26 +217,16 @@ describe("Multisig", function() {
 
         it("unlock with the first key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature = signEcdsa(hashWithoutScript.value, aliceSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
             transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
-                .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature, "hex")
-                    ])
-                );
+                .setUnlockScript(createUnlockScript(defaultTag, signature));
 
             const hash = await node.sendAssetTransaction(transfer);
             expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
@@ -270,26 +235,16 @@ describe("Multisig", function() {
 
         it("unlock with the second key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature = signEcdsa(hashWithoutScript.value, bobSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
             transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
-                .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature, "hex")
-                    ])
-                );
+                .setUnlockScript(createUnlockScript(defaultTag, signature));
 
             const hash = await node.sendAssetTransaction(transfer);
             expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
@@ -298,26 +253,16 @@ describe("Multisig", function() {
 
         it("unlock with the third key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature = signEcdsa(hashWithoutScript.value, carolSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
             transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
-                .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature, "hex")
-                    ])
-                );
+                .setUnlockScript(createUnlockScript(defaultTag, signature));
 
             const hash = await node.sendAssetTransaction(transfer);
             expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
@@ -326,48 +271,29 @@ describe("Multisig", function() {
 
         it("fail to unlock with the unknown key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature = signEcdsa(hashWithoutScript.value, daveSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
             transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
-                .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature, "hex")
-                    ])
-                );
+                .setUnlockScript(createUnlockScript(defaultTag, signature));
 
             await expectTransactionFail(node, transfer);
         });
     });
 
     describe("2 of 3", async function() {
-        const lockScript = Buffer.from([
-            PUSH,
+        const lockScript = createLockScript(
             2,
-            PUSHB,
-            64,
-            ...Buffer.from(alicePublic, "hex"),
-            PUSHB,
-            64,
-            ...Buffer.from(bobPublic, "hex"),
-            PUSHB,
-            64,
-            ...Buffer.from(carolPublic, "hex"),
-            PUSH,
             3,
-            CHKMULTISIG
-        ]);
+            alicePublic,
+            bobPublic,
+            carolPublic
+        );
         const lockScriptHash = new H160(blake160(lockScript));
 
         let transfer: TransferAsset;
@@ -391,33 +317,22 @@ describe("Multisig", function() {
                     shardId: asset.shardId,
                     recipient: await node.createP2PKHAddress()
                 });
+            transfer.input(0)!.setLockScript(lockScript);
         });
 
         it("unlock with the first and the second key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature1 = signEcdsa(hashWithoutScript.value, aliceSecret);
             const signature2 = signEcdsa(hashWithoutScript.value, bobSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
                 .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature1, "hex"),
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature2, "hex")
-                    ])
+                    createUnlockScript(defaultTag, signature1, signature2)
                 );
 
             const hash = await node.sendAssetTransaction(transfer);
@@ -427,29 +342,17 @@ describe("Multisig", function() {
 
         it("unlock with the first and the third key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature1 = signEcdsa(hashWithoutScript.value, aliceSecret);
             const signature2 = signEcdsa(hashWithoutScript.value, carolSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
                 .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature1, "hex"),
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature2, "hex")
-                    ])
+                    createUnlockScript(defaultTag, signature1, signature2)
                 );
 
             const hash = await node.sendAssetTransaction(transfer);
@@ -459,29 +362,17 @@ describe("Multisig", function() {
 
         it("unlock with the second and the third key", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature1 = signEcdsa(hashWithoutScript.value, bobSecret);
             const signature2 = signEcdsa(hashWithoutScript.value, carolSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
                 .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature1, "hex"),
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature2, "hex")
-                    ])
+                    createUnlockScript(defaultTag, signature1, signature2)
                 );
 
             const hash = await node.sendAssetTransaction(transfer);
@@ -491,29 +382,17 @@ describe("Multisig", function() {
 
         it("fail to unlock with the second and the first key - signature unordered", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature1 = signEcdsa(hashWithoutScript.value, bobSecret);
             const signature2 = signEcdsa(hashWithoutScript.value, aliceSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
                 .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature1, "hex"),
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature2, "hex")
-                    ])
+                    createUnlockScript(defaultTag, signature1, signature2)
                 );
 
             await expectTransactionFail(node, transfer);
@@ -521,29 +400,17 @@ describe("Multisig", function() {
 
         it("fail to unlock with the third and the first key - signature unordered", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature1 = signEcdsa(hashWithoutScript.value, carolSecret);
             const signature2 = signEcdsa(hashWithoutScript.value, aliceSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
                 .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature1, "hex"),
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature2, "hex")
-                    ])
+                    createUnlockScript(defaultTag, signature1, signature2)
                 );
 
             await expectTransactionFail(node, transfer);
@@ -551,29 +418,17 @@ describe("Multisig", function() {
 
         it("fail to unlock with the third and the second key - signature unordered", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature1 = signEcdsa(hashWithoutScript.value, carolSecret);
             const signature2 = signEcdsa(hashWithoutScript.value, bobSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
                 .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature1, "hex"),
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature2, "hex")
-                    ])
+                    createUnlockScript(defaultTag, signature1, signature2)
                 );
 
             await expectTransactionFail(node, transfer);
@@ -581,29 +436,16 @@ describe("Multisig", function() {
 
         it("fail to unlock if the first key is unknown", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature1 = signEcdsa(hashWithoutScript.value, aliceSecret);
             const signature2 = signEcdsa(hashWithoutScript.value, daveSecret);
-
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
                 .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature1, "hex"),
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature2, "hex")
-                    ])
+                    createUnlockScript(defaultTag, signature1, signature2)
                 );
 
             await expectTransactionFail(node, transfer);
@@ -611,29 +453,17 @@ describe("Multisig", function() {
 
         it("fail to unlock if the second key is unknown", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature1 = signEcdsa(hashWithoutScript.value, daveSecret);
             const signature2 = signEcdsa(hashWithoutScript.value, bobSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
                 .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature1, "hex"),
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature2, "hex")
-                    ])
+                    createUnlockScript(defaultTag, signature1, signature2)
                 );
 
             await expectTransactionFail(node, transfer);
@@ -641,29 +471,17 @@ describe("Multisig", function() {
 
         it("fail to unlock if the same key signs twice", async function() {
             const hashWithoutScript = transfer.hashWithoutScript({
-                tag: { input: "all", output: "all" },
+                tag: defaultTag,
                 type: "input",
                 index: 0
             });
             const signature1 = signEcdsa(hashWithoutScript.value, aliceSecret);
             const signature2 = signEcdsa(hashWithoutScript.value, aliceSecret);
 
-            const tag = encodeSignatureTag({ input: "all", output: "all" });
-            transfer.input(0)!.setLockScript(lockScript);
             transfer
                 .input(0)!
                 .setUnlockScript(
-                    Buffer.from([
-                        PUSHB,
-                        tag.byteLength,
-                        ...tag,
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature1, "hex"),
-                        PUSHB,
-                        65,
-                        ...Buffer.from(signature2, "hex")
-                    ])
+                    createUnlockScript(defaultTag, signature1, signature2)
                 );
 
             await expectTransactionFail(node, transfer);
