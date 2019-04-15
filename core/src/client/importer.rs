@@ -21,7 +21,7 @@ use std::time::Instant;
 
 use cio::IoChannel;
 use kvdb::DBTransaction;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use primitives::H256;
 use rlp::Encodable;
 
@@ -365,14 +365,24 @@ impl Importer {
     /// This is triggered by a message coming from a header queue when the header is ready for insertion
     pub fn import_verified_headers(&self, client: &Client) -> usize {
         let max_headers_to_import = 256;
+        let lock = self.import_lock.lock();
+        let headers = self.header_queue.drain(max_headers_to_import);
+        self.import_headers(&headers, client, &lock)
+    }
 
-        let _lock = self.import_lock.lock();
+    fn import_headers<'a>(
+        &'a self,
+        headers: impl IntoIterator<Item = &'a Header>,
+        client: &Client,
+        _importer_lock: &MutexGuard<()>,
+    ) -> usize {
         let prev_best_proposal_header_hash = client.block_chain().best_proposal_header().hash();
 
         let mut bad = HashSet::new();
         let mut imported = Vec::new();
         let mut routes = Vec::new();
-        for header in self.header_queue.drain(max_headers_to_import) {
+
+        for header in headers {
             let hash = header.hash();
             ctrace!(CLIENT, "Importing header {}", header.number());
 
