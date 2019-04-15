@@ -379,6 +379,7 @@ impl ChainInfo for TestBlockChainClient {
             pending_total_score: *self.score.read(),
             genesis_hash: self.genesis_hash,
             best_block_hash: *self.last_hash.read(),
+            best_proposal_block_hash: *self.last_hash.read(),
             best_block_number: number,
             best_block_timestamp: number,
         }

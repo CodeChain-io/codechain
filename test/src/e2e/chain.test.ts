@@ -24,7 +24,6 @@ import {
     H256,
     H512,
     MintAsset,
-    SignedTransaction,
     U64
 } from "codechain-sdk/lib/core/classes";
 import "mocha";

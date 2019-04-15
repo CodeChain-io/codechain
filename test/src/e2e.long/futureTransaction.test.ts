@@ -25,7 +25,7 @@ describe("Handle future transactions", function() {
     beforeEach(async function() {
         nodeA = new CodeChain();
 
-        await nodeA.start(["--no-tx-relay"]);
+        await nodeA.start({ argv: ["--no-tx-relay"] });
     });
 
     it("Alone", async function() {
@@ -42,7 +42,7 @@ describe("Handle future transactions", function() {
         beforeEach(async function() {
             this.timeout(60_000);
             nodeB = new CodeChain();
-            await nodeB.start(["--no-tx-relay"]);
+            await nodeB.start({ argv: ["--no-tx-relay"] });
             await promiseExpect.shouldFulfill("connect", nodeB.connect(nodeA));
         });
 

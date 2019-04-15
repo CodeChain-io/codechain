@@ -417,7 +417,7 @@ impl Worker {
 
         proposal.and_then(|proposal| {
             let block_hash = proposal.on.block_hash.expect("Proposal message always include block hash");
-            let bytes = self.client().block(&BlockId::Hash(block_hash)).map(|block| block.into_inner());
+            let bytes = self.client().block(&BlockId::Hash(block_hash)).map(encoded::Block::into_inner);
             bytes.map(|bytes| (proposal.signature, proposal.signer_index, bytes))
         })
     }
@@ -918,16 +918,13 @@ impl Worker {
     }
 
     fn backup(&self) {
-        backup(
-            self.client().get_kvdb().as_ref(),
-            BackupView {
-                height: &self.height,
-                view: &self.view,
-                step: &self.step.to_step(),
-                votes: &self.votes.get_all(),
-                last_confirmed_view: &self.last_confirmed_view,
-            },
-        );
+        backup(self.client().get_kvdb().as_ref(), BackupView {
+            height: &self.height,
+            view: &self.view,
+            step: &self.step.to_step(),
+            votes: &self.votes.get_all(),
+            last_confirmed_view: &self.last_confirmed_view,
+        });
     }
 
     fn restore(&mut self) {
@@ -1093,6 +1090,8 @@ impl Worker {
         let precommit_hash = message_hash(step, *header.parent_hash());
         let mut counter = 0;
 
+        #[allow(clippy::identity_conversion)]
+        // This is a false alarm. https://github.com/rust-lang/rust-clippy/issues/3944
         for (bitset_index, signature) in seal_view.signatures()? {
             let public = self.validators.get(header.parent_hash(), bitset_index);
             if !verify_schnorr(&public, &signature, &precommit_hash)? {

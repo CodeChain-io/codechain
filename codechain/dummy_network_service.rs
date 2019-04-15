@@ -107,7 +107,7 @@ impl NetworkControl for DummyNetworkService {
         Err(NetworkControlError::Disabled)
     }
 
-    fn recent_network_usage(&self) -> Result<HashMap<&'static str, usize>, NetworkControlError> {
+    fn recent_network_usage(&self) -> Result<HashMap<String, usize>, NetworkControlError> {
         Err(NetworkControlError::Disabled)
     }
 }

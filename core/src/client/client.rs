@@ -199,7 +199,7 @@ impl Client {
         self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
         let transactions: Vec<UnverifiedTransaction> =
             transactions.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
-        let hashes: Vec<_> = transactions.iter().map(|tx| tx.hash()).collect();
+        let hashes: Vec<_> = transactions.iter().map(UnverifiedTransaction::hash).collect();
         self.notify(|notify| {
             notify.transactions_received(hashes.clone(), peer_id);
         });

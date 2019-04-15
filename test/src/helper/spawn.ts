@@ -126,7 +126,9 @@ export default class CodeChain {
         mkdirp.sync(`${projectRoot}/keys/`);
         mkdirp.sync(`${projectRoot}/test/log/`);
         this._dbPath = mkdtempSync(`${projectRoot}/db/`);
-        this._ipcPath = `/tmp/jsonrpc.${this.id}.ipc`;
+        this._ipcPath = `/tmp/jsonrpc.${new Date()
+            .toISOString()
+            .replace(/[-:.]/g, "_")}.${this.id}.ipc`;
         this._keysPath = mkdtempSync(`${projectRoot}/keys/`);
         if (additionalKeysPath) {
             this.keyFileMovePromise = new Promise((resolve, reject) => {
@@ -152,11 +154,18 @@ export default class CodeChain {
         this.isTestFailed = false;
     }
 
-    public async start(
-        argv: string[] = [],
-        logLevel = "trace,mio=warn,tokio=warn,hyper=warn,timer=warn",
-        disableLog = false
-    ) {
+    public async start(params?: {
+        argv?: string[];
+        logLevel?: string;
+        disableLog?: boolean;
+        disableIpc?: boolean;
+    }) {
+        const {
+            argv = [],
+            logLevel = "trace,mio=warn,tokio=warn,hyper=warn,timer=warn",
+            disableLog = false,
+            disableIpc = true
+        } = params || {};
         if (this.keyFileMovePromise) {
             await this.keyFileMovePromise;
         }
@@ -165,18 +174,24 @@ export default class CodeChain {
         // NOTE: https://github.com/CodeChain-io/codechain/issues/348
         process.env.WAIT_BEFORE_SHUTDOWN = "0";
 
+        const baseArgs = [...this.argv, ...argv];
+        if (disableIpc) {
+            baseArgs.push("--no-ipc");
+        } else {
+            baseArgs.push("--ipc-path");
+            baseArgs.push(this.ipcPath);
+        }
+
         // Resolves when CodeChain initialization completed.
         return new Promise((resolve, reject) => {
             this.process = spawn(
                 `target/${useDebugBuild ? "debug" : "release"}/codechain`,
                 [
-                    ...this.argv,
-                    ...argv,
+                    ...baseArgs,
                     "--chain",
                     this.chain,
                     "--db-path",
                     this.dbPath,
-                    "--no-ipc",
                     "--keys-path",
                     this.keysPath,
                     "--no-ws",

@@ -198,7 +198,7 @@ impl Control for Service {
         Ok(self.filters_control.get_blacklist())
     }
 
-    fn recent_network_usage(&self) -> Result<HashMap<&'static str, usize>, ControlError> {
+    fn recent_network_usage(&self) -> Result<HashMap<String, usize>, ControlError> {
         Ok(self.p2p_handler.recent_network_usage())
     }
 }

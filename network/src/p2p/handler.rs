@@ -111,7 +111,7 @@ pub struct Handler {
 
     bootstrap_addresses: Vec<SocketAddr>,
 
-    network_usage_in_10_seconds: Mutex<HashMap<&'static str, VecDeque<(Instant, usize)>>>,
+    network_usage_in_10_seconds: Mutex<HashMap<String, VecDeque<(Instant, usize)>>>,
 
     min_peers: usize,
     max_peers: usize,
@@ -233,7 +233,7 @@ impl Handler {
         Ok(())
     }
 
-    pub fn recent_network_usage(&self) -> HashMap<&'static str, usize> {
+    pub fn recent_network_usage(&self) -> HashMap<String, usize> {
         let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
         let mut result = HashMap::with_capacity(network_usage_in_10_seconds.len());
         let now = Instant::now();
@@ -241,7 +241,7 @@ impl Handler {
             remove_outdated_network_usage(times, &now);
             let total = times.iter().map(|(_, usage)| usage).sum();
             if total != 0 {
-                result.insert(*name, total);
+                result.insert(name.clone(), total);
             }
         }
         result
@@ -387,7 +387,7 @@ impl IoHandler<Message> for Handler {
                     {
                         let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
                         insert_network_usage(
-                            network_usage_in_10_seconds.entry("::handshake").or_default(),
+                            network_usage_in_10_seconds.entry(format!("handshake@{}", target)).or_default(),
                             network_message_size,
                         );
                     }
@@ -402,7 +402,7 @@ impl IoHandler<Message> for Handler {
         Ok(())
     }
 
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn message(&self, io: &IoContext<Message>, message: Message) -> IoHandlerResult<()> {
         match message {
             Message::RequestConnection(socket_address) => {
@@ -429,14 +429,18 @@ impl IoHandler<Message> for Handler {
             } => {
                 let stream =
                     *self.remote_node_ids_reverse.read().get(&node_id).ok_or_else(|| Error::InvalidNode(node_id))?;
-                let network_message_size = match stream {
+                let (network_message_size, peer_addr) = match stream {
                     FIRST_OUTBOUND...LAST_OUTBOUND => {
                         let mut outbound_connections = self.outbound_connections.write();
                         if let Some(con) = outbound_connections.get_mut(&stream) {
                             let _f = finally(|| {
                                 io.update_registration(stream);
                             });
-                            con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?
+
+                            (
+                                con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?,
+                                *con.peer_addr(),
+                            )
                         } else {
                             return Err(format!("{} is an invalid stream", stream).into())
                         }
@@ -447,7 +451,10 @@ impl IoHandler<Message> for Handler {
                             let _f = finally(|| {
                                 io.update_registration(stream);
                             });
-                            con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?
+                            (
+                                con.enqueue_extension_message(extension_name.to_string(), need_encryption, data)?,
+                                *con.peer_addr(),
+                            )
                         } else {
                             return Err(format!("{} is an invalid stream", stream).into())
                         }
@@ -456,7 +463,7 @@ impl IoHandler<Message> for Handler {
                 };
                 let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
                 insert_network_usage(
-                    network_usage_in_10_seconds.entry(extension_name).or_default(),
+                    network_usage_in_10_seconds.entry(format!("::{}@{}", extension_name, peer_addr)).or_default(),
                     network_message_size,
                 );
             }
@@ -540,7 +547,7 @@ impl IoHandler<Message> for Handler {
                     {
                         let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
                         insert_network_usage(
-                            network_usage_in_10_seconds.entry("::negotiation").or_default(),
+                            network_usage_in_10_seconds.entry(format!("negotiation@{}", peer_addr)).or_default(),
                             network_message_size,
                         );
                     }
@@ -591,7 +598,7 @@ impl IoHandler<Message> for Handler {
         Ok(())
     }
 
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn stream_readable(&self, io: &IoContext<Message>, stream_token: StreamToken) -> IoHandlerResult<()> {
         match stream_token {
             ACCEPT => {
@@ -684,7 +691,9 @@ impl IoHandler<Message> for Handler {
                             let network_message_size = con.enqueue_negotiation_response(extension_name, version);
                             let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
                             insert_network_usage(
-                                network_usage_in_10_seconds.entry("::negotiation").or_default(),
+                                network_usage_in_10_seconds
+                                    .entry(format!("negotiation@{}", con.peer_addr()))
+                                    .or_default(),
                                 network_message_size,
                             );
                         }
@@ -795,7 +804,7 @@ impl IoHandler<Message> for Handler {
                             };
                             let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
                             insert_network_usage(
-                                network_usage_in_10_seconds.entry("::handshake").or_default(),
+                                network_usage_in_10_seconds.entry(format!("handshake@{}", from)).or_default(),
                                 network_message_size,
                             );
                         }
@@ -834,7 +843,7 @@ impl IoHandler<Message> for Handler {
                             };
                             let mut network_usage_in_10_seconds = self.network_usage_in_10_seconds.lock();
                             insert_network_usage(
-                                network_usage_in_10_seconds.entry("::handshake").or_default(),
+                                network_usage_in_10_seconds.entry(format!("handshake@{}", from)).or_default(),
                                 network_message_size,
                             );
                         }

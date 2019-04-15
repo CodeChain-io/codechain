@@ -216,7 +216,7 @@ impl NetworkExtension<Event> for Extension {
             Arc::new(
                 Message::Status {
                     total_score: chain_info.best_proposal_score,
-                    best_hash: chain_info.best_block_hash,
+                    best_hash: chain_info.best_proposal_block_hash,
                     genesis_hash: chain_info.genesis_hash,
                 }
                 .rlp_bytes()
@@ -291,7 +291,7 @@ impl NetworkExtension<Event> for Extension {
                 peer_ids.shuffle(&mut thread_rng());
 
                 for id in peer_ids {
-                    let request = self.header_downloaders.get_mut(&id).and_then(|peer| peer.create_request());
+                    let request = self.header_downloaders.get_mut(&id).and_then(HeaderDownloader::create_request);
                     if let Some(request) = request {
                         self.send_header_request(&id, request);
                     }
@@ -392,8 +392,10 @@ impl Extension {
             .into_iter()
             .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
             .collect();
-        headers_to_download.sort_unstable_by_key(|header| header.number());
-        headers_to_download.dedup_by_key(|header| header.hash());
+        headers_to_download.sort_unstable_by_key(EncodedHeader::number);
+        #[allow(clippy::redundant_closure)]
+        // False alarm. https://github.com/rust-lang/rust-clippy/issues/1439
+        headers_to_download.dedup_by_key(|h| h.hash());
 
         let headers: Vec<_> = headers_to_download
             .into_iter()
@@ -422,7 +424,7 @@ impl Extension {
                 Arc::new(
                     Message::Status {
                         total_score: chain_info.best_proposal_score,
-                        best_hash: chain_info.best_block_hash,
+                        best_hash: chain_info.best_proposal_block_hash,
                         genesis_hash: chain_info.genesis_hash,
                     }
                     .rlp_bytes()
@@ -531,7 +533,7 @@ impl Extension {
                 };
                 self.client.block(&block_id)
             })
-            .take_while(|block| block.is_some())
+            .take_while(Option::is_some)
             .map(|block| block.expect("take_while guarantees existance of item").header().decode())
             .collect();
         ResponseMessage::Headers(headers)
@@ -559,7 +561,7 @@ impl Extension {
         let last_request = self.requests[from].iter().find(|(i, _)| *i == id).cloned();
         if let Some((_, request)) = last_request {
             if let ResponseMessage::Headers(headers) = &mut response {
-                headers.sort_unstable_by_key(|h| h.number());
+                headers.sort_unstable_by_key(Header::number);
             }
 
             if !self.is_valid_response(&request, &response) {
@@ -617,7 +619,7 @@ impl Extension {
                     }
                 }
 
-                headers.first().map(|header| header.number()) == Some(*start_number)
+                headers.first().map(Header::number) == Some(*start_number)
             }
             (RequestMessage::Bodies(hashes), ResponseMessage::Bodies(bodies)) => {
                 if hashes.len() != bodies.len() {
@@ -662,14 +664,16 @@ impl Extension {
 
     fn on_header_response(&mut self, from: &NodeId, headers: &[Header]) {
         ctrace!(SYNC, "Received header response from({}) with length({})", from, headers.len());
-        let mut completed = if let Some(peer) = self.header_downloaders.get_mut(from) {
+        let (mut completed, pivot_score_changed) = if let Some(peer) = self.header_downloaders.get_mut(from) {
+            let before_pivot_score = peer.pivot_score();
             let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
             peer.import_headers(&encoded);
-            peer.downloaded()
+            let after_pivot_score = peer.pivot_score();
+            (peer.downloaded(), before_pivot_score != after_pivot_score)
         } else {
-            Vec::new()
+            (Vec::new(), false)
         };
-        completed.sort_unstable_by_key(|header| header.number());
+        completed.sort_unstable_by_key(EncodedHeader::number);
 
         let mut exists = Vec::new();
         for header in completed {
@@ -688,8 +692,10 @@ impl Extension {
             peer.mark_as_imported(exists);
             peer.create_request()
         });
-        if let Some(request) = request {
-            self.send_header_request(from, request);
+        if pivot_score_changed {
+            if let Some(request) = request {
+                self.send_header_request(from, request);
+            }
         }
     }
 

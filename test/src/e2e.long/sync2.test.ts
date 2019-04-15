@@ -202,8 +202,8 @@ describe("sync 2 nodes", function() {
             nodeB = new CodeChain();
 
             await Promise.all([
-                nodeA.start(["--no-tx-relay"]),
-                nodeB.start(["--no-tx-relay"])
+                nodeA.start({ argv: ["--no-tx-relay"] }),
+                nodeB.start({ argv: ["--no-tx-relay"] })
             ]);
             await nodeA.connect(nodeB);
 

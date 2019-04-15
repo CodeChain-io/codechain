@@ -16,9 +16,9 @@
 
 import { expect } from "chai";
 import "mocha";
+import { faucetAddress } from "../helper/constants";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
-import { faucetAddress } from "../helper/constants";
 
 describe("solo - 1 node", function() {
     let node: CodeChain;

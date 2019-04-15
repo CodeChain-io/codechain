@@ -28,8 +28,6 @@ extern crate rlp;
 extern crate rustc_hex;
 
 use primitives::H256;
-use rlp::DecoderError;
-use rustc_hex::FromHexError;
 use std::fmt;
 
 #[derive(Debug)]
@@ -58,19 +56,29 @@ impl std::error::Error for BaseDataError {
     }
 }
 
-error_chain! {
-    types {
-        UtilError, ErrorKind, ResultExt, Result;
-    }
+#[allow(deprecated)]
+mod errors {
+    use rlp::DecoderError;
+    use rustc_hex::FromHexError;
 
-    links {
-        Db(kvdb::Error, kvdb::ErrorKind);
-    }
+    use super::BaseDataError;
 
-    foreign_links {
-        Io(::std::io::Error);
-        FromHex(FromHexError);
-        Decoder(DecoderError);
-        BaseData(BaseDataError);
+    error_chain! {
+        types {
+            UtilError, ErrorKind, ResultExt, Result;
+        }
+
+        links {
+            Db(kvdb::Error, kvdb::ErrorKind);
+        }
+
+        foreign_links {
+            Io(::std::io::Error);
+            FromHex(FromHexError);
+            Decoder(DecoderError);
+            BaseData(BaseDataError);
+        }
     }
 }
+
+pub use self::errors::{ErrorKind, Result, ResultExt, UtilError};

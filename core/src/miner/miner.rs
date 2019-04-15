@@ -31,7 +31,7 @@ use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
-use super::mem_pool::MemPool;
+use super::mem_pool::{Error as MemPoolError, MemPool};
 use super::mem_pool_types::{AccountDetails, MemPoolInput, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
@@ -203,7 +203,7 @@ impl Miner {
 
     /// Get `Some` `clone()` of the current pending block or `None` if we're not sealing.
     pub fn pending_block(&self, latest_block_number: BlockNumber) -> Option<Block> {
-        self.map_pending_block(|b| b.to_base(), latest_block_number)
+        self.map_pending_block(IsBlock::to_base, latest_block_number)
     }
 
     /// Get `Some` `clone()` of the current pending block header or `None` if we're not sealing.
@@ -328,7 +328,7 @@ impl Miner {
                 Err(e) => Err(e),
                 Ok(()) => {
                     let idx = insertion_results_index;
-                    let result = insertion_results[idx].clone().map_err(|x| x.into_core_error())?;
+                    let result = insertion_results[idx].clone().map_err(MemPoolError::into_core_error)?;
                     inserted.push(tx_hashes[idx]);
                     insertion_results_index += 1;
                     Ok(result)

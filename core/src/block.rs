@@ -244,7 +244,7 @@ impl<'x> OpenBlock<'x> {
         })?;
         self.block.header.set_transactions_root(skewed_merkle_root(
             parent_transactions_root,
-            self.block.transactions.iter().map(|e| e.rlp_bytes()),
+            self.block.transactions.iter().map(Encodable::rlp_bytes),
         ));
         self.block.header.set_state_root(state_root);
 

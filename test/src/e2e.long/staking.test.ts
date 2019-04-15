@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
-chai.use(chaiAsPromised);
-const expect = chai.expect;
-import { H256, PlatformAddress, U64 } from "codechain-primitives/lib";
+import { expect } from "chai";
+import { H256, PlatformAddress } from "codechain-primitives/lib";
 import { toHex } from "codechain-sdk/lib/utils";
 import "mocha";
 import {
+    aliceAddress,
+    bobAddress,
     faucetAddress,
     faucetSecret,
     stakeActionHandlerId,
@@ -29,9 +28,7 @@ import {
     validator0Secret,
     validator1Address,
     validator2Address,
-    validator3Address,
-    aliceAddress,
-    bobAddress
+    validator3Address
 } from "../helper/constants";
 import { PromiseExpect, wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";

@@ -216,7 +216,7 @@ pub trait ImportBlock {
 }
 
 /// Provides various blockchain information, like block header, chain state etc.
-pub trait BlockChain: ChainInfo + BlockInfo + TransactionInfo + TransactionInfo {}
+pub trait BlockChain: ChainInfo + BlockInfo + TransactionInfo {}
 
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
 pub trait BlockChainClient:

@@ -16,32 +16,31 @@
 
 import { expect } from "chai";
 import "mocha";
+import { faucetAddress } from "../helper/constants";
 import CodeChain from "../helper/spawn";
 
-const RLP = require("rlp");
-
-describe("engine", function() {
+describe("Pay", async function() {
     let node: CodeChain;
     before(async function() {
         node = new CodeChain();
         await node.start();
     });
 
-    it("getCoinbase", async function() {
-        // TODO: Coinbase is not defined in solo mode, so it always returns null. Need to test in other modes.
-        expect(
-            await node.sdk.rpc.sendRpcRequest("engine_getCoinbase", [])
-        ).to.be.a("null");
+    it("Allow zero pay", async function() {
+        const pay = await node.sendPayTx({ quantity: 0 });
+        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
+            .true;
+        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
     });
 
-    it("getRecommendedConfirmation", async function() {
-        // TODO: The rcommended confirmation of solo is always 1. Need to test in other modes.
-        expect(
-            await node.sdk.rpc.sendRpcRequest(
-                "engine_getRecommendedConfirmation",
-                []
-            )
-        ).to.equal(1);
+    it("Allow pay to itself", async function() {
+        const pay = await node.sendPayTx({
+            quantity: 100,
+            recipient: faucetAddress
+        });
+        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
+            .true;
+        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
     });
 
     afterEach(function() {

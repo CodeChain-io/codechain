@@ -1,7 +1,7 @@
-import * as BlockSyncMessage from "../blockSyncMessage";
 import { expect } from "chai";
 import { U256 } from "codechain-primitives";
 import "mocha";
+import * as BlockSyncMessage from "../blockSyncMessage";
 
 describe("Check BlockSyncMessage RLP encoding", function() {
     it("RequestBodyMessage RLP encoding test", function() {
