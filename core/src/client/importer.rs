@@ -96,11 +96,17 @@ impl Importer {
             let mut invalid_blocks = HashSet::new();
             let mut import_results = Vec::with_capacity(max_blocks_to_import);
 
-            let _import_lock = self.import_lock.lock();
+            let import_lock = self.import_lock.lock();
             let blocks = self.block_queue.drain(max_blocks_to_import);
             if blocks.is_empty() {
                 return 0
             }
+
+            {
+                let headers: Vec<&Header> = blocks.iter().map(|block| &block.header).collect();
+                self.import_headers(headers, client, &import_lock);
+            }
+
             let start = Instant::now();
 
             for block in blocks {
@@ -370,7 +376,7 @@ impl Importer {
         self.import_headers(&headers, client, &lock)
     }
 
-    fn import_headers<'a>(
+    pub fn import_headers<'a>(
         &'a self,
         headers: impl IntoIterator<Item = &'a Header>,
         client: &Client,
