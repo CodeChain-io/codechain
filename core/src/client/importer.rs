@@ -390,7 +390,7 @@ impl Importer {
 
         for header in headers {
             let hash = header.hash();
-            ctrace!(CLIENT, "Importing header {}", header.number());
+            ctrace!(CLIENT, "Importing header {}-{:?}", header.number(), hash);
 
             if bad.contains(&hash) || bad.contains(header.parent_hash()) {
                 cinfo!(CLIENT, "Bad header detected : {}", hash);
@@ -400,7 +400,7 @@ impl Importer {
 
             let parent_header = client
                 .block_header(&BlockId::Hash(*header.parent_hash()))
-                .expect("Parent of importing header must exist")
+                .unwrap_or_else(|| panic!("Parent of importing header must exist {:?}", header.parent_hash()))
                 .decode();
             if client.block_header(&BlockId::Hash(hash)).is_some() {
                 // Do nothing if the header is already imported
