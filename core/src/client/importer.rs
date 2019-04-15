@@ -396,7 +396,9 @@ impl Importer {
                 .block_header(&BlockId::Hash(*header.parent_hash()))
                 .expect("Parent of importing header must exist")
                 .decode();
-            if self.check_header(&header, &parent_header) {
+            if client.block_header(&BlockId::Hash(hash)).is_some() {
+                // Do nothing if the header is already imported
+            } else if self.check_header(&header, &parent_header) {
                 imported.push(hash);
                 routes.push(self.commit_header(&header, client));
             } else {
