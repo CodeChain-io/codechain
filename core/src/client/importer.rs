@@ -21,7 +21,7 @@ use std::time::Instant;
 
 use cio::IoChannel;
 use kvdb::DBTransaction;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use primitives::H256;
 use rlp::Encodable;
 
@@ -96,11 +96,17 @@ impl Importer {
             let mut invalid_blocks = HashSet::new();
             let mut import_results = Vec::with_capacity(max_blocks_to_import);
 
-            let _import_lock = self.import_lock.lock();
+            let import_lock = self.import_lock.lock();
             let blocks = self.block_queue.drain(max_blocks_to_import);
             if blocks.is_empty() {
                 return 0
             }
+
+            {
+                let headers: Vec<&Header> = blocks.iter().map(|block| &block.header).collect();
+                self.import_headers(headers, client, &import_lock);
+            }
+
             let start = Instant::now();
 
             for block in blocks {
@@ -365,16 +371,26 @@ impl Importer {
     /// This is triggered by a message coming from a header queue when the header is ready for insertion
     pub fn import_verified_headers(&self, client: &Client) -> usize {
         let max_headers_to_import = 256;
+        let lock = self.import_lock.lock();
+        let headers = self.header_queue.drain(max_headers_to_import);
+        self.import_headers(&headers, client, &lock)
+    }
 
-        let _lock = self.import_lock.lock();
+    pub fn import_headers<'a>(
+        &'a self,
+        headers: impl IntoIterator<Item = &'a Header>,
+        client: &Client,
+        _importer_lock: &MutexGuard<()>,
+    ) -> usize {
         let prev_best_proposal_header_hash = client.block_chain().best_proposal_header().hash();
 
         let mut bad = HashSet::new();
         let mut imported = Vec::new();
         let mut routes = Vec::new();
-        for header in self.header_queue.drain(max_headers_to_import) {
+
+        for header in headers {
             let hash = header.hash();
-            ctrace!(CLIENT, "Importing header {}", header.number());
+            ctrace!(CLIENT, "Importing header {}-{:?}", header.number(), hash);
 
             if bad.contains(&hash) || bad.contains(header.parent_hash()) {
                 cinfo!(CLIENT, "Bad header detected : {}", hash);
@@ -384,9 +400,11 @@ impl Importer {
 
             let parent_header = client
                 .block_header(&BlockId::Hash(*header.parent_hash()))
-                .expect("Parent of importing header must exist")
+                .unwrap_or_else(|| panic!("Parent of importing header must exist {:?}", header.parent_hash()))
                 .decode();
-            if self.check_header(&header, &parent_header) {
+            if client.block_header(&BlockId::Hash(hash)).is_some() {
+                // Do nothing if the header is already imported
+            } else if self.check_header(&header, &parent_header) {
                 imported.push(hash);
                 routes.push(self.commit_header(&header, client));
             } else {
