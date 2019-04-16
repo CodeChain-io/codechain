@@ -323,6 +323,11 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [mempool_getTransactionResultsByTracker](#mempool_getTransactionResultsByTracker)
  * [mempool_getPendingTransactions](#mempool_getpendingtransactions)
  * [mempool_getPendingTransactionsCount](#mempool_getpendingtransactionscount)
+ * [mempool_getBannedAccounts](#mempool_getbannedaccounts)
+ * [mempool_unbanAccounts](#mempool_unbanaccounts)
+ * [mempool_banAccounts](#mempool_banaccounts)
+ * [mempool_registerImmuneAccounts](#mempool_registerimmuneaccounts)
+ * [mempool_getRegisteredImmuneAccounts](#mempool_getregisteredimmuneaccounts)
 ***
  * [engine_getCoinbase](#engine_getcoinbase)
  * [engine_getBlockReward](#engine_getblockreward)
@@ -1798,6 +1803,160 @@ Returns a count of the transactions that have insertion_timestamps within the gi
     "jsonrpc":"2.0",
     "result":4,
     "id":null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_banAccounts
+Register accounts to the mempool's banned account list. The mempool would not import the transactions from the users on the list.
+
+### Params
+ 1. prisoner_list: `PlatformAccount[]`
+
+### Returns
+`null`
+
+Errors: `Invalid params`
+
+### Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_getBannedAccounts", "params": [], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc": "2.0",
+  "result": null,
+  "id": null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_unbanAccounts
+Release accounts from the mempool's banned account list.
+
+### Params
+ 1. trusty_list: `PlatformAccount[]` 
+
+### Returns
+`null`
+
+Errors: `Invalid params`
+
+### Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_unbanAccounts", "params": [["tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd"]], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc": "2.0",
+  "result": null,
+  "id": null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_getBannedAccounts
+Returns accounts banned for propagating transactions which cause syntax errors or runtime errors.
+
+### Params
+No parameters
+
+### Returns
+`PlatformAddress[]`
+
+Error: `Invalid params`
+
+### Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_getBannedAccounts", "params": [], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc": "2.0",
+  "result": [
+    "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd"
+  ],
+  "id": null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_registerImmuneAccounts
+Register accounts immune from getting banned. The trasactions from these accounts would never be rejected for the reason they are malicious.
+
+### Params
+ 1. immune_user_list: `PlatformAccount[]`
+
+### Returns
+`null`
+
+Error: `Invalid params`
+
+### Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_registerImmuneAccounts", "params": [["tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd"]], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc": "2.0",
+  "result": null,
+  "id": null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_getRegisteredImmuneAccounts
+Gets immune accounts registered by `mempool_registerImmuneAccounts`.
+
+### Params
+No parameters
+
+### Returns
+`PlatformAccount[]`
+
+Error: `Invalid params`
+
+### Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_getImmuneAccounts", "params": [], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc": "2.0",
+  "result": [
+    "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd"
+  ],
+  "id": null
 }
 ```
 
