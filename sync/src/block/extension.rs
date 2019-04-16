@@ -290,12 +290,15 @@ impl NetworkExtension<Event> for Extension {
                 let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
                 peer_ids.shuffle(&mut thread_rng());
 
-                for id in peer_ids {
-                    let request = self.header_downloaders.get_mut(&id).and_then(HeaderDownloader::create_request);
+                for id in &peer_ids {
+                    let request = self.header_downloaders.get_mut(id).and_then(HeaderDownloader::create_request);
                     if let Some(request) = request {
-                        self.send_header_request(&id, request);
+                        self.send_header_request(id, request);
+                        break
                     }
+                }
 
+                for id in peer_ids {
                     let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
                         peer.total_score()
                     } else {
