@@ -49,7 +49,7 @@ use_try_shorthand = true # false
 # format_doc_comments = false
 wrap_comments = false
 match_arm_blocks = true
-overflow_delimited_expr = false
+overflow_delimited_expr = true
 blank_lines_upper_bound = 2 # 1
 blank_lines_lower_bound = 0
 # required_version

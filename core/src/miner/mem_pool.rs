@@ -1447,14 +1447,10 @@ pub mod test {
         let mut inputs: Vec<MemPoolInput> = Vec::new();
 
         inputs.push(create_mempool_input_with_pay(1u64, keypair, no_timelock));
-        inputs.push(create_mempool_input_with_pay(
-            3u64,
-            keypair,
-            TxTimelock {
-                block: Some(10),
-                timestamp: None,
-            },
-        ));
+        inputs.push(create_mempool_input_with_pay(3u64, keypair, TxTimelock {
+            block: Some(10),
+            timestamp: None,
+        }));
         inputs.push(create_mempool_input_with_pay(5u64, keypair, no_timelock));
         mem_pool.add(inputs, inserted_block_number, inserted_timestamp, &fetch_account);
 

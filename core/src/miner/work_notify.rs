@@ -69,21 +69,15 @@ impl NotifyWork for WorkPoster {
         let body = format!(r#"{{ "result": ["0x{:x}","0x{:x}"] }}"#, pow_hash, target);
         let mut client = self.client.lock();
         for u in &self.urls {
-            if let Err(e) = client.request(
-                u.clone(),
-                PostHandler {
-                    body: body.clone(),
-                },
-            ) {
+            if let Err(e) = client.request(u.clone(), PostHandler {
+                body: body.clone(),
+            }) {
                 cwarn!(MINER, "Error sending HTTP notification to {} : {}, retrying", u, e);
                 // TODO: remove this once https://github.com/hyperium/hyper/issues/848 is fixed
                 *client = WorkPoster::create_client();
-                if let Err(e) = client.request(
-                    u.clone(),
-                    PostHandler {
-                        body: body.clone(),
-                    },
-                ) {
+                if let Err(e) = client.request(u.clone(), PostHandler {
+                    body: body.clone(),
+                }) {
                     cwarn!(MINER, "Error sending HTTP notification to {} : {}", u, e);
                 }
             }

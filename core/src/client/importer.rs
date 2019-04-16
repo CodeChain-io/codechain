@@ -237,15 +237,11 @@ impl Importer {
             cdebug!(CLIENT, "Epoch transition at block {}", header.hash());
 
             let mut batch = DBTransaction::new();
-            chain.insert_epoch_transition(
-                &mut batch,
-                header.number(),
-                EpochTransition {
-                    block_hash: header.hash(),
-                    block_number: header.number(),
-                    proof,
-                },
-            );
+            chain.insert_epoch_transition(&mut batch, header.number(), EpochTransition {
+                block_hash: header.hash(),
+                block_number: header.number(),
+                proof,
+            });
 
             // always write the batch directly since epoch transition proofs are
             // fetched from a DB iterator and DB iterators are only available on

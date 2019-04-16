@@ -38,14 +38,36 @@ const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 pub struct Stake {
     genesis_stakes: HashMap<Address, u64>,
     validators: Arc<ValidatorSet>,
+    enable_delegations: bool,
 }
 
 impl Stake {
+    #[cfg(not(test))]
     pub fn new(genesis_stakes: HashMap<Address, u64>, validators: Arc<ValidatorSet>) -> Stake {
         Stake {
             genesis_stakes,
             validators,
+            enable_delegations: parse_env_var_enable_delegations(),
         }
+    }
+
+    #[cfg(test)]
+    pub fn new(genesis_stakes: HashMap<Address, u64>, validators: Arc<ValidatorSet>) -> Stake {
+        Stake {
+            genesis_stakes,
+            validators,
+            enable_delegations: true,
+        }
+    }
+}
+
+#[cfg(not(test))]
+fn parse_env_var_enable_delegations() -> bool {
+    let var = std::env::var("ENABLE_DELEGATIONS");
+    match var.as_ref().map(|x| x.trim()) {
+        Ok(value) => value.parse::<bool>().unwrap(),
+        Err(std::env::VarError::NotPresent) => false,
+        Err(err) => unreachable!("{:?}", err),
     }
 }
 
@@ -79,7 +101,13 @@ impl ActionHandler for Stake {
             Action::DelegateCCS {
                 address,
                 quantity,
-            } => delegate_ccs(state, sender, &address, quantity, self.validators.deref()),
+            } => {
+                if self.enable_delegations {
+                    delegate_ccs(state, sender, &address, quantity, self.validators.deref())
+                } else {
+                    Err(RuntimeError::FailedToHandleCustomAction("DelegateCCS is disabled".to_string()).into())
+                }
+            }
         }
     }
 }
