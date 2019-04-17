@@ -980,7 +980,7 @@ pub mod test {
     use std::cmp::Ordering;
 
     use crate::client::{Balance, RegularKeyOwner, Seq, TestBlockChainClient};
-    use ckey::{Address, Generator, KeyPair, Random};
+    use ckey::{Generator, KeyPair, Random};
     use ctypes::transaction::{Action, AssetMintOutput, Transaction};
     use primitives::H160;
 
@@ -1421,7 +1421,8 @@ pub mod test {
     fn db_backup_and_recover() {
         //setup test_client
         let test_client = TestBlockChainClient::new();
-        let default_addr = Address::default();
+        let keypair = Random.generate().unwrap();
+        let default_addr = public_to_address(keypair.public());
         test_client.set_seq(default_addr, 4u64);
         test_client.set_balance(default_addr, u64::max_value());
 
@@ -1436,7 +1437,6 @@ pub mod test {
                 balance: test_client.latest_balance(&a),
             }
         };
-        let keypair = Random.generate().unwrap();
         let no_timelock = TxTimelock {
             block: None,
             timestamp: None,
@@ -1480,6 +1480,7 @@ pub mod test {
 
         assert_eq!(mem_pool_recovered.first_seqs, mem_pool.first_seqs);
         assert_eq!(mem_pool_recovered.next_seqs, mem_pool.next_seqs);
+        assert_eq!(mem_pool_recovered.by_signer_public, mem_pool.by_signer_public);
         assert_eq!(mem_pool_recovered.is_local_account, mem_pool.is_local_account);
         assert_eq!(mem_pool_recovered.next_transaction_id, mem_pool.next_transaction_id);
         assert_eq!(mem_pool_recovered.by_hash, mem_pool.by_hash);
