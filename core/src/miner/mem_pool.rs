@@ -979,7 +979,7 @@ impl MemPool {
 pub mod test {
     use std::cmp::Ordering;
 
-    use crate::client::{Balance, RegularKeyOwner, Seq, TestBlockChainClient};
+    use crate::client::{Balance, ChainInfo, RegularKeyOwner, Seq, TestBlockChainClient};
     use ckey::{Generator, KeyPair, Random};
     use ctypes::transaction::{Action, AssetMintOutput, Transaction};
     use primitives::H160;
@@ -1490,7 +1490,7 @@ pub mod test {
         assert_eq!(mem_pool_recovered.future, mem_pool.future);
     }
 
-    fn create_mempool_input_with_pay(seq: u64, keypair: KeyPair, timelock: TxTimelock) -> MemPoolInput {
+    fn create_signed_pay(seq: u64, keypair: KeyPair) -> SignedTransaction {
         let receiver = 1u64.into();
         let tx = Transaction {
             seq,
@@ -1501,8 +1501,11 @@ pub mod test {
                 quantity: 100_000,
             },
         };
-        let signed = SignedTransaction::new_with_sign(tx, keypair.private());
+        SignedTransaction::new_with_sign(tx, keypair.private())
+    }
 
+    fn create_mempool_input_with_pay(seq: u64, keypair: KeyPair, timelock: TxTimelock) -> MemPoolInput {
+        let signed = create_signed_pay(seq, keypair);
         MemPoolInput::new(signed, TxOrigin::Local, timelock)
     }
 
@@ -1534,5 +1537,72 @@ pub mod test {
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());
         let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, 0, timelock);
         TransactionOrder::for_transaction(&item, 0)
+    }
+
+    #[test]
+    fn transactions_are_moved_to_future_queue_if_the_preceding_one_removed() {
+        //setup test_client
+        let test_client = TestBlockChainClient::new();
+
+        let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
+        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
+
+        let fetch_account = |p: &Public| -> AccountDetails {
+            let address = public_to_address(p);
+            let a = test_client.latest_regular_key_owner(&address).unwrap_or(address);
+            AccountDetails {
+                seq: test_client.latest_seq(&a),
+                balance: test_client.latest_balance(&a),
+            }
+        };
+        let keypair = Random.generate().unwrap();
+        let address = public_to_address(keypair.public());
+        println!("! {}", address);
+        test_client.set_balance(address, 1_000_000_000_000);
+        assert_eq!(1_000_000_000_000, test_client.latest_balance(&address));
+        let no_timelock = TxTimelock {
+            block: None,
+            timestamp: None,
+        };
+
+        let inserted_block_number = 1;
+        let inserted_timestamp = 100;
+        let inputs = vec![
+            create_mempool_input_with_pay(0, keypair, no_timelock),
+            create_mempool_input_with_pay(1, keypair, no_timelock),
+            create_mempool_input_with_pay(2, keypair, no_timelock),
+        ];
+        let result = mem_pool.add(inputs, inserted_block_number, inserted_timestamp, &fetch_account);
+        assert_eq!(
+            vec![
+                Ok(TransactionImportResult::Current),
+                Ok(TransactionImportResult::Current),
+                Ok(TransactionImportResult::Current)
+            ],
+            result
+        );
+
+        assert_eq!(
+            vec![create_signed_pay(0, keypair), create_signed_pay(1, keypair), create_signed_pay(2, keypair),],
+            mem_pool.top_transactions(std::usize::MAX, None, 0..std::u64::MAX).transactions
+        );
+
+        assert_eq!(Vec::<SignedTransaction>::default(), mem_pool.future_transactions());
+
+        let best_block_number = test_client.chain_info().best_block_number;
+        let best_block_timestamp = test_client.chain_info().best_block_timestamp;
+        let fetch_seq = |p: &Public| -> u64 {
+            let address = public_to_address(p);
+            let a = test_client.latest_regular_key_owner(&address).unwrap_or(address);
+            test_client.latest_seq(&a)
+        };
+        mem_pool.remove(&[create_signed_pay(1, keypair).hash()], &fetch_seq, best_block_number, best_block_timestamp);
+
+        assert_eq!(
+            vec![create_signed_pay(0, keypair),],
+            mem_pool.top_transactions(std::usize::MAX, None, 0..std::u64::MAX).transactions
+        );
+
+        assert_eq!(vec![create_signed_pay(2, keypair),], mem_pool.future_transactions());
     }
 }
