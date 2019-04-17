@@ -366,7 +366,7 @@ impl AccountData for TestBlockChainClient {}
 
 impl RegularKeyOwner for TestBlockChainClient {
     fn regular_key_owner(&self, _address: &Address, _state: StateOrBlock) -> Option<Address> {
-        Some(Address::default())
+        None
     }
 }
 
