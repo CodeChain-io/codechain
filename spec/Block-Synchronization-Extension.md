@@ -104,7 +104,7 @@ Response to `GetHeaders` message. This response MAY contain less number of conte
 Bodies(body_0, …)
 ```
 
-Response to `GetBodies` message.
+Response to `GetBodies` message. Snappy algorithm is used to compress content.
 
 * Identifier: 0x05
 * Restriction:
