@@ -103,11 +103,11 @@ The specification about the tag is [here](Tag-encoding.md)
 
 ## Timelock
 * CHKTIMELOCK(0xb0)
- 1. Pop one item from the stack, which is the encoded number for the 4 types of timelock. It must be between 1 and 4. The script will fail otherwise.
+ 1. Read the next script byte which is the encoded number for the 4 types of timelock. It must be between 1 and 4. The script will fail otherwise.
    - 1: Block
    - 2: BlockAge
    - 3: Time
    - 4: TimeAge
- 2. Pop one more item from stack, which is the value of the timelock. It must be a 64-bit unsigned integer. The script will fail if the length of the item exceeds 8.
+ 2. Pop one item from stack, which is the value of the timelock. It must be a 64-bit unsigned integer. The script will fail if the length of the item exceeds 8.
  2. Check the condition given the type and the value referring to the block number and the timestamp of the best block. See the `Timelock` section in [Transaction](Transaction.md) for more details.
  3. Push true if the condition is met, false otherwise.
