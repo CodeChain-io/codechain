@@ -14,7 +14,7 @@ jobs:
       os: osx
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-change '(^(docs|spec)/|\.md$)'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '(^spec/|\.md$)'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then RUN_UNIT_TEST=1; fi
       install:
         - nvm install 10
@@ -34,7 +34,7 @@ jobs:
       name: linux
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-change '(^(docs|spec)/|\.md$)'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then RUN_UNIT_TEST=1; fi
       install:
         - nvm install 10
@@ -54,7 +54,7 @@ jobs:
       name: static
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-change '^(docs|spec)/'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then CHECK_RUST=1; fi
       install:
         - if [[ $CHECK_RUST ]]; then
