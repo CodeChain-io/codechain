@@ -21,7 +21,6 @@ mod epoch_verifier;
 mod message;
 mod network;
 mod params;
-mod stake;
 pub mod types;
 mod worker;
 
@@ -38,6 +37,7 @@ use primitives::H256;
 use self::chain_notify::TendermintChainNotify;
 pub use self::params::{TendermintParams, TimeoutParams};
 use self::types::{Height, Step, View};
+use super::stake;
 use super::validator_set::ValidatorSet;
 use crate::client::EngineClient;
 use crate::codechain_machine::CodeChainMachine;
