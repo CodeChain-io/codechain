@@ -27,10 +27,9 @@ use cstate::{ActionHandler, StateResult, TopLevelState};
 use ctypes::errors::RuntimeError;
 use rlp::{Decodable, UntrustedRlp};
 
-use self::action_data::{StakeAccount, Stakeholders};
+use self::action_data::{Delegation, StakeAccount, Stakeholders};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
-use consensus::tendermint::stake::action_data::Delegation;
 use consensus::ValidatorSet;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
