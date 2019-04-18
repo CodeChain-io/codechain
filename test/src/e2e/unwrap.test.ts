@@ -89,7 +89,9 @@ describe("Unwrap CCC", function() {
                 U64.plus(
                     beforeAliceBalance,
                     wrapTransaction.getAsset().quantity
-                ).toEncodeObject()
+                )
+                    .plus(2 /* stake share */)
+                    .toEncodeObject()
             );
         });
     });
@@ -164,7 +166,9 @@ describe("Unwrap CCC", function() {
                     aliceAddress
                 )).toEncodeObject()
             ).eq(
-                U64.plus(beforeAliceBalance, asset2!.quantity).toEncodeObject()
+                U64.plus(beforeAliceBalance, asset2!.quantity)
+                    .plus(2 /* stake share */)
+                    .toEncodeObject()
             );
         });
     });

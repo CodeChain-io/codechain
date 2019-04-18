@@ -27,6 +27,7 @@ use crate::codechain_machine::CodeChainMachine;
 use crate::error::Error;
 use crate::header::Header;
 
+pub mod null_validator;
 pub mod validator_list;
 
 /// Creates a validator set from validator public keys.
