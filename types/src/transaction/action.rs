@@ -190,6 +190,7 @@ impl Action {
         max_asset_scheme_metadata_size: usize,
         max_transfer_metadata_size: usize,
         max_text_size: usize,
+        is_order_disabled: bool,
     ) -> Result<(), SyntaxError> {
         if let Some(network_id) = self.network_id() {
             if network_id != system_network_id {
@@ -234,6 +235,10 @@ impl Action {
                     return Err(SyntaxError::ZeroQuantity)
                 }
                 check_duplication_in_prev_out(burns, inputs)?;
+
+                if is_order_disabled && !orders.is_empty() {
+                    return Err(SyntaxError::DisabledTransaction)
+                }
                 if outputs.iter().any(|output| output.quantity == 0) {
                     return Err(SyntaxError::ZeroQuantity)
                 }
@@ -1437,7 +1442,7 @@ mod tests {
             approvals: vec![],
             expiration: None,
         };
-        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000), Ok(()));
+        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
     }
 
     #[test]
@@ -1559,7 +1564,7 @@ mod tests {
             expiration: None,
         };
 
-        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000), Ok(()));
+        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
     }
 
     #[test]
@@ -1647,7 +1652,7 @@ mod tests {
             expiration: None,
         };
         assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000, 1000),
+            action.verify(NetworkId::default(), 1000, 1000, 1000, false),
             Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         );
 
@@ -1769,7 +1774,7 @@ mod tests {
             expiration: None,
         };
         assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000, 1000),
+            action.verify(NetworkId::default(), 1000, 1000, 1000, false),
             Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         );
 
@@ -1858,7 +1863,7 @@ mod tests {
             expiration: None,
         };
         assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000, 1000),
+            action.verify(NetworkId::default(), 1000, 1000, 1000, false),
             Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         );
 
@@ -1947,7 +1952,7 @@ mod tests {
             expiration: None,
         };
         assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000, 1000),
+            action.verify(NetworkId::default(), 1000, 1000, 1000, false),
             Err(SyntaxError::InconsistentTransactionInOutWithOrders)
         );
     }
@@ -2066,7 +2071,7 @@ mod tests {
             approvals: vec![],
             expiration: None,
         };
-        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000), Ok(()));
+        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
     }
 
     #[test]
@@ -2087,7 +2092,10 @@ mod tests {
             },
             receiver: Address::random(),
         };
-        assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000), Err(SyntaxError::ZeroQuantity));
+        assert_eq!(
+            tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000, false),
+            Err(SyntaxError::ZeroQuantity)
+        );
 
         let invalid_asset_type = H160::random();
         let tx_invalid_asset_type = Action::UnwrapCCC {
@@ -2107,7 +2115,7 @@ mod tests {
             receiver: Address::random(),
         };
         assert_eq!(
-            tx_invalid_asset_type.verify(NetworkId::default(), 1000, 1000, 1000),
+            tx_invalid_asset_type.verify(NetworkId::default(), 1000, 1000, 1000, false),
             Err(SyntaxError::InvalidAssetType(invalid_asset_type))
         );
     }
@@ -2121,6 +2129,9 @@ mod tests {
             quantity: 0,
             payer: Address::random(),
         };
-        assert_eq!(tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000), Err(SyntaxError::ZeroQuantity));
+        assert_eq!(
+            tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000, false),
+            Err(SyntaxError::ZeroQuantity)
+        );
     }
 }
