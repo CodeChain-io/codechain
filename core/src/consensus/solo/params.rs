@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
+
 use cjson;
+use ckey::{Address, PlatformAddress};
 
 /// Params for a null engine.
 #[derive(Clone, Default)]
@@ -22,6 +25,7 @@ pub struct SoloParams {
     /// base reward for a block.
     pub block_reward: u64,
     pub enable_hit_handler: bool,
+    pub genesis_stakes: HashMap<Address, u64>,
 }
 
 impl From<cjson::scheme::SoloParams> for SoloParams {
@@ -29,6 +33,13 @@ impl From<cjson::scheme::SoloParams> for SoloParams {
         SoloParams {
             block_reward: p.block_reward.map_or_else(Default::default, Into::into),
             enable_hit_handler: p.action_handlers.hit.is_some(),
+            genesis_stakes: p
+                .action_handlers
+                .genesis_stakes
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(pa, amount)| (PlatformAddress::into_address(pa), amount))
+                .collect(),
         }
     }
 }
