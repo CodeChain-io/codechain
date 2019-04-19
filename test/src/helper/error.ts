@@ -159,6 +159,11 @@ export const ERROR = {
         message: $anything,
         data: $containsWord("OrderExpired")
     },
+    DISABLED_TRANSACTION: {
+        code: -32099,
+        message: $anything,
+        data: $containsWord("DisabledTransaction")
+    },
     STATE_NOT_EXIST: {
         code: -32048,
         message: $anything

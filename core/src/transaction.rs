@@ -133,7 +133,7 @@ impl UnverifiedTransaction {
     }
 
     /// Verify basic signature params. Does not attempt signer recovery.
-    pub fn verify_basic(&self, params: &CommonParams) -> Result<(), SyntaxError> {
+    pub fn verify_basic(&self, params: &CommonParams, is_order_disabled: bool) -> Result<(), SyntaxError> {
         if self.network_id != params.network_id {
             return Err(SyntaxError::InvalidNetworkId(self.network_id))
         }
@@ -146,6 +146,7 @@ impl UnverifiedTransaction {
             params.max_asset_scheme_metadata_size,
             params.max_transfer_metadata_size,
             params.max_text_content_size,
+            is_order_disabled,
         )
     }
 }
