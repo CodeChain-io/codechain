@@ -277,14 +277,11 @@ where
                 once,
             } => {
                 let timeout = event_loop.timeout(Token(token), delay).expect("Error registering user timer");
-                self.timers.write().insert(
-                    token,
-                    UserTimer {
-                        delay,
-                        timeout,
-                        once,
-                    },
-                );
+                self.timers.write().insert(token, UserTimer {
+                    delay,
+                    timeout,
+                    once,
+                });
             }
             IoMessage::RemoveTimer {
                 token,

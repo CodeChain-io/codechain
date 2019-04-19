@@ -25,7 +25,7 @@ use ccore::{
     Miner, MinerService, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
 };
 use cdiscovery::{Config, Discovery};
-use ckey::{Address, NetworkId};
+use ckey::{Address, NetworkId, PlatformAddress};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
@@ -81,7 +81,7 @@ fn discovery_start(
         bucket_size: cfg.discovery_bucket_size.unwrap(),
         t_refresh: cfg.discovery_refresh.unwrap(),
     };
-    let use_kademlia = match cfg.discovery_type.as_ref().map(|s| s.as_str()) {
+    let use_kademlia = match cfg.discovery_type.as_ref().map(String::as_str) {
         Some("unstructured") => false,
         Some("kademlia") => true,
         Some(discovery_type) => return Err(format!("Unknown discovery {}", discovery_type)),
@@ -154,7 +154,7 @@ fn new_miner(
                 }
             },
             EngineType::Solo => miner
-                .set_author(config.mining.author.map_or(Address::default(), |a| a.into_address()))
+                .set_author(config.mining.author.map_or(Address::default(), PlatformAddress::into_address))
                 .expect("set_author never fails when Solo is used"),
         }
     }
@@ -203,7 +203,7 @@ fn unlock_accounts(ap: &AccountProvider, pf: &PasswordFile) -> Result<(), String
 }
 
 pub fn open_db(cfg: &config::Operating, client_config: &ClientConfig) -> Result<Arc<KeyValueDB>, String> {
-    let db_path = cfg.db_path.as_ref().map(|s| s.as_str()).unwrap();
+    let db_path = cfg.db_path.as_ref().map(String::as_str).unwrap();
     let client_path = Path::new(db_path);
     let mut db_config = DatabaseConfig::with_columns(NUM_COLUMNS);
 

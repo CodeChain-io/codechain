@@ -151,17 +151,14 @@ mod test {
     fn uint_deserialization() {
         let s = r#"["0xa", "10", "", "0x", 0, "0xffffffffffffffff"]"#;
         let deserialized: Vec<Uint> = serde_json::from_str(s).unwrap();
-        assert_eq!(
-            deserialized,
-            vec![
-                Uint(U256::from(10)),
-                Uint(U256::from(10)),
-                Uint(U256::from(0)),
-                Uint(U256::from(0)),
-                Uint(U256::from(0)),
-                ::std::u64::MAX.into(),
-            ]
-        );
+        assert_eq!(deserialized, vec![
+            Uint(U256::from(10)),
+            Uint(U256::from(10)),
+            Uint(U256::from(0)),
+            Uint(U256::from(0)),
+            Uint(U256::from(0)),
+            ::std::u64::MAX.into(),
+        ]);
     }
 
     #[test]

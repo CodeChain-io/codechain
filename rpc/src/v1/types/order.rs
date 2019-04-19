@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::convert::{TryFrom, TryInto};
+
 use cjson::uint::Uint;
 use ctypes::transaction::{Order as OrderType, OrderOnTransfer as OrderOnTransferType};
 use ctypes::ShardId;
@@ -64,8 +66,9 @@ impl From<OrderType> for Order {
     }
 }
 
-impl From<Order> for Result<OrderType, FromHexError> {
-    fn from(from: Order) -> Self {
+impl TryFrom<Order> for OrderType {
+    type Error = FromHexError;
+    fn try_from(from: Order) -> Result<Self, Self::Error> {
         let parameters_from =
             from.parameters_from.into_iter().map(|param| param.from_hex()).collect::<Result<_, _>>()?;
         let parameters_fee = from.parameters_fee.into_iter().map(|param| param.from_hex()).collect::<Result<_, _>>()?;
@@ -109,10 +112,11 @@ impl From<OrderOnTransferType> for OrderOnTransfer {
     }
 }
 
-impl From<OrderOnTransfer> for Result<OrderOnTransferType, FromHexError> {
-    fn from(from: OrderOnTransfer) -> Self {
+impl TryFrom<OrderOnTransfer> for OrderOnTransferType {
+    type Error = FromHexError;
+    fn try_from(from: OrderOnTransfer) -> Result<Self, Self::Error> {
         Ok(OrderOnTransferType {
-            order: Result::from(from.order)?,
+            order: from.order.try_into()?,
             spent_quantity: from.spent_quantity.into(),
             input_indices: from.input_indices,
             output_indices: from.output_indices,

@@ -100,10 +100,6 @@ impl PayloadInfo {
                 let len_of_len = l as usize - 0xf7;
                 calculate_payload_info(header_bytes, len_of_len)
             }
-            // we cant reach this place, but rust requires _ to be implemented
-            _ => {
-                unreachable!();
-            }
         }
     }
 }

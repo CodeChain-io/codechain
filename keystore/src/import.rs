@@ -15,6 +15,7 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 
@@ -27,7 +28,7 @@ use crate::Error;
 pub fn import_account(path: &Path, dst: &KeyDirectory) -> Result<Address, Error> {
     let key_manager = DiskKeyFileManager;
     let existing_accounts = dst.load()?.into_iter().map(|a| a.address).collect::<HashSet<_>>();
-    let filename = path.file_name().and_then(|n| n.to_str()).map(|f| f.to_owned());
+    let filename = path.file_name().and_then(OsStr::to_str).map(ToOwned::to_owned);
     let account = fs::File::open(&path).map_err(Into::into).and_then(|file| key_manager.read(filename, file))?;
 
     let address = account.address;

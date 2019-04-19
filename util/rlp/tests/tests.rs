@@ -47,22 +47,16 @@ fn rlp_at_err() {
         assert!(rlp.is_list());
 
         let cat_err = rlp.at(0).unwrap_err();
-        assert_eq!(
-            cat_err,
-            DecoderError::RlpIsTooShort {
-                expected: 1,
-                got: 0
-            }
-        );
+        assert_eq!(cat_err, DecoderError::RlpIsTooShort {
+            expected: 1,
+            got: 0
+        });
 
         let dog_err = rlp.at(1).unwrap_err();
-        assert_eq!(
-            dog_err,
-            DecoderError::RlpIsTooShort {
-                expected: 1,
-                got: 0
-            }
-        );
+        assert_eq!(dog_err, DecoderError::RlpIsTooShort {
+            expected: 1,
+            got: 0
+        });
     }
 }
 
@@ -206,28 +200,22 @@ fn encode_str() {
         ETestPair("dog", vec![0x83, b'd', b'o', b'g']),
         ETestPair("Marek", vec![0x85, b'M', b'a', b'r', b'e', b'k']),
         ETestPair("", vec![0x80]),
-        ETestPair(
-            "Lorem ipsum dolor sit amet, consectetur adipisicing elit",
-            vec![
-                0xb8, 0x38, b'L', b'o', b'r', b'e', b'm', b' ', b'i', b'p', b's', b'u', b'm', b' ', b'd', b'o', b'l',
-                b'o', b'r', b' ', b's', b'i', b't', b' ', b'a', b'm', b'e', b't', b',', b' ', b'c', b'o', b'n', b's',
-                b'e', b'c', b't', b'e', b't', b'u', b'r', b' ', b'a', b'd', b'i', b'p', b'i', b's', b'i', b'c', b'i',
-                b'n', b'g', b' ', b'e', b'l', b'i', b't',
-            ],
-        ),
+        ETestPair("Lorem ipsum dolor sit amet, consectetur adipisicing elit", vec![
+            0xb8, 0x38, b'L', b'o', b'r', b'e', b'm', b' ', b'i', b'p', b's', b'u', b'm', b' ', b'd', b'o', b'l', b'o',
+            b'r', b' ', b's', b'i', b't', b' ', b'a', b'm', b'e', b't', b',', b' ', b'c', b'o', b'n', b's', b'e', b'c',
+            b't', b'e', b't', b'u', b'r', b' ', b'a', b'd', b'i', b'p', b'i', b's', b'i', b'c', b'i', b'n', b'g', b' ',
+            b'e', b'l', b'i', b't',
+        ]),
     ];
     run_encode_tests(tests);
 }
 
 #[test]
 fn encode_address() {
-    let tests = vec![ETestPair(
-        H160::from("ef2d6d194084c2de36e0dabfce45d046b37d1106"),
-        vec![
-            0x94, 0xef, 0x2d, 0x6d, 0x19, 0x40, 0x84, 0xc2, 0xde, 0x36, 0xe0, 0xda, 0xbf, 0xce, 0x45, 0xd0, 0x46, 0xb3,
-            0x7d, 0x11, 0x06,
-        ],
-    )];
+    let tests = vec![ETestPair(H160::from("ef2d6d194084c2de36e0dabfce45d046b37d1106"), vec![
+        0x94, 0xef, 0x2d, 0x6d, 0x19, 0x40, 0x84, 0xc2, 0xde, 0x36, 0xe0, 0xda, 0xbf, 0xce, 0x45, 0xd0, 0x46, 0xb3,
+        0x7d, 0x11, 0x06,
+    ])];
     run_encode_tests(tests);
 }
 
@@ -249,10 +237,9 @@ fn encode_vector_u64() {
         VETestPair(vec![], vec![0xc0]),
         VETestPair(vec![15u64], vec![0xc1, 0x0f]),
         VETestPair(vec![1, 2, 3, 7, 0xff], vec![0xc6, 1, 2, 3, 7, 0x81, 0xff]),
-        VETestPair(
-            vec![0xffff_ffff, 1, 2, 3, 7, 0xff],
-            vec![0xcb, 0x84, 0xff, 0xff, 0xff, 0xff, 1, 2, 3, 7, 0x81, 0xff],
-        ),
+        VETestPair(vec![0xffff_ffff, 1, 2, 3, 7, 0xff], vec![
+            0xcb, 0x84, 0xff, 0xff, 0xff, 0xff, 1, 2, 3, 7, 0x81, 0xff,
+        ]),
     ];
     run_encode_tests_list(tests);
 }
@@ -391,28 +378,22 @@ fn decode_untrusted_str() {
         DTestPair("dog".to_string(), vec![0x83, b'd', b'o', b'g']),
         DTestPair("Marek".to_string(), vec![0x85, b'M', b'a', b'r', b'e', b'k']),
         DTestPair("".to_string(), vec![0x80]),
-        DTestPair(
-            "Lorem ipsum dolor sit amet, consectetur adipisicing elit".to_string(),
-            vec![
-                0xb8, 0x38, b'L', b'o', b'r', b'e', b'm', b' ', b'i', b'p', b's', b'u', b'm', b' ', b'd', b'o', b'l',
-                b'o', b'r', b' ', b's', b'i', b't', b' ', b'a', b'm', b'e', b't', b',', b' ', b'c', b'o', b'n', b's',
-                b'e', b'c', b't', b'e', b't', b'u', b'r', b' ', b'a', b'd', b'i', b'p', b'i', b's', b'i', b'c', b'i',
-                b'n', b'g', b' ', b'e', b'l', b'i', b't',
-            ],
-        ),
+        DTestPair("Lorem ipsum dolor sit amet, consectetur adipisicing elit".to_string(), vec![
+            0xb8, 0x38, b'L', b'o', b'r', b'e', b'm', b' ', b'i', b'p', b's', b'u', b'm', b' ', b'd', b'o', b'l', b'o',
+            b'r', b' ', b's', b'i', b't', b' ', b'a', b'm', b'e', b't', b',', b' ', b'c', b'o', b'n', b's', b'e', b'c',
+            b't', b'e', b't', b'u', b'r', b' ', b'a', b'd', b'i', b'p', b'i', b's', b'i', b'c', b'i', b'n', b'g', b' ',
+            b'e', b'l', b'i', b't',
+        ]),
     ];
     run_decode_tests(tests);
 }
 
 #[test]
 fn decode_untrusted_address() {
-    let tests = vec![DTestPair(
-        H160::from("ef2d6d194084c2de36e0dabfce45d046b37d1106"),
-        vec![
-            0x94, 0xef, 0x2d, 0x6d, 0x19, 0x40, 0x84, 0xc2, 0xde, 0x36, 0xe0, 0xda, 0xbf, 0xce, 0x45, 0xd0, 0x46, 0xb3,
-            0x7d, 0x11, 0x06,
-        ],
-    )];
+    let tests = vec![DTestPair(H160::from("ef2d6d194084c2de36e0dabfce45d046b37d1106"), vec![
+        0x94, 0xef, 0x2d, 0x6d, 0x19, 0x40, 0x84, 0xc2, 0xde, 0x36, 0xe0, 0xda, 0xbf, 0xce, 0x45, 0xd0, 0x46, 0xb3,
+        0x7d, 0x11, 0x06,
+    ])];
     run_decode_tests(tests);
 }
 
@@ -422,20 +403,18 @@ fn decode_untrusted_vector_u64() {
         VDTestPair(vec![], vec![0xc0]),
         VDTestPair(vec![15u64], vec![0xc1, 0x0f]),
         VDTestPair(vec![1, 2, 3, 7, 0xff], vec![0xc6, 1, 2, 3, 7, 0x81, 0xff]),
-        VDTestPair(
-            vec![0xffff_ffff, 1, 2, 3, 7, 0xff],
-            vec![0xcb, 0x84, 0xff, 0xff, 0xff, 0xff, 1, 2, 3, 7, 0x81, 0xff],
-        ),
+        VDTestPair(vec![0xffff_ffff, 1, 2, 3, 7, 0xff], vec![
+            0xcb, 0x84, 0xff, 0xff, 0xff, 0xff, 1, 2, 3, 7, 0x81, 0xff,
+        ]),
     ];
     run_decode_tests_list(tests);
 }
 
 #[test]
 fn decode_untrusted_vector_str() {
-    let tests = vec![VDTestPair(
-        vec!["cat".to_string(), "dog".to_string()],
-        vec![0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o', b'g'],
-    )];
+    let tests = vec![VDTestPair(vec!["cat".to_string(), "dog".to_string()], vec![
+        0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o', b'g',
+    ])];
     run_decode_tests_list(tests);
 }
 

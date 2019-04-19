@@ -199,7 +199,7 @@ impl Client {
         self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
         let transactions: Vec<UnverifiedTransaction> =
             transactions.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
-        let hashes: Vec<_> = transactions.iter().map(|tx| tx.hash()).collect();
+        let hashes: Vec<_> = transactions.iter().map(UnverifiedTransaction::hash).collect();
         self.notify(|notify| {
             notify.transactions_received(hashes.clone(), peer_id);
         });
@@ -786,13 +786,15 @@ impl ImportSealedBlock for Client {
         let start = Instant::now();
         let route = {
             // scope for self.import_lock
-            let _import_lock = self.importer.import_lock.lock();
+            let import_lock = self.importer.import_lock.lock();
 
             let number = block.header().number();
             let block_data = block.rlp_bytes();
-            let header = block.header().clone();
+            let header = block.header();
 
-            let route = self.importer.commit_block(block, &header, &block_data, self);
+            self.importer.import_headers(vec![header], self, &import_lock);
+
+            let route = self.importer.commit_block(block, header, &block_data, self);
             cinfo!(CLIENT, "Imported sealed block #{} ({})", number, h);
             route
         };
