@@ -30,12 +30,14 @@ use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
 pub struct CodeChainMachine {
     params: CommonParams,
+    is_order_disabled: bool,
 }
 
 impl CodeChainMachine {
     pub fn new(params: CommonParams) -> Self {
         CodeChainMachine {
             params,
+            is_order_disabled: is_order_disabled(),
         }
     }
 
@@ -71,7 +73,7 @@ impl CodeChainMachine {
             }
             .into())
         }
-        p.verify_basic(self.params())?;
+        p.verify_basic(self.params(), self.is_order_disabled)?;
 
         Ok(())
     }
@@ -257,6 +259,19 @@ impl CodeChainMachine {
                 ..
             } => self.params.min_remove_transaction_cost,
         }
+    }
+}
+
+fn is_order_disabled() -> bool {
+    #[cfg(test)]
+    const DEFAULT_ORDER_DISABLED: bool = false;
+    #[cfg(not(test))]
+    const DEFAULT_ORDER_DISABLED: bool = true;
+    let var = std::env::var("ENABLE_ORDER");
+    match var.as_ref().map(|x| x.trim()) {
+        Ok(value) => !value.parse::<bool>().unwrap(),
+        Err(std::env::VarError::NotPresent) => DEFAULT_ORDER_DISABLED,
+        Err(err) => unreachable!("{:?}", err),
     }
 }
 

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -98,7 +99,7 @@ where
             static ref LOCK: Mutex<()> = Mutex::new(());
         }
         let _guard = LOCK.lock();
-        let (tx, seq): (IncompleteTransaction, Option<u64>) = ::std::result::Result::from(tx)?;
+        let (tx, seq): (IncompleteTransaction, Option<u64>) = tx.try_into()?;
 
         let (hash, seq) = self
             .miner

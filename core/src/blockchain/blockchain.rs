@@ -303,6 +303,7 @@ impl BlockChain {
             pending_total_score: best_block_detail.total_score,
             genesis_hash: self.genesis_hash(),
             best_block_hash: best_block_header.hash(),
+            best_proposal_block_hash,
             best_block_number: best_block_detail.number,
             best_block_timestamp: best_block_header.timestamp(),
         }
@@ -390,6 +391,8 @@ impl BlockChain {
     #[allow(dead_code)]
     pub fn epoch_transition_for(&self, parent_hash: H256) -> Option<EpochTransition> {
         // slow path: loop back block by block
+        #[allow(clippy::identity_conversion)]
+        // This is a false alarm. https://github.com/rust-lang/rust-clippy/issues/3944
         for hash in self.ancestry_iter(parent_hash)? {
             let details = self.block_details(&hash)?;
 

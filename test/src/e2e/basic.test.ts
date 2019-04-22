@@ -30,7 +30,9 @@ describe("solo - 1 node", function() {
     });
 
     it("getNodeVersion", async function() {
-        expect(await node.sdk.rpc.node.getNodeVersion()).to.equal("1.1.1");
+        expect(await node.sdk.rpc.node.getNodeVersion()).to.match(
+            /^[0-9]+\.[0-9]+\.[0-9]+$/
+        );
     });
 
     it("getCommitHash", async function() {

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::ops::Deref;
+
 use cjson::uint::Uint;
 use cstate::{Asset as AssetType, OwnedAsset as OwnedAssetType};
 use primitives::{H160, H256};
@@ -54,7 +56,7 @@ impl From<OwnedAssetType> for OwnedAsset {
             },
             lock_script_hash: *asset.lock_script_hash(),
             order_hash: *asset.order_hash(),
-            parameters: asset.parameters().iter().map(|bytes| bytes.to_hex()).collect(),
+            parameters: asset.parameters().iter().map(Deref::deref).map(<[u8]>::to_hex).collect(),
         }
     }
 }

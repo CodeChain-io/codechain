@@ -128,7 +128,7 @@ impl Net for NetClient {
         })
     }
 
-    fn recent_network_usage(&self) -> Result<HashMap<&'static str, usize>> {
+    fn recent_network_usage(&self) -> Result<HashMap<String, usize>> {
         Ok(self.network_control.recent_network_usage().map_err(|e| errors::network_control(&e))?)
     }
 }

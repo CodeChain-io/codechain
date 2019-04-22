@@ -1427,7 +1427,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn mint_and_transfer_and_burn() {
         let sender = address();
         let mut state_db = RefCell::new(get_temp_state_db());
@@ -1618,7 +1618,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn cannot_transfer_because_prev_out_type_is_invalid() {
         let sender = address();
         let mut state_db = RefCell::new(get_temp_state_db());
@@ -1697,7 +1697,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn mint_three_times_and_transfer_with_order() {
         let sender = address();
         let mut state_db = RefCell::new(get_temp_state_db());
@@ -1857,7 +1857,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn decompose_fail_invalid_input_different_asset_type() {
         let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
@@ -1936,7 +1936,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn decompose_fail_invalid_output_insufficient_output() {
         let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();
@@ -2020,7 +2020,7 @@ mod tests {
 
 
     #[test]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn decompose_fail_invalid_output_insufficient_amount() {
         let mut state_db = RefCell::new(get_temp_state_db());
         let mut shard_cache = ShardCache::default();

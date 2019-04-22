@@ -1,4 +1,4 @@
-CodeChain [![Build Status](https://travis-ci.org/CodeChain-io/codechain.svg?branch=master)](https://travis-ci.org/CodeChain-io/codechain) [![Gitter: CodeChain](https://img.shields.io/badge/gitter-codechain-4AB495.svg)](https://gitter.im/CodeChain-io/codechain) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Read the Docs](https://img.shields.io/readthedocs/codechain.svg)](https://codechain.readthedocs.io/en/latest/)
+CodeChain [![Build Status](https://travis-ci.org/CodeChain-io/codechain.svg?branch=master)](https://travis-ci.org/CodeChain-io/codechain) [![Gitter: CodeChain](https://img.shields.io/badge/gitter-codechain-4AB495.svg)](https://gitter.im/CodeChain-io/codechain) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 ==============
 
 CodeChain is a programmable open source blockchain technology optimal for developing and customizing multi-asset management systems.
@@ -56,7 +56,7 @@ This should result in CodeChain running.
 ### Building From Source
 
 #### Build Dependencies
-CodeChain requires Rust version 1.32.0 to build. Using [rustup](https://rustup.rs/ "rustup URL") is recommended.
+CodeChain requires Rust version 1.34.0 to build. Using [rustup](https://rustup.rs/ "rustup URL") is recommended.
 
 - For Linux Systems:
   - Ubuntu

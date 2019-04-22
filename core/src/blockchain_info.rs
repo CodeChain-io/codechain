@@ -30,6 +30,8 @@ pub struct BlockChainInfo {
     pub genesis_hash: H256,
     /// Best blockchain block hash.
     pub best_block_hash: H256,
+    /// Best blockchain proposal block hash.
+    pub best_proposal_block_hash: H256,
     /// Best blockchain block number.
     pub best_block_number: BlockNumber,
     /// Best blockchain block timestamp.

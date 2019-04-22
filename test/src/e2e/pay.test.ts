@@ -16,6 +16,7 @@
 
 import { expect } from "chai";
 import "mocha";
+import { faucetAddress } from "../helper/constants";
 import CodeChain from "../helper/spawn";
 
 describe("Pay", async function() {
@@ -27,6 +28,16 @@ describe("Pay", async function() {
 
     it("Allow zero pay", async function() {
         const pay = await node.sendPayTx({ quantity: 0 });
+        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
+            .true;
+        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
+    });
+
+    it("Allow pay to itself", async function() {
+        const pay = await node.sendPayTx({
+            quantity: 100,
+            recipient: faucetAddress
+        });
         expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
             .true;
         expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;

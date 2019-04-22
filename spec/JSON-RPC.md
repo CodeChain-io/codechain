@@ -299,6 +299,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getShardOwners](#chain_getshardowners)
  * [chain_getShardUsers](#chain_getshardusers)
  * [chain_getMiningReward](#chain_getminingreward)
+ * [chain_getMinTransactionFee](#chain_getmintransactionfee)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_executeVM](#chain_executevm)
  * [chain_getNetworkId](#chain_getnetworkid)
@@ -1303,6 +1304,38 @@ It returns `null` if the given block number is not mined yet.
   "jsonrpc":"2.0",
   "result": null,
   "id":41
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+# chain_getMinTransactionFee
+Gets the min cost of the transaction.
+It returns null if the first parameter is an invalid transaction type or the second parameter is larger than the current best block.
+
+### Params
+ 1. transaction type - `string`
+ 2. block number - `number` | `null`
+
+### Returns
+`number` | `null`
+
+Errors: `Invalid Params`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getMinTransactionFee", "params": ["pay", 3], "id": 7}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":100,
+  "id":7
 }
 ```
 

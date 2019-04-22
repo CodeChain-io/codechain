@@ -282,7 +282,7 @@ pub enum QueueTag {
     New,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TransactionOrderWithTag {
     pub order: TransactionOrder,
     pub tag: QueueTag,
