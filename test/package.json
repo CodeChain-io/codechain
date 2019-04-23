@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "CodeChain end-to-end test",
   "main": "index.js",
-  "author": "CodeChain Team <codechain@kodebox.io>",
+  "author": "CodeChain Team <hi@codechain.io>",
   "license": "AGPL-3.0",
   "engines": {
     "node": ">=10",
