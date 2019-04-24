@@ -3,3 +3,5 @@
 /keys/
 /db/
 /docker/
+/keystore.db
+/test/
