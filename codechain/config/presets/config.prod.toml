@@ -4,7 +4,6 @@ base_path = "."
 chain = "mainnet"
 
 [mining]
-disable = false
 mem_pool_mem_limit = 512 # MB
 mem_pool_size = 524288
 mem_pool_fee_bump_shift = 3 # 12.5%

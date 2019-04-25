@@ -215,7 +215,6 @@ pub struct Operating {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Mining {
-    pub disable: Option<bool>,
     pub author: Option<PlatformAddress>,
     pub engine_signer: Option<PlatformAddress>,
     pub mem_pool_size: Option<usize>,
@@ -374,9 +373,6 @@ impl Operating {
 
 impl Mining {
     pub fn merge(&mut self, other: &Mining) {
-        if other.disable.is_some() {
-            self.disable = other.disable;
-        }
         if other.author.is_some() {
             self.author = other.author;
         }
@@ -416,15 +412,16 @@ impl Mining {
     }
 
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
-        if matches.is_present("no-miner") {
-            self.disable = Some(true);
-        }
-
         if let Some(author) = matches.value_of("author") {
             self.author = Some(author.parse().map_err(|_| "Invalid address format")?);
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
             self.engine_signer = Some(engine_signer.parse().map_err(|_| "Invalid address format")?);
+        }
+        if matches.is_present("no-miner") {
+            self.author = None;
+            self.engine_signer = None;
+            println!("This option was deprecated. PoW type engine with no engine signer and PBFT or PoA type engine with no author implicitly means no-miner.");
         }
         if let Some(mem_pool_fee_bump_shift) = matches.value_of("mem-pool-fee-bump-shift") {
             self.mem_pool_mem_limit =
