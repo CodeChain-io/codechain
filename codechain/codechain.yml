@@ -155,14 +155,10 @@ args:
         long: author
         help: Specify the block author (aka "coinbase") address for sending block rewards from sealed blocks.
         takes_value: true
-        conflicts_with:
-            - no-miner
     - engine-signer:
         long: engine-signer
         help: Specify the address which should be used to sign consensus messages and issue blocks.
         takes_value: true
-        conflicts_with:
-            -  no-miner
     - password-path:
         long: password-path
         help: Specify the password file path.
