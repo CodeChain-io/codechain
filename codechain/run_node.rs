@@ -42,7 +42,7 @@ use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::{Condvar, Mutex};
 
 use crate::config::{self, load_config};
-use crate::constants::DEFAULT_KEYS_PATH;
+use crate::constants::{DEFAULT_DB_PATH, DEFAULT_KEYS_PATH};
 use crate::dummy_network_service::DummyNetworkService;
 use crate::json::PasswordFile;
 use crate::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
@@ -203,8 +203,9 @@ fn unlock_accounts(ap: &AccountProvider, pf: &PasswordFile) -> Result<(), String
 }
 
 pub fn open_db(cfg: &config::Operating, client_config: &ClientConfig) -> Result<Arc<KeyValueDB>, String> {
-    let db_path = cfg.db_path.as_ref().map(String::as_str).unwrap();
-    let client_path = Path::new(db_path);
+    let base_path = cfg.base_path.as_ref().unwrap().clone();
+    let db_path = cfg.db_path.as_ref().map(String::clone).unwrap_or_else(|| base_path + "/" + DEFAULT_DB_PATH);
+    let client_path = Path::new(&db_path);
     let mut db_config = DatabaseConfig::with_columns(NUM_COLUMNS);
 
     db_config.memory_budget = client_config.db_cache_size;
@@ -253,11 +254,10 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
     let pf = load_password_file(&config.operating.password_path)?;
-    let keys_path = match config.operating.keys_path {
-        Some(ref keys_path) => keys_path,
-        None => DEFAULT_KEYS_PATH,
-    };
-    let ap = prepare_account_provider(keys_path)?;
+    let base_path = config.operating.base_path.as_ref().unwrap().clone();
+    let keys_path =
+        config.operating.keys_path.as_ref().map(String::clone).unwrap_or_else(|| base_path + "/" + DEFAULT_KEYS_PATH);
+    let ap = prepare_account_provider(&keys_path)?;
     unlock_accounts(&*ap, &pf)?;
 
     let client_config: ClientConfig = Default::default();
