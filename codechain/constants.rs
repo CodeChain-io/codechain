@@ -15,3 +15,4 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub const DEFAULT_KEYS_PATH: &str = "keys";
+pub const DEFAULT_DB_PATH: &str = "db";
