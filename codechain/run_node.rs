@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::env;
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Weak};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ccore::{
     AccountProvider, AccountProviderError, ChainNotify, Client, ClientConfig, ClientService, EngineInfo, EngineType,
@@ -35,7 +34,6 @@ use csync::{BlockSyncExtension, BlockSyncSender, SnapshotService, TransactionSyn
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
-use finally_block::finally;
 use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::{Condvar, Mutex};
@@ -226,17 +224,6 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     let timer_loop = TimerLoop::new(2);
 
     let config = load_config(matches)?;
-
-    // FIXME: It is the hotfix for #348.
-    // Remove the below code if you find the proper way to solve #348.
-    let _wait = finally(|| {
-        const DEFAULT: u64 = 1;
-        let wait_before_shutdown = env::var_os("WAIT_BEFORE_SHUTDOWN")
-            .and_then(|sec| sec.into_string().ok())
-            .and_then(|sec| sec.parse().ok())
-            .unwrap_or(DEFAULT);
-        ::std::thread::sleep(Duration::from_secs(wait_before_shutdown));
-    });
 
     let scheme = match &config.operating.chain {
         Some(chain) => chain.scheme()?,
