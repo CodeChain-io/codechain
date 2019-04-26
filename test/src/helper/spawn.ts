@@ -171,8 +171,6 @@ export default class CodeChain {
         }
         const useDebugBuild = process.env.NODE_ENV !== "production";
         process.env.RUST_LOG = logLevel;
-        // NOTE: https://github.com/CodeChain-io/codechain/issues/348
-        process.env.WAIT_BEFORE_SHUTDOWN = "0";
 
         const baseArgs = [...this.argv, ...argv];
         if (disableIpc) {
