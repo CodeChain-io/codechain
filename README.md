@@ -53,6 +53,23 @@ docker run -it codechain-io/codechain:branch_or_tag_name
 
 This should result in CodeChain running.
 
+#### Making local database and keys persistent
+
+CodeChain depends on the local database and keys commonly stored under the directories `keys` and `db`. A Docker container is independent of host environment and other Docker images. Therefore, when running a new Docker container with an image with a new CodeChain version or even with the same image, the database and keys are not persistent. To solve the problem, one can take advantage of the Docker's volume option. With the command below,
+```sh
+docker run -it -v codechain-db-vol:/app/codechain/db -v codechain-keys-vol:/app/codechain/keys codechain-io/codechain:branch_or_tag_name
+```
+one can mount the volume `codechain-db-vol` into `/app/db` and the volume `codechain-keys-vol` into `/app/keys` in the container. This command will automatically create volumes if existing volumes with specified names do not exist. Because the default working directory specified in `Dockerfile` is `/app/codechain`, the default db and keys path are `/app/codechain/db` and `app/codechian/keys`. One can also customize the paths with CodeChain cli arguments `base-path`, `key-path` and `db-path`.
+
+```sh
+docker run -it -v codechain-db-vol:custom_base_path/db -v codechain-keys-vol:custom_base_path/keys codechain-io/codechain:branch_or_tag_name --base-path custom_base_path
+```
+
+```sh
+docker run -it -v codechain-db-vol:custom_db_path -v codechain-keys-vol:custom_keys_path codechain-io/codechain:branch_or_tag_name --db-path custom_db_path --keys-path custom_keys_path
+```
+With the methods above, node organizers can manage their local persistent data using docker images.
+
 ### Building From Source
 
 #### Build Dependencies
