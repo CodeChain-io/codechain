@@ -1,6 +1,6 @@
 name: codechain
 version_short: "v"
-author: CodeChain Team <codechain@kodebox.io>
+author: CodeChain Team <hi@codechain.io>
 about: CodeChian client
 args:
     - config:
