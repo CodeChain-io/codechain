@@ -124,9 +124,11 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
 
     fn is_epoch_end(&self, chain_head: &Header, _chain: &super::Headers<Header>) -> Option<Vec<u8>> {
         let first = chain_head.number() == 0;
-
-        // finality never occurs so only apply immediate transitions.
-        self.validators.is_epoch_end(first, chain_head)
+        if first {
+            Some(Vec::new())
+        } else {
+            None
+        }
     }
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {

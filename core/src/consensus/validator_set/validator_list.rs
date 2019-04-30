@@ -23,7 +23,6 @@ use primitives::H256;
 use super::ValidatorSet;
 use crate::codechain_machine::CodeChainMachine;
 use crate::error::Error;
-use crate::header::Header;
 
 /// Validator set containing a known set of public keys.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -93,14 +92,6 @@ impl ValidatorSet for ValidatorList {
 
     fn count(&self, _bh: &H256) -> usize {
         self.validators.len()
-    }
-
-    fn is_epoch_end(&self, first: bool, _chain_head: &Header) -> Option<Vec<u8>> {
-        if first {
-            Some(Vec::new()) // allow transition to fixed list, and instantly
-        } else {
-            None
-        }
     }
 
     fn epoch_set(

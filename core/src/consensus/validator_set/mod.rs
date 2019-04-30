@@ -72,14 +72,6 @@ pub trait ValidatorSet: Send + Sync {
         Ok(Vec::new())
     }
 
-    /// Whether this block is the last one in its epoch.
-    ///
-    /// Indicates that the validator set changed at the given block in a manner
-    /// that doesn't require finality.
-    ///
-    /// `first` is true if this is the first block in the set.
-    fn is_epoch_end(&self, first: bool, chain_head: &Header) -> Option<Vec<u8>>;
-
     /// Recover the validator set from the given proof, the block number, and
     /// whether this header is first in its set.
     ///
