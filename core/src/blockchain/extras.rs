@@ -21,7 +21,7 @@ use ctypes::BlockNumber;
 use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 use primitives::{H256, H264, U256};
 
-use crate::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
+use crate::consensus::epoch::Transition as EpochTransition;
 use crate::db::Key;
 use crate::types::TransactionId;
 
@@ -38,8 +38,7 @@ enum ExtrasIndex {
     TransactionAddress = 3,
     /// Epoch transition data index.
     EpochTransitions = 4,
-    /// Pending epoch transition data index.
-    PendingEpochTransition = 5,
+    // (Reserved) = 5,
 }
 
 fn with_index(hash: &H256, i: ExtrasIndex) -> H264 {
@@ -127,14 +126,6 @@ impl Key<EpochTransitions> for u64 {
             .expect("format arg is valid; no more than 16 chars will be written; qed");
 
         EpochTransitionsKey(arr)
-    }
-}
-
-impl Key<PendingEpochTransition> for H256 {
-    type Target = H264;
-
-    fn key(&self) -> H264 {
-        with_index(self, ExtrasIndex::PendingEpochTransition)
     }
 }
 

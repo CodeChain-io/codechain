@@ -132,12 +132,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
         self.validators.genesis_epoch_data(header)
     }
 
-    fn is_epoch_end(
-        &self,
-        chain_head: &Header,
-        _chain: &super::Headers<Header>,
-        _transition_store: &super::PendingTransitionStore,
-    ) -> Option<Vec<u8>> {
+    fn is_epoch_end(&self, chain_head: &Header, _chain: &super::Headers<Header>) -> Option<Vec<u8>> {
         let first = chain_head.number() == 0;
 
         // finality never occurs so only apply immediate transitions.

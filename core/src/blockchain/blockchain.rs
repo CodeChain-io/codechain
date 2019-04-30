@@ -30,7 +30,7 @@ use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::{tree_route, ImportRoute};
 use crate::blockchain_info::BlockChainInfo;
-use crate::consensus::epoch::{PendingTransition as PendingEpochTransition, Transition as EpochTransition};
+use crate::consensus::epoch::Transition as EpochTransition;
 use crate::consensus::CodeChainEngine;
 use crate::db::{self, Readable, Writable};
 use crate::encoded;
@@ -426,18 +426,6 @@ impl BlockChain {
         } else {
             None
         }
-    }
-
-    /// Write a pending epoch transition by block hash.
-    pub fn insert_pending_transition(&self, batch: &mut DBTransaction, hash: H256, t: &PendingEpochTransition) {
-        batch.write(db::COL_EXTRA, &hash, t);
-    }
-
-    /// Get a pending epoch transition by block hash.
-    // TODO: implement removal safely: this can only be done upon finality of a block
-    // that _uses_ the pending transition.
-    pub fn get_pending_transition(&self, hash: H256) -> Option<PendingEpochTransition> {
-        self.db.read(db::COL_EXTRA, &hash)
     }
 }
 

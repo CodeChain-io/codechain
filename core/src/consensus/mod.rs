@@ -47,7 +47,7 @@ use ctypes::transaction::Action;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
 
-use self::epoch::{EpochVerifier, NoOp, PendingTransition};
+use self::epoch::{EpochVerifier, NoOp};
 use self::tendermint::types::{BitSet, View};
 use crate::account_provider::AccountProvider;
 use crate::block::SealedBlock;
@@ -214,12 +214,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// from any epoch other than the current.
     ///
     /// Return optional transition proof.
-    fn is_epoch_end(
-        &self,
-        _chain_head: &M::Header,
-        _chain: &Headers<M::Header>,
-        _transition_store: &PendingTransitionStore,
-    ) -> Option<Vec<u8>> {
+    fn is_epoch_end(&self, _chain_head: &M::Header, _chain: &Headers<M::Header>) -> Option<Vec<u8>> {
         None
     }
 
@@ -317,9 +312,6 @@ pub enum ConstructedVerifier<'a, M: Machine> {
 
 /// Type alias for a function we can get headers by hash through.
 pub type Headers<'a, H> = Fn(H256) -> Option<H> + 'a;
-
-/// Type alias for a function we can query pending transitions by block hash through.
-pub type PendingTransitionStore<'a> = Fn(H256) -> Option<PendingTransition> + 'a;
 
 /// Voting errors.
 #[derive(Debug)]
