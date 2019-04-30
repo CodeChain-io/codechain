@@ -18,7 +18,7 @@ use std::iter::Iterator;
 use std::sync::atomic::Ordering as AtomicOrdering;
 use std::sync::{Arc, Weak};
 
-use ckey::{public_to_address, recover_schnorr, Address, Message, SchnorrSignature};
+use ckey::Address;
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::ActionHandler;
@@ -26,11 +26,9 @@ use ctypes::machine::WithBalances;
 use ctypes::transaction::Action;
 use ctypes::BlockNumber;
 use primitives::H256;
-use rlp::UntrustedRlp;
 
 use super::super::stake;
-use super::super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
-use super::epoch_verifier::EpochVerifier;
+use super::super::{ConsensusEngine, EngineError, Seal};
 use super::network::TendermintExtension;
 pub use super::params::{TendermintParams, TimeoutParams};
 use super::worker;
@@ -126,28 +124,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         }
 
         None
-    }
-
-    fn epoch_verifier<'a>(&self, _header: &Header, proof: &'a [u8]) -> ConstructedVerifier<'a, CodeChainMachine> {
-        let (signal_number, set_proof, finality_proof) = match destructure_proofs(proof) {
-            Ok(x) => x,
-            Err(e) => return ConstructedVerifier::Err(e),
-        };
-
-        let first = signal_number == 0;
-        match self.validators.epoch_set(first, &self.machine, signal_number, set_proof) {
-            Ok((list, finalize)) => {
-                let verifier = Box::new(EpochVerifier::new(list, |signature: &SchnorrSignature, message: &Message| {
-                    Ok(public_to_address(&recover_schnorr(&signature, &message)?))
-                }));
-
-                match finalize {
-                    Some(finalize) => ConstructedVerifier::Unconfirmed(verifier, finality_proof, finalize),
-                    None => ConstructedVerifier::Trusted(verifier),
-                }
-            }
-            Err(e) => ConstructedVerifier::Err(e),
-        }
     }
 
     fn populate_from_parent(&self, header: &mut Header, _parent: &Header) {
@@ -343,9 +319,4 @@ fn combine_proofs(signal_number: BlockNumber, set_proof: &[u8], finality_proof: 
     let mut stream = ::rlp::RlpStream::new_list(3);
     stream.append(&signal_number).append(&set_proof).append(&finality_proof);
     stream.out()
-}
-
-fn destructure_proofs(combined: &[u8]) -> Result<(BlockNumber, &[u8], &[u8]), Error> {
-    let rlp = UntrustedRlp::new(combined);
-    Ok((rlp.at(0)?.as_val()?, rlp.at(1)?.data()?, rlp.at(2)?.data()?))
 }
