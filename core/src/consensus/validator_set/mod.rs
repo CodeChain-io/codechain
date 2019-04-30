@@ -21,7 +21,6 @@ use ctypes::BlockNumber;
 use primitives::{Bytes, H256};
 
 use self::validator_list::ValidatorList;
-use super::EpochChange;
 use crate::client::EngineClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::error::Error;
@@ -80,13 +79,6 @@ pub trait ValidatorSet: Send + Sync {
     ///
     /// `first` is true if this is the first block in the set.
     fn is_epoch_end(&self, first: bool, chain_head: &Header) -> Option<Vec<u8>>;
-
-    /// Whether the given block signals the end of an epoch, but change won't take effect
-    /// until finality.
-    ///
-    /// Engine should set `first` only if the header is genesis. Multiplexing validator
-    /// sets can set `first` to internal changes.
-    fn signals_epoch_end(&self, first: bool, header: &Header) -> EpochChange;
 
     /// Recover the validator set from the given proof, the block number, and
     /// whether this header is first in its set.

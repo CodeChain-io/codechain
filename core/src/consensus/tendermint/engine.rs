@@ -29,7 +29,7 @@ use primitives::H256;
 use rlp::UntrustedRlp;
 
 use super::super::stake;
-use super::super::{ConsensusEngine, ConstructedVerifier, EngineError, EpochChange, Seal};
+use super::super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
 use super::epoch_verifier::EpochVerifier;
 use super::network::TendermintExtension;
 pub use super::params::{TendermintParams, TimeoutParams};
@@ -115,11 +115,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
             })
             .unwrap();
         receiver.recv().unwrap()
-    }
-
-    fn signals_epoch_end(&self, header: &Header) -> EpochChange {
-        let first = header.number() == 0;
-        self.validators.signals_epoch_end(first, header)
     }
 
     fn is_epoch_end(

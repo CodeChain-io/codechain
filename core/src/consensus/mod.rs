@@ -207,15 +207,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         Ok(Vec::new())
     }
 
-    /// Whether an epoch change is signalled at the given header but will require finality.
-    /// If a change can be enacted immediately then return `No` from this function but
-    /// `Yes` from `is_epoch_end`.
-    ///
-    /// Return `Yes` or `No` when the answer is definitively known.
-    fn signals_epoch_end(&self, _header: &M::Header) -> EpochChange {
-        EpochChange::No
-    }
-
     /// Whether a block is the end of an epoch.
     ///
     /// This either means that an immediate transition occurs or a block signalling transition
@@ -311,22 +302,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn find_action_handler_for(&self, id: u64) -> Option<&ActionHandler> {
         self.action_handlers().iter().find(|handler| handler.handler_id() == id).map(AsRef::as_ref)
     }
-}
-
-/// Results of a query of whether an epoch change occurred at the given block.
-pub enum EpochChange {
-    /// Cannot determine until more data is passed.
-    Unsure,
-    /// No epoch change.
-    No,
-    /// The epoch will change, with proof.
-    Yes(Proof),
-}
-
-/// Proof generated on epoch change.
-pub enum Proof {
-    /// Known proof (extracted from signal)
-    Known(Vec<u8>),
 }
 
 /// Generated epoch verifier.
