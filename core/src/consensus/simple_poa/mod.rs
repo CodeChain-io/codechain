@@ -26,7 +26,7 @@ use self::params::SimplePoAParams;
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
-use super::{ConsensusEngine, ConstructedVerifier, EngineError, Seal};
+use super::{ConsensusEngine, EngineError, Seal};
 use crate::account_provider::AccountProvider;
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::client::EngineClient;
@@ -52,16 +52,6 @@ impl SimplePoA {
             validators: Box::new(ValidatorList::new(params.validators)),
             block_reward: params.block_reward,
         }
-    }
-}
-
-struct EpochVerifier {
-    list: ValidatorList,
-}
-
-impl super::epoch::EpochVerifier<CodeChainMachine> for EpochVerifier {
-    fn verify_light(&self, header: &Header) -> Result<(), Error> {
-        verify_external(header, &self.list)
     }
 }
 
@@ -137,25 +127,6 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
 
         // finality never occurs so only apply immediate transitions.
         self.validators.is_epoch_end(first, chain_head)
-    }
-
-    fn epoch_verifier<'a>(&self, header: &Header, proof: &'a [u8]) -> ConstructedVerifier<'a, CodeChainMachine> {
-        let first = header.number() == 0;
-
-        match self.validators.epoch_set(first, &self.machine, header.number(), proof) {
-            Ok((list, finalize)) => {
-                let verifier = Box::new(EpochVerifier {
-                    list,
-                });
-
-                // our epoch verifier will ensure no unverified verifier is ever verified.
-                match finalize {
-                    Some(finalize) => ConstructedVerifier::Unconfirmed(verifier, proof, finalize),
-                    None => ConstructedVerifier::Trusted(verifier),
-                }
-            }
-            Err(e) => ConstructedVerifier::Err(e),
-        }
     }
 
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {

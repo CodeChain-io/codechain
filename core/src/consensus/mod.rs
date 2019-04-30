@@ -47,7 +47,6 @@ use ctypes::transaction::Action;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
 
-use self::epoch::{EpochVerifier, NoOp};
 use self::tendermint::types::{BitSet, View};
 use crate::account_provider::AccountProvider;
 use crate::block::SealedBlock;
@@ -218,12 +217,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         None
     }
 
-    /// Create an epoch verifier from validation proof and a flag indicating
-    /// whether finality is required.
-    fn epoch_verifier<'a>(&self, _header: &M::Header, _proof: &'a [u8]) -> ConstructedVerifier<'a, M> {
-        ConstructedVerifier::Trusted(Box::new(NoOp))
-    }
-
     /// Populate a header's fields based on its parent's header.
     /// Usually implements the chain scoring rule based on weight.
     fn populate_from_parent(&self, _header: &mut M::Header, _parent: &M::Header) {}
@@ -297,17 +290,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn find_action_handler_for(&self, id: u64) -> Option<&ActionHandler> {
         self.action_handlers().iter().find(|handler| handler.handler_id() == id).map(AsRef::as_ref)
     }
-}
-
-/// Generated epoch verifier.
-pub enum ConstructedVerifier<'a, M: Machine> {
-    /// Fully trusted verifier.
-    Trusted(Box<EpochVerifier<M>>),
-    /// Verifier unconfirmed. Check whether given finality proof finalizes given hash
-    /// under previous epoch.
-    Unconfirmed(Box<EpochVerifier<M>>, &'a [u8], H256),
-    /// Error constructing verifier.
-    Err(Error),
 }
 
 /// Type alias for a function we can get headers by hash through.

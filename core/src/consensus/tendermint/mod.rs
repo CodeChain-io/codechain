@@ -17,7 +17,6 @@
 mod backup;
 mod chain_notify;
 mod engine;
-mod epoch_verifier;
 mod message;
 mod network;
 mod params;
