@@ -79,24 +79,3 @@ impl Decodable for Transition {
         })
     }
 }
-
-/// An epoch transition pending a finality proof.
-/// Not all transitions need one.
-pub struct PendingTransition {
-    /// "transition/epoch" proof from the engine.
-    pub proof: Vec<u8>,
-}
-
-impl Encodable for PendingTransition {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        s.append_single_value(&self.proof);
-    }
-}
-
-impl Decodable for PendingTransition {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        Ok(PendingTransition {
-            proof: rlp.as_val()?,
-        })
-    }
-}

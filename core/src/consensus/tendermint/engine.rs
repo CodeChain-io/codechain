@@ -117,21 +117,12 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         receiver.recv().unwrap()
     }
 
-    fn is_epoch_end(
-        &self,
-        chain_head: &Header,
-        _chain: &super::super::Headers<Header>,
-        transition_store: &super::super::PendingTransitionStore,
-    ) -> Option<Vec<u8>> {
+    fn is_epoch_end(&self, chain_head: &Header, _chain: &super::super::Headers<Header>) -> Option<Vec<u8>> {
         let first = chain_head.number() == 0;
 
         if let Some(change) = self.validators.is_epoch_end(first, chain_head) {
             let change = combine_proofs(chain_head.number(), &change, &[]);
             return Some(change)
-        } else if let Some(pending) = transition_store(chain_head.hash()) {
-            let signal_number = chain_head.number();
-            let finality_proof = ::rlp::encode(chain_head);
-            return Some(combine_proofs(signal_number, &pending.proof, &finality_proof))
         }
 
         None
