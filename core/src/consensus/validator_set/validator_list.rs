@@ -20,7 +20,6 @@ use ckey::{public_to_address, Address, Public};
 use ctypes::BlockNumber;
 use primitives::H256;
 
-use super::super::EpochChange;
 use super::ValidatorSet;
 use crate::codechain_machine::CodeChainMachine;
 use crate::error::Error;
@@ -102,10 +101,6 @@ impl ValidatorSet for ValidatorList {
         } else {
             None
         }
-    }
-
-    fn signals_epoch_end(&self, _: bool, _: &Header) -> EpochChange {
-        EpochChange::No
     }
 
     fn epoch_set(

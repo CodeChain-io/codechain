@@ -210,9 +210,6 @@ impl Importer {
 
         let mut batch = DBTransaction::new();
 
-        // check epoch end signal
-        self.check_epoch_end_signal(block.header(), &chain, &mut batch);
-
         block.state().journal_under(&mut batch, number).expect("DB commit failed");
         let route = chain.insert_block(&mut batch, block_data, invoices.clone(), self.engine.borrow());
 
@@ -253,33 +250,6 @@ impl Importer {
             // fetched from a DB iterator and DB iterators are only available on
             // flushed data.
             client.db().write(batch).expect("DB flush failed");
-        }
-    }
-
-    // check for epoch end signal and write pending transition if it occurs.
-    // state for the given block must be available.
-    fn check_epoch_end_signal(&self, header: &Header, chain: &BlockChain, batch: &mut DBTransaction) {
-        use crate::consensus::EpochChange;
-        let hash = header.hash();
-
-        match self.engine.signals_epoch_end(header) {
-            EpochChange::Yes(proof) => {
-                use crate::consensus::epoch::PendingTransition;
-                use crate::consensus::Proof;
-
-                let Proof::Known(proof) = proof;
-                cdebug!(CLIENT, "Block {} signals epoch end.", hash);
-
-                let pending = PendingTransition {
-                    proof,
-                };
-                chain.insert_pending_transition(batch, hash, &pending);
-            }
-            EpochChange::No => {}
-            EpochChange::Unsure => {
-                cwarn!(CLIENT, "Detected invalid engine implementation.");
-                cwarn!(CLIENT, "Engine claims to require more block data, but everything provided.");
-            }
         }
     }
 

@@ -18,7 +18,6 @@
 use ckey::{Address, Public};
 use primitives::H256;
 
-use super::super::EpochChange;
 use super::validator_list::ValidatorList;
 use super::ValidatorSet;
 use crate::codechain_machine::CodeChainMachine;
@@ -59,10 +58,6 @@ impl ValidatorSet for NullValidator {
     }
 
     fn is_epoch_end(&self, _first: bool, _chain_head: &Header) -> Option<Vec<u8>> {
-        unimplemented!()
-    }
-
-    fn signals_epoch_end(&self, _first: bool, _header: &Header) -> EpochChange {
         unimplemented!()
     }
 
