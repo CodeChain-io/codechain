@@ -22,7 +22,6 @@ use super::validator_list::ValidatorList;
 use super::ValidatorSet;
 use crate::codechain_machine::CodeChainMachine;
 use crate::error::Error;
-use crate::header::Header;
 
 /// Validator set containing a known set of public keys.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -54,10 +53,6 @@ impl ValidatorSet for NullValidator {
     }
 
     fn count(&self, _parent: &H256) -> usize {
-        unimplemented!()
-    }
-
-    fn is_epoch_end(&self, _first: bool, _chain_head: &Header) -> Option<Vec<u8>> {
         unimplemented!()
     }
 
