@@ -117,9 +117,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn is_epoch_end(&self, chain_head: &Header, _chain: &super::super::Headers<Header>) -> Option<Vec<u8>> {
         let first = chain_head.number() == 0;
-
-        if let Some(change) = self.validators.is_epoch_end(first, chain_head) {
-            let change = combine_proofs(chain_head.number(), &change, &[]);
+        if first {
+            let change = combine_proofs(chain_head.number(), &[], &[]);
             return Some(change)
         }
 
