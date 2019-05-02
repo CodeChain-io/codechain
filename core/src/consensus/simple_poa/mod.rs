@@ -118,10 +118,6 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
         verify_external(header, &*self.validators)
     }
 
-    fn genesis_epoch_data(&self, header: &Header) -> Result<Vec<u8>, String> {
-        self.validators.genesis_epoch_data(header)
-    }
-
     fn is_epoch_end(&self, chain_head: &Header, _chain: &super::Headers<Header>) -> Option<Vec<u8>> {
         let first = chain_head.number() == 0;
         if first {
