@@ -208,7 +208,7 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    fn min_cost(&self, action: &Action) -> u64 {
+    pub fn min_cost(&self, action: &Action) -> u64 {
         match action {
             Action::MintAsset {
                 ..

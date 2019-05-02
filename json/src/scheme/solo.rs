@@ -16,6 +16,8 @@
 
 use std::collections::HashMap;
 
+use ckey::PlatformAddress;
+
 use crate::uint::Uint;
 
 /// Solo params deserialization.
@@ -32,6 +34,7 @@ pub struct SoloParams {
 #[serde(rename_all = "camelCase")]
 pub struct SoloActionHandlersParams {
     pub hit: Option<HashMap<(), ()>>,
+    pub genesis_stakes: Option<HashMap<PlatformAddress, u64>>,
 }
 
 /// Solo engine deserialization.
@@ -55,12 +58,14 @@ mod tests {
         let s = r#"{
             "params": {
                 "blockReward": "0x0d",
-                "hit": {}
+                "hit": {},
+                "genesisStakes": {}
             }
         }"#;
 
         let deserialized: Solo = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
         assert_eq!(deserialized.params.action_handlers.hit, Some(HashMap::new()));
+        assert_eq!(deserialized.params.action_handlers.genesis_stakes, Some(HashMap::new()));
     }
 }

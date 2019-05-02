@@ -19,12 +19,17 @@ mod params;
 use std::sync::Arc;
 
 use cstate::{ActionHandler, HitHandler};
-use ctypes::machine::{Header, LiveBlock, Transactions, WithBalances};
+use ctypes::machine::WithBalances;
 
 use self::params::SoloParams;
+use super::stake;
+use super::validator_set;
 use super::{ConsensusEngine, Seal};
+use crate::block::{ExecutedBlock, IsBlock};
+use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
-use crate::SignedTransaction;
+use crate::error::Error;
+use crate::header::Header;
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo<M> {
@@ -40,6 +45,10 @@ impl<M> Solo<M> {
         if params.enable_hit_handler {
             action_handlers.push(Arc::new(HitHandler::new()));
         }
+        action_handlers.push(Arc::new(stake::Stake::new(
+            params.genesis_stakes.clone(),
+            Arc::new(validator_set::null_validator::NullValidator {}),
+        )));
 
         Solo {
             params,
@@ -49,15 +58,12 @@ impl<M> Solo<M> {
     }
 }
 
-impl<M: WithBalances> ConsensusEngine<M> for Solo<M>
-where
-    M::LiveBlock: Transactions<Transaction = SignedTransaction>,
-{
+impl ConsensusEngine<CodeChainMachine> for Solo<CodeChainMachine> {
     fn name(&self) -> &str {
         "Solo"
     }
 
-    fn machine(&self) -> &M {
+    fn machine(&self) -> &CodeChainMachine {
         &self.machine
     }
 
@@ -69,19 +75,33 @@ where
         EngineType::Solo
     }
 
-    fn generate_seal(&self, _block: &M::LiveBlock, _parent: &M::Header) -> Seal {
+    fn generate_seal(&self, _block: &ExecutedBlock, _parent: &Header) -> Seal {
         Seal::Solo
     }
 
-    fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
+    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
     }
 
-    fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
-        let author = *LiveBlock::header(&*block).author();
-        let total_reward = self.block_reward(block.header().number())
-            + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));
-        self.machine.add_balance(block, &author, total_reward)
+    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+        let author = *block.header().author();
+        let (total_reward, min_fee) = {
+            let transactions = block.transactions();
+            let block_reward = self.block_reward(block.header().number());
+            let total_fee: u64 = transactions.iter().map(|tx| tx.fee).sum();
+            let min_fee: u64 = transactions.iter().map(|tx| self.machine().min_cost(&tx.action)).sum();
+            (block_reward + total_fee, min_fee)
+        };
+
+        assert!(total_reward >= min_fee, "{} >= {}", total_reward, min_fee);
+        let stakes = stake::get_stakes(block.state()).expect("Cannot get Stake status");
+        for (address, share) in stake::fee_distribute(&author, min_fee, &stakes) {
+            self.machine.add_balance(block, &address, share)?
+        }
+        if total_reward != min_fee {
+            self.machine.add_balance(block, &author, total_reward - min_fee)?
+        }
+        Ok(())
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {

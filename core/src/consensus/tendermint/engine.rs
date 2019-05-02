@@ -28,12 +28,13 @@ use ctypes::BlockNumber;
 use primitives::H256;
 use rlp::UntrustedRlp;
 
+use super::super::stake;
 use super::super::{ConsensusEngine, ConstructedVerifier, EngineError, EpochChange, Seal};
 use super::epoch_verifier::EpochVerifier;
 use super::network::TendermintExtension;
 pub use super::params::{TendermintParams, TimeoutParams};
 use super::worker;
-use super::{stake, ChainNotify, Tendermint, SEAL_FIELDS};
+use super::{ChainNotify, Tendermint, SEAL_FIELDS};
 use crate::account_provider::AccountProvider;
 use crate::block::*;
 use crate::client::{Client, EngineClient};

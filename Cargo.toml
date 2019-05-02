@@ -2,7 +2,7 @@
 name = "codechain"
 version = "1.2.0"
 license = "AGPL-3.0"
-authors = ["CodeChain Team <codechain@kodebox.io>"]
+authors = ["CodeChain Team <hi@codechain.io>"]
 exclude = [
     "db/*",
     "docker/*",

@@ -3,7 +3,12 @@
     "engine": {
         "solo": {
             "params": {
-                "blockReward": "0x32"
+                "blockReward": "0x32",
+                "genesisStakes": {
+                    "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": 70000,
+                    "tccq9qvruafmf9vegjhkl0ruunkwp0d4lc8fgxknzh5": 20000,
+                    "tccq8snvxt5vfwthja7z7880dgs63x4njw2n5e5zm4h": 10000
+                }
             }
         }
     },

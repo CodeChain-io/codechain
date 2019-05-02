@@ -10,4 +10,4 @@
 Transactions(tx_0, …)
 ```
 
-This message MUST contain one or more items. To avoid spamming, sender SHOULD NOT include transaction that is expected to be known by receiver.
+This message MUST contain one or more items. To avoid spamming, sender SHOULD NOT include transaction that is expected to be known by receiver. Snappy algorithm is used to compress the content.
