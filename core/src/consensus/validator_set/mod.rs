@@ -66,11 +66,6 @@ pub trait ValidatorSet: Send + Sync {
         Ok(())
     }
 
-    /// Extract genesis epoch data from the genesis state and header.
-    fn genesis_epoch_data(&self, _header: &Header) -> Result<Vec<u8>, String> {
-        Ok(Vec::new())
-    }
-
     /// Notifies about malicious behaviour.
     fn report_malicious(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber, _proof: Bytes) {}
     /// Notifies about benign misbehaviour.
