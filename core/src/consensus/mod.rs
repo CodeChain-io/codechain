@@ -201,11 +201,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         Ok(())
     }
 
-    /// Genesis epoch data.
-    fn genesis_epoch_data(&self, _header: &M::Header) -> Result<Vec<u8>, String> {
-        Ok(Vec::new())
-    }
-
     /// Whether a block is the end of an epoch.
     ///
     /// This either means that an immediate transition occurs or a block signalling transition
