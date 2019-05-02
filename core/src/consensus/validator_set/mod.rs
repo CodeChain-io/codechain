@@ -22,7 +22,6 @@ use primitives::{Bytes, H256};
 
 use self::validator_list::ValidatorList;
 use crate::client::EngineClient;
-use crate::codechain_machine::CodeChainMachine;
 use crate::error::Error;
 use crate::header::Header;
 
@@ -71,22 +70,6 @@ pub trait ValidatorSet: Send + Sync {
     fn genesis_epoch_data(&self, _header: &Header) -> Result<Vec<u8>, String> {
         Ok(Vec::new())
     }
-
-    /// Recover the validator set from the given proof, the block number, and
-    /// whether this header is first in its set.
-    ///
-    /// May fail if the given header doesn't kick off an epoch or
-    /// the proof is invalid.
-    ///
-    /// Returns the set, along with a flag indicating whether finality of a specific
-    /// hash should be proven.
-    fn epoch_set(
-        &self,
-        first: bool,
-        machine: &CodeChainMachine,
-        number: BlockNumber,
-        proof: &[u8],
-    ) -> Result<(ValidatorList, Option<H256>), Error>;
 
     /// Notifies about malicious behaviour.
     fn report_malicious(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber, _proof: Bytes) {}
