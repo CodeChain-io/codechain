@@ -225,10 +225,12 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
     let config = load_config(matches)?;
 
+    let time_gap_params = config.mining.create_time_gaps();
     let scheme = match &config.operating.chain {
         Some(chain) => chain.scheme()?,
         None => return Err("chain is not specified".to_string()),
     };
+    scheme.engine.register_time_gap_config_to_worker(time_gap_params);
 
     let instance_id = config.operating.instance_id.unwrap_or(
         SystemTime::now()

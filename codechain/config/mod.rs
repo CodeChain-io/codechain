@@ -20,7 +20,7 @@ use std::fs;
 use std::str::{self, FromStr};
 use std::time::Duration;
 
-use ccore::{MinerOptions, StratumConfig};
+use ccore::{MinerOptions, StratumConfig, TimeGapParams};
 use cidr::IpCidr;
 use ckey::PlatformAddress;
 use clap;
@@ -226,6 +226,8 @@ pub struct Mining {
     pub reseal_max_period: Option<u64>,
     pub no_reseal_timer: Option<bool>,
     pub work_queue_size: Option<usize>,
+    pub allowed_past_gap: Option<u64>,
+    pub allowed_future_gap: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -446,7 +448,23 @@ impl Mining {
         if let Some(work_queue_size) = matches.value_of("work-queue-size") {
             self.work_queue_size = Some(work_queue_size.parse().map_err(|_| "Invalid size")?);
         }
+        if let Some(allowed_past_gap) = matches.value_of("allowed-past-gap") {
+            self.allowed_past_gap = Some(allowed_past_gap.parse().map_err(|_| "Invalid time gap")?);
+        }
+        if let Some(allowed_future_gap) = matches.value_of("allowed-future-gap") {
+            self.allowed_future_gap = Some(allowed_future_gap.parse().map_err(|_| "Invalid time gap")?);
+        }
         Ok(())
+    }
+
+    pub fn create_time_gaps(&self) -> TimeGapParams {
+        let allowed_past_gap = Duration::from_millis(self.allowed_past_gap.unwrap_or(30000));
+        let allowed_future_gap = Duration::from_millis(self.allowed_future_gap.unwrap_or(5000));
+
+        TimeGapParams {
+            allowed_past_gap,
+            allowed_future_gap,
+        }
     }
 }
 
