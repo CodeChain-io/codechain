@@ -40,6 +40,7 @@ use crate::consensus::EngineType;
 use crate::error::Error;
 use crate::header::Header;
 use crate::views::HeaderView;
+use consensus::tendermint::params::TimeGapParams;
 
 impl ConsensusEngine<CodeChainMachine> for Tendermint {
     fn name(&self) -> &str {
@@ -224,6 +225,10 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let (result, receiver) = crossbeam::bounded(1);
         self.inner.send(worker::Event::Restore(result)).unwrap();
         receiver.recv().unwrap();
+    }
+
+    fn register_time_gap_config_to_worker(&self, time_gap_params: TimeGapParams) {
+        self.external_params_initializer.send(time_gap_params).unwrap();
     }
 
     fn block_reward(&self, _block_number: u64) -> u64 {

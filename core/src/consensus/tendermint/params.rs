@@ -67,6 +67,11 @@ fn to_duration(ms: cjson::uint::Uint) -> Duration {
     Duration::from_millis(ms as u64)
 }
 
+pub struct TimeGapParams {
+    pub allowed_past_gap: Duration,
+    pub allowed_future_gap: Duration,
+}
+
 /// Base timeout of each step in ms.
 #[derive(Debug, Copy, Clone)]
 pub struct TimeoutParams {

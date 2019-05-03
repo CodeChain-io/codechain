@@ -31,7 +31,7 @@ pub use self::cuckoo::Cuckoo;
 pub use self::null_engine::NullEngine;
 pub use self::simple_poa::SimplePoA;
 pub use self::solo::Solo;
-pub use self::tendermint::{Tendermint, TendermintParams};
+pub use self::tendermint::{Tendermint, TendermintParams, TimeGapParams};
 pub use self::validator_set::validator_list::ValidatorList;
 pub use self::validator_set::ValidatorSet;
 
@@ -254,6 +254,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address) {}
 
     fn register_network_extension_to_service(&self, _: &NetworkService) {}
+
+    fn register_time_gap_config_to_worker(&self, _time_gap_params: TimeGapParams) {}
 
     fn score_to_target(&self, _score: &U256) -> U256 {
         U256::zero()
