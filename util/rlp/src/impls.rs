@@ -197,68 +197,6 @@ impl_decodable_for_u!(u32);
 impl_decodable_for_u!(u64);
 impl_decodable_for_u!(u128);
 
-impl Encodable for i32 {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        let buffer: [u8; 4] = self.to_be_bytes();
-        s.encoder().encode_value(&buffer[..]);
-    }
-}
-
-impl Decodable for i32 {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        rlp.decoder().decode_value(|bytes| match bytes.len() {
-            got @ 0...3 => Err(DecoderError::RlpIsTooShort {
-                expected: 4,
-                got,
-            }),
-            4 => {
-                // FIXME: I don't think it's the best way to make an array from a slice.
-                let array = unsafe {
-                    let mut array = mem::uninitialized::<[u8; 4]>();
-                    array.copy_from_slice(&bytes[0..4]);
-                    array
-                };
-                Ok(Self::from_be_bytes(array))
-            }
-            got => Err(DecoderError::RlpIsTooBig {
-                expected: 4,
-                got,
-            }),
-        })
-    }
-}
-
-impl Encodable for i64 {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        let buffer: [u8; 8] = self.to_be_bytes();
-        s.encoder().encode_value(&buffer[..]);
-    }
-}
-
-impl Decodable for i64 {
-    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        rlp.decoder().decode_value(|bytes| match bytes.len() {
-            got @ 0...7 => Err(DecoderError::RlpIsTooShort {
-                expected: 8,
-                got,
-            }),
-            8 => {
-                // FIXME: I don't think it's the best way to make an array from a slice.
-                let array = unsafe {
-                    let mut array = mem::uninitialized::<[u8; 8]>();
-                    array.copy_from_slice(&bytes[0..8]);
-                    array
-                };
-                Ok(Self::from_be_bytes(array))
-            }
-            got => Err(DecoderError::RlpIsTooBig {
-                expected: 8,
-                got,
-            }),
-        })
-    }
-}
-
 impl Encodable for usize {
     fn rlp_append(&self, s: &mut RlpStream) {
         (*self as u64).rlp_append(s);
