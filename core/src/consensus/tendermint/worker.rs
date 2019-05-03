@@ -18,6 +18,7 @@ use std::iter::Iterator;
 use std::mem;
 use std::sync::{Arc, Weak};
 use std::thread::{Builder, JoinHandle};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccrypto::blake256;
 use ckey::{public_to_address, verify_schnorr, Address, SchnorrSignature};
@@ -651,11 +652,16 @@ impl Worker {
                 // In the case, self.votes_received is not empty.
                 self.request_messages_to_all(vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
-                    let block_hash = match &self.last_two_thirds_majority {
+                    let block_hash_candidate = match &self.last_two_thirds_majority {
                         TwoThirdsMajority::Empty => self.proposal.imported_block_hash(),
                         TwoThirdsMajority::Unlock(_) => self.proposal.imported_block_hash(),
                         TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
                     };
+                    let block_hash = block_hash_candidate.filter(|hash| {
+                        let block =
+                            self.client().block(&BlockId::Hash(*hash)).expect("Already got imported block hash");
+                        self.is_generation_time_relevant(&block.decode_header())
+                    });
                     self.generate_and_broadcast_message(block_hash, is_restoring);
                 }
             }
@@ -683,6 +689,21 @@ impl Worker {
             Step::Commit => {
                 cinfo!(ENGINE, "move_to_step: Commit.");
             }
+        }
+    }
+
+    fn is_generation_time_relevant(&self, block_header: &Header) -> bool {
+        const ACCEPTABLE_FUTURE_GAP: Duration = Duration::from_secs(5);
+        const ACCEPTABLE_PAST_GAP: Duration = Duration::from_secs(30);
+        let now = SystemTime::now();
+        let allowed_min = now - ACCEPTABLE_PAST_GAP;
+        let allowed_max = now + ACCEPTABLE_FUTURE_GAP;
+        let block_generation_time = UNIX_EPOCH.checked_add(Duration::from_secs(block_header.timestamp()));
+
+        match block_generation_time {
+            Some(generation_time) => generation_time <= allowed_max && allowed_min <= generation_time,
+            // Overflow occurred
+            None => false,
         }
     }
 
