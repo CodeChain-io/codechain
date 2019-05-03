@@ -44,6 +44,10 @@ pub struct TendermintParams {
     pub block_reward: Option<Uint>,
     /// How much tokens are distributed at Genesis?
     pub genesis_stakes: Option<HashMap<PlatformAddress, u64>>,
+    /// allowed past time gap in milliseconds.
+    pub allowed_past_timegap: Option<Uint>,
+    /// allowed future time gap in milliseconds.
+    pub allowed_future_timegap: Option<Uint>,
 }
 
 /// Tendermint engine deserialization.
