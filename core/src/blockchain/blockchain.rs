@@ -24,14 +24,13 @@ use rlp::RlpStream;
 
 use super::block_info::BestBlockChanged;
 use super::body_db::{BodyDB, BodyProvider};
-use super::extras::{BlockDetails, EpochTransitions, TransactionAddress};
+use super::extras::{BlockDetails, TransactionAddress};
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::{tree_route, ImportRoute};
 use crate::blockchain_info::BlockChainInfo;
-use crate::consensus::epoch::Transition as EpochTransition;
 use crate::consensus::CodeChainEngine;
-use crate::db::{self, Readable, Writable};
+use crate::db;
 use crate::encoded;
 use crate::invoice::Invoice;
 use crate::transaction::LocalizedTransaction;
@@ -52,8 +51,6 @@ pub struct BlockChain {
     headerchain: HeaderChain,
     body_db: BodyDB,
     invoice_db: InvoiceDB,
-
-    db: Arc<KeyValueDB>,
 
     pending_best_block_hash: RwLock<Option<H256>>,
     pending_best_proposal_block_hash: RwLock<Option<H256>>,
@@ -95,8 +92,6 @@ impl BlockChain {
             headerchain: HeaderChain::new(&genesis_block.header_view(), db.clone()),
             body_db: BodyDB::new(&genesis_block, db.clone()),
             invoice_db: InvoiceDB::new(db.clone()),
-
-            db,
 
             pending_best_block_hash: RwLock::new(None),
             pending_best_proposal_block_hash: RwLock::new(None),
@@ -340,26 +335,6 @@ impl BlockChain {
 
     pub fn best_proposal_header(&self) -> encoded::Header {
         self.headerchain.best_proposal_header()
-    }
-
-    /// Insert an epoch transition. Provide an epoch number being transitioned to
-    /// and epoch transition object.
-    ///
-    /// The block the transition occurred at should have already been inserted into the chain.
-    pub fn insert_epoch_transition(&self, batch: &mut DBTransaction, epoch_num: u64, transition: EpochTransition) {
-        let mut transitions = match self.db.read(db::COL_EXTRA, &epoch_num) {
-            Some(existing) => existing,
-            None => EpochTransitions {
-                number: epoch_num,
-                candidates: Vec::with_capacity(1),
-            },
-        };
-
-        // ensure we don't write any duplicates.
-        if transitions.candidates.iter().find(|c| c.block_hash == transition.block_hash).is_none() {
-            transitions.candidates.push(transition);
-            batch.write(db::COL_EXTRA, &epoch_num, &transitions);
-        }
     }
 }
 
