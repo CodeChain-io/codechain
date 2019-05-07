@@ -143,17 +143,6 @@ impl ConsensusEngine for Tendermint {
 
     fn stop(&self) {}
 
-    fn on_new_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
-        let (result, receiver) = crossbeam::bounded(1);
-        self.inner
-            .send(worker::Event::OnNewBlock {
-                header: Box::from(block.header().clone()),
-                result,
-            })
-            .unwrap();
-        receiver.recv().unwrap()
-    }
-
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
         let (total_fee, min_fee) = {

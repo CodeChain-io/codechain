@@ -117,10 +117,6 @@ pub enum Event {
         result: crossbeam::Sender<U256>,
     },
     OnTimeout(usize),
-    OnNewBlock {
-        header: Box<Header>,
-        result: crossbeam::Sender<Result<(), Error>>,
-    },
     HandleMessages {
         messages: Vec<Vec<u8>>,
         result: crossbeam::Sender<Result<(), EngineError>>,
@@ -265,12 +261,6 @@ impl Worker {
                             }
                             Ok(Event::OnTimeout(token)) => {
                                 inner.on_timeout(token);
-                            }
-                            Ok(Event::OnNewBlock {
-                                header,
-                                result,
-                            }) => {
-                                result.send(inner.on_new_block(&header)).unwrap();
                             }
                             Ok(Event::HandleMessages {
                                 messages,
@@ -1252,10 +1242,6 @@ impl Worker {
 
     fn is_expired_timeout_token(&self, nonce: usize) -> bool {
         nonce < self.timeout_token_nonce
-    }
-
-    fn on_new_block(&self, _header: &Header) -> Result<(), Error> {
-        Ok(())
     }
 
     fn handle_message(&mut self, rlp: &[u8], is_restoring: bool) -> Result<(), EngineError> {
