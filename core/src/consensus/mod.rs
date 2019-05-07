@@ -16,7 +16,6 @@
 
 mod blake_pow;
 mod cuckoo;
-pub mod epoch;
 mod null_engine;
 mod signer;
 mod simple_poa;
