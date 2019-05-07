@@ -22,8 +22,6 @@ use primitives::{Bytes, H256};
 
 use self::validator_list::ValidatorList;
 use crate::client::EngineClient;
-use crate::error::Error;
-use crate::header::Header;
 
 pub mod null_validator;
 pub mod validator_list;
@@ -56,15 +54,6 @@ pub trait ValidatorSet: Send + Sync {
 
     /// Returns the current number of validators.
     fn count(&self, parent: &H256) -> usize;
-
-    /// Signalling that a new epoch has begun.
-    ///
-    /// The caller provided here may not generate proofs.
-    ///
-    /// `first` is true if this is the first block in the set.
-    fn on_epoch_begin(&self, _first: bool, _header: &Header) -> Result<(), Error> {
-        Ok(())
-    }
 
     /// Notifies about malicious behaviour.
     fn report_malicious(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber, _proof: Bytes) {}

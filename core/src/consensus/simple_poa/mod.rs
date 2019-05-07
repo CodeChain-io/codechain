@@ -181,7 +181,7 @@ mod tests {
         let engine = &*scheme.engine;
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = scheme.genesis_header();
-        let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![], false).unwrap();
+        let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![]).unwrap();
         let parent_transactions_root = *genesis_header.transactions_root();
         let b = b.close_and_lock(parent_transactions_root).unwrap();
         if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {
