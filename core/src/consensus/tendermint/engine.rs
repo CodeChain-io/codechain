@@ -22,7 +22,6 @@ use ckey::Address;
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::ActionHandler;
-use ctypes::BlockNumber;
 use primitives::H256;
 
 use super::super::stake;
@@ -112,16 +111,6 @@ impl ConsensusEngine for Tendermint {
             })
             .unwrap();
         receiver.recv().unwrap()
-    }
-
-    fn is_epoch_end(&self, chain_head: &Header, _chain: &super::super::Headers<Header>) -> Option<Vec<u8>> {
-        let first = chain_head.number() == 0;
-        if first {
-            let change = combine_proofs(chain_head.number(), &[], &[]);
-            return Some(change)
-        }
-
-        None
     }
 
     fn populate_from_parent(&self, header: &mut Header, _parent: &Header) {
@@ -248,10 +237,4 @@ impl ConsensusEngine for Tendermint {
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
         &self.action_handlers
     }
-}
-
-fn combine_proofs(signal_number: BlockNumber, set_proof: &[u8], finality_proof: &[u8]) -> Vec<u8> {
-    let mut stream = ::rlp::RlpStream::new_list(3);
-    stream.append(&signal_number).append(&set_proof).append(&finality_proof);
-    stream.out()
 }
