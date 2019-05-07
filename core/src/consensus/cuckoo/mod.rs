@@ -251,7 +251,7 @@ mod tests {
         let engine = &*scheme.engine;
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let header = Header::default();
-        let block = OpenBlock::try_new(engine, db, &header, Default::default(), vec![], false).unwrap();
+        let block = OpenBlock::try_new(engine, db, &header, Default::default(), vec![]).unwrap();
         let mut executed_block = block.block().clone();
 
         assert!(engine.on_close_block(&mut executed_block).is_ok());

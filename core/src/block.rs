@@ -131,7 +131,6 @@ impl<'x> OpenBlock<'x> {
         parent: &Header,
         author: Address,
         extra_data: Bytes,
-        is_epoch_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
         let state = TopLevelState::from_existing(db, *parent.state_root()).map_err(StateError::from)?;
@@ -150,7 +149,7 @@ impl<'x> OpenBlock<'x> {
         engine.machine().populate_from_parent(&mut r.block.header, parent);
         engine.populate_from_parent(&mut r.block.header, parent);
 
-        engine.on_new_block(&mut r.block, is_epoch_begin)?;
+        engine.on_new_block(&mut r.block)?;
 
         Ok(r)
     }
@@ -442,9 +441,8 @@ pub fn enact<C: ChainTimeInfo + FindActionHandler>(
     client: &C,
     db: StateDB,
     parent: &Header,
-    is_epoch_begin: bool,
 ) -> Result<LockedBlock, Error> {
-    let mut b = OpenBlock::try_new(engine, db, parent, Address::default(), vec![], is_epoch_begin)?;
+    let mut b = OpenBlock::try_new(engine, db, parent, Address::default(), vec![])?;
 
     b.populate_from(header);
     b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
@@ -464,7 +462,7 @@ mod tests {
         let scheme = Scheme::new_test();
         let genesis_header = scheme.genesis_header();
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
-        let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, Address::default(), vec![], false).unwrap();
+        let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, Address::default(), vec![]).unwrap();
         let parent_transactions_root = *genesis_header.transactions_root();
         let b = b.close_and_lock(parent_transactions_root).unwrap();
         let _ = b.seal(&*scheme.engine, vec![]);

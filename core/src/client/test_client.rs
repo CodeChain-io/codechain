@@ -313,7 +313,7 @@ impl BlockProducer for TestBlockChainClient {
         let genesis_header = self.scheme.genesis_header();
         let db = get_temp_state_db();
 
-        let mut open_block = OpenBlock::try_new(engine, db, &genesis_header, author, extra_data, false)
+        let mut open_block = OpenBlock::try_new(engine, db, &genesis_header, author, extra_data)
             .expect("Opening block for tests will not fail.");
         // TODO [todr] Override timestamp for predictability (set_timestamp_now kind of sucks)
         open_block.set_timestamp(*self.latest_block_timestamp.read());
