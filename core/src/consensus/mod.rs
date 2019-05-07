@@ -16,7 +16,6 @@
 
 mod blake_pow;
 mod cuckoo;
-pub mod epoch;
 mod null_engine;
 mod signer;
 mod simple_poa;
@@ -200,17 +199,6 @@ pub trait ConsensusEngine: Sync + Send {
         Ok(())
     }
 
-    /// Whether a block is the end of an epoch.
-    ///
-    /// This either means that an immediate transition occurs or a block signalling transition
-    /// has reached finality. The `Headers` given are not guaranteed to return any blocks
-    /// from any epoch other than the current.
-    ///
-    /// Return optional transition proof.
-    fn is_epoch_end(&self, _chain_head: &Header, _chain: &Headers<Header>) -> Option<Vec<u8>> {
-        None
-    }
-
     /// Populate a header's fields based on its parent's header.
     /// Usually implements the chain scoring rule based on weight.
     fn populate_from_parent(&self, _header: &mut Header, _parent: &Header) {}
@@ -287,9 +275,6 @@ pub trait ConsensusEngine: Sync + Send {
         self.action_handlers().iter().find(|handler| handler.handler_id() == id).map(AsRef::as_ref)
     }
 }
-
-/// Type alias for a function we can get headers by hash through.
-pub type Headers<'a, H> = Fn(H256) -> Option<H> + 'a;
 
 /// Voting errors.
 #[derive(Debug)]

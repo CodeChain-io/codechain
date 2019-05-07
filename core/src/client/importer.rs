@@ -27,8 +27,7 @@ use rlp::Encodable;
 
 use super::{BlockChainTrait, Client, ClientConfig};
 use crate::block::{enact, IsBlock, LockedBlock};
-use crate::blockchain::{BlockChain, BodyProvider, HeaderProvider, ImportRoute};
-use crate::consensus::epoch::Transition as EpochTransition;
+use crate::blockchain::{BodyProvider, HeaderProvider, ImportRoute};
 use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::Error;
@@ -207,8 +206,6 @@ impl Importer {
         client.db().write_buffered(batch);
         chain.commit();
 
-        self.check_epoch_end(block.header(), &chain, client);
-
         if hash == chain.best_block_hash() {
             let mut state_db = client.state_db().write();
             let state = block.state();
@@ -216,27 +213,6 @@ impl Importer {
         }
 
         route
-    }
-
-    // check for ending of epoch and write transition if it occurs.
-    fn check_epoch_end(&self, header: &Header, chain: &BlockChain, client: &Client) {
-        let is_epoch_end = self.engine.is_epoch_end(header, &(|hash| chain.block_header(&hash)));
-
-        if let Some(proof) = is_epoch_end {
-            cdebug!(CLIENT, "Epoch transition at block {}", header.hash());
-
-            let mut batch = DBTransaction::new();
-            chain.insert_epoch_transition(&mut batch, header.number(), EpochTransition {
-                block_hash: header.hash(),
-                block_number: header.number(),
-                proof,
-            });
-
-            // always write the batch directly since epoch transition proofs are
-            // fetched from a DB iterator and DB iterators are only available on
-            // flushed data.
-            client.db().write(batch).expect("DB flush failed");
-        }
     }
 
     fn check_and_close_block(&self, block: &PreverifiedBlock, client: &Client) -> Result<LockedBlock, ()> {
@@ -424,14 +400,9 @@ impl Importer {
         let chain = client.block_chain();
 
         let mut batch = DBTransaction::new();
-        // FIXME: Check if this line is still necessary.
-        // self.check_epoch_end_signal(header, &chain, &mut batch);
         let route = chain.insert_header(&mut batch, &HeaderView::new(&header.rlp_bytes()), self.engine.borrow());
         client.db().write_buffered(batch);
         chain.commit();
-
-        // FIXME: Check if this line is still necessary.
-        // self.check_epoch_end(&header, &chain, client);
 
         route
     }
