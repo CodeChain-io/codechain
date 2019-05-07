@@ -517,7 +517,7 @@ mod tests {
     fn print_empty_array() {
         let mut s = RlpStream::new();
         let num: u8 = 3;
-        let empty_array: Vec<i32> = Vec::new();
+        let empty_array: Vec<u32> = Vec::new();
         s.begin_list(2).append(&num).append_list(&empty_array);
         let bs = s.out();
         let rlp = UntrustedRlp::new(&*bs);
