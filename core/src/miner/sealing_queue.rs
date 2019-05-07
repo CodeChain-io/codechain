@@ -85,7 +85,7 @@ mod tests {
         let scheme = Scheme::new_test();
         let genesis_header = scheme.genesis_header();
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
-        let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, address, vec![], false).unwrap();
+        let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, address, vec![]).unwrap();
         let parent_transactions_root = *genesis_header.transactions_root();
         b.close(parent_transactions_root).unwrap()
     }

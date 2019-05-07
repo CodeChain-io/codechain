@@ -222,7 +222,7 @@ pub trait ConsensusEngine: Sync + Send {
     fn stop(&self) {}
 
     /// Block transformation functions, before the transactions.
-    fn on_new_block(&self, _block: &mut ExecutedBlock, _epoch_begin: bool) -> Result<(), Error> {
+    fn on_new_block(&self, _block: &mut ExecutedBlock) -> Result<(), Error> {
         Ok(())
     }
 

@@ -143,12 +143,11 @@ impl ConsensusEngine for Tendermint {
 
     fn stop(&self) {}
 
-    fn on_new_block(&self, block: &mut ExecutedBlock, epoch_begin: bool) -> Result<(), Error> {
+    fn on_new_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let (result, receiver) = crossbeam::bounded(1);
         self.inner
             .send(worker::Event::OnNewBlock {
                 header: Box::from(block.header().clone()),
-                epoch_begin,
                 result,
             })
             .unwrap();
