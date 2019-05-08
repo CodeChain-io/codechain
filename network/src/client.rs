@@ -17,13 +17,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread::{Builder, JoinHandle};
+use std::time::Duration;
 
 use cio::IoChannel;
 use crossbeam_channel as crossbeam;
 use ctimer::{TimeoutHandler, TimerApi, TimerLoop, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use primitives::Bytes;
-use time::Duration;
 
 use crate::p2p::Message as P2pMessage;
 use crate::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionResult, NodeId};
@@ -61,13 +61,11 @@ impl Api for ClientApi {
     }
 
     fn set_timer(&self, token: TimerToken, duration: Duration) -> NetworkExtensionResult<()> {
-        let duration = duration.to_std().expect("Cannot convert to standard duratino type");
         self.timer.schedule_repeat(duration, token)?;
         Ok(())
     }
 
     fn set_timer_once(&self, token: TimerToken, duration: Duration) -> NetworkExtensionResult<()> {
-        let duration = duration.to_std().expect("Cannot convert to standard duratino type");
         self.timer.schedule_once(duration, token)?;
         Ok(())
     }

@@ -16,6 +16,7 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
+use std::time::Duration;
 
 use ccore::{BlockChainClient, UnverifiedTransaction};
 use cnetwork::{Api, NetworkExtension, NodeId};
@@ -23,12 +24,11 @@ use ctimer::TimerToken;
 use never_type::Never;
 use primitives::H256;
 use rlp::{Encodable, UntrustedRlp};
-use time::Duration;
 
 use super::message::Message;
 
 const BROADCAST_TIMER_TOKEN: TimerToken = 0;
-const BROADCAST_TIMER_INTERVAL: i64 = 1000;
+const BROADCAST_TIMER_INTERVAL: u64 = 1000;
 const MAX_HISTORY_SIZE: usize = 100_000;
 
 #[derive(Default)]
@@ -61,7 +61,7 @@ pub struct Extension {
 
 impl Extension {
     pub fn new(client: Arc<BlockChainClient>, api: Box<Api>) -> Self {
-        api.set_timer(BROADCAST_TIMER_TOKEN, Duration::milliseconds(BROADCAST_TIMER_INTERVAL))
+        api.set_timer(BROADCAST_TIMER_TOKEN, Duration::from_millis(BROADCAST_TIMER_INTERVAL))
             .expect("Timer set succeeds");
         Extension {
             known_txs: Default::default(),
