@@ -29,6 +29,7 @@ use super::extras::{BlockDetails, EpochTransitions, TransactionAddress, EPOCH_KE
 use super::headerchain::{HeaderChain, HeaderProvider};
 use super::invoice_db::{InvoiceDB, InvoiceProvider};
 use super::route::{tree_route, ImportRoute};
+use crate::blockchain::extras::{TermId, TermTransition};
 use crate::blockchain_info::BlockChainInfo;
 use crate::consensus::epoch::Transition as EpochTransition;
 use crate::consensus::CodeChainEngine;
@@ -341,6 +342,16 @@ impl BlockChain {
 
     pub fn best_proposal_header(&self) -> encoded::Header {
         self.headerchain.best_proposal_header()
+    }
+
+    pub fn insert_term_transition(&self, batch: &mut DBTransaction, block_number: u64) {
+        batch.write(db::COL_EXTRA, &TermId(block_number), &TermTransition {
+            block_number,
+        });
+    }
+
+    pub fn term_transition(&self, block_number: u64) -> Option<TermTransition> {
+        self.db.read(db::COL_EXTRA, &TermId(block_number))
     }
 
     /// Insert an epoch transition. Provide an epoch number being transitioned to

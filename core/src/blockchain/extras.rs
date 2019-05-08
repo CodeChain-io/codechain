@@ -39,6 +39,8 @@ enum ExtrasIndex {
     /// Epoch transition data index.
     EpochTransitions = 4,
     // (Reserved) = 5,
+    /// Term transition data index
+    TermTransitions = 6,
 }
 
 fn with_index(hash: &H256, i: ExtrasIndex) -> H264 {
@@ -129,6 +131,36 @@ impl Key<EpochTransitions> for u64 {
     }
 }
 
+const TERM_KEY_LEN: usize = DB_PREFIX_LEN + 16;
+pub const TERM_KEY_PREFIX: &[u8; DB_PREFIX_LEN] =
+    &[ExtrasIndex::TermTransitions as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+pub struct TermTransitionKey([u8; TERM_KEY_LEN]);
+
+impl Deref for TermTransitionKey {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+pub struct TermId(pub u64);
+
+impl Key<TermTransition> for TermId {
+    type Target = TermTransitionKey;
+
+    fn key(&self) -> Self::Target {
+        let mut key = [0u8; TERM_KEY_LEN];
+        key[..DB_PREFIX_LEN].copy_from_slice(&TERM_KEY_PREFIX[..]);
+
+        write!(&mut key[DB_PREFIX_LEN..], "{:016x}", self.0)
+            .expect("format arg is valid; no more than 16 chars will be written; qed");
+
+        TermTransitionKey(key)
+    }
+}
+
 /// Familial details concerning a block
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
 pub struct BlockDetails {
@@ -166,6 +198,11 @@ pub struct TransactionAddresses {
 pub struct EpochTransitions {
     pub number: u64,
     pub candidates: Vec<EpochTransition>,
+}
+
+#[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
+pub struct TermTransition {
+    pub block_number: u64,
 }
 
 impl TransactionAddresses {
