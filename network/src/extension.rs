@@ -17,11 +17,11 @@
 use std::convert::From;
 use std::result;
 use std::sync::Arc;
+use std::time::Duration;
 
 use cio::IoError;
 use ctimer::{TimerScheduleError, TimerToken};
 use primitives::Bytes;
-use time::Duration;
 
 use crate::NodeId;
 
