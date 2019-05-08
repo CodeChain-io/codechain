@@ -16,10 +16,10 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use cjson;
 use ckey::{Address, PlatformAddress};
-use time::Duration;
 
 use super::super::validator_set::{new_validator_set, ValidatorSet};
 use super::types::View;
@@ -64,7 +64,7 @@ impl From<cjson::scheme::TendermintParams> for TendermintParams {
 
 fn to_duration(ms: cjson::uint::Uint) -> Duration {
     let ms: usize = ms.into();
-    Duration::milliseconds(ms as i64)
+    Duration::from_millis(ms as u64)
 }
 
 /// Base timeout of each step in ms.
@@ -82,13 +82,13 @@ pub struct TimeoutParams {
 impl Default for TimeoutParams {
     fn default() -> Self {
         TimeoutParams {
-            propose: Duration::milliseconds(1000),
-            propose_delta: Duration::milliseconds(500),
-            prevote: Duration::milliseconds(1000),
-            prevote_delta: Duration::milliseconds(500),
-            precommit: Duration::milliseconds(1000),
-            precommit_delta: Duration::milliseconds(500),
-            commit: Duration::milliseconds(1000),
+            propose: Duration::from_millis(1000),
+            propose_delta: Duration::from_millis(500),
+            prevote: Duration::from_millis(1000),
+            prevote_delta: Duration::from_millis(500),
+            precommit: Duration::from_millis(1000),
+            precommit_delta: Duration::from_millis(500),
+            commit: Duration::from_millis(1000),
         }
     }
 }
@@ -109,8 +109,8 @@ impl TimeoutParams {
             Step::Propose => self.propose_delta,
             Step::Prevote => self.prevote_delta,
             Step::Precommit => self.precommit_delta,
-            Step::Commit => Duration::zero(),
+            Step::Commit => Duration::default(),
         };
-        base + delta * view as i32
+        base + delta * view as u32
     }
 }

@@ -18,6 +18,7 @@ use std::cmp;
 use std::collections::HashMap;
 use std::iter::Iterator;
 use std::sync::Arc;
+use std::time::Duration;
 
 use ckey::SchnorrSignature;
 use cnetwork::{Api, NetworkExtension, NodeId};
@@ -27,7 +28,6 @@ use primitives::{Bytes, H256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
-use time::Duration;
 
 use super::message::*;
 use super::params::TimeoutParams;
@@ -53,11 +53,11 @@ const MAX_PEERS_PROPAGATION: usize = 128;
 impl TendermintExtension {
     pub fn new(inner: crossbeam::Sender<worker::Event>, timeouts: TimeoutParams, api: Box<Api>) -> Self {
         let initial = timeouts.initial();
-        ctrace!(ENGINE, "Setting the initial timeout to {}.", initial);
+        ctrace!(ENGINE, "Setting the initial timeout to {:?}.", initial);
         api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");
         api.set_timer(
             ENGINE_TIMEOUT_BROADCAST_STEP_STATE,
-            Duration::seconds(ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL),
+            Duration::from_secs(ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL),
         )
         .expect("Timer set succeeds");
         Self {
