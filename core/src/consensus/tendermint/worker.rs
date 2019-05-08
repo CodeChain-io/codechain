@@ -116,7 +116,7 @@ pub enum Event {
     OnTimeout(usize),
     OnNewBlock {
         header: Box<Header>,
-        epoch_begin: bool,
+        term_begin: bool,
         result: crossbeam::Sender<Result<(), Error>>,
     },
     HandleMessages {
@@ -253,10 +253,10 @@ impl Worker {
                             }
                             Ok(Event::OnNewBlock {
                                 header,
-                                epoch_begin,
+                                term_begin,
                                 result,
                             }) => {
-                                result.send(inner.on_new_block(&header, epoch_begin)).unwrap();
+                                result.send(inner.on_new_block(&header, term_begin)).unwrap();
                             }
                             Ok(Event::HandleMessages {
                                 messages,
@@ -1220,15 +1220,8 @@ impl Worker {
         nonce < self.timeout_token_nonce
     }
 
-    fn on_new_block(&self, header: &Header, epoch_begin: bool) -> Result<(), Error> {
-        if !epoch_begin {
-            return Ok(())
-        }
-
-        // genesis is never a new block, but might as well check.
-        let first = header.number() == 0;
-
-        self.validators.on_epoch_begin(first, header)
+    fn on_new_block(&self, _header: &Header, _term_begin: bool) -> Result<(), Error> {
+        Ok(())
     }
 
     fn handle_message(&mut self, rlp: &[u8], is_restoring: bool) -> Result<(), EngineError> {

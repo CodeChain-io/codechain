@@ -29,7 +29,6 @@ use super::BlockInfo;
 use super::{Client, ClientConfig};
 use crate::block::{enact, IsBlock, LockedBlock};
 use crate::blockchain::{BlockChain, BodyProvider, HeaderProvider, ImportRoute};
-use crate::consensus::epoch::Transition as EpochTransition;
 use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::Error;
@@ -217,7 +216,7 @@ impl Importer {
         client.db().write_buffered(batch);
         chain.commit();
 
-        self.check_epoch_end(block.header(), &chain, client);
+        self.check_term_end(block.header(), &chain, client);
 
         if hash == chain.best_block_hash() {
             let mut state_db = client.state_db().write();
@@ -228,21 +227,16 @@ impl Importer {
         route
     }
 
-    // check for ending of epoch and write transition if it occurs.
-    fn check_epoch_end(&self, header: &Header, chain: &BlockChain, client: &Client) {
-        let is_epoch_end = self.engine.is_epoch_end(header, &(|hash| chain.block_header(&hash)));
-
-        if let Some(proof) = is_epoch_end {
-            cdebug!(CLIENT, "Epoch transition at block {}", header.hash());
+    // check for ending of term and write transition if it occurs.
+    fn check_term_end(&self, header: &Header, chain: &BlockChain, client: &Client) {
+        let is_term_end = self.engine.is_term_end(header);
+        if is_term_end {
+            cdebug!(CLIENT, "Term transition at block {}", header.hash());
 
             let mut batch = DBTransaction::new();
-            chain.insert_epoch_transition(&mut batch, header.number(), EpochTransition {
-                block_hash: header.hash(),
-                block_number: header.number(),
-                proof,
-            });
+            chain.insert_term_transition(&mut batch, header.number());
 
-            // always write the batch directly since epoch transition proofs are
+            // always write the batch directly since term transitions are
             // fetched from a DB iterator and DB iterators are only available on
             // flushed data.
             client.db().write(batch).expect("DB flush failed");
@@ -314,8 +308,8 @@ impl Importer {
         // Enact Verified Block
         let db = client.state_db().read().clone(&parent.state_root());
 
-        let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
-        let enact_result = enact(&block.header, &block.transactions, engine, client, db, &parent, is_epoch_begin);
+        let is_term_begin = chain.term_transition(parent.number()).is_some();
+        let enact_result = enact(&block.header, &block.transactions, engine, client, db, &parent, is_term_begin);
         let locked_block = enact_result.map_err(|e| {
             cwarn!(CLIENT, "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
         })?;
@@ -437,14 +431,12 @@ impl Importer {
         let chain = client.block_chain();
 
         let mut batch = DBTransaction::new();
-        // FIXME: Check if this line is still necessary.
-        // self.check_epoch_end_signal(header, &chain, &mut batch);
         let route = chain.insert_header(&mut batch, &HeaderView::new(&header.rlp_bytes()), self.engine.borrow());
         client.db().write_buffered(batch);
         chain.commit();
 
         // FIXME: Check if this line is still necessary.
-        // self.check_epoch_end(&header, &chain, client);
+        // self.check_term_end(&header, &chain, client);
 
         route
     }

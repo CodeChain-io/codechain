@@ -24,7 +24,6 @@ use crossbeam_channel as crossbeam;
 use cstate::ActionHandler;
 use ctypes::machine::WithBalances;
 use ctypes::transaction::Action;
-use ctypes::BlockNumber;
 use primitives::H256;
 
 use super::super::stake;
@@ -115,16 +114,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         receiver.recv().unwrap()
     }
 
-    fn is_epoch_end(&self, chain_head: &Header, _chain: &super::super::Headers<Header>) -> Option<Vec<u8>> {
-        let first = chain_head.number() == 0;
-        if first {
-            let change = combine_proofs(chain_head.number(), &[], &[]);
-            return Some(change)
-        }
-
-        None
-    }
-
     fn populate_from_parent(&self, header: &mut Header, _parent: &Header) {
         let (result, receiver) = crossbeam::bounded(1);
         self.inner
@@ -144,12 +133,12 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn stop(&self) {}
 
-    fn on_new_block(&self, block: &mut ExecutedBlock, epoch_begin: bool) -> Result<(), Error> {
+    fn on_new_block(&self, block: &mut ExecutedBlock, term_begin: bool) -> Result<(), Error> {
         let (result, receiver) = crossbeam::bounded(1);
         self.inner
             .send(worker::Event::OnNewBlock {
                 header: Box::from(block.header().clone()),
-                epoch_begin,
+                term_begin,
                 result,
             })
             .unwrap();
@@ -312,10 +301,4 @@ impl Tendermint {
             } => params.min_remove_transaction_cost,
         }
     }
-}
-
-fn combine_proofs(signal_number: BlockNumber, set_proof: &[u8], finality_proof: &[u8]) -> Vec<u8> {
-    let mut stream = ::rlp::RlpStream::new_list(3);
-    stream.append(&signal_number).append(&set_proof).append(&finality_proof);
-    stream.out()
 }

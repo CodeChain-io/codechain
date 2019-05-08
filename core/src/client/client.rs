@@ -766,14 +766,14 @@ impl PrepareOpenBlock for Client {
         let parent_hash = self.block_hash(&parent_block_id).expect("parent exist always");
         let parent_header = chain.block_header(&parent_hash).expect("parent exist always");
 
-        let is_epoch_begin = chain.epoch_transition(parent_header.number(), parent_hash).is_some();
+        let is_term_begin = chain.term_transition(parent_header.number()).is_some();
         OpenBlock::try_new(
             engine,
             self.state_db.read().clone(&parent_header.state_root()),
             &parent_header,
             author,
             extra_data,
-            is_epoch_begin,
+            is_term_begin,
         ).expect("OpenBlock::new only fails if parent state root invalid; state root of best block's header is never invalid; qed")
     }
 }

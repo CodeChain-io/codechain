@@ -118,15 +118,6 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
         verify_external(header, &*self.validators)
     }
 
-    fn is_epoch_end(&self, chain_head: &Header, _chain: &super::Headers<Header>) -> Option<Vec<u8>> {
-        let first = chain_head.number() == 0;
-        if first {
-            Some(Vec::new())
-        } else {
-            None
-        }
-    }
-
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = self.block_reward(block.header().number())

@@ -201,15 +201,9 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         Ok(())
     }
 
-    /// Whether a block is the end of an epoch.
-    ///
-    /// This either means that an immediate transition occurs or a block signalling transition
-    /// has reached finality. The `Headers` given are not guaranteed to return any blocks
-    /// from any epoch other than the current.
-    ///
-    /// Return optional transition proof.
-    fn is_epoch_end(&self, _chain_head: &M::Header, _chain: &Headers<M::Header>) -> Option<Vec<u8>> {
-        None
+    /// Whether a block is the end of an term.
+    fn is_term_end(&self, _chain_head: &M::Header) -> bool {
+        false
     }
 
     /// Populate a header's fields based on its parent's header.
@@ -223,7 +217,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn stop(&self) {}
 
     /// Block transformation functions, before the transactions.
-    fn on_new_block(&self, _block: &mut M::LiveBlock, _epoch_begin: bool) -> Result<(), M::Error> {
+    fn on_new_block(&self, _block: &mut M::LiveBlock, _term_begin: bool) -> Result<(), M::Error> {
         Ok(())
     }
 
@@ -286,9 +280,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         self.action_handlers().iter().find(|handler| handler.handler_id() == id).map(AsRef::as_ref)
     }
 }
-
-/// Type alias for a function we can get headers by hash through.
-pub type Headers<'a, H> = Fn(H256) -> Option<H> + 'a;
 
 /// Voting errors.
 #[derive(Debug)]

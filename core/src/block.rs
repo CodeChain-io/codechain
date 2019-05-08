@@ -140,7 +140,7 @@ impl<'x> OpenBlock<'x> {
         parent: &Header,
         author: Address,
         extra_data: Bytes,
-        is_epoch_begin: bool,
+        is_term_begin: bool,
     ) -> Result<Self, Error> {
         let number = parent.number() + 1;
         let state = TopLevelState::from_existing(db, *parent.state_root()).map_err(StateError::from)?;
@@ -159,7 +159,7 @@ impl<'x> OpenBlock<'x> {
         engine.machine().populate_from_parent(&mut r.block.header, parent);
         engine.populate_from_parent(&mut r.block.header, parent);
 
-        engine.on_new_block(&mut r.block, is_epoch_begin)?;
+        engine.on_new_block(&mut r.block, is_term_begin)?;
 
         Ok(r)
     }
@@ -451,9 +451,9 @@ pub fn enact<C: ChainTimeInfo + FindActionHandler>(
     client: &C,
     db: StateDB,
     parent: &Header,
-    is_epoch_begin: bool,
+    is_term_begin: bool,
 ) -> Result<LockedBlock, Error> {
-    let mut b = OpenBlock::try_new(engine, db, parent, Address::default(), vec![], is_epoch_begin)?;
+    let mut b = OpenBlock::try_new(engine, db, parent, Address::default(), vec![], is_term_begin)?;
 
     b.populate_from(header);
     b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
