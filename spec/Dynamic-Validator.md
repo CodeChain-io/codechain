@@ -66,7 +66,9 @@ The delegated stakes are returned when the account becomes an eligible account o
 ## Election
 The election is a process that elects validators of a term according to the following rule:
 
-1. TBD
+1. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of having received many delegations.
+2. Select **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
+3. Among the rest of them, drop the accounts having received less than MIN_CCS_RATE_TO_BE_VALIDATOR; the remains become validators.
 
 ## Voting Power
 Each elected validators has different voting power.
