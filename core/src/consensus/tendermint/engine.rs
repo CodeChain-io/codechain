@@ -160,7 +160,8 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let (total_fee, min_fee) = {
             let transactions = block.transactions();
             let total_fee: u64 = transactions.iter().map(|tx| tx.fee).sum();
-            let min_fee = transactions.iter().map(|tx| self.machine.min_cost(&tx.action)).sum();
+            let block_number = block.header().number();
+            let min_fee = transactions.iter().map(|tx| self.machine.min_cost(&tx.action, Some(block_number))).sum();
             (total_fee, min_fee)
         };
         assert!(total_fee >= min_fee, "{} >= {}", total_fee, min_fee);
