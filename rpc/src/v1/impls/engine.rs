@@ -61,7 +61,8 @@ where
         if author.is_zero() {
             Ok(None)
         } else {
-            let network_id = self.client.common_params().network_id;
+            // XXX: What should we do if the network id has been changed
+            let network_id = self.client.common_params(None).network_id;
             Ok(Some(PlatformAddress::new_v1(network_id, author)))
         }
     }

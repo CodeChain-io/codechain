@@ -112,10 +112,10 @@ where
     }
 
     fn test_tps(&self, setting: TPSTestSetting) -> Result<f64> {
-        let mint_fee = self.client.common_params().min_asset_mint_cost;
-        let transfer_fee = self.client.common_params().min_asset_transfer_cost;
-        let pay_fee = self.client.common_params().min_pay_transaction_cost;
-        let network_id = self.client.common_params().network_id;
+        let mint_fee = self.client.common_params(None).min_asset_mint_cost;
+        let transfer_fee = self.client.common_params(None).min_asset_transfer_cost;
+        let pay_fee = self.client.common_params(None).min_pay_transaction_cost;
+        let network_id = self.client.common_params(None).network_id;
 
         // NOTE: Assuming solo network
         let genesis_secret: Private = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd".into();
