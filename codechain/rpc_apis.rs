@@ -49,7 +49,7 @@ impl ApiDependencies {
                 Arc::clone(&self.account_provider),
                 Arc::clone(&self.client),
                 Arc::clone(&self.miner),
-                self.client.engine().params().network_id,
+                self.client.engine().machine().common_params().network_id,
             )
             .to_delegate(),
         );

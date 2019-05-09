@@ -54,7 +54,6 @@ use crate::codechain_machine::CodeChainMachine;
 use crate::encoded;
 use crate::error::Error;
 use crate::header::Header;
-use crate::scheme::CommonParams;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::HeaderView;
 use Client;
@@ -360,28 +359,6 @@ impl fmt::Display for EngineError {
 
 /// Common type alias for an engine coupled with an CodeChain-like state machine.
 pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
-    /// Get the general parameters of the chain.
-    fn params(&self) -> &CommonParams {
-        self.machine().params()
-    }
-
-    /// Some intrinsic operation parameters; by default they take their value from the `spec()`'s `engine_params`.
-    fn max_extra_data_size(&self) -> usize {
-        self.machine().max_extra_data_size()
-    }
-
-    fn max_asset_scheme_metadata_size(&self) -> usize {
-        self.machine().max_asset_scheme_metadata_size()
-    }
-
-    fn max_transfer_metadata_size(&self) -> usize {
-        self.machine().max_transfer_metadata_size()
-    }
-
-    fn max_text_content_size(&self) -> usize {
-        self.machine().max_text_content_size()
-    }
-
     /// Additional verification for transactions in blocks.
     fn verify_transaction_basic(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
         if let Action::Custom {

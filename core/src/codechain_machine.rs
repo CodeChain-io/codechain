@@ -42,25 +42,8 @@ impl CodeChainMachine {
     }
 
     /// Get the general parameters of the chain.
-    pub fn params(&self) -> &CommonParams {
+    pub fn common_params(&self) -> &CommonParams {
         &self.params
-    }
-
-    /// Some intrinsic operation parameters; by default they take their value from the `spec()`'s `engine_params`.
-    pub fn max_extra_data_size(&self) -> usize {
-        self.params().max_extra_data_size
-    }
-
-    pub fn max_asset_scheme_metadata_size(&self) -> usize {
-        self.params().max_asset_scheme_metadata_size
-    }
-
-    pub fn max_transfer_metadata_size(&self) -> usize {
-        self.params().max_transfer_metadata_size
-    }
-
-    pub fn max_text_content_size(&self) -> usize {
-        self.params().max_text_content_size
     }
 
     /// Does basic verification of the transaction.
@@ -73,7 +56,7 @@ impl CodeChainMachine {
             }
             .into())
         }
-        p.verify_basic(self.params(), self.is_order_disabled)?;
+        p.verify_basic(self.common_params(), self.is_order_disabled)?;
 
         Ok(())
     }
