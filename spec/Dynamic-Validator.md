@@ -10,7 +10,7 @@
 | **WITHDRAW_DELAY**               | 1 **TERM**    |
 | **MAX_NUM_OF_VALIDATORS**        | 30            |
 | **MIN_NUM_OF_VALIDATORS**        | 4             |
-| **MIN_CCS_RATE_TO_BE_VALIDATOR** | 0.01          |
+| **DELEGATION_THRESHOLD**         | 100,000       |
 | **MIN_DEPOSIT**                  | TBD CCC       |
 
 
@@ -67,7 +67,16 @@ The election is a process that elects validators of a term according to the foll
 
 1. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of having received many delegations.
 2. Select **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
-3. Among the rest of them, drop the accounts having received less than MIN_CCS_RATE_TO_BE_VALIDATOR; the remains become validators.
+3. Among the rest of them, drop the accounts that received less than **DELEGATION_THRESHOLD**; the remaining accounts become validators.
+
+This process guarantees two things:
+* There are at least **MIN_NUM_OF_VALIDATORS** validators only if the number of candidates is larger than **MIN_NUM_OF_VALIDATORS**.
+* The candidates that are not in **MIN_NUM_OF_VALIDATORS** and not receiving delegation of more than **DELEGATION_THRESHOLD** will not be validators.
+
+### Delegation Threshold
+It's a constant threshold to prevent the accounts with little delegations from becoming validators.
+Current **DELEGATION_THRESHOLD** is `100,000`, which is 1% of the total CCS(`10,000,000`).
+It means there can be 100 valid candidates with the potential to be validators.
 
 ## Voting Power
 Each elected validators has different voting power.
