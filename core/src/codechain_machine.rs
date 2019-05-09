@@ -15,6 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // A state machine.
 
+use std::iter::Iterator;
+
 use ckey::Address;
 use cstate::{StateError, TopState, TopStateView};
 use ctypes::errors::{HistoryError, SyntaxError};
@@ -29,22 +31,47 @@ use crate::header::Header;
 use crate::scheme::CommonParams;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
-pub struct CodeChainMachine {
+struct Params {
+    changed_block: BlockNumber,
     params: CommonParams,
+}
+
+pub struct CodeChainMachine {
+    params: Vec<Params>,
     is_order_disabled: bool,
 }
 
 impl CodeChainMachine {
     pub fn new(params: CommonParams) -> Self {
         CodeChainMachine {
-            params,
+            params: vec![Params {
+                changed_block: 0,
+                params,
+            }],
             is_order_disabled: is_order_disabled(),
         }
     }
 
     /// Get the general parameters of the chain.
-    pub fn common_params(&self, _block_number: Option<BlockNumber>) -> &CommonParams {
-        &self.params
+    pub fn common_params(&self, block_number: Option<BlockNumber>) -> &CommonParams {
+        assert!(!self.params.is_empty());
+        let block_number = if let Some(block_number) = block_number {
+            block_number
+        } else {
+            return &self.params.last().unwrap().params // the latest block.
+        };
+        &self
+            .params
+            .iter()
+            .take_while(
+                |Params {
+                     changed_block,
+                     ..
+                 }| *changed_block <= block_number,
+            )
+            .last()
+            .unwrap()
+            .params
     }
 
     /// Does basic verification of the transaction.
@@ -276,5 +303,127 @@ impl WithBalances for CodeChainMachine {
     fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: u64) -> Result<(), Self::Error> {
         live.state_mut().add_balance(address, amount).map_err(StateError::from)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn common_params_are_not_changed_since_genesis() {
+        let genesis_params = CommonParams::default();
+        let machine = CodeChainMachine::new(genesis_params.clone());
+        assert_eq!(&genesis_params, machine.common_params(Some(0)));
+        assert_eq!(&genesis_params, machine.common_params(Some(1)));
+        assert_eq!(&genesis_params, machine.common_params(None));
+    }
+
+    #[test]
+    fn common_params_changed_at_1() {
+        let genesis_params = CommonParams::default();
+        let params_at_1 = {
+            let mut params = genesis_params.clone();
+            params.min_store_transaction_cost += 10;
+            params
+        };
+        let machine = CodeChainMachine {
+            params: vec![
+                Params {
+                    changed_block: 0,
+                    params: genesis_params.clone(),
+                },
+                Params {
+                    changed_block: 1,
+                    params: params_at_1.clone(),
+                },
+            ],
+            is_order_disabled: false,
+        };
+        assert_eq!(&genesis_params, machine.common_params(Some(0)));
+        assert_eq!(&params_at_1, machine.common_params(Some(1)));
+        assert_eq!(&params_at_1, machine.common_params(None));
+    }
+
+    #[test]
+    fn common_params_changed_at_2() {
+        let genesis_params = CommonParams::default();
+        let params_at_2 = {
+            let mut params = genesis_params.clone();
+            params.min_store_transaction_cost += 10;
+            params
+        };
+        let machine = CodeChainMachine {
+            params: vec![
+                Params {
+                    changed_block: 0,
+                    params: genesis_params.clone(),
+                },
+                Params {
+                    changed_block: 2,
+                    params: params_at_2.clone(),
+                },
+            ],
+            is_order_disabled: false,
+        };
+        assert_eq!(&genesis_params, machine.common_params(Some(0)));
+        assert_eq!(&genesis_params, machine.common_params(Some(1)));
+        assert_eq!(&params_at_2, machine.common_params(Some(2)));
+        assert_eq!(&params_at_2, machine.common_params(None));
+    }
+
+
+    #[test]
+    fn common_params_changed_several_times() {
+        let genesis_params = CommonParams::default();
+        let params_at_10 = {
+            let mut params = genesis_params.clone();
+            params.min_store_transaction_cost += 10;
+            params
+        };
+        let params_at_20 = {
+            let mut params = params_at_10.clone();
+            params.min_store_transaction_cost += 10;
+            params
+        };
+        let params_at_30 = {
+            let mut params = params_at_20.clone();
+            params.min_store_transaction_cost += 10;
+            params
+        };
+        let machine = CodeChainMachine {
+            params: vec![
+                Params {
+                    changed_block: 0,
+                    params: genesis_params.clone(),
+                },
+                Params {
+                    changed_block: 10,
+                    params: params_at_10.clone(),
+                },
+                Params {
+                    changed_block: 20,
+                    params: params_at_20.clone(),
+                },
+                Params {
+                    changed_block: 30,
+                    params: params_at_30.clone(),
+                },
+            ],
+            is_order_disabled: false,
+        };
+        for i in 0..10 {
+            assert_eq!(&genesis_params, machine.common_params(Some(i)), "unexpected params at block {}", i);
+        }
+        for i in 10..20 {
+            assert_eq!(&params_at_10, machine.common_params(Some(i)), "unexpected params at block {}", i);
+        }
+        for i in 20..30 {
+            assert_eq!(&params_at_20, machine.common_params(Some(i)), "unexpected params at block {}", i);
+        }
+        for i in 30..40 {
+            assert_eq!(&params_at_30, machine.common_params(Some(i)), "unexpected params at block {}", i);
+        }
+        assert_eq!(&params_at_30, machine.common_params(None));
     }
 }

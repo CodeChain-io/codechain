@@ -39,7 +39,7 @@ use crate::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA,
 use crate::error::{Error, SchemeError};
 use crate::header::Header;
 
-#[derive(Debug, PartialEq, Default, RlpEncodable)]
+#[derive(Clone, Debug, PartialEq, Default, RlpEncodable)]
 pub struct CommonParams {
     /// Maximum size of extra data.
     pub max_extra_data_size: usize,
