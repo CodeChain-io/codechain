@@ -46,7 +46,7 @@ pub fn verify_block_basic(header: &Header, bytes: &[u8], engine: &CodeChainEngin
     engine.verify_block_basic(&header)?;
 
     let body_rlp = UntrustedRlp::new(bytes).at(1)?;
-    if body_rlp.as_raw().len() > engine.machine().common_params().max_body_size {
+    if body_rlp.as_raw().len() > engine.machine().common_params(Some(header.number())).max_body_size {
         return Err(BlockError::BodySizeIsTooBig.into())
     }
 
@@ -66,15 +66,16 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
         })))
     }
 
-    if header.number() >= BlockNumber::max_value() {
+    let block_number = header.number();
+    if block_number >= BlockNumber::max_value() {
         return Err(From::from(BlockError::RidiculousNumber(OutOfBounds {
             max: Some(BlockNumber::max_value()),
             min: None,
-            found: header.number(),
+            found: block_number,
         })))
     }
-    let max_extra_data_size = engine.machine().common_params().max_extra_data_size;
-    if header.number() != 0 && header.extra_data().len() > max_extra_data_size {
+    let max_extra_data_size = engine.machine().common_params(Some(block_number)).max_extra_data_size;
+    if block_number != 0 && header.extra_data().len() > max_extra_data_size {
         return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
             min: None,
             max: Some(max_extra_data_size),

@@ -49,7 +49,8 @@ impl ApiDependencies {
                 Arc::clone(&self.account_provider),
                 Arc::clone(&self.client),
                 Arc::clone(&self.miner),
-                self.client.engine().machine().common_params().network_id,
+                // XXX: What should we do if the network id has been changed
+                self.client.engine().machine().common_params(None).network_id,
             )
             .to_delegate(),
         );

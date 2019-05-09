@@ -20,6 +20,7 @@ use cstate::{StateError, TopState, TopStateView};
 use ctypes::errors::{HistoryError, SyntaxError};
 use ctypes::machine::{Machine, WithBalances};
 use ctypes::transaction::{Action, AssetTransferInput, OrderOnTransfer, Timelock};
+use ctypes::BlockNumber;
 
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::client::{BlockInfo, TransactionInfo};
@@ -42,13 +43,13 @@ impl CodeChainMachine {
     }
 
     /// Get the general parameters of the chain.
-    pub fn common_params(&self) -> &CommonParams {
+    pub fn common_params(&self, _block_number: Option<BlockNumber>) -> &CommonParams {
         &self.params
     }
 
     /// Does basic verification of the transaction.
-    pub fn verify_transaction_basic(&self, p: &UnverifiedTransaction, _header: &Header) -> Result<(), Error> {
-        let min_cost = self.min_cost(&p.action);
+    pub fn verify_transaction_basic(&self, p: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+        let min_cost = self.min_cost(&p.action, Some(header.number()));
         if p.fee < min_cost {
             return Err(SyntaxError::InsufficientFee {
                 minimal: min_cost,
@@ -56,7 +57,7 @@ impl CodeChainMachine {
             }
             .into())
         }
-        p.verify_basic(self.common_params(), self.is_order_disabled)?;
+        p.verify_basic(self.common_params(Some(header.number())), self.is_order_disabled)?;
 
         Ok(())
     }
@@ -191,56 +192,57 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    pub fn min_cost(&self, action: &Action) -> u64 {
+    pub fn min_cost(&self, action: &Action, block_number: Option<BlockNumber>) -> u64 {
+        let params = self.common_params(block_number);
         match action {
             Action::MintAsset {
                 ..
-            } => self.params.min_asset_mint_cost,
+            } => params.min_asset_mint_cost,
             Action::TransferAsset {
                 ..
-            } => self.params.min_asset_transfer_cost,
+            } => params.min_asset_transfer_cost,
             Action::ChangeAssetScheme {
                 ..
-            } => self.params.min_asset_scheme_change_cost,
+            } => params.min_asset_scheme_change_cost,
             Action::IncreaseAssetSupply {
                 ..
-            } => self.params.min_asset_supply_increase_cost,
+            } => params.min_asset_supply_increase_cost,
             Action::ComposeAsset {
                 ..
-            } => self.params.min_asset_compose_cost,
+            } => params.min_asset_compose_cost,
             Action::DecomposeAsset {
                 ..
-            } => self.params.min_asset_decompose_cost,
+            } => params.min_asset_decompose_cost,
             Action::UnwrapCCC {
                 ..
-            } => self.params.min_asset_unwrap_ccc_cost,
+            } => params.min_asset_unwrap_ccc_cost,
             Action::Pay {
                 ..
-            } => self.params.min_pay_transaction_cost,
+            } => params.min_pay_transaction_cost,
             Action::SetRegularKey {
                 ..
-            } => self.params.min_set_regular_key_transaction_cost,
+            } => params.min_set_regular_key_transaction_cost,
             Action::CreateShard {
                 ..
-            } => self.params.min_create_shard_transaction_cost,
+            } => params.min_create_shard_transaction_cost,
             Action::SetShardOwners {
                 ..
-            } => self.params.min_set_shard_owners_transaction_cost,
+            } => params.min_set_shard_owners_transaction_cost,
             Action::SetShardUsers {
                 ..
-            } => self.params.min_set_shard_users_transaction_cost,
+            } => params.min_set_shard_users_transaction_cost,
             Action::WrapCCC {
                 ..
-            } => self.params.min_wrap_ccc_transaction_cost,
+            } => params.min_wrap_ccc_transaction_cost,
             Action::Custom {
                 ..
-            } => self.params.min_custom_transaction_cost,
+            } => params.min_custom_transaction_cost,
             Action::Store {
                 ..
-            } => self.params.min_store_transaction_cost,
+            } => params.min_store_transaction_cost,
             Action::Remove {
                 ..
-            } => self.params.min_remove_transaction_cost,
+            } => params.min_remove_transaction_cost,
         }
     }
 }
