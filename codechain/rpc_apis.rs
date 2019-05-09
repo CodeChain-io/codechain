@@ -45,14 +45,8 @@ impl ApiDependencies {
         handler.extend_with(MinerClient::new(Arc::clone(&self.client), Arc::clone(&self.miner)).to_delegate());
         handler.extend_with(NetClient::new(Arc::clone(&self.network_control)).to_delegate());
         handler.extend_with(
-            AccountClient::new(
-                Arc::clone(&self.account_provider),
-                Arc::clone(&self.client),
-                Arc::clone(&self.miner),
-                // XXX: What should we do if the network id has been changed
-                self.client.engine().machine().common_params(None).network_id,
-            )
-            .to_delegate(),
+            AccountClient::new(Arc::clone(&self.account_provider), Arc::clone(&self.client), Arc::clone(&self.miner))
+                .to_delegate(),
         );
     }
 }
