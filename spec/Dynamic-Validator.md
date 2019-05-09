@@ -58,9 +58,8 @@ TBD
 
 ## Delegation
 The stakeholders have the right to choose validators as much as their shares.
-This is called delegation, and the stakeholders who have been delegated called delegators.
+This is called delegation, and the stakeholders who have delegated called delegators.
 The delegation is valid only when the delegatee is not an eligible or not banned.
-The delegation is valid only when the delegatee is not eligible or banned.
 The delegated stakes are returned when the account becomes an eligible account or a banned account.
 
 ## Election
@@ -120,8 +119,8 @@ The transaction that tries to withdraw more than what the account has will fail.
 * quantity
 
 It's a transaction used by the stakeholders to select the validators.
-The validator can delegate as much stakes as they have.
-The validator can delegate any candidates, including validators and jailed accounts.
+The stakeholders can delegate as much stakes as they have.
+The stakeholders can delegate any candidates, including validators and jailed accounts.
 The delegations return automatically when the delegatee becomes eligible or banned.
 
 *DELEGATE* transactions to banned or eligible accounts fail.
@@ -132,7 +131,7 @@ The delegations return automatically when the delegatee becomes eligible or bann
 * quantity
 
 It's a transaction used by the stakeholders to revoke the delegation.
-The validator can revoke delegations at any time without delay.
+The stakeholders can revoke delegations at any time without delay.
 The revoke occurs immediately, but the validator cannot be ousted before its term is over.
 
 The transaction fails when the delegator revokes more than it delegates.
@@ -153,4 +152,4 @@ The informant receives all deposit and rewards(TBD) as prize money immediately.
 
 The criminal becomes a banned account.
 The account cannot become a candidate anymore.
-In other words, the *DELEGATE* transaction to the banned account and the *SELF_NOMINATE* transaction from the banned account fal.
+In other words, the *DELEGATE* transaction to the banned account and the *SELF_NOMINATE* transaction from the banned account fail.
