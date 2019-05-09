@@ -285,8 +285,16 @@ impl HeaderChain {
     ///
     /// Used in BlockChain::update_best_as_committed().
     pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: H256) {
-        ctrace!(HEADERCHAIN, "Update the best block to {}", block_hash);
         assert!(self.pending_best_header_hash.read().is_none());
+
+        let prev_best_header_number = self.best_header().number();
+        let committed_header_number =
+            self.block_header_data(&block_hash).expect("The given hash should exist").number();
+        if prev_best_header_number > committed_header_number {
+            return
+        }
+
+        ctrace!(HEADERCHAIN, "Update the best block to {}", block_hash);
         let block_detail = self.block_details(&block_hash).expect("The given hash should exist");
         let mut new_hashes = HashMap::new();
         new_hashes.insert(block_detail.number, block_hash);

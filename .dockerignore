@@ -1,6 +1,7 @@
-/.git/
 /.idea/
 /target/
 /keys/
 /db/
 /docker/
+/keystore.db
+/test/

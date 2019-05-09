@@ -36,7 +36,6 @@ extern crate codechain_keystore as ckeystore;
 extern crate codechain_logger as clogger;
 extern crate cidr;
 extern crate codechain_network as cnetwork;
-extern crate codechain_reactor as creactor;
 extern crate codechain_rpc as crpc;
 extern crate codechain_state as cstate;
 extern crate codechain_sync as csync;

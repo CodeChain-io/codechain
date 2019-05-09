@@ -31,7 +31,6 @@ use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, RoutingTable, SocketAddr};
-use creactor::EventLoop;
 use csync::{BlockSyncExtension, BlockSyncSender, SnapshotService, TransactionSyncExtension};
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
@@ -224,7 +223,6 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
 
-    let _event_loop = EventLoop::spawn();
     let timer_loop = TimerLoop::new(2);
 
     let config = load_config(matches)?;

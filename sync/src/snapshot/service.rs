@@ -68,6 +68,7 @@ impl ChainNotify for Service {
             let db = self.client.database();
             let path: PathBuf = [self.root_dir.clone(), format!("{:x}", header.hash())].iter().collect();
             let root = header.state_root();
+            // FIXME: The db can be corrupted because the CodeChain doesn't wait child threads end on exit.
             spawn(move || match Snapshot::try_new(path).map(|s| s.write_snapshot(db.as_ref(), &root)) {
                 Ok(_) => {}
                 Err(Error::FileError(ErrorKind::AlreadyExists)) => {}
