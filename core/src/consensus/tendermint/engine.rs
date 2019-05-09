@@ -23,7 +23,6 @@ use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::ActionHandler;
 use ctypes::machine::WithBalances;
-use ctypes::transaction::Action;
 use ctypes::BlockNumber;
 use primitives::H256;
 
@@ -161,7 +160,7 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
         let (total_fee, min_fee) = {
             let transactions = block.transactions();
             let total_fee: u64 = transactions.iter().map(|tx| tx.fee).sum();
-            let min_fee = transactions.iter().map(|tx| self.minimum_fee(&tx.action)).sum();
+            let min_fee = transactions.iter().map(|tx| self.machine.min_cost(&tx.action)).sum();
             (total_fee, min_fee)
         };
         assert!(total_fee >= min_fee, "{} >= {}", total_fee, min_fee);
@@ -255,62 +254,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
         &self.action_handlers
-    }
-}
-
-impl Tendermint {
-    fn minimum_fee(&self, action: &Action) -> u64 {
-        let params = self.machine.params();
-        match action {
-            Action::MintAsset {
-                ..
-            } => params.min_asset_mint_cost,
-            Action::TransferAsset {
-                ..
-            } => params.min_asset_transfer_cost,
-            Action::ChangeAssetScheme {
-                ..
-            } => params.min_asset_scheme_change_cost,
-            Action::IncreaseAssetSupply {
-                ..
-            } => params.min_asset_supply_increase_cost,
-            Action::ComposeAsset {
-                ..
-            } => params.min_asset_compose_cost,
-            Action::DecomposeAsset {
-                ..
-            } => params.min_asset_decompose_cost,
-            Action::UnwrapCCC {
-                ..
-            } => params.min_asset_unwrap_ccc_cost,
-            Action::Pay {
-                ..
-            } => params.min_pay_transaction_cost,
-            Action::SetRegularKey {
-                ..
-            } => params.min_set_regular_key_transaction_cost,
-            Action::CreateShard {
-                ..
-            } => params.min_create_shard_transaction_cost,
-            Action::SetShardOwners {
-                ..
-            } => params.min_set_shard_owners_transaction_cost,
-            Action::SetShardUsers {
-                ..
-            } => params.min_set_shard_users_transaction_cost,
-            Action::WrapCCC {
-                ..
-            } => params.min_wrap_ccc_transaction_cost,
-            Action::Custom {
-                ..
-            } => params.min_custom_transaction_cost,
-            Action::Store {
-                ..
-            } => params.min_store_transaction_cost,
-            Action::Remove {
-                ..
-            } => params.min_remove_transaction_cost,
-        }
     }
 }
 
