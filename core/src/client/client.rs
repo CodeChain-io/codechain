@@ -484,7 +484,7 @@ impl ChainInfo for Client {
 
 impl EngineInfo for Client {
     fn common_params(&self) -> &CommonParams {
-        self.engine().params()
+        self.engine().machine().common_params()
     }
 
     fn block_reward(&self, block_number: u64) -> u64 {

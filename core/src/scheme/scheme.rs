@@ -345,7 +345,7 @@ impl Scheme {
 
     /// Get common blockchain parameters.
     pub fn params(&self) -> &CommonParams {
-        &self.engine.params()
+        &self.engine.machine().common_params()
     }
 
     /// Get the header of the genesis block.
