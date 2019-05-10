@@ -142,12 +142,15 @@ The deposit and the reward the criminal earns is slashed and is given to the inf
 ## Transactions
 ### SELF_NOMIATION
 * quantity
-* metadata(TBD)
+* metadata
 
 This transaction registers the sender to the candidate.
 The nomination is valid in **NOMINATE_EXPIRATION**.
 
 The account cannot withdraw the deposit manually, and is returned automatically when the account becomes an eligible account.
+
+The metadata is text information that proves the identity of the candidate.
+It can be a URL, a phone number, a messenger Id, etc.
 
 ### WITHDRAW
 * quantity
