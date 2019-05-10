@@ -79,6 +79,24 @@ It's a constant threshold to prevent the accounts with little delegations from b
 Current **DELEGATION_THRESHOLD** is `100,000`, which is 1% of the total CCS(`10,000,000`).
 It means there can be 100 valid candidates with the potential to be validators.
 
+## The Order of Proposing Blocks
+The rate of becoming the block proposer is related to the number of delegations that the validator received.
+In other words, CodeChain allows the validator that receives more delegations to generate more blocks than others.
+
+```rust
+let mut validators: Vec<(u64, u64, Account)> = // (Delegation, Deposit, Account)
+let mut proposers: Vec<Account> = vec![];
+validators.reverse_sort();
+let min_delegation = validator.last().0;
+while !validators.is_empty() {
+    for (delegation, _, validator) in validators {
+        proposers.push_back(validator);
+    }
+    validators.retain(|(delegation, _, _)| delegation > min_delegation);
+    validators.for_each(|(mut delegation, _, _)| delegation -= min_delegation);
+}
+```
+
 ## Voting Power
 Each elected validators has different voting power.
 The voting power is based on the delegation that the validator received at the election.
