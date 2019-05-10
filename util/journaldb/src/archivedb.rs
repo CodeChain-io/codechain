@@ -102,6 +102,10 @@ impl HashDB for ArchiveDB {
     fn remove(&mut self, key: &H256) {
         self.overlay.remove(key);
     }
+
+    fn is_empty(&self) -> bool {
+        self.latest_era.is_none()
+    }
 }
 
 impl JournalDB for ArchiveDB {
@@ -112,10 +116,6 @@ impl JournalDB for ArchiveDB {
             latest_era: self.latest_era,
             column: self.column,
         })
-    }
-
-    fn is_empty(&self) -> bool {
-        self.latest_era.is_none()
     }
 
     fn latest_era(&self) -> Option<u64> {
