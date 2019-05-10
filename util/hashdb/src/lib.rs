@@ -48,6 +48,9 @@ pub trait HashDB: AsHashDB + Send + Sync {
     /// Remove a datum previously inserted. Insertions can be "owed" such that the same number of `insert()`s may
     /// happen without the data being eventually being inserted into the DB. It can be "owed" more than once.
     fn remove(&mut self, key: &H256);
+
+    /// check if the db has no commits
+    fn is_empty(&self) -> bool;
 }
 
 /// Upcast trait.

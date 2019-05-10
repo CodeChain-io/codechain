@@ -249,7 +249,7 @@ impl Scheme {
     }
 
     pub fn check_genesis_root(&self, db: &HashDB) -> bool {
-        if db.keys().is_empty() {
+        if db.is_empty() {
             return true
         }
         db.contains(&self.state_root())

@@ -262,6 +262,10 @@ impl HashDB for MemoryDB {
             }
         }
     }
+
+    fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
 }
 
 #[cfg(test)]
