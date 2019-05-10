@@ -11,7 +11,7 @@
 | **MAX_NUM_OF_VALIDATORS**        | 30            |
 | **MIN_NUM_OF_VALIDATORS**        | 4             |
 | **DELEGATION_THRESHOLD**         | 100,000       |
-| **MIN_DEPOSIT**                  | TBD CCC       |
+| **MIN_DEPOSIT**                  | 10M CCC       |
 
 
 ## FSM of Account States
@@ -49,12 +49,12 @@ CodeChain elects a new validator set after all rewards of the block is given.
 
 ## Nomination
 Any account that is not banned can nominate itself.
-The account becomes a candidate when the sum of the deposit is more than **MIN_DEPOSIT**.
 The nomination expires after **NOMINATION_EXPIRATION**; the account that wants to remain a candidate must nominate itself before the previous nomination expires.
 The deposit reverts to the account when it becomes an eligible account.
 
 ### Minimum Deposit
-TBD
+The candidate who deposits less than **MIN_DEPOSIT** cannot participate in the election.
+The candidate can deposit more than **MIN_DEPOSIT**, but they cannot withdraw it manually.
 
 ## Delegation
 The stakeholders have the right to choose validators as much as their shares.
@@ -65,9 +65,10 @@ The delegated stakes are returned when the account becomes an eligible account o
 ## Election
 The election is a process that elects validators of a term according to the following rule:
 
-1. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of having received many delegations.
-2. Select **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
-3. Among the rest of them, drop the accounts that received less than **DELEGATION_THRESHOLD**; the remaining accounts become validators.
+1. Select the candidates who deposited **MIN_DEPOSIT** or more.
+2. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of having received many delegations.
+3. Select **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
+4. Among the rest of them, drop the accounts that received less than **DELEGATION_THRESHOLD**; the remaining accounts become validators.
 
 This process guarantees two things:
 * There are at least **MIN_NUM_OF_VALIDATORS** validators only if the number of candidates is larger than **MIN_NUM_OF_VALIDATORS**.
@@ -87,7 +88,40 @@ The block is valid only if the sum of voting power is more than 2/3 of the total
 The block proposer gets the express fee of the blocks at the end of a term.
 Validators can get the reward after **WITHDRAW_DELAY** terms; however, the proposers cannot get all the reward if they are not loyal to their duty.
 The reward is decreased according to the rate of the blocks the validator misses to sign.
-TBD: The rate of decreasing.
+
+The reward is decreased when a validator doesn't sign blocks proposed by others.
+The decreasing rate looks like the graph shown below:
+
+![](disloyal-penalty-rate.png)
+
+If a validator misses 1/3 of the blocks, the reward is decreased by 10%.
+If it misses more than 1/3 of the blocks, the reward decreases at much more rapid rate, up to 90%.
+Finally, there is no reward at all if it misses more than 2/3 of the blocks.
+
+This penalty is applied in cases of disloyal behavior.
+However, some validators can exploit it by rejecting other validators' signatures to their proposal.
+To prevent this issue, CodeChain encourages validators who collect signatures diligently by giving additional rewards.
+
+The additional reward algorithm is shown below:
+```rust
+let total_validators: Vec<Vec<Account>> := // sorted validators into the average number of signatures;
+let mut remain_reward = // total reduced rewards
+for validators in total_validators {
+    if validators.is_empty() {
+        break;
+    }
+    let reward = floor(remain_reward / (top_validators.len() + 1))
+    if reward == 0 {
+        break;
+    }
+    for validator in validators {
+        give_ccc(validator, reward);
+        remain_reward -= reward;
+    }
+}
+```
+The remaining rewards as a result of the additional reward algorithm are burned.
+At the worst case, **MAX_NUM_OF_VALIDATORS** CCC can be burned every term.
 
 ## Punishment for Validators
 ### Downtime
@@ -110,7 +144,7 @@ The deposit and the reward the criminal earns is slashed and is given to the inf
 * quantity
 * metadata(TBD)
 
-This transaction registers the sender to the candidate when the sum of the deposit is larger than **MIN_DEPOSIT**.
+This transaction registers the sender to the candidate.
 The nomination is valid in **NOMINATE_EXPIRATION**.
 
 The account cannot withdraw the deposit manually, and is returned automatically when the account becomes an eligible account.
