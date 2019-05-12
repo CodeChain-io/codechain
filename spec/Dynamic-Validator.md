@@ -57,16 +57,16 @@ The candidate who deposits less than **MIN_DEPOSIT** cannot participate in the e
 The candidate can deposit more than **MIN_DEPOSIT**, but they cannot withdraw it manually.
 
 ## Delegation
-The stakeholders have the right to choose validators as much as their shares.
-This is called delegation, and the stakeholders who have delegated called delegators.
-The delegation is valid only when the delegatee is not an eligible or not banned.
+The stakeholders have the right to choose validators in proportion to their shares.
+This is called delegation, and the stakeholders who have delegated are called delegators.
+The delegation is valid only when the delegatee is eligible and not banned.
 The delegated stakes are returned when the account becomes an eligible account or a banned account.
 
 ## Election
 The election is a process that elects validators of a term according to the following rule:
 
 1. Select the candidates who deposited **MIN_DEPOSIT** or more.
-2. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of having received many delegations.
+2. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of the amount of received delegations.
 3. Select **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
 4. Among the rest of them, drop the accounts that received less than **DELEGATION_THRESHOLD**; the remaining accounts become validators.
 
