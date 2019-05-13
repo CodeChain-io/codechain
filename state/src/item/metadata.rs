@@ -14,18 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use ctypes::ShardId;
 
 use crate::CacheableItem;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Metadata {
     number_of_shards: ShardId,
     number_of_initial_shards: ShardId,
     hashes: Vec<H256>,
+    seq: usize,
+    params: Option<Bytes>,
 }
 
 impl Metadata {
@@ -34,6 +36,8 @@ impl Metadata {
             number_of_shards,
             number_of_initial_shards: number_of_shards,
             hashes: vec![],
+            seq: 0,
+            params: None,
         }
     }
 
@@ -85,23 +89,35 @@ const PREFIX: u8 = super::METADATA_PREFIX;
 
 impl Encodable for Metadata {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(4)
-            .append(&PREFIX)
+        let params_changed = self.seq != 0;
+        if params_changed {
+            s.begin_list(6);
+        } else {
+            s.begin_list(4);
+        }
+        s.append(&PREFIX)
             .append(&self.number_of_shards)
             .append(&self.number_of_initial_shards)
             .append_list(&self.hashes);
+        if params_changed {
+            s.append(&self.seq);
+            s.append(self.params.as_ref().unwrap());
+        }
     }
 }
 
 impl Decodable for Metadata {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        let item_count = rlp.item_count()?;
-        if item_count != 4 {
-            return Err(DecoderError::RlpInvalidLength {
-                got: item_count,
-                expected: 4,
-            })
-        }
+        let (seq, params) = match rlp.item_count()? {
+            4 => (0, None),
+            6 => (rlp.val_at(4)?, Some(rlp.val_at(5)?)),
+            item_count => {
+                return Err(DecoderError::RlpInvalidLength {
+                    got: item_count,
+                    expected: 4,
+                })
+            }
+        };
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {
             cdebug!(STATE, "{} is not an expected prefix for asset", prefix);
@@ -111,6 +127,8 @@ impl Decodable for Metadata {
             number_of_shards: rlp.val_at(1)?,
             number_of_initial_shards: rlp.val_at(2)?,
             hashes: rlp.list_at(3)?,
+            seq,
+            params,
         })
     }
 }
@@ -128,6 +146,8 @@ impl MetadataAddress {
 
 #[cfg(test)]
 mod tests {
+    use rlp::rlp_encode_and_decode_test;
+
     use super::*;
 
     #[test]
@@ -156,5 +176,23 @@ mod tests {
         };
         let address = MetadataAddress::from_hash(hash);
         assert_eq!(Some(MetadataAddress(hash)), address);
+    }
+
+    #[test]
+    fn metadata_with_0_seq() {
+        let metadata = Metadata::default();
+        rlp_encode_and_decode_test!(metadata);
+    }
+
+    #[test]
+    fn metadata_with_seq() {
+        let metadata = Metadata {
+            number_of_shards: 10,
+            number_of_initial_shards: 1,
+            hashes: vec![],
+            seq: 3,
+            params: Some(vec![0, 1, 2, 3]),
+        };
+        rlp_encode_and_decode_test!(metadata);
     }
 }
