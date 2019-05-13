@@ -35,9 +35,6 @@ pub trait JournalDB: HashDB {
         0
     }
 
-    /// Check if this database has any commits
-    fn is_empty(&self) -> bool;
-
     /// Get the earliest era in the DB. None if there isn't yet any data in there.
     fn earliest_era(&self) -> Option<u64> {
         None

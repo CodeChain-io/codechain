@@ -67,14 +67,12 @@ pub struct VerificationQueue<K: Kind> {
     engine: Arc<CodeChainEngine>,
     verification: Arc<Verification<K>>,
     processing: RwLock<HashMap<H256, U256>>, // hash to score
-    #[allow(dead_code)]
     deleting: Arc<AtomicBool>,
     ready_signal: Arc<QueueSignal>,
     total_score: RwLock<U256>,
     #[allow(dead_code)]
     empty: Arc<SCondvar>,
     more_to_verify: Arc<SCondvar>,
-    #[allow(dead_code)]
     verifier_handles: Vec<JoinHandle<()>>,
     max_queue_size: usize,
     max_mem_use: usize,
@@ -161,11 +159,20 @@ impl<K: Kind> VerificationQueue<K> {
             let more_to_verify = more_to_verify.clone();
             let ready_signal = ready_signal.clone();
             let empty = empty.clone();
+            let deleting = Arc::clone(&deleting);
 
             let handle = thread::Builder::new()
                 .name(format!("Verifier #{}", i))
                 .spawn(move || {
-                    VerificationQueue::verify(&verification, &*engine, &*ready_signal, &*empty, &*more_to_verify, i)
+                    VerificationQueue::verify(
+                        &verification,
+                        &*engine,
+                        &*ready_signal,
+                        &*empty,
+                        &*more_to_verify,
+                        &*deleting,
+                        i,
+                    )
                 })
                 .expect("Failed to create verifier thread.");
             verifier_handles.push(handle);
@@ -192,6 +199,7 @@ impl<K: Kind> VerificationQueue<K> {
         ready_signal: &QueueSignal,
         empty: &SCondvar,
         more_to_verify: &SCondvar,
+        deleting: &AtomicBool,
         _id: usize,
     ) {
         loop {
@@ -204,8 +212,14 @@ impl<K: Kind> VerificationQueue<K> {
                 }
 
                 while verification.unverified.lock().is_empty() {
+                    if deleting.load(AtomicOrdering::SeqCst) {
+                        return
+                    }
                     more_to_verify_mutex = more_to_verify.wait(more_to_verify_mutex).unwrap();
                 }
+            }
+            if deleting.load(AtomicOrdering::SeqCst) {
+                return
             }
 
             // do work.
@@ -471,6 +485,16 @@ impl<K: Kind> VerificationQueue<K> {
     /// Get the total score of all the blocks in the queue.
     pub fn total_score(&self) -> U256 {
         *self.total_score.read()
+    }
+}
+
+impl<K: Kind> Drop for VerificationQueue<K> {
+    fn drop(&mut self) {
+        self.deleting.store(true, AtomicOrdering::SeqCst);
+        self.more_to_verify.notify_all();
+        for handle in self.verifier_handles.drain(0..) {
+            handle.join().unwrap();
+        }
     }
 }
 

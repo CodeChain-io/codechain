@@ -50,6 +50,11 @@ args:
         long: chain
         help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, corgi, mainnet or a path to chain scheme file.
         takes_value: true
+    - base-path:
+        long: base-path
+        value_name: PATH
+        help: Specify the base directory path on which the "db" and "keys" directory will be created.
+        takes_value: true
     - db-path:
         long: db-path
         value_name: PATH

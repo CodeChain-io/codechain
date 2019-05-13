@@ -18,12 +18,7 @@
 use ckey::{Address, Public};
 use primitives::H256;
 
-use super::super::EpochChange;
-use super::validator_list::ValidatorList;
 use super::ValidatorSet;
-use crate::codechain_machine::CodeChainMachine;
-use crate::error::Error;
-use crate::header::Header;
 
 /// Validator set containing a known set of public keys.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -55,24 +50,6 @@ impl ValidatorSet for NullValidator {
     }
 
     fn count(&self, _parent: &H256) -> usize {
-        unimplemented!()
-    }
-
-    fn is_epoch_end(&self, _first: bool, _chain_head: &Header) -> Option<Vec<u8>> {
-        unimplemented!()
-    }
-
-    fn signals_epoch_end(&self, _first: bool, _header: &Header) -> EpochChange {
-        unimplemented!()
-    }
-
-    fn epoch_set(
-        &self,
-        _first: bool,
-        _machine: &CodeChainMachine,
-        _number: u64,
-        _proof: &[u8],
-    ) -> Result<(ValidatorList, Option<H256>), Error> {
         unimplemented!()
     }
 }

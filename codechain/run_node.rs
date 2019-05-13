@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::env;
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Weak};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ccore::{
     AccountProvider, AccountProviderError, ChainNotify, Client, ClientConfig, ClientService, EngineInfo, EngineType,
@@ -31,18 +30,16 @@ use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, RoutingTable, SocketAddr};
-use creactor::EventLoop;
 use csync::{BlockSyncExtension, BlockSyncSender, SnapshotService, TransactionSyncExtension};
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
-use finally_block::finally;
 use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::{Condvar, Mutex};
 
 use crate::config::{self, load_config};
-use crate::constants::DEFAULT_KEYS_PATH;
+use crate::constants::{DEFAULT_DB_PATH, DEFAULT_KEYS_PATH};
 use crate::dummy_network_service::DummyNetworkService;
 use crate::json::PasswordFile;
 use crate::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
@@ -203,8 +200,9 @@ fn unlock_accounts(ap: &AccountProvider, pf: &PasswordFile) -> Result<(), String
 }
 
 pub fn open_db(cfg: &config::Operating, client_config: &ClientConfig) -> Result<Arc<KeyValueDB>, String> {
-    let db_path = cfg.db_path.as_ref().map(String::as_str).unwrap();
-    let client_path = Path::new(db_path);
+    let base_path = cfg.base_path.as_ref().unwrap().clone();
+    let db_path = cfg.db_path.as_ref().map(String::clone).unwrap_or_else(|| base_path + "/" + DEFAULT_DB_PATH);
+    let client_path = Path::new(&db_path);
     let mut db_config = DatabaseConfig::with_columns(NUM_COLUMNS);
 
     db_config.memory_budget = client_config.db_cache_size;
@@ -223,21 +221,9 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     // increase max number of open files
     raise_fd_limit();
 
-    let _event_loop = EventLoop::spawn();
     let timer_loop = TimerLoop::new(2);
 
     let config = load_config(matches)?;
-
-    // FIXME: It is the hotfix for #348.
-    // Remove the below code if you find the proper way to solve #348.
-    let _wait = finally(|| {
-        const DEFAULT: u64 = 1;
-        let wait_before_shutdown = env::var_os("WAIT_BEFORE_SHUTDOWN")
-            .and_then(|sec| sec.into_string().ok())
-            .and_then(|sec| sec.parse().ok())
-            .unwrap_or(DEFAULT);
-        ::std::thread::sleep(Duration::from_secs(wait_before_shutdown));
-    });
 
     let scheme = match &config.operating.chain {
         Some(chain) => chain.scheme()?,
@@ -253,11 +239,10 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
 
     let pf = load_password_file(&config.operating.password_path)?;
-    let keys_path = match config.operating.keys_path {
-        Some(ref keys_path) => keys_path,
-        None => DEFAULT_KEYS_PATH,
-    };
-    let ap = prepare_account_provider(keys_path)?;
+    let base_path = config.operating.base_path.as_ref().unwrap().clone();
+    let keys_path =
+        config.operating.keys_path.as_ref().map(String::clone).unwrap_or_else(|| base_path + "/" + DEFAULT_KEYS_PATH);
+    let ap = prepare_account_provider(&keys_path)?;
     unlock_accounts(&*ap, &pf)?;
 
     let client_config: ClientConfig = Default::default();
