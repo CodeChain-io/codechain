@@ -456,7 +456,7 @@ impl Miner {
             let params = self.params.read().clone();
             let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
             let block_number = open_block.block().header().number();
-            let max_body_size = self.engine.machine().common_params(Some(block_number)).max_body_size;
+            let max_body_size = self.engine.machine().common_params(Some(block_number)).max_body_size();
             const DEFAULT_RANGE: Range<u64> = 0..::std::u64::MAX;
             let transactions = mem_pool
                 .top_transactions(max_body_size, Some(open_block.header().timestamp()), DEFAULT_RANGE)
@@ -1003,7 +1003,7 @@ impl MinerService for Miner {
     }
 
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
-        let max_body_size = self.engine.machine().common_params(None).max_body_size;
+        let max_body_size = self.engine.machine().common_params(None).max_body_size();
         self.mem_pool.read().top_transactions(max_body_size, None, range)
     }
 

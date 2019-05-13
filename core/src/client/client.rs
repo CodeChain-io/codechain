@@ -478,7 +478,7 @@ impl ChainInfo for Client {
 
     fn genesis_accounts(&self) -> Vec<PlatformAddress> {
         // XXX: What should we do if the network id has been changed
-        let network_id = self.common_params(None).network_id;
+        let network_id = self.common_params(None).network_id();
         self.genesis_accounts.iter().map(|addr| PlatformAddress::new_v1(network_id, *addr)).collect()
     }
 }
