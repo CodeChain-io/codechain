@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod common_params;
 mod genesis;
 mod pod_account;
 mod pod_shard_metadata;
@@ -22,5 +23,6 @@ mod pod_state;
 mod scheme;
 mod seal;
 
+pub use self::common_params::CommonParams;
 pub use self::genesis::Genesis;
-pub use self::scheme::{CommonParams, Scheme};
+pub use self::scheme::Scheme;
