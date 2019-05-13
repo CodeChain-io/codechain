@@ -15,3 +15,10 @@
     * Send new header to random peer instead of all.
 * Disabled Order and stake delegation by default
 * Enhanced unit tests and e2e tests
+
+# 1.3.0 - 2019-05-13
+* Fixed the broken commitHash RPC in a docker image #1443
+* Fixed the crash in Tendermint #1514
+* Added base-path option #236
+* Fixed the crash on exit #348
+* Reduced the booting time #1513
