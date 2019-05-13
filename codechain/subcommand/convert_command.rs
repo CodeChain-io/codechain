@@ -134,7 +134,7 @@ fn get_network_id(matches: &ArgMatches) -> Result<NetworkId, String> {
     let chain = matches.value_of("chain").unwrap_or_else(|| "solo");
     let chain_type: ChainType = chain.parse().unwrap();
     // XXX: What should we do if the network id has been changed
-    let network_id: NetworkId = chain_type.scheme().map(|scheme| scheme.params(None).network_id)?;
+    let network_id: NetworkId = chain_type.scheme().map(|scheme| scheme.params(None).network_id())?;
     Ok(network_id)
 }
 
