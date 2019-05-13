@@ -1,7 +1,6 @@
 [codechain]
 quiet = false
-db_path = "db"
-keys_path = "keys"
+base_path = "."
 chain = "solo"
 
 [mining]

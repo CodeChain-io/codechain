@@ -53,7 +53,7 @@ pub struct CommonParams {
     pub network_id: NetworkId,
     /// Minimum transaction cost.
     pub min_pay_transaction_cost: u64,
-    pub min_set_regular_key_tranasction_cost: u64,
+    pub min_set_regular_key_transaction_cost: u64,
     pub min_create_shard_transaction_cost: u64,
     pub min_set_shard_owners_transaction_cost: u64,
     pub min_set_shard_users_transaction_cost: u64,
@@ -83,7 +83,7 @@ impl From<cjson::scheme::Params> for CommonParams {
             max_text_content_size: p.max_text_content_size.into(),
             network_id: p.network_id,
             min_pay_transaction_cost: p.min_pay_cost.into(),
-            min_set_regular_key_tranasction_cost: p.min_set_regular_key_cost.into(),
+            min_set_regular_key_transaction_cost: p.min_set_regular_key_cost.into(),
             min_create_shard_transaction_cost: p.min_create_shard_cost.into(),
             min_set_shard_owners_transaction_cost: p.min_set_shard_owners_cost.into(),
             min_set_shard_users_transaction_cost: p.min_set_shard_users_cost.into(),
@@ -249,7 +249,7 @@ impl Scheme {
     }
 
     pub fn check_genesis_root(&self, db: &HashDB) -> bool {
-        if db.keys().is_empty() {
+        if db.is_empty() {
             return true
         }
         db.contains(&self.state_root())

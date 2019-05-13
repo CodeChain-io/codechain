@@ -202,6 +202,7 @@ pub struct Ipc {
 pub struct Operating {
     pub quiet: Option<bool>,
     pub instance_id: Option<usize>,
+    pub base_path: Option<String>,
     pub db_path: Option<String>,
     pub keys_path: Option<String>,
     pub password_path: Option<String>,
@@ -314,6 +315,9 @@ impl Operating {
         if other.instance_id.is_some() {
             self.instance_id = other.instance_id;
         }
+        if other.base_path.is_some() {
+            self.base_path = other.base_path.clone();
+        }
         if other.db_path.is_some() {
             self.db_path = other.db_path.clone();
         }
@@ -334,6 +338,9 @@ impl Operating {
         }
         if let Some(instance_id) = matches.value_of("instance-id") {
             self.instance_id = Some(instance_id.parse().map_err(|e| format!("{}", e))?);
+        }
+        if let Some(base_path) = matches.value_of("base-path") {
+            self.base_path = Some(base_path.to_string());
         }
         if let Some(db_path) = matches.value_of("db-path") {
             self.db_path = Some(db_path.to_string());
