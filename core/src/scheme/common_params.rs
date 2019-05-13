@@ -6,36 +6,111 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 pub struct CommonParams {
     size: usize,
     /// Maximum size of extra data.
-    pub max_extra_data_size: usize,
+    max_extra_data_size: usize,
     /// Maximum size of metadata of AssetScheme.
-    pub max_asset_scheme_metadata_size: usize,
+    max_asset_scheme_metadata_size: usize,
     /// Maximum size of metadata of TransferAsset.
-    pub max_transfer_metadata_size: usize,
+    max_transfer_metadata_size: usize,
     /// Maximum size of the content of text used in store/remove actions.
-    pub max_text_content_size: usize,
+    max_text_content_size: usize,
     /// Network id.
-    pub network_id: NetworkId,
+    network_id: NetworkId,
     /// Minimum transaction cost.
-    pub min_pay_transaction_cost: u64,
-    pub min_set_regular_key_transaction_cost: u64,
-    pub min_create_shard_transaction_cost: u64,
-    pub min_set_shard_owners_transaction_cost: u64,
-    pub min_set_shard_users_transaction_cost: u64,
-    pub min_wrap_ccc_transaction_cost: u64,
-    pub min_custom_transaction_cost: u64,
-    pub min_store_transaction_cost: u64,
-    pub min_remove_transaction_cost: u64,
-    pub min_asset_mint_cost: u64,
-    pub min_asset_transfer_cost: u64,
-    pub min_asset_scheme_change_cost: u64,
-    pub min_asset_supply_increase_cost: u64,
-    pub min_asset_compose_cost: u64,
-    pub min_asset_decompose_cost: u64,
-    pub min_asset_unwrap_ccc_cost: u64,
+    min_pay_transaction_cost: u64,
+    min_set_regular_key_transaction_cost: u64,
+    min_create_shard_transaction_cost: u64,
+    min_set_shard_owners_transaction_cost: u64,
+    min_set_shard_users_transaction_cost: u64,
+    min_wrap_ccc_transaction_cost: u64,
+    min_custom_transaction_cost: u64,
+    min_store_transaction_cost: u64,
+    min_remove_transaction_cost: u64,
+    min_asset_mint_cost: u64,
+    min_asset_transfer_cost: u64,
+    min_asset_scheme_change_cost: u64,
+    min_asset_supply_increase_cost: u64,
+    min_asset_compose_cost: u64,
+    min_asset_decompose_cost: u64,
+    min_asset_unwrap_ccc_cost: u64,
     /// Maximum size of block body.
-    pub max_body_size: usize,
+    max_body_size: usize,
     /// Snapshot creation period in unit of block numbers.
-    pub snapshot_period: u64,
+    snapshot_period: u64,
+}
+
+impl CommonParams {
+    pub fn max_extra_data_size(&self) -> usize {
+        self.max_extra_data_size
+    }
+    pub fn max_asset_scheme_metadata_size(&self) -> usize {
+        self.max_asset_scheme_metadata_size
+    }
+    pub fn max_transfer_metadata_size(&self) -> usize {
+        self.max_transfer_metadata_size
+    }
+    pub fn max_text_content_size(&self) -> usize {
+        self.max_text_content_size
+    }
+    pub fn network_id(&self) -> NetworkId {
+        self.network_id
+    }
+    pub fn min_pay_transaction_cost(&self) -> u64 {
+        self.min_pay_transaction_cost
+    }
+    pub fn min_set_regular_key_transaction_cost(&self) -> u64 {
+        self.min_set_regular_key_transaction_cost
+    }
+    pub fn min_create_shard_transaction_cost(&self) -> u64 {
+        self.min_create_shard_transaction_cost
+    }
+    pub fn min_set_shard_owners_transaction_cost(&self) -> u64 {
+        self.min_set_shard_owners_transaction_cost
+    }
+    pub fn min_set_shard_users_transaction_cost(&self) -> u64 {
+        self.min_set_shard_users_transaction_cost
+    }
+    pub fn min_wrap_ccc_transaction_cost(&self) -> u64 {
+        self.min_wrap_ccc_transaction_cost
+    }
+    pub fn min_custom_transaction_cost(&self) -> u64 {
+        self.min_custom_transaction_cost
+    }
+    pub fn min_store_transaction_cost(&self) -> u64 {
+        self.min_store_transaction_cost
+    }
+    pub fn set_min_store_transaction_cost(&mut self, new_value: u64) {
+        self.min_store_transaction_cost = new_value;
+    }
+    pub fn min_remove_transaction_cost(&self) -> u64 {
+        self.min_remove_transaction_cost
+    }
+    pub fn min_asset_mint_cost(&self) -> u64 {
+        self.min_asset_mint_cost
+    }
+    pub fn min_asset_transfer_cost(&self) -> u64 {
+        self.min_asset_transfer_cost
+    }
+    pub fn min_asset_scheme_change_cost(&self) -> u64 {
+        self.min_asset_scheme_change_cost
+    }
+    pub fn min_asset_supply_increase_cost(&self) -> u64 {
+        self.min_asset_supply_increase_cost
+    }
+    pub fn min_asset_compose_cost(&self) -> u64 {
+        self.min_asset_compose_cost
+    }
+    pub fn min_asset_decompose_cost(&self) -> u64 {
+        self.min_asset_decompose_cost
+    }
+    pub fn min_asset_unwrap_ccc_cost(&self) -> u64 {
+        self.min_asset_unwrap_ccc_cost
+    }
+    pub fn max_body_size(&self) -> usize {
+        self.max_body_size
+    }
+    pub fn snapshot_period(&self) -> u64 {
+        self.snapshot_period
+    }
 }
 
 impl From<Params> for CommonParams {

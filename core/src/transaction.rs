@@ -134,18 +134,18 @@ impl UnverifiedTransaction {
 
     /// Verify basic signature params. Does not attempt signer recovery.
     pub fn verify_basic(&self, params: &CommonParams, is_order_disabled: bool) -> Result<(), SyntaxError> {
-        if self.network_id != params.network_id {
+        if self.network_id != params.network_id() {
             return Err(SyntaxError::InvalidNetworkId(self.network_id))
         }
         let byte_size = rlp::encode(self).to_vec().len();
-        if byte_size >= params.max_body_size {
+        if byte_size >= params.max_body_size() {
             return Err(SyntaxError::TransactionIsTooBig)
         }
         self.action.verify(
-            params.network_id,
-            params.max_asset_scheme_metadata_size,
-            params.max_transfer_metadata_size,
-            params.max_text_content_size,
+            params.network_id(),
+            params.max_asset_scheme_metadata_size(),
+            params.max_transfer_metadata_size(),
+            params.max_text_content_size(),
             is_order_disabled,
         )
     }

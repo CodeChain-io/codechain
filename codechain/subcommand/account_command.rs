@@ -44,7 +44,7 @@ pub fn run_account_command(matches: &ArgMatches) -> Result<(), String> {
     let ap = AccountProvider::new(keystore);
     let chain = get_global_argument(matches, "chain").unwrap_or_else(|| "mainnet".into());
     let chain_type: ChainType = chain.parse().unwrap();
-    let network_id: NetworkId = chain_type.scheme().map(|scheme| scheme.params(None).network_id)?;
+    let network_id: NetworkId = chain_type.scheme().map(|scheme| scheme.params(None).network_id())?;
 
     match matches.subcommand() {
         ("create", _) => create(&ap, network_id),

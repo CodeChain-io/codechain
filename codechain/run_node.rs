@@ -261,7 +261,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
             // XXX: What should we do if the network id has been changed.
-            let network_id = client.client().common_params(None).network_id;
+            let network_id = client.client().common_params(None).network_id();
             let routing_table = RoutingTable::new();
             let service = network_start(network_id, timer_loop, &network_config, Arc::clone(&routing_table))?;
 
@@ -336,7 +336,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             let service = SnapshotService::new(
                 client.client(),
                 config.snapshot.path.unwrap(),
-                scheme.params(None).snapshot_period,
+                scheme.params(None).snapshot_period(),
             );
             client.client().add_notify(Arc::downgrade(&service) as Weak<ChainNotify>);
             Some(service)

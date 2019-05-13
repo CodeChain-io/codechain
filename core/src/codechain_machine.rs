@@ -224,52 +224,52 @@ impl CodeChainMachine {
         match action {
             Action::MintAsset {
                 ..
-            } => params.min_asset_mint_cost,
+            } => params.min_asset_mint_cost(),
             Action::TransferAsset {
                 ..
-            } => params.min_asset_transfer_cost,
+            } => params.min_asset_transfer_cost(),
             Action::ChangeAssetScheme {
                 ..
-            } => params.min_asset_scheme_change_cost,
+            } => params.min_asset_scheme_change_cost(),
             Action::IncreaseAssetSupply {
                 ..
-            } => params.min_asset_supply_increase_cost,
+            } => params.min_asset_supply_increase_cost(),
             Action::ComposeAsset {
                 ..
-            } => params.min_asset_compose_cost,
+            } => params.min_asset_compose_cost(),
             Action::DecomposeAsset {
                 ..
-            } => params.min_asset_decompose_cost,
+            } => params.min_asset_decompose_cost(),
             Action::UnwrapCCC {
                 ..
-            } => params.min_asset_unwrap_ccc_cost,
+            } => params.min_asset_unwrap_ccc_cost(),
             Action::Pay {
                 ..
-            } => params.min_pay_transaction_cost,
+            } => params.min_pay_transaction_cost(),
             Action::SetRegularKey {
                 ..
-            } => params.min_set_regular_key_transaction_cost,
+            } => params.min_set_regular_key_transaction_cost(),
             Action::CreateShard {
                 ..
-            } => params.min_create_shard_transaction_cost,
+            } => params.min_create_shard_transaction_cost(),
             Action::SetShardOwners {
                 ..
-            } => params.min_set_shard_owners_transaction_cost,
+            } => params.min_set_shard_owners_transaction_cost(),
             Action::SetShardUsers {
                 ..
-            } => params.min_set_shard_users_transaction_cost,
+            } => params.min_set_shard_users_transaction_cost(),
             Action::WrapCCC {
                 ..
-            } => params.min_wrap_ccc_transaction_cost,
+            } => params.min_wrap_ccc_transaction_cost(),
             Action::Custom {
                 ..
-            } => params.min_custom_transaction_cost,
+            } => params.min_custom_transaction_cost(),
             Action::Store {
                 ..
-            } => params.min_store_transaction_cost,
+            } => params.min_store_transaction_cost(),
             Action::Remove {
                 ..
-            } => params.min_remove_transaction_cost,
+            } => params.min_remove_transaction_cost(),
         }
     }
 }
@@ -324,7 +324,7 @@ mod tests {
         let genesis_params = CommonParams::default();
         let params_at_1 = {
             let mut params = genesis_params.clone();
-            params.min_store_transaction_cost += 10;
+            params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
             params
         };
         let machine = CodeChainMachine {
@@ -350,7 +350,7 @@ mod tests {
         let genesis_params = CommonParams::default();
         let params_at_2 = {
             let mut params = genesis_params.clone();
-            params.min_store_transaction_cost += 10;
+            params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
             params
         };
         let machine = CodeChainMachine {
@@ -378,17 +378,17 @@ mod tests {
         let genesis_params = CommonParams::default();
         let params_at_10 = {
             let mut params = genesis_params.clone();
-            params.min_store_transaction_cost += 10;
+            params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
             params
         };
         let params_at_20 = {
             let mut params = params_at_10.clone();
-            params.min_store_transaction_cost += 10;
+            params.set_min_store_transaction_cost(params_at_10.min_store_transaction_cost() + 10);
             params
         };
         let params_at_30 = {
             let mut params = params_at_20.clone();
-            params.min_store_transaction_cost += 10;
+            params.set_min_store_transaction_cost(params_at_20.min_store_transaction_cost() + 10);
             params
         };
         let machine = CodeChainMachine {
