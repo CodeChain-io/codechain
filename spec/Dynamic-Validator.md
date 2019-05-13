@@ -59,7 +59,7 @@ The candidate can deposit more than **MIN_DEPOSIT**, but they cannot withdraw it
 ## Delegation
 The stakeholders have the right to choose validators in proportion to their shares.
 This is called delegation, and the stakeholders who have delegated are called delegators.
-The delegation is valid only when the delegatee is eligible and not banned.
+The delegation is valid only when the delegatee is neither in the eligible nor banned state.
 The delegated stakes are returned when the account becomes an eligible account or a banned account.
 
 ## Election
