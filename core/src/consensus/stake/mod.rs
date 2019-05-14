@@ -22,10 +22,12 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use ckey::Address;
+use ccrypto::Blake;
+use ckey::{recover, Address};
 use cstate::{ActionHandler, StateResult, TopLevelState};
 use ctypes::errors::{RuntimeError, SyntaxError};
 use ctypes::{CommonParams, Header};
+use primitives::H256;
 use rlp::{Decodable, UntrustedRlp};
 
 use self::action_data::{Delegation, StakeAccount, Stakeholders};
@@ -111,12 +113,42 @@ impl ActionHandler for Stake {
                     Err(RuntimeError::FailedToHandleCustomAction("DelegateCCS is disabled".to_string()).into())
                 }
             }
+            Action::ChangeParams {
+                ..
+            } => unimplemented!(),
         }
     }
 
     fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
-        Action::decode(&UntrustedRlp::new(bytes)).map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
-        Ok(())
+        let action = Action::decode(&UntrustedRlp::new(bytes))
+            .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
+        match action {
+            Action::TransferCCS {
+                ..
+            } => Ok(()),
+            Action::DelegateCCS {
+                ..
+            } => Ok(()),
+            Action::ChangeParams {
+                metadata_seq,
+                params,
+                signatures,
+            } => {
+                let action = Action::ChangeParams {
+                    metadata_seq,
+                    params,
+                    signatures: vec![],
+                };
+                let encoded_action = H256::blake(rlp::encode(&action));
+                for signature in signatures {
+                    // XXX: Signature recovery is an expensive job. Should we do it twice?
+                    recover(&signature, &encoded_action).map_err(|err| {
+                        SyntaxError::InvalidCustomAction(format!("Cannot decode the signature: {}", err))
+                    })?;
+                }
+                Ok(())
+            }
+        }
     }
 
     fn on_close_block(
