@@ -236,6 +236,7 @@ impl Decodable for CommonParams {
     }
 }
 
+#[cfg(test)]
 impl Default for CommonParams {
     fn default() -> Self {
         CommonParams {
