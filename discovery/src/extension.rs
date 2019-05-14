@@ -16,6 +16,7 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::time::Duration;
 
 use cnetwork::{Api, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
 use ctimer::TimerToken;
@@ -23,7 +24,6 @@ use never_type::Never;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Decodable, Encodable, UntrustedRlp};
-use time::Duration;
 
 use super::message::Message;
 use super::node_id::{address_to_hash, KademliaId};
@@ -44,7 +44,7 @@ impl Extension {
         } else {
             cinfo!(DISCOVERY, "Discovery starts with unstructured option");
         }
-        api.set_timer(REFRESH_TOKEN, Duration::milliseconds(i64::from(config.t_refresh)))
+        api.set_timer(REFRESH_TOKEN, Duration::from_millis(u64::from(config.t_refresh)))
             .expect("Refresh must be registered");
         Self {
             config,

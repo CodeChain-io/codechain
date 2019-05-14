@@ -477,14 +477,15 @@ impl ChainInfo for Client {
     }
 
     fn genesis_accounts(&self) -> Vec<PlatformAddress> {
-        let network_id = self.common_params().network_id;
+        // XXX: What should we do if the network id has been changed
+        let network_id = self.common_params(None).network_id();
         self.genesis_accounts.iter().map(|addr| PlatformAddress::new_v1(network_id, *addr)).collect()
     }
 }
 
 impl EngineInfo for Client {
-    fn common_params(&self) -> &CommonParams {
-        self.engine().params()
+    fn common_params(&self, block_number: Option<BlockNumber>) -> &CommonParams {
+        self.engine().machine().common_params(block_number)
     }
 
     fn block_reward(&self, block_number: u64) -> u64 {

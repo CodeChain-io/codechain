@@ -17,6 +17,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::time::Duration;
 
 use ccore::encoded::Header as EncodedHeader;
 use ccore::{
@@ -32,7 +33,6 @@ use primitives::{H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
-use time::Duration;
 use token_generator::TokenGenerator;
 
 use super::downloader::{BodyDownloader, HeaderDownloader};
@@ -43,8 +43,8 @@ const SYNC_EXPIRE_TOKEN_BEGIN: TimerToken = SYNC_TIMER_TOKEN + 1;
 const SYNC_EXPIRE_TOKEN_LIMIT: usize = 1000;
 const SYNC_EXPIRE_TOKEN_END: TimerToken = SYNC_EXPIRE_TOKEN_BEGIN + SYNC_EXPIRE_TOKEN_LIMIT;
 
-const SYNC_TIMER_INTERVAL: i64 = 1000;
-const SYNC_EXPIRE_REQUEST_INTERVAL: i64 = 15000;
+const SYNC_TIMER_INTERVAL: u64 = 1000;
+const SYNC_EXPIRE_REQUEST_INTERVAL: u64 = 15000;
 
 const SNAPSHOT_PERIOD: u64 = (1 << 14);
 
@@ -69,7 +69,7 @@ pub struct Extension {
 
 impl Extension {
     pub fn new(client: Arc<Client>, api: Box<Api>) -> Extension {
-        api.set_timer(SYNC_TIMER_TOKEN, Duration::milliseconds(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
+        api.set_timer(SYNC_TIMER_TOKEN, Duration::from_millis(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
 
         let mut header = client.best_header();
         let mut hollow_headers = vec![header.decode()];
@@ -143,7 +143,7 @@ impl Extension {
 
                 let _ = self.api.clear_timer(*token);
                 self.api
-                    .set_timer_once(*token, Duration::milliseconds(SYNC_EXPIRE_REQUEST_INTERVAL))
+                    .set_timer_once(*token, Duration::from_millis(SYNC_EXPIRE_REQUEST_INTERVAL))
                     .expect("Timer set succeeds");
                 token_info.request_id = Some(request_id);
             }

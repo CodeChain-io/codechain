@@ -47,7 +47,6 @@ use ctypes::transaction::Action;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
 
-use self::epoch::{EpochVerifier, NoOp, PendingTransition};
 use self::tendermint::types::{BitSet, View};
 use crate::account_provider::AccountProvider;
 use crate::block::SealedBlock;
@@ -55,7 +54,6 @@ use crate::codechain_machine::CodeChainMachine;
 use crate::encoded;
 use crate::error::Error;
 use crate::header::Header;
-use crate::scheme::CommonParams;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::HeaderView;
 use Client;
@@ -202,20 +200,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
         Ok(())
     }
 
-    /// Genesis epoch data.
-    fn genesis_epoch_data(&self, _header: &M::Header) -> Result<Vec<u8>, String> {
-        Ok(Vec::new())
-    }
-
-    /// Whether an epoch change is signalled at the given header but will require finality.
-    /// If a change can be enacted immediately then return `No` from this function but
-    /// `Yes` from `is_epoch_end`.
-    ///
-    /// Return `Yes` or `No` when the answer is definitively known.
-    fn signals_epoch_end(&self, _header: &M::Header) -> EpochChange {
-        EpochChange::No
-    }
-
     /// Whether a block is the end of an epoch.
     ///
     /// This either means that an immediate transition occurs or a block signalling transition
@@ -223,19 +207,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// from any epoch other than the current.
     ///
     /// Return optional transition proof.
-    fn is_epoch_end(
-        &self,
-        _chain_head: &M::Header,
-        _chain: &Headers<M::Header>,
-        _transition_store: &PendingTransitionStore,
-    ) -> Option<Vec<u8>> {
+    fn is_epoch_end(&self, _chain_head: &M::Header, _chain: &Headers<M::Header>) -> Option<Vec<u8>> {
         None
-    }
-
-    /// Create an epoch verifier from validation proof and a flag indicating
-    /// whether finality is required.
-    fn epoch_verifier<'a>(&self, _header: &M::Header, _proof: &'a [u8]) -> ConstructedVerifier<'a, M> {
-        ConstructedVerifier::Trusted(Box::new(NoOp))
     }
 
     /// Populate a header's fields based on its parent's header.
@@ -313,38 +286,8 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     }
 }
 
-/// Results of a query of whether an epoch change occurred at the given block.
-pub enum EpochChange {
-    /// Cannot determine until more data is passed.
-    Unsure,
-    /// No epoch change.
-    No,
-    /// The epoch will change, with proof.
-    Yes(Proof),
-}
-
-/// Proof generated on epoch change.
-pub enum Proof {
-    /// Known proof (extracted from signal)
-    Known(Vec<u8>),
-}
-
-/// Generated epoch verifier.
-pub enum ConstructedVerifier<'a, M: Machine> {
-    /// Fully trusted verifier.
-    Trusted(Box<EpochVerifier<M>>),
-    /// Verifier unconfirmed. Check whether given finality proof finalizes given hash
-    /// under previous epoch.
-    Unconfirmed(Box<EpochVerifier<M>>, &'a [u8], H256),
-    /// Error constructing verifier.
-    Err(Error),
-}
-
 /// Type alias for a function we can get headers by hash through.
 pub type Headers<'a, H> = Fn(H256) -> Option<H> + 'a;
-
-/// Type alias for a function we can query pending transitions by block hash through.
-pub type PendingTransitionStore<'a> = Fn(H256) -> Option<PendingTransition> + 'a;
 
 /// Voting errors.
 #[derive(Debug)]
@@ -416,28 +359,6 @@ impl fmt::Display for EngineError {
 
 /// Common type alias for an engine coupled with an CodeChain-like state machine.
 pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
-    /// Get the general parameters of the chain.
-    fn params(&self) -> &CommonParams {
-        self.machine().params()
-    }
-
-    /// Some intrinsic operation parameters; by default they take their value from the `spec()`'s `engine_params`.
-    fn max_extra_data_size(&self) -> usize {
-        self.machine().max_extra_data_size()
-    }
-
-    fn max_asset_scheme_metadata_size(&self) -> usize {
-        self.machine().max_asset_scheme_metadata_size()
-    }
-
-    fn max_transfer_metadata_size(&self) -> usize {
-        self.machine().max_transfer_metadata_size()
-    }
-
-    fn max_text_content_size(&self) -> usize {
-        self.machine().max_text_content_size()
-    }
-
     /// Additional verification for transactions in blocks.
     fn verify_transaction_basic(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
         if let Action::Custom {

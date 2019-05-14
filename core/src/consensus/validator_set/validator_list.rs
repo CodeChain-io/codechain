@@ -17,14 +17,9 @@
 use std::collections::HashSet;
 
 use ckey::{public_to_address, Address, Public};
-use ctypes::BlockNumber;
 use primitives::H256;
 
-use super::super::EpochChange;
 use super::ValidatorSet;
-use crate::codechain_machine::CodeChainMachine;
-use crate::error::Error;
-use crate::header::Header;
 
 /// Validator set containing a known set of public keys.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -94,28 +89,6 @@ impl ValidatorSet for ValidatorList {
 
     fn count(&self, _bh: &H256) -> usize {
         self.validators.len()
-    }
-
-    fn is_epoch_end(&self, first: bool, _chain_head: &Header) -> Option<Vec<u8>> {
-        if first {
-            Some(Vec::new()) // allow transition to fixed list, and instantly
-        } else {
-            None
-        }
-    }
-
-    fn signals_epoch_end(&self, _: bool, _: &Header) -> EpochChange {
-        EpochChange::No
-    }
-
-    fn epoch_set(
-        &self,
-        _first: bool,
-        _: &CodeChainMachine,
-        _: BlockNumber,
-        _: &[u8],
-    ) -> Result<(ValidatorList, Option<H256>), Error> {
-        Ok((self.clone(), None))
     }
 }
 

@@ -447,7 +447,7 @@ impl Miner {
         parent_block_id: BlockId,
         chain: &C,
     ) -> Result<(ClosedBlock, Option<H256>), Error> {
-        let (transactions, mut open_block, original_work_hash) = {
+        let (transactions, mut open_block, original_work_hash, block_number) = {
             let mem_pool = self.mem_pool.read();
             let mut sealing_work = self.sealing_work.lock();
 
@@ -455,17 +455,17 @@ impl Miner {
             ctrace!(MINER, "prepare_block: No existing work - making new block");
             let params = self.params.read().clone();
             let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
-            let max_body_size = self.engine.params().max_body_size;
+            let block_number = open_block.block().header().number();
+            let max_body_size = self.engine.machine().common_params(Some(block_number)).max_body_size();
             const DEFAULT_RANGE: Range<u64> = 0..::std::u64::MAX;
             let transactions = mem_pool
                 .top_transactions(max_body_size, Some(open_block.header().timestamp()), DEFAULT_RANGE)
                 .transactions;
 
-            (transactions, open_block, last_work_hash)
+            (transactions, open_block, last_work_hash, block_number)
         };
 
         let mut invalid_transactions = Vec::new();
-        let block_number = open_block.block().header().number();
 
         let parent_header = {
             let parent_hash = open_block.header().parent_hash();
@@ -1003,7 +1003,7 @@ impl MinerService for Miner {
     }
 
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
-        let max_body_size = self.engine.params().max_body_size;
+        let max_body_size = self.engine.machine().common_params(None).max_body_size();
         self.mem_pool.read().top_transactions(max_body_size, None, range)
     }
 

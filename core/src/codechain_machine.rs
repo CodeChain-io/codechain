@@ -15,11 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // A state machine.
 
+use std::iter::Iterator;
+
 use ckey::Address;
 use cstate::{StateError, TopState, TopStateView};
 use ctypes::errors::{HistoryError, SyntaxError};
 use ctypes::machine::{Machine, WithBalances};
 use ctypes::transaction::{Action, AssetTransferInput, OrderOnTransfer, Timelock};
+use ctypes::BlockNumber;
 
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::client::{BlockInfo, TransactionInfo};
@@ -28,44 +31,52 @@ use crate::header::Header;
 use crate::scheme::CommonParams;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
-pub struct CodeChainMachine {
+struct Params {
+    changed_block: BlockNumber,
     params: CommonParams,
+}
+
+pub struct CodeChainMachine {
+    params: Vec<Params>,
     is_order_disabled: bool,
 }
 
 impl CodeChainMachine {
     pub fn new(params: CommonParams) -> Self {
         CodeChainMachine {
-            params,
+            params: vec![Params {
+                changed_block: 0,
+                params,
+            }],
             is_order_disabled: is_order_disabled(),
         }
     }
 
     /// Get the general parameters of the chain.
-    pub fn params(&self) -> &CommonParams {
-        &self.params
-    }
-
-    /// Some intrinsic operation parameters; by default they take their value from the `spec()`'s `engine_params`.
-    pub fn max_extra_data_size(&self) -> usize {
-        self.params().max_extra_data_size
-    }
-
-    pub fn max_asset_scheme_metadata_size(&self) -> usize {
-        self.params().max_asset_scheme_metadata_size
-    }
-
-    pub fn max_transfer_metadata_size(&self) -> usize {
-        self.params().max_transfer_metadata_size
-    }
-
-    pub fn max_text_content_size(&self) -> usize {
-        self.params().max_text_content_size
+    pub fn common_params(&self, block_number: Option<BlockNumber>) -> &CommonParams {
+        assert!(!self.params.is_empty());
+        let block_number = if let Some(block_number) = block_number {
+            block_number
+        } else {
+            return &self.params.last().unwrap().params // the latest block.
+        };
+        &self
+            .params
+            .iter()
+            .take_while(
+                |Params {
+                     changed_block,
+                     ..
+                 }| *changed_block <= block_number,
+            )
+            .last()
+            .unwrap()
+            .params
     }
 
     /// Does basic verification of the transaction.
-    pub fn verify_transaction_basic(&self, p: &UnverifiedTransaction, _header: &Header) -> Result<(), Error> {
-        let min_cost = self.min_cost(&p.action);
+    pub fn verify_transaction_basic(&self, p: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+        let min_cost = self.min_cost(&p.action, Some(header.number()));
         if p.fee < min_cost {
             return Err(SyntaxError::InsufficientFee {
                 minimal: min_cost,
@@ -73,7 +84,7 @@ impl CodeChainMachine {
             }
             .into())
         }
-        p.verify_basic(self.params(), self.is_order_disabled)?;
+        p.verify_basic(self.common_params(Some(header.number())), self.is_order_disabled)?;
 
         Ok(())
     }
@@ -208,56 +219,57 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    pub fn min_cost(&self, action: &Action) -> u64 {
+    pub fn min_cost(&self, action: &Action, block_number: Option<BlockNumber>) -> u64 {
+        let params = self.common_params(block_number);
         match action {
             Action::MintAsset {
                 ..
-            } => self.params.min_asset_mint_cost,
+            } => params.min_asset_mint_cost(),
             Action::TransferAsset {
                 ..
-            } => self.params.min_asset_transfer_cost,
+            } => params.min_asset_transfer_cost(),
             Action::ChangeAssetScheme {
                 ..
-            } => self.params.min_asset_scheme_change_cost,
+            } => params.min_asset_scheme_change_cost(),
             Action::IncreaseAssetSupply {
                 ..
-            } => self.params.min_asset_supply_increase_cost,
+            } => params.min_asset_supply_increase_cost(),
             Action::ComposeAsset {
                 ..
-            } => self.params.min_asset_compose_cost,
+            } => params.min_asset_compose_cost(),
             Action::DecomposeAsset {
                 ..
-            } => self.params.min_asset_decompose_cost,
+            } => params.min_asset_decompose_cost(),
             Action::UnwrapCCC {
                 ..
-            } => self.params.min_asset_unwrap_ccc_cost,
+            } => params.min_asset_unwrap_ccc_cost(),
             Action::Pay {
                 ..
-            } => self.params.min_pay_transaction_cost,
+            } => params.min_pay_transaction_cost(),
             Action::SetRegularKey {
                 ..
-            } => self.params.min_set_regular_key_tranasction_cost,
+            } => params.min_set_regular_key_transaction_cost(),
             Action::CreateShard {
                 ..
-            } => self.params.min_create_shard_transaction_cost,
+            } => params.min_create_shard_transaction_cost(),
             Action::SetShardOwners {
                 ..
-            } => self.params.min_set_shard_owners_transaction_cost,
+            } => params.min_set_shard_owners_transaction_cost(),
             Action::SetShardUsers {
                 ..
-            } => self.params.min_set_shard_users_transaction_cost,
+            } => params.min_set_shard_users_transaction_cost(),
             Action::WrapCCC {
                 ..
-            } => self.params.min_wrap_ccc_transaction_cost,
+            } => params.min_wrap_ccc_transaction_cost(),
             Action::Custom {
                 ..
-            } => self.params.min_custom_transaction_cost,
+            } => params.min_custom_transaction_cost(),
             Action::Store {
                 ..
-            } => self.params.min_store_transaction_cost,
+            } => params.min_store_transaction_cost(),
             Action::Remove {
                 ..
-            } => self.params.min_remove_transaction_cost,
+            } => params.min_remove_transaction_cost(),
         }
     }
 }
@@ -291,5 +303,127 @@ impl WithBalances for CodeChainMachine {
     fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: u64) -> Result<(), Self::Error> {
         live.state_mut().add_balance(address, amount).map_err(StateError::from)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn common_params_are_not_changed_since_genesis() {
+        let genesis_params = CommonParams::default();
+        let machine = CodeChainMachine::new(genesis_params.clone());
+        assert_eq!(&genesis_params, machine.common_params(Some(0)));
+        assert_eq!(&genesis_params, machine.common_params(Some(1)));
+        assert_eq!(&genesis_params, machine.common_params(None));
+    }
+
+    #[test]
+    fn common_params_changed_at_1() {
+        let genesis_params = CommonParams::default();
+        let params_at_1 = {
+            let mut params = genesis_params.clone();
+            params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
+            params
+        };
+        let machine = CodeChainMachine {
+            params: vec![
+                Params {
+                    changed_block: 0,
+                    params: genesis_params.clone(),
+                },
+                Params {
+                    changed_block: 1,
+                    params: params_at_1.clone(),
+                },
+            ],
+            is_order_disabled: false,
+        };
+        assert_eq!(&genesis_params, machine.common_params(Some(0)));
+        assert_eq!(&params_at_1, machine.common_params(Some(1)));
+        assert_eq!(&params_at_1, machine.common_params(None));
+    }
+
+    #[test]
+    fn common_params_changed_at_2() {
+        let genesis_params = CommonParams::default();
+        let params_at_2 = {
+            let mut params = genesis_params.clone();
+            params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
+            params
+        };
+        let machine = CodeChainMachine {
+            params: vec![
+                Params {
+                    changed_block: 0,
+                    params: genesis_params.clone(),
+                },
+                Params {
+                    changed_block: 2,
+                    params: params_at_2.clone(),
+                },
+            ],
+            is_order_disabled: false,
+        };
+        assert_eq!(&genesis_params, machine.common_params(Some(0)));
+        assert_eq!(&genesis_params, machine.common_params(Some(1)));
+        assert_eq!(&params_at_2, machine.common_params(Some(2)));
+        assert_eq!(&params_at_2, machine.common_params(None));
+    }
+
+
+    #[test]
+    fn common_params_changed_several_times() {
+        let genesis_params = CommonParams::default();
+        let params_at_10 = {
+            let mut params = genesis_params.clone();
+            params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
+            params
+        };
+        let params_at_20 = {
+            let mut params = params_at_10.clone();
+            params.set_min_store_transaction_cost(params_at_10.min_store_transaction_cost() + 10);
+            params
+        };
+        let params_at_30 = {
+            let mut params = params_at_20.clone();
+            params.set_min_store_transaction_cost(params_at_20.min_store_transaction_cost() + 10);
+            params
+        };
+        let machine = CodeChainMachine {
+            params: vec![
+                Params {
+                    changed_block: 0,
+                    params: genesis_params.clone(),
+                },
+                Params {
+                    changed_block: 10,
+                    params: params_at_10.clone(),
+                },
+                Params {
+                    changed_block: 20,
+                    params: params_at_20.clone(),
+                },
+                Params {
+                    changed_block: 30,
+                    params: params_at_30.clone(),
+                },
+            ],
+            is_order_disabled: false,
+        };
+        for i in 0..10 {
+            assert_eq!(&genesis_params, machine.common_params(Some(i)), "unexpected params at block {}", i);
+        }
+        for i in 10..20 {
+            assert_eq!(&params_at_10, machine.common_params(Some(i)), "unexpected params at block {}", i);
+        }
+        for i in 20..30 {
+            assert_eq!(&params_at_20, machine.common_params(Some(i)), "unexpected params at block {}", i);
+        }
+        for i in 30..40 {
+            assert_eq!(&params_at_30, machine.common_params(Some(i)), "unexpected params at block {}", i);
+        }
+        assert_eq!(&params_at_30, machine.common_params(None));
     }
 }

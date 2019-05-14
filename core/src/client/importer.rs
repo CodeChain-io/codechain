@@ -210,9 +210,6 @@ impl Importer {
 
         let mut batch = DBTransaction::new();
 
-        // check epoch end signal
-        self.check_epoch_end_signal(block.header(), &chain, &mut batch);
-
         block.state().journal_under(&mut batch, number).expect("DB commit failed");
         let route = chain.insert_block(&mut batch, block_data, invoices.clone(), self.engine.borrow());
 
@@ -233,11 +230,7 @@ impl Importer {
 
     // check for ending of epoch and write transition if it occurs.
     fn check_epoch_end(&self, header: &Header, chain: &BlockChain, client: &Client) {
-        let is_epoch_end = self.engine.is_epoch_end(
-            header,
-            &(|hash| chain.block_header(&hash)),
-            &(|hash| chain.get_pending_transition(hash)), // TODO: limit to current epoch.
-        );
+        let is_epoch_end = self.engine.is_epoch_end(header, &(|hash| chain.block_header(&hash)));
 
         if let Some(proof) = is_epoch_end {
             cdebug!(CLIENT, "Epoch transition at block {}", header.hash());
@@ -253,33 +246,6 @@ impl Importer {
             // fetched from a DB iterator and DB iterators are only available on
             // flushed data.
             client.db().write(batch).expect("DB flush failed");
-        }
-    }
-
-    // check for epoch end signal and write pending transition if it occurs.
-    // state for the given block must be available.
-    fn check_epoch_end_signal(&self, header: &Header, chain: &BlockChain, batch: &mut DBTransaction) {
-        use crate::consensus::EpochChange;
-        let hash = header.hash();
-
-        match self.engine.signals_epoch_end(header) {
-            EpochChange::Yes(proof) => {
-                use crate::consensus::epoch::PendingTransition;
-                use crate::consensus::Proof;
-
-                let Proof::Known(proof) = proof;
-                cdebug!(CLIENT, "Block {} signals epoch end.", hash);
-
-                let pending = PendingTransition {
-                    proof,
-                };
-                chain.insert_pending_transition(batch, hash, &pending);
-            }
-            EpochChange::No => {}
-            EpochChange::Unsure => {
-                cwarn!(CLIENT, "Detected invalid engine implementation.");
-                cwarn!(CLIENT, "Engine claims to require more block data, but everything provided.");
-            }
         }
     }
 
