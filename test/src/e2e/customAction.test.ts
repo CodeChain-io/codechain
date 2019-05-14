@@ -15,7 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { fail } from "assert";
-import { expect } from "chai";
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
 import { toHex } from "codechain-primitives/lib";
 import "mocha";
 import {
@@ -26,6 +27,9 @@ import {
 } from "../helper/constants";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
+
+chai.use(chaiAsPromised);
+const expect = chai.expect;
 
 const RLP = require("rlp");
 
@@ -127,39 +131,25 @@ describe("customAction", function() {
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
             const blockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
 
-            await node.sdk.rpc.devel.stopSealing();
-            const hash1 = await node.sdk.rpc.chain.sendSignedTransaction(
-                node.sdk.core
-                    .createPayTransaction({
-                        recipient: bobAddress,
-                        quantity: 1
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        seq,
-                        fee: 10
-                    })
-            );
-            const hash2 = await node.sdk.rpc.chain.sendSignedTransaction(
-                node.sdk.core
-                    .createCustomTransaction({
-                        handlerId: hitActionHandlerId,
-                        bytes: RLP.encode(["wrong", "format", "of", "message"])
-                    })
-                    .sign({
-                        secret: faucetSecret,
-                        seq: seq + 1,
-                        fee: 10
-                    })
-            );
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-
-            const block = (await node.sdk.rpc.chain.getBlock(blockNumber + 1))!;
-            expect(block).not.be.null;
-            expect(block.transactions.length).equal(1);
-            expect(block.transactions[0].hash().value).equal(hash1.value);
-            expect(await node.sdk.rpc.chain.getErrorHint(hash2)).not.be.null;
+            expect(
+                node.sdk.rpc.chain.sendSignedTransaction(
+                    node.sdk.core
+                        .createCustomTransaction({
+                            handlerId: hitActionHandlerId,
+                            bytes: RLP.encode([
+                                "wrong",
+                                "format",
+                                "of",
+                                "message"
+                            ])
+                        })
+                        .sign({
+                            secret: faucetSecret,
+                            seq: seq + 1,
+                            fee: 10
+                        })
+                )
+            ).be.rejected;
         });
     });
 
