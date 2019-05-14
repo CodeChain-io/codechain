@@ -24,7 +24,7 @@ use std::sync::Arc;
 
 use ckey::Address;
 use cstate::{ActionHandler, StateResult, TopLevelState};
-use ctypes::errors::RuntimeError;
+use ctypes::errors::{RuntimeError, SyntaxError};
 use rlp::{Decodable, UntrustedRlp};
 
 use self::action_data::{Delegation, StakeAccount, Stakeholders};
@@ -90,8 +90,7 @@ impl ActionHandler for Stake {
     }
 
     fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> StateResult<()> {
-        let action = Action::decode(&UntrustedRlp::new(bytes))
-            .map_err(|err| RuntimeError::FailedToHandleCustomAction(err.to_string()))?;
+        let action = Action::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
         match action {
             Action::TransferCCS {
                 address,
@@ -108,6 +107,11 @@ impl ActionHandler for Stake {
                 }
             }
         }
+    }
+
+    fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
+        Action::decode(&UntrustedRlp::new(bytes)).map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
+        Ok(())
     }
 }
 

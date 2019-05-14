@@ -363,12 +363,13 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
     fn verify_transaction_basic(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
         if let Action::Custom {
             handler_id,
-            ..
+            bytes,
         } = &tx.action
         {
-            if self.find_action_handler_for(*handler_id).is_none() {
-                return Err(SyntaxError::InvalidCustomAction.into())
-            }
+            let handler = self
+                .find_action_handler_for(*handler_id)
+                .ok_or_else(|| SyntaxError::InvalidCustomAction(format!("{} is an invalid handler id", handler_id)))?;
+            handler.verify(bytes)?;
         }
         self.machine().verify_transaction_basic(tx, header)
     }

@@ -178,7 +178,7 @@ pub fn transaction_core<T: Into<CoreError>>(error: T) -> Error {
             message: "Invalid Seq".into(),
             data: Some(Value::String(format!("{:?}", error))),
         },
-        CoreError::Syntax(SyntaxError::InvalidCustomAction) => action_handler_not_found(),
+        CoreError::Syntax(SyntaxError::InvalidCustomAction(err)) => invalid_custom_action(err),
         _ => unknown_error,
     }
 }
@@ -296,10 +296,10 @@ pub fn state_not_exist() -> Error {
     }
 }
 
-pub fn action_handler_not_found() -> Error {
+pub fn invalid_custom_action(err: String) -> Error {
     Error {
         code: ErrorCode::ServerError(codes::ACTION_DATA_HANDLER_NOT_FOUND),
-        message: "Current consensus engine doesn't have an action handler for a given handler_id".into(),
+        message: format!("Custom action is invalid: {}", err),
         data: None,
     }
 }
