@@ -351,6 +351,39 @@ share of "0xAB..CD" = Math.floor(35 * (1000 / (500 + 1000))) = 23
 remaing share (of author) = 110 - (11 + 23) = 76
 ```
 
+## ChangeParameters
+This transaction will change the common parameters when more than half of the stakeholders agree.
+It does not change other fields of the scheme file because there are fields related to the genesis block.
+
+It also does not provide a voting feature.
+The vote initiator should collect the signatures through the off-chain.
+
+This transaction increases the `seq` of `Metadata` and changes the `params` of `Metadata`.
+
+### Action
+`[ 0xFF, metadata_seq, new_parameters, ...signatures ]`
+
+#### metadata_seq
+The transaction fails if the metadata_seq is different from the `seq` of `Metadata` and is introduced to prevent replay attacks.
+
+#### new_parameters
+```
+new_parameters := [ new_parameter(, new_parameter)* ]
+new_parameter := [ key, value ]
+
+key := usize
+value := usize | u64 | boolean | string
+```
+It is the list of the fields that the transaction changes.
+The stakeholder MUST NOT sign the transaction when the type of value is not a type that the key expected.
+
+The parameters that are not in the new_parameters are kept as the previous value.
+
+#### signatures
+`signatures` are the ECDSA signatures of stakeholders.
+The stakeholders should send the signature of `blake256(rlp_encode([ 0xFF, metadata_seq, new_parameters ]))` to the vote initiator if they agree to the change.
+The transaction is valid only if more than half of the stakeholders agree.
+
 # Revocation
 
 `RequestRevoke` will queue a pending revocation instead of revoking a delegation immediately.
