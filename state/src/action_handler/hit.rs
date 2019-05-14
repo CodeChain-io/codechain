@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::Address;
-use ctypes::errors::RuntimeError;
+use ctypes::errors::SyntaxError;
 use primitives::H256;
 use rlp::{self, Decodable, Encodable, UntrustedRlp};
 
@@ -56,12 +56,17 @@ impl ActionHandler for HitHandler {
 
     /// `bytes` must be valid encoding of HitAction
     fn execute(&self, bytes: &[u8], state: &mut TopLevelState, _sender: &Address) -> StateResult<()> {
-        let action = HitAction::decode(&UntrustedRlp::new(bytes))
-            .map_err(|err| RuntimeError::FailedToHandleCustomAction(err.to_string()))?;
+        let action = HitAction::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
         let action_data = state.action_data(&self.address())?.unwrap_or_default();
         let prev_counter: u32 = rlp::decode(&*action_data);
         let increase = u32::from(action.increase);
         state.update_action_data(&self.address(), (prev_counter + increase).rlp_bytes().to_vec())?;
+        Ok(())
+    }
+
+    fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
+        HitAction::decode(&UntrustedRlp::new(bytes))
+            .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
         Ok(())
     }
 }
