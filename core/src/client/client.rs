@@ -484,7 +484,7 @@ impl StateInfo for Client {
 }
 
 impl EngineInfo for Client {
-    fn common_params(&self, block_number: Option<BlockNumber>) -> &CommonParams {
+    fn common_params(&self, block_number: Option<BlockNumber>) -> CommonParams {
         self.engine().machine().common_params(block_number)
     }
 
