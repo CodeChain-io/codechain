@@ -104,7 +104,7 @@ The block is valid only if the sum of voting power is more than 2/3 of the total
 
 ## Validator Reward
 The block proposer gets the express fee of the blocks at the end of a term.
-Validators can get the reward after **WITHDRAW_DELAY** terms; however, the proposers cannot get all the reward if they are not loyal to their duty.
+Validators get the reward after **WITHDRAW_DELAY** terms; however, the proposers cannot get all the reward if they are not loyal to their duty.
 The reward is decreased according to the rate of the blocks the validator misses to sign.
 
 The reward is decreased when a validator doesn't sign blocks proposed by others.
@@ -141,6 +141,8 @@ for validators in total_validators {
 The remaining rewards as a result of the additional reward algorithm are burned.
 At the worst case, **MAX_NUM_OF_VALIDATORS** CCC can be burned every term.
 
+The rewards the validators earn are paid after **WITHDRAW_DELAY**.
+
 ## Punishment for Validators
 ### Downtime
 The validator who doesn't produce blocks is jailed for a while.
@@ -169,14 +171,6 @@ The account cannot withdraw the deposit manually, and is returned automatically 
 
 The metadata is text information that proves the identity of the candidate.
 It can be a URL, a phone number, a messenger Id, etc.
-
-### WITHDRAW
-* quantity
-
-This transaction withdraws the reward that the node earns as a validator.
-But the validator cannot withdraw the reward before **WITHDRAW_DELAY** passes.
-
-The transaction that tries to withdraw more than what the account has will fail.
 
 ### DELEGATE
 * delegatee
