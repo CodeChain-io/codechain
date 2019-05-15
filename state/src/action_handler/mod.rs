@@ -20,6 +20,7 @@ use std::convert::From;
 
 use ccrypto::blake256;
 use ckey::Address;
+use ctypes::errors::SyntaxError;
 use primitives::H256;
 use rlp::{Encodable, RlpStream};
 
@@ -30,6 +31,7 @@ pub trait ActionHandler: Send + Sync {
     fn handler_id(&self) -> u64;
     fn init(&self, state: &mut TopLevelState) -> StateResult<()>;
     fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> StateResult<()>;
+    fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError>;
 
     fn query(&self, key_fragment: &[u8], state: &TopLevelState) -> StateResult<Option<Vec<u8>>> {
         let key = ActionDataKeyBuilder::key_from_fragment(self.handler_id(), key_fragment);
