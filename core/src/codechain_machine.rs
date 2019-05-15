@@ -51,15 +51,16 @@ impl CodeChainMachine {
     }
 
     /// Get the general parameters of the chain.
-    pub fn common_params(&self, block_number: Option<BlockNumber>) -> &CommonParams {
-        assert!(!self.params.is_empty());
+    pub fn common_params(&self, block_number: Option<BlockNumber>) -> CommonParams {
+        let params = &self.params;
+        assert!(!params.is_empty());
         let block_number = if let Some(block_number) = block_number {
             block_number
         } else {
-            return &self.params.last().unwrap().params // the latest block.
+            return params.last().unwrap().params // the latest block.
         };
-        &self
-            .params
+
+        params
             .iter()
             .take_while(
                 |Params {
@@ -82,7 +83,7 @@ impl CodeChainMachine {
             }
             .into())
         }
-        p.verify_basic(self.common_params(Some(header.number())), self.is_order_disabled)?;
+        p.verify_basic(&self.common_params(Some(header.number())), self.is_order_disabled)?;
 
         Ok(())
     }
@@ -300,17 +301,17 @@ mod tests {
     #[test]
     fn common_params_are_not_changed_since_genesis() {
         let genesis_params = CommonParams::default_for_test();
-        let machine = CodeChainMachine::new(genesis_params.clone());
-        assert_eq!(&genesis_params, machine.common_params(Some(0)));
-        assert_eq!(&genesis_params, machine.common_params(Some(1)));
-        assert_eq!(&genesis_params, machine.common_params(None));
+        let machine = CodeChainMachine::new(genesis_params);
+        assert_eq!(genesis_params, machine.common_params(Some(0)));
+        assert_eq!(genesis_params, machine.common_params(Some(1)));
+        assert_eq!(genesis_params, machine.common_params(None));
     }
 
     #[test]
     fn common_params_changed_at_1() {
         let genesis_params = CommonParams::default_for_test();
         let params_at_1 = {
-            let mut params = genesis_params.clone();
+            let mut params = genesis_params;
             params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
             params
         };
@@ -318,25 +319,25 @@ mod tests {
             params: vec![
                 Params {
                     changed_block: 0,
-                    params: genesis_params.clone(),
+                    params: genesis_params,
                 },
                 Params {
                     changed_block: 1,
-                    params: params_at_1.clone(),
+                    params: params_at_1,
                 },
             ],
             is_order_disabled: false,
         };
-        assert_eq!(&genesis_params, machine.common_params(Some(0)));
-        assert_eq!(&params_at_1, machine.common_params(Some(1)));
-        assert_eq!(&params_at_1, machine.common_params(None));
+        assert_eq!(genesis_params, machine.common_params(Some(0)));
+        assert_eq!(params_at_1, machine.common_params(Some(1)));
+        assert_eq!(params_at_1, machine.common_params(None));
     }
 
     #[test]
     fn common_params_changed_at_2() {
         let genesis_params = CommonParams::default_for_test();
         let params_at_2 = {
-            let mut params = genesis_params.clone();
+            let mut params = genesis_params;
             params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
             params
         };
@@ -344,19 +345,19 @@ mod tests {
             params: vec![
                 Params {
                     changed_block: 0,
-                    params: genesis_params.clone(),
+                    params: genesis_params,
                 },
                 Params {
                     changed_block: 2,
-                    params: params_at_2.clone(),
+                    params: params_at_2,
                 },
             ],
             is_order_disabled: false,
         };
-        assert_eq!(&genesis_params, machine.common_params(Some(0)));
-        assert_eq!(&genesis_params, machine.common_params(Some(1)));
-        assert_eq!(&params_at_2, machine.common_params(Some(2)));
-        assert_eq!(&params_at_2, machine.common_params(None));
+        assert_eq!(genesis_params, machine.common_params(Some(0)));
+        assert_eq!(genesis_params, machine.common_params(Some(1)));
+        assert_eq!(params_at_2, machine.common_params(Some(2)));
+        assert_eq!(params_at_2, machine.common_params(None));
     }
 
 
@@ -364,17 +365,17 @@ mod tests {
     fn common_params_changed_several_times() {
         let genesis_params = CommonParams::default_for_test();
         let params_at_10 = {
-            let mut params = genesis_params.clone();
+            let mut params = genesis_params;
             params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
             params
         };
         let params_at_20 = {
-            let mut params = params_at_10.clone();
+            let mut params = params_at_10;
             params.set_min_store_transaction_cost(params_at_10.min_store_transaction_cost() + 10);
             params
         };
         let params_at_30 = {
-            let mut params = params_at_20.clone();
+            let mut params = params_at_20;
             params.set_min_store_transaction_cost(params_at_20.min_store_transaction_cost() + 10);
             params
         };
@@ -382,35 +383,35 @@ mod tests {
             params: vec![
                 Params {
                     changed_block: 0,
-                    params: genesis_params.clone(),
+                    params: genesis_params,
                 },
                 Params {
                     changed_block: 10,
-                    params: params_at_10.clone(),
+                    params: params_at_10,
                 },
                 Params {
                     changed_block: 20,
-                    params: params_at_20.clone(),
+                    params: params_at_20,
                 },
                 Params {
                     changed_block: 30,
-                    params: params_at_30.clone(),
+                    params: params_at_30,
                 },
             ],
             is_order_disabled: false,
         };
         for i in 0..10 {
-            assert_eq!(&genesis_params, machine.common_params(Some(i)), "unexpected params at block {}", i);
+            assert_eq!(genesis_params, machine.common_params(Some(i)), "unexpected params at block {}", i);
         }
         for i in 10..20 {
-            assert_eq!(&params_at_10, machine.common_params(Some(i)), "unexpected params at block {}", i);
+            assert_eq!(params_at_10, machine.common_params(Some(i)), "unexpected params at block {}", i);
         }
         for i in 20..30 {
-            assert_eq!(&params_at_20, machine.common_params(Some(i)), "unexpected params at block {}", i);
+            assert_eq!(params_at_20, machine.common_params(Some(i)), "unexpected params at block {}", i);
         }
         for i in 30..40 {
-            assert_eq!(&params_at_30, machine.common_params(Some(i)), "unexpected params at block {}", i);
+            assert_eq!(params_at_30, machine.common_params(Some(i)), "unexpected params at block {}", i);
         }
-        assert_eq!(&params_at_30, machine.common_params(None));
+        assert_eq!(params_at_30, machine.common_params(None));
     }
 }
