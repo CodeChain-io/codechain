@@ -28,7 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockNumber, CommonParams, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use journaldb;
@@ -49,7 +49,7 @@ use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::{BlockImportError, Error, ImportError, SchemeError};
 use crate::miner::{Miner, MinerService};
-use crate::scheme::{CommonParams, Scheme};
+use crate::scheme::Scheme;
 use crate::service::ClientIoMessage;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, UnverifiedTransaction};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
