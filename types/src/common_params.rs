@@ -18,7 +18,7 @@ use cjson::scheme::Params;
 use ckey::NetworkId;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct CommonParams {
     size: usize,
     /// Maximum size of extra data.

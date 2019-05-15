@@ -279,8 +279,8 @@ impl Scheme {
     }
 
     /// Get common blockchain parameters.
-    pub fn params(&self, block_number: Option<BlockNumber>) -> &CommonParams {
-        &self.engine.machine().common_params(block_number)
+    pub fn params(&self, block_number: Option<BlockNumber>) -> CommonParams {
+        self.engine.machine().common_params(block_number)
     }
 
     /// Get the header of the genesis block.
