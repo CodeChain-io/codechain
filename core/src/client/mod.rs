@@ -37,7 +37,7 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockNumber, CommonParams, ShardId};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H160, H256, U256};
@@ -46,7 +46,6 @@ use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::encoded;
 use crate::error::BlockImportError;
-use crate::scheme::CommonParams;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
