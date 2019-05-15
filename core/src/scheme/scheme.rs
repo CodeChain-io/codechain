@@ -23,7 +23,7 @@ use ckey::Address;
 use cmerkle::TrieFactory;
 use cstate::{Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult, StateWithCache, TopLevelState};
 use ctypes::errors::SyntaxError;
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockNumber, CommonParams, ShardId};
 use hashdb::{AsHashDB, HashDB};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
@@ -33,7 +33,7 @@ use crate::blockchain::HeaderProvider;
 
 use super::pod_state::{PodAccounts, PodShards};
 use super::seal::Generic as GenericSeal;
-use super::{CommonParams, Genesis};
+use super::Genesis;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
 use crate::error::{Error, SchemeError};

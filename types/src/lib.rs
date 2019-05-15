@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_crypto as ccrypto;
+extern crate codechain_json as cjson;
 extern crate codechain_key as ckey;
 extern crate primitives;
 extern crate rlp;
@@ -24,9 +25,11 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
+mod common_params;
 pub mod errors;
 pub mod transaction;
 pub mod util;
 
 pub type BlockNumber = u64;
 pub type ShardId = u16;
+pub use common_params::CommonParams;

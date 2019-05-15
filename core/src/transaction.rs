@@ -20,12 +20,11 @@ use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Private, Public, Signature};
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Transaction;
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, CommonParams};
 use primitives::H256;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::error::Error;
-use crate::scheme::CommonParams;
 
 /// Signed transaction information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]

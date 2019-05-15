@@ -252,35 +252,9 @@ impl Decodable for CommonParams {
     }
 }
 
-#[cfg(test)]
-impl Default for CommonParams {
-    fn default() -> Self {
-        CommonParams {
-            size: 23,
-            max_extra_data_size: Default::default(),
-            max_asset_scheme_metadata_size: Default::default(),
-            max_transfer_metadata_size: Default::default(),
-            max_text_content_size: Default::default(),
-            network_id: Default::default(),
-            min_pay_transaction_cost: Default::default(),
-            min_set_regular_key_transaction_cost: Default::default(),
-            min_create_shard_transaction_cost: Default::default(),
-            min_set_shard_owners_transaction_cost: Default::default(),
-            min_set_shard_users_transaction_cost: Default::default(),
-            min_wrap_ccc_transaction_cost: Default::default(),
-            min_custom_transaction_cost: Default::default(),
-            min_store_transaction_cost: Default::default(),
-            min_remove_transaction_cost: Default::default(),
-            min_asset_mint_cost: Default::default(),
-            min_asset_transfer_cost: Default::default(),
-            min_asset_scheme_change_cost: Default::default(),
-            min_asset_supply_increase_cost: Default::default(),
-            min_asset_compose_cost: Default::default(),
-            min_asset_decompose_cost: Default::default(),
-            min_asset_unwrap_ccc_cost: Default::default(),
-            max_body_size: Default::default(),
-            snapshot_period: Default::default(),
-        }
+impl CommonParams {
+    pub fn default_for_test() -> Self {
+        Self::from(Params::default())
     }
 }
 
@@ -291,6 +265,6 @@ mod tests {
 
     #[test]
     fn encode_and_decode_default() {
-        rlp_encode_and_decode_test!(CommonParams::default());
+        rlp_encode_and_decode_test!(CommonParams::default_for_test());
     }
 }

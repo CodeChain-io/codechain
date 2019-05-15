@@ -21,13 +21,12 @@ use ckey::Address;
 use cstate::{StateError, TopState, TopStateView};
 use ctypes::errors::{HistoryError, SyntaxError};
 use ctypes::transaction::{Action, AssetTransferInput, OrderOnTransfer, Timelock};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, CommonParams};
 
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::client::BlockChainTrait;
 use crate::error::Error;
 use crate::header::Header;
-use crate::scheme::CommonParams;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
 struct Params {
@@ -300,7 +299,7 @@ mod tests {
 
     #[test]
     fn common_params_are_not_changed_since_genesis() {
-        let genesis_params = CommonParams::default();
+        let genesis_params = CommonParams::default_for_test();
         let machine = CodeChainMachine::new(genesis_params.clone());
         assert_eq!(&genesis_params, machine.common_params(Some(0)));
         assert_eq!(&genesis_params, machine.common_params(Some(1)));
@@ -309,7 +308,7 @@ mod tests {
 
     #[test]
     fn common_params_changed_at_1() {
-        let genesis_params = CommonParams::default();
+        let genesis_params = CommonParams::default_for_test();
         let params_at_1 = {
             let mut params = genesis_params.clone();
             params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
@@ -335,7 +334,7 @@ mod tests {
 
     #[test]
     fn common_params_changed_at_2() {
-        let genesis_params = CommonParams::default();
+        let genesis_params = CommonParams::default_for_test();
         let params_at_2 = {
             let mut params = genesis_params.clone();
             params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
@@ -363,7 +362,7 @@ mod tests {
 
     #[test]
     fn common_params_changed_several_times() {
-        let genesis_params = CommonParams::default();
+        let genesis_params = CommonParams::default_for_test();
         let params_at_10 = {
             let mut params = genesis_params.clone();
             params.set_min_store_transaction_cost(genesis_params.min_store_transaction_cost() + 10);
