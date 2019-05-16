@@ -34,7 +34,7 @@ use parking_lot::RwLock;
 use primitives::H256;
 
 use self::chain_notify::TendermintChainNotify;
-pub use self::params::{TendermintParams, TimeoutParams};
+pub use self::params::{TendermintParams, TimeGapParams, TimeoutParams};
 use self::types::{Height, Step, View};
 use super::stake;
 use crate::client::EngineClient;
@@ -56,6 +56,7 @@ pub type BlockHash = H256;
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
     client: RwLock<Option<Weak<EngineClient>>>,
+    external_params_initializer: crossbeam::Sender<TimeGapParams>,
     extension_initializer: crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<EngineClient>)>,
     timeouts: TimeoutParams,
     join: Option<JoinHandle<()>>,
@@ -89,12 +90,14 @@ impl Tendermint {
         let timeouts = our_params.timeouts;
         let machine = Arc::new(machine);
 
-        let (join, extension_initializer, inner, quit_tendermint) = worker::spawn(our_params.validators);
+        let (join, external_params_initializer, extension_initializer, inner, quit_tendermint) =
+            worker::spawn(our_params.validators);
         let action_handlers: Vec<Arc<ActionHandler>> = vec![Arc::new(stake)];
         let chain_notify = Arc::new(TendermintChainNotify::new(inner.clone()));
 
         Arc::new(Tendermint {
             client: Default::default(),
+            external_params_initializer,
             extension_initializer,
             timeouts,
             join: Some(join),
@@ -170,7 +173,13 @@ mod tests {
 
     #[test]
     fn has_valid_metadata() {
+        use std::time::Duration;
         let engine = Scheme::new_test_tendermint().engine;
+        let time_gap_params = TimeGapParams {
+            allowed_past_gap: Duration::from_millis(30000),
+            allowed_future_gap: Duration::from_millis(5000),
+        };
+        engine.register_time_gap_config_to_worker(time_gap_params);
         assert!(!engine.name().is_empty());
     }
 
