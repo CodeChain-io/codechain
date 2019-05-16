@@ -1451,26 +1451,7 @@ describe("orders", function() {
                     });
                 await node.signTransactionInput(transferTx, 1);
 
-                await node.sdk.rpc.devel.stopSealing();
-                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const blockNumber = await node.getBestBlockNumber();
-                const pay = await node.sendPayTx({
-                    recipient: faucetAddress,
-                    seq,
-                    quantity: 1
-                });
-                const hash = await node.sendAssetTransaction(transferTx, {
-                    seq: seq + 1
-                });
-                await node.sdk.rpc.devel.startSealing();
-                await node.waitBlockNumber(blockNumber + 1);
-                expect(await node.sdk.rpc.chain.containsTransaction(hash)).be
-                    .false;
-                expect(await node.sdk.rpc.chain.containsTransaction(pay.hash()))
-                    .be.true;
-                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                    .null;
-                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+                await node.sendAssetTransactionExpectedToFail(transferTx);
             }).timeout(10_000);
 
             it("Wrong order - originOutputs are wrong (few outputs)", async function() {
@@ -1557,26 +1538,7 @@ describe("orders", function() {
                     )
                 );
 
-                await node.sdk.rpc.devel.stopSealing();
-                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const blockNumber = await node.getBestBlockNumber();
-                const pay = await node.sendPayTx({
-                    recipient: faucetAddress,
-                    seq,
-                    quantity: 1
-                });
-                const hash = await node.sendAssetTransaction(transferTx, {
-                    seq: seq + 1
-                });
-                await node.sdk.rpc.devel.startSealing();
-                await node.waitBlockNumber(blockNumber + 1);
-                expect(await node.sdk.rpc.chain.containsTransaction(pay.hash()))
-                    .be.true;
-                expect(await node.sdk.rpc.chain.containsTransaction(hash)).be
-                    .false;
-                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                    .null;
-                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+                await node.sendAssetTransactionExpectedToFail(transferTx);
             }).timeout(10_000);
 
             it("Wrong order - originOutputs are wrong (many outputs)", async function() {
@@ -1661,24 +1623,7 @@ describe("orders", function() {
                     )
                 );
 
-                await node.sdk.rpc.devel.stopSealing();
-                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const blockNumber = await node.getBestBlockNumber();
-                const pay = await node.sendPayTx({
-                    recipient: faucetAddress,
-                    seq,
-                    quantity: 1
-                });
-                const hash = await node.sendAssetTransaction(transferTx, {
-                    seq: seq + 1
-                });
-                await node.sdk.rpc.devel.startSealing();
-                await node.waitBlockNumber(blockNumber + 1);
-                expect(await node.sdk.rpc.chain.containsTransaction(pay.hash()))
-                    .be.true;
-                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                    .null;
-                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+                await node.sendAssetTransactionExpectedToFail(transferTx);
             }).timeout(10_000);
 
             it("Wrong order - Ratio is wrong (from is zero)", async function() {
@@ -2820,26 +2765,7 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
                 await node.signTransactionInput(transferTx, 2);
 
-                await node.sdk.rpc.devel.stopSealing();
-                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const blockNumber = await node.getBestBlockNumber();
-                const pay = await node.sendPayTx({
-                    recipient: faucetAddress,
-                    seq,
-                    quantity: 1
-                });
-                const hash = await node.sendAssetTransaction(transferTx, {
-                    seq: seq + 1
-                });
-                await node.sdk.rpc.devel.startSealing();
-                await node.waitBlockNumber(blockNumber + 1);
-                expect(await node.sdk.rpc.chain.containsTransaction(pay.hash()))
-                    .be.true;
-                expect(await node.sdk.rpc.chain.containsTransaction(hash)).be
-                    .false;
-                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                    .null;
-                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+                await node.sendAssetTransactionExpectedToFail(transferTx);
             });
         });
 

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import { expect } from "chai";
 import { ChildProcess, spawn } from "child_process";
 import { SDK } from "codechain-sdk";
 import {
@@ -544,6 +545,76 @@ export default class CodeChain {
             });
         await this.sdk.rpc.chain.sendSignedTransaction(tx);
         return tx;
+    }
+
+    // If one only sends certainly failing transactions, the miner would not generate any block.
+    // So to clearly check the result failed, insert the failing transactions after succeessful ones.
+    public async sendAssetTransactionExpectedToFail(
+        tx: Transaction & AssetTransaction,
+        options: { seq?: number } = {}
+    ): Promise<H256> {
+        await this.sdk.rpc.devel.stopSealing();
+
+        const seq =
+            options.seq == null
+                ? await this.sdk.rpc.chain.getSeq(faucetAddress)
+                : options.seq;
+
+        const blockNumber = await this.getBestBlockNumber();
+        const signedDummyTxHash = (await this.sendPayTx({
+            seq,
+            quantity: 1
+        })).hash();
+        const targetTxHash = await this.sendAssetTransaction(tx, {
+            seq: seq + 1
+        });
+
+        await this.sdk.rpc.devel.startSealing();
+        await this.waitBlockNumber(blockNumber + 1);
+
+        expect(await this.sdk.rpc.chain.containsTransaction(targetTxHash)).be
+            .false;
+        expect(await this.sdk.rpc.chain.getErrorHint(targetTxHash)).not.null;
+        expect(await this.sdk.rpc.chain.getTransaction(targetTxHash)).be.null;
+
+        expect(await this.sdk.rpc.chain.containsTransaction(signedDummyTxHash))
+            .be.true;
+        expect(await this.sdk.rpc.chain.getErrorHint(signedDummyTxHash)).null;
+        expect(await this.sdk.rpc.chain.getTransaction(signedDummyTxHash)).not
+            .be.null;
+        return targetTxHash;
+    }
+
+    // If one only sends certainly failing transactions, the miner would not generate any block.
+    // So to clearly check the result failed, insert the failing transactions after succeessful ones.
+    public async sendTransactionExpectedToFail(
+        tx: Transaction,
+        options: { account: string | PlatformAddress }
+    ): Promise<H256> {
+        const { account } = options;
+        await this.sdk.rpc.devel.stopSealing();
+
+        const blockNumber = await this.getBestBlockNumber();
+        const signedDummyTxHash = (await this.sendPayTx({
+            quantity: 1
+        })).hash();
+        const targetTxHash = await this.sendTransaction(tx, { account });
+
+        await this.sdk.rpc.devel.startSealing();
+        await this.waitBlockNumber(blockNumber + 1);
+
+        expect(await this.sdk.rpc.chain.containsTransaction(targetTxHash)).be
+            .false;
+        expect(await this.sdk.rpc.chain.getErrorHint(targetTxHash)).not.null;
+        expect(await this.sdk.rpc.chain.getTransaction(targetTxHash)).be.null;
+
+        expect(await this.sdk.rpc.chain.containsTransaction(signedDummyTxHash))
+            .be.true;
+        expect(await this.sdk.rpc.chain.getErrorHint(signedDummyTxHash)).null;
+        expect(await this.sdk.rpc.chain.getTransaction(signedDummyTxHash)).not
+            .be.null;
+
+        return targetTxHash;
     }
 
     public sendSignedTransactionWithRlpBytes(rlpBytes: Buffer): Promise<H256> {
