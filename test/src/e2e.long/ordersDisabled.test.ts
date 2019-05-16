@@ -22,7 +22,7 @@ import { daveAddress, faucetAddress, faucetSecret } from "../helper/constants";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
 
-describe.only("order is disabled", function() {
+describe("order is disabled", function() {
     let node: CodeChain;
 
     before(async function() {
