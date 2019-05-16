@@ -46,7 +46,7 @@ use ctypes::transaction::{
     Action, AssetOutPoint, AssetTransferInput, AssetWrapCCCOutput, ShardTransaction, Transaction,
 };
 use ctypes::util::unexpected::Mismatch;
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockNumber, CommonParams, ShardId};
 use cvm::ChainTimeInfo;
 use hashdb::AsHashDB;
 use kvdb::DBTransaction;
@@ -988,6 +988,21 @@ impl TopState for TopLevelState {
 
     fn remove_action_data(&mut self, key: &H256) {
         self.top_cache.remove_action_data(key)
+    }
+
+    fn update_params(&mut self, metadata_seq: u64, params: CommonParams) -> StateResult<()> {
+        let mut metadata = self.get_metadata_mut()?;
+        if metadata.seq() != metadata_seq {
+            return Err(RuntimeError::InvalidSeq(Mismatch {
+                found: metadata_seq,
+                expected: metadata.seq(),
+            })
+            .into())
+        }
+
+        metadata.set_params(params);
+        metadata.increase_seq();
+        Ok(())
     }
 }
 
