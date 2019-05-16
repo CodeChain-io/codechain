@@ -19,14 +19,13 @@ mod params;
 use std::cmp::{max, min};
 
 use ccrypto::blake256;
-use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::U256;
 use rlp::UntrustedRlp;
 
 use self::params::BlakePoWParams;
 use super::ConsensusEngine;
-use crate::block::{ExecutedBlock, IsBlock};
+use crate::block::ExecutedBlock;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
 use crate::error::{BlockError, Error};
@@ -84,7 +83,7 @@ impl BlakePoW {
     }
 }
 
-impl ConsensusEngine<CodeChainMachine> for BlakePoW {
+impl ConsensusEngine for BlakePoW {
     fn name(&self) -> &str {
         "BlakePoW"
     }

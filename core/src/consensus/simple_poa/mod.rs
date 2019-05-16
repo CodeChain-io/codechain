@@ -19,7 +19,6 @@ mod params;
 use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, recover, Address, Signature};
-use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
 
 use self::params::SimplePoAParams;
@@ -28,7 +27,7 @@ use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, EngineError, Seal};
 use crate::account_provider::AccountProvider;
-use crate::block::{ExecutedBlock, IsBlock};
+use crate::block::ExecutedBlock;
 use crate::client::EngineClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
@@ -73,7 +72,7 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
     }
 }
 
-impl ConsensusEngine<CodeChainMachine> for SimplePoA {
+impl ConsensusEngine for SimplePoA {
     fn name(&self) -> &str {
         "SimplePoA"
     }
@@ -154,7 +153,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
 
 #[cfg(test)]
 mod tests {
-    use crate::block::OpenBlock;
+    use crate::block::{IsBlock, OpenBlock};
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
 
