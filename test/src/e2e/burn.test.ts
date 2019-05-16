@@ -127,22 +127,9 @@ describe("Burn", function() {
             tx2.input(0)!,
             tx2.hashWithoutScript()
         );
-        await node.sdk.rpc.devel.stopSealing();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const blockNumber = await node.getBestBlockNumber();
-        const pay = await node.sendPayTx({
-            recipient: faucetAddress,
-            seq,
-            quantity: 1
-        });
-        const hash2 = await node.sendAssetTransaction(tx2, { seq: seq + 1 });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.containsTransaction(hash2)).be.false;
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash2)).not.null;
+
+        await node.sendAssetTransactionExpectedToFail(tx2);
+
         expect(
             await node.sdk.rpc.chain.getAsset(tx1.tracker(), 0, asset.shardId)
         ).not.to.be.null;
@@ -157,18 +144,7 @@ describe("Burn", function() {
         tx.addBurns(asset);
         await node.signTransactionP2PKH(tx.burn(0)!, tx.hashWithoutScript());
 
-        await node.sdk.rpc.devel.stopSealing();
-        const blockNumber = await node.getBestBlockNumber();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const pay = await node.sendPayTx({ seq, quantity: 1 });
-        const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+        await node.sendAssetTransactionExpectedToFail(tx);
     });
 
     afterEach(function() {

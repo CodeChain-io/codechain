@@ -238,24 +238,7 @@ describe("TransferAsset", function() {
             recipient
         });
         await node.signTransactionInput(transferAsset, 0);
-        await node.sdk.rpc.devel.stopSealing();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const blockNumber = await node.getBestBlockNumber();
-        const pay = await node.sendPayTx({
-            seq,
-            quantity: 1,
-            recipient: aliceAddress
-        });
-        const hash = await node.sendAssetTransaction(transferAsset, {
-            seq: seq + 1
-        });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+        await node.sendAssetTransactionExpectedToFail(transferAsset);
     });
 
     describe("ScriptError", function() {
@@ -274,19 +257,7 @@ describe("TransferAsset", function() {
             tx.input(0)!.setLockScript(P2PKH.getLockScript());
             tx.input(0)!.setUnlockScript(Buffer.from([Opcode.NOP])); // Invalid Opcode for unlock_script
 
-            await node.sdk.rpc.devel.stopSealing();
-            const blockNumber = await node.getBestBlockNumber();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const pay = await node.sendPayTx({ seq, quantity: 1 });
-            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await node.sendAssetTransactionExpectedToFail(tx);
         });
 
         it("Cannot transfer trivially fail script", async function() {
@@ -313,19 +284,7 @@ describe("TransferAsset", function() {
             tx.input(0)!.setLockScript(triviallyFail);
             tx.input(0)!.setUnlockScript(Buffer.from([]));
 
-            await node.sdk.rpc.devel.stopSealing();
-            const blockNumber = await node.getBestBlockNumber();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const pay = await node.sendPayTx({ seq, quantity: 1 });
-            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await node.sendAssetTransactionExpectedToFail(tx);
         });
 
         it("Can transfer trivially success script", async function() {
@@ -387,19 +346,7 @@ describe("TransferAsset", function() {
             tx.input(0)!.setLockScript(leaveMultipleValue);
             tx.input(0)!.setUnlockScript(Buffer.from([]));
 
-            await node.sdk.rpc.devel.stopSealing();
-            const blockNumber = await node.getBestBlockNumber();
-            const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            const pay = await node.sendPayTx({ seq, quantity: 1 });
-            const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
-            expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-                .true;
-            expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
+            await node.sendAssetTransactionExpectedToFail(tx);
         });
     });
 
@@ -450,18 +397,7 @@ describe("TransferAsset", function() {
         });
 
         it("nonApprover cannot send a transaction", async function() {
-            await node.sdk.rpc.devel.stopSealing();
-            const blockNumber = await node.getBestBlockNumber();
-            const pay = await node.sendPayTx({ quantity: 1 });
-            const hash = await node.sendTransaction(transferTx, {
-                account: nonApprover
-            });
-            await node.sdk.rpc.devel.startSealing();
-            await node.waitBlockNumber(blockNumber + 1);
-            expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                .null;
-            expect(await node.sdk.rpc.chain.getTransaction(hash)).null;
-            expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+            await node.sendAssetTransactionExpectedToFail(transferTx);
         });
     });
 
