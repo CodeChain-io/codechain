@@ -96,22 +96,7 @@ describe("IncreaseAssetSupply", async function() {
         expect(await node.sdk.rpc.chain.containsTransaction(hash1)).be.true;
         expect(await node.sdk.rpc.chain.getTransaction(hash1)).not.null;
 
-        await node.sdk.rpc.devel.stopSealing();
-        const blockNumber = await node.getBestBlockNumber();
-
-        const pay = await node.sendPayTx({ seq: seq + 1, quantity: 1 });
-        const hash2 = await node.sendAssetTransaction(tx2, {
-            seq: seq + 2
-        });
-
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.containsTransaction(hash2)).be.false;
-        expect(await node.sdk.rpc.chain.getTransaction(hash2)).be.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash2)).be.not.null;
+        await node.sendAssetTransactionExpectedToFail(tx2, { seq: seq + 1 });
     });
 
     it("cannot increase supply with the same transaction even the asset is moved", async function() {
@@ -167,22 +152,7 @@ describe("IncreaseAssetSupply", async function() {
         expect(await node.sdk.rpc.chain.getTransaction(transferHash)).be.not
             .null;
 
-        await node.sdk.rpc.devel.stopSealing();
-        const blockNumber = await node.getBestBlockNumber();
-
-        const pay = await node.sendPayTx({ seq: seq + 2, quantity: 1 });
-        const hash2 = await node.sendAssetTransaction(tx2, {
-            seq: seq + 3
-        });
-
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.containsTransaction(hash2)).be.false;
-        expect(await node.sdk.rpc.chain.getTransaction(hash2)).be.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash2)).be.not.null;
+        await node.sendAssetTransactionExpectedToFail(tx2, { seq: seq + 2 });
     });
 
     it("can increase supply again", async function() {
@@ -293,18 +263,7 @@ describe("IncreaseAssetSupply", async function() {
             supply: increasedAmount
         });
 
-        await node.sdk.rpc.devel.stopSealing();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const blockNumber = await node.getBestBlockNumber();
-        const pay = await node.sendPayTx({ seq, quantity: 1 });
-        const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+        await node.sendAssetTransactionExpectedToFail(tx);
 
         const additionalAsset = await node.sdk.rpc.chain.getAsset(
             tx.tracker(),
@@ -328,17 +287,8 @@ describe("IncreaseAssetSupply", async function() {
             supply: increasedAmount
         });
 
-        await node.sdk.rpc.devel.stopSealing();
-        const blockNumber = await node.getBestBlockNumber();
-        const pay = await node.sendPayTx({ quantity: 1 });
-        const hash = await node.sendTransaction(tx, { account: outsider });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+        await node.sendTransactionExpectedToFail(tx, { account: outsider });
+
         const results = await node.sdk.rpc.chain.getTransactionResultsByTracker(
             tx.tracker(),
             {
@@ -367,18 +317,7 @@ describe("IncreaseAssetSupply", async function() {
             supply: 1
         });
 
-        await node.sdk.rpc.devel.stopSealing();
-        const blockNumber = await node.getBestBlockNumber();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        const pay = await node.sendPayTx({ seq, quantity: 1 });
-        const hash = await node.sendAssetTransaction(tx, { seq: seq + 1 });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.false;
-        expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
-            .true;
-        expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not.null;
-        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+        await node.sendAssetTransactionExpectedToFail(tx);
 
         const additionalAsset = await node.sdk.rpc.chain.getAsset(
             tx.tracker(),
