@@ -148,16 +148,7 @@ impl Importer {
             if !imported_blocks.is_empty() && is_empty {
                 let (enacted, retracted) = self.calculate_enacted_retracted(&import_results);
                 self.miner.chain_new_blocks(client, &imported_blocks, &invalid_blocks, &enacted, &retracted);
-                client.notify(|notify| {
-                    notify.new_blocks(
-                        imported_blocks.clone(),
-                        invalid_blocks.clone(),
-                        enacted.clone(),
-                        retracted.clone(),
-                        Vec::new(),
-                        duration,
-                    );
-                });
+                client.new_blocks(&imported_blocks, &invalid_blocks, &enacted, &retracted, &[], duration);
             }
         }
 
@@ -388,17 +379,15 @@ impl Importer {
             None
         };
 
-        client.notify(|notify| {
-            notify.new_headers(
-                imported.clone(),
-                bad.iter().cloned().collect(),
-                enacted.clone(),
-                retracted.clone(),
-                Vec::new(),
-                0,
-                best_proposal_header_changed,
-            );
-        });
+        client.new_headers(
+            &imported,
+            &bad.iter().cloned().collect::<Vec<_>>(),
+            &enacted,
+            &retracted,
+            &[],
+            0,
+            best_proposal_header_changed,
+        );
 
         client.db().flush().expect("DB flush failed.");
 
