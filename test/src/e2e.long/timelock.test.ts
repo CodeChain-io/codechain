@@ -107,16 +107,8 @@ describe("Timelock", function() {
             shardId: asset.shardId,
             recipient: await node.createP2PKHAddress()
         });
-        const blockNumber = await node.sdk.rpc.chain.getBestBlockNumber();
-        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-        await node.sdk.rpc.devel.stopSealing();
-        await node.sendPayTx({ seq, quantity: 1 });
-        const hash = await node.sendAssetTransaction(failedTx, {
-            seq: seq + 1
-        });
-        await node.sdk.rpc.devel.startSealing();
-        await node.waitBlockNumber(blockNumber + 1);
-        expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+
+        await node.sendAssetTransactionExpectedToFail(failedTx);
 
         const output0 = failedTx.getTransferredAsset(0);
         const tx = node.sdk.core.createTransferAssetTransaction();
