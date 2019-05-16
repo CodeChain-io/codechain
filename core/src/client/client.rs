@@ -143,7 +143,57 @@ impl Client {
         self.notify.write().push(target);
     }
 
-    pub fn notify<F>(&self, f: F)
+    pub fn transactions_received(&self, hashes: &[H256], peer_id: NodeId) {
+        self.notify(|notify| {
+            notify.transactions_received(hashes.to_vec(), peer_id);
+        });
+    }
+
+    pub fn new_blocks(
+        &self,
+        imported: &[H256],
+        invalid: &[H256],
+        enacted: &[H256],
+        retracted: &[H256],
+        sealed: &[H256],
+        duration: u64,
+    ) {
+        self.notify(|notify| {
+            notify.new_blocks(
+                imported.to_vec(),
+                invalid.to_vec(),
+                enacted.to_vec(),
+                retracted.to_vec(),
+                sealed.to_vec(),
+                duration,
+            )
+        });
+    }
+
+    pub fn new_headers(
+        &self,
+        imported: &[H256],
+        invalid: &[H256],
+        enacted: &[H256],
+        retracted: &[H256],
+        sealed: &[H256],
+        duration: u64,
+        new_best_proposal: Option<H256>,
+    ) {
+        self.notify(|notify| {
+            notify.new_headers(
+                imported.to_vec(),
+                invalid.to_vec(),
+                enacted.to_vec(),
+                retracted.to_vec(),
+                sealed.to_vec(),
+                duration,
+                new_best_proposal,
+            );
+        });
+    }
+
+    fn notify<F>(&self, f: F)
     where
         F: Fn(&ChainNotify), {
         for np in self.notify.read().iter() {
@@ -200,9 +250,7 @@ impl Client {
         let transactions: Vec<UnverifiedTransaction> =
             transactions.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
         let hashes: Vec<_> = transactions.iter().map(UnverifiedTransaction::hash).collect();
-        self.notify(|notify| {
-            notify.transactions_received(hashes.clone(), peer_id);
-        });
+        self.transactions_received(&hashes, peer_id);
         let results = self.importer.miner.import_external_transactions(self, transactions);
         results.len()
     }
@@ -235,11 +283,9 @@ impl Client {
 
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
         self.importer.miner.chain_new_blocks(self, &[], &[], &enacted, &retracted);
-        self.notify(|notify| {
-            notify.new_blocks(vec![], vec![], enacted.clone(), retracted.clone(), vec![], {
-                let elapsed = start.elapsed();
-                elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
-            });
+        self.new_blocks(&[], &[], &enacted, &retracted, &[], {
+            let elapsed = start.elapsed();
+            elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
         });
     }
 
@@ -801,11 +847,9 @@ impl ImportSealedBlock for Client {
         };
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
         self.importer.miner.chain_new_blocks(self, &[h], &[], &enacted, &retracted);
-        self.notify(|notify| {
-            notify.new_blocks(vec![h], vec![], enacted.clone(), retracted.clone(), vec![h], {
-                let elapsed = start.elapsed();
-                elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
-            });
+        self.new_blocks(&[h], &[], &enacted, &retracted, &[h], {
+            let elapsed = start.elapsed();
+            elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
         });
         self.db().flush().expect("DB flush failed.");
         Ok(h)
