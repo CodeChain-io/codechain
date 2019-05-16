@@ -85,9 +85,9 @@ pub use crate::account_provider::{AccountProvider, Error as AccountProviderError
 pub use crate::block::Block;
 pub use crate::client::Error::Database;
 pub use crate::client::{
-    AssetClient, Balance, BlockChainClient, BlockInfo, ChainInfo, ChainNotify, Client, ClientConfig, DatabaseClient,
-    EngineClient, EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq,
-    Shard, StateInfo, TestBlockChainClient, TextClient,
+    AccountData, AssetClient, BlockChainClient, BlockChainTrait, ChainNotify, Client, ClientConfig, DatabaseClient,
+    EngineClient, EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, Shard, StateInfo,
+    TestBlockChainClient, TextClient,
 };
 pub use crate::consensus::{EngineType, TimeGapParams};
 pub use crate::db::{COL_STATE, NUM_COLUMNS};
