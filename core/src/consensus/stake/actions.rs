@@ -34,7 +34,7 @@ pub enum Action {
     },
     ChangeParams {
         metadata_seq: u64,
-        params: CommonParams,
+        params: Box<CommonParams>,
         signatures: Vec<Signature>,
     },
 }
@@ -62,7 +62,7 @@ impl Encodable for Action {
                 s.begin_list(3 + signatures.len())
                     .append(&ACTION_TAG_CHANGE_PARAMS)
                     .append(metadata_seq)
-                    .append(params);
+                    .append(&**params);
                 for signature in signatures {
                     s.append(signature);
                 }
@@ -110,7 +110,7 @@ impl Decodable for Action {
                     })
                 }
                 let metadata_seq = rlp.val_at(1)?;
-                let params = rlp.val_at(2)?;
+                let params = Box::new(rlp.val_at(2)?);
                 let signatures = (3..item_count).map(|i| rlp.val_at(i)).collect::<Result<_, _>>()?;
                 Ok(Action::ChangeParams {
                     metadata_seq,
@@ -133,7 +133,7 @@ mod tests {
     fn decode_fail_if_change_params_have_no_signatures() {
         let action = Action::ChangeParams {
             metadata_seq: 3,
-            params: CommonParams::default_for_test(),
+            params: CommonParams::default_for_test().into(),
             signatures: vec![],
         };
         assert_eq!(
@@ -149,7 +149,7 @@ mod tests {
     fn rlp_of_change_params() {
         rlp_encode_and_decode_test!(Action::ChangeParams {
             metadata_seq: 3,
-            params: CommonParams::default_for_test(),
+            params: CommonParams::default_for_test().into(),
             signatures: vec![Signature::random(), Signature::random()],
         });
     }

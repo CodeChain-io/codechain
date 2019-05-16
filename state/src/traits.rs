@@ -17,7 +17,7 @@
 use ckey::{public_to_address, Address, Public, Signature};
 use cmerkle::Result as TrieResult;
 use ctypes::transaction::ShardTransaction;
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockNumber, CommonParams, ShardId};
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H160, H256};
 
@@ -181,6 +181,8 @@ pub trait TopState {
 
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()>;
     fn remove_action_data(&mut self, key: &H256);
+
+    fn update_params(&mut self, metadata_seq: u64, params: CommonParams) -> StateResult<()>;
 }
 
 pub trait StateWithCache {
