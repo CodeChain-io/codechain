@@ -3,6 +3,16 @@ version_short: "v"
 author: CodeChain Team <hi@codechain.io>
 about: CodeChian client
 args:
+    - allowed-future-gap:
+        long: allowed-future-gap
+        value_name: MS
+        help: Specify the allowed gap in the future direction from the system time to the block generation time. MS is time measured in milliseconds.
+        takes_value: true
+    - allowed-past-gap:
+        long: allowed-past-gap
+        value_name: MS
+        help: Specify the allowed gap in the past direction from the system time to the block generation time. MS is time measured in milliseconds.
+        takes_value: true
     - config:
         long: config
         help: Specify the certain config file path that you want to use to configure CodeChain to your needs.
