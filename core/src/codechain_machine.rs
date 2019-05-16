@@ -91,7 +91,6 @@ impl CodeChainMachine {
 
     /// Verify a particular transaction is valid, regardless of order.
     pub fn verify_transaction_unordered(
-        &self,
         p: UnverifiedTransaction,
         _header: &Header,
     ) -> Result<SignedTransaction, Error> {
