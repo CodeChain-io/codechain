@@ -123,7 +123,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_ORDER_ASSET_TYPES);
                 }
             });
         });
@@ -715,7 +715,9 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -783,7 +785,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_SPENT_QUANTITY);
                 }
             });
 
@@ -851,7 +853,9 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -926,7 +930,9 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_ORDER_LOCK_SCRIPT_HASH
+                    );
                 }
             });
 
@@ -997,7 +1003,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_ORDER_PARAMETERS);
                 }
             });
 
@@ -1071,7 +1077,9 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -1145,7 +1153,9 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -1225,7 +1235,9 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -1295,7 +1307,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_ORIGIN_OUTPUTS);
                 }
             });
 
@@ -1364,7 +1376,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_ORIGIN_OUTPUTS);
                 }
             });
 
@@ -1439,26 +1451,7 @@ describe("orders", function() {
                     });
                 await node.signTransactionInput(transferTx, 1);
 
-                await node.sdk.rpc.devel.stopSealing();
-                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const blockNumber = await node.getBestBlockNumber();
-                const pay = await node.sendPayTx({
-                    recipient: faucetAddress,
-                    seq,
-                    quantity: 1
-                });
-                const hash = await node.sendAssetTransaction(transferTx, {
-                    seq: seq + 1
-                });
-                await node.sdk.rpc.devel.startSealing();
-                await node.waitBlockNumber(blockNumber + 1);
-                expect(await node.sdk.rpc.chain.containsTransaction(hash)).be
-                    .false;
-                expect(await node.sdk.rpc.chain.containsTransaction(pay.hash()))
-                    .be.true;
-                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                    .null;
-                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+                await node.sendAssetTransactionExpectedToFail(transferTx);
             }).timeout(10_000);
 
             it("Wrong order - originOutputs are wrong (few outputs)", async function() {
@@ -1545,26 +1538,7 @@ describe("orders", function() {
                     )
                 );
 
-                await node.sdk.rpc.devel.stopSealing();
-                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const blockNumber = await node.getBestBlockNumber();
-                const pay = await node.sendPayTx({
-                    recipient: faucetAddress,
-                    seq,
-                    quantity: 1
-                });
-                const hash = await node.sendAssetTransaction(transferTx, {
-                    seq: seq + 1
-                });
-                await node.sdk.rpc.devel.startSealing();
-                await node.waitBlockNumber(blockNumber + 1);
-                expect(await node.sdk.rpc.chain.containsTransaction(pay.hash()))
-                    .be.true;
-                expect(await node.sdk.rpc.chain.containsTransaction(hash)).be
-                    .false;
-                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                    .null;
-                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+                await node.sendAssetTransactionExpectedToFail(transferTx);
             }).timeout(10_000);
 
             it("Wrong order - originOutputs are wrong (many outputs)", async function() {
@@ -1649,24 +1623,7 @@ describe("orders", function() {
                     )
                 );
 
-                await node.sdk.rpc.devel.stopSealing();
-                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const blockNumber = await node.getBestBlockNumber();
-                const pay = await node.sendPayTx({
-                    recipient: faucetAddress,
-                    seq,
-                    quantity: 1
-                });
-                const hash = await node.sendAssetTransaction(transferTx, {
-                    seq: seq + 1
-                });
-                await node.sdk.rpc.devel.startSealing();
-                await node.waitBlockNumber(blockNumber + 1);
-                expect(await node.sdk.rpc.chain.containsTransaction(pay.hash()))
-                    .be.true;
-                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                    .null;
-                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+                await node.sendAssetTransactionExpectedToFail(transferTx);
             }).timeout(10_000);
 
             it("Wrong order - Ratio is wrong (from is zero)", async function() {
@@ -1735,7 +1692,9 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_ORDER_ASSET_QUANTITIES
+                    );
                 }
             });
 
@@ -1805,7 +1764,9 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_ORDER_ASSET_QUANTITIES
+                    );
                 }
             });
 
@@ -1873,7 +1834,7 @@ describe("orders", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.ORDER_EXPIRED);
                 }
             });
 
@@ -2804,26 +2765,7 @@ describe("orders", function() {
                 await node.signTransactionInput(transferTx, 1);
                 await node.signTransactionInput(transferTx, 2);
 
-                await node.sdk.rpc.devel.stopSealing();
-                const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-                const blockNumber = await node.getBestBlockNumber();
-                const pay = await node.sendPayTx({
-                    recipient: faucetAddress,
-                    seq,
-                    quantity: 1
-                });
-                const hash = await node.sendAssetTransaction(transferTx, {
-                    seq: seq + 1
-                });
-                await node.sdk.rpc.devel.startSealing();
-                await node.waitBlockNumber(blockNumber + 1);
-                expect(await node.sdk.rpc.chain.containsTransaction(pay.hash()))
-                    .be.true;
-                expect(await node.sdk.rpc.chain.containsTransaction(hash)).be
-                    .false;
-                expect(await node.sdk.rpc.chain.getTransaction(pay.hash())).not
-                    .null;
-                expect(await node.sdk.rpc.chain.getErrorHint(hash)).not.null;
+                await node.sendAssetTransactionExpectedToFail(transferTx);
             });
         });
 

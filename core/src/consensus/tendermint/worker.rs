@@ -18,6 +18,7 @@ use std::iter::Iterator;
 use std::mem;
 use std::sync::{Arc, Weak};
 use std::thread::{Builder, JoinHandle};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use ccrypto::blake256;
 use ckey::{public_to_address, verify_schnorr, Address, SchnorrSignature};
@@ -31,6 +32,7 @@ use rlp::{Encodable, UntrustedRlp};
 use super::backup::{backup, restore, BackupView};
 use super::message::*;
 use super::network;
+use super::params::TimeGapParams;
 use super::types::{BitSet, Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::{
     BlockHash, ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
@@ -51,6 +53,7 @@ use crate::BlockId;
 
 type SpawnResult = (
     JoinHandle<()>,
+    crossbeam::Sender<TimeGapParams>,
     crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<EngineClient>)>,
     crossbeam::Sender<Event>,
     crossbeam::Sender<()>,
@@ -86,7 +89,7 @@ struct Worker {
     validators: Arc<ValidatorSet>,
     /// Channel to the network extension, must be set later.
     extension: EventSender<network::Event>,
-
+    time_gap_params: TimeGapParams,
     timeout_token_nonce: usize,
 }
 
@@ -166,7 +169,12 @@ pub enum Event {
 impl Worker {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     /// Create a new instance of Tendermint engine
-    fn new(validators: Arc<ValidatorSet>, extension: EventSender<network::Event>, client: Weak<EngineClient>) -> Self {
+    fn new(
+        validators: Arc<ValidatorSet>,
+        extension: EventSender<network::Event>,
+        client: Weak<EngineClient>,
+        time_gap_params: TimeGapParams,
+    ) -> Self {
         Worker {
             client,
             height: 1,
@@ -181,7 +189,7 @@ impl Worker {
             extension,
             votes_received: BitSet::new(),
             votes_received_changed: false,
-
+            time_gap_params,
             timeout_token_nonce: ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
         }
     }
@@ -189,10 +197,18 @@ impl Worker {
     fn spawn(validators: Arc<ValidatorSet>) -> SpawnResult {
         let (sender, receiver) = crossbeam::unbounded();
         let (quit, quit_receiver) = crossbeam::bounded(1);
+        let (external_params_initializer, external_params_receiver) = crossbeam::bounded(1);
         let (extension_initializer, extension_receiver) = crossbeam::bounded(1);
         let join = Builder::new()
             .name("tendermint".to_string())
             .spawn(move || {
+                let time_gap_params = match external_params_receiver.recv() {
+                    Ok(time_gap_params) => time_gap_params,
+                    Err(crossbeam::RecvError) => {
+                        cerror!(ENGINE, "The tendermint external parameters are not initialized");
+                        return
+                    }
+                };
                 let (extension, client) = crossbeam::select! {
                 recv(extension_receiver) -> msg => {
                     match msg {
@@ -214,7 +230,7 @@ impl Worker {
                 }
                 };
                 validators.register_client(Weak::clone(&client));
-                let mut inner = Self::new(validators, extension, client);
+                let mut inner = Self::new(validators, extension, client, time_gap_params);
                 loop {
                     crossbeam::select! {
                     recv(receiver) -> msg => {
@@ -341,7 +357,7 @@ impl Worker {
                 }
             })
             .unwrap();
-        (join, extension_initializer, sender, quit)
+        (join, external_params_initializer, extension_initializer, sender, quit)
     }
 
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
@@ -651,11 +667,16 @@ impl Worker {
                 // In the case, self.votes_received is not empty.
                 self.request_messages_to_all(vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
-                    let block_hash = match &self.last_two_thirds_majority {
+                    let block_hash_candidate = match &self.last_two_thirds_majority {
                         TwoThirdsMajority::Empty => self.proposal.imported_block_hash(),
                         TwoThirdsMajority::Unlock(_) => self.proposal.imported_block_hash(),
                         TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
                     };
+                    let block_hash = block_hash_candidate.filter(|hash| {
+                        let block =
+                            self.client().block(&BlockId::Hash(*hash)).expect("Already got imported block hash");
+                        self.is_generation_time_relevant(&block.decode_header())
+                    });
                     self.generate_and_broadcast_message(block_hash, is_restoring);
                 }
             }
@@ -683,6 +704,21 @@ impl Worker {
             Step::Commit => {
                 cinfo!(ENGINE, "move_to_step: Commit.");
             }
+        }
+    }
+
+    fn is_generation_time_relevant(&self, block_header: &Header) -> bool {
+        let acceptable_past_gap = self.time_gap_params.allowed_past_gap;
+        let acceptable_future_gap = self.time_gap_params.allowed_future_gap;
+        let now = SystemTime::now();
+        let allowed_min = now - acceptable_past_gap;
+        let allowed_max = now + acceptable_future_gap;
+        let block_generation_time = UNIX_EPOCH.checked_add(Duration::from_secs(block_header.timestamp()));
+
+        match block_generation_time {
+            Some(generation_time) => generation_time <= allowed_max && allowed_min <= generation_time,
+            // Overflow occurred
+            None => false,
         }
     }
 
