@@ -25,8 +25,7 @@ use parking_lot::{Mutex, MutexGuard};
 use primitives::H256;
 use rlp::Encodable;
 
-use super::BlockInfo;
-use super::{Client, ClientConfig};
+use super::{BlockChainTrait, Client, ClientConfig};
 use crate::block::{enact, IsBlock, LockedBlock};
 use crate::blockchain::{BlockChain, BodyProvider, HeaderProvider, ImportRoute};
 use crate::consensus::epoch::Transition as EpochTransition;

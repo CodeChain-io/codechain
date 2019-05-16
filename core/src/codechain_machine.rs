@@ -24,7 +24,7 @@ use ctypes::transaction::{Action, AssetTransferInput, OrderOnTransfer, Timelock}
 use ctypes::BlockNumber;
 
 use crate::block::{ExecutedBlock, IsBlock};
-use crate::client::{BlockInfo, TransactionInfo};
+use crate::client::BlockChainTrait;
 use crate::error::Error;
 use crate::header::Header;
 use crate::scheme::CommonParams;
@@ -98,7 +98,7 @@ impl CodeChainMachine {
     }
 
     /// Does verification of the transaction against the parent state.
-    pub fn verify_transaction<C: BlockInfo + TransactionInfo>(
+    pub fn verify_transaction<C: BlockChainTrait>(
         &self,
         tx: &SignedTransaction,
         header: &Header,
@@ -144,7 +144,7 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    fn verify_transfer_timelock<C: BlockInfo + TransactionInfo>(
+    fn verify_transfer_timelock<C: BlockChainTrait>(
         inputs: &[AssetTransferInput],
         header: &Header,
         client: &C,

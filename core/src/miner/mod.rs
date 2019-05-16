@@ -35,10 +35,7 @@ pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use crate::block::ClosedBlock;
-use crate::client::{
-    AccountData, BlockChain, BlockProducer, ImportSealedBlock, MiningBlockChainClient, RegularKey, RegularKeyOwner,
-    ResealTimer,
-};
+use crate::client::{AccountData, BlockChainTrait, BlockProducer, ImportBlock, MiningBlockChainClient};
 use crate::consensus::EngineType;
 use crate::error::Error;
 use crate::transaction::{PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
@@ -76,7 +73,7 @@ pub trait MinerService: Send + Sync {
     /// Called when blocks are imported to chain, updates transactions queue.
     fn chain_new_blocks<C>(&self, chain: &C, imported: &[H256], invalid: &[H256], enacted: &[H256], retracted: &[H256])
     where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ResealTimer;
+        C: AccountData + BlockChainTrait + BlockProducer + ImportBlock;
 
     /// PoW chain - can produce work package
     fn can_produce_work_package(&self) -> bool;
@@ -87,28 +84,21 @@ pub trait MinerService: Send + Sync {
     /// Returns true if we had to prepare new pending block.
     fn prepare_work_sealing<C>(&self, &C) -> bool
     where
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler;
+        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + FindActionHandler;
 
     /// New chain head event. Restart mining operation.
     fn update_sealing<C>(&self, chain: &C, parent_block: BlockId, allow_empty_block: bool)
     where
-        C: AccountData
-            + BlockChain
-            + BlockProducer
-            + ImportSealedBlock
-            + RegularKeyOwner
-            + ResealTimer
-            + ChainTimeInfo
-            + FindActionHandler;
+        C: AccountData + BlockChainTrait + BlockProducer + ImportBlock + ChainTimeInfo + FindActionHandler;
 
     /// Submit `seal` as a valid solution for the header of `pow_hash`.
     /// Will check the seal, but not actually insert the block into the chain.
-    fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, pow_hash: H256, seal: Vec<Bytes>) -> Result<(), Error>;
+    fn submit_seal<C: ImportBlock>(&self, chain: &C, pow_hash: H256, seal: Vec<Bytes>) -> Result<(), Error>;
 
     /// Get the sealing work package and if `Some`, apply some transform.
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
+        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + FindActionHandler,
         F: FnOnce(&ClosedBlock) -> T,
         Self: Sized;
 
@@ -127,7 +117,7 @@ pub trait MinerService: Send + Sync {
     ) -> Result<TransactionImportResult, Error>;
 
     /// Imports incomplete (node owner) transaction to mem pool.
-    fn import_incomplete_transaction<C: MiningBlockChainClient + RegularKey + RegularKeyOwner>(
+    fn import_incomplete_transaction<C: MiningBlockChainClient + AccountData>(
         &self,
         chain: &C,
         account_provider: &AccountProvider,

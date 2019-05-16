@@ -32,7 +32,7 @@ use super::mem_pool_types::{
     TransactionOrder, TransactionOrderWithTag, TxOrigin, TxTimelock,
 };
 use super::TransactionImportResult;
-use crate::client::{AccountData, BlockChain, RegularKeyOwner};
+use crate::client::{AccountData, BlockChainTrait};
 use crate::transaction::{PendingSignedTransactions, SignedTransaction};
 use crate::Error as CoreError;
 
@@ -429,7 +429,7 @@ impl MemPool {
     }
 
     // Recover MemPool state from db stored data
-    pub fn recover_from_db<C: AccountData + BlockChain + RegularKeyOwner>(&mut self, client: &C) {
+    pub fn recover_from_db<C: AccountData + BlockChainTrait>(&mut self, client: &C) {
         let fetch_account = |p: &Public| -> AccountDetails {
             let address = public_to_address(p);
             let a = client.latest_regular_key_owner(&address).unwrap_or(address);
@@ -979,7 +979,7 @@ impl MemPool {
 pub mod test {
     use std::cmp::Ordering;
 
-    use crate::client::{Balance, ChainInfo, RegularKeyOwner, Seq, TestBlockChainClient};
+    use crate::client::{AccountData, TestBlockChainClient};
     use ckey::{Generator, KeyPair, Random};
     use ctypes::transaction::{Action, AssetMintOutput, Transaction};
     use primitives::H160;
