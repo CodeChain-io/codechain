@@ -19,7 +19,6 @@ mod params;
 use std::sync::Arc;
 
 use cstate::{ActionHandler, HitHandler};
-use ctypes::machine::WithBalances;
 
 use self::params::SoloParams;
 use super::stake;
@@ -58,7 +57,7 @@ impl<M> Solo<M> {
     }
 }
 
-impl ConsensusEngine<CodeChainMachine> for Solo<CodeChainMachine> {
+impl ConsensusEngine for Solo<CodeChainMachine> {
     fn name(&self) -> &str {
         "Solo"
     }

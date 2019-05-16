@@ -22,7 +22,6 @@ use ckey::Address;
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::ActionHandler;
-use ctypes::machine::WithBalances;
 use ctypes::BlockNumber;
 use primitives::H256;
 
@@ -41,7 +40,7 @@ use crate::error::Error;
 use crate::header::Header;
 use crate::views::HeaderView;
 
-impl ConsensusEngine<CodeChainMachine> for Tendermint {
+impl ConsensusEngine for Tendermint {
     fn name(&self) -> &str {
         "Tendermint"
     }

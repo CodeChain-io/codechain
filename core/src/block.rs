@@ -21,7 +21,6 @@ use ckey::Address;
 use cmerkle::skewed_merkle_root;
 use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::errors::HistoryError;
-use ctypes::machine::{LiveBlock, Transactions};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::BlockNumber;
 use cvm::ChainTimeInfo;
@@ -108,20 +107,12 @@ impl ExecutedBlock {
     pub fn state_mut(&mut self) -> &mut TopLevelState {
         &mut self.state
     }
-}
 
-impl Transactions for ExecutedBlock {
-    type Transaction = SignedTransaction;
-
-    fn transactions(&self) -> &[SignedTransaction] {
+    pub fn transactions(&self) -> &[SignedTransaction] {
         &self.transactions
     }
-}
 
-impl LiveBlock for ExecutedBlock {
-    type Header = Header;
-
-    fn header(&self) -> &Header {
+    pub fn header(&self) -> &Header {
         &self.header
     }
 }

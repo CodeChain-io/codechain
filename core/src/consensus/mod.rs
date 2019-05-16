@@ -42,14 +42,14 @@ use ckey::{Address, SchnorrSignature};
 use cnetwork::NetworkService;
 use cstate::ActionHandler;
 use ctypes::errors::SyntaxError;
-use ctypes::machine::Machine;
 use ctypes::transaction::Action;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use primitives::{Bytes, H256, U256};
 
 use self::tendermint::types::{BitSet, View};
 use crate::account_provider::AccountProvider;
-use crate::block::SealedBlock;
+use crate::block::{ExecutedBlock, SealedBlock};
+use crate::client::EngineClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::encoded;
 use crate::error::Error;
@@ -130,15 +130,15 @@ impl EngineType {
 }
 
 /// A consensus mechanism for the chain.
-pub trait ConsensusEngine<M: Machine>: Sync + Send {
+pub trait ConsensusEngine: Sync + Send {
     /// The name of this engine.
     fn name(&self) -> &str;
 
     /// Get access to the underlying state machine.
-    fn machine(&self) -> &M;
+    fn machine(&self) -> &CodeChainMachine;
 
     /// The number of additional header fields required for this engine.
-    fn seal_fields(&self, _header: &M::Header) -> usize {
+    fn seal_fields(&self, _header: &Header) -> usize {
         0
     }
 
@@ -161,7 +161,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     ///
     /// It is fine to require access to state or a full client for this function, since
     /// light clients do not generate seals.
-    fn generate_seal(&self, _block: &M::LiveBlock, _parent: &M::Header) -> Seal {
+    fn generate_seal(&self, _block: &ExecutedBlock, _parent: &Header) -> Seal {
         Seal::None
     }
 
@@ -177,26 +177,26 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     ///
     /// It is fine to require access to state or a full client for this function, since
     /// light clients do not generate seals.
-    fn verify_local_seal(&self, header: &M::Header) -> Result<(), M::Error>;
+    fn verify_local_seal(&self, header: &Header) -> Result<(), Error>;
 
     /// Phase 1 quick block verification. Only does checks that are cheap. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_basic(&self, _header: &M::Header) -> Result<(), M::Error> {
+    fn verify_block_basic(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
     }
 
     /// Phase 2 verification. Perform costly checks such as transaction signatures. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_unordered(&self, _header: &M::Header) -> Result<(), M::Error> {
+    fn verify_block_unordered(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
     }
 
     /// Phase 3 verification. Check block information against parent. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_family(&self, _header: &M::Header, _parent: &M::Header) -> Result<(), M::Error> {
+    fn verify_block_family(&self, _header: &Header, _parent: &Header) -> Result<(), Error> {
         Ok(())
     }
 
     /// Phase 4 verification. Verify block header against potentially external data.
     /// Should only be called when `register_client` has been called previously.
-    fn verify_block_external(&self, _header: &M::Header) -> Result<(), M::Error> {
+    fn verify_block_external(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
     }
 
@@ -207,13 +207,13 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// from any epoch other than the current.
     ///
     /// Return optional transition proof.
-    fn is_epoch_end(&self, _chain_head: &M::Header, _chain: &Headers<M::Header>) -> Option<Vec<u8>> {
+    fn is_epoch_end(&self, _chain_head: &Header, _chain: &Headers<Header>) -> Option<Vec<u8>> {
         None
     }
 
     /// Populate a header's fields based on its parent's header.
     /// Usually implements the chain scoring rule based on weight.
-    fn populate_from_parent(&self, _header: &mut M::Header, _parent: &M::Header) {}
+    fn populate_from_parent(&self, _header: &mut Header, _parent: &Header) {}
 
     /// Called when the step is not changed in time
     fn on_timeout(&self, _token: usize) {}
@@ -222,17 +222,17 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     fn stop(&self) {}
 
     /// Block transformation functions, before the transactions.
-    fn on_new_block(&self, _block: &mut M::LiveBlock, _epoch_begin: bool) -> Result<(), M::Error> {
+    fn on_new_block(&self, _block: &mut ExecutedBlock, _epoch_begin: bool) -> Result<(), Error> {
         Ok(())
     }
 
     /// Block transformation functions, after the transactions.
-    fn on_close_block(&self, _block: &mut M::LiveBlock) -> Result<(), M::Error> {
+    fn on_close_block(&self, _block: &mut ExecutedBlock) -> Result<(), Error> {
         Ok(())
     }
 
     /// Add Client which can be used for sealing, potentially querying the state and sending messages.
-    fn register_client(&self, _client: Weak<M::EngineClient>) {}
+    fn register_client(&self, _client: Weak<EngineClient>) {}
 
     /// Handle any potential consensus messages;
     /// updating consensus state and potentially issuing a new one.
@@ -242,7 +242,7 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
 
     /// Find out if the block is a proposal block and should not be inserted into the DB.
     /// Takes a header of a fully verified block.
-    fn is_proposal(&self, _verified_header: &M::Header) -> bool {
+    fn is_proposal(&self, _verified_header: &Header) -> bool {
         false
     }
 
@@ -358,7 +358,7 @@ impl fmt::Display for EngineError {
 }
 
 /// Common type alias for an engine coupled with an CodeChain-like state machine.
-pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
+pub trait CodeChainEngine: ConsensusEngine {
     /// Additional verification for transactions in blocks.
     fn verify_transaction_basic(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
         if let Action::Custom {
@@ -385,4 +385,4 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
 }
 
 // convenience wrappers for existing functions.
-impl<T> CodeChainEngine for T where T: ConsensusEngine<CodeChainMachine> {}
+impl<T> CodeChainEngine for T where T: ConsensusEngine {}

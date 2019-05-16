@@ -16,22 +16,23 @@
 
 mod params;
 
-use ctypes::machine::{Header, LiveBlock, Transactions, WithBalances};
-
 use self::params::NullEngineParams;
 use super::ConsensusEngine;
+use crate::block::ExecutedBlock;
+use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
-use crate::SignedTransaction;
+use crate::error::Error;
+use crate::header::Header;
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
-pub struct NullEngine<M> {
+pub struct NullEngine {
     params: NullEngineParams,
-    machine: M,
+    machine: CodeChainMachine,
 }
 
-impl<M> NullEngine<M> {
+impl NullEngine {
     /// Returns new instance of NullEngine with default VM Factory
-    pub fn new(params: NullEngineParams, machine: M) -> Self {
+    pub fn new(params: NullEngineParams, machine: CodeChainMachine) -> Self {
         NullEngine {
             params,
             machine,
@@ -39,21 +40,12 @@ impl<M> NullEngine<M> {
     }
 }
 
-impl<M: Default> Default for NullEngine<M> {
-    fn default() -> Self {
-        Self::new(Default::default(), Default::default())
-    }
-}
-
-impl<M: WithBalances> ConsensusEngine<M> for NullEngine<M>
-where
-    M::LiveBlock: Transactions<Transaction = SignedTransaction>,
-{
+impl ConsensusEngine for NullEngine {
     fn name(&self) -> &str {
         "NullEngine"
     }
 
-    fn machine(&self) -> &M {
+    fn machine(&self) -> &CodeChainMachine {
         &self.machine
     }
 
@@ -61,14 +53,18 @@ where
         EngineType::Solo
     }
 
-    fn verify_local_seal(&self, _header: &M::Header) -> Result<(), M::Error> {
+    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
     }
 
-    fn on_close_block(&self, block: &mut M::LiveBlock) -> Result<(), M::Error> {
-        let author = *LiveBlock::header(&*block).author();
-        let total_reward = self.block_reward(block.header().number())
-            + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));
+    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+        let (author, total_reward) = {
+            let header = block.header();
+            let author = *header.author();
+            let total_reward = self.block_reward(header.number())
+                + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));
+            (author, total_reward)
+        };
         self.machine.add_balance(block, &author, total_reward)
     }
 
