@@ -16,7 +16,7 @@
 
 use super::verification;
 use super::Verifier;
-use crate::client::{BlockInfo, TransactionInfo};
+use crate::client::BlockChainTrait;
 use crate::consensus::CodeChainEngine;
 use crate::error::Error;
 use crate::header::Header;
@@ -24,7 +24,7 @@ use crate::header::Header;
 /// A canonial verifier -- this does full verification.
 pub struct CanonVerifier;
 
-impl<C: BlockInfo + TransactionInfo> Verifier<C> for CanonVerifier {
+impl<C: BlockChainTrait> Verifier<C> for CanonVerifier {
     fn verify_block_family(
         &self,
         block: &[u8],

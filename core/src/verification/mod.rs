@@ -27,7 +27,7 @@ pub use self::queue::{BlockQueue, Config as QueueConfig};
 pub use self::verification::*;
 pub use self::verifier::Verifier;
 
-use crate::client::{BlockInfo, TransactionInfo};
+use crate::client::BlockChainTrait;
 
 /// Verifier type.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -58,7 +58,7 @@ impl Default for VerifierType {
 }
 
 /// Create a new verifier based on type.
-pub fn new<C: BlockInfo + TransactionInfo>(v: VerifierType) -> Box<Verifier<C>> {
+pub fn new<C: BlockChainTrait>(v: VerifierType) -> Box<Verifier<C>> {
     match v {
         VerifierType::Canon | VerifierType::CanonNoSeal => Box::new(CanonVerifier),
         VerifierType::Noop => Box::new(NoopVerifier),

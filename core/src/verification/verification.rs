@@ -23,7 +23,7 @@ use primitives::{Bytes, H256};
 use rlp::UntrustedRlp;
 
 use crate::blockchain::BlockProvider;
-use crate::client::{BlockInfo, TransactionInfo};
+use crate::client::BlockChainTrait;
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error};
 use crate::header::Header;
@@ -155,7 +155,7 @@ pub fn verify_block_unordered(
 }
 
 /// Parameters for full verification of block family
-pub struct FullFamilyParams<'a, C: BlockInfo + TransactionInfo + 'a> {
+pub struct FullFamilyParams<'a, C: BlockChainTrait + 'a> {
     /// Serialized block bytes
     pub block_bytes: &'a [u8],
 
@@ -170,7 +170,7 @@ pub struct FullFamilyParams<'a, C: BlockInfo + TransactionInfo + 'a> {
 }
 
 /// Phase 3 verification. Check block information against parent and uncles.
-pub fn verify_block_family<C: BlockInfo + TransactionInfo>(
+pub fn verify_block_family<C: BlockChainTrait>(
     block: &[u8],
     header: &Header,
     parent: &Header,

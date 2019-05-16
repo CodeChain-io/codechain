@@ -18,7 +18,7 @@ use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::Duration;
 
-use ccore::{AccountProvider, EngineInfo, MinerService, MiningBlockChainClient, RegularKey, RegularKeyOwner, Seq};
+use ccore::{AccountData, AccountProvider, EngineInfo, MinerService, MiningBlockChainClient};
 use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use ctypes::transaction::IncompleteTransaction;
 use jsonrpc_core::Result;
@@ -31,7 +31,7 @@ use super::super::types::{SendTransactionResult, UnsignedTransaction};
 
 pub struct AccountClient<C, M>
 where
-    C: EngineInfo + MiningBlockChainClient + Seq + RegularKey + RegularKeyOwner,
+    C: EngineInfo + MiningBlockChainClient + AccountData,
     M: MinerService, {
     account_provider: Arc<AccountProvider>,
     client: Arc<C>,
@@ -40,7 +40,7 @@ where
 
 impl<C, M> AccountClient<C, M>
 where
-    C: EngineInfo + MiningBlockChainClient + Seq + RegularKey + RegularKeyOwner,
+    C: EngineInfo + MiningBlockChainClient + AccountData,
     M: MinerService,
 {
     pub fn new(account_provider: Arc<AccountProvider>, client: Arc<C>, miner: Arc<M>) -> Self {
@@ -59,7 +59,7 @@ where
 
 impl<C, M> Account for AccountClient<C, M>
 where
-    C: EngineInfo + MiningBlockChainClient + Seq + RegularKey + RegularKeyOwner + 'static,
+    C: EngineInfo + MiningBlockChainClient + AccountData + 'static,
     M: MinerService + 'static,
 {
     fn get_account_list(&self) -> Result<Vec<PlatformAddress>> {

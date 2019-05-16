@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::{verification, Verifier};
-use crate::client::{BlockInfo, TransactionInfo};
+use crate::client::BlockChainTrait;
 use crate::consensus::CodeChainEngine;
 use crate::error::Error;
 use crate::header::Header;
@@ -23,7 +23,7 @@ use crate::header::Header;
 /// A no-op verifier -- this will verify everything it's given immediately.
 pub struct NoopVerifier;
 
-impl<C: BlockInfo + TransactionInfo> Verifier<C> for NoopVerifier {
+impl<C: BlockChainTrait> Verifier<C> for NoopVerifier {
     fn verify_block_family(
         &self,
         _block: &[u8],
