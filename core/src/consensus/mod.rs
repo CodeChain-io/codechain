@@ -382,7 +382,7 @@ pub trait CodeChainEngine: ConsensusEngine<CodeChainMachine> {
         tx: UnverifiedTransaction,
         header: &Header,
     ) -> Result<SignedTransaction, Error> {
-        self.machine().verify_transaction_unordered(tx, header)
+        CodeChainMachine::verify_transaction_unordered(tx, header)
     }
 }
 
