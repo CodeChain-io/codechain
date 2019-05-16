@@ -38,6 +38,7 @@ use crate::types::BlockId;
 use crate::verification::queue::{BlockQueue, HeaderQueue};
 use crate::verification::{self, PreverifiedBlock, Verifier};
 use crate::views::{BlockView, HeaderView};
+use blockchain::BlockChain;
 
 pub struct Importer {
     /// Lock used during block import
@@ -206,6 +207,8 @@ impl Importer {
         client.db().write_buffered(batch);
         chain.commit();
 
+        self.check_term_end(block.header(), &chain, client);
+
         if hash == chain.best_block_hash() {
             let mut state_db = client.state_db().write();
             let state = block.state();
@@ -213,6 +216,21 @@ impl Importer {
         }
 
         route
+    }
+
+    fn check_term_end(&self, header: &Header, chain: &BlockChain, client: &Client) {
+        let last_term_end = chain.last_term_end();
+        if let Some(term_id) = self.engine.is_term_end(header, last_term_end) {
+            cdebug!(CLIENT, "Term end at block {}", header.hash());
+
+            let mut batch = DBTransaction::new();
+            chain.update_last_term_end(&mut batch, term_id, header.number());
+
+            // always write the batch directly since term end are
+            // fetched from a DB iterator and DB iterators are only available on
+            // flushed data.
+            client.db().write(batch).expect("DB flush failed");
+        }
     }
 
     fn check_and_close_block(&self, block: &PreverifiedBlock, client: &Client) -> Result<LockedBlock, ()> {
@@ -403,6 +421,9 @@ impl Importer {
         let route = chain.insert_header(&mut batch, &HeaderView::new(&header.rlp_bytes()), self.engine.borrow());
         client.db().write_buffered(batch);
         chain.commit();
+
+        // FIXME: Check if this line is still necessary.
+        // self.check_term_end(&header, &chain, client);
 
         route
     }

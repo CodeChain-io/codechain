@@ -55,6 +55,7 @@ use crate::error::Error;
 use crate::header::Header;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::HeaderView;
+use blockchain::TermEnd;
 use Client;
 
 pub enum Seal {
@@ -197,6 +198,10 @@ pub trait ConsensusEngine: Sync + Send {
     /// Should only be called when `register_client` has been called previously.
     fn verify_block_external(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
+    }
+
+    fn is_term_end(&self, _chain_head: &M::Header, _last_term_end: Option<TermEnd>) -> Option<u64> {
+        None
     }
 
     /// Populate a header's fields based on its parent's header.
