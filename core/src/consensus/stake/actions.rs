@@ -20,6 +20,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 const ACTION_TAG_TRANSFER_CCS: u8 = 1;
 const ACTION_TAG_DELEGATE_CCS: u8 = 2;
+const ACTION_TAG_REVOKE: u8 = 3;
 const ACTION_TAG_CHANGE_PARAMS: u8 = 0xFF;
 
 #[derive(Debug, PartialEq)]
@@ -29,6 +30,10 @@ pub enum Action {
         quantity: u64,
     },
     DelegateCCS {
+        address: Address,
+        quantity: u64,
+    },
+    Revoke {
         address: Address,
         quantity: u64,
     },
@@ -53,6 +58,12 @@ impl Encodable for Action {
                 quantity,
             } => {
                 s.begin_list(3).append(&ACTION_TAG_DELEGATE_CCS).append(address).append(quantity);
+            }
+            Action::Revoke {
+                address,
+                quantity,
+            } => {
+                s.begin_list(3).append(&ACTION_TAG_REVOKE).append(address).append(quantity);
             }
             Action::ChangeParams {
                 metadata_seq,
@@ -97,6 +108,19 @@ impl Decodable for Action {
                     })
                 }
                 Ok(Action::DelegateCCS {
+                    address: rlp.val_at(1)?,
+                    quantity: rlp.val_at(2)?,
+                })
+            }
+            ACTION_TAG_REVOKE => {
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpInvalidLength {
+                        expected: 3,
+                        got: item_count,
+                    })
+                }
+                Ok(Action::Revoke {
                     address: rlp.val_at(1)?,
                     quantity: rlp.val_at(2)?,
                 })

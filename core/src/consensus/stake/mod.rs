@@ -115,6 +115,16 @@ impl ActionHandler for Stake {
                     Err(RuntimeError::FailedToHandleCustomAction("DelegateCCS is disabled".to_string()).into())
                 }
             }
+            Action::Revoke {
+                address,
+                quantity,
+            } => {
+                if self.enable_delegations {
+                    revoke(state, sender, &address, quantity)
+                } else {
+                    Err(RuntimeError::FailedToHandleCustomAction("DelegateCCS is disabled".to_string()).into())
+                }
+            }
             Action::ChangeParams {
                 metadata_seq,
                 params,
@@ -131,6 +141,9 @@ impl ActionHandler for Stake {
                 ..
             } => Ok(()),
             Action::DelegateCCS {
+                ..
+            } => Ok(()),
+            Action::Revoke {
                 ..
             } => Ok(()),
             Action::ChangeParams {
@@ -201,6 +214,19 @@ fn delegate_ccs(
 
     delegator.subtract_balance(quantity)?;
     delegation.add_quantity(*delegatee, quantity)?;
+    // delegation does not touch stakeholders
+
+    delegation.save_to_state(state)?;
+    delegator.save_to_state(state)?;
+    Ok(())
+}
+
+fn revoke(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
+    let mut delegator = StakeAccount::load_from_state(state, sender)?;
+    let mut delegation = Delegation::load_from_state(state, &sender)?;
+
+    delegator.add_balance(quantity)?;
+    delegation.subtract_quantity(*delegatee, quantity)?;
     // delegation does not touch stakeholders
 
     delegation.save_to_state(state)?;
@@ -279,6 +305,7 @@ mod tests {
     use super::*;
 
     use ckey::{public_to_address, Public};
+    use consensus::stake::action_data::get_delegation_key;
     use consensus::validator_set::new_validator_set;
     use cstate::tests::helpers;
     use cstate::TopStateView;
@@ -551,5 +578,111 @@ mod tests {
         };
         let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn can_revoke_delegated_tokens() {
+        let delegatee_public = Public::random();
+        let delegatee = public_to_address(&delegatee_public);
+        let delegator = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegatee, 100);
+            genesis_stakes.insert(delegator, 100);
+            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+        };
+        stake.init(&mut state).unwrap();
+
+        let action = Action::DelegateCCS {
+            address: delegatee,
+            quantity: 50,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        assert!(result.is_ok());
+
+        let action = Action::Revoke {
+            address: delegatee,
+            quantity: 20,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        assert_eq!(Ok(()), result);
+
+        let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegator_account.balance, 100 - 50 + 20);
+        assert_eq!(delegation.iter().count(), 1);
+        assert_eq!(delegation.get_quantity(&delegatee), 50 - 20);
+    }
+
+    #[test]
+    fn cannot_revoke_more_than_delegated_tokens() {
+        let delegatee_public = Public::random();
+        let delegatee = public_to_address(&delegatee_public);
+        let delegator = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegatee, 100);
+            genesis_stakes.insert(delegator, 100);
+            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+        };
+        stake.init(&mut state).unwrap();
+
+        let action = Action::DelegateCCS {
+            address: delegatee,
+            quantity: 50,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        assert!(result.is_ok());
+
+        let action = Action::Revoke {
+            address: delegatee,
+            quantity: 70,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        assert!(result.is_err());
+
+        let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegator_account.balance, 100 - 50);
+        assert_eq!(delegation.iter().count(), 1);
+        assert_eq!(delegation.get_quantity(&delegatee), 50);
+    }
+
+    #[test]
+    fn revoke_all_should_clear_state() {
+        let delegatee_public = Public::random();
+        let delegatee = public_to_address(&delegatee_public);
+        let delegator = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegatee, 100);
+            genesis_stakes.insert(delegator, 100);
+            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+        };
+        stake.init(&mut state).unwrap();
+
+        let action = Action::DelegateCCS {
+            address: delegatee,
+            quantity: 50,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        assert!(result.is_ok());
+
+        let action = Action::Revoke {
+            address: delegatee,
+            quantity: 50,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        assert_eq!(Ok(()), result);
+
+        let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegator_account.balance, 100);
+        assert_eq!(state.action_data(&get_delegation_key(&delegator)).unwrap(), None);
     }
 }
