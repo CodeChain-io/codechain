@@ -18,7 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use cmerkle::skewed_merkle_root;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, CommonParams};
 use primitives::{Bytes, H256};
 use rlp::UntrustedRlp;
 
@@ -52,21 +52,34 @@ pub fn verify_block_basic(header: &Header, bytes: &[u8]) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn verify_header_basic_with_engine(header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
-    engine.verify_block_basic(&header)?;
+pub fn verify_header_with_engine(header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
+    engine.verify_header_basic(&header)?;
+
+    let expected_seal_fields = engine.seal_fields(header);
+    if header.seal().len() != expected_seal_fields {
+        return Err(From::from(BlockError::InvalidSealArity(Mismatch {
+            expected: expected_seal_fields,
+            found: header.seal().len(),
+        })))
+    }
     Ok(())
 }
 
-pub fn verify_block_basic_with_params(header: &Header, bytes: &[u8], engine: &CodeChainEngine) -> Result<(), Error> {
-    verify_header_basic_with_params(&header, engine)?;
+pub fn verify_block_with_params(
+    header: &Header,
+    bytes: &[u8],
+    engine: &CodeChainEngine,
+    common_params: &CommonParams,
+) -> Result<(), Error> {
+    verify_header_with_params(&header, common_params)?;
 
     let body_rlp = UntrustedRlp::new(bytes).at(1).expect("verify_block_basic already checked it");
-    if body_rlp.as_raw().len() > engine.machine().common_params(Some(header.number())).max_body_size() {
+    if body_rlp.as_raw().len() > common_params.max_body_size() {
         return Err(BlockError::BodySizeIsTooBig.into())
     }
 
     for t in body_rlp.iter().map(|rlp| rlp.as_val().expect("verify_block_basic already checked it")) {
-        engine.verify_transaction_basic_with_params(&t, &header)?;
+        engine.verify_transaction_with_params(&t, header)?;
     }
     Ok(())
 }
@@ -107,21 +120,8 @@ pub fn verify_header_basic(header: &Header) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn verify_header_basic_with_params(header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
-    let expected_seal_fields = engine.seal_fields(header);
-    if header.seal().len() != expected_seal_fields {
-        return Err(From::from(BlockError::InvalidSealArity(Mismatch {
-            expected: expected_seal_fields,
-            found: header.seal().len(),
-        })))
-    }
-
-    let block_number = header.number();
-    if block_number == 0 {
-        return Ok(())
-    }
-    let parent_block_number = block_number - 1;
-    let max_extra_data_size = engine.machine().common_params(Some(parent_block_number)).max_extra_data_size();
+pub fn verify_header_with_params(header: &Header, common_params: &CommonParams) -> Result<(), Error> {
+    let max_extra_data_size = common_params.max_extra_data_size();
     if header.extra_data().len() > max_extra_data_size {
         return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
             min: None,
@@ -201,7 +201,10 @@ pub fn verify_block_family<C: BlockChainTrait>(
     parent: &Header,
     engine: &CodeChainEngine,
     do_full: Option<FullFamilyParams<C>>,
+    common_params: &CommonParams,
 ) -> Result<(), Error> {
+    verify_block_with_params(header, block, engine, common_params)?;
+
     // TODO: verify timestamp
     verify_parent(&header, &parent)?;
     verify_transactions_root(block, header.transactions_root(), *parent.transactions_root())?;

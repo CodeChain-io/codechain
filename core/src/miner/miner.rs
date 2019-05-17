@@ -275,7 +275,7 @@ impl Miner {
                 match tx
                     .verify_basic()
                     .map_err(From::from)
-                    .and_then(|_| self.engine.verify_transaction_basic_with_params(&tx, &fake_header))
+                    .and_then(|_| self.engine.verify_transaction_with_params(&tx, &fake_header))
                     .and_then(|_| self.engine.verify_transaction_seal(tx, &fake_header))
                 {
                     Err(e) => {

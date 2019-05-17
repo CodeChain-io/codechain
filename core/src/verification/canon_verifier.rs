@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::CommonParams;
+
 use super::verification;
 use super::Verifier;
 use crate::client::BlockChainTrait;
@@ -32,8 +34,9 @@ impl<C: BlockChainTrait> Verifier<C> for CanonVerifier {
         parent: &Header,
         engine: &CodeChainEngine,
         do_full: Option<verification::FullFamilyParams<C>>,
+        common_params: &CommonParams,
     ) -> Result<(), Error> {
-        verification::verify_block_family(block, header, parent, engine, do_full)
+        verification::verify_block_family(block, header, parent, engine, do_full, common_params)
     }
 
     fn verify_block_final(&self, expected: &Header, got: &Header) -> Result<(), Error> {

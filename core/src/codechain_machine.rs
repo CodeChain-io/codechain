@@ -74,11 +74,7 @@ impl CodeChainMachine {
     }
 
     /// Does basic verification of the transaction.
-    pub fn verify_transaction_basic_with_params(
-        &self,
-        tx: &UnverifiedTransaction,
-        header: &Header,
-    ) -> Result<(), Error> {
+    pub fn verify_transaction_with_params(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
         let block_number = header.number();
         if block_number == 0 {
             return Ok(())
@@ -93,7 +89,7 @@ impl CodeChainMachine {
             }
             .into())
         }
-        tx.verify_basic_with_params(&self.common_params(Some(parent_block_number)), self.is_order_disabled)?;
+        tx.verify_with_params(&self.common_params(Some(parent_block_number)), self.is_order_disabled)?;
 
         Ok(())
     }

@@ -101,10 +101,10 @@ impl ConsensusEngine for BlakePoW {
     }
 
     fn verify_local_seal(&self, header: &Header) -> Result<(), Error> {
-        self.verify_block_basic(header).and_then(|_| self.verify_block_seal(header))
+        self.verify_header_basic(header).and_then(|_| self.verify_block_seal(header))
     }
 
-    fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
+    fn verify_header_basic(&self, header: &Header) -> Result<(), Error> {
         if *header.score() < self.params.min_score {
             return Err(From::from(BlockError::ScoreOutOfBounds(OutOfBounds {
                 min: Some(self.params.min_score),

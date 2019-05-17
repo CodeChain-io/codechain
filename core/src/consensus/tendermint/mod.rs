@@ -189,7 +189,7 @@ mod tests {
         let engine = Scheme::new_test_tendermint().engine;
         let header = Header::default();
 
-        let verify_result = engine.verify_block_basic(&header);
+        let verify_result = engine.verify_header_basic(&header);
 
         match verify_result {
             Err(Error::Block(BlockError::InvalidSealArity(_))) => {}
