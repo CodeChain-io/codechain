@@ -94,9 +94,9 @@ pub struct ExecutedBlock {
 }
 
 impl ExecutedBlock {
-    fn new(state: TopLevelState) -> ExecutedBlock {
+    fn new(state: TopLevelState, parent: &Header) -> ExecutedBlock {
         ExecutedBlock {
-            header: Default::default(),
+            header: parent.generate_child(),
             state,
             transactions: Default::default(),
             invoices: Default::default(),
@@ -142,17 +142,13 @@ impl<'x> OpenBlock<'x> {
         extra_data: Bytes,
         is_epoch_begin: bool,
     ) -> Result<Self, Error> {
-        let number = parent.number() + 1;
         let state = TopLevelState::from_existing(db, *parent.state_root()).map_err(StateError::from)?;
         let mut r = OpenBlock {
-            block: ExecutedBlock::new(state),
+            block: ExecutedBlock::new(state, parent),
             engine,
         };
 
-        r.block.header.set_parent_hash(parent.hash());
-        r.block.header.set_number(number);
         r.block.header.set_author(author);
-        r.block.header.set_timestamp_now(parent.timestamp());
         r.block.header.set_extra_data(extra_data);
         r.block.header.note_dirty();
 
