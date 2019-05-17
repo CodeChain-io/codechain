@@ -88,11 +88,8 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    /// Verify a particular transaction is valid, regardless of order.
-    pub fn verify_transaction_unordered(
-        p: UnverifiedTransaction,
-        _header: &Header,
-    ) -> Result<SignedTransaction, Error> {
+    /// Verify a particular transaction's seal is valid.
+    pub fn verify_transaction_seal(p: UnverifiedTransaction, _header: &Header) -> Result<SignedTransaction, Error> {
         p.check_low_s()?;
         Ok(SignedTransaction::try_new(p)?)
     }

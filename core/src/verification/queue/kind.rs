@@ -121,7 +121,7 @@ pub mod headers {
 
         fn verify(un: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error> {
             if check_seal {
-                engine.verify_block_unordered(&un).map(|_| un)
+                engine.verify_block_seal(&un).map(|_| un)
             } else {
                 Ok(un)
             }
@@ -137,7 +137,7 @@ pub mod headers {
 pub mod blocks {
     use primitives::{Bytes, H256, U256};
 
-    use super::super::super::verification::{verify_block_basic, verify_block_unordered, PreverifiedBlock};
+    use super::super::super::verification::{verify_block_basic, verify_block_seal, PreverifiedBlock};
     use super::{BlockLike, Kind, MemUsage};
     use crate::consensus::CodeChainEngine;
     use crate::error::Error;
@@ -164,7 +164,7 @@ pub mod blocks {
 
         fn verify(un: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error> {
             let hash = un.hash();
-            match verify_block_unordered(un.header, un.bytes, engine, check_seal) {
+            match verify_block_seal(un.header, un.bytes, engine, check_seal) {
                 Ok(verified) => Ok(verified),
                 Err(e) => {
                     cwarn!(CLIENT, "Stage 2 block verification failed for {}: {:?}", hash, e);

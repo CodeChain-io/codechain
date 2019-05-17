@@ -107,7 +107,7 @@ impl ConsensusEngine for Cuckoo {
     }
 
     fn verify_local_seal(&self, header: &Header) -> Result<(), Error> {
-        self.verify_block_basic(header).and_then(|_| self.verify_block_unordered(header))
+        self.verify_block_basic(header).and_then(|_| self.verify_block_seal(header))
     }
 
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
@@ -122,7 +122,7 @@ impl ConsensusEngine for Cuckoo {
         Ok(())
     }
 
-    fn verify_block_unordered(&self, header: &Header) -> Result<(), Error> {
+    fn verify_block_seal(&self, header: &Header) -> Result<(), Error> {
         let seal = Seal::parse_seal(header.seal())?;
 
         let mut message = header.bare_hash().0;
@@ -231,11 +231,11 @@ mod tests {
     }
 
     #[test]
-    fn verify_block_unordered_err() {
+    fn verify_block_seal_err() {
         let engine = Scheme::new_test_cuckoo().engine;
         let default_header = Header::default();
 
-        assert!(engine.verify_block_unordered(&default_header).is_err());
+        assert!(engine.verify_block_seal(&default_header).is_err());
     }
 
     #[test]

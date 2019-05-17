@@ -109,10 +109,6 @@ impl ConsensusEngine for SimplePoA {
         Seal::None
     }
 
-    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
-        Ok(())
-    }
-
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
         verify_external(header, &*self.validators)
     }
