@@ -85,12 +85,13 @@ pub mod headers {
 
     use primitives::{H256, U256};
 
-    use super::super::super::verification::verify_header_params;
+    use super::super::super::verification::verify_header_basic;
     use super::{BlockLike, Kind};
     use crate::consensus::CodeChainEngine;
     use crate::error::Error;
     use crate::header::Header;
     use crate::service::ClientIoMessage;
+    use verification::verify_header_basic_with_engine;
 
     impl BlockLike for Header {
         fn hash(&self) -> H256 {
@@ -116,7 +117,9 @@ pub mod headers {
 
         fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
             // FIXME: this doesn't seem to match with full block verification
-            verify_header_params(&input, engine).map(|_| input)
+            verify_header_basic(&input)?;
+            verify_header_basic_with_engine(&input, engine)?;
+            Ok(input)
         }
 
         fn verify(un: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error> {
@@ -137,7 +140,10 @@ pub mod headers {
 pub mod blocks {
     use primitives::{Bytes, H256, U256};
 
-    use super::super::super::verification::{verify_block_basic, verify_block_seal, PreverifiedBlock};
+    use super::super::super::verification::{
+        verify_block_basic, verify_block_basic_with_params, verify_block_seal, verify_header_basic_with_engine,
+        PreverifiedBlock,
+    };
     use super::{BlockLike, Kind, MemUsage};
     use crate::consensus::CodeChainEngine;
     use crate::error::Error;
@@ -153,7 +159,10 @@ pub mod blocks {
         type Verified = PreverifiedBlock;
 
         fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
-            match verify_block_basic(&input.header, &input.bytes, engine) {
+            match verify_block_basic(&input.header, &input.bytes)
+                .and_then(|_| verify_header_basic_with_engine(&input.header, engine))
+                .and_then(|_| verify_block_basic_with_params(&input.header, &input.bytes, engine))
+            {
                 Ok(()) => Ok(input),
                 Err(e) => {
                     cwarn!(CLIENT, "Stage 1 block verification failed for {}: {:?}", input.hash(), e);
