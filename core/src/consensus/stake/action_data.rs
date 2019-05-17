@@ -16,6 +16,7 @@
 
 #[cfg(test)]
 use std::collections::btree_map;
+use std::collections::btree_map::Entry;
 use std::collections::{btree_set, BTreeMap, BTreeSet};
 use std::mem;
 
@@ -172,6 +173,25 @@ impl<'a> Delegation<'a> {
         }
         *self.delegatees.entry(delegatee).or_insert(0) += quantity;
         Ok(())
+    }
+
+    pub fn subtract_quantity(&mut self, delegatee: Address, quantity: StakeQuantity) -> StateResult<()> {
+        if quantity == 0 {
+            return Ok(())
+        }
+
+        if let Entry::Occupied(mut entry) = self.delegatees.entry(delegatee) {
+            if *entry.get() > quantity {
+                *entry.get_mut() -= quantity;
+                return Ok(())
+            } else if *entry.get() == quantity {
+                entry.remove();
+                return Ok(())
+            }
+        }
+
+        Err(RuntimeError::FailedToHandleCustomAction("Cannot subtract more than that is delegated to".to_string())
+            .into())
     }
 
     #[cfg(test)]
@@ -582,6 +602,45 @@ mod tests {
     }
 
     #[test]
+    fn delegation_can_subtract() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let delegator = Address::random();
+        let delegatee = Address::random();
+
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.add_quantity(delegatee, 100).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Do subtract
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.subtract_quantity(delegatee, 30).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Assert
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegation.get_quantity(&delegatee), 70);
+    }
+
+    #[test]
+    fn delegation_cannot_subtract_mor_than_delegated() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let delegator = Address::random();
+        let delegatee = Address::random();
+
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.add_quantity(delegatee, 100).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Do subtract
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert!(delegation.subtract_quantity(delegatee, 130).is_err());
+    }
+
+    #[test]
     fn delegation_empty_removed_from_state() {
         let mut state = helpers::get_temp_state();
 
@@ -594,6 +653,28 @@ mod tests {
         delegation.add_quantity(delegatee, 0).unwrap();
         delegation.save_to_state(&mut state).unwrap();
 
+        let result = state.action_data(&get_delegation_key(&delegator)).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn delegation_became_empty_removed_from_state() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let delegator = Address::random();
+        let delegatee = Address::random();
+
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.add_quantity(delegatee, 100).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Do subtract
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.subtract_quantity(delegatee, 100).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Assert
         let result = state.action_data(&get_delegation_key(&delegator)).unwrap();
         assert_eq!(result, None);
     }
