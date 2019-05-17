@@ -217,6 +217,43 @@ describe("Staking", function() {
         );
     }
 
+    async function revokeToken(params: {
+        senderAddress: PlatformAddress;
+        senderSecret: string;
+        delegateeAddress: PlatformAddress;
+        quantity: number;
+        fee?: number;
+        seq?: number;
+    }): Promise<H256> {
+        const { fee = 10 } = params;
+        const seq =
+            params.seq == null
+                ? await nodes[0].sdk.rpc.chain.getSeq(params.senderAddress)
+                : params.seq;
+
+        return promiseExpect.shouldFulfill(
+            "sendSignTransaction",
+            nodes[0].sdk.rpc.chain.sendSignedTransaction(
+                nodes[0].sdk.core
+                    .createCustomTransaction({
+                        handlerId: stakeActionHandlerId,
+                        bytes: Buffer.from(
+                            RLP.encode([
+                                3,
+                                params.delegateeAddress.accountId.toEncodeObject(),
+                                params.quantity
+                            ])
+                        )
+                    })
+                    .sign({
+                        secret: params.senderSecret,
+                        seq,
+                        fee
+                    })
+            )
+        );
+    }
+
     it("should have proper initial stake tokens", async function() {
         const { amounts, stakeholders } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
@@ -447,6 +484,178 @@ describe("Staking", function() {
         const err2 = await nodes[2].sdk.rpc.chain.getErrorHint(hash);
         const err3 = await nodes[3].sdk.rpc.chain.getErrorHint(hash);
         expect(err0 || err1 || err2 || err3).not.null;
+    });
+
+    it("can revoke tokens", async function() {
+        await connectEachOther();
+
+        const delegateHash = await delegateToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 100
+        });
+        while (
+            !(await nodes[0].sdk.rpc.chain.containsTransaction(delegateHash))
+        ) {
+            await wait(500);
+        }
+
+        const hash = await revokeToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            delegateeAddress: validator0Address,
+            quantity: 50
+        });
+
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash))) {
+            await wait(500);
+        }
+
+        const { amounts } = await getAllStakingInfo();
+        expect(amounts).to.be.deep.equal([
+            toHex(RLP.encode(70000 - 100 + 50)),
+            null,
+            null,
+            null,
+            null,
+            toHex(RLP.encode(20000)),
+            toHex(RLP.encode(10000))
+        ]);
+
+        const delegations = await getAllDelegation();
+        expect(delegations).to.be.deep.equal([
+            toHex(
+                RLP.encode([[validator0Address.accountId.toEncodeObject(), 50]])
+            ),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        ]);
+    });
+
+    it("cannot revoke more than delegated", async function() {
+        await connectEachOther();
+
+        const delegateHash = await delegateToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 100
+        });
+        while (
+            !(await nodes[0].sdk.rpc.chain.containsTransaction(delegateHash))
+        ) {
+            await wait(500);
+        }
+
+        const blockNumber = await nodes[0].getBestBlockNumber();
+        const seq = await nodes[0].sdk.rpc.chain.getSeq(faucetAddress);
+        const pay = await nodes[0].sendPayTx({
+            recipient: faucetAddress,
+            secret: faucetSecret,
+            quantity: 1,
+            seq
+        });
+
+        // revoke
+        const hash = await revokeToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            delegateeAddress: validator0Address,
+            quantity: 200,
+            seq: seq + 1
+        });
+        await nodes[0].waitBlockNumber(blockNumber + 1);
+
+        while (
+            !(await nodes[0].sdk.rpc.chain.containsTransaction(pay.hash()))
+        ) {
+            await wait(500);
+        }
+        const err0 = await nodes[0].sdk.rpc.chain.getErrorHint(hash);
+        const err1 = await nodes[1].sdk.rpc.chain.getErrorHint(hash);
+        const err2 = await nodes[2].sdk.rpc.chain.getErrorHint(hash);
+        const err3 = await nodes[3].sdk.rpc.chain.getErrorHint(hash);
+        expect(err0 || err1 || err2 || err3).not.null;
+
+        const { amounts } = await getAllStakingInfo();
+        expect(amounts).to.be.deep.equal([
+            toHex(RLP.encode(70000 - 100)),
+            null,
+            null,
+            null,
+            null,
+            toHex(RLP.encode(20000)),
+            toHex(RLP.encode(10000))
+        ]);
+
+        const delegations = await getAllDelegation();
+        expect(delegations).to.be.deep.equal([
+            toHex(
+                RLP.encode([
+                    [validator0Address.accountId.toEncodeObject(), 100]
+                ])
+            ),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        ]);
+    });
+
+    it("revoking all should clear delegation", async function() {
+        await connectEachOther();
+
+        const delegateHash = await delegateToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            receiverAddress: validator0Address,
+            quantity: 100
+        });
+        while (
+            !(await nodes[0].sdk.rpc.chain.containsTransaction(delegateHash))
+        ) {
+            await wait(500);
+        }
+
+        const hash = await revokeToken({
+            senderAddress: faucetAddress,
+            senderSecret: faucetSecret,
+            delegateeAddress: validator0Address,
+            quantity: 100
+        });
+
+        while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash))) {
+            await wait(500);
+        }
+
+        const { amounts } = await getAllStakingInfo();
+        expect(amounts).to.be.deep.equal([
+            toHex(RLP.encode(70000)),
+            null,
+            null,
+            null,
+            null,
+            toHex(RLP.encode(20000)),
+            toHex(RLP.encode(10000))
+        ]);
+
+        const delegations = await getAllDelegation();
+        expect(delegations).to.be.deep.equal([
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+        ]);
     });
 
     it("get fee in proportion to holding stakes", async function() {
