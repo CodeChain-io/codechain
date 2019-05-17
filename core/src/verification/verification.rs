@@ -30,7 +30,7 @@ use crate::header::Header;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::BlockView;
 
-/// Preprocessed block data gathered in `verify_block_unordered` call
+/// Preprocessed block data gathered in `verify_block_seal` call
 pub struct PreverifiedBlock {
     /// Populated block header
     pub header: Header,
@@ -129,21 +129,21 @@ fn verify_transactions_root(
 /// Phase 2 verification. Perform costly checks such as transaction signatures and block nonce for ethash.
 /// Still operates on a individual block
 /// Returns a `PreverifiedBlock` structure populated with transactions
-pub fn verify_block_unordered(
+pub fn verify_block_seal(
     header: Header,
     bytes: Bytes,
     engine: &CodeChainEngine,
     check_seal: bool,
 ) -> Result<PreverifiedBlock, Error> {
     if check_seal {
-        engine.verify_block_unordered(&header)?;
+        engine.verify_block_seal(&header)?;
     }
     // Verify transactions.
     let mut transactions = Vec::new();
     {
         let v = BlockView::new(&bytes);
         for t in v.transactions() {
-            let signed = engine.verify_transaction_unordered(t, &header)?;
+            let signed = engine.verify_transaction_seal(t, &header)?;
             transactions.push(signed);
         }
     }

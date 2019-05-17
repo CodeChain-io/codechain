@@ -275,7 +275,7 @@ impl Miner {
                 match self
                     .engine
                     .verify_transaction_basic(&tx, &fake_header)
-                    .and_then(|_| self.engine.verify_transaction_unordered(tx, &fake_header))
+                    .and_then(|_| self.engine.verify_transaction_seal(tx, &fake_header))
                 {
                     Err(e) => {
                         cdebug!(MINER, "Rejected transaction {:?} with invalid signature: {:?}", hash, e);

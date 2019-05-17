@@ -87,10 +87,6 @@ impl ConsensusEngine for Tendermint {
         self.inner.send(worker::Event::ProposalGenerated(Box::from(sealed_block.clone()))).unwrap();
     }
 
-    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
-        Ok(())
-    }
-
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
         let (result, receiver) = crossbeam::bounded(1);
         self.inner

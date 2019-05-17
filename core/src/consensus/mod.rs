@@ -176,7 +176,9 @@ pub trait ConsensusEngine: Sync + Send {
     ///
     /// It is fine to require access to state or a full client for this function, since
     /// light clients do not generate seals.
-    fn verify_local_seal(&self, header: &Header) -> Result<(), Error>;
+    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
+        Ok(())
+    }
 
     /// Phase 1 quick block verification. Only does checks that are cheap. Returns either a null `Ok` or a general error detailing the problem with import.
     fn verify_block_basic(&self, _header: &Header) -> Result<(), Error> {
@@ -184,7 +186,7 @@ pub trait ConsensusEngine: Sync + Send {
     }
 
     /// Phase 2 verification. Perform costly checks such as transaction signatures. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_unordered(&self, _header: &Header) -> Result<(), Error> {
+    fn verify_block_seal(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
     }
 
@@ -362,12 +364,8 @@ pub trait CodeChainEngine: ConsensusEngine {
     }
 
     /// Verify a particular transaction is valid.
-    fn verify_transaction_unordered(
-        &self,
-        tx: UnverifiedTransaction,
-        header: &Header,
-    ) -> Result<SignedTransaction, Error> {
-        CodeChainMachine::verify_transaction_unordered(tx, header)
+    fn verify_transaction_seal(&self, tx: UnverifiedTransaction, header: &Header) -> Result<SignedTransaction, Error> {
+        CodeChainMachine::verify_transaction_seal(tx, header)
     }
 }
 

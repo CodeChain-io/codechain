@@ -78,10 +78,6 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
         Seal::Solo
     }
 
-    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
-        Ok(())
-    }
-
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
         let (total_reward, min_fee) = {
@@ -150,6 +146,6 @@ mod tests {
 
         header.set_seal(vec![::rlp::encode(&H520::default()).into_vec()]);
 
-        assert!(engine.verify_block_unordered(&header).is_ok());
+        assert!(engine.verify_block_seal(&header).is_ok());
     }
 }
