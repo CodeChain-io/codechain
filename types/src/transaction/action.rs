@@ -184,29 +184,12 @@ impl Action {
         self.asset_transaction().map(|tx| tx.tracker())
     }
 
-    pub fn verify(
-        &self,
-        system_network_id: NetworkId,
-        max_asset_scheme_metadata_size: usize,
-        max_transfer_metadata_size: usize,
-        max_text_size: usize,
-        is_order_disabled: bool,
-    ) -> Result<(), SyntaxError> {
-        if let Some(network_id) = self.network_id() {
-            if network_id != system_network_id {
-                return Err(SyntaxError::InvalidNetworkId(network_id))
-            }
-        }
-
+    pub fn verify(&self) -> Result<(), SyntaxError> {
         match self {
             Action::MintAsset {
-                metadata,
                 output,
                 ..
             } => {
-                if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(SyntaxError::MetadataTooBig)
-                }
                 if output.supply == 0 {
                     return Err(SyntaxError::ZeroQuantity)
                 }
@@ -216,12 +199,8 @@ impl Action {
                 inputs,
                 outputs,
                 orders,
-                metadata,
                 ..
             } => {
-                if metadata.len() > max_transfer_metadata_size {
-                    return Err(SyntaxError::MetadataTooBig)
-                }
                 if outputs.len() > 512 {
                     return Err(SyntaxError::TooManyOutputs(outputs.len()))
                 }
@@ -236,9 +215,6 @@ impl Action {
                 }
                 check_duplication_in_prev_out(burns, inputs)?;
 
-                if is_order_disabled && !orders.is_empty() {
-                    return Err(SyntaxError::DisabledTransaction)
-                }
                 if outputs.iter().any(|output| output.quantity == 0) {
                     return Err(SyntaxError::ZeroQuantity)
                 }
@@ -249,13 +225,9 @@ impl Action {
                 verify_input_and_output_consistent_with_order(orders, inputs, outputs)?;
             }
             Action::ChangeAssetScheme {
-                metadata,
                 asset_type,
                 ..
             } => {
-                if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(SyntaxError::MetadataTooBig)
-                }
                 if asset_type.is_zero() {
                     return Err(SyntaxError::CannotChangeWcccAssetScheme)
                 }
@@ -273,7 +245,6 @@ impl Action {
                 }
             }
             Action::ComposeAsset {
-                metadata,
                 inputs,
                 output,
                 ..
@@ -293,9 +264,6 @@ impl Action {
                     return Err(SyntaxError::InvalidComposedOutputAmount {
                         got: output.supply,
                     })
-                }
-                if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(SyntaxError::MetadataTooBig)
                 }
             }
             Action::DecomposeAsset {
@@ -340,6 +308,78 @@ impl Action {
                     return Err(SyntaxError::ZeroQuantity)
                 }
             }
+            Action::Store {
+                ..
+            } => {}
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn verify_with_params(
+        &self,
+        system_network_id: NetworkId,
+        max_asset_scheme_metadata_size: usize,
+        max_transfer_metadata_size: usize,
+        max_text_size: usize,
+        is_order_disabled: bool,
+    ) -> Result<(), SyntaxError> {
+        if let Some(network_id) = self.network_id() {
+            if network_id != system_network_id {
+                return Err(SyntaxError::InvalidNetworkId(network_id))
+            }
+        }
+
+        match self {
+            Action::MintAsset {
+                metadata,
+                ..
+            } => {
+                if metadata.len() > max_asset_scheme_metadata_size {
+                    return Err(SyntaxError::MetadataTooBig)
+                }
+            }
+            Action::TransferAsset {
+                orders,
+                metadata,
+                ..
+            } => {
+                if metadata.len() > max_transfer_metadata_size {
+                    return Err(SyntaxError::MetadataTooBig)
+                }
+
+                if is_order_disabled && !orders.is_empty() {
+                    return Err(SyntaxError::DisabledTransaction)
+                }
+            }
+            Action::ChangeAssetScheme {
+                metadata,
+                ..
+            } => {
+                if metadata.len() > max_asset_scheme_metadata_size {
+                    return Err(SyntaxError::MetadataTooBig)
+                }
+            }
+            Action::IncreaseAssetSupply {
+                ..
+            } => {}
+            Action::ComposeAsset {
+                metadata,
+                ..
+            } => {
+                if metadata.len() > max_asset_scheme_metadata_size {
+                    return Err(SyntaxError::MetadataTooBig)
+                }
+            }
+            Action::DecomposeAsset {
+                ..
+            } => {}
+            Action::UnwrapCCC {
+                ..
+            } => {}
+            Action::WrapCCC {
+                ..
+            } => {}
             Action::Store {
                 content,
                 ..
@@ -1442,7 +1482,8 @@ mod tests {
             approvals: vec![],
             expiration: None,
         };
-        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
+        assert_eq!(action.verify(), Ok(()));
+        assert_eq!(action.verify_with_params(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
     }
 
     #[test]
@@ -1564,7 +1605,8 @@ mod tests {
             expiration: None,
         };
 
-        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
+        assert_eq!(action.verify(), Ok(()));
+        assert_eq!(action.verify_with_params(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
     }
 
     #[test]
@@ -1651,10 +1693,7 @@ mod tests {
             approvals: vec![],
             expiration: None,
         };
-        assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000, 1000, false),
-            Err(SyntaxError::InconsistentTransactionInOutWithOrders)
-        );
+        assert_eq!(action.verify(), Err(SyntaxError::InconsistentTransactionInOutWithOrders));
 
         // Case 2: multiple outputs with same order and asset_type
         let origin_output_1 = AssetOutPoint {
@@ -1773,10 +1812,7 @@ mod tests {
             approvals: vec![],
             expiration: None,
         };
-        assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000, 1000, false),
-            Err(SyntaxError::InconsistentTransactionInOutWithOrders)
-        );
+        assert_eq!(action.verify(), Err(SyntaxError::InconsistentTransactionInOutWithOrders));
 
         // Case 2-2: asset_type_to
         let action = Action::TransferAsset {
@@ -1862,10 +1898,7 @@ mod tests {
             approvals: vec![],
             expiration: None,
         };
-        assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000, 1000, false),
-            Err(SyntaxError::InconsistentTransactionInOutWithOrders)
-        );
+        assert_eq!(action.verify(), Err(SyntaxError::InconsistentTransactionInOutWithOrders));
 
         // Case 2-3: asset_type_fee
         let action = Action::TransferAsset {
@@ -1951,10 +1984,7 @@ mod tests {
             approvals: vec![],
             expiration: None,
         };
-        assert_eq!(
-            action.verify(NetworkId::default(), 1000, 1000, 1000, false),
-            Err(SyntaxError::InconsistentTransactionInOutWithOrders)
-        );
+        assert_eq!(action.verify(), Err(SyntaxError::InconsistentTransactionInOutWithOrders));
     }
 
     #[test]
@@ -2071,7 +2101,8 @@ mod tests {
             approvals: vec![],
             expiration: None,
         };
-        assert_eq!(action.verify(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
+        assert_eq!(action.verify(), Ok(()));
+        assert_eq!(action.verify_with_params(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
     }
 
     #[test]
@@ -2092,10 +2123,7 @@ mod tests {
             },
             receiver: Address::random(),
         };
-        assert_eq!(
-            tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000, false),
-            Err(SyntaxError::ZeroQuantity)
-        );
+        assert_eq!(tx_zero_quantity.verify(), Err(SyntaxError::ZeroQuantity));
 
         let invalid_asset_type = H160::random();
         let tx_invalid_asset_type = Action::UnwrapCCC {
@@ -2114,10 +2142,7 @@ mod tests {
             },
             receiver: Address::random(),
         };
-        assert_eq!(
-            tx_invalid_asset_type.verify(NetworkId::default(), 1000, 1000, 1000, false),
-            Err(SyntaxError::InvalidAssetType(invalid_asset_type))
-        );
+        assert_eq!(tx_invalid_asset_type.verify(), Err(SyntaxError::InvalidAssetType(invalid_asset_type)));
     }
 
     #[test]
@@ -2129,9 +2154,6 @@ mod tests {
             quantity: 0,
             payer: Address::random(),
         };
-        assert_eq!(
-            tx_zero_quantity.verify(NetworkId::default(), 1000, 1000, 1000, false),
-            Err(SyntaxError::ZeroQuantity)
-        );
+        assert_eq!(tx_zero_quantity.verify(), Err(SyntaxError::ZeroQuantity));
     }
 }

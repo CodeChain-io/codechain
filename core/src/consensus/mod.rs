@@ -349,7 +349,7 @@ impl fmt::Display for EngineError {
 /// Common type alias for an engine coupled with an CodeChain-like state machine.
 pub trait CodeChainEngine: ConsensusEngine {
     /// Additional verification for transactions in blocks.
-    fn verify_transaction_basic(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+    fn verify_transaction_basic_with_params(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
         if let Action::Custom {
             handler_id,
             bytes,
@@ -360,7 +360,7 @@ pub trait CodeChainEngine: ConsensusEngine {
                 .ok_or_else(|| SyntaxError::InvalidCustomAction(format!("{} is an invalid handler id", handler_id)))?;
             handler.verify(bytes)?;
         }
-        self.machine().verify_transaction_basic(tx, header)
+        self.machine().verify_transaction_basic_with_params(tx, header)
     }
 
     /// Verify a particular transaction is valid.
