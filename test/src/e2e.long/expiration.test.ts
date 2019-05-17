@@ -51,7 +51,7 @@ describe("TransferAsset expiration test", function() {
 
             // 3. Send TransferAsset transactions (which should not processed)
             const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
-            startTime = Math.round(new Date().getTime() / 1000);
+            startTime = Math.round(new Date().getTime() / 1000) + 5;
             for (let i = 0; i < numTx; i++) {
                 const recipient = await node.createP2PKHAddress();
                 const tx = node.sdk.core.createTransferAssetTransaction({
@@ -95,7 +95,7 @@ describe("TransferAsset expiration test", function() {
                 const isExpired = bestBlockTimestamp > startTime + numTx - i;
                 expect(isResultsEmpty).to.be.equal(isExpired);
             }
-        }).timeout(10_000);
+        }).timeout(15_000);
     });
 
     afterEach(async function() {

@@ -261,6 +261,17 @@ impl Header {
     pub fn rlp_blake(&self, with_seal: &Seal) -> H256 {
         blake256(&self.rlp(with_seal))
     }
+
+    pub fn generate_child(&self) -> Self {
+        let mut header = Header::default();
+
+        header.set_parent_hash(self.hash());
+        header.set_number(self.number() + 1);
+        header.set_timestamp_now(self.timestamp());
+        header.note_dirty();
+
+        header
+    }
 }
 
 impl Decodable for Header {
