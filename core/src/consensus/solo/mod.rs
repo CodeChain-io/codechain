@@ -142,7 +142,7 @@ mod tests {
         let engine = Scheme::new_test_solo().engine;
         let mut header: Header = Header::default();
 
-        assert!(engine.verify_block_basic(&header).is_ok());
+        assert!(engine.verify_header_basic(&header).is_ok());
 
         header.set_seal(vec![::rlp::encode(&H520::default()).into_vec()]);
 

@@ -107,10 +107,10 @@ impl ConsensusEngine for Cuckoo {
     }
 
     fn verify_local_seal(&self, header: &Header) -> Result<(), Error> {
-        self.verify_block_basic(header).and_then(|_| self.verify_block_seal(header))
+        self.verify_header_basic(header).and_then(|_| self.verify_block_seal(header))
     }
 
-    fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
+    fn verify_header_basic(&self, header: &Header) -> Result<(), Error> {
         if *header.score() < self.params.min_score {
             return Err(From::from(BlockError::ScoreOutOfBounds(OutOfBounds {
                 min: Some(self.params.min_score),
@@ -214,20 +214,20 @@ mod tests {
     }
 
     #[test]
-    fn verify_block_basic_err() {
+    fn verify_header_basic_err() {
         let engine = Scheme::new_test_cuckoo().engine;
         let default_header = Header::default();
 
-        assert!(engine.verify_block_basic(&default_header).is_err());
+        assert!(engine.verify_header_basic(&default_header).is_err());
     }
 
     #[test]
-    fn verify_block_basic_ok() {
+    fn verify_header_basic_ok() {
         let scheme = Scheme::new_test_cuckoo();
         let engine = &*scheme.engine;
         let genesis_header = scheme.genesis_header();
 
-        assert!(engine.verify_block_basic(&genesis_header).is_ok());
+        assert!(engine.verify_header_basic(&genesis_header).is_ok());
     }
 
     #[test]

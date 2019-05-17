@@ -104,7 +104,7 @@ pub enum Event {
         result: crossbeam::Sender<Seal>,
     },
     ProposalGenerated(Box<SealedBlock>),
-    VerifyBlockBasic {
+    VerifyHeaderBasic {
         header: Box<Header>,
         result: crossbeam::Sender<Result<(), Error>>,
     },
@@ -251,8 +251,8 @@ impl Worker {
                             Ok(Event::ProposalGenerated(sealed)) => {
                                 inner.proposal_generated(&*sealed);
                             }
-                            Ok(Event::VerifyBlockBasic{header, result}) => {
-                                result.send(inner.verify_block_basic(&*header)).unwrap();
+                            Ok(Event::VerifyHeaderBasic{header, result}) => {
+                                result.send(inner.verify_header_basic(&*header)).unwrap();
                             }
                             Ok(Event::VerifyBlockExternal{header, result, }) => {
                                 result.send(inner.verify_block_external(&*header)).unwrap();
@@ -1061,7 +1061,7 @@ impl Worker {
         };
     }
 
-    fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
+    fn verify_header_basic(&self, header: &Header) -> Result<(), Error> {
         let seal_length = header.seal().len();
         let expected_seal_fields = self.seal_fields();
         if seal_length != expected_seal_fields {

@@ -91,7 +91,7 @@ pub mod headers {
     use crate::error::Error;
     use crate::header::Header;
     use crate::service::ClientIoMessage;
-    use verification::verify_header_basic_with_engine;
+    use verification::verify_header_with_engine;
 
     impl BlockLike for Header {
         fn hash(&self) -> H256 {
@@ -118,7 +118,7 @@ pub mod headers {
         fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
             // FIXME: this doesn't seem to match with full block verification
             verify_header_basic(&input)?;
-            verify_header_basic_with_engine(&input, engine)?;
+            verify_header_with_engine(&input, engine)?;
             Ok(input)
         }
 
@@ -141,8 +141,7 @@ pub mod blocks {
     use primitives::{Bytes, H256, U256};
 
     use super::super::super::verification::{
-        verify_block_basic, verify_block_basic_with_params, verify_block_seal, verify_header_basic_with_engine,
-        PreverifiedBlock,
+        verify_block_basic, verify_block_seal, verify_header_with_engine, PreverifiedBlock,
     };
     use super::{BlockLike, Kind, MemUsage};
     use crate::consensus::CodeChainEngine;
@@ -160,8 +159,7 @@ pub mod blocks {
 
         fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
             match verify_block_basic(&input.header, &input.bytes)
-                .and_then(|_| verify_header_basic_with_engine(&input.header, engine))
-                .and_then(|_| verify_block_basic_with_params(&input.header, &input.bytes, engine))
+                .and_then(|_| verify_header_with_engine(&input.header, engine))
             {
                 Ok(()) => Ok(input),
                 Err(e) => {
