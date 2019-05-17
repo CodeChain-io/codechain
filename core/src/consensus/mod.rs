@@ -181,7 +181,7 @@ pub trait ConsensusEngine: Sync + Send {
     }
 
     /// Phase 1 quick block verification. Only does checks that are cheap. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_basic(&self, _header: &Header) -> Result<(), Error> {
+    fn verify_header_basic(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
     }
 
@@ -344,7 +344,7 @@ impl fmt::Display for EngineError {
 /// Common type alias for an engine coupled with an CodeChain-like state machine.
 pub trait CodeChainEngine: ConsensusEngine {
     /// Additional verification for transactions in blocks.
-    fn verify_transaction_basic_with_params(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+    fn verify_transaction_with_params(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
         if let Action::Custom {
             handler_id,
             bytes,
@@ -355,7 +355,7 @@ pub trait CodeChainEngine: ConsensusEngine {
                 .ok_or_else(|| SyntaxError::InvalidCustomAction(format!("{} is an invalid handler id", handler_id)))?;
             handler.verify(bytes)?;
         }
-        self.machine().verify_transaction_basic_with_params(tx, header)
+        self.machine().verify_transaction_with_params(tx, header)
     }
 
     /// Verify a particular transaction is valid.

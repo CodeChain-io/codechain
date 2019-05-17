@@ -136,8 +136,8 @@ impl UnverifiedTransaction {
         self.action.verify()
     }
 
-    /// Verify basic signature params. Does not attempt signer recovery.
-    pub fn verify_basic_with_params(&self, params: &CommonParams, is_order_disabled: bool) -> Result<(), SyntaxError> {
+    /// Verify transactiosn with the common params. Does not attempt signer recovery.
+    pub fn verify_with_params(&self, params: &CommonParams, is_order_disabled: bool) -> Result<(), SyntaxError> {
         if self.network_id != params.network_id() {
             return Err(SyntaxError::InvalidNetworkId(self.network_id))
         }

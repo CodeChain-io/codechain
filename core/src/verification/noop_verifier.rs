@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::CommonParams;
+
 use super::{verification, Verifier};
 use crate::client::BlockChainTrait;
 use crate::consensus::CodeChainEngine;
@@ -31,6 +33,7 @@ impl<C: BlockChainTrait> Verifier<C> for NoopVerifier {
         _t: &Header,
         _: &CodeChainEngine,
         _: Option<verification::FullFamilyParams<C>>,
+        _common_params: &CommonParams,
     ) -> Result<(), Error> {
         Ok(())
     }
