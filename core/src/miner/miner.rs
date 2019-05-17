@@ -254,7 +254,7 @@ impl Miner {
         default_origin: TxOrigin,
         mem_pool: &mut MemPool,
     ) -> Vec<Result<TransactionImportResult, Error>> {
-        let best_block_header = client.best_block_header().decode();
+        let fake_header = client.best_block_header().decode().generate_child();
         let current_block_number = client.chain_info().best_block_number;
         let current_timestamp = client.chain_info().best_block_timestamp;
         let mut inserted = Vec::with_capacity(transactions.len());
@@ -274,8 +274,8 @@ impl Miner {
                 }
                 match self
                     .engine
-                    .verify_transaction_basic(&tx, &best_block_header)
-                    .and_then(|_| self.engine.verify_transaction_unordered(tx, &best_block_header))
+                    .verify_transaction_basic(&tx, &fake_header)
+                    .and_then(|_| self.engine.verify_transaction_unordered(tx, &fake_header))
                 {
                     Err(e) => {
                         cdebug!(MINER, "Rejected transaction {:?} with invalid signature: {:?}", hash, e);
@@ -283,7 +283,7 @@ impl Miner {
                     }
                     Ok(tx) => {
                         // This check goes here because verify_transaction takes SignedTransaction parameter
-                        self.engine.machine().verify_transaction(&tx, &best_block_header, client, false)?;
+                        self.engine.machine().verify_transaction(&tx, &fake_header, client, false)?;
 
                         let origin = self
                             .accounts
