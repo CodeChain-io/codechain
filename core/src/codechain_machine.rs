@@ -74,16 +74,26 @@ impl CodeChainMachine {
     }
 
     /// Does basic verification of the transaction.
-    pub fn verify_transaction_basic(&self, p: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
-        let min_cost = self.min_cost(&p.action, Some(header.number()));
-        if p.fee < min_cost {
+    pub fn verify_transaction_basic_with_params(
+        &self,
+        tx: &UnverifiedTransaction,
+        header: &Header,
+    ) -> Result<(), Error> {
+        let block_number = header.number();
+        if block_number == 0 {
+            return Ok(())
+        }
+        let parent_block_number = block_number - 1;
+
+        let min_cost = self.min_cost(&tx.action, Some(parent_block_number));
+        if tx.fee < min_cost {
             return Err(SyntaxError::InsufficientFee {
                 minimal: min_cost,
-                got: p.fee,
+                got: tx.fee,
             }
             .into())
         }
-        p.verify_basic(&self.common_params(Some(header.number())), self.is_order_disabled)?;
+        tx.verify_basic_with_params(&self.common_params(Some(parent_block_number)), self.is_order_disabled)?;
 
         Ok(())
     }

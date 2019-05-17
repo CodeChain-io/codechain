@@ -41,45 +41,44 @@ pub struct PreverifiedBlock {
 }
 
 /// Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
-pub fn verify_block_basic(header: &Header, bytes: &[u8], engine: &CodeChainEngine) -> Result<(), Error> {
-    verify_header_params(&header, engine)?;
-    engine.verify_block_basic(&header)?;
+pub fn verify_block_basic(header: &Header, bytes: &[u8]) -> Result<(), Error> {
+    verify_header_basic(header)?;
 
     let body_rlp = UntrustedRlp::new(bytes).at(1)?;
+
+    for t in body_rlp.iter().map(|rlp| rlp.as_val::<UnverifiedTransaction>()) {
+        t?.verify_basic()?;
+    }
+    Ok(())
+}
+
+pub fn verify_header_basic_with_engine(header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
+    engine.verify_block_basic(&header)?;
+    Ok(())
+}
+
+pub fn verify_block_basic_with_params(header: &Header, bytes: &[u8], engine: &CodeChainEngine) -> Result<(), Error> {
+    verify_header_basic_with_params(&header, engine)?;
+
+    let body_rlp = UntrustedRlp::new(bytes).at(1).expect("verify_block_basic already checked it");
     if body_rlp.as_raw().len() > engine.machine().common_params(Some(header.number())).max_body_size() {
         return Err(BlockError::BodySizeIsTooBig.into())
     }
 
-    for t in body_rlp.iter().map(|rlp| rlp.as_val::<UnverifiedTransaction>()) {
-        engine.verify_transaction_basic(&t?, &header)?;
+    for t in body_rlp.iter().map(|rlp| rlp.as_val().expect("verify_block_basic already checked it")) {
+        engine.verify_transaction_basic_with_params(&t, &header)?;
     }
     Ok(())
 }
 
 /// Check basic header parameters.
-pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
-    let expected_seal_fields = engine.seal_fields(header);
-    if header.seal().len() != expected_seal_fields {
-        return Err(From::from(BlockError::InvalidSealArity(Mismatch {
-            expected: expected_seal_fields,
-            found: header.seal().len(),
-        })))
-    }
-
+pub fn verify_header_basic(header: &Header) -> Result<(), Error> {
     let block_number = header.number();
     if block_number >= BlockNumber::max_value() {
         return Err(From::from(BlockError::RidiculousNumber(OutOfBounds {
             max: Some(BlockNumber::max_value()),
             min: None,
             found: block_number,
-        })))
-    }
-    let max_extra_data_size = engine.machine().common_params(Some(block_number)).max_extra_data_size();
-    if block_number != 0 && header.extra_data().len() > max_extra_data_size {
-        return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
-            min: None,
-            max: Some(max_extra_data_size),
-            found: header.extra_data().len(),
         })))
     }
 
@@ -102,6 +101,32 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
             max: Some(max_time),
             min: None,
             found: timestamp,
+        })))
+    }
+
+    Ok(())
+}
+
+pub fn verify_header_basic_with_params(header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
+    let expected_seal_fields = engine.seal_fields(header);
+    if header.seal().len() != expected_seal_fields {
+        return Err(From::from(BlockError::InvalidSealArity(Mismatch {
+            expected: expected_seal_fields,
+            found: header.seal().len(),
+        })))
+    }
+
+    let block_number = header.number();
+    if block_number == 0 {
+        return Ok(())
+    }
+    let parent_block_number = block_number - 1;
+    let max_extra_data_size = engine.machine().common_params(Some(parent_block_number)).max_extra_data_size();
+    if header.extra_data().len() > max_extra_data_size {
+        return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
+            min: None,
+            max: Some(max_extra_data_size),
+            found: header.extra_data().len(),
         })))
     }
 
