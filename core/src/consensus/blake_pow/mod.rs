@@ -101,7 +101,7 @@ impl ConsensusEngine for BlakePoW {
     }
 
     fn verify_local_seal(&self, header: &Header) -> Result<(), Error> {
-        self.verify_block_basic(header).and_then(|_| self.verify_block_unordered(header))
+        self.verify_block_basic(header).and_then(|_| self.verify_block_seal(header))
     }
 
     fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
@@ -116,7 +116,7 @@ impl ConsensusEngine for BlakePoW {
         Ok(())
     }
 
-    fn verify_block_unordered(&self, header: &Header) -> Result<(), Error> {
+    fn verify_block_seal(&self, header: &Header) -> Result<(), Error> {
         let seal = Seal::parse_seal(header.seal())?;
 
         let mut message = header.bare_hash().0;
