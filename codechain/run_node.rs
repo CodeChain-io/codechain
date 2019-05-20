@@ -264,7 +264,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             let network_config = config.network_config()?;
             // XXX: What should we do if the network id has been changed.
             let c = client.client();
-            let network_id = c.common_params(None).network_id();
+            let network_id = c.common_params(None).unwrap().network_id();
             let routing_table = RoutingTable::new();
             let service = network_start(network_id, timer_loop, &network_config, Arc::clone(&routing_table))?;
 
@@ -336,12 +336,10 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     let _snapshot_service = {
         if !config.snapshot.disable.unwrap() {
             // FIXME: Let's make it load snapshot period dynamically to support changing the period.
-            let service = SnapshotService::new(
-                client.client(),
-                config.snapshot.path.unwrap(),
-                scheme.params(None).snapshot_period(),
-            );
-            client.client().add_notify(Arc::downgrade(&service) as Weak<ChainNotify>);
+            let client = client.client();
+            let snapshot_period = client.common_params(None).unwrap().snapshot_period();
+            let service = SnapshotService::new(Arc::clone(&client), config.snapshot.path.unwrap(), snapshot_period);
+            client.add_notify(Arc::downgrade(&service) as Weak<ChainNotify>);
             Some(service)
         } else {
             None

@@ -79,7 +79,7 @@ pub fn verify_block_with_params(
     }
 
     for t in body_rlp.iter().map(|rlp| rlp.as_val().expect("verify_block_basic already checked it")) {
-        engine.verify_transaction_with_params(&t, header)?;
+        engine.verify_transaction_with_params(&t, common_params)?;
     }
     Ok(())
 }

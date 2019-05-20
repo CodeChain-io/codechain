@@ -254,7 +254,8 @@ impl Miner {
         default_origin: TxOrigin,
         mem_pool: &mut MemPool,
     ) -> Vec<Result<TransactionImportResult, Error>> {
-        let fake_header = client.best_block_header().decode().generate_child();
+        let best_header = client.best_block_header().decode();
+        let fake_header = best_header.generate_child();
         let current_block_number = client.chain_info().best_block_number;
         let current_timestamp = client.chain_info().best_block_timestamp;
         let mut inserted = Vec::with_capacity(transactions.len());
@@ -275,7 +276,10 @@ impl Miner {
                 match tx
                     .verify_basic()
                     .map_err(From::from)
-                    .and_then(|_| self.engine.verify_transaction_with_params(&tx, &fake_header))
+                    .and_then(|_| {
+                        let common_params = self.engine.machine().common_params(Some(best_header.number())).unwrap();
+                        self.engine.verify_transaction_with_params(&tx, &common_params)
+                    })
                     .and_then(|_| self.engine.verify_transaction_seal(tx, &fake_header))
                 {
                     Err(e) => {
@@ -452,7 +456,7 @@ impl Miner {
             let params = self.params.read().clone();
             let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
             let block_number = open_block.block().header().number();
-            let max_body_size = self.engine.machine().common_params(Some(block_number)).max_body_size();
+            let max_body_size = self.engine.machine().common_params(Some(block_number)).unwrap().max_body_size();
             const DEFAULT_RANGE: Range<u64> = 0..::std::u64::MAX;
             let transactions = mem_pool
                 .top_transactions(max_body_size, Some(open_block.header().timestamp()), DEFAULT_RANGE)
@@ -990,7 +994,7 @@ impl MinerService for Miner {
     }
 
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
-        let max_body_size = self.engine.machine().common_params(None).max_body_size();
+        let max_body_size = self.engine.machine().common_params(None).unwrap().max_body_size();
         self.mem_pool.read().top_transactions(max_body_size, None, range)
     }
 

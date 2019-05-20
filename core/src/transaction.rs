@@ -145,13 +145,7 @@ impl UnverifiedTransaction {
         if byte_size >= params.max_body_size() {
             return Err(SyntaxError::TransactionIsTooBig)
         }
-        self.action.verify_with_params(
-            params.network_id(),
-            params.max_asset_scheme_metadata_size(),
-            params.max_transfer_metadata_size(),
-            params.max_text_content_size(),
-            is_order_disabled,
-        )
+        self.action.verify_with_params(params, is_order_disabled)
     }
 }
 

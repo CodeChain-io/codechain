@@ -51,37 +51,37 @@ impl CodeChainMachine {
     }
 
     /// Get the general parameters of the chain.
-    pub fn common_params(&self, block_number: Option<BlockNumber>) -> CommonParams {
+    pub fn common_params(&self, block_number: Option<BlockNumber>) -> Option<CommonParams> {
         let params = &self.params;
         assert!(!params.is_empty());
         let block_number = if let Some(block_number) = block_number {
             block_number
         } else {
-            return params.last().unwrap().params // the latest block.
+            return Some(params.last().unwrap().params) // the latest block.
         };
 
-        params
-            .iter()
-            .take_while(
-                |Params {
-                     changed_block,
-                     ..
-                 }| *changed_block <= block_number,
-            )
-            .last()
-            .unwrap()
-            .params
+        Some(
+            params
+                .iter()
+                .take_while(
+                    |Params {
+                         changed_block,
+                         ..
+                     }| *changed_block <= block_number,
+                )
+                .last()
+                .unwrap()
+                .params,
+        )
     }
 
     /// Does basic verification of the transaction.
-    pub fn verify_transaction_with_params(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
-        let block_number = header.number();
-        if block_number == 0 {
-            return Ok(())
-        }
-        let parent_block_number = block_number - 1;
-
-        let min_cost = self.min_cost(&tx.action, Some(parent_block_number));
+    pub fn verify_transaction_with_params(
+        &self,
+        tx: &UnverifiedTransaction,
+        common_params: &CommonParams,
+    ) -> Result<(), Error> {
+        let min_cost = Self::min_cost(common_params, &tx.action);
         if tx.fee < min_cost {
             return Err(SyntaxError::InsufficientFee {
                 minimal: min_cost,
@@ -89,7 +89,7 @@ impl CodeChainMachine {
             }
             .into())
         }
-        tx.verify_with_params(&self.common_params(Some(parent_block_number)), self.is_order_disabled)?;
+        tx.verify_with_params(common_params, self.is_order_disabled)?;
 
         Ok(())
     }
@@ -220,8 +220,7 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    pub fn min_cost(&self, action: &Action, block_number: Option<BlockNumber>) -> u64 {
-        let params = self.common_params(block_number);
+    pub fn min_cost(params: &CommonParams, action: &Action) -> u64 {
         match action {
             Action::MintAsset {
                 ..
@@ -305,9 +304,9 @@ mod tests {
     fn common_params_are_not_changed_since_genesis() {
         let genesis_params = CommonParams::default_for_test();
         let machine = CodeChainMachine::new(genesis_params);
-        assert_eq!(genesis_params, machine.common_params(Some(0)));
-        assert_eq!(genesis_params, machine.common_params(Some(1)));
-        assert_eq!(genesis_params, machine.common_params(None));
+        assert_eq!(Some(genesis_params), machine.common_params(Some(0)));
+        assert_eq!(Some(genesis_params), machine.common_params(Some(1)));
+        assert_eq!(Some(genesis_params), machine.common_params(None));
     }
 
     #[test]
@@ -331,9 +330,9 @@ mod tests {
             ],
             is_order_disabled: false,
         };
-        assert_eq!(genesis_params, machine.common_params(Some(0)));
-        assert_eq!(params_at_1, machine.common_params(Some(1)));
-        assert_eq!(params_at_1, machine.common_params(None));
+        assert_eq!(Some(genesis_params), machine.common_params(Some(0)));
+        assert_eq!(Some(params_at_1), machine.common_params(Some(1)));
+        assert_eq!(Some(params_at_1), machine.common_params(None));
     }
 
     #[test]
@@ -357,10 +356,10 @@ mod tests {
             ],
             is_order_disabled: false,
         };
-        assert_eq!(genesis_params, machine.common_params(Some(0)));
-        assert_eq!(genesis_params, machine.common_params(Some(1)));
-        assert_eq!(params_at_2, machine.common_params(Some(2)));
-        assert_eq!(params_at_2, machine.common_params(None));
+        assert_eq!(Some(genesis_params), machine.common_params(Some(0)));
+        assert_eq!(Some(genesis_params), machine.common_params(Some(1)));
+        assert_eq!(Some(params_at_2), machine.common_params(Some(2)));
+        assert_eq!(Some(params_at_2), machine.common_params(None));
     }
 
 
@@ -404,17 +403,17 @@ mod tests {
             is_order_disabled: false,
         };
         for i in 0..10 {
-            assert_eq!(genesis_params, machine.common_params(Some(i)), "unexpected params at block {}", i);
+            assert_eq!(Some(genesis_params), machine.common_params(Some(i)), "unexpected params at block {}", i);
         }
         for i in 10..20 {
-            assert_eq!(params_at_10, machine.common_params(Some(i)), "unexpected params at block {}", i);
+            assert_eq!(Some(params_at_10), machine.common_params(Some(i)), "unexpected params at block {}", i);
         }
         for i in 20..30 {
-            assert_eq!(params_at_20, machine.common_params(Some(i)), "unexpected params at block {}", i);
+            assert_eq!(Some(params_at_20), machine.common_params(Some(i)), "unexpected params at block {}", i);
         }
         for i in 30..40 {
-            assert_eq!(params_at_30, machine.common_params(Some(i)), "unexpected params at block {}", i);
+            assert_eq!(Some(params_at_30), machine.common_params(Some(i)), "unexpected params at block {}", i);
         }
-        assert_eq!(params_at_30, machine.common_params(None));
+        assert_eq!(Some(params_at_30), machine.common_params(None));
     }
 }

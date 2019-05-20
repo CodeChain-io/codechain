@@ -94,13 +94,17 @@ where
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<AssetScheme>> {
-        let network_id = self.client.common_params(block_number).network_id();
-        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        Ok(self
-            .client
-            .get_asset_scheme(asset_type, shard_id, block_id)
-            .map_err(errors::transaction_state)?
-            .map(|asset_scheme| AssetScheme::from_core(asset_scheme, network_id)))
+        if let Some(common_params) = self.client.common_params(block_number) {
+            let network_id = common_params.network_id();
+            let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+            Ok(self
+                .client
+                .get_asset_scheme(asset_type, shard_id, block_id)
+                .map_err(errors::transaction_state)?
+                .map(|asset_scheme| AssetScheme::from_core(asset_scheme, network_id)))
+        } else {
+            Ok(None)
+        }
     }
 
     fn get_text(&self, transaction_hash: H256, block_number: Option<u64>) -> Result<Option<Text>> {
@@ -109,7 +113,7 @@ where
             .client
             .get_text(transaction_hash, block_id)
             .map_err(errors::transaction_state)?
-            .map(|text| Text::from_core(text, self.client.common_params(block_number).network_id())))
+            .map(|text| Text::from_core(text, self.client.common_params(block_number).unwrap().network_id())))
     }
 
     fn get_asset(
@@ -155,11 +159,10 @@ where
 
     fn get_regular_key_owner(&self, public: Public, block_number: Option<u64>) -> Result<Option<PlatformAddress>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        let network_id = self.client.common_params(block_number).network_id();
-        Ok(self
-            .client
-            .regular_key_owner(&public_to_address(&public), block_id.into())
-            .and_then(|address| Some(PlatformAddress::new_v1(network_id, address))))
+        Ok(self.client.regular_key_owner(&public_to_address(&public), block_id.into()).and_then(|address| {
+            let network_id = self.client.common_params(block_number).unwrap().network_id();
+            Some(PlatformAddress::new_v1(network_id, address))
+        }))
     }
 
     fn get_genesis_accounts(&self) -> Result<Vec<PlatformAddress>> {
@@ -183,20 +186,18 @@ where
 
     fn get_shard_owners(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        let network_id = self.client.common_params(block_number).network_id();
-        Ok(self
-            .client
-            .shard_owners(shard_id, block_id.into())
-            .map(|owners| owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect()))
+        Ok(self.client.shard_owners(shard_id, block_id.into()).map(|owners| {
+            let network_id = self.client.common_params(block_number).unwrap().network_id();
+            owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect()
+        }))
     }
 
     fn get_shard_users(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        let network_id = self.client.common_params(block_number).network_id();
-        Ok(self
-            .client
-            .shard_users(shard_id, block_id.into())
-            .map(|users| users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect()))
+        Ok(self.client.shard_users(shard_id, block_id.into()).map(|users| {
+            let network_id = self.client.common_params(block_number).unwrap().network_id();
+            users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect()
+        }))
     }
 
     fn get_best_block_number(&self) -> Result<BlockNumber> {
@@ -217,10 +218,9 @@ where
 
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {
         let id = BlockId::Number(block_number);
-        Ok(self
-            .client
-            .block(&id)
-            .map(|block| Block::from_core(block.decode(), self.client.common_params(Some(block_number)).network_id())))
+        Ok(self.client.block(&id).map(|block| {
+            Block::from_core(block.decode(), self.client.common_params(Some(block_number)).unwrap().network_id())
+        }))
     }
 
     fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
@@ -228,7 +228,7 @@ where
         Ok(self.client.block(&id).map(|block| {
             let block = block.decode();
             let block_number = block.header.number();
-            Block::from_core(block, self.client.common_params(Some(block_number)).network_id())
+            Block::from_core(block, self.client.common_params(Some(block_number)).unwrap().network_id())
         }))
     }
 
@@ -237,27 +237,30 @@ where
     }
 
     fn get_min_transaction_fee(&self, action_type: String, block_number: u64) -> Result<Option<u64>> {
-        let common_parameters = self.client.common_params(Some(block_number));
-        Ok(match action_type.as_str() {
-            "mintAsset" => Some(common_parameters.min_asset_mint_cost()),
-            "transferAsset" => Some(common_parameters.min_asset_transfer_cost()),
-            "changeAssetScheme" => Some(common_parameters.min_asset_scheme_change_cost()),
-            "increaseAssetSupply" => Some(common_parameters.min_asset_supply_increase_cost()),
-            "unwrapCCC" => Some(common_parameters.min_asset_unwrap_ccc_cost()),
-            "pay" => Some(common_parameters.min_pay_transaction_cost()),
-            "setRegularKey" => Some(common_parameters.min_set_regular_key_transaction_cost()),
-            "createShard" => Some(common_parameters.min_create_shard_transaction_cost()),
-            "setShardOwners" => Some(common_parameters.min_set_shard_owners_transaction_cost()),
-            "setShardUsers" => Some(common_parameters.min_set_shard_users_transaction_cost()),
-            "wrapCCC" => Some(common_parameters.min_wrap_ccc_transaction_cost()),
-            "store" => Some(common_parameters.min_store_transaction_cost()),
-            "remove" => Some(common_parameters.min_remove_transaction_cost()),
-            "custom" => Some(common_parameters.min_custom_transaction_cost()),
-            "composeAsset" => Some(common_parameters.min_asset_compose_cost()),
-            "decomposeAsset" => Some(common_parameters.min_asset_decompose_cost()),
+        if let Some(common_parameters) = self.client.common_params(Some(block_number)) {
+            Ok(match action_type.as_str() {
+                "mintAsset" => Some(common_parameters.min_asset_mint_cost()),
+                "transferAsset" => Some(common_parameters.min_asset_transfer_cost()),
+                "changeAssetScheme" => Some(common_parameters.min_asset_scheme_change_cost()),
+                "increaseAssetSupply" => Some(common_parameters.min_asset_supply_increase_cost()),
+                "unwrapCCC" => Some(common_parameters.min_asset_unwrap_ccc_cost()),
+                "pay" => Some(common_parameters.min_pay_transaction_cost()),
+                "setRegularKey" => Some(common_parameters.min_set_regular_key_transaction_cost()),
+                "createShard" => Some(common_parameters.min_create_shard_transaction_cost()),
+                "setShardOwners" => Some(common_parameters.min_set_shard_owners_transaction_cost()),
+                "setShardUsers" => Some(common_parameters.min_set_shard_users_transaction_cost()),
+                "wrapCCC" => Some(common_parameters.min_wrap_ccc_transaction_cost()),
+                "store" => Some(common_parameters.min_store_transaction_cost()),
+                "remove" => Some(common_parameters.min_remove_transaction_cost()),
+                "custom" => Some(common_parameters.min_custom_transaction_cost()),
+                "composeAsset" => Some(common_parameters.min_asset_compose_cost()),
+                "decomposeAsset" => Some(common_parameters.min_asset_decompose_cost()),
 
-            _ => None,
-        })
+                _ => None,
+            })
+        } else {
+            Ok(None)
+        }
     }
 
     fn get_mining_reward(&self, block_number: u64) -> Result<Option<u64>> {
@@ -265,7 +268,7 @@ where
     }
 
     fn get_network_id(&self) -> Result<NetworkId> {
-        Ok(self.client.common_params(None).network_id())
+        Ok(self.client.common_params(None).unwrap().network_id())
     }
 
     fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Option<String>> {

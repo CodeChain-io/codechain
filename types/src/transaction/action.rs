@@ -23,7 +23,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::errors::SyntaxError;
 use crate::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, OrderOnTransfer, ShardTransaction};
-use crate::ShardId;
+use crate::{CommonParams, ShardId};
 
 const PAY: u8 = 0x02;
 const SET_REGULAR_KEY: u8 = 0x03;
@@ -316,15 +316,9 @@ impl Action {
         Ok(())
     }
 
-    pub fn verify_with_params(
-        &self,
-        system_network_id: NetworkId,
-        max_asset_scheme_metadata_size: usize,
-        max_transfer_metadata_size: usize,
-        max_text_size: usize,
-        is_order_disabled: bool,
-    ) -> Result<(), SyntaxError> {
+    pub fn verify_with_params(&self, common_params: &CommonParams, is_order_disabled: bool) -> Result<(), SyntaxError> {
         if let Some(network_id) = self.network_id() {
+            let system_network_id = common_params.network_id();
             if network_id != system_network_id {
                 return Err(SyntaxError::InvalidNetworkId(network_id))
             }
@@ -335,6 +329,7 @@ impl Action {
                 metadata,
                 ..
             } => {
+                let max_asset_scheme_metadata_size = common_params.max_asset_scheme_metadata_size();
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -344,6 +339,7 @@ impl Action {
                 metadata,
                 ..
             } => {
+                let max_transfer_metadata_size = common_params.max_transfer_metadata_size();
                 if metadata.len() > max_transfer_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -356,6 +352,7 @@ impl Action {
                 metadata,
                 ..
             } => {
+                let max_asset_scheme_metadata_size = common_params.max_asset_scheme_metadata_size();
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -367,6 +364,7 @@ impl Action {
                 metadata,
                 ..
             } => {
+                let max_asset_scheme_metadata_size = common_params.max_asset_scheme_metadata_size();
                 if metadata.len() > max_asset_scheme_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
                 }
@@ -384,6 +382,7 @@ impl Action {
                 content,
                 ..
             } => {
+                let max_text_size = common_params.max_text_content_size();
                 if content.len() > max_text_size {
                     return Err(SyntaxError::TextContentTooBig)
                 }
@@ -1483,7 +1482,11 @@ mod tests {
             expiration: None,
         };
         assert_eq!(action.verify(), Ok(()));
-        assert_eq!(action.verify_with_params(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
+        let mut common_params = CommonParams::default_for_test();
+        common_params.set_max_asset_scheme_metadata_size(1000);
+        common_params.set_max_transfer_metadata_size(1000);
+        common_params.set_max_text_content_size(1000);
+        assert_eq!(action.verify_with_params(&common_params, false), Ok(()));
     }
 
     #[test]
@@ -1606,7 +1609,11 @@ mod tests {
         };
 
         assert_eq!(action.verify(), Ok(()));
-        assert_eq!(action.verify_with_params(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
+        let mut common_params = CommonParams::default_for_test();
+        common_params.set_max_asset_scheme_metadata_size(1000);
+        common_params.set_max_transfer_metadata_size(1000);
+        common_params.set_max_text_content_size(1000);
+        assert_eq!(action.verify_with_params(&common_params, false), Ok(()));
     }
 
     #[test]
@@ -2102,7 +2109,11 @@ mod tests {
             expiration: None,
         };
         assert_eq!(action.verify(), Ok(()));
-        assert_eq!(action.verify_with_params(NetworkId::default(), 1000, 1000, 1000, false), Ok(()));
+        let mut common_params = CommonParams::default_for_test();
+        common_params.set_max_asset_scheme_metadata_size(1000);
+        common_params.set_max_transfer_metadata_size(1000);
+        common_params.set_max_text_content_size(1000);
+        assert_eq!(action.verify_with_params(&common_params, false), Ok(()));
     }
 
     #[test]
