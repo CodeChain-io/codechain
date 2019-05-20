@@ -254,11 +254,13 @@ where
         Ok(self.client.block(&BlockId::Hash(block_hash)).map(|block| block.transactions_count()))
     }
 
-    fn get_min_transaction_fee(&self, action_type: String, block_number: u64) -> Result<Option<u64>> {
-        if block_number == 0 {
+    fn get_min_transaction_fee(&self, action_type: String, block_number: Option<u64>) -> Result<Option<u64>> {
+        if block_number == Some(0) {
             return Ok(None)
         }
-        if let Some(common_parameters) = self.client.common_params((block_number - 1).into()) {
+        // Unlike other RPCs, use the latest parameters if the block number is `null`.
+        let block_id = block_number.map(|n| (n - 1).into()).unwrap_or(BlockId::Latest);
+        if let Some(common_parameters) = self.client.common_params(block_id) {
             Ok(match action_type.as_str() {
                 "mintAsset" => Some(common_parameters.min_asset_mint_cost()),
                 "transferAsset" => Some(common_parameters.min_asset_transfer_cost()),
