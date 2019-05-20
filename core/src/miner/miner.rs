@@ -279,7 +279,7 @@ impl Miner {
                     .verify_basic()
                     .map_err(From::from)
                     .and_then(|_| {
-                        let common_params = client.common_params(Some(best_header.number())).unwrap();
+                        let common_params = client.common_params(best_header.hash().into()).unwrap();
                         self.engine.verify_transaction_with_params(&tx, &common_params)
                     })
                     .and_then(|_| self.engine.verify_transaction_seal(tx, &fake_header))
@@ -459,8 +459,13 @@ impl Miner {
             ctrace!(MINER, "prepare_block: No existing work - making new block");
             let params = self.params.read().clone();
             let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
-            let block_number = open_block.block().header().number();
-            let max_body_size = chain.common_params(Some(block_number - 1)).unwrap().max_body_size();
+            let (block_number, parent_hash) = {
+                let header = open_block.block().header();
+                let block_number = header.number();
+                let parent_hash = *header.parent_hash();
+                (block_number, parent_hash)
+            };
+            let max_body_size = chain.common_params(parent_hash.into()).unwrap().max_body_size();
             const DEFAULT_RANGE: Range<u64> = 0..::std::u64::MAX;
             let transactions = mem_pool
                 .top_transactions(max_body_size, Some(open_block.header().timestamp()), DEFAULT_RANGE)
@@ -521,13 +526,13 @@ impl Miner {
         }
         cdebug!(MINER, "Pushed {}/{} transactions", tx_count, tx_total);
 
-        let (transactions_root, parent_number) = {
-            let parent_hash = open_block.header().parent_hash();
-            let parent_header = chain.block_header(&BlockId::Hash(*parent_hash)).expect("Parent header MUST exist");
+        let (transactions_root, parent_hash) = {
+            let parent_hash = *open_block.header().parent_hash();
+            let parent_header = chain.block_header(&parent_hash.into()).expect("Parent header MUST exist");
             let parent_view = parent_header.view();
-            (parent_view.transactions_root(), parent_view.number())
+            (parent_view.transactions_root(), parent_hash)
         };
-        let parent_common_params = chain.common_params(Some(parent_number)).unwrap();
+        let parent_common_params = chain.common_params(parent_hash.into()).unwrap();
         let block = open_block.close(transactions_root, &parent_common_params)?;
 
         let fetch_seq = |p: &Public| {
