@@ -222,6 +222,7 @@ impl Client {
             BlockId::Number(number) => chain.block_hash(*number),
             BlockId::Earliest => chain.block_hash(0),
             BlockId::Latest => Some(chain.best_block_hash()),
+            BlockId::ParentOfLatest => Some(chain.best_block_header().parent_hash()),
         }
     }
 
@@ -293,6 +294,13 @@ impl Client {
             BlockId::Hash(hash) => self.block_chain().block_number(hash),
             BlockId::Earliest => Some(0),
             BlockId::Latest => Some(self.block_chain().best_block_detail().number),
+            BlockId::ParentOfLatest => {
+                if self.block_chain().best_block_detail().number == 0 {
+                    None
+                } else {
+                    Some(self.block_chain().best_block_detail().number - 1)
+                }
+            }
         }
     }
 
