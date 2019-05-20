@@ -280,7 +280,7 @@ impl Scheme {
 
     /// Get common blockchain parameters.
     pub fn genesis_params(&self) -> CommonParams {
-        self.engine.machine().common_params(Some(0)).unwrap()
+        *self.engine.machine().genesis_common_params()
     }
 
     /// Get the header of the genesis block.

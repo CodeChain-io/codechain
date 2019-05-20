@@ -20,6 +20,7 @@ use std::cmp::{max, min};
 
 use ccrypto::blake256;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::CommonParams;
 use cuckoo::Cuckoo as CuckooVerifier;
 use primitives::U256;
 use rlp::UntrustedRlp;
@@ -169,7 +170,7 @@ impl ConsensusEngine for Cuckoo {
         header.set_score(score);
     }
 
-    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+    fn on_close_block(&self, block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = self.block_reward(block.header().number())
             + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));
@@ -191,6 +192,8 @@ impl ConsensusEngine for Cuckoo {
 
 #[cfg(test)]
 mod tests {
+    use ctypes::CommonParams;
+
     use crate::block::{IsBlock, OpenBlock};
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
@@ -254,7 +257,7 @@ mod tests {
         let block = OpenBlock::try_new(engine, db, &header, Default::default(), vec![]).unwrap();
         let mut executed_block = block.block().clone();
 
-        assert!(engine.on_close_block(&mut executed_block).is_ok());
+        assert!(engine.on_close_block(&mut executed_block, &CommonParams::default_for_test()).is_ok());
         assert_eq!(0xd, engine.machine().balance(&executed_block, header.author()).unwrap());
     }
 
