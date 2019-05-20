@@ -112,7 +112,7 @@ where
     }
 
     fn test_tps(&self, setting: TPSTestSetting) -> Result<f64> {
-        let common_params = self.client.common_params(None).unwrap();
+        let common_params = self.client.common_params(BlockId::Latest).unwrap();
         let mint_fee = common_params.min_asset_mint_cost();
         let transfer_fee = common_params.min_asset_transfer_cost();
         let pay_fee = common_params.min_pay_transaction_cost();

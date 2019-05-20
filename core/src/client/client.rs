@@ -484,9 +484,8 @@ impl StateInfo for Client {
 }
 
 impl EngineInfo for Client {
-    fn common_params(&self, block_number: Option<BlockNumber>) -> Option<CommonParams> {
-        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        self.state_info(StateOrBlock::Block(block_id)).map(|state| {
+    fn common_params(&self, block_id: BlockId) -> Option<CommonParams> {
+        self.state_info(block_id.into()).map(|state| {
             state
                 .metadata()
                 .unwrap_or_else(|err| unreachable!("Unexpected failure. Maybe DB was corrupted: {:?}", err))
@@ -565,7 +564,7 @@ impl BlockChainTrait for Client {
 
     fn genesis_accounts(&self) -> Vec<PlatformAddress> {
         // XXX: What should we do if the network id has been changed
-        let network_id = self.common_params(None).unwrap().network_id();
+        let network_id = self.common_params(BlockId::Latest).unwrap().network_id();
         self.genesis_accounts.iter().map(|addr| PlatformAddress::new_v1(network_id, *addr)).collect()
     }
 
