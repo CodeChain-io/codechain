@@ -17,10 +17,7 @@
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 
-use ccore::{
-    AssetClient, BlockId, EngineInfo, ExecuteClient, MiningBlockChainClient, RegularKey, RegularKeyOwner, Shard,
-    TextClient,
-};
+use ccore::{AccountData, AssetClient, BlockId, EngineInfo, ExecuteClient, MiningBlockChainClient, Shard, TextClient};
 use ccrypto::Blake;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
@@ -37,20 +34,13 @@ use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Te
 
 pub struct ChainClient<C>
 where
-    C: AssetClient + MiningBlockChainClient + Shard + RegularKey + RegularKeyOwner + ExecuteClient + EngineInfo, {
+    C: AssetClient + MiningBlockChainClient + Shard + ExecuteClient + EngineInfo, {
     client: Arc<C>,
 }
 
 impl<C> ChainClient<C>
 where
-    C: AssetClient
-        + MiningBlockChainClient
-        + Shard
-        + RegularKey
-        + RegularKeyOwner
-        + ExecuteClient
-        + EngineInfo
-        + TextClient,
+    C: AssetClient + MiningBlockChainClient + Shard + AccountData + ExecuteClient + EngineInfo + TextClient,
 {
     pub fn new(client: Arc<C>) -> Self {
         ChainClient {
@@ -64,8 +54,7 @@ where
     C: AssetClient
         + MiningBlockChainClient
         + Shard
-        + RegularKey
-        + RegularKeyOwner
+        + AccountData
         + ExecuteClient
         + EngineInfo
         + FindActionHandler

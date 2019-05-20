@@ -261,6 +261,17 @@ impl Header {
     pub fn rlp_blake(&self, with_seal: &Seal) -> H256 {
         blake256(&self.rlp(with_seal))
     }
+
+    pub fn generate_child(&self) -> Self {
+        let mut header = Header::default();
+
+        header.set_parent_hash(self.hash());
+        header.set_number(self.number() + 1);
+        header.set_timestamp_now(self.timestamp());
+        header.note_dirty();
+
+        header
+    }
 }
 
 impl Decodable for Header {
@@ -290,36 +301,5 @@ impl Decodable for Header {
 impl Encodable for Header {
     fn rlp_append(&self, s: &mut RlpStream) {
         self.stream_rlp(s, &Seal::With);
-    }
-}
-
-impl ::ctypes::machine::Header for Header {
-    fn bare_hash(&self) -> H256 {
-        Header::bare_hash(self)
-    }
-
-    fn hash(&self) -> H256 {
-        Header::hash(self)
-    }
-
-    fn seal(&self) -> &[Vec<u8>] {
-        Header::seal(self)
-    }
-
-    fn author(&self) -> &Address {
-        Header::author(self)
-    }
-
-    fn number(&self) -> BlockNumber {
-        Header::number(self)
-    }
-}
-
-impl ::ctypes::machine::ScoredHeader for Header {
-    fn score(&self) -> &U256 {
-        self.score()
-    }
-    fn set_score(&mut self, score: U256) {
-        self.set_score(score)
     }
 }

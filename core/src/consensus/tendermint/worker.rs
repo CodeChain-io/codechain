@@ -117,11 +117,6 @@ pub enum Event {
         result: crossbeam::Sender<U256>,
     },
     OnTimeout(usize),
-    OnNewBlock {
-        header: Box<Header>,
-        epoch_begin: bool,
-        result: crossbeam::Sender<Result<(), Error>>,
-    },
     HandleMessages {
         messages: Vec<Vec<u8>>,
         result: crossbeam::Sender<Result<(), EngineError>>,
@@ -266,13 +261,6 @@ impl Worker {
                             }
                             Ok(Event::OnTimeout(token)) => {
                                 inner.on_timeout(token);
-                            }
-                            Ok(Event::OnNewBlock {
-                                header,
-                                epoch_begin,
-                                result,
-                            }) => {
-                                result.send(inner.on_new_block(&header, epoch_begin)).unwrap();
                             }
                             Ok(Event::HandleMessages {
                                 messages,
@@ -1254,17 +1242,6 @@ impl Worker {
 
     fn is_expired_timeout_token(&self, nonce: usize) -> bool {
         nonce < self.timeout_token_nonce
-    }
-
-    fn on_new_block(&self, header: &Header, epoch_begin: bool) -> Result<(), Error> {
-        if !epoch_begin {
-            return Ok(())
-        }
-
-        // genesis is never a new block, but might as well check.
-        let first = header.number() == 0;
-
-        self.validators.on_epoch_begin(first, header)
     }
 
     fn handle_message(&mut self, rlp: &[u8], is_restoring: bool) -> Result<(), EngineError> {

@@ -19,7 +19,6 @@ mod params;
 use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, recover, Address, Signature};
-use ctypes::machine::WithBalances;
 use parking_lot::RwLock;
 
 use self::params::SimplePoAParams;
@@ -28,7 +27,7 @@ use super::validator_set::validator_list::ValidatorList;
 use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, EngineError, Seal};
 use crate::account_provider::AccountProvider;
-use crate::block::{ExecutedBlock, IsBlock};
+use crate::block::ExecutedBlock;
 use crate::client::EngineClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
@@ -73,7 +72,7 @@ fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Err
     }
 }
 
-impl ConsensusEngine<CodeChainMachine> for SimplePoA {
+impl ConsensusEngine for SimplePoA {
     fn name(&self) -> &str {
         "SimplePoA"
     }
@@ -118,15 +117,6 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
         verify_external(header, &*self.validators)
     }
 
-    fn is_epoch_end(&self, chain_head: &Header, _chain: &super::Headers<Header>) -> Option<Vec<u8>> {
-        let first = chain_head.number() == 0;
-        if first {
-            Some(Vec::new())
-        } else {
-            None
-        }
-    }
-
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = self.block_reward(block.header().number())
@@ -154,7 +144,7 @@ impl ConsensusEngine<CodeChainMachine> for SimplePoA {
 
 #[cfg(test)]
 mod tests {
-    use crate::block::OpenBlock;
+    use crate::block::{IsBlock, OpenBlock};
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
 
@@ -182,7 +172,7 @@ mod tests {
         let engine = &*scheme.engine;
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = scheme.genesis_header();
-        let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![], false).unwrap();
+        let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![]).unwrap();
         let parent_transactions_root = *genesis_header.transactions_root();
         let b = b.close_and_lock(parent_transactions_root).unwrap();
         if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {

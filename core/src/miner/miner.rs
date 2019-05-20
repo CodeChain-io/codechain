@@ -38,10 +38,7 @@ use super::work_notify::{NotifyWork, WorkPoster};
 use super::{MinerService, MinerStatus, TransactionImportResult};
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use crate::block::{Block, ClosedBlock, IsBlock};
-use crate::client::{
-    AccountData, BlockChain, BlockProducer, Client, ImportSealedBlock, MiningBlockChainClient, RegularKey,
-    RegularKeyOwner, ResealTimer,
-};
+use crate::client::{AccountData, BlockChainTrait, BlockProducer, Client, ImportBlock, MiningBlockChainClient};
 use crate::consensus::{CodeChainEngine, EngineType};
 use crate::error::Error;
 use crate::header::Header;
@@ -250,14 +247,14 @@ impl Miner {
         }
     }
 
-    fn add_transactions_to_pool<C: AccountData + BlockChain + RegularKeyOwner>(
+    fn add_transactions_to_pool<C: AccountData + BlockChainTrait>(
         &self,
         client: &C,
         transactions: Vec<UnverifiedTransaction>,
         default_origin: TxOrigin,
         mem_pool: &mut MemPool,
     ) -> Vec<Result<TransactionImportResult, Error>> {
-        let best_block_header = client.best_block_header().decode();
+        let fake_header = client.best_block_header().decode().generate_child();
         let current_block_number = client.chain_info().best_block_number;
         let current_timestamp = client.chain_info().best_block_timestamp;
         let mut inserted = Vec::with_capacity(transactions.len());
@@ -277,8 +274,8 @@ impl Miner {
                 }
                 match self
                     .engine
-                    .verify_transaction_basic(&tx, &best_block_header)
-                    .and_then(|_| self.engine.verify_transaction_unordered(tx, &best_block_header))
+                    .verify_transaction_basic(&tx, &fake_header)
+                    .and_then(|_| self.engine.verify_transaction_unordered(tx, &fake_header))
                 {
                     Err(e) => {
                         cdebug!(MINER, "Rejected transaction {:?} with invalid signature: {:?}", hash, e);
@@ -286,7 +283,7 @@ impl Miner {
                     }
                     Ok(tx) => {
                         // This check goes here because verify_transaction takes SignedTransaction parameter
-                        self.engine.machine().verify_transaction(&tx, &best_block_header, client, false)?;
+                        self.engine.machine().verify_transaction(&tx, &fake_header, client, false)?;
 
                         let origin = self
                             .accounts
@@ -343,7 +340,7 @@ impl Miner {
         results
     }
 
-    fn calculate_timelock<C: BlockChain>(&self, tx: &SignedTransaction, client: &C) -> Result<TxTimelock, Error> {
+    fn calculate_timelock<C: BlockChainTrait>(&self, tx: &SignedTransaction, client: &C) -> Result<TxTimelock, Error> {
         let mut max_block = None;
         let mut max_timestamp = None;
         if let Action::TransferAsset {
@@ -440,9 +437,7 @@ impl Miner {
     }
 
     /// Prepares new block for sealing including top transactions from queue.
-    fn prepare_block<
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
-    >(
+    fn prepare_block<C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + FindActionHandler>(
         &self,
         parent_block_id: BlockId,
         chain: &C,
@@ -546,7 +541,7 @@ impl Miner {
     /// Attempts to perform internal sealing (one that does not require work) and handles the result depending on the type of Seal.
     fn seal_and_import_block_internally<C>(&self, chain: &C, block: ClosedBlock) -> bool
     where
-        C: BlockChain + ImportSealedBlock, {
+        C: BlockChainTrait + ImportBlock, {
         if block.transactions().is_empty()
             && !self.options.force_sealing
             && Instant::now() <= *self.next_mandatory_reseal.read()
@@ -696,7 +691,7 @@ impl MinerService for Miner {
         _enacted: &[H256],
         retracted: &[H256],
     ) where
-        C: AccountData + BlockChain + BlockProducer + ImportSealedBlock + RegularKeyOwner + ResealTimer, {
+        C: AccountData + BlockChainTrait + BlockProducer + ImportBlock, {
         ctrace!(MINER, "chain_new_blocks");
 
         // Then import all transactions...
@@ -741,9 +736,7 @@ impl MinerService for Miner {
         self.engine.engine_type()
     }
 
-    fn prepare_work_sealing<
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
-    >(
+    fn prepare_work_sealing<C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + FindActionHandler>(
         &self,
         client: &C,
     ) -> bool {
@@ -791,14 +784,7 @@ impl MinerService for Miner {
 
     fn update_sealing<C>(&self, chain: &C, parent_block: BlockId, allow_empty_block: bool)
     where
-        C: AccountData
-            + BlockChain
-            + BlockProducer
-            + ImportSealedBlock
-            + RegularKeyOwner
-            + ResealTimer
-            + ChainTimeInfo
-            + FindActionHandler, {
+        C: AccountData + BlockChainTrait + BlockProducer + ImportBlock + ChainTimeInfo + FindActionHandler, {
         ctrace!(MINER, "update_sealing: preparing a block");
 
         let parent_block_number = chain.block_header(&parent_block).expect("Parent is always exist").number();
@@ -847,7 +833,7 @@ impl MinerService for Miner {
         }
     }
 
-    fn submit_seal<C: ImportSealedBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
+    fn submit_seal<C: ImportBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
         let result = if let Some(b) = self.sealing_work.lock().queue.take_used_if(|b| b.hash() == block_hash) {
             ctrace!(
                 MINER,
@@ -876,7 +862,7 @@ impl MinerService for Miner {
 
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChain + BlockProducer + RegularKeyOwner + ChainTimeInfo + FindActionHandler,
+        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + FindActionHandler,
         F: FnOnce(&ClosedBlock) -> T, {
         ctrace!(MINER, "map_sealing_work: entering");
         self.prepare_work_sealing(client);
@@ -957,7 +943,7 @@ impl MinerService for Miner {
         imported
     }
 
-    fn import_incomplete_transaction<C: MiningBlockChainClient + RegularKey + RegularKeyOwner>(
+    fn import_incomplete_transaction<C: MiningBlockChainClient + AccountData>(
         &self,
         client: &C,
         account_provider: &AccountProvider,

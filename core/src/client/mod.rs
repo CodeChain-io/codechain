@@ -50,16 +50,13 @@ use crate::scheme::CommonParams;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
-/// Provides `chain_info` method
-pub trait ChainInfo {
+/// Provides various blockchain information, like block header, chain state etc.
+pub trait BlockChainTrait {
     /// Get blockchain information.
     fn chain_info(&self) -> BlockChainInfo;
     /// Get genesis accounts
     fn genesis_accounts(&self) -> Vec<PlatformAddress>;
-}
 
-/// Provides various information on a block by it's ID
-pub trait BlockInfo {
     /// Get raw block header data by block id.
     fn block_header(&self, id: &BlockId) -> Option<encoded::Header>;
 
@@ -74,10 +71,7 @@ pub trait BlockInfo {
 
     /// Get raw block data by block header hash.
     fn block(&self, id: &BlockId) -> Option<encoded::Block>;
-}
 
-/// Provides various information on a transaction by it's ID
-pub trait TransactionInfo {
     /// Get the hash of block that contains the transaction, if any.
     fn transaction_block(&self, id: &TransactionId) -> Option<H256>;
 
@@ -100,7 +94,7 @@ pub trait EngineInfo: Send + Sync {
 }
 
 /// Client facilities used by internally sealing Engines.
-pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock + BlockInfo {
+pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     /// Make a new block and seal it.
     fn update_sealing(&self, parent_block: BlockId, allow_empty_block: bool);
 
@@ -118,8 +112,8 @@ pub trait EngineClient: Sync + Send + ChainInfo + ImportBlock + BlockInfo {
     fn get_kvdb(&self) -> Arc<KeyValueDB>;
 }
 
-/// Provides `seq` and `latest_seq` methods
-pub trait Seq {
+/// Provides methods to access account info
+pub trait AccountData {
     /// Attempt to get address seq at given block.
     /// May not fail on BlockId::Latest.
     fn seq(&self, address: &Address, id: BlockId) -> Option<u64>;
@@ -131,7 +125,32 @@ pub trait Seq {
              Therefore seq has returned Some; qed",
         )
     }
+
+    /// Get address balance at the given block's state.
+    ///
+    /// May not return None if given BlockId::Latest.
+    /// Returns None if and only if the block's root hash has been pruned from the DB.
+    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<u64>;
+
+    /// Get address balance at the latest block's state.
+    fn latest_balance(&self, address: &Address) -> u64 {
+        self.balance(address, BlockId::Latest.into()).expect(
+            "balance will return Some if given BlockId::Latest. balance was given BlockId::Latest \
+             Therefore balance has returned Some; qed",
+        )
+    }
+
+    fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public>;
+    fn latest_regular_key(&self, address: &Address) -> Option<Public> {
+        self.regular_key(address, BlockId::Latest.into())
+    }
+
+    fn regular_key_owner(&self, address: &Address, state: StateOrBlock) -> Option<Address>;
+    fn latest_regular_key_owner(&self, address: &Address) -> Option<Address> {
+        self.regular_key_owner(address, BlockId::Latest.into())
+    }
 }
+
 
 /// State information to be used during client query
 pub enum StateOrBlock {
@@ -154,37 +173,6 @@ impl From<BlockId> for StateOrBlock {
     }
 }
 
-/// Provides `balance` and `latest_balance` methods
-pub trait Balance {
-    /// Get address balance at the given block's state.
-    ///
-    /// May not return None if given BlockId::Latest.
-    /// Returns None if and only if the block's root hash has been pruned from the DB.
-    fn balance(&self, address: &Address, state: StateOrBlock) -> Option<u64>;
-
-    /// Get address balance at the latest block's state.
-    fn latest_balance(&self, address: &Address) -> u64 {
-        self.balance(address, BlockId::Latest.into()).expect(
-            "balance will return Some if given BlockId::Latest. balance was given BlockId::Latest \
-             Therefore balance has returned Some; qed",
-        )
-    }
-}
-
-pub trait RegularKey {
-    fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public>;
-    fn latest_regular_key(&self, address: &Address) -> Option<Public> {
-        self.regular_key(address, BlockId::Latest.into())
-    }
-}
-
-pub trait RegularKeyOwner {
-    fn regular_key_owner(&self, address: &Address, state: StateOrBlock) -> Option<Address>;
-    fn latest_regular_key_owner(&self, address: &Address) -> Option<Address> {
-        self.regular_key_owner(address, BlockId::Latest.into())
-    }
-}
-
 pub trait Shard {
     fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId>;
 
@@ -195,17 +183,6 @@ pub trait Shard {
     fn shard_users(&self, shard_id: ShardId, state: StateOrBlock) -> Option<Vec<Address>>;
 }
 
-/// Provides a timer API for reseal_min_period/reseal_max_period on miner client
-pub trait ResealTimer {
-    /// Set reseal min timer as reseal_min_period, for creating blocks with transactions which are pending because of reseal_min_period
-    fn set_min_timer(&self);
-    /// Set reseal max timer as reseal_max_period, for creating empty blocks every reseal_max_period
-    fn set_max_timer(&self);
-}
-
-/// Provides methods to access account info
-pub trait AccountData: Seq + Balance {}
-
 /// Provides methods to import block into blockchain
 pub trait ImportBlock {
     /// Import a block into the blockchain.
@@ -213,14 +190,18 @@ pub trait ImportBlock {
 
     /// Import a header into the blockchain
     fn import_header(&self, bytes: Bytes) -> Result<H256, BlockImportError>;
+
+    /// Import sealed block. Skips all verifications.
+    fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult;
+
+    /// Set reseal min timer as reseal_min_period, for creating blocks with transactions which are pending because of reseal_min_period
+    fn set_min_timer(&self);
+    /// Set reseal max timer as reseal_max_period, for creating empty blocks every reseal_max_period
+    fn set_max_timer(&self);
 }
 
-/// Provides various blockchain information, like block header, chain state etc.
-pub trait BlockChain: ChainInfo + BlockInfo + TransactionInfo {}
-
 /// Blockchain database client. Owns and manages a blockchain and a block queue.
-pub trait BlockChainClient:
-    Sync + Send + AccountData + BlockChain + ImportBlock + RegularKeyOwner + ChainTimeInfo + ResealTimer {
+pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + ImportBlock + ChainTimeInfo {
     /// Get block queue information.
     fn queue_info(&self) -> BlockQueueInfo;
 
@@ -268,29 +249,17 @@ pub trait BlockChainClient:
 /// Result of import block operation.
 pub type ImportResult = Result<H256, Error>;
 
-/// Provides `import_sealed_block` method
-pub trait ImportSealedBlock {
-    /// Import sealed block. Skips all verifications.
-    fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult;
-}
-
-/// Provides `reopen_block` method
-pub trait ReopenBlock {
+/// Provides methods used for sealing new state
+pub trait BlockProducer {
     /// Reopens an OpenBlock and updates uncles.
     fn reopen_block(&self, block: ClosedBlock) -> OpenBlock;
-}
 
-/// Provides `prepare_open_block` method
-pub trait PrepareOpenBlock {
     /// Returns OpenBlock prepared for closing.
     fn prepare_open_block(&self, parent_block: BlockId, author: Address, extra_data: Bytes) -> OpenBlock;
 }
 
-/// Provides methods used for sealing new state
-pub trait BlockProducer: PrepareOpenBlock + ReopenBlock {}
-
 /// Extended client interface used for mining
-pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + ImportSealedBlock + FindActionHandler {}
+pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + FindActionHandler {}
 
 /// Provides methods to access database.
 pub trait DatabaseClient {

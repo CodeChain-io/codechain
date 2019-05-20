@@ -20,12 +20,11 @@ use std::iter::Iterator;
 use ckey::Address;
 use cstate::{StateError, TopState, TopStateView};
 use ctypes::errors::{HistoryError, SyntaxError};
-use ctypes::machine::{Machine, WithBalances};
 use ctypes::transaction::{Action, AssetTransferInput, OrderOnTransfer, Timelock};
 use ctypes::BlockNumber;
 
 use crate::block::{ExecutedBlock, IsBlock};
-use crate::client::{BlockInfo, TransactionInfo};
+use crate::client::BlockChainTrait;
 use crate::error::Error;
 use crate::header::Header;
 use crate::scheme::CommonParams;
@@ -91,7 +90,6 @@ impl CodeChainMachine {
 
     /// Verify a particular transaction is valid, regardless of order.
     pub fn verify_transaction_unordered(
-        &self,
         p: UnverifiedTransaction,
         _header: &Header,
     ) -> Result<SignedTransaction, Error> {
@@ -100,7 +98,7 @@ impl CodeChainMachine {
     }
 
     /// Does verification of the transaction against the parent state.
-    pub fn verify_transaction<C: BlockInfo + TransactionInfo>(
+    pub fn verify_transaction<C: BlockChainTrait>(
         &self,
         tx: &SignedTransaction,
         header: &Header,
@@ -146,7 +144,7 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    fn verify_transfer_timelock<C: BlockInfo + TransactionInfo>(
+    fn verify_transfer_timelock<C: BlockChainTrait>(
         inputs: &[AssetTransferInput],
         header: &Header,
         client: &C,
@@ -272,6 +270,15 @@ impl CodeChainMachine {
             } => params.min_remove_transaction_cost(),
         }
     }
+
+    pub fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<u64, Error> {
+        Ok(live.state().balance(address).map_err(StateError::from)?)
+    }
+
+    pub fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: u64) -> Result<(), Error> {
+        live.state_mut().add_balance(address, amount).map_err(StateError::from)?;
+        Ok(())
+    }
 }
 
 fn is_order_disabled() -> bool {
@@ -284,25 +291,6 @@ fn is_order_disabled() -> bool {
         Ok(value) => !value.parse::<bool>().unwrap(),
         Err(std::env::VarError::NotPresent) => DEFAULT_ORDER_DISABLED,
         Err(err) => unreachable!("{:?}", err),
-    }
-}
-
-impl Machine for CodeChainMachine {
-    type Header = Header;
-    type LiveBlock = ExecutedBlock;
-    type EngineClient = crate::client::EngineClient;
-
-    type Error = Error;
-}
-
-impl WithBalances for CodeChainMachine {
-    fn balance(&self, live: &ExecutedBlock, address: &Address) -> Result<u64, Self::Error> {
-        Ok(live.state().balance(address).map_err(StateError::from)?)
-    }
-
-    fn add_balance(&self, live: &mut ExecutedBlock, address: &Address, amount: u64) -> Result<(), Self::Error> {
-        live.state_mut().add_balance(address, amount).map_err(StateError::from)?;
-        Ok(())
     }
 }
 

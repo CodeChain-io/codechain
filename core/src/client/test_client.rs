@@ -36,7 +36,7 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Random};
+use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Public, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::{FindActionHandler, StateDB};
@@ -55,9 +55,8 @@ use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::client::ImportResult;
 use crate::client::{
-    AccountData, Balance, BlockChain, BlockChainClient, BlockInfo, BlockProducer, BlockStatus, ChainInfo, ImportBlock,
-    ImportSealedBlock, MiningBlockChainClient, PrepareOpenBlock, RegularKeyOwner, ReopenBlock, ResealTimer, Seq,
-    StateOrBlock, TransactionInfo,
+    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, ImportBlock, MiningBlockChainClient,
+    StateOrBlock,
 };
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
@@ -304,19 +303,17 @@ pub fn get_temp_state_db() -> StateDB {
     StateDB::new(journal_db)
 }
 
-impl ReopenBlock for TestBlockChainClient {
+impl BlockProducer for TestBlockChainClient {
     fn reopen_block(&self, block: ClosedBlock) -> OpenBlock {
         block.reopen(&*self.scheme.engine)
     }
-}
 
-impl PrepareOpenBlock for TestBlockChainClient {
     fn prepare_open_block(&self, _parent_block: BlockId, author: Address, extra_data: Bytes) -> OpenBlock {
         let engine = &*self.scheme.engine;
         let genesis_header = self.scheme.genesis_header();
         let db = get_temp_state_db();
 
-        let mut open_block = OpenBlock::try_new(engine, db, &genesis_header, author, extra_data, false)
+        let mut open_block = OpenBlock::try_new(engine, db, &genesis_header, author, extra_data)
             .expect("Opening block for tests will not fail.");
         // TODO [todr] Override timestamp for predictability (set_timestamp_now kind of sucks)
         open_block.set_timestamp(*self.latest_block_timestamp.read());
@@ -324,17 +321,9 @@ impl PrepareOpenBlock for TestBlockChainClient {
     }
 }
 
-impl ImportSealedBlock for TestBlockChainClient {
-    fn import_sealed_block(&self, _block: &SealedBlock) -> ImportResult {
-        Ok(H256::default())
-    }
-}
-
-impl BlockProducer for TestBlockChainClient {}
-
 impl MiningBlockChainClient for TestBlockChainClient {}
 
-impl Seq for TestBlockChainClient {
+impl AccountData for TestBlockChainClient {
     fn seq(&self, address: &Address, id: BlockId) -> Option<u64> {
         match id {
             BlockId::Latest => Some(self.seqs.read().get(address).cloned().unwrap_or(0)),
@@ -342,12 +331,6 @@ impl Seq for TestBlockChainClient {
         }
     }
 
-    fn latest_seq(&self, address: &Address) -> u64 {
-        self.seq(address, BlockId::Latest).unwrap()
-    }
-}
-
-impl Balance for TestBlockChainClient {
     fn balance(&self, address: &Address, state: StateOrBlock) -> Option<u64> {
         match state {
             StateOrBlock::Block(BlockId::Latest) | StateOrBlock::State(_) => {
@@ -357,20 +340,16 @@ impl Balance for TestBlockChainClient {
         }
     }
 
-    fn latest_balance(&self, address: &Address) -> u64 {
-        self.balance(address, BlockId::Latest.into()).unwrap()
+    fn regular_key(&self, _address: &Address, _state: StateOrBlock) -> Option<Public> {
+        None
     }
-}
 
-impl AccountData for TestBlockChainClient {}
-
-impl RegularKeyOwner for TestBlockChainClient {
     fn regular_key_owner(&self, _address: &Address, _state: StateOrBlock) -> Option<Address> {
         None
     }
 }
 
-impl ChainInfo for TestBlockChainClient {
+impl BlockChainTrait for TestBlockChainClient {
     fn chain_info(&self) -> BlockChainInfo {
         let number = self.blocks.read().len() as BlockNumber - 1;
         BlockChainInfo {
@@ -388,9 +367,7 @@ impl ChainInfo for TestBlockChainClient {
     fn genesis_accounts(&self) -> Vec<PlatformAddress> {
         unimplemented!()
     }
-}
 
-impl BlockInfo for TestBlockChainClient {
     fn block_header(&self, id: &BlockId) -> Option<encoded::Header> {
         self.block_hash(id)
             .and_then(|hash| self.blocks.read().get(&hash).map(|r| Rlp::new(r).at(0).as_raw().to_vec()))
@@ -412,9 +389,7 @@ impl BlockInfo for TestBlockChainClient {
     fn block(&self, id: &BlockId) -> Option<encoded::Block> {
         self.block_hash(id).and_then(|hash| self.blocks.read().get(&hash).cloned()).map(encoded::Block::new)
     }
-}
 
-impl TransactionInfo for TestBlockChainClient {
     fn transaction_block(&self, _id: &TransactionId) -> Option<H256> {
         None // Simple default.
     }
@@ -423,8 +398,6 @@ impl TransactionInfo for TestBlockChainClient {
         None
     }
 }
-
-impl BlockChain for TestBlockChainClient {}
 
 impl ImportBlock for TestBlockChainClient {
     fn import_block(&self, b: Bytes) -> Result<H256, BlockImportError> {
@@ -470,7 +443,16 @@ impl ImportBlock for TestBlockChainClient {
     fn import_header(&self, _bytes: Bytes) -> Result<H256, BlockImportError> {
         unimplemented!()
     }
+
+    fn import_sealed_block(&self, _block: &SealedBlock) -> ImportResult {
+        Ok(H256::default())
+    }
+
+    fn set_min_timer(&self) {}
+
+    fn set_max_timer(&self) {}
 }
+
 
 impl BlockChainClient for TestBlockChainClient {
     fn queue_info(&self) -> QueueInfo {
@@ -554,12 +536,6 @@ impl BlockChainClient for TestBlockChainClient {
 
 impl TimeoutHandler for TestBlockChainClient {
     fn on_timeout(&self, _token: TimerToken) {}
-}
-
-impl ResealTimer for TestBlockChainClient {
-    fn set_max_timer(&self) {}
-
-    fn set_min_timer(&self) {}
 }
 
 impl ChainTimeInfo for TestBlockChainClient {

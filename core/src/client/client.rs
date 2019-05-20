@@ -39,11 +39,9 @@ use rlp::UntrustedRlp;
 
 use super::importer::Importer;
 use super::{
-    AccountData, AssetClient, Balance, BlockChain as BlockChainTrait, BlockChainClient, BlockChainInfo, BlockInfo,
-    BlockProducer, ChainInfo, ChainNotify, ClientConfig, DatabaseClient, EngineClient, EngineInfo,
-    Error as ClientError, ExecuteClient, ImportBlock, ImportResult, ImportSealedBlock, MiningBlockChainClient,
-    PrepareOpenBlock, RegularKey, RegularKeyOwner, ReopenBlock, ResealTimer, Seq, Shard, StateInfo, StateOrBlock,
-    TextClient, TransactionInfo,
+    AccountData, AssetClient, BlockChainClient, BlockChainInfo, BlockChainTrait, BlockProducer, ChainNotify,
+    ClientConfig, DatabaseClient, EngineClient, EngineInfo, Error as ClientError, ExecuteClient, ImportBlock,
+    ImportResult, MiningBlockChainClient, Shard, StateInfo, StateOrBlock, TextClient,
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress};
@@ -344,36 +342,6 @@ impl TimeoutHandler for Client {
     }
 }
 
-impl ResealTimer for Client {
-    fn set_max_timer(&self) {
-        self.reseal_timer.cancel(RESEAL_MAX_TIMER_TOKEN).expect("Reseal max timer clear succeeds");
-        match self
-            .reseal_timer
-            .schedule_once(self.importer.miner.get_options().reseal_max_period, RESEAL_MAX_TIMER_TOKEN)
-        {
-            Ok(_) => {}
-            Err(TimerScheduleError::TokenAlreadyScheduled) => {
-                // Since set_max_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
-            }
-            Err(err) => unreachable!("Reseal max timer should not fail but failed with {:?}", err),
-        }
-    }
-
-    fn set_min_timer(&self) {
-        self.reseal_timer.cancel(RESEAL_MIN_TIMER_TOKEN).expect("Reseal min timer clear succeeds");
-        match self
-            .reseal_timer
-            .schedule_once(self.importer.miner.get_options().reseal_min_period, RESEAL_MIN_TIMER_TOKEN)
-        {
-            Ok(_) => {}
-            Err(TimerScheduleError::TokenAlreadyScheduled) => {
-                // Since set_min_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
-            }
-            Err(err) => unreachable!("Reseal min timer should not fail but failed with {:?}", err),
-        }
-    }
-}
-
 impl DatabaseClient for Client {
     fn database(&self) -> Arc<KeyValueDB> {
         Arc::clone(&self.db())
@@ -515,20 +483,6 @@ impl StateInfo for Client {
     }
 }
 
-impl ChainInfo for Client {
-    fn chain_info(&self) -> BlockChainInfo {
-        let mut chain_info = self.block_chain().chain_info();
-        chain_info.pending_total_score = chain_info.best_score + self.importer.block_queue.total_score();
-        chain_info
-    }
-
-    fn genesis_accounts(&self) -> Vec<PlatformAddress> {
-        // XXX: What should we do if the network id has been changed
-        let network_id = self.common_params(None).network_id();
-        self.genesis_accounts.iter().map(|addr| PlatformAddress::new_v1(network_id, *addr)).collect()
-    }
-}
-
 impl EngineInfo for Client {
     fn common_params(&self, block_number: Option<BlockNumber>) -> &CommonParams {
         self.engine().machine().common_params(block_number)
@@ -593,7 +547,19 @@ impl EngineClient for Client {
     }
 }
 
-impl BlockInfo for Client {
+impl BlockChainTrait for Client {
+    fn chain_info(&self) -> BlockChainInfo {
+        let mut chain_info = self.block_chain().chain_info();
+        chain_info.pending_total_score = chain_info.best_score + self.importer.block_queue.total_score();
+        chain_info
+    }
+
+    fn genesis_accounts(&self) -> Vec<PlatformAddress> {
+        // XXX: What should we do if the network id has been changed
+        let network_id = self.common_params(None).network_id();
+        self.genesis_accounts.iter().map(|addr| PlatformAddress::new_v1(network_id, *addr)).collect()
+    }
+
     fn block_header(&self, id: &BlockId) -> Option<::encoded::Header> {
         let chain = self.block_chain();
 
@@ -604,12 +570,12 @@ impl BlockInfo for Client {
         self.block_chain().best_block_header()
     }
 
-    fn best_proposal_header(&self) -> encoded::Header {
-        self.block_chain().best_proposal_header()
-    }
-
     fn best_header(&self) -> encoded::Header {
         self.block_chain().best_header()
+    }
+
+    fn best_proposal_header(&self) -> encoded::Header {
+        self.block_chain().best_proposal_header()
     }
 
     fn block(&self, id: &BlockId) -> Option<encoded::Block> {
@@ -617,9 +583,7 @@ impl BlockInfo for Client {
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block(&hash))
     }
-}
 
-impl TransactionInfo for Client {
     fn transaction_block(&self, id: &TransactionId) -> Option<H256> {
         self.transaction_address(id).map(|addr| addr.block_hash)
     }
@@ -652,9 +616,63 @@ impl ImportBlock for Client {
         }
         Ok(self.importer.header_queue.import(unverified)?)
     }
+
+    fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult {
+        let h = block.header().hash();
+        let start = Instant::now();
+        let route = {
+            // scope for self.import_lock
+            let import_lock = self.importer.import_lock.lock();
+
+            let number = block.header().number();
+            let block_data = block.rlp_bytes();
+            let header = block.header();
+
+            self.importer.import_headers(vec![header], self, &import_lock);
+
+            let route = self.importer.commit_block(block, header, &block_data, self);
+            cinfo!(CLIENT, "Imported sealed block #{} ({})", number, h);
+            route
+        };
+        let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
+        self.importer.miner.chain_new_blocks(self, &[h], &[], &enacted, &retracted);
+        self.new_blocks(&[h], &[], &enacted, &retracted, &[h], {
+            let elapsed = start.elapsed();
+            elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
+        });
+        self.db().flush().expect("DB flush failed.");
+        Ok(h)
+    }
+
+    fn set_min_timer(&self) {
+        self.reseal_timer.cancel(RESEAL_MIN_TIMER_TOKEN).expect("Reseal min timer clear succeeds");
+        match self
+            .reseal_timer
+            .schedule_once(self.importer.miner.get_options().reseal_min_period, RESEAL_MIN_TIMER_TOKEN)
+        {
+            Ok(_) => {}
+            Err(TimerScheduleError::TokenAlreadyScheduled) => {
+                // Since set_min_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
+            }
+            Err(err) => unreachable!("Reseal min timer should not fail but failed with {:?}", err),
+        }
+    }
+
+    fn set_max_timer(&self) {
+        self.reseal_timer.cancel(RESEAL_MAX_TIMER_TOKEN).expect("Reseal max timer clear succeeds");
+        match self
+            .reseal_timer
+            .schedule_once(self.importer.miner.get_options().reseal_max_period, RESEAL_MAX_TIMER_TOKEN)
+        {
+            Ok(_) => {}
+            Err(TimerScheduleError::TokenAlreadyScheduled) => {
+                // Since set_max_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
+            }
+            Err(err) => unreachable!("Reseal max timer should not fail but failed with {:?}", err),
+        }
+    }
 }
 
-impl BlockChainTrait for Client {}
 
 impl BlockChainClient for Client {
     fn queue_info(&self) -> BlockQueueInfo {
@@ -743,29 +761,21 @@ impl BlockChainClient for Client {
     }
 }
 
-impl AccountData for Client {}
-
-impl Seq for Client {
+impl AccountData for Client {
     fn seq(&self, address: &Address, id: BlockId) -> Option<u64> {
         self.state_at(id).and_then(|s| s.seq(address).ok())
     }
-}
 
-impl Balance for Client {
     fn balance(&self, address: &Address, state: StateOrBlock) -> Option<u64> {
         let state = self.state_info(state)?;
         state.balance(address).ok()
     }
-}
 
-impl RegularKey for Client {
     fn regular_key(&self, address: &Address, state: StateOrBlock) -> Option<Public> {
         let state = self.state_info(state)?;
         state.regular_key(address).ok()?
     }
-}
 
-impl RegularKeyOwner for Client {
     fn regular_key_owner(&self, address: &Address, state: StateOrBlock) -> Option<Address> {
         let state = self.state_info(state)?;
         state.regular_key_owner(address).ok()?
@@ -799,60 +809,25 @@ impl Shard for Client {
     }
 }
 
-impl ReopenBlock for Client {
+impl BlockProducer for Client {
     fn reopen_block(&self, block: ClosedBlock) -> OpenBlock {
         let engine = &*self.engine;
         block.reopen(engine)
     }
-}
 
-impl PrepareOpenBlock for Client {
     fn prepare_open_block(&self, parent_block_id: BlockId, author: Address, extra_data: Bytes) -> OpenBlock {
         let engine = &*self.engine;
         let chain = self.block_chain();
         let parent_hash = self.block_hash(&parent_block_id).expect("parent exist always");
         let parent_header = chain.block_header(&parent_hash).expect("parent exist always");
 
-        let is_epoch_begin = chain.epoch_transition(parent_header.number(), parent_hash).is_some();
         OpenBlock::try_new(
             engine,
             self.state_db.read().clone(&parent_header.state_root()),
             &parent_header,
             author,
             extra_data,
-            is_epoch_begin,
         ).expect("OpenBlock::new only fails if parent state root invalid; state root of best block's header is never invalid; qed")
-    }
-}
-
-impl BlockProducer for Client {}
-
-impl ImportSealedBlock for Client {
-    fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult {
-        let h = block.header().hash();
-        let start = Instant::now();
-        let route = {
-            // scope for self.import_lock
-            let import_lock = self.importer.import_lock.lock();
-
-            let number = block.header().number();
-            let block_data = block.rlp_bytes();
-            let header = block.header();
-
-            self.importer.import_headers(vec![header], self, &import_lock);
-
-            let route = self.importer.commit_block(block, header, &block_data, self);
-            cinfo!(CLIENT, "Imported sealed block #{} ({})", number, h);
-            route
-        };
-        let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
-        self.importer.miner.chain_new_blocks(self, &[h], &[], &enacted, &retracted);
-        self.new_blocks(&[h], &[], &enacted, &retracted, &[h], {
-            let elapsed = start.elapsed();
-            elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
-        });
-        self.db().flush().expect("DB flush failed.");
-        Ok(h)
     }
 }
 

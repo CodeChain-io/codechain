@@ -21,7 +21,7 @@ use std::time::Duration;
 
 use ccore::encoded::Header as EncodedHeader;
 use ccore::{
-    Block, BlockChainClient, BlockId, BlockImportError, BlockInfo, ChainInfo, ChainNotify, Client, Header, ImportBlock,
+    Block, BlockChainClient, BlockChainTrait, BlockId, BlockImportError, ChainNotify, Client, Header, ImportBlock,
     ImportError, Seal, UnverifiedTransaction,
 };
 use cnetwork::{Api, EventSender, NetworkExtension, NodeId};

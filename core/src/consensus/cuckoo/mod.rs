@@ -19,7 +19,6 @@ mod params;
 use std::cmp::{max, min};
 
 use ccrypto::blake256;
-use ctypes::machine::WithBalances;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use cuckoo::Cuckoo as CuckooVerifier;
 use primitives::U256;
@@ -27,7 +26,7 @@ use rlp::UntrustedRlp;
 
 use self::params::CuckooParams;
 use super::ConsensusEngine;
-use crate::block::{ExecutedBlock, IsBlock};
+use crate::block::ExecutedBlock;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
 use crate::error::{BlockError, Error};
@@ -90,7 +89,7 @@ impl Cuckoo {
     }
 }
 
-impl ConsensusEngine<CodeChainMachine> for Cuckoo {
+impl ConsensusEngine for Cuckoo {
     fn name(&self) -> &str {
         "Cuckoo"
     }
@@ -192,7 +191,7 @@ impl ConsensusEngine<CodeChainMachine> for Cuckoo {
 
 #[cfg(test)]
 mod tests {
-    use crate::block::OpenBlock;
+    use crate::block::{IsBlock, OpenBlock};
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
 
@@ -252,7 +251,7 @@ mod tests {
         let engine = &*scheme.engine;
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let header = Header::default();
-        let block = OpenBlock::try_new(engine, db, &header, Default::default(), vec![], false).unwrap();
+        let block = OpenBlock::try_new(engine, db, &header, Default::default(), vec![]).unwrap();
         let mut executed_block = block.block().clone();
 
         assert!(engine.on_close_block(&mut executed_block).is_ok());

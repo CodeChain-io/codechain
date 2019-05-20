@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::verification;
-use crate::client::{BlockInfo, TransactionInfo};
+use crate::client::BlockChainTrait;
 use crate::consensus::CodeChainEngine;
 use crate::error::Error;
 use crate::header::Header;
@@ -23,7 +23,7 @@ use crate::header::Header;
 /// Should be used to verify blocks.
 pub trait Verifier<C>: Send + Sync
 where
-    C: BlockInfo + TransactionInfo, {
+    C: BlockChainTrait, {
     /// Verify a block relative to its parent and uncles.
     fn verify_block_family(
         &self,

@@ -25,11 +25,9 @@ use parking_lot::{Mutex, MutexGuard};
 use primitives::H256;
 use rlp::Encodable;
 
-use super::BlockInfo;
-use super::{Client, ClientConfig};
+use super::{BlockChainTrait, Client, ClientConfig};
 use crate::block::{enact, IsBlock, LockedBlock};
-use crate::blockchain::{BlockChain, BodyProvider, HeaderProvider, ImportRoute};
-use crate::consensus::epoch::Transition as EpochTransition;
+use crate::blockchain::{BodyProvider, HeaderProvider, ImportRoute};
 use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::Error;
@@ -90,14 +88,14 @@ impl Importer {
 
     /// This is triggered by a message coming from a block queue when the block is ready for insertion
     pub fn import_verified_blocks(&self, client: &Client) -> usize {
-        let max_blocks_to_import = 4;
         let (imported_blocks, import_results, invalid_blocks, imported, duration, is_empty) = {
-            let mut imported_blocks = Vec::with_capacity(max_blocks_to_import);
+            const MAX_BLOCKS_TO_IMPORT: usize = 1_000;
+            let mut imported_blocks = Vec::with_capacity(MAX_BLOCKS_TO_IMPORT);
             let mut invalid_blocks = HashSet::new();
-            let mut import_results = Vec::with_capacity(max_blocks_to_import);
+            let mut import_results = Vec::with_capacity(MAX_BLOCKS_TO_IMPORT);
 
             let import_lock = self.import_lock.lock();
-            let blocks = self.block_queue.drain(max_blocks_to_import);
+            let blocks = self.block_queue.drain(MAX_BLOCKS_TO_IMPORT);
             if blocks.is_empty() {
                 return 0
             }
@@ -208,8 +206,6 @@ impl Importer {
         client.db().write_buffered(batch);
         chain.commit();
 
-        self.check_epoch_end(block.header(), &chain, client);
-
         if hash == chain.best_block_hash() {
             let mut state_db = client.state_db().write();
             let state = block.state();
@@ -217,27 +213,6 @@ impl Importer {
         }
 
         route
-    }
-
-    // check for ending of epoch and write transition if it occurs.
-    fn check_epoch_end(&self, header: &Header, chain: &BlockChain, client: &Client) {
-        let is_epoch_end = self.engine.is_epoch_end(header, &(|hash| chain.block_header(&hash)));
-
-        if let Some(proof) = is_epoch_end {
-            cdebug!(CLIENT, "Epoch transition at block {}", header.hash());
-
-            let mut batch = DBTransaction::new();
-            chain.insert_epoch_transition(&mut batch, header.number(), EpochTransition {
-                block_hash: header.hash(),
-                block_number: header.number(),
-                proof,
-            });
-
-            // always write the batch directly since epoch transition proofs are
-            // fetched from a DB iterator and DB iterators are only available on
-            // flushed data.
-            client.db().write(batch).expect("DB flush failed");
-        }
     }
 
     fn check_and_close_block(&self, block: &PreverifiedBlock, client: &Client) -> Result<LockedBlock, ()> {
@@ -305,8 +280,7 @@ impl Importer {
         // Enact Verified Block
         let db = client.state_db().read().clone(&parent.state_root());
 
-        let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
-        let enact_result = enact(&block.header, &block.transactions, engine, client, db, &parent, is_epoch_begin);
+        let enact_result = enact(&block.header, &block.transactions, engine, client, db, &parent);
         let locked_block = enact_result.map_err(|e| {
             cwarn!(CLIENT, "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
         })?;
@@ -327,9 +301,9 @@ impl Importer {
 
     /// This is triggered by a message coming from a header queue when the header is ready for insertion
     pub fn import_verified_headers(&self, client: &Client) -> usize {
-        let max_headers_to_import = 256;
+        const MAX_HEADERS_TO_IMPORT: usize = 10_000;
         let lock = self.import_lock.lock();
-        let headers = self.header_queue.drain(max_headers_to_import);
+        let headers = self.header_queue.drain(MAX_HEADERS_TO_IMPORT);
         self.import_headers(&headers, client, &lock)
     }
 
@@ -426,14 +400,9 @@ impl Importer {
         let chain = client.block_chain();
 
         let mut batch = DBTransaction::new();
-        // FIXME: Check if this line is still necessary.
-        // self.check_epoch_end_signal(header, &chain, &mut batch);
         let route = chain.insert_header(&mut batch, &HeaderView::new(&header.rlp_bytes()), self.engine.borrow());
         client.db().write_buffered(batch);
         chain.commit();
-
-        // FIXME: Check if this line is still necessary.
-        // self.check_epoch_end(&header, &chain, client);
 
         route
     }

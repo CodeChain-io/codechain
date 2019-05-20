@@ -14,14 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io::Write;
-use std::ops::{self, Add, AddAssign, Deref, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Deref, Sub, SubAssign};
 
 use ctypes::BlockNumber;
-use kvdb::PREFIX_LEN as DB_PREFIX_LEN;
 use primitives::{H256, H264, U256};
 
-use crate::consensus::epoch::Transition as EpochTransition;
 use crate::db::Key;
 use crate::types::TransactionId;
 
@@ -36,8 +33,7 @@ enum ExtrasIndex {
     ParcelAddress = 2,
     /// Transaction address index
     TransactionAddress = 3,
-    /// Epoch transition data index.
-    EpochTransitions = 4,
+    // (Reserved) = 4,
     // (Reserved) = 5,
 }
 
@@ -97,38 +93,6 @@ impl Key<TransactionAddresses> for H256 {
     }
 }
 
-/// length of epoch keys.
-const EPOCH_KEY_LEN: usize = DB_PREFIX_LEN + 16;
-
-/// epoch key prefix.
-/// used to iterate over all epoch transitions in order from genesis.
-pub const EPOCH_KEY_PREFIX: &[u8; DB_PREFIX_LEN] =
-    &[ExtrasIndex::EpochTransitions as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-
-pub struct EpochTransitionsKey([u8; EPOCH_KEY_LEN]);
-
-impl ops::Deref for EpochTransitionsKey {
-    type Target = [u8];
-
-    fn deref(&self) -> &[u8] {
-        &self.0[..]
-    }
-}
-
-impl Key<EpochTransitions> for u64 {
-    type Target = EpochTransitionsKey;
-
-    fn key(&self) -> Self::Target {
-        let mut arr = [0u8; EPOCH_KEY_LEN];
-        arr[..DB_PREFIX_LEN].copy_from_slice(&EPOCH_KEY_PREFIX[..]);
-
-        write!(&mut arr[DB_PREFIX_LEN..], "{:016x}", self)
-            .expect("format arg is valid; no more than 16 chars will be written; qed");
-
-        EpochTransitionsKey(arr)
-    }
-}
-
 /// Familial details concerning a block
 #[derive(Debug, Clone, RlpEncodable, RlpDecodable)]
 pub struct BlockDetails {
@@ -159,13 +123,6 @@ impl From<TransactionAddress> for TransactionId {
 #[derive(Debug, Default, PartialEq, Clone, RlpEncodableWrapper, RlpDecodableWrapper)]
 pub struct TransactionAddresses {
     addresses: Vec<TransactionAddress>,
-}
-
-/// Candidate transitions to an epoch with specific number.
-#[derive(Clone, RlpEncodable, RlpDecodable)]
-pub struct EpochTransitions {
-    pub number: u64,
-    pub candidates: Vec<EpochTransition>,
 }
 
 impl TransactionAddresses {
