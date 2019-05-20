@@ -450,7 +450,7 @@ pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler>(
     b.populate_from(header);
     b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
 
-    let parent_common_params = client.common_params(Some(header.number() - 1)).unwrap();
+    let parent_common_params = client.common_params((*header.parent_hash()).into()).unwrap();
     b.close_and_lock(*parent.transactions_root(), &parent_common_params)
 }
 

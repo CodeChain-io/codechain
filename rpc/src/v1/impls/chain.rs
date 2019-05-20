@@ -94,7 +94,8 @@ where
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<AssetScheme>> {
-        if let Some(common_params) = self.client.common_params(block_number) {
+        let block_id = block_number.map(BlockId::from).unwrap_or(BlockId::Latest);
+        if let Some(common_params) = self.client.common_params(block_id) {
             let network_id = common_params.network_id();
             let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
             Ok(self
@@ -113,7 +114,7 @@ where
             .client
             .get_text(transaction_hash, block_id)
             .map_err(errors::transaction_state)?
-            .map(|text| Text::from_core(text, self.client.common_params(block_number).unwrap().network_id())))
+            .map(|text| Text::from_core(text, self.client.common_params(block_id).unwrap().network_id())))
     }
 
     fn get_asset(
@@ -160,7 +161,7 @@ where
     fn get_regular_key_owner(&self, public: Public, block_number: Option<u64>) -> Result<Option<PlatformAddress>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.regular_key_owner(&public_to_address(&public), block_id.into()).and_then(|address| {
-            let network_id = self.client.common_params(block_number).unwrap().network_id();
+            let network_id = self.client.common_params(block_id).unwrap().network_id();
             Some(PlatformAddress::new_v1(network_id, address))
         }))
     }
@@ -187,7 +188,7 @@ where
     fn get_shard_owners(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.shard_owners(shard_id, block_id.into()).map(|owners| {
-            let network_id = self.client.common_params(block_number).unwrap().network_id();
+            let network_id = self.client.common_params(block_id).unwrap().network_id();
             owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect()
         }))
     }
@@ -195,7 +196,7 @@ where
     fn get_shard_users(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.shard_users(shard_id, block_id.into()).map(|users| {
-            let network_id = self.client.common_params(block_number).unwrap().network_id();
+            let network_id = self.client.common_params(block_id).unwrap().network_id();
             users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect()
         }))
     }
@@ -218,17 +219,18 @@ where
 
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {
         let id = BlockId::Number(block_number);
-        Ok(self.client.block(&id).map(|block| {
-            Block::from_core(block.decode(), self.client.common_params(Some(block_number)).unwrap().network_id())
-        }))
+        Ok(self
+            .client
+            .block(&id)
+            .map(|block| Block::from_core(block.decode(), self.client.common_params(id).unwrap().network_id())))
     }
 
     fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
         let id = BlockId::Hash(block_hash);
         Ok(self.client.block(&id).map(|block| {
             let block = block.decode();
-            let block_number = block.header.number();
-            Block::from_core(block, self.client.common_params(Some(block_number)).unwrap().network_id())
+            let block_hash = block.header.hash();
+            Block::from_core(block, self.client.common_params(id).unwrap().network_id())
         }))
     }
 
@@ -237,7 +239,7 @@ where
     }
 
     fn get_min_transaction_fee(&self, action_type: String, block_number: u64) -> Result<Option<u64>> {
-        if let Some(common_parameters) = self.client.common_params(Some(block_number)) {
+        if let Some(common_parameters) = self.client.common_params(block_number.into()) {
             Ok(match action_type.as_str() {
                 "mintAsset" => Some(common_parameters.min_asset_mint_cost()),
                 "transferAsset" => Some(common_parameters.min_asset_transfer_cost()),
@@ -268,7 +270,7 @@ where
     }
 
     fn get_network_id(&self) -> Result<NetworkId> {
-        Ok(self.client.common_params(None).unwrap().network_id())
+        Ok(self.client.common_params(BlockId::Latest).unwrap().network_id())
     }
 
     fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Option<String>> {

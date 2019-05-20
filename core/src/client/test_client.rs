@@ -574,7 +574,7 @@ impl super::EngineClient for TestBlockChainClient {
 }
 
 impl EngineInfo for TestBlockChainClient {
-    fn common_params(&self, _block_number: Option<u64>) -> Option<CommonParams> {
+    fn common_params(&self, _block_id: BlockId) -> Option<CommonParams> {
         unimplemented!()
     }
 
