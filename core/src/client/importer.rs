@@ -243,7 +243,7 @@ impl Importer {
             );
         })?;
 
-        let common_params = client.common_params(Some(parent.number()));
+        let common_params = client.common_params(Some(parent.number())).unwrap();
 
         // Verify Block Family
         self.verifier
