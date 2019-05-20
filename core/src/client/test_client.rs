@@ -266,6 +266,15 @@ impl TestBlockChainClient {
             BlockId::Number(n) => self.numbers.read().get(&(*n as usize)).cloned(),
             BlockId::Earliest => self.numbers.read().get(&0).cloned(),
             BlockId::Latest => self.numbers.read().get(&(self.numbers.read().len() - 1)).cloned(),
+            BlockId::ParentOfLatest => {
+                let numbers = self.numbers.read();
+                let len = numbers.len();
+                if len < 2 {
+                    None
+                } else {
+                    self.numbers.read().get(&(len - 2)).cloned()
+                }
+            }
         }
     }
 
@@ -505,6 +514,7 @@ impl BlockChainClient for TestBlockChainClient {
             BlockId::Number(number) if (*number as usize) < self.blocks.read().len() => BlockStatus::InChain,
             BlockId::Hash(ref hash) if self.blocks.read().get(hash).is_some() => BlockStatus::InChain,
             BlockId::Latest | BlockId::Earliest => BlockStatus::InChain,
+            BlockId::ParentOfLatest => BlockStatus::InChain,
             _ => BlockStatus::Unknown,
         }
     }
