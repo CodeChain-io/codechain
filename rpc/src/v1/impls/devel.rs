@@ -223,7 +223,7 @@ where
 
         fn send_tx<C, M>(tx: Transaction, client: &C, key_pair: &KeyPair, miner: &M) -> Result<H256>
         where
-            C: MiningBlockChainClient,
+            C: MiningBlockChainClient + EngineInfo,
             M: MinerService, {
             let signed = SignedTransaction::new_with_sign(tx, key_pair.private());
             let hash = signed.hash();

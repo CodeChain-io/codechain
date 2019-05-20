@@ -20,6 +20,7 @@ use std::cmp::{max, min};
 
 use ccrypto::blake256;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::CommonParams;
 use primitives::U256;
 use rlp::UntrustedRlp;
 
@@ -159,7 +160,7 @@ impl ConsensusEngine for BlakePoW {
         header.set_score(score);
     }
 
-    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+    fn on_close_block(&self, block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = self.block_reward(block.header().number())
             + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));

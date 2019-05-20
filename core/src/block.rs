@@ -22,12 +22,13 @@ use cmerkle::skewed_merkle_root;
 use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::errors::HistoryError;
 use ctypes::util::unexpected::Mismatch;
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, CommonParams};
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::invoice::Invoice;
+use crate::client::EngineInfo;
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error};
 use crate::header::{Header, Seal};
@@ -215,10 +216,14 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Turn this into a `ClosedBlock`.
-    pub fn close(mut self, parent_transactions_root: H256) -> Result<ClosedBlock, Error> {
+    pub fn close(
+        mut self,
+        parent_transactions_root: H256,
+        parent_common_params: &CommonParams,
+    ) -> Result<ClosedBlock, Error> {
         let unclosed_state = self.block.state.clone();
 
-        if let Err(e) = self.engine.on_close_block(&mut self.block) {
+        if let Err(e) = self.engine.on_close_block(&mut self.block, parent_common_params) {
             warn!("Encountered error on closing the block: {}", e);
             return Err(e)
         }
@@ -239,8 +244,12 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Turn this into a `LockedBlock`.
-    pub fn close_and_lock(mut self, parent_transactions_root: H256) -> Result<LockedBlock, Error> {
-        if let Err(e) = self.engine.on_close_block(&mut self.block) {
+    pub fn close_and_lock(
+        mut self,
+        parent_transactions_root: H256,
+        parent_common_params: &CommonParams,
+    ) -> Result<LockedBlock, Error> {
+        if let Err(e) = self.engine.on_close_block(&mut self.block, parent_common_params) {
             warn!("Encountered error on closing the block: {}", e);
             return Err(e)
         }
@@ -428,7 +437,7 @@ impl IsBlock for SealedBlock {
 }
 
 /// Enact the block given by block header, transactions and uncles
-pub fn enact<C: ChainTimeInfo + FindActionHandler>(
+pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler>(
     header: &Header,
     transactions: &[SignedTransaction],
     engine: &CodeChainEngine,
@@ -441,11 +450,14 @@ pub fn enact<C: ChainTimeInfo + FindActionHandler>(
     b.populate_from(header);
     b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
 
-    b.close_and_lock(*parent.transactions_root())
+    let parent_common_params = client.common_params(Some(header.number() - 1)).unwrap();
+    b.close_and_lock(*parent.transactions_root(), &parent_common_params)
 }
 
 #[cfg(test)]
 mod tests {
+    use ctypes::CommonParams;
+
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
 
@@ -458,7 +470,8 @@ mod tests {
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, Address::default(), vec![]).unwrap();
         let parent_transactions_root = *genesis_header.transactions_root();
-        let b = b.close_and_lock(parent_transactions_root).unwrap();
+        let parent_common_params = CommonParams::default_for_test();
+        let b = b.close_and_lock(parent_transactions_root, &parent_common_params).unwrap();
         let _ = b.seal(&*scheme.engine, vec![]);
     }
 }

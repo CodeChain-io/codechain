@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{Bytes, H256};
+use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use ctypes::ShardId;
+use ctypes::{CommonParams, ShardId};
 
 use crate::CacheableItem;
 
@@ -27,7 +27,7 @@ pub struct Metadata {
     number_of_initial_shards: ShardId,
     hashes: Vec<H256>,
     seq: usize,
-    params: Option<Bytes>,
+    params: Option<CommonParams>,
 }
 
 impl Metadata {
@@ -68,6 +68,10 @@ impl Metadata {
             assert!(index < self.number_of_shards);
             index
         })
+    }
+
+    pub fn params(&self) -> Option<&CommonParams> {
+        self.params.as_ref()
     }
 }
 
@@ -146,6 +150,7 @@ impl MetadataAddress {
 
 #[cfg(test)]
 mod tests {
+    use ctypes::CommonParams;
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
@@ -191,7 +196,7 @@ mod tests {
             number_of_initial_shards: 1,
             hashes: vec![],
             seq: 3,
-            params: Some(vec![0, 1, 2, 3]),
+            params: Some(CommonParams::default_for_test()),
         };
         rlp_encode_and_decode_test!(metadata);
     }

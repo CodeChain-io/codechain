@@ -73,6 +73,7 @@ impl SealingQueue {
 #[cfg(test)]
 mod tests {
     use ckey::Address;
+    use ctypes::CommonParams;
 
     use super::SealingQueue;
     use crate::block::{ClosedBlock, OpenBlock};
@@ -87,7 +88,8 @@ mod tests {
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, address, vec![]).unwrap();
         let parent_transactions_root = *genesis_header.transactions_root();
-        b.close(parent_transactions_root).unwrap()
+        let common_params = CommonParams::default_for_test();
+        b.close(parent_transactions_root, &common_params).unwrap()
     }
 
     #[test]
