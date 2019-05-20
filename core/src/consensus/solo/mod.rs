@@ -81,12 +81,15 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
     fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
         let author = *block.header().author();
         let (total_reward, min_fee) = {
-            let block_number = block.header().number();
             let transactions = block.transactions();
             let block_reward = self.block_reward(block.header().number());
             let total_fee: u64 = transactions.iter().map(|tx| tx.fee).sum();
+            let block_number = block.header().number();
+            assert_ne!(0, block_number);
+            let parent_block_number = block.header().number() - 1;
+            let common_params = self.machine().common_params(Some(parent_block_number)).unwrap();
             let min_fee: u64 =
-                transactions.iter().map(|tx| self.machine().min_cost(&tx.action, Some(block_number))).sum();
+                transactions.iter().map(|tx| CodeChainMachine::min_cost(&common_params, &tx.action)).sum();
             (block_reward + total_fee, min_fee)
         };
 

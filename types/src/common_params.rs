@@ -256,6 +256,21 @@ impl CommonParams {
     pub fn default_for_test() -> Self {
         Self::from(Params::default())
     }
+
+    #[cfg(test)]
+    pub fn set_max_asset_scheme_metadata_size(&mut self, max_asset_scheme_metadata_size: usize) {
+        self.max_asset_scheme_metadata_size = max_asset_scheme_metadata_size;
+    }
+
+    #[cfg(test)]
+    pub fn set_max_transfer_metadata_size(&mut self, max_transfer_metadata_size: usize) {
+        self.max_transfer_metadata_size = max_transfer_metadata_size;
+    }
+
+    #[cfg(test)]
+    pub fn set_max_text_content_size(&mut self, max_text_content_size: usize) {
+        self.max_text_content_size = max_text_content_size;
+    }
 }
 
 #[cfg(test)]

@@ -86,7 +86,7 @@ pub trait BlockChainTrait {
 }
 
 pub trait EngineInfo: Send + Sync {
-    fn common_params(&self, block_number: Option<BlockNumber>) -> CommonParams;
+    fn common_params(&self, block_number: Option<BlockNumber>) -> Option<CommonParams>;
     fn block_reward(&self, block_number: u64) -> u64;
     fn mining_reward(&self, block_number: u64) -> Option<u64>;
     fn recommended_confirmation(&self) -> u32;

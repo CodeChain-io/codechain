@@ -43,6 +43,7 @@ use cstate::ActionHandler;
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Action;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::CommonParams;
 use primitives::{Bytes, H256, U256};
 
 use self::tendermint::types::{BitSet, View};
@@ -344,7 +345,11 @@ impl fmt::Display for EngineError {
 /// Common type alias for an engine coupled with an CodeChain-like state machine.
 pub trait CodeChainEngine: ConsensusEngine {
     /// Additional verification for transactions in blocks.
-    fn verify_transaction_with_params(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+    fn verify_transaction_with_params(
+        &self,
+        tx: &UnverifiedTransaction,
+        common_params: &CommonParams,
+    ) -> Result<(), Error> {
         if let Action::Custom {
             handler_id,
             bytes,
@@ -355,7 +360,7 @@ pub trait CodeChainEngine: ConsensusEngine {
                 .ok_or_else(|| SyntaxError::InvalidCustomAction(format!("{} is an invalid handler id", handler_id)))?;
             handler.verify(bytes)?;
         }
-        self.machine().verify_transaction_with_params(tx, header)
+        self.machine().verify_transaction_with_params(tx, common_params)
     }
 
     /// Verify a particular transaction is valid.
