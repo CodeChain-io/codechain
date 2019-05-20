@@ -218,7 +218,7 @@ pub trait ConsensusEngine: Sync + Send {
     }
 
     /// Block transformation functions, after the transactions.
-    fn on_close_block(&self, _block: &mut ExecutedBlock) -> Result<(), Error> {
+    fn on_close_block(&self, _block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
         Ok(())
     }
 

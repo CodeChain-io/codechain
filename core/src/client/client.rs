@@ -485,7 +485,16 @@ impl StateInfo for Client {
 
 impl EngineInfo for Client {
     fn common_params(&self, block_number: Option<BlockNumber>) -> Option<CommonParams> {
-        self.engine().machine().common_params(block_number)
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        self.state_info(StateOrBlock::Block(block_id)).map(|state| {
+            state
+                .metadata()
+                .unwrap_or_else(|err| unreachable!("Unexpected failure. Maybe DB was corrupted: {:?}", err))
+                .unwrap()
+                .params()
+                .map(Clone::clone)
+                .unwrap_or_else(|| *self.engine().machine().genesis_common_params())
+        })
     }
 
     fn block_reward(&self, block_number: u64) -> u64 {

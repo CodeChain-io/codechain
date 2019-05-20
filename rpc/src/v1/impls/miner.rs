@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::block::IsBlock;
-use ccore::{EngineClient, MinerService, MiningBlockChainClient};
+use ccore::{EngineClient, EngineInfo, MinerService, MiningBlockChainClient};
 use cjson::bytes::Bytes;
 use jsonrpc_core::Result;
 use primitives::H256;
@@ -28,7 +28,7 @@ use super::super::types::Work;
 
 pub struct MinerClient<C, M>
 where
-    C: MiningBlockChainClient + EngineClient,
+    C: MiningBlockChainClient + EngineClient + EngineInfo,
     M: MinerService, {
     client: Arc<C>,
     miner: Arc<M>,
@@ -36,7 +36,7 @@ where
 
 impl<C, M> MinerClient<C, M>
 where
-    C: MiningBlockChainClient + EngineClient,
+    C: MiningBlockChainClient + EngineClient + EngineInfo,
     M: MinerService,
 {
     pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
@@ -49,7 +49,7 @@ where
 
 impl<C, M> Miner for MinerClient<C, M>
 where
-    C: MiningBlockChainClient + EngineClient + 'static,
+    C: MiningBlockChainClient + EngineClient + EngineInfo + 'static,
     M: MinerService + 'static,
 {
     fn get_work(&self) -> Result<Work> {

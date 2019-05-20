@@ -42,7 +42,7 @@ use cnetwork::NodeId;
 use cstate::{FindActionHandler, StateDB};
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, CommonParams};
 use cvm::ChainTimeInfo;
 use journaldb;
 use kvdb::KeyValueDB;
@@ -55,8 +55,8 @@ use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::client::ImportResult;
 use crate::client::{
-    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, ImportBlock, MiningBlockChainClient,
-    StateOrBlock,
+    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock,
+    MiningBlockChainClient, StateOrBlock,
 };
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
@@ -570,5 +570,23 @@ impl super::EngineClient for TestBlockChainClient {
     fn get_kvdb(&self) -> Arc<KeyValueDB> {
         let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
         Arc::new(db)
+    }
+}
+
+impl EngineInfo for TestBlockChainClient {
+    fn common_params(&self, _block_number: Option<u64>) -> Option<CommonParams> {
+        unimplemented!()
+    }
+
+    fn block_reward(&self, _block_number: u64) -> u64 {
+        unimplemented!()
+    }
+
+    fn mining_reward(&self, _block_number: u64) -> Option<u64> {
+        unimplemented!()
+    }
+
+    fn recommended_confirmation(&self) -> u32 {
+        unimplemented!()
     }
 }
