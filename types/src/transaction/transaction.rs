@@ -20,7 +20,7 @@ use primitives::H256;
 use rlp::RlpStream;
 
 use super::Action;
-use super::ShardTransaction;
+use super::{AssetWrapCCCOutput, ShardTransaction};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
@@ -52,8 +52,26 @@ impl Transaction {
     }
 
     pub fn tracker(&self) -> Option<H256> {
-        let t: Option<ShardTransaction> = self.action.clone().into();
-        t.map(|t| t.tracker())
+        let shard_tx = match self.action.clone() {
+            Action::WrapCCC {
+                shard_id,
+                lock_script_hash,
+                parameters,
+                quantity,
+                ..
+            } => Some(ShardTransaction::WrapCCC {
+                network_id: self.network_id,
+                shard_id,
+                tx_hash: self.hash(),
+                output: AssetWrapCCCOutput {
+                    lock_script_hash,
+                    parameters,
+                    quantity,
+                },
+            }),
+            other_actions => other_actions.into(),
+        };
+        shard_tx.map(|t| t.tracker())
     }
     pub fn is_master_key_allowed(&self) -> bool {
         match self.action {
