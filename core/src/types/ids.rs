@@ -29,6 +29,8 @@ pub enum BlockId {
     Earliest,
     /// Latest mined block.
     Latest,
+    /// Parent of latest mined block.
+    ParentOfLatest,
 }
 
 impl From<H256> for BlockId {
