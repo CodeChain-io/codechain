@@ -224,3 +224,10 @@ banned = [ address+ ], address asc
 jailed = [ [address, deposits, custody_until, kicked_at]+ ], address asc
 term_changed_block_number = block number
 ```
+
+### on TermEnd events
+1. Update `term_changed_block_number` to the current block number
+3. Remove the expired candidates and give back the deposits
+3. Remove the jailed accounts if the current term is greater than `kicked_at` and give back the deposits
+4. Pay the pending rewards
+5. Calculate rewards and update `pending_rewards`
