@@ -24,6 +24,7 @@ use rlp::UntrustedRlp;
 
 use crate::blockchain::BlockProvider;
 use crate::client::BlockChainTrait;
+use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error};
 use crate::header::Header;
@@ -168,7 +169,7 @@ pub fn verify_block_seal(
     {
         let v = BlockView::new(&bytes);
         for t in v.transactions() {
-            let signed = engine.verify_transaction_seal(t, &header)?;
+            let signed = CodeChainMachine::verify_transaction_seal(t, &header)?;
             transactions.push(signed);
         }
     }
