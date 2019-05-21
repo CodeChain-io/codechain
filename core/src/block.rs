@@ -21,6 +21,7 @@ use ckey::Address;
 use cmerkle::skewed_merkle_root;
 use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::errors::HistoryError;
+use ctypes::header::{Header, Seal};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockNumber, CommonParams};
 use cvm::ChainTimeInfo;
@@ -31,7 +32,6 @@ use super::invoice::Invoice;
 use crate::client::EngineInfo;
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error};
-use crate::header::{Header, Seal};
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
 /// A block, encoded as it is on the block chain.

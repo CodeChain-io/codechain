@@ -25,12 +25,11 @@
 
 use ccrypto::blake256;
 use ckey::Address;
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, Header as FullHeader};
 use primitives::{H256, U256};
 use rlp::Rlp;
 
 use crate::block::Block as FullBlock;
-use crate::header::Header as FullHeader;
 use crate::transaction::UnverifiedTransaction;
 use crate::views;
 

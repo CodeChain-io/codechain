@@ -22,7 +22,7 @@ use ckey::Address;
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::ActionHandler;
-use ctypes::CommonParams;
+use ctypes::{CommonParams, Header};
 use primitives::H256;
 
 use super::super::stake;
@@ -37,7 +37,6 @@ use crate::client::{Client, EngineClient};
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
 use crate::error::Error;
-use crate::header::Header;
 use crate::views::HeaderView;
 use consensus::tendermint::params::TimeGapParams;
 

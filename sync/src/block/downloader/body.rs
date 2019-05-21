@@ -16,7 +16,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use ccore::{Header, UnverifiedTransaction};
+use ccore::UnverifiedTransaction;
+use ctypes::Header;
 use primitives::H256;
 
 use super::super::message::RequestMessage;

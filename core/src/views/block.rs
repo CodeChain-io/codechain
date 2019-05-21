@@ -15,11 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
+use ctypes::Header;
 use primitives::H256;
 use rlp::Rlp;
 
 use super::{HeaderView, TransactionView};
-use crate::header::Header;
 use crate::transaction::{LocalizedTransaction, UnverifiedTransaction};
 
 /// View onto block rlp.

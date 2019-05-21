@@ -19,7 +19,7 @@ mod params;
 use std::sync::Arc;
 
 use cstate::{ActionHandler, HitHandler};
-use ctypes::CommonParams;
+use ctypes::{CommonParams, Header};
 
 use self::params::SoloParams;
 use super::stake;
@@ -29,7 +29,6 @@ use crate::block::{ExecutedBlock, IsBlock};
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
 use crate::error::Error;
-use crate::header::Header;
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo<M> {
@@ -116,11 +115,10 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::CommonParams;
+    use ctypes::{CommonParams, Header};
     use primitives::H520;
 
     use crate::block::{IsBlock, OpenBlock};
-    use crate::header::Header;
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
 

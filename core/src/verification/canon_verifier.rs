@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::CommonParams;
+use ctypes::{CommonParams, Header};
 
 use super::verification;
 use super::Verifier;
 use crate::client::BlockChainTrait;
 use crate::consensus::CodeChainEngine;
 use crate::error::Error;
-use crate::header::Header;
 
 /// A canonial verifier -- this does full verification.
 pub struct CanonVerifier;

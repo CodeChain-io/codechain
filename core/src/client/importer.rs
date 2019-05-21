@@ -20,6 +20,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use cio::IoChannel;
+use ctypes::header::Header;
 use kvdb::DBTransaction;
 use parking_lot::{Mutex, MutexGuard};
 use primitives::H256;
@@ -31,7 +32,6 @@ use crate::blockchain::{BodyProvider, HeaderProvider, ImportRoute};
 use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::Error;
-use crate::header::Header;
 use crate::miner::{Miner, MinerService};
 use crate::service::ClientIoMessage;
 use crate::types::BlockId;

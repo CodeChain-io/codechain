@@ -27,9 +27,11 @@ extern crate serde_derive;
 
 mod common_params;
 pub mod errors;
+pub mod header;
 pub mod transaction;
 pub mod util;
 
 pub type BlockNumber = u64;
 pub type ShardId = u16;
 pub use common_params::CommonParams;
+pub use header::Header;
