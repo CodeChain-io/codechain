@@ -45,13 +45,9 @@ pub struct Solo {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use primitives::U256;
     use serde_json;
 
     use super::Solo;
-    use crate::uint::Uint;
 
     #[test]
     fn basic_authority_deserialization() {
@@ -64,8 +60,8 @@ mod tests {
         }"#;
 
         let deserialized: Solo = serde_json::from_str(s).unwrap();
-        assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
-        assert_eq!(deserialized.params.action_handlers.hit, Some(HashMap::new()));
-        assert_eq!(deserialized.params.action_handlers.genesis_stakes, Some(HashMap::new()));
+        assert_eq!(deserialized.params.block_reward, Some(0x0d.into()));
+        assert_eq!(deserialized.params.action_handlers.hit, Some(Default::default()));
+        assert_eq!(deserialized.params.action_handlers.genesis_stakes, Some(Default::default()));
     }
 }

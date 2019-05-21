@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -39,11 +39,9 @@ mod tests {
     use std::str::FromStr;
 
     use ckey::Public;
-    use primitives::U256;
     use serde_json;
 
     use super::SimplePoA;
-    use crate::uint::Uint;
 
     #[test]
     fn basic_authority_deserialization() {
@@ -58,6 +56,6 @@ mod tests {
 
         let vs = vec![Public::from_str("2a8a69439f2396c9a328289fdc3905d9736da9e14eb1a282cfd2c036cc21a17a5d05595160b7924e5ecf3f2628b440e601f3a531e92fa81571a70e6c695b2d08").unwrap()];
         assert_eq!(deserialized.params.validators, vs);
-        assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
+        assert_eq!(deserialized.params.block_reward, Some(0x0d.into()));
     }
 }
