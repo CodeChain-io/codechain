@@ -211,3 +211,16 @@ The informant receives all deposit and rewards(TBD) as prize money immediately.
 The criminal becomes a banned account.
 The account cannot become a candidate anymore.
 In other words, the *DELEGATE* transaction to the banned account and the *SELF_NOMINATE* transaction from the banned account fail.
+
+## Implementation
+### States
+```
+stakeholders = [ address+ ], address asc
+balance(address) = quantity
+delegation(delegator) = [ [delegatee, quantity]+ ], delegatee asc
+candidates = [ [address, deposits, nominate_end_at]+ ], address asc
+pending_rewards = [ [withdraw_at, address, quantity]+ ], [withdraw_at, address] asc
+banned = [ address+ ], address asc
+jailed = [ [address, deposits, custody_until, kicked_at]+ ], address asc
+term_changed_block_number = block number
+```
