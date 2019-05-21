@@ -218,30 +218,30 @@ impl<'x> OpenBlock<'x> {
     }
 
     /// Turn this into a `ClosedBlock`.
-    pub fn close(
-        mut self,
-        parent_transactions_root: H256,
-        parent_common_params: &CommonParams,
-    ) -> Result<ClosedBlock, Error> {
+    pub fn close(mut self, parent_header: &Header, parent_common_params: &CommonParams) -> Result<ClosedBlock, Error> {
         let unclosed_state = self.block.state.clone();
 
-        if let Err(e) = self.engine.on_close_block(&mut self.block, parent_common_params) {
+        if let Err(e) = self.engine.on_close_block(&mut self.block, parent_header, parent_common_params) {
             warn!("Encountered error on closing the block: {}", e);
             return Err(e)
         }
+        let header = self.block.header().clone();
         for handler in self.engine.action_handlers() {
-            handler.on_close_block(self.block.state_mut()).map_err(|e| {
-                warn!("Encountered error in {}::on_close_block", handler.name());
-                e
-            })?;
+            handler.on_close_block(self.block.state_mut(), &header, parent_header, parent_common_params).map_err(
+                |e| {
+                    warn!("Encountered error in {}::on_close_block", handler.name());
+                    e
+                },
+            )?;
         }
 
         let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
             e
         })?;
+        let parent_transactions_root = parent_header.transactions_root();
         self.block.header.set_transactions_root(skewed_merkle_root(
-            parent_transactions_root,
+            *parent_transactions_root,
             self.block.transactions.iter().map(Encodable::rlp_bytes),
         ));
         self.block.header.set_state_root(state_root);
@@ -255,33 +255,37 @@ impl<'x> OpenBlock<'x> {
     /// Turn this into a `LockedBlock`.
     pub fn close_and_lock(
         mut self,
-        parent_transactions_root: H256,
+        parent_header: &Header,
         parent_common_params: &CommonParams,
     ) -> Result<LockedBlock, Error> {
-        if let Err(e) = self.engine.on_close_block(&mut self.block, parent_common_params) {
+        if let Err(e) = self.engine.on_close_block(&mut self.block, parent_header, parent_common_params) {
             warn!("Encountered error on closing the block: {}", e);
             return Err(e)
         }
+        let header = self.block.header().clone();
         for handler in self.engine.action_handlers() {
-            handler.on_close_block(self.block.state_mut()).map_err(|e| {
-                warn!("Encountered error in {}::on_close_block", handler.name());
-                e
-            })?;
+            handler.on_close_block(self.block.state_mut(), &header, parent_header, parent_common_params).map_err(
+                |e| {
+                    warn!("Encountered error in {}::on_close_block", handler.name());
+                    e
+                },
+            )?;
         }
 
         let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
             e
         })?;
+        let parent_transactions_root = parent_header.transactions_root();
         if self.block.header.transactions_root().is_zero() || self.block.header.transactions_root() == &BLAKE_NULL_RLP {
             self.block.header.set_transactions_root(skewed_merkle_root(
-                parent_transactions_root,
+                *parent_transactions_root,
                 self.block.transactions.iter().map(Encodable::rlp_bytes),
             ));
         }
         debug_assert_eq!(
             self.block.header.transactions_root(),
-            &skewed_merkle_root(parent_transactions_root, self.block.transactions.iter().map(Encodable::rlp_bytes),)
+            &skewed_merkle_root(*parent_transactions_root, self.block.transactions.iter().map(Encodable::rlp_bytes),)
         );
         self.block.header.set_state_root(state_root);
 
@@ -466,7 +470,7 @@ pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler>(
     b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
 
     let parent_common_params = client.common_params((*header.parent_hash()).into()).unwrap();
-    b.close_and_lock(*parent.transactions_root(), &parent_common_params)
+    b.close_and_lock(parent, &parent_common_params)
 }
 
 #[cfg(test)]
@@ -484,9 +488,8 @@ mod tests {
         let genesis_header = scheme.genesis_header();
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, Address::default(), vec![]).unwrap();
-        let parent_transactions_root = *genesis_header.transactions_root();
         let parent_common_params = CommonParams::default_for_test();
-        let b = b.close_and_lock(parent_transactions_root, &parent_common_params).unwrap();
+        let b = b.close_and_lock(&genesis_header, &parent_common_params).unwrap();
         let _ = b.seal(&*scheme.engine, vec![]);
     }
 }

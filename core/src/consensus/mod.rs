@@ -53,7 +53,6 @@ use crate::client::EngineClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::encoded;
 use crate::error::Error;
-use crate::header::Header;
 use crate::transaction::UnverifiedTransaction;
 use crate::views::HeaderView;
 use Client;
@@ -218,7 +217,12 @@ pub trait ConsensusEngine: Sync + Send {
     }
 
     /// Block transformation functions, after the transactions.
-    fn on_close_block(&self, _block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
+    fn on_close_block(
+        &self,
+        _block: &mut ExecutedBlock,
+        _parent_header: &Header,
+        _parent_common_params: &CommonParams,
+    ) -> Result<(), Error> {
         Ok(())
     }
 

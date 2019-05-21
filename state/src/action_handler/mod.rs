@@ -21,6 +21,7 @@ use std::convert::From;
 use ccrypto::blake256;
 use ckey::Address;
 use ctypes::errors::SyntaxError;
+use ctypes::{CommonParams, Header};
 use primitives::H256;
 use rlp::{Encodable, RlpStream};
 
@@ -40,7 +41,13 @@ pub trait ActionHandler: Send + Sync {
         Ok(some_action_data)
     }
 
-    fn on_close_block(&self, state: &mut TopLevelState) -> StateResult<()>;
+    fn on_close_block(
+        &self,
+        state: &mut TopLevelState,
+        header: &Header,
+        parent_header: &Header,
+        parent_common_params: &CommonParams,
+    ) -> StateResult<()>;
 }
 
 pub trait FindActionHandler {
