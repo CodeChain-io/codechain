@@ -17,6 +17,7 @@
 use cjson::scheme::Params;
 use ckey::NetworkId;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+use std::ops::RangeInclusive;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct CommonParams {
@@ -52,6 +53,8 @@ pub struct CommonParams {
     max_body_size: usize,
     /// Snapshot creation period in unit of block numbers.
     snapshot_period: u64,
+
+    term_seconds: u64,
 }
 
 impl CommonParams {
@@ -127,12 +130,19 @@ impl CommonParams {
     pub fn snapshot_period(&self) -> u64 {
         self.snapshot_period
     }
+    pub fn term_seconds(&self) -> u64 {
+        self.term_seconds
+    }
 }
 
 impl From<Params> for CommonParams {
     fn from(p: Params) -> Self {
+        let mut size = 23;
+        if p.term_seconds.is_some() {
+            size += 1;
+        }
         Self {
-            size: 23,
+            size,
             max_extra_data_size: p.max_extra_data_size.into(),
             max_asset_scheme_metadata_size: p.max_asset_scheme_metadata_size.into(),
             max_transfer_metadata_size: p.max_transfer_metadata_size.into(),
@@ -156,13 +166,15 @@ impl From<Params> for CommonParams {
             min_asset_unwrap_ccc_cost: p.min_unwrap_ccc_cost.into(),
             max_body_size: p.max_body_size.into(),
             snapshot_period: p.snapshot_period.into(),
+            term_seconds: p.term_seconds.map(From::from).unwrap_or_default(),
         }
     }
 }
 
 impl Encodable for CommonParams {
     fn rlp_append(&self, s: &mut RlpStream) {
-        assert_eq!(23, self.size);
+        const VALID_SIZE: RangeInclusive<usize> = 23..=24;
+        assert!(VALID_SIZE.contains(&self.size), "{} must be in {:?}", self.size, VALID_SIZE);
         s.begin_list(self.size)
             .append(&self.max_extra_data_size)
             .append(&self.max_asset_scheme_metadata_size)
@@ -187,13 +199,17 @@ impl Encodable for CommonParams {
             .append(&self.min_asset_unwrap_ccc_cost)
             .append(&self.max_body_size)
             .append(&self.snapshot_period);
+        if self.size == 24 {
+            s.append(&self.term_seconds);
+        }
     }
 }
 
 impl Decodable for CommonParams {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let size = rlp.item_count()?;
-        if size != 23 {
+        const VALID_SIZE: RangeInclusive<usize> = 23..=24;
+        if !VALID_SIZE.contains(&size) {
             return Err(DecoderError::RlpIncorrectListLen {
                 expected: 23,
                 got: size,
@@ -223,6 +239,11 @@ impl Decodable for CommonParams {
         let min_asset_unwrap_ccc_cost = rlp.val_at(20)?;
         let max_body_size = rlp.val_at(21)?;
         let snapshot_period = rlp.val_at(22)?;
+        let term_seconds = if size >= 24 {
+            rlp.val_at(23)?
+        } else {
+            0
+        };
         Ok(Self {
             size,
             max_extra_data_size,
@@ -248,6 +269,7 @@ impl Decodable for CommonParams {
             min_asset_unwrap_ccc_cost,
             max_body_size,
             snapshot_period,
+            term_seconds,
         })
     }
 }
@@ -281,5 +303,140 @@ mod tests {
     #[test]
     fn encode_and_decode_default() {
         rlp_encode_and_decode_test!(CommonParams::default_for_test());
+    }
+
+    #[test]
+    fn changing_parameters_dont_change_the_rlp_if_the_size_is_not_updated() {
+        let origin = CommonParams::default_for_test();
+        let mut params = origin;
+        params.term_seconds = 100;
+        assert_eq!(rlp::encode(&origin), rlp::encode(&params));
+    }
+
+    #[test]
+    fn rlp_with_term_seconds() {
+        let mut params = CommonParams::default_for_test();
+        params.size = 24;
+        params.term_seconds = 100;
+        rlp_encode_and_decode_test!(params);
+    }
+
+    #[test]
+    fn rlp_encoding_are_different_if_the_size_are_different() {
+        let origin = CommonParams::default_for_test();
+        let mut params = origin;
+        params.size = 24;
+        assert_ne!(rlp::encode(&origin), rlp::encode(&params));
+    }
+
+    #[test]
+    fn params_from_json() {
+        let s = r#"{
+            "maxExtraDataSize": "0x20",
+            "maxAssetSchemeMetadataSize": "0x0400",
+            "maxTransferMetadataSize": "0x0100",
+            "maxTextContentSize": "0x0200",
+            "networkID" : "tc",
+            "minPayCost" : 10,
+            "minSetRegularKeyCost" : 11,
+            "minCreateShardCost" : 12,
+            "minSetShardOwnersCost" : 13,
+            "minSetShardUsersCost" : 14,
+            "minWrapCccCost" : 15,
+            "minCustomCost" : 16,
+            "minStoreCost" : 17,
+            "minRemoveCost" : 18,
+            "minMintAssetCost" : 19,
+            "minTransferAssetCost" : 20,
+            "minChangeAssetSchemeCost" : 21,
+            "minComposeAssetCost" : 22,
+            "minDecomposeAssetCost" : 23,
+            "minUnwrapCccCost" : 24,
+            "minIncreaseAssetSupplyCost": 25,
+            "maxBodySize" : 4194304,
+            "snapshotPeriod": 16384
+        }"#;
+
+        let deserialized = CommonParams::from(serde_json::from_str::<Params>(s).unwrap());
+        assert_eq!(deserialized.max_extra_data_size, 0x20);
+        assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400);
+        assert_eq!(deserialized.max_transfer_metadata_size, 0x0100);
+        assert_eq!(deserialized.max_text_content_size, 0x0200);
+        assert_eq!(deserialized.network_id, "tc".into());
+        assert_eq!(deserialized.min_pay_transaction_cost, 10);
+        assert_eq!(deserialized.min_set_regular_key_transaction_cost, 11);
+        assert_eq!(deserialized.min_create_shard_transaction_cost, 12);
+        assert_eq!(deserialized.min_set_shard_owners_transaction_cost, 13);
+        assert_eq!(deserialized.min_set_shard_users_transaction_cost, 14);
+        assert_eq!(deserialized.min_wrap_ccc_transaction_cost, 15);
+        assert_eq!(deserialized.min_custom_transaction_cost, 16);
+        assert_eq!(deserialized.min_store_transaction_cost, 17);
+        assert_eq!(deserialized.min_remove_transaction_cost, 18);
+        assert_eq!(deserialized.min_asset_mint_cost, 19);
+        assert_eq!(deserialized.min_asset_transfer_cost, 20);
+        assert_eq!(deserialized.min_asset_scheme_change_cost, 21);
+        assert_eq!(deserialized.min_asset_compose_cost, 22);
+        assert_eq!(deserialized.min_asset_decompose_cost, 23);
+        assert_eq!(deserialized.min_asset_unwrap_ccc_cost, 24);
+        assert_eq!(deserialized.min_asset_supply_increase_cost, 25);
+        assert_eq!(deserialized.max_body_size, 4_194_304);
+        assert_eq!(deserialized.snapshot_period, 16_384);
+        assert_eq!(deserialized.term_seconds, 0);
+    }
+
+    #[test]
+    fn params_from_json_with_term_seconds() {
+        let s = r#"{
+            "maxExtraDataSize": "0x20",
+            "maxAssetSchemeMetadataSize": "0x0400",
+            "maxTransferMetadataSize": "0x0100",
+            "maxTextContentSize": "0x0200",
+            "networkID" : "tc",
+            "minPayCost" : 10,
+            "minSetRegularKeyCost" : 11,
+            "minCreateShardCost" : 12,
+            "minSetShardOwnersCost" : 13,
+            "minSetShardUsersCost" : 14,
+            "minWrapCccCost" : 15,
+            "minCustomCost" : 16,
+            "minStoreCost" : 17,
+            "minRemoveCost" : 18,
+            "minMintAssetCost" : 19,
+            "minTransferAssetCost" : 20,
+            "minChangeAssetSchemeCost" : 21,
+            "minComposeAssetCost" : 22,
+            "minDecomposeAssetCost" : 23,
+            "minUnwrapCccCost" : 24,
+            "minIncreaseAssetSupplyCost": 25,
+            "maxBodySize" : 4194304,
+            "snapshotPeriod": 16384,
+            "termSeconds": 3600
+        }"#;
+
+        let deserialized = CommonParams::from(serde_json::from_str::<Params>(s).unwrap());
+        assert_eq!(deserialized.max_extra_data_size, 0x20);
+        assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400);
+        assert_eq!(deserialized.max_transfer_metadata_size, 0x0100);
+        assert_eq!(deserialized.max_text_content_size, 0x0200);
+        assert_eq!(deserialized.network_id, "tc".into());
+        assert_eq!(deserialized.min_pay_transaction_cost, 10);
+        assert_eq!(deserialized.min_set_regular_key_transaction_cost, 11);
+        assert_eq!(deserialized.min_create_shard_transaction_cost, 12);
+        assert_eq!(deserialized.min_set_shard_owners_transaction_cost, 13);
+        assert_eq!(deserialized.min_set_shard_users_transaction_cost, 14);
+        assert_eq!(deserialized.min_wrap_ccc_transaction_cost, 15);
+        assert_eq!(deserialized.min_custom_transaction_cost, 16);
+        assert_eq!(deserialized.min_store_transaction_cost, 17);
+        assert_eq!(deserialized.min_remove_transaction_cost, 18);
+        assert_eq!(deserialized.min_asset_mint_cost, 19);
+        assert_eq!(deserialized.min_asset_transfer_cost, 20);
+        assert_eq!(deserialized.min_asset_scheme_change_cost, 21);
+        assert_eq!(deserialized.min_asset_compose_cost, 22);
+        assert_eq!(deserialized.min_asset_decompose_cost, 23);
+        assert_eq!(deserialized.min_asset_unwrap_ccc_cost, 24);
+        assert_eq!(deserialized.min_asset_supply_increase_cost, 25);
+        assert_eq!(deserialized.max_body_size, 4_194_304);
+        assert_eq!(deserialized.snapshot_period, 16_384);
+        assert_eq!(deserialized.term_seconds, 3600);
     }
 }
