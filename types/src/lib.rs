@@ -24,6 +24,8 @@ extern crate rlp_derive;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[cfg(test)]
+extern crate serde_json;
 
 mod common_params;
 pub mod errors;
