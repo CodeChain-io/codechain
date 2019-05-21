@@ -71,6 +71,10 @@ fn parse_env_var_enable_delegations() -> bool {
 }
 
 impl ActionHandler for Stake {
+    fn name(&self) -> &'static str {
+        "stake handler"
+    }
+
     fn handler_id(&self) -> u64 {
         CUSTOM_ACTION_HANDLER_ID
     }
@@ -111,6 +115,10 @@ impl ActionHandler for Stake {
 
     fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
         Action::decode(&UntrustedRlp::new(bytes)).map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
+        Ok(())
+    }
+
+    fn on_close_block(&self, _state: &mut TopLevelState) -> StateResult<()> {
         Ok(())
     }
 }
