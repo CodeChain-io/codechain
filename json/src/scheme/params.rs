@@ -56,6 +56,8 @@ pub struct Params {
     pub max_body_size: Uint,
     /// Snapshot creation period in unit of block numbers.
     pub snapshot_period: Uint,
+
+    pub term_seconds: Option<Uint>,
 }
 
 #[cfg(test)]
@@ -116,5 +118,63 @@ mod tests {
         assert_eq!(deserialized.min_increase_asset_supply_cost, 25.into());
         assert_eq!(deserialized.max_body_size, 4_194_304.into());
         assert_eq!(deserialized.snapshot_period, 16_384.into());
+        assert_eq!(deserialized.term_seconds, None);
+    }
+
+
+    #[test]
+    fn params_deserialization_with_term_seconds() {
+        let s = r#"{
+            "maxExtraDataSize": "0x20",
+            "maxAssetSchemeMetadataSize": "0x0400",
+            "maxTransferMetadataSize": "0x0100",
+            "maxTextContentSize": "0x0200",
+            "networkID" : "tc",
+            "minPayCost" : 10,
+            "minSetRegularKeyCost" : 11,
+            "minCreateShardCost" : 12,
+            "minSetShardOwnersCost" : 13,
+            "minSetShardUsersCost" : 14,
+            "minWrapCccCost" : 15,
+            "minCustomCost" : 16,
+            "minStoreCost" : 17,
+            "minRemoveCost" : 18,
+            "minMintAssetCost" : 19,
+            "minTransferAssetCost" : 20,
+            "minChangeAssetSchemeCost" : 21,
+            "minComposeAssetCost" : 22,
+            "minDecomposeAssetCost" : 23,
+            "minUnwrapCccCost" : 24,
+            "minIncreaseAssetSupplyCost": 25,
+            "maxBodySize" : 4194304,
+            "snapshotPeriod": 16384,
+            "termSeconds": 3600
+        }"#;
+
+        let deserialized: Params = serde_json::from_str(s).unwrap();
+        assert_eq!(deserialized.max_extra_data_size, 0x20.into());
+        assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400.into());
+        assert_eq!(deserialized.max_transfer_metadata_size, 0x0100.into());
+        assert_eq!(deserialized.max_text_content_size, 0x0200.into());
+        assert_eq!(deserialized.network_id, "tc".into());
+        assert_eq!(deserialized.min_pay_cost, 10.into());
+        assert_eq!(deserialized.min_set_regular_key_cost, 11.into());
+        assert_eq!(deserialized.min_create_shard_cost, 12.into());
+        assert_eq!(deserialized.min_set_shard_owners_cost, 13.into());
+        assert_eq!(deserialized.min_set_shard_users_cost, 14.into());
+        assert_eq!(deserialized.min_wrap_ccc_cost, 15.into());
+        assert_eq!(deserialized.min_custom_cost, 16.into());
+        assert_eq!(deserialized.min_store_cost, 17.into());
+        assert_eq!(deserialized.min_remove_cost, 18.into());
+        assert_eq!(deserialized.min_mint_asset_cost, 19.into());
+        assert_eq!(deserialized.min_transfer_asset_cost, 20.into());
+        assert_eq!(deserialized.min_change_asset_scheme_cost, 21.into());
+        assert_eq!(deserialized.min_compose_asset_cost, 22.into());
+        assert_eq!(deserialized.min_decompose_asset_cost, 23.into());
+        assert_eq!(deserialized.min_unwrap_ccc_cost, 24.into());
+        assert_eq!(deserialized.min_increase_asset_supply_cost, 25.into());
+        assert_eq!(deserialized.max_body_size, 4_194_304.into());
+        assert_eq!(deserialized.snapshot_period, 16_384.into());
+        assert_eq!(deserialized.term_seconds, Some(3600.into()));
     }
 }
