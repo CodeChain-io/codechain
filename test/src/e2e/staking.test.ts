@@ -29,7 +29,8 @@ import {
     stakeActionHandlerId,
     validator0Address,
     validator0Secret,
-    validator1Address
+    validator1Address,
+    validator1Secret
 } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import CodeChain from "../helper/spawn";
@@ -51,6 +52,10 @@ describe("Staking", function() {
         });
         await node.start();
         await node.sendPayTx({ recipient: aliceAddress, quantity: 100_000 });
+        await node.sendPayTx({
+            recipient: validator1Address,
+            quantity: 100_000
+        });
     });
 
     async function getAllStakingInfo() {
@@ -218,6 +223,37 @@ describe("Staking", function() {
         );
     }
 
+    async function selfNominate(params: {
+        senderAddress: PlatformAddress;
+        senderSecret: string;
+        deposit: number;
+        metadata: Buffer | null;
+        fee?: number;
+        seq?: number;
+    }): Promise<H256> {
+        const { fee = 10, deposit, metadata } = params;
+        const seq =
+            params.seq == null
+                ? await node.sdk.rpc.chain.getSeq(params.senderAddress)
+                : params.seq;
+
+        return promiseExpect.shouldFulfill(
+            "sendSignTransaction",
+            node.sdk.rpc.chain.sendSignedTransaction(
+                node.sdk.core
+                    .createCustomTransaction({
+                        handlerId: stakeActionHandlerId,
+                        bytes: Buffer.from(RLP.encode([4, deposit, metadata]))
+                    })
+                    .sign({
+                        secret: params.senderSecret,
+                        seq,
+                        fee
+                    })
+            )
+        );
+    }
+
     it("should have proper initial stake tokens", async function() {
         const { amounts, stakeholders } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
@@ -308,6 +344,13 @@ describe("Staking", function() {
     }).timeout(60_000);
 
     it("can delegate tokens", async function() {
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
+
         await delegateToken({
             senderAddress: aliceAddress,
             senderSecret: aliceSecret,
@@ -343,6 +386,13 @@ describe("Staking", function() {
     });
 
     it("doesn't leave zero balanced account after delegate", async function() {
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
+
         await delegateToken({
             senderAddress: aliceAddress,
             senderSecret: aliceSecret,
@@ -378,6 +428,13 @@ describe("Staking", function() {
     });
 
     it("can revoke tokens", async function() {
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
+
         await delegateToken({
             senderAddress: aliceAddress,
             senderSecret: aliceSecret,
@@ -418,6 +475,13 @@ describe("Staking", function() {
     });
 
     it("cannot revoke more than delegated", async function() {
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
+
         await delegateToken({
             senderAddress: aliceAddress,
             senderSecret: aliceSecret,
@@ -470,6 +534,13 @@ describe("Staking", function() {
     });
 
     it("revoking all should clear delegation", async function() {
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
+
         await delegateToken({
             senderAddress: aliceAddress,
             senderSecret: aliceSecret,
@@ -581,6 +652,13 @@ describe("Staking", function() {
     });
 
     it("get fee even if it delegated stakes to other", async function() {
+        await selfNominate({
+            senderAddress: validator1Address,
+            senderSecret: validator1Secret,
+            deposit: 0,
+            metadata: null
+        });
+
         // alice: 40000, bob: 30000, carol 20000, dave: 10000
         await sendStakeToken({
             senderAddress: aliceAddress,
@@ -691,6 +769,13 @@ describe("Staking", function() {
     });
 
     it("get fee even if it delegated stakes to other stakeholder", async function() {
+        await selfNominate({
+            senderAddress: validator1Address,
+            senderSecret: validator1Secret,
+            deposit: 0,
+            metadata: null
+        });
+
         // alice: 40000, bob: 30000, carol 20000, dave: 10000
         await sendStakeToken({
             senderAddress: aliceAddress,

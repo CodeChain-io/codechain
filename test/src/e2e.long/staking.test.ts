@@ -15,7 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
-import { H256, PlatformAddress } from "codechain-primitives/lib";
+import {
+    H256,
+    PlatformAddress,
+    PlatformAddressValue
+} from "codechain-primitives/lib";
 import { toHex } from "codechain-sdk/lib/utils";
 import "mocha";
 import {
@@ -27,6 +31,7 @@ import {
     validator0Address,
     validator0Secret,
     validator1Address,
+    validator1Secret,
     validator2Address,
     validator3Address
 } from "../helper/constants";
@@ -64,9 +69,10 @@ describe("Staking", function() {
             });
         });
         await Promise.all(nodes.map(node => node.start()));
+        await prepare();
     });
 
-    async function connectEachOther() {
+    async function prepare() {
         await promiseExpect.shouldFulfill(
             "connect",
             Promise.all([
@@ -87,6 +93,26 @@ describe("Staking", function() {
                 nodes[3].waitPeers(4 - 1)
             ])
         );
+
+        // give some ccc to pay fee
+        const pay1 = await nodes[0].sendPayTx({
+            recipient: validator0Address,
+            quantity: 100000,
+            fee: 12,
+            seq: 0
+        });
+        const pay2 = await nodes[0].sendPayTx({
+            recipient: validator1Address,
+            quantity: 100000,
+            fee: 12,
+            seq: 1
+        });
+        while (
+            !(await nodes[0].sdk.rpc.chain.containsTransaction(pay1.hash())) ||
+            !(await nodes[0].sdk.rpc.chain.containsTransaction(pay2.hash()))
+        ) {
+            await wait(500);
+        }
     }
 
     async function getAllStakingInfo() {
@@ -254,6 +280,45 @@ describe("Staking", function() {
         );
     }
 
+    async function selfNominate(params: {
+        senderAddress: PlatformAddress;
+        senderSecret: string;
+        deposit: number;
+        metadata: Buffer | null;
+        fee?: number;
+        seq?: number;
+        waitForEnd?: boolean;
+    }): Promise<H256> {
+        const { fee = 10, deposit, metadata, waitForEnd = true } = params;
+        const seq =
+            params.seq == null
+                ? await nodes[0].sdk.rpc.chain.getSeq(params.senderAddress)
+                : params.seq;
+
+        const promise = promiseExpect.shouldFulfill(
+            "sendSignTransaction",
+            nodes[0].sdk.rpc.chain.sendSignedTransaction(
+                nodes[0].sdk.core
+                    .createCustomTransaction({
+                        handlerId: stakeActionHandlerId,
+                        bytes: Buffer.from(RLP.encode([4, deposit, metadata]))
+                    })
+                    .sign({
+                        secret: params.senderSecret,
+                        seq,
+                        fee
+                    })
+            )
+        );
+        if (waitForEnd) {
+            const hash = await promise;
+            while (!(await nodes[0].sdk.rpc.chain.containsTransaction(hash))) {
+                await wait(500);
+            }
+        }
+        return promise;
+    }
+
     it("should have proper initial stake tokens", async function() {
         const { amounts, stakeholders } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
@@ -278,8 +343,6 @@ describe("Staking", function() {
     });
 
     it("should send stake tokens", async function() {
-        await connectEachOther();
-
         const hash = await sendStakeToken({
             senderAddress: faucetAddress,
             senderSecret: faucetSecret,
@@ -315,8 +378,6 @@ describe("Staking", function() {
     }).timeout(60_000);
 
     it("doesn't leave zero balance account after transfer", async function() {
-        await connectEachOther();
-
         const hash = await sendStakeToken({
             senderAddress: faucetAddress,
             senderSecret: faucetSecret,
@@ -351,7 +412,12 @@ describe("Staking", function() {
     }).timeout(60_000);
 
     it("can delegate tokens", async function() {
-        await connectEachOther();
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
 
         const hash = await delegateToken({
             senderAddress: faucetAddress,
@@ -391,7 +457,12 @@ describe("Staking", function() {
     });
 
     it("doesn't leave zero balanced account after delegate", async function() {
-        await connectEachOther();
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
 
         const hash = await delegateToken({
             senderAddress: faucetAddress,
@@ -430,19 +501,7 @@ describe("Staking", function() {
         ]);
     });
 
-    it("cannot delegate to non-validator", async function() {
-        await connectEachOther();
-        // give some ccc to pay fee
-        const pay1 = await nodes[0].sendPayTx({
-            recipient: validator0Address,
-            quantity: 100000
-        });
-
-        while (
-            !(await nodes[0].sdk.rpc.chain.containsTransaction(pay1.hash()))
-        ) {
-            await wait(500);
-        }
+    it("cannot delegate to non-candidate", async function() {
         // give some ccs to delegate.
 
         const hash1 = await sendStakeToken({
@@ -487,7 +546,12 @@ describe("Staking", function() {
     });
 
     it("can revoke tokens", async function() {
-        await connectEachOther();
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
 
         const delegateHash = await delegateToken({
             senderAddress: faucetAddress,
@@ -538,7 +602,12 @@ describe("Staking", function() {
     });
 
     it("cannot revoke more than delegated", async function() {
-        await connectEachOther();
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
 
         const delegateHash = await delegateToken({
             senderAddress: faucetAddress,
@@ -610,7 +679,12 @@ describe("Staking", function() {
     });
 
     it("revoking all should clear delegation", async function() {
-        await connectEachOther();
+        await selfNominate({
+            senderAddress: validator0Address,
+            senderSecret: validator0Secret,
+            deposit: 0,
+            metadata: null
+        });
 
         const delegateHash = await delegateToken({
             senderAddress: faucetAddress,
@@ -659,8 +733,6 @@ describe("Staking", function() {
     });
 
     it("get fee in proportion to holding stakes", async function() {
-        await connectEachOther();
-
         // faucet: 70000, alice: 20000, bob: 10000
         const fee = 1000;
         const hash = await sendStakeToken({
@@ -757,7 +829,13 @@ describe("Staking", function() {
     });
 
     it("get fee even if it delegated stakes to other", async function() {
-        await connectEachOther();
+        await selfNominate({
+            senderAddress: validator1Address,
+            senderSecret: validator1Secret,
+            deposit: 0,
+            metadata: null
+        });
+
         // faucet: 70000, alice: 20000, bob: 10000
         const hash1 = await sendStakeToken({
             senderAddress: faucetAddress,
@@ -897,7 +975,13 @@ describe("Staking", function() {
     });
 
     it("get fee even if it delegated stakes to other stakeholder", async function() {
-        await connectEachOther();
+        await selfNominate({
+            senderAddress: validator1Address,
+            senderSecret: validator1Secret,
+            deposit: 0,
+            metadata: null
+        });
+
         // faucet: 70000, alice: 20000, bob: 10000
         const hash1 = await sendStakeToken({
             senderAddress: faucetAddress,
@@ -1268,6 +1352,7 @@ describe("Staking-disable-delegation", function() {
 
     it("cannot delegate tokens", async function() {
         await connectEachOther();
+
         const hash = await delegateToken({
             senderAddress: faucetAddress,
             senderSecret: faucetSecret,

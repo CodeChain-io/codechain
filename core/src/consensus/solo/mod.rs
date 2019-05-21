@@ -23,7 +23,6 @@ use ctypes::{CommonParams, Header};
 
 use self::params::SoloParams;
 use super::stake;
-use super::validator_set;
 use super::{ConsensusEngine, Seal};
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::codechain_machine::CodeChainMachine;
@@ -44,10 +43,7 @@ impl<M> Solo<M> {
         if params.enable_hit_handler {
             action_handlers.push(Arc::new(HitHandler::new()));
         }
-        action_handlers.push(Arc::new(stake::Stake::new(
-            params.genesis_stakes.clone(),
-            Arc::new(validator_set::null_validator::NullValidator {}),
-        )));
+        action_handlers.push(Arc::new(stake::Stake::new(params.genesis_stakes.clone())));
 
         Solo {
             params,
