@@ -49,14 +49,13 @@ mod tests {
 
     use ckey::PlatformAddress;
 
-    use primitives::{H256 as Core256, H520 as Core520, U256};
+    use primitives::{H256 as Core256, H520 as Core520};
     use serde_json;
 
     use super::super::{Seal, TendermintSeal};
     use super::Genesis;
     use crate::bytes::Bytes;
     use crate::hash::{H256, H520};
-    use crate::uint::Uint;
 
     #[test]
     fn genesis_deserialization() {
@@ -80,15 +79,15 @@ mod tests {
         let deserialized: Genesis = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized, Genesis {
             seal: Seal::Tendermint(TendermintSeal {
-                prev_view: Uint(U256::from(0x0)),
-                cur_view: Uint(U256::from(0x0)),
+                prev_view: 0x0.into(),
+                cur_view: 0x0.into(),
                 precommits: vec![
                     H520(Core520::from("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
                 ]
             }),
-            score: Uint(U256::from(0x0004_0000_0000u64)),
+            score: 0x0004_0000_0000u64.into(),
             author: Some(PlatformAddress::from_str("tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3").unwrap()),
-            timestamp: Some(Uint(U256::from(0x07))),
+            timestamp: Some(0x07.into()),
             parent_hash: Some(H256(Core256::from("0x9000000000000000000000000000000000000000000000000000000000000000"))),
             transactions_root: None,
             state_root: Some(H256(Core256::from("0xd7f8974fb5ac78d9ac099b9ad5018bedc2ce0a72dad1827a1709da30580f0544"))),

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -34,11 +34,9 @@ impl Account {
 
 #[cfg(test)]
 mod tests {
-    use primitives::U256;
     use serde_json;
 
     use super::Account;
-    use crate::uint::Uint;
 
     #[test]
     fn account_deserialization() {
@@ -48,7 +46,7 @@ mod tests {
         }"#;
         let deserialized: Account = serde_json::from_str(s).unwrap();
         assert!(!deserialized.is_empty());
-        assert_eq!(deserialized.balance.unwrap(), Uint(U256::from(1)));
-        assert_eq!(deserialized.seq.unwrap(), Uint(U256::from(0)));
+        assert_eq!(deserialized.balance, Some(1.into()));
+        assert_eq!(deserialized.seq, Some(0.into()));
     }
 }

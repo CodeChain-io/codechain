@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,6 @@ mod tests {
     use std::str::FromStr;
 
     use ckey::PlatformAddress;
-    use primitives::U256;
     use serde_json;
 
     use super::*;
@@ -44,7 +43,7 @@ mod tests {
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
-                seq: Some(Uint(U256::from(0))),
+                seq: Some(0.into()),
                 owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: None,
             },
@@ -62,7 +61,7 @@ mod tests {
         let shard: Shard = serde_json::from_str(s).unwrap();
         assert_eq!(
             Shard {
-                seq: Some(Uint(U256::from(100))),
+                seq: Some(100.into()),
                 owners: vec![PlatformAddress::from_str("tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u").unwrap()],
                 users: Some(vec![PlatformAddress::from_str("tccq8txq9uafdg8y2de9m2tdkhsfsj3m9nluq94hyan").unwrap()]),
             },

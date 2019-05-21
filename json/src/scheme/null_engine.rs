@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -32,11 +32,9 @@ pub struct NullEngine {
 
 #[cfg(test)]
 mod tests {
-    use primitives::U256;
     use serde_json;
 
     use super::*;
-    use crate::uint::Uint;
 
     #[test]
     fn null_engine_deserialization() {
@@ -47,6 +45,6 @@ mod tests {
         }"#;
 
         let deserialized: NullEngine = serde_json::from_str(s).unwrap();
-        assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
+        assert_eq!(deserialized.params.block_reward, Some(0x0d.into()));
     }
 }
