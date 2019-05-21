@@ -45,18 +45,37 @@ describe("customAction", function() {
         it("should get initial state", async function() {
             const actionData = await node.sdk.rpc.engine.getCustomActionData(
                 hitActionHandlerId,
-                ["metadata hit"]
+                ["hit count"]
             );
 
             expect(actionData).to.be.equal(toHex(RLP.encode(1)));
         });
 
         it("should alter state", async function() {
+            const previousHitData = (await node.sdk.rpc.engine.getCustomActionData(
+                hitActionHandlerId,
+                ["hit count"]
+            ))!;
+            const previousHitCount = Buffer.from(
+                previousHitData,
+                "hex"
+            ).readUInt8(0);
+
+            const previousBlockCloseData = (await node.sdk.rpc.engine.getCustomActionData(
+                hitActionHandlerId,
+                ["close count"]
+            ))!;
+            const previousBlockCloseCount = Buffer.from(
+                previousBlockCloseData,
+                "hex"
+            ).readUInt8(0);
+
+            const increment = 11;
             const hash = await node.sdk.rpc.chain.sendSignedTransaction(
                 node.sdk.core
                     .createCustomTransaction({
                         handlerId: hitActionHandlerId,
-                        bytes: RLP.encode([11])
+                        bytes: RLP.encode([increment])
                     })
                     .sign({
                         secret: faucetSecret,
@@ -68,12 +87,21 @@ describe("customAction", function() {
             expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
             expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
 
-            const actionData = await node.sdk.rpc.engine.getCustomActionData(
+            const hitData = await node.sdk.rpc.engine.getCustomActionData(
                 hitActionHandlerId,
-                ["metadata hit"]
+                ["hit count"]
             );
 
-            expect(actionData).to.be.equal(toHex(RLP.encode(12)));
+            expect(hitData).to.be.equal(
+                toHex(RLP.encode(previousHitCount + increment))
+            );
+            const closeData = await node.sdk.rpc.engine.getCustomActionData(
+                hitActionHandlerId,
+                ["close count"]
+            );
+            expect(closeData).to.be.equal(
+                toHex(RLP.encode(previousBlockCloseCount + 1))
+            );
         });
 
         it("should return null", async function() {
@@ -89,7 +117,7 @@ describe("customAction", function() {
             try {
                 await node.sdk.rpc.engine.getCustomActionData(
                     hitActionHandlerId,
-                    ["metadata hit"],
+                    ["hit count"],
                     99999
                 );
                 fail();

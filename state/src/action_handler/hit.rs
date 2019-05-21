@@ -37,36 +37,54 @@ impl HitHandler {
         Self::default()
     }
 
-    fn address(&self) -> H256 {
-        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"metadata hit").into_key()
+    fn hit_count(&self) -> H256 {
+        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"hit count").into_key()
+    }
+
+    fn close_count(&self) -> H256 {
+        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"close count").into_key()
     }
 }
 
 impl ActionHandler for HitHandler {
+    fn name(&self) -> &'static str {
+        "hit handler"
+    }
+
     fn handler_id(&self) -> u64 {
         CUSTOM_ACTION_HANDLER_ID
     }
 
     fn init(&self, state: &mut TopLevelState) -> StateResult<()> {
-        let existing = state.action_data(&self.address());
+        let existing = state.action_data(&self.hit_count());
         debug_assert_eq!(Ok(None), existing);
-        state.update_action_data(&self.address(), 1u32.rlp_bytes().to_vec())?;
+        state.update_action_data(&self.hit_count(), 1u32.rlp_bytes().to_vec())?;
+        state.update_action_data(&self.close_count(), 1u32.rlp_bytes().to_vec())?;
         Ok(())
     }
 
     /// `bytes` must be valid encoding of HitAction
     fn execute(&self, bytes: &[u8], state: &mut TopLevelState, _sender: &Address) -> StateResult<()> {
+        let address = self.hit_count();
         let action = HitAction::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
-        let action_data = state.action_data(&self.address())?.unwrap_or_default();
+        let action_data = state.action_data(&address)?.unwrap_or_default();
         let prev_counter: u32 = rlp::decode(&*action_data);
         let increase = u32::from(action.increase);
-        state.update_action_data(&self.address(), (prev_counter + increase).rlp_bytes().to_vec())?;
+        state.update_action_data(&address, (prev_counter + increase).rlp_bytes().to_vec())?;
         Ok(())
     }
 
     fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
         HitAction::decode(&UntrustedRlp::new(bytes))
             .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
+        Ok(())
+    }
+
+    fn on_close_block(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let address = self.close_count();
+        let action_data = state.action_data(&address)?.unwrap_or_default();
+        let prev_counter: u32 = rlp::decode(&*action_data);
+        state.update_action_data(&address, (prev_counter + 1).rlp_bytes().to_vec())?;
         Ok(())
     }
 }

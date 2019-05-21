@@ -28,6 +28,7 @@ use super::TopStateView;
 use crate::{StateResult, TopLevelState};
 
 pub trait ActionHandler: Send + Sync {
+    fn name(&self) -> &'static str;
     fn handler_id(&self) -> u64;
     fn init(&self, state: &mut TopLevelState) -> StateResult<()>;
     fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> StateResult<()>;
@@ -38,6 +39,8 @@ pub trait ActionHandler: Send + Sync {
         let some_action_data = state.action_data(&key)?.map(Vec::from);
         Ok(some_action_data)
     }
+
+    fn on_close_block(&self, state: &mut TopLevelState) -> StateResult<()>;
 }
 
 pub trait FindActionHandler {
