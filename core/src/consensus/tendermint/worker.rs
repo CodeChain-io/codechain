@@ -25,7 +25,7 @@ use ckey::{public_to_address, verify_schnorr, Address, SchnorrSignature};
 use cnetwork::{EventSender, NodeId};
 use crossbeam_channel as crossbeam;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, Header};
 use primitives::{u256_from_u128, Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
@@ -47,7 +47,6 @@ use crate::consensus::vote_collector::VoteCollector;
 use crate::consensus::{EngineError, Seal};
 use crate::encoded;
 use crate::error::{BlockError, Error};
-use crate::header::Header;
 use crate::views::BlockView;
 use crate::BlockId;
 

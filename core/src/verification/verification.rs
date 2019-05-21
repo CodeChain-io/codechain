@@ -18,7 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use cmerkle::skewed_merkle_root;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::{BlockNumber, CommonParams};
+use ctypes::{BlockNumber, CommonParams, Header};
 use primitives::{Bytes, H256};
 use rlp::UntrustedRlp;
 
@@ -27,7 +27,6 @@ use crate::client::BlockChainTrait;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error};
-use crate::header::Header;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::BlockView;
 

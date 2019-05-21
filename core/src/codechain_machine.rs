@@ -19,12 +19,11 @@ use ckey::Address;
 use cstate::{StateError, TopState, TopStateView};
 use ctypes::errors::{HistoryError, SyntaxError};
 use ctypes::transaction::{Action, AssetTransferInput, OrderOnTransfer, Timelock};
-use ctypes::CommonParams;
+use ctypes::{CommonParams, Header};
 
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::client::BlockChainTrait;
 use crate::error::Error;
-use crate::header::Header;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
 pub struct CodeChainMachine {

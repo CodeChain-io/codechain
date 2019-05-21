@@ -17,7 +17,8 @@
 use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
 use snap;
 
-use ccore::{Header, UnverifiedTransaction};
+use ccore::UnverifiedTransaction;
+use ctypes::Header;
 
 #[derive(Debug, PartialEq)]
 pub enum ResponseMessage {
@@ -139,9 +140,10 @@ impl ResponseMessage {
 mod tests {
     use rlp::{Encodable, UntrustedRlp};
 
-    use ccore::{Header, UnverifiedTransaction};
+    use ccore::UnverifiedTransaction;
     use ckey::{Address, Signature};
     use ctypes::transaction::{Action, Transaction};
+    use ctypes::Header;
 
     use super::ResponseMessage;
 

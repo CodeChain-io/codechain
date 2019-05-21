@@ -42,7 +42,7 @@ use cnetwork::NodeId;
 use cstate::{FindActionHandler, StateDB};
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
-use ctypes::{BlockNumber, CommonParams};
+use ctypes::{BlockNumber, CommonParams, Header as BlockHeader};
 use cvm::ChainTimeInfo;
 use journaldb;
 use kvdb::KeyValueDB;
@@ -61,7 +61,6 @@ use crate::client::{
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
 use crate::error::BlockImportError;
-use crate::header::Header as BlockHeader;
 use crate::miner::{Miner, MinerService, TransactionImportResult};
 use crate::scheme::Scheme;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};

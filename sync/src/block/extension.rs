@@ -21,12 +21,13 @@ use std::time::Duration;
 
 use ccore::encoded::Header as EncodedHeader;
 use ccore::{
-    Block, BlockChainClient, BlockChainTrait, BlockId, BlockImportError, ChainNotify, Client, Header, ImportBlock,
-    ImportError, Seal, UnverifiedTransaction,
+    Block, BlockChainClient, BlockChainTrait, BlockId, BlockImportError, ChainNotify, Client, ImportBlock, ImportError,
+    UnverifiedTransaction,
 };
 use cnetwork::{Api, EventSender, NetworkExtension, NodeId};
 use cstate::FindActionHandler;
 use ctimer::TimerToken;
+use ctypes::header::{Header, Seal};
 use ctypes::transaction::Action;
 use ctypes::BlockNumber;
 use primitives::{H256, U256};

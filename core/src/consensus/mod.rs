@@ -43,7 +43,7 @@ use cstate::ActionHandler;
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Action;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::CommonParams;
+use ctypes::{CommonParams, Header};
 use primitives::{Bytes, H256, U256};
 
 use self::tendermint::types::{BitSet, View};
