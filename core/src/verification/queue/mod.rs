@@ -162,7 +162,7 @@ impl<K: Kind> VerificationQueue<K> {
             let deleting = Arc::clone(&deleting);
 
             let handle = thread::Builder::new()
-                .name(format!("Verifier #{}", i))
+                .name(format!("{} Verifier #{}", K::name(), i))
                 .spawn(move || {
                     VerificationQueue::verify(
                         &verification,
