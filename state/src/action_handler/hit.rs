@@ -16,6 +16,7 @@
 
 use ckey::Address;
 use ctypes::errors::SyntaxError;
+use ctypes::{CommonParams, Header};
 use primitives::H256;
 use rlp::{self, Decodable, Encodable, UntrustedRlp};
 
@@ -80,7 +81,13 @@ impl ActionHandler for HitHandler {
         Ok(())
     }
 
-    fn on_close_block(&self, state: &mut TopLevelState) -> StateResult<()> {
+    fn on_close_block(
+        &self,
+        state: &mut TopLevelState,
+        _header: &Header,
+        _parent_header: &Header,
+        _parent_common_params: &CommonParams,
+    ) -> StateResult<()> {
         let address = self.close_count();
         let action_data = state.action_data(&address)?.unwrap_or_default();
         let prev_counter: u32 = rlp::decode(&*action_data);

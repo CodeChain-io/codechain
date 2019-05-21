@@ -526,14 +526,13 @@ impl Miner {
         }
         cdebug!(MINER, "Pushed {}/{} transactions", tx_count, tx_total);
 
-        let (transactions_root, parent_hash) = {
+        let (parent_header, parent_hash) = {
             let parent_hash = *open_block.header().parent_hash();
             let parent_header = chain.block_header(&parent_hash.into()).expect("Parent header MUST exist");
-            let parent_view = parent_header.view();
-            (parent_view.transactions_root(), parent_hash)
+            (parent_header.decode(), parent_hash)
         };
         let parent_common_params = chain.common_params(parent_hash.into()).unwrap();
-        let block = open_block.close(transactions_root, &parent_common_params)?;
+        let block = open_block.close(&parent_header, &parent_common_params)?;
 
         let fetch_seq = |p: &Public| {
             let address = public_to_address(p);

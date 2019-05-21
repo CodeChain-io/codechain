@@ -128,7 +128,12 @@ impl ConsensusEngine for Tendermint {
 
     fn stop(&self) {}
 
-    fn on_close_block(&self, block: &mut ExecutedBlock, parent_common_params: &CommonParams) -> Result<(), Error> {
+    fn on_close_block(
+        &self,
+        block: &mut ExecutedBlock,
+        _parent_header: &Header,
+        parent_common_params: &CommonParams,
+    ) -> Result<(), Error> {
         let author = *block.header().author();
         let (total_reward, total_min_fee) = {
             let transactions = block.transactions();

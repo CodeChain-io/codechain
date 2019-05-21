@@ -25,6 +25,7 @@ use std::sync::Arc;
 use ckey::Address;
 use cstate::{ActionHandler, StateResult, TopLevelState};
 use ctypes::errors::{RuntimeError, SyntaxError};
+use ctypes::{CommonParams, Header};
 use rlp::{Decodable, UntrustedRlp};
 
 use self::action_data::{Delegation, StakeAccount, Stakeholders};
@@ -118,7 +119,13 @@ impl ActionHandler for Stake {
         Ok(())
     }
 
-    fn on_close_block(&self, _state: &mut TopLevelState) -> StateResult<()> {
+    fn on_close_block(
+        &self,
+        _state: &mut TopLevelState,
+        _header: &Header,
+        _parent_header: &Header,
+        _parent_common_params: &CommonParams,
+    ) -> StateResult<()> {
         Ok(())
     }
 }
