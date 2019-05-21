@@ -23,7 +23,6 @@ use primitives::{Bytes, H256};
 use self::validator_list::ValidatorList;
 use crate::client::ConsensusClient;
 
-pub mod null_validator;
 pub mod validator_list;
 
 /// Creates a validator set from validator public keys.

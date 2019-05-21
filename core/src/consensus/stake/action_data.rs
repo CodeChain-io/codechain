@@ -16,15 +16,15 @@
 
 #[cfg(test)]
 use std::collections::btree_map;
-use std::collections::btree_map::Entry;
-use std::collections::{btree_set, BTreeMap, BTreeSet};
+use std::collections::btree_map::{BTreeMap, Entry};
+use std::collections::btree_set::{self, BTreeSet};
 use std::mem;
 
 use ckey::Address;
 use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
 use ctypes::errors::RuntimeError;
 use primitives::H256;
-use rlp::{Decodable, Encodable, Rlp, RlpStream};
+use rlp::{decode_list, Decodable, Encodable, Rlp, RlpStream};
 
 use super::CUSTOM_ACTION_HANDLER_ID;
 
@@ -35,6 +35,8 @@ pub fn get_account_key(address: &Address) -> H256 {
 lazy_static! {
     pub static ref STAKEHOLDER_ADDRESSES_KEY: H256 =
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"StakeholderAddresses").into_key();
+    pub static ref CANDIDATES_KEY: H256 =
+        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Candidates").into_key();
 }
 
 pub fn get_delegation_key(address: &Address) -> H256 {
@@ -46,6 +48,7 @@ pub fn get_intermediate_rewards_key() -> H256 {
 }
 
 pub type StakeQuantity = u64;
+pub type Deposit = u64;
 
 pub struct StakeAccount<'a> {
     pub address: &'a Address,
@@ -194,7 +197,6 @@ impl<'a> Delegation<'a> {
             .into())
     }
 
-    #[cfg(test)]
     pub fn get_quantity(&self, delegatee: &Address) -> StakeQuantity {
         self.delegatees.get(delegatee).cloned().unwrap_or(0)
     }
@@ -254,6 +256,62 @@ impl IntermediateRewards {
     pub fn move_current_to_previous(&mut self) {
         assert!(self.previous.is_empty());
         mem::swap(&mut self.previous, &mut self.current);
+    }
+}
+
+pub struct Candidates(BTreeMap<Address, Candidate>);
+#[derive(Clone, Debug, Eq, PartialEq, RlpEncodable, RlpDecodable)]
+pub struct Candidate {
+    pub address: Address,
+    pub deposit: Deposit,
+    pub nomination_ends_at: u64,
+}
+
+impl Candidates {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Candidates> {
+        let key = *CANDIDATES_KEY;
+        let candidates = state.action_data(&key)?.map(|data| decode_list::<Candidate>(&data)).unwrap_or_default();
+        let indexed = candidates.into_iter().map(|c| (c.address, c)).collect();
+        Ok(Candidates(indexed))
+    }
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let key = *CANDIDATES_KEY;
+        if !self.0.is_empty() {
+            let encoded = encode_iter(self.0.values());
+            state.update_action_data(&key, encoded)?;
+        } else {
+            state.remove_action_data(&key);
+        }
+        Ok(())
+    }
+
+    pub fn get_candidate(&self, account: &Address) -> Option<&Candidate> {
+        self.0.get(&account)
+    }
+
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn add_deposit(&mut self, address: &Address, quantity: Deposit, nomination_ends_at: u64) {
+        let candidate = self.0.entry(*address).or_insert(Candidate {
+            address: *address,
+            deposit: 0,
+            nomination_ends_at: 0,
+        });
+        candidate.deposit += quantity;
+        if candidate.nomination_ends_at < nomination_ends_at {
+            candidate.nomination_ends_at = nomination_ends_at;
+        }
+    }
+
+    pub fn drain_expired_candidates(&mut self, term_index: u64) -> Vec<Candidate> {
+        let (expired, retained): (Vec<_>, Vec<_>) =
+            self.0.values().cloned().partition(|c| c.nomination_ends_at <= term_index);
+        self.0 = retained.into_iter().map(|c| (c.address, c)).collect();
+        expired
     }
 }
 
@@ -351,6 +409,18 @@ where
     encode_map_impl(&mut rlp, map0);
     encode_map_impl(&mut rlp, map1);
 
+    rlp.drain().into_vec()
+}
+
+fn encode_iter<'a, V, I>(iter: I) -> Vec<u8>
+where
+    V: 'a + Encodable,
+    I: ExactSizeIterator<Item = &'a V> + Clone, {
+    let mut rlp = RlpStream::new();
+    rlp.begin_list(iter.clone().count());
+    for value in iter {
+        rlp.append(value);
+    }
     rlp.drain().into_vec()
 }
 
@@ -718,5 +788,172 @@ mod tests {
         final_rewards.move_current_to_previous();
         assert_eq!(BTreeMap::new(), final_rewards.current);
         assert_eq!(current, final_rewards.previous);
+    }
+
+    #[test]
+    fn candidates_deposit_add() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let account = Address::random();
+        let deposits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+        for deposit in deposits.iter() {
+            let mut candidates = Candidates::load_from_state(&state).unwrap();
+            candidates.add_deposit(&account, *deposit, 0);
+            candidates.save_to_state(&mut state).unwrap();
+        }
+
+        // Assert
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let candidate = candidates.get_candidate(&account);
+        assert_ne!(candidate, None);
+        assert_eq!(candidate.unwrap().deposit, 55);
+    }
+
+    #[test]
+    fn candidates_deposit_can_be_zero() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let account = Address::random();
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        candidates.add_deposit(&account, 0, 10);
+        candidates.save_to_state(&mut state).unwrap();
+
+        // Assert
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let candidate = candidates.get_candidate(&account);
+        assert_ne!(candidate, None);
+        assert_eq!(candidate.unwrap().deposit, 0);
+        assert_eq!(candidate.unwrap().nomination_ends_at, 10, "Can be a candidate with 0 deposit");
+    }
+
+    #[test]
+    fn candidates_deposit_should_update_nomination_ends_at() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let account = Address::random();
+        let deposit_and_nomination_ends_at = [(10, 11), (20, 22), (30, 33), (0, 44)];
+
+        for (deposit, nomination_ends_at) in &deposit_and_nomination_ends_at {
+            let mut candidates = Candidates::load_from_state(&state).unwrap();
+            candidates.add_deposit(&account, *deposit, *nomination_ends_at);
+            candidates.save_to_state(&mut state).unwrap();
+        }
+
+        // Assert
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let candidate = candidates.get_candidate(&account);
+        assert_ne!(candidate, None);
+        assert_eq!(candidate.unwrap().deposit, 60);
+        assert_eq!(
+            candidate.unwrap().nomination_ends_at,
+            44,
+            "nomination_ends_at should be updated incrementally, and including zero deposit"
+        );
+    }
+
+    #[test]
+    fn candidates_can_remove_expired_deposit() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let candidates_prepared = [
+            Candidate {
+                address: Address::from(0),
+                deposit: 20,
+                nomination_ends_at: 11,
+            },
+            Candidate {
+                address: Address::from(1),
+                deposit: 30,
+                nomination_ends_at: 22,
+            },
+            Candidate {
+                address: Address::from(2),
+                deposit: 40,
+                nomination_ends_at: 33,
+            },
+            Candidate {
+                address: Address::from(3),
+                deposit: 50,
+                nomination_ends_at: 44,
+            },
+        ];
+
+        for Candidate {
+            address,
+            deposit,
+            nomination_ends_at,
+        } in &candidates_prepared
+        {
+            let mut candidates = Candidates::load_from_state(&state).unwrap();
+            candidates.add_deposit(&address, *deposit, *nomination_ends_at);
+            candidates.save_to_state(&mut state).unwrap();
+        }
+
+        // Remove Expired
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        let expired = candidates.drain_expired_candidates(22);
+        candidates.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(expired[..], candidates_prepared[0..=1],);
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(candidates.len(), 2);
+        assert_eq!(candidates.get_candidate(&candidates_prepared[2].address), Some(&candidates_prepared[2]));
+        assert_eq!(candidates.get_candidate(&candidates_prepared[3].address), Some(&candidates_prepared[3]));
+    }
+
+    #[test]
+    fn candidates_expire_all_cleanup_state() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let candidates_prepared = [
+            Candidate {
+                address: Address::from(0),
+                deposit: 20,
+                nomination_ends_at: 11,
+            },
+            Candidate {
+                address: Address::from(1),
+                deposit: 30,
+                nomination_ends_at: 22,
+            },
+            Candidate {
+                address: Address::from(2),
+                deposit: 40,
+                nomination_ends_at: 33,
+            },
+            Candidate {
+                address: Address::from(3),
+                deposit: 50,
+                nomination_ends_at: 44,
+            },
+        ];
+
+        for Candidate {
+            address,
+            deposit,
+            nomination_ends_at,
+        } in &candidates_prepared
+        {
+            let mut candidates = Candidates::load_from_state(&state).unwrap();
+            candidates.add_deposit(&address, *deposit, *nomination_ends_at);
+            candidates.save_to_state(&mut state).unwrap();
+        }
+
+        // Remove Expired
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        let expired = candidates.drain_expired_candidates(99);
+        candidates.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(expired[..], candidates_prepared[0..4]);
+        let result = state.action_data(&*CANDIDATES_KEY).unwrap();
+        assert_eq!(result, None);
     }
 }

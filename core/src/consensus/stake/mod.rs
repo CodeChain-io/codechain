@@ -20,8 +20,6 @@ mod distribute;
 
 use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
-use std::ops::Deref;
-use std::sync::Arc;
 
 use ccrypto::Blake;
 use ckey::{public_to_address, recover, Address, Signature};
@@ -32,34 +30,30 @@ use ctypes::{CommonParams, Header};
 use primitives::H256;
 use rlp::{Decodable, UntrustedRlp};
 
-use self::action_data::{Delegation, IntermediateRewards, StakeAccount, Stakeholders};
+use self::action_data::{Candidates, Delegation, IntermediateRewards, StakeAccount, Stakeholders};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
-use consensus::ValidatorSet;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 
 pub struct Stake {
     genesis_stakes: HashMap<Address, u64>,
-    validators: Arc<ValidatorSet>,
     enable_delegations: bool,
 }
 
 impl Stake {
     #[cfg(not(test))]
-    pub fn new(genesis_stakes: HashMap<Address, u64>, validators: Arc<ValidatorSet>) -> Stake {
+    pub fn new(genesis_stakes: HashMap<Address, u64>) -> Stake {
         Stake {
             genesis_stakes,
-            validators,
             enable_delegations: parse_env_var_enable_delegations(),
         }
     }
 
     #[cfg(test)]
-    pub fn new(genesis_stakes: HashMap<Address, u64>, validators: Arc<ValidatorSet>) -> Stake {
+    pub fn new(genesis_stakes: HashMap<Address, u64>) -> Stake {
         Stake {
             genesis_stakes,
-            validators,
             enable_delegations: true,
         }
     }
@@ -110,7 +104,7 @@ impl ActionHandler for Stake {
                 quantity,
             } => {
                 if self.enable_delegations {
-                    delegate_ccs(state, sender, &address, quantity, self.validators.deref())
+                    delegate_ccs(state, sender, &address, quantity)
                 } else {
                     Err(RuntimeError::FailedToHandleCustomAction("DelegateCCS is disabled".to_string()).into())
                 }
@@ -122,7 +116,17 @@ impl ActionHandler for Stake {
                 if self.enable_delegations {
                     revoke(state, sender, &address, quantity)
                 } else {
-                    Err(RuntimeError::FailedToHandleCustomAction("DelegateCCS is disabled".to_string()).into())
+                    Err(RuntimeError::FailedToHandleCustomAction("Revoke is disabled".to_string()).into())
+                }
+            }
+            Action::SelfNominate {
+                deposit,
+                ..
+            } => {
+                if self.enable_delegations {
+                    self_nominate(state, sender, deposit, 0)
+                } else {
+                    Err(RuntimeError::FailedToHandleCustomAction("SelfNominate is disabled".to_string()).into())
                 }
             }
             Action::ChangeParams {
@@ -146,6 +150,12 @@ impl ActionHandler for Stake {
             Action::Revoke {
                 ..
             } => Ok(()),
+            Action::SelfNominate {
+                ..
+            } => {
+                // FIXME: Metadata size limit
+                Ok(())
+            }
             Action::ChangeParams {
                 metadata_seq,
                 params,
@@ -198,16 +208,13 @@ fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address,
     Ok(())
 }
 
-fn delegate_ccs(
-    state: &mut TopLevelState,
-    sender: &Address,
-    delegatee: &Address,
-    quantity: u64,
-    validators: &ValidatorSet,
-) -> StateResult<()> {
+fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
     // TODO: remove parent hash from validator set.
-    if !validators.contains_address(&Default::default(), delegatee) {
-        return Err(RuntimeError::FailedToHandleCustomAction("Cannot delegate to non-validator".into()).into())
+    // TODO: handle banned account
+    // TODO: handle jailed account
+    let candidates = Candidates::load_from_state(state)?;
+    if candidates.get_candidate(delegatee).is_none() {
+        return Err(RuntimeError::FailedToHandleCustomAction("Cannot delegate to non-candidate".into()).into())
     }
     let mut delegator = StakeAccount::load_from_state(state, sender)?;
     let mut delegation = Delegation::load_from_state(state, &sender)?;
@@ -231,6 +238,23 @@ fn revoke(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quan
 
     delegation.save_to_state(state)?;
     delegator.save_to_state(state)?;
+    Ok(())
+}
+
+fn self_nominate(
+    state: &mut TopLevelState,
+    sender: &Address,
+    deposit: u64,
+    nomination_ends_at: u64,
+) -> StateResult<()> {
+    // TODO: proper handling of get_current_term
+    // TODO: proper handling of NOMINATE_EXPIRATION
+    // TODO: check banned accounts
+    // TODO: check jailed accounts
+    let mut candidates = Candidates::load_from_state(&state)?;
+    state.sub_balance(sender, deposit)?;
+    candidates.add_deposit(sender, deposit, nomination_ends_at);
+    candidates.save_to_state(state)?;
     Ok(())
 }
 
@@ -299,14 +323,54 @@ fn change_params(
     Ok(())
 }
 
+#[allow(dead_code)]
+pub fn on_term_close(state: &mut TopLevelState, current_term: u64) -> StateResult<()> {
+    // TODO: total_slash = slash_unresponsive(headers, pending_rewards)
+    // TODO: pending_rewards.update(signature_reward(blocks, total_slash))
+
+    let mut candidates = Candidates::load_from_state(state)?;
+    let expired = candidates.drain_expired_candidates(current_term);
+    for candidate in &expired {
+        state.add_balance(&candidate.address, candidate.deposit)?;
+    }
+    candidates.save_to_state(state)?;
+
+    // TODO: auto_withdraw(pending_rewards)
+    // TODO: kick(jailed)
+
+    // Stakeholders list isn't changed while reverting.
+    let reverted: Vec<_> = expired.iter().map(|c| c.address).collect();
+    revert_delegations(state, &reverted)?;
+
+    // TODO: validators, validator_order = elect()
+    Ok(())
+}
+
+fn revert_delegations(state: &mut TopLevelState, reverted_delegatees: &[Address]) -> StateResult<()> {
+    let stakeholders = Stakeholders::load_from_state(state)?;
+    for stakeholder in stakeholders.iter() {
+        let mut balance = StakeAccount::load_from_state(state, stakeholder)?;
+        let mut delegation = Delegation::load_from_state(state, stakeholder)?;
+
+        for prisoner in reverted_delegatees.iter() {
+            let quantity = delegation.get_quantity(prisoner);
+            if quantity > 0 {
+                delegation.subtract_quantity(*prisoner, quantity)?;
+                balance.add_balance(quantity)?;
+            }
+        }
+        delegation.save_to_state(state)?;
+        balance.save_to_state(state)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::action_data::get_account_key;
     use super::*;
 
-    use ckey::{public_to_address, Public};
-    use consensus::stake::action_data::get_delegation_key;
-    use consensus::validator_set::new_validator_set;
+    use consensus::stake::action_data::{get_delegation_key, Candidate};
     use cstate::tests::helpers;
     use cstate::TopStateView;
     use rlp::Encodable;
@@ -320,7 +384,7 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(address1, 100);
-            Stake::new(genesis_stakes, new_validator_set(Vec::new()))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -345,7 +409,7 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(address1, 100);
-            Stake::new(genesis_stakes, new_validator_set(Vec::new()))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -373,7 +437,7 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(address1, 100);
-            Stake::new(genesis_stakes, new_validator_set(Vec::new()))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -395,8 +459,7 @@ mod tests {
 
     #[test]
     fn delegate() {
-        let delegatee_public = Public::random();
-        let delegatee = public_to_address(&delegatee_public);
+        let delegatee = Address::random();
         let delegator = Address::random();
 
         let mut state = helpers::get_temp_state();
@@ -404,9 +467,10 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &delegatee, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -436,8 +500,7 @@ mod tests {
 
     #[test]
     fn delegate_all() {
-        let delegatee_public = Public::random();
-        let delegatee = public_to_address(&delegatee_public);
+        let delegatee = Address::random();
         let delegator = Address::random();
 
         let mut state = helpers::get_temp_state();
@@ -445,9 +508,10 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &delegatee, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -477,9 +541,8 @@ mod tests {
     }
 
     #[test]
-    fn delegate_only_to_validator() {
-        let delegatee_public = Public::random();
-        let delegatee = public_to_address(&delegatee_public);
+    fn delegate_only_to_candidate() {
+        let delegatee = Address::random();
         let delegator = Address::random();
 
         let mut state = helpers::get_temp_state();
@@ -487,7 +550,7 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes, new_validator_set(Vec::new()))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -501,8 +564,7 @@ mod tests {
 
     #[test]
     fn delegate_too_much() {
-        let delegatee_public = Public::random();
-        let delegatee = public_to_address(&delegatee_public);
+        let delegatee = Address::random();
         let delegator = Address::random();
 
         let mut state = helpers::get_temp_state();
@@ -510,9 +572,10 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &delegatee, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -524,8 +587,7 @@ mod tests {
 
     #[test]
     fn can_transfer_within_non_delegated_tokens() {
-        let delegatee_public = Public::random();
-        let delegatee = public_to_address(&delegatee_public);
+        let delegatee = Address::random();
         let delegator = Address::random();
 
         let mut state = helpers::get_temp_state();
@@ -533,9 +595,10 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &delegatee, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -553,8 +616,7 @@ mod tests {
 
     #[test]
     fn cannot_transfer_over_non_delegated_tokens() {
-        let delegatee_public = Public::random();
-        let delegatee = public_to_address(&delegatee_public);
+        let delegatee = Address::random();
         let delegator = Address::random();
 
         let mut state = helpers::get_temp_state();
@@ -562,9 +624,10 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &delegatee, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -582,8 +645,7 @@ mod tests {
 
     #[test]
     fn can_revoke_delegated_tokens() {
-        let delegatee_public = Public::random();
-        let delegatee = public_to_address(&delegatee_public);
+        let delegatee = Address::random();
         let delegator = Address::random();
 
         let mut state = helpers::get_temp_state();
@@ -591,9 +653,10 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &delegatee, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -618,8 +681,7 @@ mod tests {
 
     #[test]
     fn cannot_revoke_more_than_delegated_tokens() {
-        let delegatee_public = Public::random();
-        let delegatee = public_to_address(&delegatee_public);
+        let delegatee = Address::random();
         let delegator = Address::random();
 
         let mut state = helpers::get_temp_state();
@@ -627,9 +689,10 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &delegatee, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -654,8 +717,7 @@ mod tests {
 
     #[test]
     fn revoke_all_should_clear_state() {
-        let delegatee_public = Public::random();
-        let delegatee = public_to_address(&delegatee_public);
+        let delegatee = Address::random();
         let delegator = Address::random();
 
         let mut state = helpers::get_temp_state();
@@ -663,9 +725,10 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
+            Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &delegatee, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -684,5 +747,153 @@ mod tests {
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
         assert_eq!(delegator_account.balance, 100);
         assert_eq!(state.action_data(&get_delegation_key(&delegator)).unwrap(), None);
+    }
+
+    #[test]
+    fn self_nominate_deposit_test() {
+        let address = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        state.add_balance(&address, 1000).unwrap();
+
+        let stake = Stake::new(HashMap::new());
+        stake.init(&mut state).unwrap();
+
+        // TODO: change with stake.execute()
+        let result = self_nominate(&mut state, &address, 0, 5);
+        assert_eq!(result, Ok(()));
+
+        assert_eq!(state.balance(&address).unwrap(), 1000);
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(
+            candidates.get_candidate(&address),
+            Some(&Candidate {
+                address,
+                deposit: 0,
+                nomination_ends_at: 5,
+            }),
+            "nomination_ends_at should be updated even if candidate deposits 0"
+        );
+
+        let result = self_nominate(&mut state, &address, 200, 10);
+        assert_eq!(result, Ok(()));
+
+        assert_eq!(state.balance(&address).unwrap(), 800);
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(
+            candidates.get_candidate(&address),
+            Some(&Candidate {
+                address,
+                deposit: 200,
+                nomination_ends_at: 10,
+            })
+        );
+
+        let result = self_nominate(&mut state, &address, 0, 15);
+        assert_eq!(result, Ok(()));
+
+        assert_eq!(state.balance(&address).unwrap(), 800);
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(
+            candidates.get_candidate(&address),
+            Some(&Candidate {
+                address,
+                deposit: 200,
+                nomination_ends_at: 15,
+            }),
+            "nomination_ends_at should be updated even if candidate deposits 0"
+        );
+    }
+
+    #[test]
+    fn self_nominate_fail_with_insufficient_balance() {
+        let address = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        state.add_balance(&address, 1000).unwrap();
+
+        let stake = Stake::new(HashMap::new());
+        stake.init(&mut state).unwrap();
+
+        // TODO: change with stake.execute()
+        let result = self_nominate(&mut state, &address, 2000, 5);
+        assert!(result.is_err(), "Cannot self-nominate without a sufficient balance");
+    }
+
+    #[test]
+    fn self_nominate_returns_deposits_after_expiration() {
+        let address = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        state.add_balance(&address, 1000).unwrap();
+
+        let stake = Stake::new(HashMap::new());
+        stake.init(&mut state).unwrap();
+
+        // TODO: change with stake.execute()
+        self_nominate(&mut state, &address, 200, 30).unwrap();
+
+        let result = on_term_close(&mut state, 29);
+        assert_eq!(result, Ok(()));
+
+        assert_eq!(state.balance(&address).unwrap(), 800, "Should keep nomination before expiration");
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(
+            candidates.get_candidate(&address),
+            Some(&Candidate {
+                address,
+                deposit: 200,
+                nomination_ends_at: 30,
+            }),
+            "Keep deposit before expiration",
+        );
+
+        let result = on_term_close(&mut state, 30);
+        assert_eq!(result, Ok(()));
+
+        assert_eq!(state.balance(&address).unwrap(), 1000, "Return deposit after expiration");
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(candidates.get_candidate(&address), None, "Removed from candidates after expiration");
+    }
+
+    #[test]
+    fn self_nominate_reverts_delegations_after_expiration() {
+        let address = Address::random();
+        let delegator = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        state.add_balance(&address, 1000).unwrap();
+
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegator, 100);
+            Stake::new(genesis_stakes)
+        };
+        stake.init(&mut state).unwrap();
+
+        // TODO: change with stake.execute()
+        self_nominate(&mut state, &address, 0, 30).unwrap();
+
+        let action = Action::DelegateCCS {
+            address,
+            quantity: 40,
+        };
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
+
+        let result = on_term_close(&mut state, 29);
+        assert_eq!(result, Ok(()));
+
+        let account = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(account.balance, 100 - 40);
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegation.get_quantity(&address), 40, "Should keep delegation before expiration");
+
+        let result = on_term_close(&mut state, 30);
+        assert_eq!(result, Ok(()));
+
+        let account = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(account.balance, 100);
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegation.get_quantity(&address), 0, "Should revert before expiration");
     }
 }
