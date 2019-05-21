@@ -198,6 +198,36 @@ describe("WrapCCC", function() {
         ).to.be.rejected;
     }).timeout(30_000);
 
+    it("WCCC tracker should return the corresponding transaction", async function() {
+        const wrapCCC = node.sdk.core.createWrapCCCTransaction({
+            shardId: 0,
+            recipient: await node.createP2PKHBurnAddress(),
+            quantity: 30,
+            payer: PlatformAddress.fromAccountId(faucetAccointId, {
+                networkId: "tc"
+            })
+        });
+        const seq = (await node.sdk.rpc.chain.getSeq(faucetAddress))!;
+        expect(seq).not.to.be.null;
+        const signedWrapCCC = wrapCCC.sign({
+            secret: faucetSecret,
+            seq,
+            fee: 10
+        });
+
+        const hash = await node.sdk.rpc.chain.sendSignedTransaction(
+            signedWrapCCC
+        );
+        const tracker = wrapCCC.tracker();
+
+        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
+        expect(await node.sdk.rpc.chain.getTransactionByTracker(tracker)).not
+            .null;
+        expect(
+            await node.sdk.rpc.chain.getTransactionResultsByTracker(tracker)
+        ).deep.equal([true]);
+    });
+
     afterEach(async function() {
         await node.clean();
     });
