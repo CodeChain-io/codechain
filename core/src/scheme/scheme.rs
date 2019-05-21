@@ -23,7 +23,7 @@ use ckey::Address;
 use cmerkle::TrieFactory;
 use cstate::{Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult, StateWithCache, TopLevelState};
 use ctypes::errors::SyntaxError;
-use ctypes::{CommonParams, ShardId};
+use ctypes::{CommonParams, Header, ShardId};
 use hashdb::{AsHashDB, HashDB};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
@@ -37,7 +37,6 @@ use super::Genesis;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
 use crate::error::{Error, SchemeError};
-use crate::header::Header;
 
 /// Parameters for a block chain; includes both those intrinsic to the design of the
 /// chain and those to be interpreted by the active chain engine.

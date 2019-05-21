@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use std::mem;
 use std::sync::Arc;
 
+use ctypes::header::{Header, Seal};
 use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock};
@@ -30,7 +31,6 @@ use super::route::tree_route;
 use crate::consensus::CodeChainEngine;
 use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 use crate::encoded;
-use crate::header::{Header, Seal};
 use crate::views::HeaderView;
 
 const BEST_HEADER_KEY: &[u8] = b"best-header";

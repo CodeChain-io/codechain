@@ -117,7 +117,7 @@ const SEAL_FIELDS: usize = 4;
 mod tests {
     use ccrypto::blake256;
     use ckey::Address;
-    use ctypes::CommonParams;
+    use ctypes::{CommonParams, Header};
     use primitives::Bytes;
 
     use super::message::{message_info_rlp, VoteStep};
@@ -128,7 +128,6 @@ mod tests {
     use crate::consensus::{CodeChainEngine, EngineError, Seal};
     use crate::error::BlockError;
     use crate::error::Error;
-    use crate::header::Header;
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
 

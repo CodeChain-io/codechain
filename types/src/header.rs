@@ -16,13 +16,14 @@
 
 use std::cell::RefCell;
 use std::cmp;
-use time::get_time;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use ckey::Address;
-use ctypes::BlockNumber;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
+
+use crate::BlockNumber;
 
 /// Semantic boolean for when a seal/signature is included.
 pub enum Seal {
@@ -150,7 +151,10 @@ impl Header {
     }
     /// Set the timestamp field of the header to the current time.
     pub fn set_timestamp_now(&mut self, but_later_than: u64) {
-        self.timestamp = cmp::max(get_time().sec as u64, but_later_than);
+        self.timestamp = cmp::max(
+            SystemTime::now().duration_since(UNIX_EPOCH).expect("There is no time machine.").as_secs(),
+            but_later_than,
+        );
         self.note_dirty();
     }
     /// Set the number field of the header.

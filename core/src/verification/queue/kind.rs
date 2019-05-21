@@ -84,14 +84,13 @@ pub trait Kind: 'static + Sized + Send + Sync {
 
 /// Verification for headers.
 pub mod headers {
-
+    use ctypes::Header;
     use primitives::{H256, U256};
 
     use super::super::super::verification::verify_header_basic;
     use super::{BlockLike, Kind};
     use crate::consensus::CodeChainEngine;
     use crate::error::Error;
-    use crate::header::Header;
     use crate::service::ClientIoMessage;
     use verification::verify_header_with_engine;
 
@@ -144,6 +143,7 @@ pub mod headers {
 
 /// The blocks verification module.
 pub mod blocks {
+    use ctypes::Header;
     use primitives::{Bytes, H256, U256};
 
     use super::super::super::verification::{
@@ -152,7 +152,6 @@ pub mod blocks {
     use super::{BlockLike, Kind, MemUsage};
     use crate::consensus::CodeChainEngine;
     use crate::error::Error;
-    use crate::header::Header;
     use crate::service::ClientIoMessage;
 
     /// A mode for verifying blocks.

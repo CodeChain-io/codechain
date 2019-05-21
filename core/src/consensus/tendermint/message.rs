@@ -18,6 +18,7 @@ use std::cmp;
 
 use ccrypto::blake256;
 use ckey::{verify_schnorr, Public, SchnorrSignature};
+use ctypes::Header;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use snap;
@@ -26,7 +27,6 @@ use super::super::vote_collector::Message;
 use super::types::BitSet;
 use super::{BlockHash, Height, Step, View};
 use crate::error::Error;
-use crate::header::Header;
 
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RlpDecodable, RlpEncodable)]

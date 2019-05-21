@@ -25,7 +25,7 @@ use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
 use cstate::{FindActionHandler, TopLevelState};
 use ctypes::errors::HistoryError;
 use ctypes::transaction::{Action, IncompleteTransaction, Timelock};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, Header};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
@@ -44,7 +44,6 @@ use crate::client::{
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{CodeChainEngine, EngineType};
 use crate::error::Error;
-use crate::header::Header;
 use crate::scheme::Scheme;
 use crate::transaction::{PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
 use crate::types::{BlockId, TransactionId};

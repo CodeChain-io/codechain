@@ -20,7 +20,7 @@ use std::cmp::{max, min};
 
 use ccrypto::blake256;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::CommonParams;
+use ctypes::{CommonParams, Header};
 use cuckoo::Cuckoo as CuckooVerifier;
 use primitives::U256;
 use rlp::UntrustedRlp;
@@ -31,7 +31,6 @@ use crate::block::ExecutedBlock;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
 use crate::error::{BlockError, Error};
-use crate::header::Header;
 
 /// Cuckoo specific seal
 #[derive(Debug, PartialEq)]

@@ -51,7 +51,6 @@ extern crate rlp_derive;
 extern crate parking_lot;
 extern crate snap;
 extern crate table;
-extern crate time;
 extern crate util_error;
 
 #[macro_use]
@@ -68,7 +67,6 @@ mod consensus;
 mod db;
 pub mod encoded;
 mod error;
-mod header;
 mod invoice;
 mod miner;
 mod scheme;
@@ -92,7 +90,6 @@ pub use crate::client::{
 pub use crate::consensus::{EngineType, TimeGapParams};
 pub use crate::db::{COL_STATE, NUM_COLUMNS};
 pub use crate::error::{BlockImportError, Error, ImportError};
-pub use crate::header::{Header, Seal};
 pub use crate::miner::{Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};
 pub use crate::scheme::Scheme;
 pub use crate::service::ClientService;

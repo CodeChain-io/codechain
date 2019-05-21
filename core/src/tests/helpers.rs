@@ -15,10 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cstate::StateDB;
+use ctypes::Header;
 use primitives::{Bytes, H256, U256};
 use rlp::{self, RlpStream};
 
-use crate::header::Header;
 use crate::scheme::Scheme;
 use crate::transaction::SignedTransaction;
 
