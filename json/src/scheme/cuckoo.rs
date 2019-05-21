@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -36,11 +36,9 @@ pub struct Cuckoo {
 
 #[cfg(test)]
 mod tests {
-    use primitives::U256;
     use serde_json;
 
     use super::*;
-    use crate::uint::Uint;
 
     #[test]
     fn cuckoo_deserialization() {
@@ -57,12 +55,12 @@ mod tests {
         }"#;
 
         let deserialized: Cuckoo = serde_json::from_str(s).unwrap();
-        assert_eq!(deserialized.params.block_reward, Some(Uint(U256::from(0x0d))));
-        assert_eq!(deserialized.params.block_interval, Some(Uint(U256::from(120))));
-        assert_eq!(deserialized.params.min_score, Some(Uint(U256::from(0x0002_0000))));
-        assert_eq!(deserialized.params.max_vertex, Some(Uint(U256::from(16))));
-        assert_eq!(deserialized.params.max_edge, Some(Uint(U256::from(8))));
-        assert_eq!(deserialized.params.cycle_length, Some(Uint(U256::from(6))));
-        assert_eq!(Some(Uint(6.into())), deserialized.params.recommended_confirmation);
+        assert_eq!(deserialized.params.block_reward, Some(0x0d.into()));
+        assert_eq!(deserialized.params.block_interval, Some(120.into()));
+        assert_eq!(deserialized.params.min_score, Some(0x0002_0000.into()));
+        assert_eq!(deserialized.params.max_vertex, Some(16.into()));
+        assert_eq!(deserialized.params.max_edge, Some(8.into()));
+        assert_eq!(deserialized.params.cycle_length, Some(6.into()));
+        assert_eq!(deserialized.params.recommended_confirmation, Some(6.into()));
     }
 }
