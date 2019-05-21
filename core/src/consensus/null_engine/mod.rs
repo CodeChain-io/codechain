@@ -16,7 +16,7 @@
 
 mod params;
 
-use ctypes::CommonParams;
+use ctypes::{CommonParams, Header};
 
 use self::params::NullEngineParams;
 use super::ConsensusEngine;
@@ -54,7 +54,12 @@ impl ConsensusEngine for NullEngine {
         EngineType::Solo
     }
 
-    fn on_close_block(&self, block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
+    fn on_close_block(
+        &self,
+        block: &mut ExecutedBlock,
+        _parent_header: &Header,
+        _parent_common_params: &CommonParams,
+    ) -> Result<(), Error> {
         let (author, total_reward) = {
             let header = block.header();
             let author = *header.author();

@@ -169,7 +169,12 @@ impl ConsensusEngine for Cuckoo {
         header.set_score(score);
     }
 
-    fn on_close_block(&self, block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
+    fn on_close_block(
+        &self,
+        block: &mut ExecutedBlock,
+        _parent_header: &Header,
+        _parent_common_params: &CommonParams,
+    ) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = self.block_reward(block.header().number())
             + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));
@@ -250,13 +255,14 @@ mod tests {
     #[test]
     fn on_close_block() {
         let scheme = Scheme::new_test_cuckoo();
+        let genesis_header = scheme.genesis_header();
         let engine = &*scheme.engine;
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let header = Header::default();
         let block = OpenBlock::try_new(engine, db, &header, Default::default(), vec![]).unwrap();
         let mut executed_block = block.block().clone();
 
-        assert!(engine.on_close_block(&mut executed_block, &CommonParams::default_for_test()).is_ok());
+        assert!(engine.on_close_block(&mut executed_block, &genesis_header, &CommonParams::default_for_test()).is_ok());
         assert_eq!(0xd, engine.machine().balance(&executed_block, header.author()).unwrap());
     }
 
