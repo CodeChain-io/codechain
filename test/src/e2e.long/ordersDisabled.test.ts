@@ -18,7 +18,7 @@ import { expect } from "chai";
 import { Asset, AssetAddress, H160, U64 } from "codechain-sdk/lib/core/classes";
 import * as _ from "lodash";
 import "mocha";
-import { daveAddress, faucetAddress, faucetSecret } from "../helper/constants";
+import { faucetAddress, faucetSecret } from "../helper/constants";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
 
