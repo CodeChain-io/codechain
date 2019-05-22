@@ -126,7 +126,7 @@ build_rpc_trait! {
 
         ///Gets the minimum transaction fee of the given name.
          # [rpc(name = "chain_getMinTransactionFee")]
-        fn get_min_transaction_fee(&self, String, u64) -> Result<Option<u64>>;
+        fn get_min_transaction_fee(&self, String, Option<u64>) -> Result<Option<u64>>;
 
         /// Gets the mining given block number
         # [rpc(name = "chain_getMiningReward")]
