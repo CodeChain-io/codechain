@@ -222,7 +222,7 @@ candidates = [ [address, deposits, nominate_end_at]+ ], address asc
 pending_rewards = [ [withdraw_at, address, quantity]+ ], [withdraw_at, address] asc
 banned = [ address+ ], address asc
 jailed = [ [address, deposits, custody_until, kicked_at]+ ], address asc
-term_id = [ block number, term id ]
+term_id = [ the last block number of the previous term, the current term id ]
 ```
 
 ### on TermEnd events

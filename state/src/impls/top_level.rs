@@ -974,6 +974,12 @@ impl TopState for TopLevelState {
         Ok(())
     }
 
+    fn change_term_id(&mut self, last_term_finished_block_num: u64, current_term_id: u64) -> StateResult<()> {
+        let mut metadata = self.get_metadata_mut()?;
+        metadata.change_term(last_term_finished_block_num, current_term_id);
+        Ok(())
+    }
+
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()> {
         let mut action_data = self.get_action_data_mut(key)?;
         *action_data = data.into();
