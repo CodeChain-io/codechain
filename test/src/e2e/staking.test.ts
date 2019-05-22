@@ -20,9 +20,11 @@ import { toHex } from "codechain-sdk/lib/utils";
 import "mocha";
 import {
     aliceAddress,
+    aliceSecret,
     bobAddress,
+    carolAddress,
+    daveAddress,
     faucetAddress,
-    faucetSecret,
     stakeActionHandlerId,
     validator0Address,
     validator0Secret,
@@ -44,14 +46,18 @@ describe("Staking", function() {
             argv: ["--author", validator0Address.toString(), "--force-sealing"]
         });
         await node.start();
+        await node.sendPayTx({ recipient: aliceAddress, quantity: 100_000 });
     });
 
     async function getAllStakingInfo() {
         const validatorAddresses = [
             faucetAddress,
             validator0Address,
+            validator1Address,
             aliceAddress,
-            bobAddress
+            bobAddress,
+            carolAddress,
+            daveAddress
         ];
         const amounts = await promiseExpect.shouldFulfill(
             "get customActionData",
@@ -77,8 +83,11 @@ describe("Staking", function() {
         const validatorAddresses = [
             faucetAddress,
             validator0Address,
+            validator1Address,
             aliceAddress,
-            bobAddress
+            bobAddress,
+            carolAddress,
+            daveAddress
         ];
         const delegations = await promiseExpect.shouldFulfill(
             "get customActionData",
@@ -171,8 +180,11 @@ describe("Staking", function() {
     it("should have proper initial stake tokens", async function() {
         const { amounts, stakeholders } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
-            toHex(RLP.encode(70000)),
             null,
+            null,
+            null,
+            toHex(RLP.encode(40000)),
+            toHex(RLP.encode(30000)),
             toHex(RLP.encode(20000)),
             toHex(RLP.encode(10000))
         ]);
@@ -181,7 +193,8 @@ describe("Staking", function() {
             toHex(
                 RLP.encode([
                     aliceAddress.accountId.toEncodeObject(),
-                    faucetAddress.accountId.toEncodeObject(),
+                    carolAddress.accountId.toEncodeObject(),
+                    daveAddress.accountId.toEncodeObject(),
                     bobAddress.accountId.toEncodeObject()
                 ])
             )
@@ -190,16 +203,19 @@ describe("Staking", function() {
 
     it("should send stake tokens", async function() {
         await sendStakeToken({
-            senderAddress: faucetAddress,
-            senderSecret: faucetSecret,
+            senderAddress: aliceAddress,
+            senderSecret: aliceSecret,
             receiverAddress: validator0Address,
             quantity: 100
         });
 
         const { amounts, stakeholders } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
-            toHex(RLP.encode(70000 - 100)),
+            null,
             toHex(RLP.encode(100)),
+            null,
+            toHex(RLP.encode(40000 - 100)),
+            toHex(RLP.encode(30000)),
             toHex(RLP.encode(20000)),
             toHex(RLP.encode(10000))
         ]);
@@ -207,9 +223,10 @@ describe("Staking", function() {
             toHex(
                 RLP.encode(
                     [
-                        faucetAddress.accountId.toEncodeObject(),
                         aliceAddress.accountId.toEncodeObject(),
+                        carolAddress.accountId.toEncodeObject(),
                         validator0Address.accountId.toEncodeObject(),
+                        daveAddress.accountId.toEncodeObject(),
                         bobAddress.accountId.toEncodeObject()
                     ].sort()
                 )
@@ -219,16 +236,19 @@ describe("Staking", function() {
 
     it("doesn't leave zero balance account after transfer", async function() {
         await sendStakeToken({
-            senderAddress: faucetAddress,
-            senderSecret: faucetSecret,
+            senderAddress: aliceAddress,
+            senderSecret: aliceSecret,
             receiverAddress: validator0Address,
-            quantity: 70000
+            quantity: 40000
         });
 
         const { amounts, stakeholders } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
             null,
-            toHex(RLP.encode(70000)),
+            toHex(RLP.encode(40000)),
+            null,
+            null,
+            toHex(RLP.encode(30000)),
             toHex(RLP.encode(20000)),
             toHex(RLP.encode(10000))
         ]);
@@ -236,8 +256,9 @@ describe("Staking", function() {
             toHex(
                 RLP.encode(
                     [
-                        aliceAddress.accountId.toEncodeObject(),
+                        carolAddress.accountId.toEncodeObject(),
                         validator0Address.accountId.toEncodeObject(),
+                        daveAddress.accountId.toEncodeObject(),
                         bobAddress.accountId.toEncodeObject()
                     ].sort()
                 )
@@ -247,22 +268,28 @@ describe("Staking", function() {
 
     it("can delegate tokens", async function() {
         await delegateToken({
-            senderAddress: faucetAddress,
-            senderSecret: faucetSecret,
+            senderAddress: aliceAddress,
+            senderSecret: aliceSecret,
             receiverAddress: validator0Address,
             quantity: 100
         });
 
         const { amounts } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
-            toHex(RLP.encode(70000 - 100)),
             null,
+            null,
+            null,
+            toHex(RLP.encode(40000 - 100)),
+            toHex(RLP.encode(30000)),
             toHex(RLP.encode(20000)),
             toHex(RLP.encode(10000))
         ]);
 
         const delegations = await getAllDelegation();
         expect(delegations).to.be.deep.equal([
+            null,
+            null,
+            null,
             toHex(
                 RLP.encode([
                     [validator0Address.accountId.toEncodeObject(), 100]
@@ -276,25 +303,31 @@ describe("Staking", function() {
 
     it("doesn't leave zero balanced account after delegate", async function() {
         await delegateToken({
-            senderAddress: faucetAddress,
-            senderSecret: faucetSecret,
+            senderAddress: aliceAddress,
+            senderSecret: aliceSecret,
             receiverAddress: validator0Address,
-            quantity: 70000
+            quantity: 40000
         });
 
         const { amounts } = await getAllStakingInfo();
         expect(amounts).to.be.deep.equal([
             null,
             null,
+            null,
+            null,
+            toHex(RLP.encode(30000)),
             toHex(RLP.encode(20000)),
             toHex(RLP.encode(10000))
         ]);
 
         const delegations = await getAllDelegation();
         expect(delegations).to.be.deep.equal([
+            null,
+            null,
+            null,
             toHex(
                 RLP.encode([
-                    [validator0Address.accountId.toEncodeObject(), 70000]
+                    [validator0Address.accountId.toEncodeObject(), 40000]
                 ])
             ),
             null,
@@ -304,16 +337,16 @@ describe("Staking", function() {
     });
 
     it("get fee in proportion to holding stakes", async function() {
-        // faucet: 70000, alice: 20000, bob: 10000
+        // alice: 40000, bob: 30000, carol: 20000, dave: 10000
         const fee = 1000;
         await sendStakeToken({
-            senderAddress: faucetAddress,
-            senderSecret: faucetSecret,
+            senderAddress: aliceAddress,
+            senderSecret: aliceSecret,
             receiverAddress: validator0Address,
-            quantity: 50000,
+            quantity: 20000,
             fee
         });
-        // faucet: 20000, alice: 20000, bob: 10000, val0: 50000,
+        // alice: 20000, bob: 30000, carol: 20000, dave: 10000, val0: 20000,
 
         const blockNumber = await node.getBestBlockNumber();
         const blockReward = parseInt(
@@ -327,10 +360,10 @@ describe("Staking", function() {
             blockNumber - 1
         );
         const aliceBalance = await node.sdk.rpc.chain.getBalance(aliceAddress);
-        expect(aliceBalance.toString(10)).to.be.deep.equal(
+        expect(aliceBalance).to.be.deep.equal(
             oldAliceBalance
+                .minus(fee)
                 .plus(Math.floor((minCustomCost * 2) / 10))
-                .toString(10)
         );
 
         const oldBobBalance = await node.sdk.rpc.chain.getBalance(
@@ -338,24 +371,26 @@ describe("Staking", function() {
             blockNumber - 1
         );
         const bobBalance = await node.sdk.rpc.chain.getBalance(bobAddress);
-        expect(bobBalance.toString(10)).to.be.deep.equal(
-            oldBobBalance
-                .plus(Math.floor((minCustomCost * 1) / 10))
-                .toString(10)
+        expect(bobBalance).to.be.deep.equal(
+            oldBobBalance.plus(Math.floor((minCustomCost * 3) / 10))
         );
 
-        const oldFaucetBalance = await node.sdk.rpc.chain.getBalance(
-            faucetAddress,
+        const oldCarolBalance = await node.sdk.rpc.chain.getBalance(
+            carolAddress,
             blockNumber - 1
         );
-        const faucetBalance = await node.sdk.rpc.chain.getBalance(
-            faucetAddress
+        const carolBalance = await node.sdk.rpc.chain.getBalance(carolAddress);
+        expect(carolBalance).to.be.deep.equal(
+            oldCarolBalance.plus(Math.floor((minCustomCost * 2) / 10))
         );
-        expect(faucetBalance.toString(10)).to.be.deep.equal(
-            oldFaucetBalance
-                .plus(Math.floor((minCustomCost * 2) / 10))
-                .minus(fee)
-                .toString(10)
+
+        const oldDaveBalance = await node.sdk.rpc.chain.getBalance(
+            daveAddress,
+            blockNumber - 1
+        );
+        const daveBalance = await node.sdk.rpc.chain.getBalance(daveAddress);
+        expect(daveBalance).to.be.deep.equal(
+            oldDaveBalance.plus(Math.floor((minCustomCost * 1) / 10))
         );
 
         const oldValidator0Balance = await node.sdk.rpc.chain.getBalance(
@@ -365,23 +400,22 @@ describe("Staking", function() {
         const validator0Balance = await node.sdk.rpc.chain.getBalance(
             validator0Address
         );
-        expect(validator0Balance.toString(10)).to.be.deep.equal(
+        expect(validator0Balance).to.be.deep.equal(
             oldValidator0Balance
-                .plus(Math.floor((minCustomCost * 5) / 10))
+                .plus(Math.floor((minCustomCost * 2) / 10))
                 .plus(fee)
                 .minus(minCustomCost)
                 .plus(blockReward)
-                .toString(10)
         );
     });
 
     it("get fee even if it delegated stakes to other", async function() {
-        // faucet: 70000, alice: 20000, bob: 10000
+        // alice: 40000, bob: 30000, carol 20000, dave: 10000
         await sendStakeToken({
-            senderAddress: faucetAddress,
-            senderSecret: faucetSecret,
+            senderAddress: aliceAddress,
+            senderSecret: aliceSecret,
             receiverAddress: validator0Address,
-            quantity: 50000,
+            quantity: 20000,
             fee: 1000
         });
 
@@ -391,15 +425,30 @@ describe("Staking", function() {
             quantity: fee
         });
 
-        // faucet: 20000, alice: 20000, bob: 10000, val0: 50000
+        // alice: 20000, bob: 30000, carol 20000, dave: 10000, val0: 20000
         await delegateToken({
             senderAddress: validator0Address,
             senderSecret: validator0Secret,
             receiverAddress: validator1Address,
-            quantity: 50000,
+            quantity: 20000,
             fee
         });
-        // faucet: 20000, alice: 20000, bob: 10000, val0: 0 (delegated 50000 to val1), val1: 0
+        // alice: 20000, bob: 30000, carol 20000, dave: 10000, val0: 0 (delegated 20000 to val1), val1: 0
+
+        const delegations = await getAllDelegation();
+        expect(delegations).to.be.deep.equal([
+            null,
+            toHex(
+                RLP.encode([
+                    [validator1Address.accountId.toEncodeObject(), 20000]
+                ])
+            ),
+            null,
+            null,
+            null,
+            null,
+            null
+        ]);
 
         const blockNumber = await node.getBestBlockNumber();
         const blockReward = parseInt(
@@ -413,10 +462,8 @@ describe("Staking", function() {
             blockNumber - 1
         );
         const aliceBalance = await node.sdk.rpc.chain.getBalance(aliceAddress);
-        expect(aliceBalance.toString(10)).to.be.deep.equal(
-            oldAliceBalance
-                .plus(Math.floor((minCustomCost * 2) / 10))
-                .toString(10)
+        expect(aliceBalance).to.be.deep.equal(
+            oldAliceBalance.plus(Math.floor((minCustomCost * 2) / 10))
         );
 
         const oldBobBalance = await node.sdk.rpc.chain.getBalance(
@@ -424,23 +471,26 @@ describe("Staking", function() {
             blockNumber - 1
         );
         const bobBalance = await node.sdk.rpc.chain.getBalance(bobAddress);
-        expect(bobBalance.toString(10)).to.be.deep.equal(
-            oldBobBalance
-                .plus(Math.floor((minCustomCost * 1) / 10))
-                .toString(10)
+        expect(bobBalance).to.be.deep.equal(
+            oldBobBalance.plus(Math.floor((minCustomCost * 3) / 10))
         );
 
-        const oldFaucetBalance = await node.sdk.rpc.chain.getBalance(
-            faucetAddress,
+        const oldCarolBalance = await node.sdk.rpc.chain.getBalance(
+            carolAddress,
             blockNumber - 1
         );
-        const faucetBalance = await node.sdk.rpc.chain.getBalance(
-            faucetAddress
+        const carolBalance = await node.sdk.rpc.chain.getBalance(carolAddress);
+        expect(carolBalance).to.be.deep.equal(
+            oldCarolBalance.plus(Math.floor((minCustomCost * 2) / 10))
         );
-        expect(faucetBalance.toString(10)).to.be.deep.equal(
-            oldFaucetBalance
-                .plus(Math.floor((minCustomCost * 2) / 10))
-                .toString(10)
+
+        const oldDaveBalance = await node.sdk.rpc.chain.getBalance(
+            daveAddress,
+            blockNumber - 1
+        );
+        const daveBalance = await node.sdk.rpc.chain.getBalance(daveAddress);
+        expect(daveBalance).to.be.deep.equal(
+            oldDaveBalance.plus(Math.floor((minCustomCost * 1) / 10))
         );
 
         const oldValidator0Balance = await node.sdk.rpc.chain.getBalance(
@@ -450,14 +500,13 @@ describe("Staking", function() {
         const validator0Balance = await node.sdk.rpc.chain.getBalance(
             validator0Address
         );
-        expect(validator0Balance.toString(10)).to.be.deep.equal(
+        expect(validator0Balance).to.be.deep.equal(
             oldValidator0Balance
-                .plus(Math.floor((minCustomCost * 5) / 10))
+                .plus(Math.floor((minCustomCost * 2) / 10))
                 .minus(fee)
                 .plus(fee)
                 .minus(minCustomCost)
                 .plus(blockReward)
-                .toString(10)
         );
 
         const oldValidator1Balance = await node.sdk.rpc.chain.getBalance(
@@ -467,30 +516,28 @@ describe("Staking", function() {
         const validator1Balance = await node.sdk.rpc.chain.getBalance(
             validator1Address
         );
-
-        expect(validator1Balance.toString(10)).to.be.deep.equal(
-            oldValidator1Balance.toString(10)
-        );
+        expect(validator1Balance).to.be.deep.equal(oldValidator1Balance);
     });
 
     it("get fee even if it delegated stakes to other stakeholder", async function() {
-        // faucet: 70000, alice: 20000, bob: 10000
+        // alice: 40000, bob: 30000, carol 20000, dave: 10000
         await sendStakeToken({
-            senderAddress: faucetAddress,
-            senderSecret: faucetSecret,
+            senderAddress: aliceAddress,
+            senderSecret: aliceSecret,
             receiverAddress: validator0Address,
-            quantity: 30000,
+            quantity: 20000,
             fee: 1000
         });
 
-        // faucet: 40000, alice: 20000, bob: 10000, val0: 30000
+        // alice: 20000, bob: 30000, carol 20000, dave: 10000, val0 20000
         await sendStakeToken({
-            senderAddress: faucetAddress,
-            senderSecret: faucetSecret,
+            senderAddress: aliceAddress,
+            senderSecret: aliceSecret,
             receiverAddress: validator1Address,
-            quantity: 30000,
+            quantity: 10000,
             fee: 1000
         });
+        // alice: 10000, bob: 30000, carol 20000, dave: 10000, val0 20000, val1: 10000
 
         const fee = 567;
         await node.sendPayTx({
@@ -499,15 +546,29 @@ describe("Staking", function() {
             fee
         });
 
-        // faucet: 10000, alice: 20000, bob: 10000, val0: 30000, val1: 30000
         await delegateToken({
             senderAddress: validator0Address,
             senderSecret: validator0Secret,
             receiverAddress: validator1Address,
-            quantity: 30000,
+            quantity: 20000,
             fee
         });
-        // faucet: 20000, alice: 20000, bob: 10000, val0: 0 (delegated 30000 to val1), val1: 30000
+        // alice: 10000, bob: 30000, carol 20000, dave: 10000, val0 20000 (delegated 20000 to val1), val1: 10000
+
+        const delegations = await getAllDelegation();
+        expect(delegations).to.be.deep.equal([
+            null,
+            toHex(
+                RLP.encode([
+                    [validator1Address.accountId.toEncodeObject(), 20000]
+                ])
+            ),
+            null,
+            null,
+            null,
+            null,
+            null
+        ]);
 
         const blockNumber = await node.getBestBlockNumber();
         const blockReward = parseInt(
@@ -521,10 +582,8 @@ describe("Staking", function() {
             blockNumber - 1
         );
         const aliceBalance = await node.sdk.rpc.chain.getBalance(aliceAddress);
-        expect(aliceBalance.toString(10)).to.be.deep.equal(
-            oldAliceBalance
-                .plus(Math.floor((minCustomCost * 2) / 10))
-                .toString(10)
+        expect(aliceBalance).to.be.deep.equal(
+            oldAliceBalance.plus(Math.floor((minCustomCost * 1) / 10))
         );
 
         const oldBobBalance = await node.sdk.rpc.chain.getBalance(
@@ -532,10 +591,8 @@ describe("Staking", function() {
             blockNumber - 1
         );
         const bobBalance = await node.sdk.rpc.chain.getBalance(bobAddress);
-        expect(bobBalance.toString(10)).to.be.deep.equal(
-            oldBobBalance
-                .plus(Math.floor((minCustomCost * 1) / 10))
-                .toString(10)
+        expect(bobBalance).to.be.deep.equal(
+            oldBobBalance.plus(Math.floor((minCustomCost * 3) / 10))
         );
 
         const oldFaucetBalance = await node.sdk.rpc.chain.getBalance(
@@ -545,11 +602,7 @@ describe("Staking", function() {
         const faucetBalance = await node.sdk.rpc.chain.getBalance(
             faucetAddress
         );
-        expect(faucetBalance.toString(10)).to.be.deep.equal(
-            oldFaucetBalance
-                .plus(Math.floor((minCustomCost * 1) / 10))
-                .toString(10)
-        );
+        expect(faucetBalance).to.be.deep.equal(oldFaucetBalance);
 
         const oldValidator0Balance = await node.sdk.rpc.chain.getBalance(
             validator0Address,
@@ -558,14 +611,13 @@ describe("Staking", function() {
         const validator0Balance = await node.sdk.rpc.chain.getBalance(
             validator0Address
         );
-        expect(validator0Balance.toString(10)).to.be.deep.equal(
+        expect(validator0Balance).to.be.deep.equal(
             oldValidator0Balance
-                .plus(Math.floor((minCustomCost * 3) / 10))
+                .plus(Math.floor((minCustomCost * 2) / 10))
                 .minus(fee)
                 .plus(fee)
                 .minus(minCustomCost)
                 .plus(blockReward)
-                .toString(10)
         );
 
         const oldValidator1Balance = await node.sdk.rpc.chain.getBalance(
@@ -575,10 +627,8 @@ describe("Staking", function() {
         const validator1Balance = await node.sdk.rpc.chain.getBalance(
             validator1Address
         );
-        expect(validator1Balance.toString(10)).to.be.deep.equal(
-            oldValidator1Balance
-                .plus(Math.floor((minCustomCost * 3) / 10))
-                .toString(10)
+        expect(validator1Balance).to.be.deep.equal(
+            oldValidator1Balance.plus(Math.floor((minCustomCost * 1) / 10))
         );
     });
 
