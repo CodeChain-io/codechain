@@ -35,7 +35,7 @@ pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use crate::block::ClosedBlock;
-use crate::client::{AccountData, BlockChainTrait, BlockProducer, ImportBlock, MiningBlockChainClient};
+use crate::client::{AccountData, BlockChainTrait, BlockProducer, EngineInfo, ImportBlock, MiningBlockChainClient};
 use crate::consensus::EngineType;
 use crate::error::Error;
 use crate::transaction::{PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
@@ -73,7 +73,7 @@ pub trait MinerService: Send + Sync {
     /// Called when blocks are imported to chain, updates transactions queue.
     fn chain_new_blocks<C>(&self, chain: &C, imported: &[H256], invalid: &[H256], enacted: &[H256], retracted: &[H256])
     where
-        C: AccountData + BlockChainTrait + BlockProducer + ImportBlock;
+        C: AccountData + BlockChainTrait + BlockProducer + EngineInfo + ImportBlock;
 
     /// PoW chain - can produce work package
     fn can_produce_work_package(&self) -> bool;
@@ -84,12 +84,12 @@ pub trait MinerService: Send + Sync {
     /// Returns true if we had to prepare new pending block.
     fn prepare_work_sealing<C>(&self, &C) -> bool
     where
-        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + FindActionHandler;
+        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + EngineInfo + FindActionHandler;
 
     /// New chain head event. Restart mining operation.
     fn update_sealing<C>(&self, chain: &C, parent_block: BlockId, allow_empty_block: bool)
     where
-        C: AccountData + BlockChainTrait + BlockProducer + ImportBlock + ChainTimeInfo + FindActionHandler;
+        C: AccountData + BlockChainTrait + BlockProducer + ImportBlock + ChainTimeInfo + EngineInfo + FindActionHandler;
 
     /// Submit `seal` as a valid solution for the header of `pow_hash`.
     /// Will check the seal, but not actually insert the block into the chain.
@@ -98,26 +98,26 @@ pub trait MinerService: Send + Sync {
     /// Get the sealing work package and if `Some`, apply some transform.
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + FindActionHandler,
+        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + EngineInfo + FindActionHandler,
         F: FnOnce(&ClosedBlock) -> T,
         Self: Sized;
 
     /// Imports transactions to mem pool.
-    fn import_external_transactions<C: MiningBlockChainClient>(
+    fn import_external_transactions<C: MiningBlockChainClient + EngineInfo>(
         &self,
         client: &C,
         transactions: Vec<UnverifiedTransaction>,
     ) -> Vec<Result<TransactionImportResult, Error>>;
 
     /// Imports own (node owner) transaction to mem pool.
-    fn import_own_transaction<C: MiningBlockChainClient>(
+    fn import_own_transaction<C: MiningBlockChainClient + EngineInfo>(
         &self,
         chain: &C,
         tx: SignedTransaction,
     ) -> Result<TransactionImportResult, Error>;
 
     /// Imports incomplete (node owner) transaction to mem pool.
-    fn import_incomplete_transaction<C: MiningBlockChainClient + AccountData>(
+    fn import_incomplete_transaction<C: MiningBlockChainClient + AccountData + EngineInfo>(
         &self,
         chain: &C,
         account_provider: &AccountProvider,
@@ -137,7 +137,7 @@ pub trait MinerService: Send + Sync {
     fn future_transactions(&self) -> Vec<SignedTransaction>;
 
     /// Start sealing.
-    fn start_sealing<C: MiningBlockChainClient>(&self, client: &C);
+    fn start_sealing<C: MiningBlockChainClient + EngineInfo>(&self, client: &C);
 
     /// Stop sealing.
     fn stop_sealing(&self);

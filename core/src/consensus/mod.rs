@@ -43,6 +43,7 @@ use cstate::ActionHandler;
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Action;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::CommonParams;
 use primitives::{Bytes, H256, U256};
 
 use self::tendermint::types::{BitSet, View};
@@ -176,15 +177,17 @@ pub trait ConsensusEngine: Sync + Send {
     ///
     /// It is fine to require access to state or a full client for this function, since
     /// light clients do not generate seals.
-    fn verify_local_seal(&self, header: &Header) -> Result<(), Error>;
+    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
+        Ok(())
+    }
 
     /// Phase 1 quick block verification. Only does checks that are cheap. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_basic(&self, _header: &Header) -> Result<(), Error> {
+    fn verify_header_basic(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
     }
 
     /// Phase 2 verification. Perform costly checks such as transaction signatures. Returns either a null `Ok` or a general error detailing the problem with import.
-    fn verify_block_unordered(&self, _header: &Header) -> Result<(), Error> {
+    fn verify_block_seal(&self, _header: &Header) -> Result<(), Error> {
         Ok(())
     }
 
@@ -210,7 +213,7 @@ pub trait ConsensusEngine: Sync + Send {
     fn stop(&self) {}
 
     /// Block transformation functions, after the transactions.
-    fn on_close_block(&self, _block: &mut ExecutedBlock) -> Result<(), Error> {
+    fn on_close_block(&self, _block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
         Ok(())
     }
 
@@ -342,7 +345,11 @@ impl fmt::Display for EngineError {
 /// Common type alias for an engine coupled with an CodeChain-like state machine.
 pub trait CodeChainEngine: ConsensusEngine {
     /// Additional verification for transactions in blocks.
-    fn verify_transaction_basic(&self, tx: &UnverifiedTransaction, header: &Header) -> Result<(), Error> {
+    fn verify_transaction_with_params(
+        &self,
+        tx: &UnverifiedTransaction,
+        common_params: &CommonParams,
+    ) -> Result<(), Error> {
         if let Action::Custom {
             handler_id,
             bytes,
@@ -353,16 +360,12 @@ pub trait CodeChainEngine: ConsensusEngine {
                 .ok_or_else(|| SyntaxError::InvalidCustomAction(format!("{} is an invalid handler id", handler_id)))?;
             handler.verify(bytes)?;
         }
-        self.machine().verify_transaction_basic(tx, header)
+        self.machine().verify_transaction_with_params(tx, common_params)
     }
 
     /// Verify a particular transaction is valid.
-    fn verify_transaction_unordered(
-        &self,
-        tx: UnverifiedTransaction,
-        header: &Header,
-    ) -> Result<SignedTransaction, Error> {
-        CodeChainMachine::verify_transaction_unordered(tx, header)
+    fn verify_transaction_seal(&self, tx: UnverifiedTransaction, header: &Header) -> Result<SignedTransaction, Error> {
+        CodeChainMachine::verify_transaction_seal(tx, header)
     }
 }
 

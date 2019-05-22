@@ -20,6 +20,7 @@ use std::cmp::{max, min};
 
 use ccrypto::blake256;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::CommonParams;
 use cuckoo::Cuckoo as CuckooVerifier;
 use primitives::U256;
 use rlp::UntrustedRlp;
@@ -107,10 +108,10 @@ impl ConsensusEngine for Cuckoo {
     }
 
     fn verify_local_seal(&self, header: &Header) -> Result<(), Error> {
-        self.verify_block_basic(header).and_then(|_| self.verify_block_unordered(header))
+        self.verify_header_basic(header).and_then(|_| self.verify_block_seal(header))
     }
 
-    fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
+    fn verify_header_basic(&self, header: &Header) -> Result<(), Error> {
         if *header.score() < self.params.min_score {
             return Err(From::from(BlockError::ScoreOutOfBounds(OutOfBounds {
                 min: Some(self.params.min_score),
@@ -122,7 +123,7 @@ impl ConsensusEngine for Cuckoo {
         Ok(())
     }
 
-    fn verify_block_unordered(&self, header: &Header) -> Result<(), Error> {
+    fn verify_block_seal(&self, header: &Header) -> Result<(), Error> {
         let seal = Seal::parse_seal(header.seal())?;
 
         let mut message = header.bare_hash().0;
@@ -169,7 +170,7 @@ impl ConsensusEngine for Cuckoo {
         header.set_score(score);
     }
 
-    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+    fn on_close_block(&self, block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = self.block_reward(block.header().number())
             + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));
@@ -191,6 +192,8 @@ impl ConsensusEngine for Cuckoo {
 
 #[cfg(test)]
 mod tests {
+    use ctypes::CommonParams;
+
     use crate::block::{IsBlock, OpenBlock};
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
@@ -214,28 +217,28 @@ mod tests {
     }
 
     #[test]
-    fn verify_block_basic_err() {
+    fn verify_header_basic_err() {
         let engine = Scheme::new_test_cuckoo().engine;
         let default_header = Header::default();
 
-        assert!(engine.verify_block_basic(&default_header).is_err());
+        assert!(engine.verify_header_basic(&default_header).is_err());
     }
 
     #[test]
-    fn verify_block_basic_ok() {
+    fn verify_header_basic_ok() {
         let scheme = Scheme::new_test_cuckoo();
         let engine = &*scheme.engine;
         let genesis_header = scheme.genesis_header();
 
-        assert!(engine.verify_block_basic(&genesis_header).is_ok());
+        assert!(engine.verify_header_basic(&genesis_header).is_ok());
     }
 
     #[test]
-    fn verify_block_unordered_err() {
+    fn verify_block_seal_err() {
         let engine = Scheme::new_test_cuckoo().engine;
         let default_header = Header::default();
 
-        assert!(engine.verify_block_unordered(&default_header).is_err());
+        assert!(engine.verify_block_seal(&default_header).is_err());
     }
 
     #[test]
@@ -254,7 +257,7 @@ mod tests {
         let block = OpenBlock::try_new(engine, db, &header, Default::default(), vec![]).unwrap();
         let mut executed_block = block.block().clone();
 
-        assert!(engine.on_close_block(&mut executed_block).is_ok());
+        assert!(engine.on_close_block(&mut executed_block, &CommonParams::default_for_test()).is_ok());
         assert_eq!(0xd, engine.machine().balance(&executed_block, header.author()).unwrap());
     }
 

@@ -37,7 +37,7 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockNumber, CommonParams, ShardId};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H160, H256, U256};
@@ -46,7 +46,6 @@ use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::encoded;
 use crate::error::BlockImportError;
-use crate::scheme::CommonParams;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
@@ -87,7 +86,7 @@ pub trait BlockChainTrait {
 }
 
 pub trait EngineInfo: Send + Sync {
-    fn common_params(&self, block_number: Option<BlockNumber>) -> &CommonParams;
+    fn common_params(&self, block_id: BlockId) -> Option<CommonParams>;
     fn block_reward(&self, block_number: u64) -> u64;
     fn mining_reward(&self, block_number: u64) -> Option<u64>;
     fn recommended_confirmation(&self) -> u32;

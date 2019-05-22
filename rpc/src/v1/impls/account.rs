@@ -18,7 +18,7 @@ use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::Duration;
 
-use ccore::{AccountData, AccountProvider, EngineInfo, MinerService, MiningBlockChainClient};
+use ccore::{AccountData, AccountProvider, BlockId, EngineInfo, MinerService, MiningBlockChainClient};
 use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use ctypes::transaction::IncompleteTransaction;
 use jsonrpc_core::Result;
@@ -53,7 +53,7 @@ where
 
     fn network_id(&self) -> NetworkId {
         // XXX: What should we do if the network id has been changed
-        self.client.common_params(None).network_id()
+        self.client.common_params(BlockId::Latest).unwrap().network_id()
     }
 }
 

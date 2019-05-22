@@ -16,13 +16,14 @@
 
 mod params;
 
+use ctypes::CommonParams;
+
 use self::params::NullEngineParams;
 use super::ConsensusEngine;
 use crate::block::ExecutedBlock;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
 use crate::error::Error;
-use crate::header::Header;
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
 pub struct NullEngine {
@@ -53,11 +54,7 @@ impl ConsensusEngine for NullEngine {
         EngineType::Solo
     }
 
-    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+    fn on_close_block(&self, block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
         let (author, total_reward) = {
             let header = block.header();
             let author = *header.author();

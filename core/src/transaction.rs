@@ -20,12 +20,11 @@ use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Private, Public, Signature};
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Transaction;
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, CommonParams};
 use primitives::H256;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::error::Error;
-use crate::scheme::CommonParams;
 
 /// Signed transaction information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -133,7 +132,12 @@ impl UnverifiedTransaction {
     }
 
     /// Verify basic signature params. Does not attempt signer recovery.
-    pub fn verify_basic(&self, params: &CommonParams, is_order_disabled: bool) -> Result<(), SyntaxError> {
+    pub fn verify_basic(&self) -> Result<(), SyntaxError> {
+        self.action.verify()
+    }
+
+    /// Verify transactiosn with the common params. Does not attempt signer recovery.
+    pub fn verify_with_params(&self, params: &CommonParams, is_order_disabled: bool) -> Result<(), SyntaxError> {
         if self.network_id != params.network_id() {
             return Err(SyntaxError::InvalidNetworkId(self.network_id))
         }
@@ -141,13 +145,7 @@ impl UnverifiedTransaction {
         if byte_size >= params.max_body_size() {
             return Err(SyntaxError::TransactionIsTooBig)
         }
-        self.action.verify(
-            params.network_id(),
-            params.max_asset_scheme_metadata_size(),
-            params.max_transfer_metadata_size(),
-            params.max_text_content_size(),
-            is_order_disabled,
-        )
+        self.action.verify_with_params(params, is_order_disabled)
     }
 }
 

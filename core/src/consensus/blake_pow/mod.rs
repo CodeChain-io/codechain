@@ -20,6 +20,7 @@ use std::cmp::{max, min};
 
 use ccrypto::blake256;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::CommonParams;
 use primitives::U256;
 use rlp::UntrustedRlp;
 
@@ -101,10 +102,10 @@ impl ConsensusEngine for BlakePoW {
     }
 
     fn verify_local_seal(&self, header: &Header) -> Result<(), Error> {
-        self.verify_block_basic(header).and_then(|_| self.verify_block_unordered(header))
+        self.verify_header_basic(header).and_then(|_| self.verify_block_seal(header))
     }
 
-    fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
+    fn verify_header_basic(&self, header: &Header) -> Result<(), Error> {
         if *header.score() < self.params.min_score {
             return Err(From::from(BlockError::ScoreOutOfBounds(OutOfBounds {
                 min: Some(self.params.min_score),
@@ -116,7 +117,7 @@ impl ConsensusEngine for BlakePoW {
         Ok(())
     }
 
-    fn verify_block_unordered(&self, header: &Header) -> Result<(), Error> {
+    fn verify_block_seal(&self, header: &Header) -> Result<(), Error> {
         let seal = Seal::parse_seal(header.seal())?;
 
         let mut message = header.bare_hash().0;
@@ -159,7 +160,7 @@ impl ConsensusEngine for BlakePoW {
         header.set_score(score);
     }
 
-    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+    fn on_close_block(&self, block: &mut ExecutedBlock, _parent_common_params: &CommonParams) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = self.block_reward(block.header().number())
             + self.block_fee(Box::new(block.transactions().to_owned().into_iter().map(Into::into)));

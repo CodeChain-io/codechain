@@ -22,6 +22,7 @@ use ckey::Address;
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::ActionHandler;
+use ctypes::CommonParams;
 use primitives::H256;
 
 use super::super::stake;
@@ -87,14 +88,10 @@ impl ConsensusEngine for Tendermint {
         self.inner.send(worker::Event::ProposalGenerated(Box::from(sealed_block.clone()))).unwrap();
     }
 
-    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn verify_block_basic(&self, header: &Header) -> Result<(), Error> {
+    fn verify_header_basic(&self, header: &Header) -> Result<(), Error> {
         let (result, receiver) = crossbeam::bounded(1);
         self.inner
-            .send(worker::Event::VerifyBlockBasic {
+            .send(worker::Event::VerifyHeaderBasic {
                 header: Box::from(header.clone()),
                 result,
             })
@@ -132,13 +129,13 @@ impl ConsensusEngine for Tendermint {
 
     fn stop(&self) {}
 
-    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+    fn on_close_block(&self, block: &mut ExecutedBlock, parent_common_params: &CommonParams) -> Result<(), Error> {
         let author = *block.header().author();
         let (total_fee, min_fee) = {
             let transactions = block.transactions();
             let total_fee: u64 = transactions.iter().map(|tx| tx.fee).sum();
-            let block_number = block.header().number();
-            let min_fee = transactions.iter().map(|tx| self.machine.min_cost(&tx.action, Some(block_number))).sum();
+            let min_fee =
+                transactions.iter().map(|tx| CodeChainMachine::min_cost(&parent_common_params, &tx.action)).sum();
             (total_fee, min_fee)
         };
         assert!(total_fee >= min_fee, "{} >= {}", total_fee, min_fee);

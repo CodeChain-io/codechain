@@ -112,10 +112,11 @@ where
     }
 
     fn test_tps(&self, setting: TPSTestSetting) -> Result<f64> {
-        let mint_fee = self.client.common_params(None).min_asset_mint_cost();
-        let transfer_fee = self.client.common_params(None).min_asset_transfer_cost();
-        let pay_fee = self.client.common_params(None).min_pay_transaction_cost();
-        let network_id = self.client.common_params(None).network_id();
+        let common_params = self.client.common_params(BlockId::Latest).unwrap();
+        let mint_fee = common_params.min_asset_mint_cost();
+        let transfer_fee = common_params.min_asset_transfer_cost();
+        let pay_fee = common_params.min_pay_transaction_cost();
+        let network_id = common_params.network_id();
 
         // NOTE: Assuming solo network
         let genesis_secret: Private = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd".into();
@@ -222,7 +223,7 @@ where
 
         fn send_tx<C, M>(tx: Transaction, client: &C, key_pair: &KeyPair, miner: &M) -> Result<H256>
         where
-            C: MiningBlockChainClient,
+            C: MiningBlockChainClient + EngineInfo,
             M: MinerService, {
             let signed = SignedTransaction::new_with_sign(tx, key_pair.private());
             let hash = signed.hash();

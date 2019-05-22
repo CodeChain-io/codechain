@@ -28,7 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockNumber, CommonParams, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use journaldb;
@@ -49,7 +49,7 @@ use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::{BlockImportError, Error, ImportError, SchemeError};
 use crate::miner::{Miner, MinerService};
-use crate::scheme::{CommonParams, Scheme};
+use crate::scheme::Scheme;
 use crate::service::ClientIoMessage;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, UnverifiedTransaction};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
@@ -222,6 +222,7 @@ impl Client {
             BlockId::Number(number) => chain.block_hash(*number),
             BlockId::Earliest => chain.block_hash(0),
             BlockId::Latest => Some(chain.best_block_hash()),
+            BlockId::ParentOfLatest => Some(chain.best_block_header().parent_hash()),
         }
     }
 
@@ -293,6 +294,13 @@ impl Client {
             BlockId::Hash(hash) => self.block_chain().block_number(hash),
             BlockId::Earliest => Some(0),
             BlockId::Latest => Some(self.block_chain().best_block_detail().number),
+            BlockId::ParentOfLatest => {
+                if self.block_chain().best_block_detail().number == 0 {
+                    None
+                } else {
+                    Some(self.block_chain().best_block_detail().number - 1)
+                }
+            }
         }
     }
 
@@ -484,8 +492,16 @@ impl StateInfo for Client {
 }
 
 impl EngineInfo for Client {
-    fn common_params(&self, block_number: Option<BlockNumber>) -> &CommonParams {
-        self.engine().machine().common_params(block_number)
+    fn common_params(&self, block_id: BlockId) -> Option<CommonParams> {
+        self.state_info(block_id.into()).map(|state| {
+            state
+                .metadata()
+                .unwrap_or_else(|err| unreachable!("Unexpected failure. Maybe DB was corrupted: {:?}", err))
+                .unwrap()
+                .params()
+                .map(Clone::clone)
+                .unwrap_or_else(|| *self.engine().machine().genesis_common_params())
+        })
     }
 
     fn block_reward(&self, block_number: u64) -> u64 {
@@ -556,7 +572,7 @@ impl BlockChainTrait for Client {
 
     fn genesis_accounts(&self) -> Vec<PlatformAddress> {
         // XXX: What should we do if the network id has been changed
-        let network_id = self.common_params(None).network_id();
+        let network_id = self.common_params(BlockId::Latest).unwrap().network_id();
         self.genesis_accounts.iter().map(|addr| PlatformAddress::new_v1(network_id, *addr)).collect()
     }
 

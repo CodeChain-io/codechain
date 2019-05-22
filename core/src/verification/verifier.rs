@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::CommonParams;
+
 use super::verification;
 use crate::client::BlockChainTrait;
 use crate::consensus::CodeChainEngine;
@@ -32,6 +34,7 @@ where
         parent: &Header,
         engine: &CodeChainEngine,
         do_full: Option<verification::FullFamilyParams<C>>,
+        common_params: &CommonParams,
     ) -> Result<(), Error>;
 
     /// Do a final verification check for an enacted header vs its expected counterpart.

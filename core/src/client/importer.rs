@@ -38,6 +38,7 @@ use crate::types::BlockId;
 use crate::verification::queue::{BlockQueue, HeaderQueue};
 use crate::verification::{self, PreverifiedBlock, Verifier};
 use crate::views::{BlockView, HeaderView};
+use client::EngineInfo;
 
 pub struct Importer {
     /// Lock used during block import
@@ -242,6 +243,8 @@ impl Importer {
             );
         })?;
 
+        let common_params = client.common_params(parent.hash().into()).unwrap();
+
         // Verify Block Family
         self.verifier
             .verify_block_family(
@@ -255,6 +258,7 @@ impl Importer {
                     block_provider: &*chain,
                     client,
                 }),
+                &common_params,
             )
             .map_err(|e| {
                 cwarn!(

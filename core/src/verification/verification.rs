@@ -18,7 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use cmerkle::skewed_merkle_root;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, CommonParams};
 use primitives::{Bytes, H256};
 use rlp::UntrustedRlp;
 
@@ -30,7 +30,7 @@ use crate::header::Header;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::BlockView;
 
-/// Preprocessed block data gathered in `verify_block_unordered` call
+/// Preprocessed block data gathered in `verify_block_seal` call
 pub struct PreverifiedBlock {
     /// Populated block header
     pub header: Header,
@@ -41,23 +41,20 @@ pub struct PreverifiedBlock {
 }
 
 /// Phase 1 quick block verification. Only does checks that are cheap. Operates on a single block
-pub fn verify_block_basic(header: &Header, bytes: &[u8], engine: &CodeChainEngine) -> Result<(), Error> {
-    verify_header_params(&header, engine)?;
-    engine.verify_block_basic(&header)?;
+pub fn verify_block_basic(header: &Header, bytes: &[u8]) -> Result<(), Error> {
+    verify_header_basic(header)?;
 
     let body_rlp = UntrustedRlp::new(bytes).at(1)?;
-    if body_rlp.as_raw().len() > engine.machine().common_params(Some(header.number())).max_body_size() {
-        return Err(BlockError::BodySizeIsTooBig.into())
-    }
 
     for t in body_rlp.iter().map(|rlp| rlp.as_val::<UnverifiedTransaction>()) {
-        engine.verify_transaction_basic(&t?, &header)?;
+        t?.verify_basic()?;
     }
     Ok(())
 }
 
-/// Check basic header parameters.
-pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
+pub fn verify_header_with_engine(header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
+    engine.verify_header_basic(&header)?;
+
     let expected_seal_fields = engine.seal_fields(header);
     if header.seal().len() != expected_seal_fields {
         return Err(From::from(BlockError::InvalidSealArity(Mismatch {
@@ -65,21 +62,36 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
             found: header.seal().len(),
         })))
     }
+    Ok(())
+}
 
+pub fn verify_block_with_params(
+    header: &Header,
+    bytes: &[u8],
+    engine: &CodeChainEngine,
+    common_params: &CommonParams,
+) -> Result<(), Error> {
+    verify_header_with_params(&header, common_params)?;
+
+    let body_rlp = UntrustedRlp::new(bytes).at(1).expect("verify_block_basic already checked it");
+    if body_rlp.as_raw().len() > common_params.max_body_size() {
+        return Err(BlockError::BodySizeIsTooBig.into())
+    }
+
+    for t in body_rlp.iter().map(|rlp| rlp.as_val().expect("verify_block_basic already checked it")) {
+        engine.verify_transaction_with_params(&t, common_params)?;
+    }
+    Ok(())
+}
+
+/// Check basic header parameters.
+pub fn verify_header_basic(header: &Header) -> Result<(), Error> {
     let block_number = header.number();
     if block_number >= BlockNumber::max_value() {
         return Err(From::from(BlockError::RidiculousNumber(OutOfBounds {
             max: Some(BlockNumber::max_value()),
             min: None,
             found: block_number,
-        })))
-    }
-    let max_extra_data_size = engine.machine().common_params(Some(block_number)).max_extra_data_size();
-    if block_number != 0 && header.extra_data().len() > max_extra_data_size {
-        return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
-            min: None,
-            max: Some(max_extra_data_size),
-            found: header.extra_data().len(),
         })))
     }
 
@@ -108,6 +120,19 @@ pub fn verify_header_params(header: &Header, engine: &CodeChainEngine) -> Result
     Ok(())
 }
 
+pub fn verify_header_with_params(header: &Header, common_params: &CommonParams) -> Result<(), Error> {
+    let max_extra_data_size = common_params.max_extra_data_size();
+    if header.extra_data().len() > max_extra_data_size {
+        return Err(From::from(BlockError::ExtraDataOutOfBounds(OutOfBounds {
+            min: None,
+            max: Some(max_extra_data_size),
+            found: header.extra_data().len(),
+        })))
+    }
+
+    Ok(())
+}
+
 /// Verify block data against header: transactions root
 fn verify_transactions_root(
     block: &[u8],
@@ -129,21 +154,21 @@ fn verify_transactions_root(
 /// Phase 2 verification. Perform costly checks such as transaction signatures and block nonce for ethash.
 /// Still operates on a individual block
 /// Returns a `PreverifiedBlock` structure populated with transactions
-pub fn verify_block_unordered(
+pub fn verify_block_seal(
     header: Header,
     bytes: Bytes,
     engine: &CodeChainEngine,
     check_seal: bool,
 ) -> Result<PreverifiedBlock, Error> {
     if check_seal {
-        engine.verify_block_unordered(&header)?;
+        engine.verify_block_seal(&header)?;
     }
     // Verify transactions.
     let mut transactions = Vec::new();
     {
         let v = BlockView::new(&bytes);
         for t in v.transactions() {
-            let signed = engine.verify_transaction_unordered(t, &header)?;
+            let signed = engine.verify_transaction_seal(t, &header)?;
             transactions.push(signed);
         }
     }
@@ -176,7 +201,10 @@ pub fn verify_block_family<C: BlockChainTrait>(
     parent: &Header,
     engine: &CodeChainEngine,
     do_full: Option<FullFamilyParams<C>>,
+    common_params: &CommonParams,
 ) -> Result<(), Error> {
+    verify_block_with_params(header, block, engine, common_params)?;
+
     // TODO: verify timestamp
     verify_parent(&header, &parent)?;
     verify_transactions_root(block, header.transactions_root(), *parent.transactions_root())?;

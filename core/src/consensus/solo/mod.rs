@@ -19,6 +19,7 @@ mod params;
 use std::sync::Arc;
 
 use cstate::{ActionHandler, HitHandler};
+use ctypes::CommonParams;
 
 use self::params::SoloParams;
 use super::stake;
@@ -78,19 +79,14 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
         Seal::Solo
     }
 
-    fn verify_local_seal(&self, _header: &Header) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn on_close_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+    fn on_close_block(&self, block: &mut ExecutedBlock, parent_common_params: &CommonParams) -> Result<(), Error> {
         let author = *block.header().author();
         let (total_reward, min_fee) = {
-            let block_number = block.header().number();
             let transactions = block.transactions();
             let block_reward = self.block_reward(block.header().number());
             let total_fee: u64 = transactions.iter().map(|tx| tx.fee).sum();
             let min_fee: u64 =
-                transactions.iter().map(|tx| self.machine().min_cost(&tx.action, Some(block_number))).sum();
+                transactions.iter().map(|tx| CodeChainMachine::min_cost(&parent_common_params, &tx.action)).sum();
             (block_reward + total_fee, min_fee)
         };
 
@@ -120,6 +116,7 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
 
 #[cfg(test)]
 mod tests {
+    use ctypes::CommonParams;
     use primitives::H520;
 
     use crate::block::{IsBlock, OpenBlock};
@@ -135,7 +132,8 @@ mod tests {
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![]).unwrap();
         let parent_transactions_root = *genesis_header.transactions_root();
-        let b = b.close_and_lock(parent_transactions_root).unwrap();
+        let parent_common_params = CommonParams::default_for_test();
+        let b = b.close_and_lock(parent_transactions_root, &parent_common_params).unwrap();
         if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {
             assert!(b.try_seal(engine, seal).is_ok());
         }
@@ -146,10 +144,10 @@ mod tests {
         let engine = Scheme::new_test_solo().engine;
         let mut header: Header = Header::default();
 
-        assert!(engine.verify_block_basic(&header).is_ok());
+        assert!(engine.verify_header_basic(&header).is_ok());
 
         header.set_seal(vec![::rlp::encode(&H520::default()).into_vec()]);
 
-        assert!(engine.verify_block_unordered(&header).is_ok());
+        assert!(engine.verify_block_seal(&header).is_ok());
     }
 }

@@ -118,6 +118,7 @@ const SEAL_FIELDS: usize = 4;
 mod tests {
     use ccrypto::blake256;
     use ckey::Address;
+    use ctypes::CommonParams;
     use primitives::Bytes;
 
     use super::message::{message_info_rlp, VoteStep};
@@ -151,7 +152,8 @@ mod tests {
         let db = scheme.ensure_genesis_state(db).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![]).unwrap();
-        let b = b.close(*genesis_header.transactions_root()).unwrap();
+        let common_params = CommonParams::default_for_test();
+        let b = b.close(*genesis_header.transactions_root(), &common_params).unwrap();
         if let Some(seal) = scheme.engine.generate_seal(b.block(), &genesis_header).seal_fields() {
             (b, seal)
         } else {
@@ -189,7 +191,7 @@ mod tests {
         let engine = Scheme::new_test_tendermint().engine;
         let header = Header::default();
 
-        let verify_result = engine.verify_block_basic(&header);
+        let verify_result = engine.verify_header_basic(&header);
 
         match verify_result {
             Err(Error::Block(BlockError::InvalidSealArity(_))) => {}

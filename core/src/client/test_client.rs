@@ -42,7 +42,7 @@ use cnetwork::NodeId;
 use cstate::{FindActionHandler, StateDB};
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, CommonParams};
 use cvm::ChainTimeInfo;
 use journaldb;
 use kvdb::KeyValueDB;
@@ -55,8 +55,8 @@ use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::client::ImportResult;
 use crate::client::{
-    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, ImportBlock, MiningBlockChainClient,
-    StateOrBlock,
+    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock,
+    MiningBlockChainClient, StateOrBlock,
 };
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
@@ -266,6 +266,15 @@ impl TestBlockChainClient {
             BlockId::Number(n) => self.numbers.read().get(&(*n as usize)).cloned(),
             BlockId::Earliest => self.numbers.read().get(&0).cloned(),
             BlockId::Latest => self.numbers.read().get(&(self.numbers.read().len() - 1)).cloned(),
+            BlockId::ParentOfLatest => {
+                let numbers = self.numbers.read();
+                let len = numbers.len();
+                if len < 2 {
+                    None
+                } else {
+                    self.numbers.read().get(&(len - 2)).cloned()
+                }
+            }
         }
     }
 
@@ -505,6 +514,7 @@ impl BlockChainClient for TestBlockChainClient {
             BlockId::Number(number) if (*number as usize) < self.blocks.read().len() => BlockStatus::InChain,
             BlockId::Hash(ref hash) if self.blocks.read().get(hash).is_some() => BlockStatus::InChain,
             BlockId::Latest | BlockId::Earliest => BlockStatus::InChain,
+            BlockId::ParentOfLatest => BlockStatus::InChain,
             _ => BlockStatus::Unknown,
         }
     }
@@ -570,5 +580,23 @@ impl super::EngineClient for TestBlockChainClient {
     fn get_kvdb(&self) -> Arc<KeyValueDB> {
         let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
         Arc::new(db)
+    }
+}
+
+impl EngineInfo for TestBlockChainClient {
+    fn common_params(&self, _block_id: BlockId) -> Option<CommonParams> {
+        unimplemented!()
+    }
+
+    fn block_reward(&self, _block_number: u64) -> u64 {
+        unimplemented!()
+    }
+
+    fn mining_reward(&self, _block_number: u64) -> Option<u64> {
+        unimplemented!()
+    }
+
+    fn recommended_confirmation(&self) -> u32 {
+        unimplemented!()
     }
 }

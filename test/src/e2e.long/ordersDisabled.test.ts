@@ -119,7 +119,7 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_ORDER_ASSET_TYPES);
                 }
             });
         });
@@ -760,7 +760,9 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -828,7 +830,7 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_SPENT_QUANTITY);
                 }
             });
 
@@ -896,7 +898,9 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -971,7 +975,9 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_ORDER_LOCK_SCRIPT_HASH
+                    );
                 }
             });
 
@@ -1042,7 +1048,7 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_ORDER_PARAMETERS);
                 }
             });
 
@@ -1116,7 +1122,9 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -1190,7 +1198,9 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -1270,7 +1280,9 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
+                    );
                 }
             });
 
@@ -1340,7 +1352,7 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_ORIGIN_OUTPUTS);
                 }
             });
 
@@ -1409,7 +1421,7 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(ERROR.INVALID_ORIGIN_OUTPUTS);
                 }
             });
 
@@ -1757,7 +1769,9 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_ORDER_ASSET_QUANTITIES
+                    );
                 }
             });
 
@@ -1827,7 +1841,9 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
+                    expect(e).is.similarTo(
+                        ERROR.INVALID_ORDER_ASSET_QUANTITIES
+                    );
                 }
             });
 
