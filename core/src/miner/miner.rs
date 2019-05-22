@@ -41,6 +41,7 @@ use crate::block::{Block, ClosedBlock, IsBlock};
 use crate::client::{
     AccountData, BlockChainTrait, BlockProducer, Client, EngineInfo, ImportBlock, MiningBlockChainClient,
 };
+use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{CodeChainEngine, EngineType};
 use crate::error::Error;
 use crate::header::Header;
@@ -282,7 +283,7 @@ impl Miner {
                         let common_params = client.common_params(best_header.hash().into()).unwrap();
                         self.engine.verify_transaction_with_params(&tx, &common_params)
                     })
-                    .and_then(|_| self.engine.verify_transaction_seal(tx, &fake_header))
+                    .and_then(|_| CodeChainMachine::verify_transaction_seal(tx, &fake_header))
                 {
                     Err(e) => {
                         cdebug!(MINER, "Rejected transaction {:?} with invalid signature: {:?}", hash, e);

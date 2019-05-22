@@ -67,6 +67,8 @@ pub trait Kind: 'static + Sized + Send + Sync {
     /// The third stage: completely verified.
     type Verified: Sized + Send + BlockLike + MemUsage;
 
+    fn name() -> &'static str;
+
     /// Attempt to create the `Unverified` item from the input.
     fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error>;
 
@@ -115,6 +117,10 @@ pub mod headers {
         type Unverified = Header;
         type Verified = Header;
 
+        fn name() -> &'static str {
+            "Headers"
+        }
+
         fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
             // FIXME: this doesn't seem to match with full block verification
             verify_header_basic(&input)?;
@@ -156,6 +162,10 @@ pub mod blocks {
         type Input = Unverified;
         type Unverified = Unverified;
         type Verified = PreverifiedBlock;
+
+        fn name() -> &'static str {
+            "Blocks"
+        }
 
         fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
             match verify_block_basic(&input.header, &input.bytes)

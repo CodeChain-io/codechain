@@ -54,7 +54,7 @@ use crate::codechain_machine::CodeChainMachine;
 use crate::encoded;
 use crate::error::Error;
 use crate::header::Header;
-use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::transaction::UnverifiedTransaction;
 use crate::views::HeaderView;
 use Client;
 
@@ -361,11 +361,6 @@ pub trait CodeChainEngine: ConsensusEngine {
             handler.verify(bytes)?;
         }
         self.machine().verify_transaction_with_params(tx, common_params)
-    }
-
-    /// Verify a particular transaction is valid.
-    fn verify_transaction_seal(&self, tx: UnverifiedTransaction, header: &Header) -> Result<SignedTransaction, Error> {
-        CodeChainMachine::verify_transaction_seal(tx, header)
     }
 }
 
