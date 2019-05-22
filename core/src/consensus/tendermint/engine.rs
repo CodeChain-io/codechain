@@ -142,7 +142,7 @@ impl ConsensusEngine for Tendermint {
     fn on_close_block(
         &self,
         block: &mut ExecutedBlock,
-        _parent_header: &Header,
+        parent_header: &Header,
         parent_common_params: &CommonParams,
     ) -> Result<(), Error> {
         let author = *block.header().author();
@@ -163,6 +163,20 @@ impl ConsensusEngine for Tendermint {
         let stakeholders_share = stake::stakeholders_share(total_min_fee, &stakes);
         self.machine.add_balance(block, &author, total_reward - stakeholders_share)?;
 
+        let term_seconds = parent_common_params.term_seconds();
+        if term_seconds == 0 {
+            return Ok(())
+        }
+        let (last_term_finished_block_num, current_term_id) = {
+            let header = block.header();
+            let term_id = header.timestamp() / term_seconds;
+            let parent_term_id = parent_header.timestamp() / term_seconds;
+            if term_id == parent_term_id {
+                return Ok(())
+            }
+            (header.number(), term_id)
+        };
+        self.machine.change_term_id(block, last_term_finished_block_num, current_term_id)?;
         Ok(())
     }
 
