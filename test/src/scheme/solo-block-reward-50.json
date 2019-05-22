@@ -5,9 +5,10 @@
             "params": {
                 "blockReward": "0x32",
                 "genesisStakes": {
-                    "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": 70000,
-                    "tccq9qvruafmf9vegjhkl0ruunkwp0d4lc8fgxknzh5": 20000,
-                    "tccq8snvxt5vfwthja7z7880dgs63x4njw2n5e5zm4h": 10000
+                    "tccq9qvruafmf9vegjhkl0ruunkwp0d4lc8fgxknzh5": 40000,
+                    "tccq8snvxt5vfwthja7z7880dgs63x4njw2n5e5zm4h": 30000,
+                    "tccq9ew456esykkxd7et2e0gwlwa6kkg2f4fg4q3t2m": 20000,
+                    "tccq8z49d959veeeznkatpplf2rd8u98q9nz5zfqlpz": 10000
                 }
             }
         }
