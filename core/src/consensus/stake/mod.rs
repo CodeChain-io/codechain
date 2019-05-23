@@ -29,7 +29,7 @@ use rlp::{Decodable, UntrustedRlp};
 
 use self::action_data::{Delegation, StakeAccount, Stakeholders};
 use self::actions::Action;
-pub use self::distribute::fee_distribute;
+pub use self::distribute::{fee_distribute, stakeholders_share};
 use consensus::ValidatorSet;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
