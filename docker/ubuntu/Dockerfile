@@ -1,4 +1,4 @@
-FROM ubuntu:14.04 as builder
+FROM ubuntu:18.04 as builder
 WORKDIR /build
 
 # install tools and dependencies
@@ -39,7 +39,7 @@ RUN cd codechain && \
 RUN file /build/codechain/target/release/codechain
 
 
-FROM ubuntu:14.04
+FROM ubuntu:18.04
 WORKDIR /app/codechain
 COPY --from=builder /build/codechain/target/release/codechain ./target/release/codechain
 COPY --from=builder /build/codechain/codechain/config/presets/ ./codechain/config/presets
