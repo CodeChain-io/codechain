@@ -97,13 +97,13 @@ describe("reward2", function() {
 
         // nodeA creates 2 blocks
         {
-            await nodeA.pay(aliceAddress, 100); // +100 +50 +10*2/10 for alice in nodeA, +10*1/10 for bob
+            await nodeA.pay(aliceAddress, 100); // +100 +50 +10*4/10 for alice in nodeA, +10*3/10 for bob
             expect(
                 await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-            ).to.deep.equal(new U64(50 + 100 + 50 + 2));
+            ).to.deep.equal(new U64(50 + 100 + 50 + 4));
             expect(
                 await nodeA.sdk.rpc.chain.getBalance(bobAddress)
-            ).to.deep.equal(new U64(1));
+            ).to.deep.equal(new U64(3));
             await nodeA.sdk.rpc.chain.sendSignedTransaction(
                 nodeA.sdk.core
                     .createPayTransaction({
@@ -115,32 +115,32 @@ describe("reward2", function() {
                         fee: 10,
                         seq: 0
                     })
-            ); // +50 -5 + 10*2/10 -10 for alice, +5 +10*1/10 for bob in nodeA
+            ); // +50 -5 + 10*4/10 -10 for alice, +5 +10*3/10 for bob in nodeA
 
             expect(
                 await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-            ).to.deep.equal(new U64(50 + 100 + 50 + 2 + 50 - 5 + 2 - 10));
+            ).to.deep.equal(new U64(50 + 100 + 50 + 4 + 50 - 5 + 4 - 10));
             expect(
                 await nodeA.sdk.rpc.chain.getBalance(bobAddress)
-            ).to.deep.equal(new U64(1 + 5 + 1));
+            ).to.deep.equal(new U64(3 + 5 + 3));
         }
 
         // nodeB creates 3 blocks
         {
-            await nodeB.pay(aliceAddress, 200); // +200 +10*2/10 for alice, +50 +10*1/10 for bob in nodeB
+            await nodeB.pay(aliceAddress, 200); // +200 +10*4/10 for alice, +50 +10*3/10 for bob in nodeB
             expect(
                 await nodeB.sdk.rpc.chain.getBalance(aliceAddress)
-            ).to.deep.equal(new U64(50 + 200 + 2));
+            ).to.deep.equal(new U64(50 + 200 + 4));
             expect(
                 await nodeB.sdk.rpc.chain.getBalance(bobAddress)
-            ).to.deep.equal(new U64(50 + 1));
-            await nodeB.pay(bobAddress, 300); // 10*2/10 for alice, +300 +50 +10*1/10 for bob in nodeB
+            ).to.deep.equal(new U64(50 + 3));
+            await nodeB.pay(bobAddress, 300); // 10*4/10 for alice, +300 +50 +10*3/10 for bob in nodeB
             expect(
                 await nodeB.sdk.rpc.chain.getBalance(aliceAddress)
-            ).to.deep.equal(new U64(50 + 200 + 2 + 2));
+            ).to.deep.equal(new U64(50 + 200 + 4 + 4));
             expect(
                 await nodeB.sdk.rpc.chain.getBalance(bobAddress)
-            ).to.deep.equal(new U64(50 + 1 + 300 + 50 + 1));
+            ).to.deep.equal(new U64(50 + 3 + 300 + 50 + 3));
             await nodeB.sdk.rpc.chain.sendSignedTransaction(
                 nodeB.sdk.core
                     .createPayTransaction({
@@ -152,13 +152,13 @@ describe("reward2", function() {
                         fee: 10,
                         seq: 0
                     })
-            ); // -15 -10 +10*2/10 for alice. +50 + 15 + 10*1/10 for bob in nodeB
+            ); // -15 -10 +10*4/10 for alice. +50 + 15 + 10*3/10 for bob in nodeB
             expect(
                 await nodeB.sdk.rpc.chain.getBalance(aliceAddress)
-            ).to.deep.equal(new U64(50 + 200 + 2 + 2 - 15 - 10 + 2));
+            ).to.deep.equal(new U64(50 + 200 + 4 + 4 - 15 - 10 + 4));
             expect(
                 await nodeB.sdk.rpc.chain.getBalance(bobAddress)
-            ).to.deep.equal(new U64(50 + 1 + 300 + 50 + 1 + 50 + 15 + 1));
+            ).to.deep.equal(new U64(50 + 3 + 300 + 50 + 3 + 50 + 15 + 3));
         }
 
         // sync. nodeA now sees nodeB's state
@@ -174,23 +174,23 @@ describe("reward2", function() {
 
             expect(
                 await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
-            ).to.deep.equal(new U64(50 + 200 + 2 + 2 - 15 - 10 + 2));
+            ).to.deep.equal(new U64(50 + 200 + 4 + 4 - 15 - 10 + 4));
             expect(
                 await nodeA.sdk.rpc.chain.getBalance(bobAddress)
-            ).to.deep.equal(new U64(50 + 1 + 300 + 50 + 1 + 50 + 15 + 1));
+            ).to.deep.equal(new U64(50 + 3 + 300 + 50 + 3 + 50 + 15 + 3));
         }
 
         // nodeA creates a block
         {
-            await nodeA.pay(aliceAddress, 1000); // +1000 + 50 + 10*2/10 for alice, 10*1/10 for bob
+            await nodeA.pay(aliceAddress, 1000); // +1000 + 50 + 10*4/10 for alice, 10*3/10 for bob
             expect(
                 await nodeA.sdk.rpc.chain.getBalance(aliceAddress)
             ).to.deep.equal(
-                new U64(50 + 200 + 2 + 2 - 15 - 10 + 2 + 1000 + 50 + 2)
+                new U64(50 + 200 + 4 + 4 - 15 - 10 + 4 + 1000 + 50 + 4)
             );
             expect(
                 await nodeA.sdk.rpc.chain.getBalance(bobAddress)
-            ).to.deep.equal(new U64(50 + 1 + 300 + 50 + 1 + 50 + 15 + 1 + 1));
+            ).to.deep.equal(new U64(50 + 3 + 300 + 50 + 3 + 50 + 15 + 3 + 3));
         }
     }).timeout(120_000);
 
