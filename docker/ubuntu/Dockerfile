@@ -15,7 +15,7 @@ RUN apt-get update && \
         libudev-dev
 
 # install rustup
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 # rustup directory
 ENV PATH /root/.cargo/bin:$PATH
