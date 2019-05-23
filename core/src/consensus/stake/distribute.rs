@@ -14,27 +14,35 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::convert::TryFrom;
 
 use ckey::Address;
 
 use std::collections::hash_map;
 use std::collections::HashMap;
 
-pub fn fee_distribute<'a>(author: &'a Address, fee: u64, stakes: &'a HashMap<Address, u64>) -> FeeDistributeIter<'a> {
+pub fn fee_distribute(total_min_fee: u64, stakes: &HashMap<Address, u64>) -> FeeDistributeIter {
     FeeDistributeIter {
         total_stakes: stakes.values().sum(),
-        total_fee: fee,
-        remaining_fee: fee,
-        author,
+        total_min_fee,
+        remaining_fee: total_min_fee,
         stake_holdings: stakes.iter(),
     }
 }
 
+pub fn stakeholders_share(total_min_fee: u64, stakes: &HashMap<Address, u64>) -> u64 {
+    fee_distribute(total_min_fee, stakes).map(|(_, fee)| fee).sum()
+}
+
+fn share(total_stakes: u64, stake: u64, total_min_fee: u64) -> u64 {
+    assert!(total_stakes >= stake);
+    u64::try_from((u128::from(total_min_fee) * u128::from(stake)) / u128::from(total_stakes)).unwrap()
+}
+
 pub struct FeeDistributeIter<'a> {
     total_stakes: u64,
-    total_fee: u64,
+    total_min_fee: u64,
     remaining_fee: u64,
-    author: &'a Address,
     stake_holdings: hash_map::Iter<'a, Address, u64>,
 }
 
@@ -42,17 +50,9 @@ impl<'a> Iterator for FeeDistributeIter<'a> {
     type Item = (&'a Address, u64);
     fn next(&mut self) -> Option<(&'a Address, u64)> {
         if let Some((stakeholder, stake)) = self.stake_holdings.next() {
-            debug_assert!(self.total_stakes >= *stake);
-            // promote u64 to u128 in order not to overflow while multiplication.
-            let share = ((u128::from(self.total_fee) * u128::from(*stake)) / u128::from(self.total_stakes)) as u64;
-            assert!(self.remaining_fee >= share, "Remaining fee shouldn't be depleted");
-            self.remaining_fee -= share;
+            let share = share(self.total_stakes, *stake, self.total_min_fee);
+            self.remaining_fee = self.remaining_fee.checked_sub(share).expect("Remaining fee shouldn't be depleted");
             Some((stakeholder, share))
-        } else if self.remaining_fee > 0 {
-            // author get remaining fees.
-            let author_share = self.remaining_fee;
-            self.remaining_fee = 0;
-            Some((self.author, author_share))
         } else {
             None
         }
@@ -65,14 +65,13 @@ mod tests {
 
     #[test]
     fn distribute_even() {
-        let author = Address::random();
         let address1 = Address::random();
         let address2 = Address::random();
         let mut stakes = HashMap::new();
         stakes.insert(address1, 10);
         stakes.insert(address2, 10);
 
-        let shares: HashMap<Address, u64> = fee_distribute(&author, 100, &stakes).map(|(k, v)| (*k, v)).collect();
+        let shares: HashMap<Address, u64> = fee_distribute(100, &stakes).map(|(k, v)| (*k, v)).collect();
         assert_eq!(shares, {
             let mut expected = HashMap::with_capacity(stakes.len());
             expected.insert(address1, 50);
@@ -83,18 +82,19 @@ mod tests {
 
     #[test]
     fn distribute_and_changes() {
-        let author = Address::random();
         let addresses: Vec<_> = (0..51).map(|_| Address::random()).collect();
         let mut stakes = HashMap::with_capacity(addresses.len());
         for address in &addresses {
             stakes.insert(*address, 10);
         }
 
-        let shares: HashMap<Address, u64> = fee_distribute(&author, 100, &stakes).map(|(k, v)| (*k, v)).collect();
+        let total = 100;
+        let shares: HashMap<Address, u64> = fee_distribute(total, &stakes).map(|(k, v)| (*k, v)).collect();
+        let author_share = total - stakeholders_share(total, &stakes);
 
+        assert_eq!(49, author_share);
         assert_eq!(shares, {
             let mut expected = HashMap::with_capacity(addresses.len() + 1);
-            expected.insert(author, 49);
             for address in &addresses {
                 expected.insert(*address, 1);
             }
