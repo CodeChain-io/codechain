@@ -1,4 +1,4 @@
-FROM ubuntu:14.04 as builder
+FROM ubuntu:18.04 as builder
 WORKDIR /build
 
 # install tools and dependencies
@@ -15,7 +15,7 @@ RUN apt-get update && \
         libudev-dev
 
 # install rustup
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 # rustup directory
 ENV PATH /root/.cargo/bin:$PATH
@@ -39,7 +39,7 @@ RUN cd codechain && \
 RUN file /build/codechain/target/release/codechain
 
 
-FROM ubuntu:14.04
+FROM ubuntu:18.04
 WORKDIR /app/codechain
 COPY --from=builder /build/codechain/target/release/codechain ./target/release/codechain
 COPY --from=builder /build/codechain/codechain/config/presets/ ./codechain/config/presets

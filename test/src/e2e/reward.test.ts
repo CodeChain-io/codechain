@@ -15,12 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
-import { PlatformAddress, U64 } from "codechain-sdk/lib/core/classes";
+import { U64 } from "codechain-sdk/lib/core/classes";
 import "mocha";
 import {
     aliceAddress,
     aliceSecret,
     bobAddress,
+    carolAddress,
+    daveAddress,
     faucetAddress
 } from "../helper/constants";
 import CodeChain from "../helper/spawn";
@@ -51,6 +53,12 @@ describe("Reward = 50, 1 miner", function() {
         expect(await node.sdk.rpc.chain.getBalance(bobAddress)).to.deep.equal(
             new U64(0)
         );
+        expect(await node.sdk.rpc.chain.getBalance(carolAddress)).to.deep.equal(
+            new U64(0)
+        );
+        expect(await node.sdk.rpc.chain.getBalance(daveAddress)).to.deep.equal(
+            new U64(0)
+        );
     });
 
     it("Mining a block with 1 transaction", async function() {
@@ -58,13 +66,17 @@ describe("Reward = 50, 1 miner", function() {
 
         expect(
             await node.sdk.rpc.chain.getBalance(faucetAddress)
-        ).to.deep.equal(
-            FAUCET_INITIAL_CCS.minus(10 /* fee */).plus(7 /* share */)
-        );
+        ).to.deep.equal(FAUCET_INITIAL_CCS.minus(10 /* fee */));
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
-            new U64(2 /* share */).plus(BLOCK_REWARD)
+            new U64(4 /* share */).plus(BLOCK_REWARD)
         );
         expect(await node.sdk.rpc.chain.getBalance(bobAddress)).to.deep.equal(
+            new U64(3 /* share */)
+        );
+        expect(await node.sdk.rpc.chain.getBalance(carolAddress)).to.deep.equal(
+            new U64(2 /* share */)
+        );
+        expect(await node.sdk.rpc.chain.getBalance(daveAddress)).to.deep.equal(
             new U64(1 /* share */)
         );
     });
@@ -85,20 +97,28 @@ describe("Reward = 50, 1 miner", function() {
         });
         await node.sdk.rpc.devel.startSealing();
 
+        const TOTAL_FEE = 10 + 10 + 15;
+        const TOTAL_MIN_FEE = MIN_FEE_PAY * 3;
         expect(
             await node.sdk.rpc.chain.getBalance(faucetAddress)
-        ).to.deep.equal(
-            FAUCET_INITIAL_CCS.minus(10 + 10 + 15 /* fee */).plus(
-                21 /* share */
-            )
-        );
+        ).to.deep.equal(FAUCET_INITIAL_CCS.minus(TOTAL_FEE));
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
-            new U64(6 /* share */)
-                .plus(10 + 10 + 15 - 3 * MIN_FEE_PAY /* share remaining */)
+            new U64(Math.floor((TOTAL_MIN_FEE * 4) / 10) /* share */)
+                .plus(TOTAL_FEE) // block author get the remaining fee
+                .minus(Math.floor((TOTAL_MIN_FEE * 4) / 10))
+                .minus(Math.floor((TOTAL_MIN_FEE * 3) / 10))
+                .minus(Math.floor((TOTAL_MIN_FEE * 2) / 10))
+                .minus(Math.floor((TOTAL_MIN_FEE * 1) / 10))
                 .plus(BLOCK_REWARD)
         );
         expect(await node.sdk.rpc.chain.getBalance(bobAddress)).to.deep.equal(
-            new U64(3 /* share */)
+            new U64(Math.floor((TOTAL_MIN_FEE * 3) / 10) /* share */)
+        );
+        expect(await node.sdk.rpc.chain.getBalance(carolAddress)).to.deep.equal(
+            new U64(Math.floor((TOTAL_MIN_FEE * 2) / 10) /* share */)
+        );
+        expect(await node.sdk.rpc.chain.getBalance(daveAddress)).to.deep.equal(
+            new U64(Math.floor((TOTAL_MIN_FEE * 1) / 10) /* share */)
         );
     });
 
@@ -107,30 +127,47 @@ describe("Reward = 50, 1 miner", function() {
         expect(
             await node.sdk.rpc.chain.getBalance(faucetAddress)
         ).to.deep.equal(
-            FAUCET_INITIAL_CCS.minus(100 /* pay */)
-                .minus(10 /* fee */)
-                .plus(7 /* share */)
+            FAUCET_INITIAL_CCS.minus(100 /* pay */).minus(10 /* fee */)
         );
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
-            new U64(100 /* pay */).plus(2 /* share */).plus(BLOCK_REWARD)
+            new U64(100 /* pay */)
+                .plus(Math.floor((10 * 4) / 10) /* share */)
+                .plus(BLOCK_REWARD)
         );
         expect(await node.sdk.rpc.chain.getBalance(bobAddress)).to.deep.equal(
-            new U64(1 /* share */)
+            new U64(Math.floor((10 * 3) / 10) /* share */)
+        );
+        expect(await node.sdk.rpc.chain.getBalance(carolAddress)).to.deep.equal(
+            new U64(Math.floor((10 * 2) / 10) /* share */)
+        );
+        expect(await node.sdk.rpc.chain.getBalance(daveAddress)).to.deep.equal(
+            new U64(Math.floor((10 * 1) / 10) /* share */)
         );
     });
 
     it("Mining a block with a transaction which author pays someone in", async function() {
         await node.sendPayTx({ fee: 10 });
-        expect(
-            await node.sdk.rpc.chain.getBalance(faucetAddress)
-        ).to.deep.equal(
-            FAUCET_INITIAL_CCS.minus(10 /* fee */).plus(7 /* share */)
+        const faucetBalance = await node.sdk.rpc.chain.getBalance(
+            faucetAddress
         );
-        expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
-            new U64(2 /* share */).plus(BLOCK_REWARD)
+        const aliceBalance = await node.sdk.rpc.chain.getBalance(aliceAddress);
+        const bobBalance = await node.sdk.rpc.chain.getBalance(bobAddress);
+        const carolBalance = await node.sdk.rpc.chain.getBalance(carolAddress);
+        const daveBalance = await node.sdk.rpc.chain.getBalance(daveAddress);
+        expect(faucetBalance).to.deep.equal(
+            FAUCET_INITIAL_CCS.minus(10 /* fee */)
         );
-        expect(await node.sdk.rpc.chain.getBalance(bobAddress)).to.deep.equal(
-            new U64(1 /* share */)
+        expect(aliceBalance).to.deep.equal(
+            new U64(Math.floor((10 * 4) / 10) /* share */).plus(BLOCK_REWARD)
+        );
+        expect(bobBalance).to.deep.equal(
+            new U64(Math.floor((10 * 3) / 10) /* share */)
+        );
+        expect(carolBalance).to.deep.equal(
+            new U64(Math.floor((10 * 2) / 10) /* share */)
+        );
+        expect(daveBalance).to.deep.equal(
+            new U64(Math.floor((10 * 1) / 10) /* share */)
         );
 
         const tx = await node.sdk.core
@@ -143,22 +180,22 @@ describe("Reward = 50, 1 miner", function() {
 
         expect(
             await node.sdk.rpc.chain.getBalance(faucetAddress)
-        ).to.deep.equal(
-            FAUCET_INITIAL_CCS.minus(10)
-                .plus(7)
-                .plus(20 /* pay */)
-                .plus(7 /* share */)
-        );
+        ).to.deep.equal(faucetBalance.plus(20 /* pay */));
         expect(await node.sdk.rpc.chain.getBalance(aliceAddress)).to.deep.equal(
-            new U64(2)
-                .plus(BLOCK_REWARD)
+            aliceBalance
                 .minus(20 /* pay */)
                 .minus(10 /* fee */)
-                .plus(2 /* share */)
+                .plus(Math.floor((10 * 4) / 10) /* share */)
                 .plus(BLOCK_REWARD)
         );
         expect(await node.sdk.rpc.chain.getBalance(bobAddress)).to.deep.equal(
-            new U64(1 /* share*/).plus(1 /* share */)
+            bobBalance.plus(Math.floor((10 * 3) / 10))
+        );
+        expect(await node.sdk.rpc.chain.getBalance(carolAddress)).to.deep.equal(
+            carolBalance.plus(Math.floor((10 * 2) / 10))
+        );
+        expect(await node.sdk.rpc.chain.getBalance(daveAddress)).to.deep.equal(
+            daveBalance.plus(Math.floor((10 * 1) / 10))
         );
     });
 
