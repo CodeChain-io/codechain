@@ -131,21 +131,22 @@ impl ConsensusEngine for Tendermint {
 
     fn on_close_block(&self, block: &mut ExecutedBlock, parent_common_params: &CommonParams) -> Result<(), Error> {
         let author = *block.header().author();
-        let (total_fee, total_min_fee) = {
+        let (total_reward, total_min_fee) = {
             let transactions = block.transactions();
+            let block_reward = self.block_reward(block.header().number());
             let total_min_fee: u64 = transactions.iter().map(|tx| tx.fee).sum();
             let min_fee =
                 transactions.iter().map(|tx| CodeChainMachine::min_cost(&parent_common_params, &tx.action)).sum();
-            (total_min_fee, min_fee)
+            (block_reward + total_min_fee, min_fee)
         };
-        assert!(total_fee >= total_min_fee, "{} >= {}", total_fee, total_min_fee);
+        assert!(total_reward >= total_min_fee, "{} >= {}", total_reward, total_min_fee);
         let stakes = stake::get_stakes(block.state()).expect("Cannot get Stake status");
 
         for (address, share) in stake::fee_distribute(total_min_fee, &stakes) {
             self.machine.add_balance(block, &address, share)?
         }
         let stakeholders_share = stake::stakeholders_share(total_min_fee, &stakes);
-        self.machine.add_balance(block, &author, total_fee - stakeholders_share)?;
+        self.machine.add_balance(block, &author, total_reward - stakeholders_share)?;
 
         Ok(())
     }
