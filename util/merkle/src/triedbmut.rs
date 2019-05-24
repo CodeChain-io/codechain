@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -232,7 +232,7 @@ impl<'a> TrieDBMut<'a> {
                                                     NibbleSlice::new_offset(&new_partial, offset),
                                                     child_value,
                                                 );
-                                                let mut node_rlp = RlpNode::encoded(new_leaf);
+                                                let node_rlp = RlpNode::encoded(new_leaf);
                                                 let new_hash = self.db.insert(&node_rlp);
 
                                                 Ok(Some(new_hash))
@@ -247,7 +247,7 @@ impl<'a> TrieDBMut<'a> {
                                                     NibbleSlice::new_offset(&new_partial, offset),
                                                     children,
                                                 );
-                                                let mut node_rlp = RlpNode::encoded(new_branch);
+                                                let node_rlp = RlpNode::encoded(new_branch);
                                                 let new_hash = self.db.insert(&node_rlp);
 
                                                 Ok(Some(new_hash))
@@ -256,7 +256,7 @@ impl<'a> TrieDBMut<'a> {
                                     }
                                     _ => {
                                         let new_branch = RlpNode::Branch(partial, children);
-                                        let mut node_rlp = RlpNode::encoded(new_branch);
+                                        let node_rlp = RlpNode::encoded(new_branch);
                                         let new_hash = self.db.insert(&node_rlp);
 
                                         Ok(Some(new_hash))
@@ -264,7 +264,7 @@ impl<'a> TrieDBMut<'a> {
                                 }
                             } else {
                                 let new_branch = RlpNode::Branch(partial, children);
-                                let mut node_rlp = RlpNode::encoded(new_branch);
+                                let node_rlp = RlpNode::encoded(new_branch);
                                 let new_hash = self.db.insert(&node_rlp);
 
                                 Ok(Some(new_hash))
@@ -609,12 +609,12 @@ mod tests {
             let real = trie_root(x.clone());
             let mut memdb = MemoryDB::new();
             let mut root = H256::new();
-            let mut memtrie = populate_trie(&mut memdb, &mut root, &x);
+            let memtrie = populate_trie(&mut memdb, &mut root, &x);
             let mut y = x.clone();
             y.sort_by(|ref a, ref b| a.0.cmp(&b.0));
             let mut memdb2 = MemoryDB::new();
             let mut root2 = H256::new();
-            let mut memtrie_sorted = populate_trie(&mut memdb2, &mut root2, &y);
+            let memtrie_sorted = populate_trie(&mut memdb2, &mut root2, &y);
             if *memtrie.root() != real || *memtrie_sorted.root() != real {
                 println!("TRIE MISMATCH");
                 println!();
