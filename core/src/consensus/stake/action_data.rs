@@ -17,7 +17,6 @@
 #[cfg(test)]
 use std::collections::btree_map;
 use std::collections::{btree_set, BTreeMap, BTreeSet};
-#[cfg(test)]
 use std::mem;
 
 use ckey::Address;
@@ -41,7 +40,6 @@ pub fn get_delegation_key(address: &Address) -> H256 {
     ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 2).append(&"Delegation").append(address).into_key()
 }
 
-#[cfg(test)]
 pub fn get_intermediate_rewards_key() -> H256 {
     ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"IntermediateRewards").into_key()
 }
@@ -191,14 +189,12 @@ impl<'a> Delegation<'a> {
     }
 }
 
-#[cfg(test)]
 #[derive(Default, Debug, PartialEq)]
 pub struct IntermediateRewards {
     previous: BTreeMap<Address, u64>,
     current: BTreeMap<Address, u64>,
 }
 
-#[cfg(test)]
 impl IntermediateRewards {
     pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
         let key = get_intermediate_rewards_key();
@@ -311,7 +307,6 @@ where
     }
 }
 
-#[cfg(test)]
 fn decode_map_tuple<K, V>(data: Option<&ActionData>) -> (BTreeMap<K, V>, BTreeMap<K, V>)
 where
     K: Ord + Decodable,
@@ -326,7 +321,6 @@ where
     }
 }
 
-#[cfg(test)]
 fn encode_map_tuple<K, V>(map0: &BTreeMap<K, V>, map1: &BTreeMap<K, V>) -> Vec<u8>
 where
     K: Ord + Encodable,

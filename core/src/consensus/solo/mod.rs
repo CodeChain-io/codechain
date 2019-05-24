@@ -96,16 +96,20 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
 
         assert!(total_reward >= total_min_fee, "{} >= {}", total_reward, total_min_fee);
         let stakes = stake::get_stakes(block.state()).expect("Cannot get Stake status");
-        for (address, share) in stake::fee_distribute(total_min_fee, &stakes) {
+
+        let mut distributor = stake::fee_distribute(total_min_fee, &stakes);
+        for (address, share) in &mut distributor {
             self.machine.add_balance(block, &address, share)?
         }
-        let stakeholders_share = stake::stakeholders_share(total_min_fee, &stakes);
-        self.machine.add_balance(block, &author, total_reward - stakeholders_share)?;
+
+        let block_author_reward = total_reward - total_min_fee + distributor.remaining_fee();
 
         let term_seconds = parent_common_params.term_seconds();
         if term_seconds == 0 {
+            self.machine.add_balance(block, &author, block_author_reward)?;
             return Ok(())
         }
+        stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
         let (last_term_finished_block_num, current_term_id) = {
             let header = block.header();
             let term_id = header.timestamp() / term_seconds;
@@ -115,6 +119,11 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
             }
             (header.number(), term_id)
         };
+        stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
+        let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
+        for (address, reward) in rewards {
+            self.machine.add_balance(block, &address, reward)?;
+        }
         self.machine.change_term_id(block, last_term_finished_block_num, current_term_id)?;
         Ok(())
     }
