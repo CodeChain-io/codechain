@@ -312,6 +312,7 @@ pub enum EngineError {
     BadSealFieldSize(OutOfBounds<usize>),
     /// Malformed consensus message.
     MalformedMessage(String),
+    CannotOpenBlock,
 }
 
 impl fmt::Display for EngineError {
@@ -340,6 +341,7 @@ impl fmt::Display for EngineError {
             UnexpectedMessage => "This Engine should not be fed messages.".into(),
             BadSealFieldSize(oob) => format!("Seal field has an unexpected length: {}", oob),
             MalformedMessage(msg) => format!("Received malformed consensus message: {}", msg),
+            CannotOpenBlock => "Cannot open a block".to_string(),
         };
 
         f.write_fmt(format_args!("Engine error ({})", msg))

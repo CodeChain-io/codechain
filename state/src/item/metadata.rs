@@ -99,6 +99,10 @@ impl Metadata {
         self.term.last_term_finished_block_num = last_term_finished_block_num;
         self.term.current_term_id = current_term_id;
     }
+
+    pub fn last_term_finished_block_num(&self) -> u64 {
+        self.term.last_term_finished_block_num
+    }
 }
 
 impl Default for Metadata {
