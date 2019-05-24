@@ -169,7 +169,7 @@ impl ImportRoute {
             BestHeaderChanged::CanonChainAppended {
                 ..
             } => {
-                let mut enacted = vec![best_header_changed.new_best_hash().unwrap()];
+                let enacted = vec![best_header_changed.new_best_hash().unwrap()];
                 ImportRoute {
                     retracted: vec![],
                     enacted,

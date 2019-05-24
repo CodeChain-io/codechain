@@ -135,32 +135,32 @@ You can create a block by sending a parcel through [JSON-RPC](https://github.com
 Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2018-12-06 version of `rustfmt`.
 
 ```sh
-rustup toolchain install nightly-2018-12-06
-rustup component add rustfmt-preview --toolchain nightly-2018-12-06
+rustup toolchain install nightly-2019-05-17
+rustup component add rustfmt --toolchain nightly-2019-05-17
 ```
 
 To run `rustfmt`,
 
 ```sh
-cargo +nightly-2018-12-06 fmt
+cargo +nightly-2019-05-17 fmt
 ```
 
 ## Linting
 
 You should run `clippy` also. This is a lint tool for rust. It suggests more efficient/readable code.
 You can see [the clippy document](https://rust-lang.github.io/rust-clippy/master/index.html) for more information.
-You need to install the nightly-2018-12-06 version of `clippy`.
+You need to install the nightly-2019-05-17 version of `clippy`.
 
 ### Install
 ```sh
-rustup toolchain install nightly-2018-12-06
-rustup component add clippy-preview --toolchain nightly-2018-12-06
+rustup toolchain install nightly-2019-05-17
+rustup component add clippy --toolchain nightly-2019-05-17
 ```
 
 ### Run
 
 ```sh
-cargo +nightly-2018-12-06 clippy --all --all-targets
+cargo +nightly-2019-05-17 clippy --all --all-targets
 ```
 
 ## Testing

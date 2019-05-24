@@ -224,8 +224,6 @@ impl KeyMultiStore {
         let mut cache = self.cache.write();
 
         let mut new_accounts = BTreeMap::new();
-        #[allow(clippy::identity_conversion)]
-        // This is a false alarm. https://github.com/rust-lang/rust-clippy/issues/3944
         for account in self.dir.load()? {
             let account_ref = account.address;
             new_accounts.entry(account_ref).or_insert_with(Vec::new).push(account);
@@ -371,8 +369,6 @@ impl SimpleSecretStore for KeyMultiStore {
         new_password: &Password,
     ) -> Result<(), Error> {
         let mut changed_any = false;
-        #[allow(clippy::identity_conversion)]
-        // This is a false alarm. https://github.com/rust-lang/rust-clippy/issues/3944
         for account in self.get_safe_accounts(account_ref)? {
             let new_account = match account.change_password(old_password, new_password, self.iterations) {
                 Ok(new_account) => new_account,

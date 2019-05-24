@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -45,7 +45,7 @@ impl<'a> Node<'a> {
             Prototype::List(17) => {
                 let mut nodes = [None; 16];
                 debug_assert_eq!(16, nodes.len());
-                for (i, mut node) in nodes.iter_mut().enumerate().map(|(i, node)| (i + 1, node)) {
+                for (i, node) in nodes.iter_mut().enumerate().map(|(i, node)| (i + 1, node)) {
                     *node = if r.at(i).is_empty() {
                         None
                     } else {
