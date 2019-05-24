@@ -223,6 +223,7 @@ pending_rewards = [ [withdraw_at, address, quantity]+ ], [withdraw_at, address] 
 banned = [ address+ ], address asc
 jailed = [ [address, deposits, custody_until, kicked_at]+ ], address asc
 term_id = [ the last block number of the previous term, the current term id ]
+intermediate_rewards = [ [ address, rewards ]+ address asc, [ address, rewards ]+ address asc ]
 ```
 
 ### on TermEnd events
