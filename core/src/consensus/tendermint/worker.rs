@@ -165,7 +165,6 @@ pub enum Event {
 }
 
 impl Worker {
-    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     /// Create a new instance of Tendermint engine
     fn new(validators: Arc<ValidatorSet>, extension: EventSender<network::Event>, client: Weak<EngineClient>) -> Self {
         Worker {
@@ -1111,8 +1110,6 @@ impl Worker {
         let precommit_hash = message_hash(step, *header.parent_hash());
         let mut counter = 0;
 
-        #[allow(clippy::identity_conversion)]
-        // This is a false alarm. https://github.com/rust-lang/rust-clippy/issues/3944
         for (bitset_index, signature) in seal_view.signatures()? {
             let public = self.validators.get(header.parent_hash(), bitset_index);
             if !verify_schnorr(&public, &signature, &precommit_hash)? {
@@ -1499,7 +1496,6 @@ impl Worker {
             cinfo!(ENGINE, "Proposal received for {}-{:?}", number, header_view.hash());
 
             let parent_hash = header_view.parent_hash();
-            #[cfg_attr(feature = "cargo-clippy", allow(clippy::question_mark))]
             {
                 if c.block(&BlockId::Hash(*parent_hash)).is_none() {
                     let best_block_number = c.best_block_header().number();

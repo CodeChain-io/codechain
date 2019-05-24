@@ -134,7 +134,7 @@ impl Miner {
     pub fn add_work_listener(&self, notifier: Box<NotifyWork>) {
         self.notifiers.write().push(notifier);
     }
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
+
     pub fn new(
         options: MinerOptions,
         scheme: &Scheme,
@@ -449,7 +449,7 @@ impl Miner {
     ) -> Result<(ClosedBlock, Option<H256>), Error> {
         let (transactions, mut open_block, original_work_hash) = {
             let mem_pool = self.mem_pool.read();
-            let mut sealing_work = self.sealing_work.lock();
+            let sealing_work = self.sealing_work.lock();
 
             let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
             ctrace!(MINER, "prepare_block: No existing work - making new block");

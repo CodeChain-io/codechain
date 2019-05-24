@@ -206,7 +206,7 @@ impl Scheme {
 
         // Initialize shard-level tries
         for (shard_id, shard) in &*self.genesis_shards {
-            let mut shard_root = BLAKE_NULL_RLP;
+            let shard_root = BLAKE_NULL_RLP;
             let owners = shard.owners.clone();
             if owners.is_empty() {
                 return Err(SyntaxError::EmptyShardOwners(*shard_id).into())
