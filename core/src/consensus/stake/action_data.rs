@@ -231,7 +231,7 @@ where
     let mut rlp = RlpStream::new();
     rlp.begin_list(map.len());
     for (key, value) in map.iter() {
-        let mut record = rlp.begin_list(2);
+        let record = rlp.begin_list(2);
         record.append(key);
         record.append(value);
     }

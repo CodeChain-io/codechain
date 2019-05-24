@@ -169,7 +169,7 @@ impl StateWithCache for TopLevelState {
                 let mut db = self.db.borrow_mut();
                 let mut trie = TrieFactory::from_existing(db.as_hashdb_mut(), &mut shard_root)?;
 
-                let mut shard_cache = self.shard_caches.get_mut(&shard_id).expect("Shard must exist");
+                let shard_cache = self.shard_caches.get_mut(&shard_id).expect("Shard must exist");
 
                 shard_cache.commit(&mut *trie)?;
             }
@@ -198,7 +198,7 @@ impl StateWithCheckpoint for TopLevelState {
         self.id_of_checkpoints.push(id);
         self.top_cache.checkpoint();
 
-        for (_, mut cache) in self.shard_caches.iter_mut() {
+        for (_, cache) in self.shard_caches.iter_mut() {
             cache.checkpoint()
         }
     }
@@ -210,7 +210,7 @@ impl StateWithCheckpoint for TopLevelState {
         ctrace!(STATE, "Checkpoint({}) for top level is discarded", id);
         self.top_cache.discard_checkpoint();
 
-        for (_, mut cache) in self.shard_caches.iter_mut() {
+        for (_, cache) in self.shard_caches.iter_mut() {
             cache.discard_checkpoint();
         }
     }
@@ -222,7 +222,7 @@ impl StateWithCheckpoint for TopLevelState {
         ctrace!(STATE, "Checkpoint({}) for top level is reverted", id);
         self.top_cache.revert_to_checkpoint();
 
-        for (_, mut cache) in self.shard_caches.iter_mut() {
+        for (_, cache) in self.shard_caches.iter_mut() {
             cache.revert_to_checkpoint();
         }
     }

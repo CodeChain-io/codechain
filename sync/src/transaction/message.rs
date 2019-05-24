@@ -26,7 +26,7 @@ impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match &self {
             Message::Transactions(transactions) => {
-                let mut uncompressed = {
+                let uncompressed = {
                     let mut inner_list = RlpStream::new();
                     inner_list.append_list(transactions);
                     inner_list.out()

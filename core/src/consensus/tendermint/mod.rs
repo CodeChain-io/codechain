@@ -86,7 +86,6 @@ impl Drop for Tendermint {
 }
 
 impl Tendermint {
-    #![cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let stake = stake::Stake::new(our_params.genesis_stakes, Arc::clone(&our_params.validators));

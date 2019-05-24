@@ -36,7 +36,7 @@ impl Encodable for ResponseMessage {
             ResponseMessage::Bodies(bodies) => {
                 s.begin_list(1);
 
-                let mut uncompressed = {
+                let uncompressed = {
                     let mut inner_list = RlpStream::new_list(bodies.len());
                     bodies.iter().for_each(|body| {
                         inner_list.append_list(body);
@@ -90,7 +90,7 @@ impl ResponseMessage {
                     })
                 }
 
-                let mut compressed: Vec<u8> = rlp.val_at(0)?;
+                let compressed: Vec<u8> = rlp.val_at(0)?;
                 let uncompressed = {
                     // TODO: Cache the Decoder object
                     let mut snappy_decoder = snap::Decoder::new();

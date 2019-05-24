@@ -222,7 +222,6 @@ impl Client {
         event_sender
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::new_ret_no_self))]
     pub fn new(p2p_channel: IoChannel<P2pMessage>, timer_loop: TimerLoop) -> Arc<Self> {
         Arc::new(Self {
             extensions: RwLock::new(HashMap::new()),
