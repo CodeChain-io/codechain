@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::cmp::PartialEq;
+use std::convert::TryFrom;
 use std::fmt;
 use std::ops::Sub;
 
@@ -216,8 +217,11 @@ impl BitSet {
         self.0[array_index] &= 0b1111_1111 ^ (1 << bit_index);
     }
 
-    pub fn count(&self) -> u32 {
-        self.0.iter().cloned().map(u8::count_ones).sum()
+    pub fn count(&self) -> usize {
+        self.0
+            .iter()
+            .map(|v| usize::try_from(v.count_ones()).expect("CodeChain doesn't support 16-bits architecture"))
+            .sum()
     }
 
     pub fn true_index_iter(&self) -> BitSetIndexIterator {
@@ -363,7 +367,7 @@ impl<'a> TendermintSealView<'a> {
     pub fn signatures(&self) -> Result<Vec<(usize, SchnorrSignature)>, Error> {
         let precommits = self.precommits();
         let bitset = self.bitset()?;
-        debug_assert_eq!(bitset.count() as usize, precommits.item_count()?);
+        debug_assert_eq!(bitset.count(), precommits.item_count()?);
 
         let bitset_iter = bitset.true_index_iter();
 

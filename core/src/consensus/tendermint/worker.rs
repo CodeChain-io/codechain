@@ -1086,7 +1086,7 @@ impl Worker {
         self.check_view_proposer(header.parent_hash(), header.number(), consensus_view(header)?, &proposer)
             .map_err(Error::from)?;
         let seal_view = TendermintSealView::new(header.seal());
-        let bitset_count = seal_view.bitset()?.count() as usize;
+        let bitset_count = seal_view.bitset()?.count();
         let precommits_count = seal_view.precommits().item_count()?;
 
         if bitset_count < precommits_count {
