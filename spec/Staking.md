@@ -360,6 +360,8 @@ The vote initiator should collect the signatures through the off-chain.
 
 This transaction increases the `seq` of `Metadata` and changes the `params` of `Metadata`.
 
+The new parameters are used from the next block.
+
 ### Action
 `[ 0xFF, metadata_seq, new_parameters, ...signatures ]`
 
