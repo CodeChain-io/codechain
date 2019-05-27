@@ -37,6 +37,7 @@ lazy_static! {
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"StakeholderAddresses").into_key();
     pub static ref CANDIDATES_KEY: H256 =
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Candidates").into_key();
+    pub static ref JAIL_KEY: H256 = ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Jail").into_key();
 }
 
 pub fn get_delegation_key(address: &Address) -> H256 {
@@ -312,6 +313,84 @@ impl Candidates {
             self.0.values().cloned().partition(|c| c.nomination_ends_at <= term_index);
         self.0 = retained.into_iter().map(|c| (c.address, c)).collect();
         expired
+    }
+
+    pub fn remove(&mut self, address: &Address) -> Option<Candidate> {
+        self.0.remove(address)
+    }
+}
+
+pub struct Jail(BTreeMap<Address, Prisoner>);
+#[derive(Clone, Debug, Eq, PartialEq, RlpEncodable, RlpDecodable)]
+pub struct Prisoner {
+    pub address: Address,
+    pub deposit: Deposit,
+    pub custody_until: u64,
+    pub kicked_at: u64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ReleaseResult {
+    NotExists,
+    InCustody,
+    Released(Prisoner),
+}
+
+impl Jail {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Jail> {
+        let key = *JAIL_KEY;
+        let prisoner = state.action_data(&key)?.map(|data| decode_list::<Prisoner>(&data)).unwrap_or_default();
+        let indexed = prisoner.into_iter().map(|c| (c.address, c)).collect();
+        Ok(Jail(indexed))
+    }
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let key = *JAIL_KEY;
+        if !self.0.is_empty() {
+            let encoded = encode_iter(self.0.values());
+            state.update_action_data(&key, encoded)?;
+        } else {
+            state.remove_action_data(&key);
+        }
+        Ok(())
+    }
+
+    pub fn get_prisoner(&self, address: &Address) -> Option<&Prisoner> {
+        self.0.get(address)
+    }
+
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn add(&mut self, candidate: Candidate, custody_until: u64, kicked_at: u64) {
+        assert!(custody_until <= kicked_at);
+        self.0.insert(candidate.address, Prisoner {
+            address: candidate.address,
+            deposit: candidate.deposit,
+            custody_until,
+            kicked_at,
+        });
+    }
+
+    pub fn try_release(&mut self, address: &Address, term_index: u64) -> ReleaseResult {
+        match self.0.entry(*address) {
+            Entry::Occupied(entry) => {
+                if entry.get().custody_until < term_index {
+                    ReleaseResult::Released(entry.remove())
+                } else {
+                    ReleaseResult::InCustody
+                }
+            }
+            _ => ReleaseResult::NotExists,
+        }
+    }
+
+    pub fn kick_prisoners(&mut self, term_index: u64) -> Vec<Prisoner> {
+        let (kicked, retained): (Vec<_>, Vec<_>) = self.0.values().cloned().partition(|c| c.kicked_at <= term_index);
+        self.0 = retained.into_iter().map(|c| (c.address, c)).collect();
+        kicked
     }
 }
 
@@ -955,5 +1034,229 @@ mod tests {
         assert_eq!(expired[..], candidates_prepared[0..4]);
         let result = state.action_data(&*CANDIDATES_KEY).unwrap();
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn jail_try_free_not_existing() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let address = Address::from(1);
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address,
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let freed = jail.try_release(&Address::from(1000), 5);
+        assert_eq!(freed, ReleaseResult::NotExists);
+        assert_eq!(jail.len(), 1);
+        assert_ne!(jail.get_prisoner(&address), None);
+    }
+
+    #[test]
+    fn jail_try_release_none_until_custody() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let address = Address::from(1);
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address,
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let released = jail.try_release(&address, 10);
+        assert_eq!(released, ReleaseResult::InCustody);
+        assert_eq!(jail.len(), 1);
+        assert_ne!(jail.get_prisoner(&address), None);
+    }
+
+    #[test]
+    fn jail_try_release_prisoner_after_custody() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let address = Address::from(1);
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address,
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let released = jail.try_release(&address, 11);
+        jail.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(
+            released,
+            ReleaseResult::Released(Prisoner {
+                address,
+                deposit: 100,
+                custody_until: 10,
+                kicked_at: 20,
+            })
+        );
+        assert_eq!(jail.len(), 0);
+        assert_eq!(jail.get_prisoner(&address), None);
+
+        let result = state.action_data(&*JAIL_KEY).unwrap();
+        assert_eq!(result, None, "Should clean the state if all prisoners are released");
+    }
+
+    #[test]
+    fn jail_keep_prisoners_until_kick_at() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address: Address::from(1),
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.add(
+            Candidate {
+                address: Address::from(2),
+                deposit: 200,
+                nomination_ends_at: 0,
+            },
+            15,
+            25,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        // Kick
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let kicked = jail.kick_prisoners(19);
+        jail.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(kicked, Vec::new());
+        assert_eq!(jail.len(), 2);
+        assert_ne!(jail.get_prisoner(&Address::from(1)), None);
+        assert_ne!(jail.get_prisoner(&Address::from(2)), None);
+    }
+
+    #[test]
+    fn jail_partially_kick_prisoners() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address: Address::from(1),
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.add(
+            Candidate {
+                address: Address::from(2),
+                deposit: 200,
+                nomination_ends_at: 0,
+            },
+            15,
+            25,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        // Kick
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let kicked = jail.kick_prisoners(20);
+        jail.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(kicked, vec![Prisoner {
+            address: Address::from(1),
+            deposit: 100,
+            custody_until: 10,
+            kicked_at: 20,
+        }]);
+        assert_eq!(jail.len(), 1);
+        assert_eq!(jail.get_prisoner(&Address::from(1)), None);
+        assert_ne!(jail.get_prisoner(&Address::from(2)), None);
+    }
+
+    #[test]
+    fn jail_kick_all_prisoners() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address: Address::from(1),
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.add(
+            Candidate {
+                address: Address::from(2),
+                deposit: 200,
+                nomination_ends_at: 0,
+            },
+            15,
+            25,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        // Kick
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let kicked = jail.kick_prisoners(25);
+        jail.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(kicked, vec![
+            Prisoner {
+                address: Address::from(1),
+                deposit: 100,
+                custody_until: 10,
+                kicked_at: 20,
+            },
+            Prisoner {
+                address: Address::from(2),
+                deposit: 200,
+                custody_until: 15,
+                kicked_at: 25,
+            }
+        ]);
+        assert_eq!(jail.len(), 0);
+        assert_eq!(jail.get_prisoner(&Address::from(1)), None);
+        assert_eq!(jail.get_prisoner(&Address::from(2)), None);
+
+        let result = state.action_data(&*JAIL_KEY).unwrap();
+        assert_eq!(result, None, "Should clean the state if all prisoners are kicked");
     }
 }
