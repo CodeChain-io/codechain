@@ -371,16 +371,12 @@ The transaction fails if the metadata_seq is different from the `seq` of `Metada
 
 #### new_parameters
 ```
-new_parameters := [ new_parameter(, new_parameter)* ]
-new_parameter := [ key, value ]
+new_parameters := [ (value,)* ]
 
-key := usize
 value := usize | u64 | boolean | string
 ```
-It is the list of the fields that the transaction changes.
+It is the list of the values that the transaction changes.
 The stakeholder MUST NOT sign the transaction when the type of value is not a type that the key expected.
-
-The parameters that are not in the new_parameters are kept as the previous value.
 
 #### signatures
 `signatures` are the ECDSA signatures of stakeholders.
