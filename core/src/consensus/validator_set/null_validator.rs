@@ -48,4 +48,8 @@ impl ValidatorSet for NullValidator {
     fn count(&self, _parent: &H256) -> usize {
         unimplemented!()
     }
+
+    fn addresses(&self, _parent: &H256) -> Vec<Address> {
+        vec![]
+    }
 }

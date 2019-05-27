@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::btree_map::BTreeMap;
+use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::iter::Iterator;
 use std::sync::atomic::Ordering as AtomicOrdering;
 use std::sync::{Arc, Weak};
@@ -21,21 +24,23 @@ use std::sync::{Arc, Weak};
 use ckey::Address;
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
-use cstate::ActionHandler;
+use cstate::{ActionHandler, TopStateView};
 use ctypes::{CommonParams, Header};
+use num_rational::Ratio;
 use primitives::H256;
 
 use super::super::stake;
 use super::super::{ConsensusEngine, EngineError, Seal};
 use super::network::TendermintExtension;
 pub use super::params::{TendermintParams, TimeoutParams};
+use super::types::TendermintSealView;
 use super::worker;
 use super::{ChainNotify, Tendermint, SEAL_FIELDS};
 use crate::account_provider::AccountProvider;
 use crate::block::*;
 use crate::client::{Client, ConsensusClient};
 use crate::codechain_machine::CodeChainMachine;
-use crate::consensus::EngineType;
+use crate::consensus::{EngineType, ValidatorSet};
 use crate::error::Error;
 use crate::views::HeaderView;
 use consensus::tendermint::params::TimeGapParams;
@@ -169,7 +174,31 @@ impl ConsensusEngine for Tendermint {
             (header.number(), term_id)
         };
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
-        for (address, reward) in rewards {
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .ok_or(EngineError::CannotOpenBlock)?
+            .upgrade()
+            .ok_or(EngineError::CannotOpenBlock)?;
+
+        let (start_of_the_current_term, start_of_the_previous_term) = {
+            let end_of_the_one_level_previous_term = block.state().metadata()?.unwrap().last_term_finished_block_num();
+            let metadata = client.metadata(end_of_the_one_level_previous_term.into()).unwrap();
+            let end_of_the_two_level_previous_term = metadata.last_term_finished_block_num();
+
+            (end_of_the_one_level_previous_term + 1, end_of_the_two_level_previous_term + 1)
+        };
+
+        let pending_rewards = calculate_pending_rewards_of_the_previous_term(
+            &*client,
+            &*self.validators,
+            rewards,
+            start_of_the_current_term,
+            start_of_the_previous_term,
+        )?;
+
+        for (address, reward) in pending_rewards {
             self.machine.add_balance(block, &address, reward)?;
         }
 
@@ -261,5 +290,259 @@ impl ConsensusEngine for Tendermint {
 
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
         &self.action_handlers
+    }
+}
+
+fn calculate_pending_rewards_of_the_previous_term(
+    chain: &ConsensusClient,
+    validators: &ValidatorSet,
+    rewards: BTreeMap<Address, u64>,
+    start_of_the_current_term: u64,
+    start_of_the_previous_term: u64,
+) -> Result<HashMap<Address, u64>, Error> {
+    let authors = {
+        let header = chain.block_header(&start_of_the_previous_term.into()).unwrap();
+        validators.addresses(&header.parent_hash())
+    };
+    let mut pending_rewards: HashMap<Address, u64> = authors.iter().map(|author| (*author, 0)).collect();
+
+    let mut missed_signatures = HashMap::<Address, (usize, usize)>::with_capacity(30);
+    let mut signed_blocks = HashMap::<Address, usize>::with_capacity(30);
+
+    let mut header = chain.block_header(&start_of_the_current_term.into()).unwrap();
+    while start_of_the_previous_term != header.number() {
+        for index in TendermintSealView::new(&header.seal()).bitset()?.true_index_iter() {
+            // FIXME: Change it after implementing ban
+            *signed_blocks.entry(authors[index]).or_default() += 1;
+        }
+
+        header = chain.block_header(&header.parent_hash().into()).unwrap();
+
+        let author = header.author();
+        let (proposed, missed) = missed_signatures.entry(author).or_default();
+        *proposed += 1;
+        // FIXME: Consider banned accounts
+        *missed += authors.len() - TendermintSealView::new(&header.seal()).bitset()?.count();
+    }
+
+    let mut reduced_rewards = 0;
+
+    // Penalty disloyal validators
+    let number_of_blocks_in_term = start_of_the_current_term - start_of_the_previous_term;
+    for (address, intermediate_reward) in rewards {
+        // FIXME: Consider banned accounts
+        let number_of_signatures = u64::try_from(*signed_blocks.get(&address).unwrap()).unwrap();
+        let final_block_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+        reduced_rewards += intermediate_reward - final_block_rewards;
+        pending_rewards.insert(address, final_block_rewards);
+    }
+
+    // Give additional rewards
+    give_additional_rewards(reduced_rewards, missed_signatures, |address, reward| {
+        pending_rewards.insert(*address, reward);
+        Ok(())
+    })?;
+
+    Ok(pending_rewards)
+}
+
+/// reward = floor(intermediate_rewards * (a * number_of_signatures / number_of_blocks_in_term + b) / 10)
+fn final_rewards(intermediate_reward: u64, number_of_signatures: u64, number_of_blocks_in_term: u64) -> u64 {
+    let (a, b) = if number_of_signatures * 3 >= number_of_blocks_in_term * 2 {
+        // number_of_signatures / number_of_blocks_in_term >= 2 / 3
+        // x * 3/10 + 7/10
+        (3, 7)
+    } else if number_of_signatures * 3 >= number_of_blocks_in_term {
+        // number_of_signatures / number_of_blocks_in_term >= 1 / 3
+        // x * 24/10 - 7/10
+        (24, -7)
+    } else {
+        // 1 / 3 > number_of_signatures / number_of_blocks_in_term
+        // x * 3/10 + 0
+        assert!(
+            number_of_blocks_in_term > 3 * number_of_signatures,
+            "number_of_signatures / number_of_blocks_in_term = {}",
+            (number_of_signatures as f64) / (number_of_blocks_in_term as f64)
+        );
+        (3, 0)
+    };
+    let numerator = i128::from(intermediate_reward)
+        * (a * i128::from(number_of_signatures) + b * i128::from(number_of_blocks_in_term));
+    assert!(numerator >= 0);
+    let denominator = 10 * i128::from(number_of_blocks_in_term);
+    // Rust's division rounds towards zero.
+    u64::try_from(numerator / denominator).unwrap()
+}
+
+fn give_additional_rewards<F: FnMut(&Address, u64) -> Result<(), Error>>(
+    mut reduced_rewards: u64,
+    missed_signatures: HashMap<Address, (usize, usize)>,
+    mut f: F,
+) -> Result<(), Error> {
+    let sorted_validators = missed_signatures
+        .into_iter()
+        .map(|(address, (proposed, missed))| (address, Ratio::new(missed, proposed)))
+        .fold(BTreeMap::<Ratio<usize>, Vec<Address>>::new(), |mut map, (address, average_missed)| {
+            map.entry(average_missed).or_default().push(address);
+            map
+        });
+    for validators in sorted_validators.values() {
+        let reward = reduced_rewards / (u64::try_from(validators.len()).unwrap() + 1);
+        if reward == 0 {
+            break
+        }
+        for validator in validators {
+            f(validator, reward)?;
+            reduced_rewards -= reward;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::iter::FromIterator;
+
+    use super::*;
+
+    #[test]
+    fn test_final_rewards() {
+        let intermediate_reward = 1000;
+        {
+            let number_of_signatures = 300;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(1000, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 250;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(950, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 200;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(900, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 150;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(500, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 100;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(100, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 50;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(50, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 0;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(0, final_rewards);
+        }
+    }
+
+    #[test]
+    fn final_rewards_are_rounded_towards_zero() {
+        let intermediate_reward = 4321;
+        {
+            let number_of_signatures = 300;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(4321, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 250;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(4104, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 200;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(3888, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 150;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(2160, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 100;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(432, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 50;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(216, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 0;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(0, final_rewards);
+        }
+    }
+
+    #[test]
+    fn test_additional_rewards() {
+        let reduced_rewards = 100;
+        let addr00 = Address::random();
+        let addr10 = Address::random();
+        let addr11 = Address::random();
+        let addr12 = Address::random();
+        let addr20 = Address::random();
+        let addr21 = Address::random();
+        let missed_signatures = HashMap::from_iter(
+            vec![
+                (addr00, (30, 28)),
+                (addr10, (60, 59)),
+                (addr11, (120, 118)),
+                (addr12, (120, 118)),
+                (addr20, (60, 60)),
+                (addr21, (120, 120)),
+            ]
+            .into_iter(),
+        );
+
+        let mut result = HashMap::with_capacity(7);
+        give_additional_rewards(reduced_rewards, missed_signatures, |address, reward| {
+            assert_eq!(None, result.insert(*address, reward));
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            result,
+            HashMap::from_iter(
+                vec![(addr00, 50), (addr10, 12), (addr11, 12), (addr12, 12), (addr20, 4), (addr21, 4)].into_iter()
+            )
+        );
     }
 }
