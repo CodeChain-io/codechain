@@ -63,6 +63,10 @@ impl ValidatorSet for ValidatorList {
     fn count(&self, _bh: &H256) -> usize {
         self.validators.len()
     }
+
+    fn addresses(&self, _parent: &H256) -> Vec<Address> {
+        self.validators.iter().map(public_to_address).collect()
+    }
 }
 
 #[cfg(test)]

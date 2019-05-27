@@ -63,4 +63,6 @@ pub trait ValidatorSet: Send + Sync {
     fn report_benign(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber) {}
     /// Allows blockchain state access.
     fn register_client(&self, _client: Weak<ConsensusClient>) {}
+
+    fn addresses(&self, _parent: &H256) -> Vec<Address>;
 }
