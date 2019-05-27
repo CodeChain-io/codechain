@@ -40,7 +40,7 @@ use super::{
 };
 use crate::account_provider::AccountProvider;
 use crate::block::*;
-use crate::client::EngineClient;
+use crate::client::ConsensusClient;
 use crate::consensus::signer::EngineSigner;
 use crate::consensus::validator_set::ValidatorSet;
 use crate::consensus::vote_collector::VoteCollector;
@@ -53,7 +53,7 @@ use crate::BlockId;
 type SpawnResult = (
     JoinHandle<()>,
     crossbeam::Sender<TimeGapParams>,
-    crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<EngineClient>)>,
+    crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<ConsensusClient>)>,
     crossbeam::Sender<Event>,
     crossbeam::Sender<()>,
 );
@@ -63,7 +63,7 @@ pub fn spawn(validators: Arc<ValidatorSet>) -> SpawnResult {
 }
 
 struct Worker {
-    client: Weak<EngineClient>,
+    client: Weak<ConsensusClient>,
     /// Blockchain height.
     height: Height,
     /// Consensus view.
@@ -137,7 +137,7 @@ pub enum Event {
         signature: SchnorrSignature,
         view: View,
         message: Bytes,
-        result: crossbeam::Sender<Option<Arc<EngineClient>>>,
+        result: crossbeam::Sender<Option<Arc<ConsensusClient>>>,
     },
     StepState {
         token: NodeId,
@@ -165,7 +165,7 @@ impl Worker {
     fn new(
         validators: Arc<ValidatorSet>,
         extension: EventSender<network::Event>,
-        client: Weak<EngineClient>,
+        client: Weak<ConsensusClient>,
         time_gap_params: TimeGapParams,
     ) -> Self {
         Worker {
@@ -347,7 +347,7 @@ impl Worker {
     }
 
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
-    fn client(&self) -> Arc<EngineClient> {
+    fn client(&self) -> Arc<ConsensusClient> {
         self.client.upgrade().expect("Client lives longer than consensus")
     }
 
@@ -1473,7 +1473,7 @@ impl Worker {
         signature: SchnorrSignature,
         proposed_view: View,
         bytes: Bytes,
-    ) -> Option<Arc<EngineClient>> {
+    ) -> Option<Arc<ConsensusClient>> {
         let c = match self.client.upgrade() {
             Some(c) => c,
             None => return None,

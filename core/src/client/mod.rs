@@ -111,6 +111,8 @@ pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     fn get_kvdb(&self) -> Arc<KeyValueDB>;
 }
 
+pub trait ConsensusClient: BlockChainTrait + EngineClient {}
+
 /// Provides methods to access account info
 pub trait AccountData {
     /// Attempt to get address seq at given block.

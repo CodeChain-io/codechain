@@ -65,6 +65,7 @@ use crate::miner::{Miner, MinerService, TransactionImportResult};
 use crate::scheme::Scheme;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use crate::types::{BlockId, TransactionId, VerificationQueueInfo as QueueInfo};
+use client::ConsensusClient;
 
 /// Test client.
 pub struct TestBlockChainClient {
@@ -599,3 +600,5 @@ impl EngineInfo for TestBlockChainClient {
         unimplemented!()
     }
 }
+
+impl ConsensusClient for TestBlockChainClient {}

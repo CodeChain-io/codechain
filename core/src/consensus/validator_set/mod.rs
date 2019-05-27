@@ -21,7 +21,7 @@ use ctypes::BlockNumber;
 use primitives::{Bytes, H256};
 
 use self::validator_list::ValidatorList;
-use crate::client::EngineClient;
+use crate::client::ConsensusClient;
 
 pub mod null_validator;
 pub mod validator_list;
@@ -62,5 +62,5 @@ pub trait ValidatorSet: Send + Sync {
     /// Notifies about benign misbehaviour.
     fn report_benign(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber) {}
     /// Allows blockchain state access.
-    fn register_client(&self, _client: Weak<EngineClient>) {}
+    fn register_client(&self, _client: Weak<ConsensusClient>) {}
 }
