@@ -45,6 +45,7 @@ use super::{
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress};
+use crate::client::ConsensusClient;
 use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::{BlockImportError, Error, ImportError, SchemeError};
@@ -562,6 +563,8 @@ impl EngineClient for Client {
         self.db.clone()
     }
 }
+
+impl ConsensusClient for Client {}
 
 impl BlockChainTrait for Client {
     fn chain_info(&self) -> BlockChainInfo {

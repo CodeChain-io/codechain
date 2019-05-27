@@ -33,7 +33,7 @@ use super::worker;
 use super::{ChainNotify, Tendermint, SEAL_FIELDS};
 use crate::account_provider::AccountProvider;
 use crate::block::*;
-use crate::client::{Client, EngineClient};
+use crate::client::{Client, ConsensusClient};
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
 use crate::error::Error;
@@ -178,7 +178,7 @@ impl ConsensusEngine for Tendermint {
         Ok(())
     }
 
-    fn register_client(&self, client: Weak<EngineClient>) {
+    fn register_client(&self, client: Weak<ConsensusClient>) {
         *self.client.write() = Some(Weak::clone(&client));
     }
 
