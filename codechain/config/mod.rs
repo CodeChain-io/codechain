@@ -42,6 +42,8 @@ pub struct Config {
     pub ws: Ws,
     pub snapshot: Snapshot,
     pub stratum: Stratum,
+    #[serde(default)]
+    pub email_alarm: EmailAlarm,
 }
 
 impl Config {
@@ -54,6 +56,7 @@ impl Config {
         self.ws.merge(&other.ws);
         self.snapshot.merge(&other.snapshot);
         self.stratum.merge(&other.stratum);
+        self.email_alarm.merge(&other.email_alarm);
     }
 
     pub fn miner_options(&self) -> Result<MinerOptions, String> {
@@ -286,6 +289,15 @@ pub struct Snapshot {
 pub struct Stratum {
     pub disable: Option<bool>,
     pub port: Option<u16>,
+}
+
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EmailAlarm {
+    pub disable: Option<bool>,
+    pub to: Option<String>,
+    pub sendgrid_key: Option<String>,
 }
 
 impl Ipc {
@@ -691,6 +703,44 @@ impl Stratum {
     }
 }
 
+impl EmailAlarm {
+    pub fn merge(&mut self, other: &EmailAlarm) {
+        if other.disable.is_some() {
+            self.disable = other.disable;
+        }
+        if other.to.is_some() {
+            self.to = other.to.clone();
+        }
+        if other.sendgrid_key.is_some() {
+            self.sendgrid_key = other.sendgrid_key.clone();
+        }
+    }
+
+    pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
+        if matches.is_present("no-email-alarm") {
+            self.disable = Some(true);
+        }
+        if let Some(to) = matches.value_of("email-alarm-to") {
+            self.to = Some(to.to_string());
+        }
+        if let Some(sendgrid_key) = matches.value_of("email-alarm-sendgrid-key") {
+            self.sendgrid_key = Some(sendgrid_key.to_string());
+        }
+
+        Ok(())
+    }
+}
+
+impl Default for EmailAlarm {
+    fn default() -> Self {
+        Self {
+            disable: Some(true),
+            to: None,
+            sendgrid_key: None,
+        }
+    }
+}
+
 #[cfg(not(debug_assertions))]
 pub fn read_preset_config() -> &'static str {
     let bytes = include_bytes!("presets/config.prod.toml");
@@ -724,6 +774,6 @@ pub fn load_config(matches: &clap::ArgMatches) -> Result<Config, String> {
     config.ws.overwrite_with(&matches)?;
     config.snapshot.overwrite_with(&matches)?;
     config.stratum.overwrite_with(&matches)?;
-
+    config.email_alarm.overwrite_with(&matches)?;
     Ok(config)
 }
