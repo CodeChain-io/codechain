@@ -20,11 +20,13 @@ extern crate env_logger;
 extern crate lazy_static;
 extern crate log;
 extern crate parking_lot;
+extern crate sendgrid;
 extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate time;
 
+mod email;
 mod logger;
 mod macros;
 mod structured_logger;
@@ -36,8 +38,9 @@ use logger::Logger;
 
 pub use log::Level;
 
-pub fn init(config: &LoggerConfig) -> Result<(), SetLoggerError> {
-    let logger = Logger::new(config);
+pub fn init(config: &LoggerConfig, email_alarm_config: &Option<EmailAlarmConfig>) -> Result<(), SetLoggerError> {
+    let email_alarm = email_alarm_config.as_ref().map(EmailAlarm::new);
+    let logger = Logger::new(config, email_alarm);
     log::set_max_level(logger.filter());
     log::set_boxed_logger(Box::new(logger))
 }
@@ -49,3 +52,6 @@ use lazy_static::lazy_static;
 lazy_static! {
     pub static ref SLOGGER: StructuredLogger = StructuredLogger::create();
 }
+
+use email::EmailAlarm;
+pub use email::EmailAlarmConfig;
