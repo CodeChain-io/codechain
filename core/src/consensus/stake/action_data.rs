@@ -38,6 +38,8 @@ lazy_static! {
     pub static ref CANDIDATES_KEY: H256 =
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Candidates").into_key();
     pub static ref JAIL_KEY: H256 = ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Jail").into_key();
+    pub static ref BANNED_KEY: H256 =
+        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Banned").into_key();
 }
 
 pub fn get_delegation_key(address: &Address) -> H256 {
@@ -374,6 +376,10 @@ impl Jail {
         });
     }
 
+    pub fn remove(&mut self, address: &Address) {
+        self.0.remove(address);
+    }
+
     pub fn try_release(&mut self, address: &Address, term_index: u64) -> ReleaseResult {
         match self.0.entry(*address) {
             Entry::Occupied(entry) => {
@@ -391,6 +397,34 @@ impl Jail {
         let (kicked, retained): (Vec<_>, Vec<_>) = self.0.values().cloned().partition(|c| c.kicked_at <= term_index);
         self.0 = retained.into_iter().map(|c| (c.address, c)).collect();
         kicked
+    }
+}
+
+pub struct Banned(BTreeSet<Address>);
+impl Banned {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Banned> {
+        let key = *BANNED_KEY;
+        let action_data = state.action_data(&key)?;
+        Ok(Banned(decode_set(action_data.as_ref())))
+    }
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let key = *BANNED_KEY;
+        if !self.0.is_empty() {
+            let encoded = encode_set(&self.0);
+            state.update_action_data(&key, encoded)?;
+        } else {
+            state.remove_action_data(&key);
+        }
+        Ok(())
+    }
+
+    pub fn add(&mut self, address: Address) {
+        self.0.insert(address);
+    }
+
+    pub fn is_banned(&self, address: &Address) -> bool {
+        self.0.contains(address)
     }
 }
 
@@ -1258,5 +1292,31 @@ mod tests {
 
         let result = state.action_data(&*JAIL_KEY).unwrap();
         assert_eq!(result, None, "Should clean the state if all prisoners are kicked");
+    }
+
+    #[test]
+    fn empty_ban_save_clean_state() {
+        let mut state = helpers::get_temp_state();
+        let banned = Banned::load_from_state(&state).unwrap();
+        banned.save_to_state(&mut state).unwrap();
+
+        let result = state.action_data(&*BANNED_KEY).unwrap();
+        assert_eq!(result, None, "Should clean the state if there are no banned accounts");
+    }
+
+    #[test]
+    fn added_to_ban_is_banned() {
+        let mut state = helpers::get_temp_state();
+
+        let address = Address::from(1);
+        let innocent = Address::from(2);
+
+        let mut banned = Banned::load_from_state(&state).unwrap();
+        banned.add(address);
+        banned.save_to_state(&mut state).unwrap();
+
+        let banned = Banned::load_from_state(&state).unwrap();
+        assert!(banned.is_banned(&address));
+        assert!(!banned.is_banned(&innocent));
     }
 }

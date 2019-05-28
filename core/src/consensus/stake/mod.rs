@@ -33,6 +33,7 @@ use rlp::{Decodable, UntrustedRlp};
 use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
+use consensus::stake::action_data::Banned;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 
@@ -209,9 +210,10 @@ fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address,
 }
 
 fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
-    // TODO: remove parent hash from validator set.
-    // TODO: handle banned account
-    // TODO: handle jailed account
+    let banned = Banned::load_from_state(state)?;
+    if banned.is_banned(&delegatee) {
+        return Err(RuntimeError::FailedToHandleCustomAction("Delegatee is banned".to_string()).into())
+    }
     let candidates = Candidates::load_from_state(state)?;
     let jail = Jail::load_from_state(state)?;
     if candidates.get_candidate(delegatee).is_none() && jail.get_prisoner(delegatee).is_none() {
@@ -219,6 +221,7 @@ fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address
             RuntimeError::FailedToHandleCustomAction("Can delegate to who is a candidate or a prisoner".into()).into()
         )
     }
+
     let mut delegator = StakeAccount::load_from_state(state, sender)?;
     let mut delegation = Delegation::load_from_state(state, &sender)?;
 
@@ -253,7 +256,10 @@ fn self_nominate(
 ) -> StateResult<()> {
     // TODO: proper handling of get_current_term
     // TODO: proper handling of NOMINATE_EXPIRATION
-    // TODO: check banned accounts
+    let blacklist = Banned::load_from_state(state)?;
+    if blacklist.is_banned(&sender) {
+        return Err(RuntimeError::FailedToHandleCustomAction("Account is blacklisted".to_string()).into())
+    }
 
     let mut jail = Jail::load_from_state(&state)?;
     let total_deposit = match jail.try_release(sender, current_term) {
@@ -380,6 +386,30 @@ pub fn jail(state: &mut TopLevelState, address: &Address, custody_until: u64, ki
 
     jail.save_to_state(state)?;
     candidates.save_to_state(state)?;
+    Ok(())
+}
+
+#[allow(dead_code)]
+pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
+    // TODO: remove pending rewards.
+    // TODO: remove from validators.
+    // TODO: give criminal's deposits to the informant
+    // TODO: give criminal's rewards to diligent validators
+    let mut candidates = Candidates::load_from_state(state)?;
+    let mut banned = Banned::load_from_state(state)?;
+    let mut jailed = Jail::load_from_state(state)?;
+
+    candidates.remove(&criminal);
+    jailed.remove(&criminal);
+    banned.add(criminal);
+
+    jailed.save_to_state(state)?;
+    banned.save_to_state(state)?;
+    candidates.save_to_state(state)?;
+
+    // Revert delegations
+    revert_delegations(state, &[criminal])?;
+
     Ok(())
 }
 
@@ -1206,5 +1236,65 @@ mod tests {
 
         let account = StakeAccount::load_from_state(&state, &delegator).unwrap();
         assert_eq!(account.balance, 100 - 40, "Delegation should be preserved");
+    }
+
+    #[test]
+    fn test_ban() {
+        let criminal = Address::random();
+        let delegator = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        state.add_balance(&criminal, 1000).unwrap();
+
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegator, 100);
+            Stake::new(genesis_stakes)
+        };
+        stake.init(&mut state).unwrap();
+
+        self_nominate(&mut state, &criminal, 100, 0, 10).unwrap();
+        let action = Action::DelegateCCS {
+            address: criminal,
+            quantity: 40,
+        };
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
+
+        let result = ban(&mut state, criminal);
+        assert!(result.is_ok());
+
+        let banned = Banned::load_from_state(&state).unwrap();
+        assert!(banned.is_banned(&criminal));
+
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(candidates.len(), 0);
+
+        assert_eq!(state.balance(&criminal).unwrap(), 900, "Should lose deposit");
+
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegation.get_quantity(&criminal), 0, "Delegation should be reverted");
+
+        let account_delegator = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(account_delegator.balance, 100, "Delegation should be reverted");
+    }
+
+    #[test]
+    fn ban_should_remove_prisoner_from_jail() {
+        let criminal = Address::random();
+
+        let mut state = helpers::get_temp_state();
+        let stake = Stake::new(HashMap::new());
+        stake.init(&mut state).unwrap();
+
+        self_nominate(&mut state, &criminal, 0, 0, 10).unwrap();
+        let custody_until = 10;
+        let kicked_at = 20;
+        jail(&mut state, &criminal, custody_until, kicked_at).unwrap();
+
+        let result = ban(&mut state, criminal);
+        assert!(result.is_ok());
+
+        let jail = Jail::load_from_state(&state).unwrap();
+        assert_eq!(jail.get_prisoner(&criminal), None, "Should be removed from the jail");
     }
 }
