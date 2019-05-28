@@ -55,3 +55,6 @@ path = "snapshot"
 [stratum]
 disable = false
 port = 8008
+
+[email_alarm]
+disable = true

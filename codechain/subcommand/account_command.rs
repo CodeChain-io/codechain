@@ -36,7 +36,7 @@ pub fn run_account_command(matches: &ArgMatches) -> Result<(), String> {
         return Ok(())
     }
 
-    clogger::init(&LoggerConfig::new(0)).expect("Logger must be successfully initialized");
+    clogger::init(&LoggerConfig::new(0), &None).expect("Logger must be successfully initialized");
 
     let keys_path = get_global_argument(matches, "keys-path").unwrap_or_else(|| DEFAULT_KEYS_PATH.into());
     let dir = RootDiskDirectory::create(keys_path).expect("Cannot read key path directory");
