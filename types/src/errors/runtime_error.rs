@@ -115,6 +115,8 @@ pub enum Error {
         address: Address,
         name: String,
     },
+    SignatureOfInvalidAccount(Address),
+    InsufficientStakes(Mismatch<u64>),
 }
 
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 1;
@@ -147,6 +149,8 @@ const ERROR_ID_INVALID_SEQ: u8 = 28;
 const ERROR_ID_ASSET_SUPPLY_OVERFLOW: u8 = 29;
 const ERROR_ID_NON_ACTIVE_ACCOUNT: u8 = 30;
 const ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION: u8 = 31;
+const ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT: u8 = 32;
+const ERROR_ID_INSUFFICIENT_STAKES: u8 = 33;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -184,6 +188,8 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_TEXT_VERIFICATION_FAIL => 2,
             ERROR_ID_CANNOT_USE_MASTER_KEY => 1,
             ERROR_ID_NON_ACTIVE_ACCOUNT => 3,
+            ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT => 2,
+            ERROR_ID_INSUFFICIENT_STAKES => 3,
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         })
     }
@@ -304,6 +310,13 @@ impl Encodable for Error {
                 address,
                 name,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_NON_ACTIVE_ACCOUNT).append(address).append(name),
+            Error::SignatureOfInvalidAccount(address) => {
+                RlpHelper::new_tagged_list(s, ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT).append(address)
+            }
+            Error::InsufficientStakes(Mismatch {
+                expected,
+                found,
+            }) => RlpHelper::new_tagged_list(s, ERROR_ID_INSUFFICIENT_STAKES).append(expected).append(found),
         };
     }
 }
@@ -387,6 +400,11 @@ impl Decodable for Error {
                 address: rlp.val_at(1)?,
                 name: rlp.val_at(2)?,
             },
+            ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT => Error::SignatureOfInvalidAccount(rlp.val_at(1)?),
+            ERROR_ID_INSUFFICIENT_STAKES => Error::InsufficientStakes(Mismatch {
+                expected: rlp.val_at(1)?,
+                found: rlp.val_at(2)?,
+            }),
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -481,6 +499,10 @@ impl Display for Error {
             } => {
                 write!(f, "Non active account({}) cannot be {}", address, name)
             }
+            Error::SignatureOfInvalidAccount(address) =>
+                write!(f, "Signature of invalid account({}) received", address),
+            Error::InsufficientStakes(mismatch) =>
+                write!(f, "Insufficient stakes: {}", mismatch),
         }
     }
 }

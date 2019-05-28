@@ -22,10 +22,13 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use ckey::Address;
-use cstate::{ActionHandler, StateResult, TopLevelState};
+use ccrypto::Blake;
+use ckey::{public_to_address, recover, Address, Signature};
+use cstate::{ActionHandler, StateResult, TopLevelState, TopState};
 use ctypes::errors::{RuntimeError, SyntaxError};
+use ctypes::util::unexpected::Mismatch;
 use ctypes::{CommonParams, Header};
+use primitives::H256;
 use rlp::{Decodable, UntrustedRlp};
 
 use self::action_data::{Delegation, StakeAccount, Stakeholders};
@@ -111,12 +114,44 @@ impl ActionHandler for Stake {
                     Err(RuntimeError::FailedToHandleCustomAction("DelegateCCS is disabled".to_string()).into())
                 }
             }
+            Action::ChangeParams {
+                metadata_seq,
+                params,
+                signatures,
+            } => change_params(state, metadata_seq, *params, &signatures),
         }
     }
 
     fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
-        Action::decode(&UntrustedRlp::new(bytes)).map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
-        Ok(())
+        let action = Action::decode(&UntrustedRlp::new(bytes))
+            .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
+        match action {
+            Action::TransferCCS {
+                ..
+            } => Ok(()),
+            Action::DelegateCCS {
+                ..
+            } => Ok(()),
+            Action::ChangeParams {
+                metadata_seq,
+                params,
+                signatures,
+            } => {
+                let action = Action::ChangeParams {
+                    metadata_seq,
+                    params,
+                    signatures: vec![],
+                };
+                let encoded_action = H256::blake(rlp::encode(&action));
+                for signature in signatures {
+                    // XXX: Signature recovery is an expensive job. Should we do it twice?
+                    recover(&signature, &encoded_action).map_err(|err| {
+                        SyntaxError::InvalidCustomAction(format!("Cannot decode the signature: {}", err))
+                    })?;
+                }
+                Ok(())
+            }
+        }
     }
 
     fn on_close_block(
@@ -181,6 +216,40 @@ pub fn get_stakes(state: &TopLevelState) -> StateResult<HashMap<Address, u64>> {
         result.insert(*stakeholder, account.balance + delegation.sum());
     }
     Ok(result)
+}
+
+fn change_params(
+    state: &mut TopLevelState,
+    metadata_seq: u64,
+    params: CommonParams,
+    signatures: &[Signature],
+) -> StateResult<()> {
+    // Update state first because the signature validation is more expensive.
+    state.update_params(metadata_seq, params)?;
+
+    let action = Action::ChangeParams {
+        metadata_seq,
+        params: params.into(),
+        signatures: vec![],
+    };
+    let encoded_action = H256::blake(rlp::encode(&action));
+    let stakes = get_stakes(state)?;
+    let signed_stakes = signatures.iter().try_fold(0, |sum, signature| {
+        let public = recover(signature, &encoded_action).unwrap_or_else(|err| {
+            unreachable!("The transaction with an invalid signature cannot pass the verification: {}", err);
+        });
+        let address = public_to_address(&public);
+        stakes.get(&address).map(|stake| sum + stake).ok_or_else(|| RuntimeError::SignatureOfInvalidAccount(address))
+    })?;
+    let total_stakes: u64 = stakes.values().sum();
+    if total_stakes / 2 >= signed_stakes {
+        return Err(RuntimeError::InsufficientStakes(Mismatch {
+            expected: total_stakes,
+            found: signed_stakes,
+        })
+        .into())
+    }
+    Ok(())
 }
 
 #[cfg(test)]
