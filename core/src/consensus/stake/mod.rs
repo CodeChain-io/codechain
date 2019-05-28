@@ -295,13 +295,16 @@ mod tests {
             genesis_stakes.insert(address1, 100);
             Stake::new(genesis_stakes, new_validator_set(Vec::new()))
         };
-        assert_eq!(Ok(()), stake.init(&mut state));
+        stake.init(&mut state).unwrap();
 
         let account1 = StakeAccount::load_from_state(&state, &address1).unwrap();
-        let account2 = StakeAccount::load_from_state(&state, &address2).unwrap();
         assert_eq!(account1.balance, 100);
+
+        let account2 = StakeAccount::load_from_state(&state, &address2).unwrap();
         assert_eq!(account2.balance, 0);
+
         let stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        assert_eq!(stakeholders.iter().len(), 1);
         assert!(stakeholders.contains(&address1));
         assert!(!stakeholders.contains(&address2));
     }
@@ -317,16 +320,19 @@ mod tests {
             genesis_stakes.insert(address1, 100);
             Stake::new(genesis_stakes, new_validator_set(Vec::new()))
         };
-        assert_eq!(Ok(()), stake.init(&mut state));
+        stake.init(&mut state).unwrap();
 
         let result = transfer_ccs(&mut state, &address1, &address2, 10);
-        assert_eq!(Ok(()), result);
+        assert_eq!(result, Ok(()));
 
         let account1 = StakeAccount::load_from_state(&state, &address1).unwrap();
-        let account2 = StakeAccount::load_from_state(&state, &address2).unwrap();
         assert_eq!(account1.balance, 90);
+
+        let account2 = StakeAccount::load_from_state(&state, &address2).unwrap();
         assert_eq!(account2.balance, 10);
+
         let stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        assert_eq!(stakeholders.iter().len(), 2);
         assert!(stakeholders.contains(&address1));
         assert!(stakeholders.contains(&address2));
     }
@@ -342,17 +348,21 @@ mod tests {
             genesis_stakes.insert(address1, 100);
             Stake::new(genesis_stakes, new_validator_set(Vec::new()))
         };
-        assert_eq!(Ok(()), stake.init(&mut state));
+        stake.init(&mut state).unwrap();
 
-        transfer_ccs(&mut state, &address1, &address2, 100).unwrap();
+        let result = transfer_ccs(&mut state, &address1, &address2, 100);
+        assert_eq!(result, Ok(()));
 
         let account1 = StakeAccount::load_from_state(&state, &address1).unwrap();
-        let account2 = StakeAccount::load_from_state(&state, &address2).unwrap();
         assert_eq!(account1.balance, 0);
-        assert_eq!(state.action_data(&get_account_key(&address1)).unwrap(), None);
+        assert_eq!(state.action_data(&get_account_key(&address1)).unwrap(), None, "Should clear state");
+
+        let account2 = StakeAccount::load_from_state(&state, &address2).unwrap();
         assert_eq!(account2.balance, 100);
+
         let stakeholders = Stakeholders::load_from_state(&state).unwrap();
-        assert!(!stakeholders.contains(&address1));
+        assert_eq!(stakeholders.iter().len(), 1);
+        assert!(!stakeholders.contains(&address1), "Not be a stakeholder anymore");
         assert!(stakeholders.contains(&address2));
     }
 
@@ -369,7 +379,7 @@ mod tests {
             genesis_stakes.insert(delegator, 100);
             Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
         };
-        assert_eq!(Ok(()), stake.init(&mut state));
+        stake.init(&mut state).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -379,16 +389,22 @@ mod tests {
         assert_eq!(result, Ok(()));
 
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
-        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
         assert_eq!(delegator_account.balance, 60);
+
+        let delegatee_account = StakeAccount::load_from_state(&state, &delegatee).unwrap();
+        assert_eq!(delegatee_account.balance, 100, "Shouldn't be touched");
+
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
         assert_eq!(delegation.iter().count(), 1);
         assert_eq!(delegation.get_quantity(&delegatee), 40);
 
-        // Should not be touched
-        let delegatee_account = StakeAccount::load_from_state(&state, &delegatee).unwrap();
-        let delegation_untouched = Delegation::load_from_state(&state, &delegatee).unwrap();
-        assert_eq!(delegatee_account.balance, 100);
-        assert_eq!(delegation_untouched.iter().count(), 0);
+        let delegation_delegatee = Delegation::load_from_state(&state, &delegatee).unwrap();
+        assert_eq!(delegation_delegatee.iter().count(), 0, "Shouldn't be touched");
+
+        let stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        assert_eq!(stakeholders.iter().len(), 2);
+        assert!(stakeholders.contains(&delegator));
+        assert!(stakeholders.contains(&delegatee));
     }
 
     #[test]
@@ -404,7 +420,7 @@ mod tests {
             genesis_stakes.insert(delegator, 100);
             Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
         };
-        assert_eq!(Ok(()), stake.init(&mut state));
+        stake.init(&mut state).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -414,17 +430,23 @@ mod tests {
         assert_eq!(result, Ok(()));
 
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
-        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
         assert_eq!(delegator_account.balance, 0);
-        assert_eq!(state.action_data(&get_account_key(&delegator)).unwrap(), None);
+        assert_eq!(state.action_data(&get_account_key(&delegator)).unwrap(), None, "Should clear state");
+
+        let delegatee_account = StakeAccount::load_from_state(&state, &delegatee).unwrap();
+        assert_eq!(delegatee_account.balance, 100, "Shouldn't be touched");
+
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
         assert_eq!(delegation.iter().count(), 1);
         assert_eq!(delegation.get_quantity(&delegatee), 100);
 
-        // Should not be touched
-        let delegatee_account = StakeAccount::load_from_state(&state, &delegatee).unwrap();
-        let delegation_untouched = Delegation::load_from_state(&state, &delegatee).unwrap();
-        assert_eq!(delegatee_account.balance, 100);
-        assert_eq!(delegation_untouched.iter().count(), 0);
+        let delegation_delegatee = Delegation::load_from_state(&state, &delegatee).unwrap();
+        assert_eq!(delegation_delegatee.iter().count(), 0, "Shouldn't be touched");
+
+        let stakeholders = Stakeholders::load_from_state(&state).unwrap();
+        assert_eq!(stakeholders.iter().len(), 2);
+        assert!(stakeholders.contains(&delegator), "Should still be a stakeholder after delegated all");
+        assert!(stakeholders.contains(&delegatee));
     }
 
     #[test]
@@ -440,7 +462,7 @@ mod tests {
             genesis_stakes.insert(delegator, 100);
             Stake::new(genesis_stakes, new_validator_set(Vec::new()))
         };
-        assert_eq!(Ok(()), stake.init(&mut state));
+        stake.init(&mut state).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -463,7 +485,7 @@ mod tests {
             genesis_stakes.insert(delegator, 100);
             Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
         };
-        assert_eq!(Ok(()), stake.init(&mut state));
+        stake.init(&mut state).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -486,14 +508,13 @@ mod tests {
             genesis_stakes.insert(delegator, 100);
             Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
         };
-        assert_eq!(Ok(()), stake.init(&mut state));
+        stake.init(&mut state).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
-        assert!(result.is_ok());
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
 
         let action = Action::TransferCCS {
             address: delegatee,
@@ -516,14 +537,13 @@ mod tests {
             genesis_stakes.insert(delegator, 100);
             Stake::new(genesis_stakes, new_validator_set(vec![delegatee_public]))
         };
-        assert_eq!(Ok(()), stake.init(&mut state));
+        stake.init(&mut state).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
-        assert!(result.is_ok());
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
 
         let action = Action::TransferCCS {
             address: delegatee,
