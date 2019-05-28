@@ -84,8 +84,7 @@ push)
         # we can find common ancestor of master and the branch.
         echo "Branch push"
         git fetch origin master:master;
-        BASE=$(git merge-base master "${TRAVIS_COMMIT}")
-        COMMIT_RANGE="${BASE}...${TRAVIS_COMMIT}"
+        COMMIT_RANGE="origin/master..${TRAVIS_COMMIT}"
     fi
     ;;
 pull_request)
