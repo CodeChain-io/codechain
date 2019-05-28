@@ -45,6 +45,7 @@ pub struct HeaderDownloader {
     pivot: Pivot,
     request_time: Option<Instant>,
     downloaded: HashMap<H256, Header>,
+    queued: HashMap<H256, Header>,
     trial: usize,
 }
 
@@ -69,6 +70,7 @@ impl HeaderDownloader {
             },
             request_time: None,
             downloaded: HashMap::new(),
+            queued: HashMap::new(),
             trial: 0,
         }
     }
@@ -100,12 +102,15 @@ impl HeaderDownloader {
         self.request_time.map_or(false, |time| (Instant::now() - time).as_secs() > MAX_WAIT)
     }
 
-    /// Find header from download cache, and then from blockchain
+    /// Find header from queued headers, downloaded cache and then from blockchain
     /// Panics if header dosn't exist
     fn pivot_header(&self) -> Header {
-        match self.downloaded.get(&self.pivot.hash) {
+        match self.queued.get(&self.pivot.hash) {
             Some(header) => header.clone(),
-            None => self.client.block_header(&BlockId::Hash(self.pivot.hash)).unwrap(),
+            None => match self.downloaded.get(&self.pivot.hash) {
+                Some(header) => header.clone(),
+                None => self.client.block_header(&BlockId::Hash(self.pivot.hash)).unwrap(),
+            },
         }
     }
 
@@ -173,13 +178,21 @@ impl HeaderDownloader {
 
     pub fn mark_as_imported(&mut self, hashes: Vec<H256>) {
         for hash in hashes {
-            self.downloaded.remove(&hash);
+            self.queued.remove(&hash);
 
             if self.best_hash == hash {
                 self.pivot = Pivot {
                     hash,
                     total_score: self.total_score,
                 }
+            }
+        }
+    }
+
+    pub fn mark_as_queued(&mut self, hashes: Vec<H256>) {
+        for hash in hashes {
+            if let Some(header) = self.downloaded.remove(&hash) {
+                self.queued.insert(hash, header);
             }
         }
     }

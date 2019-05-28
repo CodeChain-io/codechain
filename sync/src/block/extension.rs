@@ -679,9 +679,13 @@ impl Extension {
         completed.sort_unstable_by_key(EncodedHeader::number);
 
         let mut exists = Vec::new();
+        let mut queued = Vec::new();
+
         for header in completed {
+            let hash = header.hash();
             match self.client.import_header(header.clone().into_inner()) {
-                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(header.hash()),
+                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
+                Err(BlockImportError::Import(ImportError::AlreadyQueued)) => queued.push(hash),
                 // FIXME: handle import errors
                 Err(err) => {
                     cwarn!(SYNC, "Cannot import header({}): {:?}", header.hash(), err);
@@ -692,6 +696,7 @@ impl Extension {
         }
 
         let request = self.header_downloaders.get_mut(from).and_then(|peer| {
+            peer.mark_as_queued(queued);
             peer.mark_as_imported(exists);
             peer.create_request()
         });
