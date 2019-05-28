@@ -122,7 +122,7 @@ To prevent this issue, CodeChain encourages validators who collect signatures di
 
 The additional reward algorithm is shown below:
 ```rust
-let total_validators: Vec<Vec<Account>> := // sorted validators into the average number of signatures;
+let total_validators: Vec<Vec<Account>> := // Sorted validators by the average number of missed signatures in ascending order
 let mut remain_reward = // total reduced rewards
 for validators in total_validators {
     if validators.is_empty() {
