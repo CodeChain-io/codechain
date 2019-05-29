@@ -35,7 +35,7 @@ use std::sync::Arc;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{AssetScheme, FindActionHandler, Metadata, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
+use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, CommonParams, ShardId};
 use cvm::ChainTimeInfo;
@@ -111,10 +111,13 @@ pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     fn get_kvdb(&self) -> Arc<KeyValueDB>;
 }
 
-pub trait ConsensusClient: BlockChainTrait + EngineClient + MetadataInfo {}
+pub trait ConsensusClient: BlockChainTrait + EngineClient + TermInfo {}
 
-pub trait MetadataInfo {
-    fn metadata(&self, id: BlockId) -> Option<Metadata>;
+pub trait TermInfo {
+    fn last_term_finished_block_num(&self, id: BlockId) -> Option<BlockNumber>;
+    fn current_term_id(&self, id: BlockId) -> Option<u64>;
+
+    fn state_at_term_begin(&self, id: BlockId) -> Option<TopLevelState>;
 }
 
 /// Provides methods to access account info

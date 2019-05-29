@@ -184,8 +184,8 @@ impl ConsensusEngine for Tendermint {
 
         let (start_of_the_current_term, start_of_the_previous_term) = {
             let end_of_the_one_level_previous_term = block.state().metadata()?.unwrap().last_term_finished_block_num();
-            let metadata = client.metadata(end_of_the_one_level_previous_term.into()).unwrap();
-            let end_of_the_two_level_previous_term = metadata.last_term_finished_block_num();
+            let end_of_the_two_level_previous_term =
+                client.last_term_finished_block_num(end_of_the_one_level_previous_term.into()).unwrap();
 
             (end_of_the_one_level_previous_term + 1, end_of_the_two_level_previous_term + 1)
         };
