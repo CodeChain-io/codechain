@@ -269,10 +269,7 @@ export default class CodeChain {
         if (!this.process) {
             return Promise.reject(Error("process isn't available"));
         }
-        await this.sdk.rpc.network.connect(
-            "127.0.0.1",
-            peer.port
-        );
+        await this.sdk.rpc.network.connect("127.0.0.1", peer.port);
         while (
             (await this.sdk.rpc.network.isConnected("127.0.0.1", peer.port)) ===
             false
