@@ -39,7 +39,7 @@ use std::sync::Arc;
 use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Public, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
-use cstate::{FindActionHandler, Metadata, StateDB};
+use cstate::{FindActionHandler, StateDB, TopLevelState};
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
 use ctypes::{BlockNumber, CommonParams, Header as BlockHeader};
@@ -55,8 +55,8 @@ use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::client::ImportResult;
 use crate::client::{
-    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock, MetadataInfo,
-    MiningBlockChainClient, StateOrBlock,
+    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock,
+    MiningBlockChainClient, StateOrBlock, TermInfo,
 };
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
@@ -603,8 +603,16 @@ impl EngineInfo for TestBlockChainClient {
 
 impl ConsensusClient for TestBlockChainClient {}
 
-impl MetadataInfo for TestBlockChainClient {
-    fn metadata(&self, _id: BlockId) -> Option<Metadata> {
+impl TermInfo for TestBlockChainClient {
+    fn last_term_finished_block_num(&self, _id: BlockId) -> Option<BlockNumber> {
+        None
+    }
+
+    fn current_term_id(&self, _id: BlockId) -> Option<u64> {
+        None
+    }
+
+    fn state_at_term_begin(&self, _id: BlockId) -> Option<TopLevelState> {
         None
     }
 }
