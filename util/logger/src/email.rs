@@ -14,6 +14,7 @@ impl EmailAlarmConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct EmailAlarm {
     pub to: String,
     pub sendgrid_key: String,
