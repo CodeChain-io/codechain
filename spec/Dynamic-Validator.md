@@ -218,7 +218,7 @@ In other words, the *DELEGATE* transaction to the banned account and the *SELF_N
 stakeholders = [ address+ ], address asc
 balance(address) = quantity
 delegation(delegator) = [ [delegatee, quantity]+ ], delegatee asc
-candidates = [ [address, deposits, nominate_end_at]+ ], address asc
+candidates = [ [pubkey, deposits, nominate_end_at]+ ], pubkey asc
 pending_rewards = [ [withdraw_at, address, quantity]+ ], [withdraw_at, address] asc
 banned = [ address+ ], address asc
 jailed = [ [address, deposits, custody_until, kicked_at]+ ], address asc
