@@ -39,7 +39,6 @@ extern crate kvdb_memorydb;
 extern crate kvdb_rocksdb;
 extern crate linked_hash_map;
 extern crate memorydb;
-extern crate num_cpus;
 extern crate primitives;
 extern crate rand;
 #[cfg(test)]
