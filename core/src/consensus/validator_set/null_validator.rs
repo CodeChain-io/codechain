@@ -37,10 +37,6 @@ impl ValidatorSet for NullValidator {
         unimplemented!()
     }
 
-    fn get_address(&self, _parent: &H256, _nonce: usize) -> Address {
-        unimplemented!()
-    }
-
     fn get_index(&self, _parent: &H256, _public: &Public) -> Option<usize> {
         unimplemented!()
     }
