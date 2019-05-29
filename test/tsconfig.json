@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "target": "es2015",
+    "target": "es2018",
     "types": ["node"],
     "module": "commonjs",
-    "lib": ["es2017"],
+    "lib": ["es2018"],
     "declaration": true,
     "outDir": "lib",
     "strict": true
