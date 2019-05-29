@@ -8,3 +8,4 @@ authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <hi@codechai
 
 [dependencies]
 backtrace = "0.3.2"
+codechain-logger = { path = "../logger" }
