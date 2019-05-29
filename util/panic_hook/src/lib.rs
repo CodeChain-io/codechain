@@ -18,6 +18,8 @@
 
 extern crate backtrace;
 extern crate codechain_logger as clogger;
+extern crate get_if_addrs;
+extern crate my_internet_ip;
 
 use backtrace::Backtrace;
 use clogger::EmailAlarm;
@@ -48,8 +50,10 @@ fn panic_hook(info: &PanicInfo) {
 fn panic_hook_with_email_alarm(email_alarm: &EmailAlarm, info: &PanicInfo) {
     let message = panic_message(info);
     eprintln!("{}", message);
+    let ip_addresses = get_ip_addresses();
+
     let message_for_email = message.replace("\n", "<br>");
-    email_alarm.send(&message_for_email);
+    email_alarm.send(&format!("IP: {}<br>{}", ip_addresses, message_for_email));
     exit_on_debug_mode();
 }
 
@@ -91,3 +95,24 @@ fn exit_on_debug_mode() {
 
 #[cfg(not(debug_assertions))]
 fn exit_on_debug_mode() {}
+
+fn get_ip_addresses() -> String {
+    match my_internet_ip::get() {
+        Ok(ip) => return ip.to_string(),
+        Err(e) => {
+            eprintln!("Failed get internet IP: {:?}", e);
+        }
+    };
+
+    match get_if_addrs::get_if_addrs() {
+        Ok(interfaces) => {
+            let ip_addresses: Vec<String> =
+                interfaces.iter().map(|interface| format!("{:?}", interface.ip())).collect();
+            return ip_addresses.join(", ")
+        }
+        Err(err) => {
+            eprintln!("Failed to get local IPs: {}", err);
+        }
+    }
+    "Unknown".to_string()
+}
