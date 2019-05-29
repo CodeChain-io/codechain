@@ -301,10 +301,10 @@ export class P2pLayer {
                     console.log("Send SYNC_ID Message");
                 }
                 const { localKey, port, networkId } = this;
-                const localPubKey = localKey
+                const localPubKey: string = localKey
                     .getPublic()
-                    .encode("hex")
-                    .slice(2, 130);
+                    .encode("hex", false)
+                    .slice(2, 130) as any; // TODO: remove any
                 const msg = new Sync1(new H512(localPubKey), networkId, port);
                 await this.writeData(msg.rlpBytes());
                 break;
