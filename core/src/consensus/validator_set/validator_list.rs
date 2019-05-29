@@ -22,7 +22,6 @@ use primitives::H256;
 use super::ValidatorSet;
 
 /// Validator set containing a known set of public keys.
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct ValidatorList {
     validators: Vec<Public>,
     addresses: HashSet<Address>,
@@ -30,25 +29,7 @@ pub struct ValidatorList {
 
 impl ValidatorList {
     pub fn new(validators: Vec<Public>) -> Self {
-        let addresses = validators.iter().map(|public| public_to_address(public)).collect();
-        ValidatorList {
-            validators,
-            addresses,
-        }
-    }
-}
-
-impl ::std::ops::Deref for ValidatorList {
-    type Target = [Public];
-
-    fn deref(&self) -> &[Public] {
-        &self.validators
-    }
-}
-
-impl From<Vec<Public>> for ValidatorList {
-    fn from(validators: Vec<Public>) -> Self {
-        let addresses = validators.iter().map(|public| public_to_address(public)).collect();
+        let addresses = validators.iter().map(public_to_address).collect();
         ValidatorList {
             validators,
             addresses,
@@ -67,16 +48,8 @@ impl ValidatorSet for ValidatorList {
 
     fn get(&self, _bh: &H256, nonce: usize) -> Public {
         let validator_n = self.validators.len();
-
-        if validator_n == 0 {
-            panic!("Cannot operate with an empty validator set.");
-        }
-
+        assert_ne!(0, validator_n, "Cannot operate with an empty validator set.");
         *self.validators.get(nonce % validator_n).expect("There are validator_n authorities; taking number modulo validator_n gives number in validator_n range; qed")
-    }
-
-    fn get_address(&self, bh: &H256, nonce: usize) -> Address {
-        public_to_address(&self.get(bh, nonce))
     }
 
     fn get_index(&self, _bh: &H256, public: &Public) -> Option<usize> {
