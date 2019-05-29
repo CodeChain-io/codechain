@@ -17,14 +17,20 @@
 //! Custom panic hook with bug report link
 
 extern crate backtrace;
+extern crate codechain_logger as clogger;
 
 use backtrace::Backtrace;
+use clogger::EmailAlarm;
 use std::panic::{self, PanicInfo};
 use std::thread;
 
 /// Set the panic hook
 pub fn set() {
     panic::set_hook(Box::new(panic_hook));
+}
+
+pub fn set_with_email_alarm(email_alarm: clogger::EmailAlarm) {
+    panic::set_hook(Box::new(move |info| panic_hook_with_email_alarm(&email_alarm, info)));
 }
 
 static ABOUT_PANIC: &str = "
@@ -36,6 +42,14 @@ This is a bug. Please report it at:
 fn panic_hook(info: &PanicInfo) {
     let message = panic_message(info);
     eprintln!("{}", message);
+    exit_on_debug_mode();
+}
+
+fn panic_hook_with_email_alarm(email_alarm: &EmailAlarm, info: &PanicInfo) {
+    let message = panic_message(info);
+    eprintln!("{}", message);
+    let message_for_email = message.replace("\n", "<br>");
+    email_alarm.send(&message_for_email);
     exit_on_debug_mode();
 }
 

@@ -38,8 +38,7 @@ use logger::Logger;
 
 pub use log::Level;
 
-pub fn init(config: &LoggerConfig, email_alarm_config: &Option<EmailAlarmConfig>) -> Result<(), SetLoggerError> {
-    let email_alarm = email_alarm_config.as_ref().map(EmailAlarm::new);
+pub fn init(config: &LoggerConfig, email_alarm: Option<EmailAlarm>) -> Result<(), SetLoggerError> {
     let logger = Logger::new(config, email_alarm);
     log::set_max_level(logger.filter());
     log::set_boxed_logger(Box::new(logger))
@@ -53,5 +52,4 @@ lazy_static! {
     pub static ref SLOGGER: StructuredLogger = StructuredLogger::create();
 }
 
-use email::EmailAlarm;
-pub use email::EmailAlarmConfig;
+pub use email::{EmailAlarm, EmailAlarmConfig};
