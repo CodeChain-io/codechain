@@ -19,7 +19,6 @@
 extern crate backtrace;
 
 use backtrace::Backtrace;
-use std::io::{self, Write};
 use std::panic::{self, PanicInfo};
 use std::thread;
 
@@ -35,6 +34,12 @@ This is a bug. Please report it at:
 ";
 
 fn panic_hook(info: &PanicInfo) {
+    let message = panic_message(info);
+    eprintln!("{}", message);
+    exit_on_debug_mode();
+}
+
+fn panic_message(info: &PanicInfo) -> String {
     let location = info.location();
     let file = location.as_ref().map(|l| l.file()).unwrap_or("<unknown>");
     let line = location.as_ref().map(|l| l.line()).unwrap_or(0);
@@ -52,18 +57,17 @@ fn panic_hook(info: &PanicInfo) {
 
     let backtrace = Backtrace::new();
 
-    let mut stderr = io::stderr();
+    let lines = [
+        "".to_string(),
+        "====================".to_string(),
+        "".to_string(),
+        format!("{:?}", backtrace),
+        "".to_string(),
+        format!("Thread '{}' panicked at '{}', {}:{}", name, msg, file, line),
+        ABOUT_PANIC.to_string(),
+    ];
 
-    let _ = writeln!(stderr);
-    let _ = writeln!(stderr, "====================");
-    let _ = writeln!(stderr);
-    let _ = writeln!(stderr, "{:?}", backtrace);
-    let _ = writeln!(stderr);
-    let _ = writeln!(stderr, "Thread '{}' panicked at '{}', {}:{}", name, msg, file, line);
-
-    let _ = writeln!(stderr, "{}", ABOUT_PANIC);
-
-    exit_on_debug_mode();
+    lines.join("\n")
 }
 
 #[cfg(debug_assertions)]
