@@ -187,6 +187,7 @@ impl HeaderDownloader {
                 }
             }
         }
+        self.queued.shrink_to_fit();
     }
 
     pub fn mark_as_queued(&mut self, hashes: Vec<H256>) {
@@ -195,5 +196,6 @@ impl HeaderDownloader {
                 self.queued.insert(hash, header);
             }
         }
+        self.downloaded.shrink_to_fit();
     }
 }

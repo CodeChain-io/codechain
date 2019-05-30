@@ -69,6 +69,7 @@ impl BodyDownloader {
                 self.downloaded.insert(hash, body);
             }
         }
+        self.downloading.shrink_to_fit();
     }
 
     pub fn add_target(&mut self, header: &Header, parent: &Header) {
@@ -93,6 +94,9 @@ impl BodyDownloader {
             self.downloading.remove(hash);
             self.downloaded.remove(hash);
         }
+        self.targets.shrink_to_fit();
+        self.downloading.shrink_to_fit();
+        self.downloaded.shrink_to_fit();
     }
 
     pub fn reset_downloading(&mut self, hashes: &[H256]) {
@@ -100,6 +104,7 @@ impl BodyDownloader {
         for hash in hashes {
             self.downloading.remove(&hash);
         }
+        self.downloading.shrink_to_fit();
     }
 
     pub fn drain(&mut self) -> Vec<(H256, Vec<UnverifiedTransaction>)> {
@@ -111,7 +116,9 @@ impl BodyDownloader {
                 break
             }
         }
+        self.downloaded.shrink_to_fit();
         self.targets.drain(0..result.len());
+        self.targets.shrink_to_fit();
         result
     }
 }
