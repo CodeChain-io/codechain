@@ -39,34 +39,13 @@ const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 
 pub struct Stake {
     genesis_stakes: HashMap<Address, u64>,
-    enable_delegations: bool,
 }
 
 impl Stake {
-    #[cfg(not(test))]
     pub fn new(genesis_stakes: HashMap<Address, u64>) -> Stake {
         Stake {
             genesis_stakes,
-            enable_delegations: parse_env_var_enable_delegations(),
         }
-    }
-
-    #[cfg(test)]
-    pub fn new(genesis_stakes: HashMap<Address, u64>) -> Stake {
-        Stake {
-            genesis_stakes,
-            enable_delegations: true,
-        }
-    }
-}
-
-#[cfg(not(test))]
-fn parse_env_var_enable_delegations() -> bool {
-    let var = std::env::var("ENABLE_DELEGATIONS");
-    match var.as_ref().map(|x| x.trim()) {
-        Ok(value) => value.parse::<bool>().unwrap(),
-        Err(std::env::VarError::NotPresent) => false,
-        Err(err) => unreachable!("{:?}", err),
     }
 }
 
@@ -103,33 +82,15 @@ impl ActionHandler for Stake {
             Action::DelegateCCS {
                 address,
                 quantity,
-            } => {
-                if self.enable_delegations {
-                    delegate_ccs(state, sender, &address, quantity)
-                } else {
-                    Err(RuntimeError::FailedToHandleCustomAction("DelegateCCS is disabled".to_string()).into())
-                }
-            }
+            } => delegate_ccs(state, sender, &address, quantity),
             Action::Revoke {
                 address,
                 quantity,
-            } => {
-                if self.enable_delegations {
-                    revoke(state, sender, &address, quantity)
-                } else {
-                    Err(RuntimeError::FailedToHandleCustomAction("Revoke is disabled".to_string()).into())
-                }
-            }
+            } => revoke(state, sender, &address, quantity),
             Action::SelfNominate {
                 deposit,
                 ..
-            } => {
-                if self.enable_delegations {
-                    self_nominate(state, sender, deposit, 0, 0)
-                } else {
-                    Err(RuntimeError::FailedToHandleCustomAction("SelfNominate is disabled".to_string()).into())
-                }
-            }
+            } => self_nominate(state, sender, deposit, 0, 0),
             Action::ChangeParams {
                 metadata_seq,
                 params,
