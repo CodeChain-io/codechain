@@ -67,8 +67,9 @@ The election is a process that elects validators of a term according to the foll
 
 1. Select the candidates who deposited **MIN_DEPOSIT** or more.
 2. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of the amount of received delegations.
-3. Select **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
-4. Among the rest of them, drop the accounts that received less than **DELEGATION_THRESHOLD**; the remaining accounts become validators.
+3. If there are candidates who have tied delegation scores with the dropouts, drop those candidates as well.
+4. Select **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
+5. Among the rest of them, drop the accounts that received less than **DELEGATION_THRESHOLD**; the remaining accounts become validators.
 
 This process guarantees two things:
 * There are at least **MIN_NUM_OF_VALIDATORS** validators only if the number of candidates is larger than **MIN_NUM_OF_VALIDATORS**.
