@@ -37,10 +37,6 @@ impl ValidatorSet for NullValidator {
         unimplemented!()
     }
 
-    fn get_address(&self, _parent: &H256, _nonce: usize) -> Address {
-        unimplemented!()
-    }
-
     fn get_index(&self, _parent: &H256, _public: &Public) -> Option<usize> {
         unimplemented!()
     }
@@ -51,5 +47,9 @@ impl ValidatorSet for NullValidator {
 
     fn count(&self, _parent: &H256) -> usize {
         unimplemented!()
+    }
+
+    fn addresses(&self, _parent: &H256) -> Vec<Address> {
+        vec![]
     }
 }

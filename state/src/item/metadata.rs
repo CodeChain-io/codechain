@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::{CommonParams, ShardId};
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-
-use ctypes::{CommonParams, ShardId};
 
 use crate::CacheableItem;
 
@@ -33,7 +32,7 @@ pub struct Metadata {
     number_of_initial_shards: ShardId,
     hashes: Vec<H256>,
     term: TermMetadata,
-    seq: usize,
+    seq: u64,
     params: Option<CommonParams>,
 }
 
@@ -78,8 +77,20 @@ impl Metadata {
         })
     }
 
+    pub fn seq(&self) -> u64 {
+        self.seq
+    }
+
+    pub fn increase_seq(&mut self) {
+        self.seq += 1;
+    }
+
     pub fn params(&self) -> Option<&CommonParams> {
         self.params.as_ref()
+    }
+
+    pub fn set_params(&mut self, params: CommonParams) {
+        self.params = Some(params);
     }
 
     pub fn change_term(&mut self, last_term_finished_block_num: u64, current_term_id: u64) {
@@ -87,6 +98,10 @@ impl Metadata {
         assert!(self.term.current_term_id < current_term_id);
         self.term.last_term_finished_block_num = last_term_finished_block_num;
         self.term.current_term_id = current_term_id;
+    }
+
+    pub fn last_term_finished_block_num(&self) -> u64 {
+        self.term.last_term_finished_block_num
     }
 }
 

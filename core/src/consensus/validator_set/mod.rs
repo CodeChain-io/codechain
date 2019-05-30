@@ -16,12 +16,12 @@
 
 use std::sync::{Arc, Weak};
 
-use ckey::{Address, Public};
+use ckey::{public_to_address, Address, Public};
 use ctypes::BlockNumber;
 use primitives::{Bytes, H256};
 
 use self::validator_list::ValidatorList;
-use crate::client::EngineClient;
+use crate::client::ConsensusClient;
 
 pub mod null_validator;
 pub mod validator_list;
@@ -44,7 +44,9 @@ pub trait ValidatorSet: Send + Sync {
     fn get(&self, parent: &H256, nonce: usize) -> Public;
 
     /// Draws a validator address from nonce modulo number of validators.
-    fn get_address(&self, parent: &H256, nonce: usize) -> Address;
+    fn get_address(&self, parent: &H256, nonce: usize) -> Address {
+        public_to_address(&self.get(parent, nonce))
+    }
 
     /// Draws a validator from nonce modulo number of validators.
     fn get_index(&self, parent: &H256, public: &Public) -> Option<usize>;
@@ -60,5 +62,7 @@ pub trait ValidatorSet: Send + Sync {
     /// Notifies about benign misbehaviour.
     fn report_benign(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber) {}
     /// Allows blockchain state access.
-    fn register_client(&self, _client: Weak<EngineClient>) {}
+    fn register_client(&self, _client: Weak<ConsensusClient>) {}
+
+    fn addresses(&self, _parent: &H256) -> Vec<Address>;
 }

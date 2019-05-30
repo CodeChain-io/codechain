@@ -39,7 +39,7 @@ use std::sync::Arc;
 use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Public, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
-use cstate::{FindActionHandler, StateDB};
+use cstate::{FindActionHandler, Metadata, StateDB};
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
 use ctypes::{BlockNumber, CommonParams, Header as BlockHeader};
@@ -55,7 +55,7 @@ use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::client::ImportResult;
 use crate::client::{
-    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock,
+    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock, MetadataInfo,
     MiningBlockChainClient, StateOrBlock,
 };
 use crate::db::{COL_STATE, NUM_COLUMNS};
@@ -65,6 +65,7 @@ use crate::miner::{Miner, MinerService, TransactionImportResult};
 use crate::scheme::Scheme;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use crate::types::{BlockId, TransactionId, VerificationQueueInfo as QueueInfo};
+use client::ConsensusClient;
 
 /// Test client.
 pub struct TestBlockChainClient {
@@ -597,5 +598,13 @@ impl EngineInfo for TestBlockChainClient {
 
     fn recommended_confirmation(&self) -> u32 {
         unimplemented!()
+    }
+}
+
+impl ConsensusClient for TestBlockChainClient {}
+
+impl MetadataInfo for TestBlockChainClient {
+    fn metadata(&self, _id: BlockId) -> Option<Metadata> {
+        None
     }
 }

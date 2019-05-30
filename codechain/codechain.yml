@@ -286,6 +286,23 @@ args:
         value_name: PATH
         help: Specify the path for the network blacklist file.
         takes_value: true
+    - no-email-alarm:
+        long: no-email-alarm
+        help: Do not use email alarm
+    - email-alarm-to:
+        long: email-alarm-to
+        value_name: EMAIL
+        help: Specify the email address to receive the alarm.
+        takes_value: true
+        conflicts_with:
+            - no-email-alarm
+    - email-alarm-sendgrid-key:
+        long: email-alarm-sendgrid-key
+        value_name: KEY
+        help: Specify the sendgrid key which is used to send alarms.
+        takes_value: true
+        conflicts_with:
+            - no-email-alarm
 subcommands:
     - account:
         about: account managing commands

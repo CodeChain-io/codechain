@@ -18,19 +18,23 @@ mod action_data;
 mod actions;
 mod distribute;
 
+use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use ckey::Address;
-use cstate::{ActionHandler, StateResult, TopLevelState};
+use ccrypto::Blake;
+use ckey::{public_to_address, recover, Address, Signature};
+use cstate::{ActionHandler, StateResult, TopLevelState, TopState};
 use ctypes::errors::{RuntimeError, SyntaxError};
+use ctypes::util::unexpected::Mismatch;
 use ctypes::{CommonParams, Header};
+use primitives::H256;
 use rlp::{Decodable, UntrustedRlp};
 
-use self::action_data::{Delegation, StakeAccount, Stakeholders};
+use self::action_data::{Delegation, IntermediateRewards, StakeAccount, Stakeholders};
 use self::actions::Action;
-pub use self::distribute::{fee_distribute, stakeholders_share};
+pub use self::distribute::fee_distribute;
 use consensus::ValidatorSet;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
@@ -111,12 +115,44 @@ impl ActionHandler for Stake {
                     Err(RuntimeError::FailedToHandleCustomAction("DelegateCCS is disabled".to_string()).into())
                 }
             }
+            Action::ChangeParams {
+                metadata_seq,
+                params,
+                signatures,
+            } => change_params(state, metadata_seq, *params, &signatures),
         }
     }
 
     fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
-        Action::decode(&UntrustedRlp::new(bytes)).map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
-        Ok(())
+        let action = Action::decode(&UntrustedRlp::new(bytes))
+            .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
+        match action {
+            Action::TransferCCS {
+                ..
+            } => Ok(()),
+            Action::DelegateCCS {
+                ..
+            } => Ok(()),
+            Action::ChangeParams {
+                metadata_seq,
+                params,
+                signatures,
+            } => {
+                let action = Action::ChangeParams {
+                    metadata_seq,
+                    params,
+                    signatures: vec![],
+                };
+                let encoded_action = H256::blake(rlp::encode(&action));
+                for signature in signatures {
+                    // XXX: Signature recovery is an expensive job. Should we do it twice?
+                    recover(&signature, &encoded_action).map_err(|err| {
+                        SyntaxError::InvalidCustomAction(format!("Cannot decode the signature: {}", err))
+                    })?;
+                }
+                Ok(())
+            }
+        }
     }
 
     fn on_close_block(
@@ -181,6 +217,60 @@ pub fn get_stakes(state: &TopLevelState) -> StateResult<HashMap<Address, u64>> {
         result.insert(*stakeholder, account.balance + delegation.sum());
     }
     Ok(result)
+}
+
+pub fn add_intermediate_rewards(state: &mut TopLevelState, address: Address, reward: u64) -> StateResult<()> {
+    let mut rewards = IntermediateRewards::load_from_state(state)?;
+    rewards.add_quantity(address, reward);
+    rewards.save_to_state(state)?;
+    Ok(())
+}
+
+pub fn drain_previous_rewards(state: &mut TopLevelState) -> StateResult<BTreeMap<Address, u64>> {
+    let mut rewards = IntermediateRewards::load_from_state(state)?;
+    let drained = rewards.drain_previous();
+    rewards.save_to_state(state)?;
+    Ok(drained)
+}
+
+pub fn move_current_to_previous_intermediate_rewards(state: &mut TopLevelState) -> StateResult<()> {
+    let mut rewards = IntermediateRewards::load_from_state(state)?;
+    rewards.move_current_to_previous();
+    rewards.save_to_state(state)
+}
+
+fn change_params(
+    state: &mut TopLevelState,
+    metadata_seq: u64,
+    params: CommonParams,
+    signatures: &[Signature],
+) -> StateResult<()> {
+    // Update state first because the signature validation is more expensive.
+    state.update_params(metadata_seq, params)?;
+
+    let action = Action::ChangeParams {
+        metadata_seq,
+        params: params.into(),
+        signatures: vec![],
+    };
+    let encoded_action = H256::blake(rlp::encode(&action));
+    let stakes = get_stakes(state)?;
+    let signed_stakes = signatures.iter().try_fold(0, |sum, signature| {
+        let public = recover(signature, &encoded_action).unwrap_or_else(|err| {
+            unreachable!("The transaction with an invalid signature cannot pass the verification: {}", err);
+        });
+        let address = public_to_address(&public);
+        stakes.get(&address).map(|stake| sum + stake).ok_or_else(|| RuntimeError::SignatureOfInvalidAccount(address))
+    })?;
+    let total_stakes: u64 = stakes.values().sum();
+    if total_stakes / 2 >= signed_stakes {
+        return Err(RuntimeError::InsufficientStakes(Mismatch {
+            expected: total_stakes,
+            found: signed_stakes,
+        })
+        .into())
+    }
+    Ok(())
 }
 
 #[cfg(test)]

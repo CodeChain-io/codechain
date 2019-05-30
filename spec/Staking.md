@@ -359,6 +359,7 @@ It also does not provide a voting feature.
 The vote initiator should collect the signatures through the off-chain.
 
 This transaction increases the `seq` of `Metadata` and changes the `params` of `Metadata`.
+The changed parameters are applied from the next block that the changing transaction is included.
 
 The new parameters are used from the next block.
 

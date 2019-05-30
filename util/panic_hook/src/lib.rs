@@ -17,15 +17,22 @@
 //! Custom panic hook with bug report link
 
 extern crate backtrace;
+extern crate codechain_logger as clogger;
+extern crate get_if_addrs;
+extern crate my_internet_ip;
 
 use backtrace::Backtrace;
-use std::io::{self, Write};
+use clogger::EmailAlarm;
 use std::panic::{self, PanicInfo};
 use std::thread;
 
 /// Set the panic hook
 pub fn set() {
     panic::set_hook(Box::new(panic_hook));
+}
+
+pub fn set_with_email_alarm(email_alarm: clogger::EmailAlarm) {
+    panic::set_hook(Box::new(move |info| panic_hook_with_email_alarm(&email_alarm, info)));
 }
 
 static ABOUT_PANIC: &str = "
@@ -35,6 +42,22 @@ This is a bug. Please report it at:
 ";
 
 fn panic_hook(info: &PanicInfo) {
+    let message = panic_message(info);
+    eprintln!("{}", message);
+    exit_on_debug_mode();
+}
+
+fn panic_hook_with_email_alarm(email_alarm: &EmailAlarm, info: &PanicInfo) {
+    let message = panic_message(info);
+    eprintln!("{}", message);
+    let ip_addresses = get_ip_addresses();
+
+    let message_for_email = message.replace("\n", "<br>");
+    email_alarm.send(&format!("IP: {}<br>{}", ip_addresses, message_for_email));
+    exit_on_debug_mode();
+}
+
+fn panic_message(info: &PanicInfo) -> String {
     let location = info.location();
     let file = location.as_ref().map(|l| l.file()).unwrap_or("<unknown>");
     let line = location.as_ref().map(|l| l.line()).unwrap_or(0);
@@ -52,18 +75,17 @@ fn panic_hook(info: &PanicInfo) {
 
     let backtrace = Backtrace::new();
 
-    let mut stderr = io::stderr();
+    let lines = [
+        "".to_string(),
+        "====================".to_string(),
+        "".to_string(),
+        format!("{:?}", backtrace),
+        "".to_string(),
+        format!("Thread '{}' panicked at '{}', {}:{}", name, msg, file, line),
+        ABOUT_PANIC.to_string(),
+    ];
 
-    let _ = writeln!(stderr);
-    let _ = writeln!(stderr, "====================");
-    let _ = writeln!(stderr);
-    let _ = writeln!(stderr, "{:?}", backtrace);
-    let _ = writeln!(stderr);
-    let _ = writeln!(stderr, "Thread '{}' panicked at '{}', {}:{}", name, msg, file, line);
-
-    let _ = writeln!(stderr, "{}", ABOUT_PANIC);
-
-    exit_on_debug_mode();
+    lines.join("\n")
 }
 
 #[cfg(debug_assertions)]
@@ -73,3 +95,24 @@ fn exit_on_debug_mode() {
 
 #[cfg(not(debug_assertions))]
 fn exit_on_debug_mode() {}
+
+fn get_ip_addresses() -> String {
+    match my_internet_ip::get() {
+        Ok(ip) => return ip.to_string(),
+        Err(e) => {
+            eprintln!("Failed get internet IP: {:?}", e);
+        }
+    };
+
+    match get_if_addrs::get_if_addrs() {
+        Ok(interfaces) => {
+            let ip_addresses: Vec<String> =
+                interfaces.iter().map(|interface| format!("{:?}", interface.ip())).collect();
+            return ip_addresses.join(", ")
+        }
+        Err(err) => {
+            eprintln!("Failed to get local IPs: {}", err);
+        }
+    }
+    "Unknown".to_string()
+}

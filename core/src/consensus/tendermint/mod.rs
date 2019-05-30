@@ -36,8 +36,8 @@ use primitives::H256;
 use self::chain_notify::TendermintChainNotify;
 pub use self::params::{TendermintParams, TimeGapParams, TimeoutParams};
 use self::types::{Height, Step, View};
-use super::stake;
-use crate::client::EngineClient;
+use super::{stake, ValidatorSet};
+use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
 use ChainNotify;
 
@@ -55,13 +55,14 @@ pub type BlockHash = H256;
 
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
-    client: RwLock<Option<Weak<EngineClient>>>,
+    client: RwLock<Option<Weak<ConsensusClient>>>,
     external_params_initializer: crossbeam::Sender<TimeGapParams>,
-    extension_initializer: crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<EngineClient>)>,
+    extension_initializer: crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<ConsensusClient>)>,
     timeouts: TimeoutParams,
     join: Option<JoinHandle<()>>,
     quit_tendermint: crossbeam::Sender<()>,
     inner: crossbeam::Sender<worker::Event>,
+    validators: Arc<ValidatorSet>,
     /// Reward per block, in base units.
     block_reward: u64,
     /// codechain machine descriptor
@@ -85,7 +86,8 @@ impl Drop for Tendermint {
 impl Tendermint {
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
-        let stake = stake::Stake::new(our_params.genesis_stakes, Arc::clone(&our_params.validators));
+        let validators = Arc::clone(&our_params.validators);
+        let stake = stake::Stake::new(our_params.genesis_stakes, Arc::clone(&validators));
         let timeouts = our_params.timeouts;
         let machine = Arc::new(machine);
 
@@ -102,6 +104,7 @@ impl Tendermint {
             join: Some(join),
             quit_tendermint,
             inner,
+            validators,
             block_reward: our_params.block_reward,
             machine,
             action_handlers,
@@ -140,8 +143,8 @@ mod tests {
         let test = TestBlockChainClient::new_with_scheme(Scheme::new_test_tendermint());
 
         let test_client: Arc<TestBlockChainClient> = Arc::new(test);
-        let engine_client = Arc::clone(&test_client) as Arc<EngineClient>;
-        scheme.engine.register_client(Arc::downgrade(&engine_client));
+        let consensus_client = Arc::clone(&test_client) as Arc<ConsensusClient>;
+        scheme.engine.register_client(Arc::downgrade(&consensus_client));
         (scheme, tap, test_client)
     }
 

@@ -269,10 +269,7 @@ export default class CodeChain {
         if (!this.process) {
             return Promise.reject(Error("process isn't available"));
         }
-        await this.sdk.rpc.network.connect(
-            "127.0.0.1",
-            peer.port
-        );
+        await this.sdk.rpc.network.connect("127.0.0.1", peer.port);
         while (
             (await this.sdk.rpc.network.isConnected("127.0.0.1", peer.port)) ===
             false
@@ -606,6 +603,40 @@ export default class CodeChain {
         expect(await this.sdk.rpc.chain.containsTransaction(targetTxHash)).be
             .false;
         expect(await this.sdk.rpc.chain.getErrorHint(targetTxHash)).not.null;
+        expect(await this.sdk.rpc.chain.getTransaction(targetTxHash)).be.null;
+
+        expect(await this.sdk.rpc.chain.containsTransaction(signedDummyTxHash))
+            .be.true;
+        expect(await this.sdk.rpc.chain.getErrorHint(signedDummyTxHash)).null;
+        expect(await this.sdk.rpc.chain.getTransaction(signedDummyTxHash)).not
+            .be.null;
+
+        return targetTxHash;
+    }
+
+    public async sendSignedTransactionExpectedToFail(
+        tx: SignedTransaction,
+        options: { error?: string } = {}
+    ): Promise<H256> {
+        await this.sdk.rpc.devel.stopSealing();
+
+        const blockNumber = await this.getBestBlockNumber();
+        const signedDummyTxHash = (await this.sendPayTx({
+            fee: 1000,
+            quantity: 1
+        })).hash();
+        const targetTxHash = await this.sdk.rpc.chain.sendSignedTransaction(tx);
+
+        await this.sdk.rpc.devel.startSealing();
+        await this.waitBlockNumber(blockNumber + 1);
+
+        expect(await this.sdk.rpc.chain.containsTransaction(targetTxHash)).be
+            .false;
+        const hint = await this.sdk.rpc.chain.getErrorHint(targetTxHash);
+        expect(hint).not.null;
+        if (options.error != null) {
+            expect(hint).contains(options.error);
+        }
         expect(await this.sdk.rpc.chain.getTransaction(targetTxHash)).be.null;
 
         expect(await this.sdk.rpc.chain.containsTransaction(signedDummyTxHash))

@@ -28,7 +28,7 @@ use ckey::{Address, NetworkId, PlatformAddress};
 use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
-use clogger::{self, LoggerConfig};
+use clogger::{self, EmailAlarm, EmailAlarmConfig, LoggerConfig};
 use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, RoutingTable, SocketAddr};
 use csync::{BlockSyncExtension, BlockSyncSender, SnapshotService, TransactionSyncExtension};
 use ctimer::TimerLoop;
@@ -238,7 +238,21 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             .expect("Current time should be later than unix epoch")
             .subsec_nanos() as usize,
     );
-    clogger::init(&LoggerConfig::new(instance_id)).expect("Logger must be successfully initialized");
+    let email_alarm = if !config.email_alarm.disable.unwrap() {
+        let config = match (&config.email_alarm.to, &config.email_alarm.sendgrid_key) {
+            (Some(to), Some(sendgrid_key)) => Some(EmailAlarmConfig::new(to.to_string(), sendgrid_key.to_string())),
+            (None, _) => return Err("email-alarm-to is not specified".to_string()),
+            (_, None) => return Err("email-alarm-sendgrid-key is not specified".to_string()),
+        };
+        config.as_ref().map(EmailAlarm::new)
+    } else {
+        None
+    };
+    clogger::init(&LoggerConfig::new(instance_id), email_alarm.clone())
+        .expect("Logger must be successfully initialized");
+    if let Some(email_alarm) = email_alarm {
+        panic_hook::set_with_email_alarm(email_alarm);
+    }
 
     let pf = load_password_file(&config.operating.password_path)?;
     let base_path = config.operating.base_path.as_ref().unwrap().clone();

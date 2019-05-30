@@ -47,12 +47,8 @@ describe("network2 nodes", function() {
         });
 
         it("connect", async function() {
-            expect(
-                await nodeA.sdk.rpc.network.connect(
-                    address,
-                    nodeB.port
-                )
-            ).to.be.null;
+            expect(await nodeA.sdk.rpc.network.connect(address, nodeB.port)).to
+                .be.null;
 
             while (
                 !(await nodeA.sdk.rpc.network.isConnected(address, nodeB.port))
@@ -77,10 +73,7 @@ describe("network2 nodes", function() {
             if (await nodeA.sdk.rpc.network.isConnected(address, nodeB.port)) {
                 return;
             }
-            await nodeA.sdk.rpc.network.connect(
-                address,
-                nodeB.port
-            );
+            await nodeA.sdk.rpc.network.connect(address, nodeB.port);
             while (
                 !(await nodeA.sdk.rpc.network.isConnected(address, nodeB.port))
             ) {
