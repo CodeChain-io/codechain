@@ -408,6 +408,7 @@ impl<K: Kind> VerificationQueue<K> {
                 *td -= score;
             }
         }
+        processing.shrink_to_fit();
         processing.is_empty()
     }
 
@@ -444,6 +445,7 @@ impl<K: Kind> VerificationQueue<K> {
                 new_verified.push_back(output);
             }
         }
+        processing.shrink_to_fit();
 
         self.verification.sizes.verified.fetch_sub(removed_size, AtomicOrdering::SeqCst);
         *verified = new_verified;
