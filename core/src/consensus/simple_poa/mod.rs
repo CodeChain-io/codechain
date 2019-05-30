@@ -29,7 +29,7 @@ use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, EngineError, Seal};
 use crate::account_provider::AccountProvider;
 use crate::block::ExecutedBlock;
-use crate::client::EngineClient;
+use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
 use crate::error::{BlockError, Error};
@@ -125,7 +125,7 @@ impl ConsensusEngine for SimplePoA {
         self.machine.add_balance(block, &author, total_reward)
     }
 
-    fn register_client(&self, client: Weak<EngineClient>) {
+    fn register_client(&self, client: Weak<ConsensusClient>) {
         self.validators.register_client(client);
     }
 

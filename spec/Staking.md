@@ -361,6 +361,8 @@ The vote initiator should collect the signatures through the off-chain.
 This transaction increases the `seq` of `Metadata` and changes the `params` of `Metadata`.
 The changed parameters are applied from the next block that the changing transaction is included.
 
+The new parameters are used from the next block.
+
 ### Action
 `[ 0xFF, metadata_seq, new_parameters, ...signatures ]`
 
@@ -369,16 +371,12 @@ The transaction fails if the metadata_seq is different from the `seq` of `Metada
 
 #### new_parameters
 ```
-new_parameters := [ new_parameter(, new_parameter)* ]
-new_parameter := [ key, value ]
+new_parameters := [ (value,)* ]
 
-key := usize
 value := usize | u64 | boolean | string
 ```
-It is the list of the fields that the transaction changes.
+It is the list of the values that the transaction changes.
 The stakeholder MUST NOT sign the transaction when the type of value is not a type that the key expected.
-
-The parameters that are not in the new_parameters are kept as the previous value.
 
 #### signatures
 `signatures` are the ECDSA signatures of stakeholders.

@@ -21,9 +21,9 @@ use time;
 use atty;
 use colored::Colorize;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
-use log::{LevelFilter, Log, Metadata, Record};
+use log::{Level, LevelFilter, Log, Metadata, Record};
 
-use crate::{structured_logger, SLOGGER};
+use crate::{email::EmailAlarm, structured_logger, SLOGGER};
 
 pub struct Config {
     pub instance_id: usize,
@@ -41,10 +41,11 @@ pub struct Logger {
     instance_id: usize,
     filter: Filter,
     stderr_is_tty: bool,
+    email_alarm: Option<EmailAlarm>,
 }
 
 impl Logger {
-    pub fn new(config: &Config) -> Self {
+    pub fn new(config: &Config, email_alarm: Option<EmailAlarm>) -> Self {
         let mut builder = FilterBuilder::new();
         builder.filter(None, LevelFilter::Info);
 
@@ -58,6 +59,7 @@ impl Logger {
             instance_id: config.instance_id,
             filter: builder.build(),
             stderr_is_tty,
+            email_alarm,
         }
     }
 
@@ -103,8 +105,14 @@ impl Log for Logger {
                 target: log_target.to_string(),
                 message: log_message.to_string(),
                 timestamp,
-                thread_name,
+                thread_name: thread_name.clone(),
             });
+
+            if log_level == Level::Error {
+                if let Some(email_alarm) = &self.email_alarm {
+                    email_alarm.send(&format!("{} {} {}", thread_name, log_target, log_message))
+                }
+            }
         }
     }
 

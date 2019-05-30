@@ -17,6 +17,7 @@
 #[cfg(test)]
 use std::collections::btree_map;
 use std::collections::{btree_set, BTreeMap, BTreeSet};
+use std::mem;
 
 use ckey::Address;
 use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
@@ -37,6 +38,10 @@ lazy_static! {
 
 pub fn get_delegation_key(address: &Address) -> H256 {
     ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 2).append(&"Delegation").append(address).into_key()
+}
+
+pub fn get_intermediate_rewards_key() -> H256 {
+    ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"IntermediateRewards").into_key()
 }
 
 pub type StakeQuantity = u64;
@@ -184,6 +189,54 @@ impl<'a> Delegation<'a> {
     }
 }
 
+#[derive(Default, Debug, PartialEq)]
+pub struct IntermediateRewards {
+    previous: BTreeMap<Address, u64>,
+    current: BTreeMap<Address, u64>,
+}
+
+impl IntermediateRewards {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
+        let key = get_intermediate_rewards_key();
+        let action_data = state.action_data(&key)?;
+        let (previous, current) = decode_map_tuple(action_data.as_ref());
+
+        Ok(Self {
+            previous,
+            current,
+        })
+    }
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let key = get_intermediate_rewards_key();
+        if self.previous.is_empty() && self.current.is_empty() {
+            state.remove_action_data(&key);
+        } else {
+            let encoded = encode_map_tuple(&self.previous, &self.current);
+            state.update_action_data(&key, encoded)?;
+        }
+        Ok(())
+    }
+
+    pub fn add_quantity(&mut self, address: Address, quantity: StakeQuantity) {
+        if quantity == 0 {
+            return
+        }
+        *self.current.entry(address).or_insert(0) += quantity;
+    }
+
+    pub fn drain_previous(&mut self) -> BTreeMap<Address, u64> {
+        let mut new = BTreeMap::new();
+        mem::swap(&mut new, &mut self.previous);
+        new
+    }
+
+    pub fn move_current_to_previous(&mut self) {
+        assert!(self.previous.is_empty());
+        mem::swap(&mut self.previous, &mut self.current);
+    }
+}
+
 fn decode_set<V>(data: Option<&ActionData>) -> BTreeSet<V>
 where
     V: Ord + Decodable, {
@@ -212,14 +265,23 @@ fn decode_map<K, V>(data: Option<&ActionData>) -> BTreeMap<K, V>
 where
     K: Ord + Decodable,
     V: Decodable, {
-    let mut result = BTreeMap::new();
     if let Some(rlp) = data.map(|x| Rlp::new(x)) {
-        for record in rlp.iter() {
-            let key: K = record.val_at(0);
-            let value: V = record.val_at(1);
-            assert_eq!(2, record.item_count());
-            result.insert(key, value);
-        }
+        decode_map_impl(rlp)
+    } else {
+        Default::default()
+    }
+}
+
+fn decode_map_impl<K, V>(rlp: Rlp) -> BTreeMap<K, V>
+where
+    K: Ord + Decodable,
+    V: Decodable, {
+    let mut result = BTreeMap::new();
+    for record in rlp.iter() {
+        let key: K = record.val_at(0);
+        let value: V = record.val_at(1);
+        assert_eq!(2, record.item_count());
+        result.insert(key, value);
     }
     result
 }
@@ -229,12 +291,46 @@ where
     K: Ord + Encodable,
     V: Encodable, {
     let mut rlp = RlpStream::new();
+    encode_map_impl(&mut rlp, map);
+    rlp.drain().into_vec()
+}
+
+fn encode_map_impl<K, V>(rlp: &mut RlpStream, map: &BTreeMap<K, V>)
+where
+    K: Ord + Encodable,
+    V: Encodable, {
     rlp.begin_list(map.len());
     for (key, value) in map.iter() {
         let record = rlp.begin_list(2);
         record.append(key);
         record.append(value);
     }
+}
+
+fn decode_map_tuple<K, V>(data: Option<&ActionData>) -> (BTreeMap<K, V>, BTreeMap<K, V>)
+where
+    K: Ord + Decodable,
+    V: Decodable, {
+    if let Some(rlp) = data.map(|x| Rlp::new(x)) {
+        assert_eq!(2, rlp.item_count());
+        let map0 = decode_map_impl(rlp.at(0));
+        let map1 = decode_map_impl(rlp.at(1));
+        (map0, map1)
+    } else {
+        Default::default()
+    }
+}
+
+fn encode_map_tuple<K, V>(map0: &BTreeMap<K, V>, map1: &BTreeMap<K, V>) -> Vec<u8>
+where
+    K: Ord + Encodable,
+    V: Encodable, {
+    let mut rlp = RlpStream::new();
+    rlp.begin_list(2);
+
+    encode_map_impl(&mut rlp, map0);
+    encode_map_impl(&mut rlp, map1);
+
     rlp.drain().into_vec()
 }
 
@@ -500,5 +596,46 @@ mod tests {
 
         let result = state.action_data(&get_delegation_key(&delegator)).unwrap();
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn load_and_save_intermediate_rewards() {
+        let mut state = helpers::get_temp_state();
+        let rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        rewards.save_to_state(&mut state).unwrap();
+    }
+
+    #[test]
+    fn add_quantity() {
+        let address1 = Address::random();
+        let address2 = Address::random();
+        let mut state = helpers::get_temp_state();
+        let mut origin_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        origin_rewards.add_quantity(address1, 1);
+        origin_rewards.add_quantity(address2, 2);
+        origin_rewards.save_to_state(&mut state).unwrap();
+        let recovered_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        assert_eq!(origin_rewards, recovered_rewards);
+    }
+
+    #[test]
+    fn drain() {
+        let address1 = Address::random();
+        let address2 = Address::random();
+        let mut state = helpers::get_temp_state();
+        let mut origin_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        origin_rewards.add_quantity(address1, 1);
+        origin_rewards.add_quantity(address2, 2);
+        origin_rewards.save_to_state(&mut state).unwrap();
+        let mut recovered_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        assert_eq!(origin_rewards, recovered_rewards);
+        let _drained = recovered_rewards.drain_previous();
+        recovered_rewards.save_to_state(&mut state).unwrap();
+        let mut final_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        assert_eq!(BTreeMap::new(), final_rewards.previous);
+        let current = final_rewards.current.clone();
+        final_rewards.move_current_to_previous();
+        assert_eq!(BTreeMap::new(), final_rewards.current);
+        assert_eq!(current, final_rewards.previous);
     }
 }

@@ -30,10 +30,6 @@ pub fn fee_distribute(total_min_fee: u64, stakes: &HashMap<Address, u64>) -> Fee
     }
 }
 
-pub fn stakeholders_share(total_min_fee: u64, stakes: &HashMap<Address, u64>) -> u64 {
-    fee_distribute(total_min_fee, stakes).map(|(_, fee)| fee).sum()
-}
-
 fn share(total_stakes: u64, stake: u64, total_min_fee: u64) -> u64 {
     assert!(total_stakes >= stake);
     u64::try_from((u128::from(total_min_fee) * u128::from(stake)) / u128::from(total_stakes)).unwrap()
@@ -44,6 +40,12 @@ pub struct FeeDistributeIter<'a> {
     total_min_fee: u64,
     remaining_fee: u64,
     stake_holdings: hash_map::Iter<'a, Address, u64>,
+}
+
+impl<'a> FeeDistributeIter<'a> {
+    pub fn remaining_fee(&self) -> u64 {
+        self.remaining_fee
+    }
 }
 
 impl<'a> Iterator for FeeDistributeIter<'a> {
@@ -89,8 +91,10 @@ mod tests {
         }
 
         let total = 100;
-        let shares: HashMap<Address, u64> = fee_distribute(total, &stakes).map(|(k, v)| (*k, v)).collect();
-        let author_share = total - stakeholders_share(total, &stakes);
+        let mut iter = fee_distribute(total, &stakes);
+        let shares: HashMap<Address, u64> = (&mut iter).map(|(k, v)| (*k, v)).collect();
+
+        let author_share = iter.remaining_fee();
 
         assert_eq!(49, author_share);
         assert_eq!(shares, {

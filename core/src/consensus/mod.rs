@@ -49,7 +49,7 @@ use primitives::{Bytes, H256, U256};
 use self::tendermint::types::{BitSet, View};
 use crate::account_provider::AccountProvider;
 use crate::block::{ExecutedBlock, SealedBlock};
-use crate::client::EngineClient;
+use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::encoded;
 use crate::error::Error;
@@ -222,7 +222,7 @@ pub trait ConsensusEngine: Sync + Send {
     }
 
     /// Add Client which can be used for sealing, potentially querying the state and sending messages.
-    fn register_client(&self, _client: Weak<EngineClient>) {}
+    fn register_client(&self, _client: Weak<ConsensusClient>) {}
 
     /// Handle any potential consensus messages;
     /// updating consensus state and potentially issuing a new one.
@@ -312,6 +312,7 @@ pub enum EngineError {
     BadSealFieldSize(OutOfBounds<usize>),
     /// Malformed consensus message.
     MalformedMessage(String),
+    CannotOpenBlock,
 }
 
 impl fmt::Display for EngineError {
@@ -340,6 +341,7 @@ impl fmt::Display for EngineError {
             UnexpectedMessage => "This Engine should not be fed messages.".into(),
             BadSealFieldSize(oob) => format!("Seal field has an unexpected length: {}", oob),
             MalformedMessage(msg) => format!("Received malformed consensus message: {}", msg),
+            CannotOpenBlock => "Cannot open a block".to_string(),
         };
 
         f.write_fmt(format_args!("Engine error ({})", msg))

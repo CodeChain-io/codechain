@@ -29,6 +29,7 @@ kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 memorydb = { path = "../util/memorydb" }
+num-rational = "0.2.1"
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rand = "0.6.1"

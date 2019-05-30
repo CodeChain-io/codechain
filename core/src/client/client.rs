@@ -24,7 +24,8 @@ use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
-    ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
+    ActionHandler, AssetScheme, FindActionHandler, Metadata, OwnedAsset, StateDB, StateResult, Text, TopLevelState,
+    TopStateView,
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
@@ -45,6 +46,7 @@ use super::{
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress};
+use crate::client::{ConsensusClient, MetadataInfo};
 use crate::consensus::CodeChainEngine;
 use crate::encoded;
 use crate::error::{BlockImportError, Error, ImportError, SchemeError};
@@ -563,6 +565,8 @@ impl EngineClient for Client {
     }
 }
 
+impl ConsensusClient for Client {}
+
 impl BlockChainTrait for Client {
     fn chain_info(&self) -> BlockChainInfo {
         let mut chain_info = self.block_chain().chain_info();
@@ -774,6 +778,12 @@ impl BlockChainClient for Client {
     fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)> {
         let chain = self.block_chain();
         chain.error_hints_by_tracker(tracker)
+    }
+}
+
+impl MetadataInfo for Client {
+    fn metadata(&self, id: BlockId) -> Option<Metadata> {
+        self.state_at(id).and_then(|state| state.metadata().unwrap())
     }
 }
 
