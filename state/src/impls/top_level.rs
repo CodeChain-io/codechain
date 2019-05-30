@@ -552,7 +552,7 @@ impl TopLevelState {
                 bytes,
             } => {
                 let handler = client.find_action_handler_for(*handler_id).expect("Unknown custom parsel applied!");
-                handler.execute(bytes, self, fee_payer)?;
+                handler.execute(bytes, self, fee_payer, signer_public)?;
                 return Ok(())
             }
         };
