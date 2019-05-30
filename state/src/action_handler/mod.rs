@@ -19,7 +19,7 @@ mod hit;
 use std::convert::From;
 
 use ccrypto::blake256;
-use ckey::Address;
+use ckey::{Address, Public};
 use ctypes::errors::SyntaxError;
 use ctypes::{CommonParams, Header};
 use primitives::H256;
@@ -32,7 +32,13 @@ pub trait ActionHandler: Send + Sync {
     fn name(&self) -> &'static str;
     fn handler_id(&self) -> u64;
     fn init(&self, state: &mut TopLevelState) -> StateResult<()>;
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> StateResult<()>;
+    fn execute(
+        &self,
+        bytes: &[u8],
+        state: &mut TopLevelState,
+        sender: &Address,
+        sender_pubkey: &Public,
+    ) -> StateResult<()>;
     fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError>;
 
     fn query(&self, key_fragment: &[u8], state: &TopLevelState) -> StateResult<Option<Vec<u8>>> {

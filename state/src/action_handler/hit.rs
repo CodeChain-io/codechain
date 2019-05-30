@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::Address;
+use ckey::{Address, Public};
 use ctypes::errors::SyntaxError;
 use ctypes::{CommonParams, Header};
 use primitives::H256;
@@ -65,7 +65,13 @@ impl ActionHandler for HitHandler {
     }
 
     /// `bytes` must be valid encoding of HitAction
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, _sender: &Address) -> StateResult<()> {
+    fn execute(
+        &self,
+        bytes: &[u8],
+        state: &mut TopLevelState,
+        _sender: &Address,
+        _sender_pubkey: &Public,
+    ) -> StateResult<()> {
         let address = self.hit_count();
         let action = HitAction::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
         let action_data = state.action_data(&address)?.unwrap_or_default();

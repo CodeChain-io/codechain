@@ -22,7 +22,7 @@ use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 
 use ccrypto::Blake;
-use ckey::{public_to_address, recover, Address, Signature};
+use ckey::{public_to_address, recover, Address, Public, Signature};
 use cstate::{ActionHandler, StateResult, TopLevelState, TopState};
 use ctypes::errors::{RuntimeError, SyntaxError};
 use ctypes::util::unexpected::Mismatch;
@@ -72,7 +72,13 @@ impl ActionHandler for Stake {
         Ok(())
     }
 
-    fn execute(&self, bytes: &[u8], state: &mut TopLevelState, sender: &Address) -> StateResult<()> {
+    fn execute(
+        &self,
+        bytes: &[u8],
+        state: &mut TopLevelState,
+        sender: &Address,
+        sender_public: &Public,
+    ) -> StateResult<()> {
         let action = Action::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
         match action {
             Action::TransferCCS {
@@ -90,7 +96,7 @@ impl ActionHandler for Stake {
             Action::SelfNominate {
                 deposit,
                 ..
-            } => self_nominate(state, sender, deposit, 0, 0),
+            } => self_nominate(state, sender, sender_public, deposit, 0, 0),
             Action::ChangeParams {
                 metadata_seq,
                 params,
@@ -211,6 +217,7 @@ fn revoke(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quan
 fn self_nominate(
     state: &mut TopLevelState,
     sender: &Address,
+    sender_public: &Public,
     deposit: u64,
     current_term: u64,
     nomination_ends_at: u64,
@@ -236,7 +243,7 @@ fn self_nominate(
 
     let mut candidates = Candidates::load_from_state(&state)?;
     state.sub_balance(sender, deposit)?;
-    candidates.add_deposit(sender, total_deposit, nomination_ends_at);
+    candidates.add_deposit(sender_public, total_deposit, nomination_ends_at);
 
     jail.save_to_state(state)?;
     candidates.save_to_state(state)?;
@@ -316,7 +323,7 @@ pub fn on_term_close(state: &mut TopLevelState, current_term: u64) -> StateResul
     let mut candidates = Candidates::load_from_state(state)?;
     let expired = candidates.drain_expired_candidates(current_term);
     for candidate in &expired {
-        state.add_balance(&candidate.address, candidate.deposit)?;
+        state.add_balance(&public_to_address(&candidate.pubkey), candidate.deposit)?;
     }
     candidates.save_to_state(state)?;
 
@@ -330,7 +337,11 @@ pub fn on_term_close(state: &mut TopLevelState, current_term: u64) -> StateResul
     jailed.save_to_state(state)?;
 
     // Stakeholders list isn't changed while reverting.
-    let reverted: Vec<_> = expired.iter().map(|c| c.address).chain(kicked.iter().map(|p| p.address)).collect();
+    let reverted: Vec<_> = expired
+        .into_iter()
+        .map(|c| public_to_address(&c.pubkey))
+        .chain(kicked.into_iter().map(|p| p.address))
+        .collect();
     revert_delegations(state, &reverted)?;
 
     // TODO: validators, validator_order = elect()
@@ -487,8 +498,10 @@ mod tests {
 
     #[test]
     fn delegate() {
-        let delegatee = Address::random();
-        let delegator = Address::random();
+        let delegatee_pubkey = Public::random();
+        let delegator_pubkey = Public::random();
+        let delegatee = public_to_address(&delegatee_pubkey);
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = {
@@ -498,13 +511,13 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 40,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert_eq!(result, Ok(()));
 
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -528,8 +541,10 @@ mod tests {
 
     #[test]
     fn delegate_all() {
-        let delegatee = Address::random();
-        let delegator = Address::random();
+        let delegatee_pubkey = Public::random();
+        let delegatee = public_to_address(&delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = {
@@ -539,13 +554,13 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 100,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert_eq!(result, Ok(()));
 
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -570,8 +585,10 @@ mod tests {
 
     #[test]
     fn delegate_only_to_candidate() {
-        let delegatee = Address::random();
-        let delegator = Address::random();
+        let delegatee_pubkey = Public::random();
+        let delegatee = public_to_address(&delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = {
@@ -586,14 +603,16 @@ mod tests {
             address: delegatee,
             quantity: 40,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_err());
     }
 
     #[test]
     fn delegate_too_much() {
-        let delegatee = Address::random();
-        let delegator = Address::random();
+        let delegatee_pubkey = Public::random();
+        let delegatee = public_to_address(&delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = {
@@ -603,20 +622,22 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 200,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_err());
     }
 
     #[test]
     fn can_transfer_within_non_delegated_tokens() {
-        let delegatee = Address::random();
-        let delegator = Address::random();
+        let delegatee_pubkey = Public::random();
+        let delegatee = public_to_address(&delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = {
@@ -626,26 +647,28 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
-        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
         let action = Action::TransferCCS {
             address: delegatee,
             quantity: 50,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_ok());
     }
 
     #[test]
     fn cannot_transfer_over_non_delegated_tokens() {
-        let delegatee = Address::random();
-        let delegator = Address::random();
+        let delegatee_pubkey = Public::random();
+        let delegatee = public_to_address(&delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = {
@@ -655,26 +678,28 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
-        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
         let action = Action::TransferCCS {
             address: delegatee,
             quantity: 100,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_err());
     }
 
     #[test]
     fn can_revoke_delegated_tokens() {
-        let delegatee = Address::random();
-        let delegator = Address::random();
+        let delegatee_pubkey = Public::random();
+        let delegatee = public_to_address(&delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = {
@@ -684,20 +709,20 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_ok());
 
         let action = Action::Revoke {
             address: delegatee,
             quantity: 20,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert_eq!(Ok(()), result);
 
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -709,8 +734,10 @@ mod tests {
 
     #[test]
     fn cannot_revoke_more_than_delegated_tokens() {
-        let delegatee = Address::random();
-        let delegator = Address::random();
+        let delegatee_pubkey = Public::random();
+        let delegatee = public_to_address(&delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = {
@@ -720,20 +747,20 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_ok());
 
         let action = Action::Revoke {
             address: delegatee,
             quantity: 70,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_err());
 
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -745,8 +772,10 @@ mod tests {
 
     #[test]
     fn revoke_all_should_clear_state() {
-        let delegatee = Address::random();
-        let delegator = Address::random();
+        let delegatee_pubkey = Public::random();
+        let delegatee = public_to_address(&delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = {
@@ -756,20 +785,20 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_ok());
 
         let action = Action::Revoke {
             address: delegatee,
             quantity: 50,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert_eq!(Ok(()), result);
 
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -779,7 +808,8 @@ mod tests {
 
     #[test]
     fn self_nominate_deposit_test() {
-        let address = Address::random();
+        let address_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -788,7 +818,7 @@ mod tests {
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
-        let result = self_nominate(&mut state, &address, 0, 0, 5);
+        let result = self_nominate(&mut state, &address, &address_pubkey, 0, 0, 5);
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 1000);
@@ -796,14 +826,14 @@ mod tests {
         assert_eq!(
             candidates.get_candidate(&address),
             Some(&Candidate {
-                address,
+                pubkey: address_pubkey,
                 deposit: 0,
                 nomination_ends_at: 5,
             }),
             "nomination_ends_at should be updated even if candidate deposits 0"
         );
 
-        let result = self_nominate(&mut state, &address, 200, 0, 10);
+        let result = self_nominate(&mut state, &address, &address_pubkey, 200, 0, 10);
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 800);
@@ -811,13 +841,13 @@ mod tests {
         assert_eq!(
             candidates.get_candidate(&address),
             Some(&Candidate {
-                address,
+                pubkey: address_pubkey,
                 deposit: 200,
                 nomination_ends_at: 10,
             })
         );
 
-        let result = self_nominate(&mut state, &address, 0, 0, 15);
+        let result = self_nominate(&mut state, &address, &address_pubkey, 0, 0, 15);
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 800);
@@ -825,7 +855,7 @@ mod tests {
         assert_eq!(
             candidates.get_candidate(&address),
             Some(&Candidate {
-                address,
+                pubkey: address_pubkey,
                 deposit: 200,
                 nomination_ends_at: 15,
             }),
@@ -835,7 +865,8 @@ mod tests {
 
     #[test]
     fn self_nominate_fail_with_insufficient_balance() {
-        let address = Address::random();
+        let address_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -844,13 +875,14 @@ mod tests {
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
-        let result = self_nominate(&mut state, &address, 2000, 0, 5);
+        let result = self_nominate(&mut state, &address, &address_pubkey, 2000, 0, 5);
         assert!(result.is_err(), "Cannot self-nominate without a sufficient balance");
     }
 
     #[test]
     fn self_nominate_returns_deposits_after_expiration() {
-        let address = Address::random();
+        let address_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -859,7 +891,7 @@ mod tests {
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
-        self_nominate(&mut state, &address, 200, 0, 30).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, 200, 0, 30).unwrap();
 
         let result = on_term_close(&mut state, 29);
         assert_eq!(result, Ok(()));
@@ -869,7 +901,7 @@ mod tests {
         assert_eq!(
             candidates.get_candidate(&address),
             Some(&Candidate {
-                address,
+                pubkey: address_pubkey,
                 deposit: 200,
                 nomination_ends_at: 30,
             }),
@@ -886,8 +918,10 @@ mod tests {
 
     #[test]
     fn self_nominate_reverts_delegations_after_expiration() {
-        let address = Address::random();
-        let delegator = Address::random();
+        let address_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -900,13 +934,13 @@ mod tests {
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
-        self_nominate(&mut state, &address, 0, 0, 30).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, 0, 0, 30).unwrap();
 
         let action = Action::DelegateCCS {
             address,
             quantity: 40,
         };
-        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
         let result = on_term_close(&mut state, 29);
         assert_eq!(result, Ok(()));
@@ -927,7 +961,8 @@ mod tests {
 
     #[test]
     fn jail_candidate() {
-        let address = Address::random();
+        let address_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -937,7 +972,7 @@ mod tests {
 
         // TODO: change with stake.execute()
         let deposit = 200;
-        self_nominate(&mut state, &address, deposit, 0, 5).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, 5).unwrap();
 
         let custody_until = 10;
         let kicked_at = 20;
@@ -964,7 +999,8 @@ mod tests {
 
     #[test]
     fn cannot_self_nominate_while_custody() {
-        let address = Address::random();
+        let address_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -977,11 +1013,12 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let kicked_at = 20;
-        self_nominate(&mut state, &address, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
         jail(&mut state, &address, custody_until, kicked_at).unwrap();
 
         for current_term in 0..=custody_until {
-            let result = self_nominate(&mut state, &address, 0, current_term, current_term + nominate_expire);
+            let result =
+                self_nominate(&mut state, &address, &address_pubkey, 0, current_term, current_term + nominate_expire);
             assert!(
                 result.is_err(),
                 "Shouldn't nominate while current_term({}) <= custody_until({})",
@@ -994,7 +1031,8 @@ mod tests {
 
     #[test]
     fn can_self_nominate_after_custody() {
-        let address = Address::random();
+        let address_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -1007,7 +1045,7 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let kicked_at = 20;
-        self_nominate(&mut state, &address, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
         jail(&mut state, &address, custody_until, kicked_at).unwrap();
         for current_term in 0..=custody_until {
             on_term_close(&mut state, current_term).unwrap();
@@ -1015,8 +1053,14 @@ mod tests {
 
         let current_term = custody_until + 1;
         let additional_deposit = 123;
-        let result =
-            self_nominate(&mut state, &address, additional_deposit, current_term, current_term + nominate_expire);
+        let result = self_nominate(
+            &mut state,
+            &address,
+            &address_pubkey,
+            additional_deposit,
+            current_term,
+            current_term + nominate_expire,
+        );
         assert!(result.is_ok());
 
         let candidates = Candidates::load_from_state(&state).unwrap();
@@ -1025,7 +1069,7 @@ mod tests {
             Some(&Candidate {
                 deposit: deposit + additional_deposit,
                 nomination_ends_at: current_term + nominate_expire,
-                address,
+                pubkey: address_pubkey,
             }),
             "The prisoner is become a candidate",
         );
@@ -1038,7 +1082,8 @@ mod tests {
 
     #[test]
     fn jail_kicked_after() {
-        let address = Address::random();
+        let address_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -1051,7 +1096,7 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let kicked_at = 20;
-        self_nominate(&mut state, &address, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
         jail(&mut state, &address, custody_until, kicked_at).unwrap();
 
         for current_term in 0..kicked_at {
@@ -1077,8 +1122,10 @@ mod tests {
 
     #[test]
     fn can_delegate_until_kicked() {
-        let address = Address::random();
-        let delegator = Address::random();
+        let address_pubkey = Public::random();
+        let delegator_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -1095,7 +1142,7 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let kicked_at = 20;
-        self_nominate(&mut state, &address, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
         jail(&mut state, &address, custody_until, kicked_at).unwrap();
 
         for current_term in 0..=kicked_at {
@@ -1103,7 +1150,7 @@ mod tests {
                 address,
                 quantity: 1,
             };
-            let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+            let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
             assert!(result.is_ok());
 
             on_term_close(&mut state, current_term).unwrap();
@@ -1113,14 +1160,16 @@ mod tests {
             address,
             quantity: 1,
         };
-        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator);
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_err());
     }
 
     #[test]
     fn kick_reverts_delegations() {
-        let address = Address::random();
-        let delegator = Address::random();
+        let address_pubkey = Public::random();
+        let delegator_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -1137,14 +1186,14 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let kicked_at = 20;
-        self_nominate(&mut state, &address, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
         jail(&mut state, &address, custody_until, kicked_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
             quantity: 40,
         };
-        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
         for current_term in 0..=kicked_at {
             on_term_close(&mut state, current_term).unwrap();
@@ -1159,8 +1208,10 @@ mod tests {
 
     #[test]
     fn self_nomination_before_kick_preserves_delegations() {
-        let address = Address::random();
-        let delegator = Address::random();
+        let address_pubkey = Public::random();
+        let delegator_pubkey = Public::random();
+        let address = public_to_address(&address_pubkey);
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
@@ -1176,20 +1227,21 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let kicked_at = 20;
-        self_nominate(&mut state, &address, 0, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, 0, 0, nominate_expire).unwrap();
         jail(&mut state, &address, custody_until, kicked_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
             quantity: 40,
         };
-        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
         for current_term in 0..custody_until {
             on_term_close(&mut state, current_term).unwrap();
         }
 
         let current_term = custody_until + 1;
-        let result = self_nominate(&mut state, &address, 0, current_term, current_term + nominate_expire);
+        let result =
+            self_nominate(&mut state, &address, &address_pubkey, 0, current_term, current_term + nominate_expire);
         assert!(result.is_ok());
 
         let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
@@ -1201,8 +1253,10 @@ mod tests {
 
     #[test]
     fn test_ban() {
-        let criminal = Address::random();
-        let delegator = Address::random();
+        let criminal_pubkey = Public::random();
+        let delegator_pubkey = Public::random();
+        let criminal = public_to_address(&criminal_pubkey);
+        let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
         state.add_balance(&criminal, 1000).unwrap();
@@ -1214,12 +1268,12 @@ mod tests {
         };
         stake.init(&mut state).unwrap();
 
-        self_nominate(&mut state, &criminal, 100, 0, 10).unwrap();
+        self_nominate(&mut state, &criminal, &criminal_pubkey, 100, 0, 10).unwrap();
         let action = Action::DelegateCCS {
             address: criminal,
             quantity: 40,
         };
-        stake.execute(&action.rlp_bytes(), &mut state, &delegator).unwrap();
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
         let result = ban(&mut state, criminal);
         assert!(result.is_ok());
@@ -1241,13 +1295,14 @@ mod tests {
 
     #[test]
     fn ban_should_remove_prisoner_from_jail() {
-        let criminal = Address::random();
+        let criminal_pubkey = Public::random();
+        let criminal = public_to_address(&criminal_pubkey);
 
         let mut state = helpers::get_temp_state();
         let stake = Stake::new(HashMap::new());
         stake.init(&mut state).unwrap();
 
-        self_nominate(&mut state, &criminal, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &criminal, &criminal_pubkey, 0, 0, 10).unwrap();
         let custody_until = 10;
         let kicked_at = 20;
         jail(&mut state, &criminal, custody_until, kicked_at).unwrap();
