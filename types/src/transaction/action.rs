@@ -191,7 +191,7 @@ impl Action {
                 ..
             } => {
                 if output.supply == 0 {
-                    return Err(SyntaxError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity);
                 }
             }
             Action::TransferAsset {
@@ -202,21 +202,21 @@ impl Action {
                 ..
             } => {
                 if outputs.len() > 512 {
-                    return Err(SyntaxError::TooManyOutputs(outputs.len()))
+                    return Err(SyntaxError::TooManyOutputs(outputs.len()));
                 }
                 if !is_input_and_output_consistent(inputs, outputs) {
-                    return Err(SyntaxError::InconsistentTransactionInOut)
+                    return Err(SyntaxError::InconsistentTransactionInOut);
                 }
                 if burns.iter().any(|burn| burn.prev_out.quantity == 0) {
-                    return Err(SyntaxError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity);
                 }
                 if inputs.iter().any(|input| input.prev_out.quantity == 0) {
-                    return Err(SyntaxError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity);
                 }
                 check_duplication_in_prev_out(burns, inputs)?;
 
                 if outputs.iter().any(|output| output.quantity == 0) {
-                    return Err(SyntaxError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity);
                 }
                 for order in orders {
                     order.order.verify()?;
@@ -229,7 +229,7 @@ impl Action {
                 ..
             } => {
                 if asset_type.is_zero() {
-                    return Err(SyntaxError::CannotChangeWcccAssetScheme)
+                    return Err(SyntaxError::CannotChangeWcccAssetScheme);
                 }
             }
             Action::IncreaseAssetSupply {
@@ -238,10 +238,10 @@ impl Action {
                 ..
             } => {
                 if output.supply == 0 {
-                    return Err(SyntaxError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity);
                 }
                 if asset_type.is_zero() {
-                    return Err(SyntaxError::CannotChangeWcccAssetScheme)
+                    return Err(SyntaxError::CannotChangeWcccAssetScheme);
                 }
             }
             Action::ComposeAsset {
@@ -251,19 +251,19 @@ impl Action {
             } => {
                 let disable_compose_asset = true;
                 if disable_compose_asset {
-                    return Err(SyntaxError::DisabledTransaction)
+                    return Err(SyntaxError::DisabledTransaction);
                 }
                 if inputs.is_empty() {
-                    return Err(SyntaxError::EmptyInput)
+                    return Err(SyntaxError::EmptyInput);
                 }
                 if inputs.iter().any(|input| input.prev_out.quantity == 0) {
-                    return Err(SyntaxError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity);
                 }
                 check_duplication_in_prev_out(&[], inputs)?;
                 if output.supply != 1 {
                     return Err(SyntaxError::InvalidComposedOutputAmount {
                         got: output.supply,
-                    })
+                    });
                 }
             }
             Action::DecomposeAsset {
@@ -273,20 +273,20 @@ impl Action {
             } => {
                 let disable_decompose_asset = true;
                 if disable_decompose_asset {
-                    return Err(SyntaxError::DisabledTransaction)
+                    return Err(SyntaxError::DisabledTransaction);
                 }
                 if input.prev_out.quantity != 1 {
                     return Err(SyntaxError::InvalidDecomposedInputAmount {
                         asset_type: input.prev_out.asset_type,
                         shard_id: input.prev_out.shard_id,
                         got: input.prev_out.quantity,
-                    })
+                    });
                 }
                 if outputs.is_empty() {
-                    return Err(SyntaxError::EmptyOutput)
+                    return Err(SyntaxError::EmptyOutput);
                 }
                 if outputs.iter().any(|output| output.quantity == 0) {
-                    return Err(SyntaxError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity);
                 }
             }
             Action::UnwrapCCC {
@@ -294,10 +294,10 @@ impl Action {
                 ..
             } => {
                 if burn.prev_out.quantity == 0 {
-                    return Err(SyntaxError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity);
                 }
                 if !burn.prev_out.asset_type.is_zero() {
-                    return Err(SyntaxError::InvalidAssetType(burn.prev_out.asset_type))
+                    return Err(SyntaxError::InvalidAssetType(burn.prev_out.asset_type));
                 }
             }
             Action::WrapCCC {
@@ -305,7 +305,7 @@ impl Action {
                 ..
             } => {
                 if *quantity == 0 {
-                    return Err(SyntaxError::ZeroQuantity)
+                    return Err(SyntaxError::ZeroQuantity);
                 }
             }
             Action::Store {
@@ -320,7 +320,7 @@ impl Action {
         if let Some(network_id) = self.network_id() {
             let system_network_id = common_params.network_id();
             if network_id != system_network_id {
-                return Err(SyntaxError::InvalidNetworkId(network_id))
+                return Err(SyntaxError::InvalidNetworkId(network_id));
             }
         }
 
@@ -331,7 +331,7 @@ impl Action {
             } => {
                 let max_asset_scheme_metadata_size = common_params.max_asset_scheme_metadata_size();
                 if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(SyntaxError::MetadataTooBig)
+                    return Err(SyntaxError::MetadataTooBig);
                 }
             }
             Action::TransferAsset {
@@ -341,11 +341,11 @@ impl Action {
             } => {
                 let max_transfer_metadata_size = common_params.max_transfer_metadata_size();
                 if metadata.len() > max_transfer_metadata_size {
-                    return Err(SyntaxError::MetadataTooBig)
+                    return Err(SyntaxError::MetadataTooBig);
                 }
 
                 if is_order_disabled && !orders.is_empty() {
-                    return Err(SyntaxError::DisabledTransaction)
+                    return Err(SyntaxError::DisabledTransaction);
                 }
             }
             Action::ChangeAssetScheme {
@@ -354,7 +354,7 @@ impl Action {
             } => {
                 let max_asset_scheme_metadata_size = common_params.max_asset_scheme_metadata_size();
                 if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(SyntaxError::MetadataTooBig)
+                    return Err(SyntaxError::MetadataTooBig);
                 }
             }
             Action::IncreaseAssetSupply {
@@ -366,7 +366,7 @@ impl Action {
             } => {
                 let max_asset_scheme_metadata_size = common_params.max_asset_scheme_metadata_size();
                 if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(SyntaxError::MetadataTooBig)
+                    return Err(SyntaxError::MetadataTooBig);
                 }
             }
             Action::DecomposeAsset {
@@ -384,7 +384,7 @@ impl Action {
             } => {
                 let max_text_size = common_params.max_text_content_size();
                 if content.len() > max_text_size {
-                    return Err(SyntaxError::TextContentTooBig)
+                    return Err(SyntaxError::TextContentTooBig);
                 }
             }
             _ => {}
@@ -399,7 +399,7 @@ impl Action {
         } = self
         {
             if payer != signer {
-                return Err(SyntaxError::InvalidSignerOfWrapCCC)
+                return Err(SyntaxError::InvalidSignerOfWrapCCC);
             }
         }
         if let Some(approvals) = self.approvals() {
@@ -822,7 +822,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 11,
-                    })
+                    });
                 }
                 Ok(Action::MintAsset {
                     network_id: rlp.val_at(1)?,
@@ -845,7 +845,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 9,
-                    })
+                    });
                 }
                 Ok(Action::TransferAsset {
                     network_id: rlp.val_at(1)?,
@@ -864,7 +864,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 10,
-                    })
+                    });
                 }
                 Ok(Action::ChangeAssetScheme {
                     network_id: rlp.val_at(1)?,
@@ -884,7 +884,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 9,
-                    })
+                    });
                 }
                 Ok(Action::IncreaseAssetSupply {
                     network_id: rlp.val_at(1)?,
@@ -905,7 +905,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 12,
-                    })
+                    });
                 }
                 Ok(Action::ComposeAsset {
                     network_id: rlp.val_at(1)?,
@@ -929,7 +929,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 5,
-                    })
+                    });
                 }
                 Ok(Action::DecomposeAsset {
                     network_id: rlp.val_at(1)?,
@@ -944,7 +944,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 4,
-                    })
+                    });
                 }
                 Ok(Action::UnwrapCCC {
                     network_id: rlp.val_at(1)?,
@@ -958,7 +958,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 3,
-                    })
+                    });
                 }
                 Ok(Action::Pay {
                     receiver: rlp.val_at(1)?,
@@ -971,7 +971,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 2,
-                    })
+                    });
                 }
                 Ok(Action::SetRegularKey {
                     key: rlp.val_at(1)?,
@@ -983,7 +983,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 2,
-                    })
+                    });
                 }
                 Ok(Action::CreateShard {
                     users: rlp.list_at(1)?,
@@ -995,7 +995,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 3,
-                    })
+                    });
                 }
                 Ok(Action::SetShardOwners {
                     shard_id: rlp.val_at(1)?,
@@ -1008,7 +1008,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 3,
-                    })
+                    });
                 }
                 Ok(Action::SetShardUsers {
                     shard_id: rlp.val_at(1)?,
@@ -1021,7 +1021,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 6,
-                    })
+                    });
                 }
                 Ok(Action::WrapCCC {
                     shard_id: rlp.val_at(1)?,
@@ -1037,7 +1037,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 4,
-                    })
+                    });
                 }
                 Ok(Action::Store {
                     content: rlp.val_at(1)?,
@@ -1051,7 +1051,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 3,
-                    })
+                    });
                 }
                 Ok(Action::Remove {
                     hash: rlp.val_at(1)?,
@@ -1064,7 +1064,7 @@ impl Decodable for Action {
                     return Err(DecoderError::RlpIncorrectListLen {
                         got: item_count,
                         expected: 3,
-                    })
+                    });
                 }
                 Ok(Action::Custom {
                     handler_id: rlp.val_at(1)?,
@@ -1089,11 +1089,11 @@ fn is_input_and_output_consistent(inputs: &[AssetTransferInput], outputs: &[Asse
         let quantity = u128::from(output.quantity);
         let current_quantity = if let Some(current_quantity) = sum.get(&shard_asset_type) {
             if *current_quantity < quantity {
-                return false
+                return false;
             }
             *current_quantity
         } else {
-            return false
+            return false;
         };
         let t = sum.insert(shard_asset_type, current_quantity - quantity);
         debug_assert!(t.is_some());
@@ -1113,7 +1113,7 @@ fn check_duplication_in_prev_out(
             return Err(SyntaxError::DuplicatedPreviousOutput {
                 tracker: input.prev_out.tracker,
                 index: input.prev_out.index,
-            })
+            });
         }
     }
     Ok(())
@@ -1123,17 +1123,23 @@ fn verify_order_indices(orders: &[OrderOnTransfer], input_len: usize, output_len
     let mut input_check = vec![false; input_len];
     let mut output_check = vec![false; output_len];
 
-    for order in orders {
-        for input_idx in order.input_indices.iter() {
+    for orderInfo in orders {
+        for input_idx in orderInfo.input_from_indices.iter().chain(orderInfo.input_fee_indices.iter()) {
             if *input_idx >= input_len || input_check[*input_idx] {
-                return Err(SyntaxError::InvalidOrderInOutIndices)
+                return Err(SyntaxError::InvalidOrderInOutIndices);
             }
             input_check[*input_idx] = true;
         }
 
-        for output_idx in order.output_indices.iter() {
+        for output_idx in orderInfo
+            .output_from_indices
+            .iter()
+            .chain(orderInfo.output_to_indices.iter())
+            .chain(orderInfo.output_owned_fee_indices.iter())
+            .chain(orderInfo.output_transferred_fee_indices.iter())
+        {
             if *output_idx >= output_len || output_check[*output_idx] {
-                return Err(SyntaxError::InvalidOrderInOutIndices)
+                return Err(SyntaxError::InvalidOrderInOutIndices);
             }
             output_check[*output_idx] = true;
         }
@@ -1160,7 +1166,7 @@ fn verify_input_and_output_consistent_with_order(
             return Err(SyntaxError::InvalidSpentQuantity {
                 asset_quantity_from: order.asset_quantity_from,
                 spent_quantity: order_tx.spent_quantity,
-            })
+            });
         }
         // NOTE: If asset_quantity_fee is zero, asset_type_fee can be same as asset_type_from or asset_type_to.
         // But, asset_type_fee is compared at the last, so here's safe by the logic.
@@ -1172,7 +1178,7 @@ fn verify_input_and_output_consistent_with_order(
             } else if prev_out.asset_type == order.asset_type_fee && prev_out.shard_id == order.shard_id_fee {
                 input_quantity_fee += prev_out.quantity;
             } else {
-                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InconsistentTransactionInOutWithOrders);
             }
         }
 
@@ -1181,28 +1187,28 @@ fn verify_input_and_output_consistent_with_order(
             let owned_by_taker = order.check_transfer_output(output)?;
             if output.asset_type == order.asset_type_from && output.shard_id == order.shard_id_from {
                 if output_quantity_from != 0 {
-                    return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                    return Err(SyntaxError::InconsistentTransactionInOutWithOrders);
                 }
                 output_quantity_from = output.quantity;
             } else if output.asset_type == order.asset_type_to && output.shard_id == order.shard_id_to {
                 if output_quantity_to != 0 {
-                    return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                    return Err(SyntaxError::InconsistentTransactionInOutWithOrders);
                 }
                 output_quantity_to = output.quantity;
             } else if output.asset_type == order.asset_type_fee && output.shard_id == order.shard_id_fee {
                 if owned_by_taker {
                     if output_quantity_fee_remaining != 0 {
-                        return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                        return Err(SyntaxError::InconsistentTransactionInOutWithOrders);
                     }
                     output_quantity_fee_remaining = output.quantity;
                 } else {
                     if output_quantity_fee_given != 0 {
-                        return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                        return Err(SyntaxError::InconsistentTransactionInOutWithOrders);
                     }
                     output_quantity_fee_given = output.quantity;
                 }
             } else {
-                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InconsistentTransactionInOutWithOrders);
             }
         }
 
@@ -1211,7 +1217,7 @@ fn verify_input_and_output_consistent_with_order(
         if input_quantity_from <= output_quantity_from
             || input_quantity_from - output_quantity_from != order_tx.spent_quantity
         {
-            return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+            return Err(SyntaxError::InconsistentTransactionInOutWithOrders);
         }
         if !is_ratio_greater_or_equal(
             order.asset_quantity_from,
@@ -1219,7 +1225,7 @@ fn verify_input_and_output_consistent_with_order(
             order_tx.spent_quantity,
             output_quantity_to,
         ) {
-            return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+            return Err(SyntaxError::InconsistentTransactionInOutWithOrders);
         }
         if input_quantity_fee < output_quantity_fee_remaining
             || input_quantity_fee - output_quantity_fee_remaining != output_quantity_fee_given
@@ -1230,7 +1236,7 @@ fn verify_input_and_output_consistent_with_order(
                 output_quantity_fee_given,
             )
         {
-            return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+            return Err(SyntaxError::InconsistentTransactionInOutWithOrders);
         }
     }
     Ok(())
