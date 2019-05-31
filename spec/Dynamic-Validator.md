@@ -207,7 +207,8 @@ The transaction that reports a double vote have occurred before **WITHDRAW_DELAY
 
 The criminal loses all his deposit and rewards and is banned immediately; it is the only case where a validator set is changed during the term.
 
-The informant receives all deposit and rewards(TBD) as prize money immediately.
+The informant receives the deposit of the criminal as prize money immediately.
+The express fee that the criminal would earn is used as additional rewards for diligent validators.
 
 The criminal becomes a banned account.
 The account cannot become a candidate anymore.

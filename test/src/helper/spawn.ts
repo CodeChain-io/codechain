@@ -205,7 +205,6 @@ export default class CodeChain {
                     cwd: projectRoot,
                     env: {
                         ...process.env,
-                        ENABLE_DELEGATIONS: "true",
                         ...this.env
                     }
                 }
