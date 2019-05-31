@@ -87,7 +87,7 @@ impl Tendermint {
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let validators = Arc::clone(&our_params.validators);
-        let stake = stake::Stake::new(our_params.genesis_stakes, Arc::clone(&validators));
+        let stake = stake::Stake::new(our_params.genesis_stakes);
         let timeouts = our_params.timeouts;
         let machine = Arc::new(machine);
 

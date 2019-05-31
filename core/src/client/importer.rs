@@ -305,7 +305,7 @@ impl Importer {
 
     /// This is triggered by a message coming from a header queue when the header is ready for insertion
     pub fn import_verified_headers(&self, client: &Client) -> usize {
-        const MAX_HEADERS_TO_IMPORT: usize = 10_000;
+        const MAX_HEADERS_TO_IMPORT: usize = 1_000;
         let lock = self.import_lock.lock();
         let headers = self.header_queue.drain(MAX_HEADERS_TO_IMPORT);
         self.import_headers(&headers, client, &lock)

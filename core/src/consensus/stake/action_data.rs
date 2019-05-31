@@ -16,14 +16,15 @@
 
 #[cfg(test)]
 use std::collections::btree_map;
-use std::collections::{btree_set, BTreeMap, BTreeSet};
+use std::collections::btree_map::{BTreeMap, Entry};
+use std::collections::btree_set::{self, BTreeSet};
 use std::mem;
 
 use ckey::Address;
 use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
 use ctypes::errors::RuntimeError;
 use primitives::H256;
-use rlp::{Decodable, Encodable, Rlp, RlpStream};
+use rlp::{decode_list, Decodable, Encodable, Rlp, RlpStream};
 
 use super::CUSTOM_ACTION_HANDLER_ID;
 
@@ -34,6 +35,11 @@ pub fn get_account_key(address: &Address) -> H256 {
 lazy_static! {
     pub static ref STAKEHOLDER_ADDRESSES_KEY: H256 =
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"StakeholderAddresses").into_key();
+    pub static ref CANDIDATES_KEY: H256 =
+        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Candidates").into_key();
+    pub static ref JAIL_KEY: H256 = ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Jail").into_key();
+    pub static ref BANNED_KEY: H256 =
+        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Banned").into_key();
 }
 
 pub fn get_delegation_key(address: &Address) -> H256 {
@@ -45,6 +51,7 @@ pub fn get_intermediate_rewards_key() -> H256 {
 }
 
 pub type StakeQuantity = u64;
+pub type Deposit = u64;
 
 pub struct StakeAccount<'a> {
     pub address: &'a Address,
@@ -174,7 +181,25 @@ impl<'a> Delegation<'a> {
         Ok(())
     }
 
-    #[cfg(test)]
+    pub fn subtract_quantity(&mut self, delegatee: Address, quantity: StakeQuantity) -> StateResult<()> {
+        if quantity == 0 {
+            return Ok(())
+        }
+
+        if let Entry::Occupied(mut entry) = self.delegatees.entry(delegatee) {
+            if *entry.get() > quantity {
+                *entry.get_mut() -= quantity;
+                return Ok(())
+            } else if *entry.get() == quantity {
+                entry.remove();
+                return Ok(())
+            }
+        }
+
+        Err(RuntimeError::FailedToHandleCustomAction("Cannot subtract more than that is delegated to".to_string())
+            .into())
+    }
+
     pub fn get_quantity(&self, delegatee: &Address) -> StakeQuantity {
         self.delegatees.get(delegatee).cloned().unwrap_or(0)
     }
@@ -234,6 +259,172 @@ impl IntermediateRewards {
     pub fn move_current_to_previous(&mut self) {
         assert!(self.previous.is_empty());
         mem::swap(&mut self.previous, &mut self.current);
+    }
+}
+
+pub struct Candidates(BTreeMap<Address, Candidate>);
+#[derive(Clone, Debug, Eq, PartialEq, RlpEncodable, RlpDecodable)]
+pub struct Candidate {
+    pub address: Address,
+    pub deposit: Deposit,
+    pub nomination_ends_at: u64,
+}
+
+impl Candidates {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Candidates> {
+        let key = *CANDIDATES_KEY;
+        let candidates = state.action_data(&key)?.map(|data| decode_list::<Candidate>(&data)).unwrap_or_default();
+        let indexed = candidates.into_iter().map(|c| (c.address, c)).collect();
+        Ok(Candidates(indexed))
+    }
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let key = *CANDIDATES_KEY;
+        if !self.0.is_empty() {
+            let encoded = encode_iter(self.0.values());
+            state.update_action_data(&key, encoded)?;
+        } else {
+            state.remove_action_data(&key);
+        }
+        Ok(())
+    }
+
+    pub fn get_candidate(&self, account: &Address) -> Option<&Candidate> {
+        self.0.get(&account)
+    }
+
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn add_deposit(&mut self, address: &Address, quantity: Deposit, nomination_ends_at: u64) {
+        let candidate = self.0.entry(*address).or_insert(Candidate {
+            address: *address,
+            deposit: 0,
+            nomination_ends_at: 0,
+        });
+        candidate.deposit += quantity;
+        if candidate.nomination_ends_at < nomination_ends_at {
+            candidate.nomination_ends_at = nomination_ends_at;
+        }
+    }
+
+    pub fn drain_expired_candidates(&mut self, term_index: u64) -> Vec<Candidate> {
+        let (expired, retained): (Vec<_>, Vec<_>) =
+            self.0.values().cloned().partition(|c| c.nomination_ends_at <= term_index);
+        self.0 = retained.into_iter().map(|c| (c.address, c)).collect();
+        expired
+    }
+
+    pub fn remove(&mut self, address: &Address) -> Option<Candidate> {
+        self.0.remove(address)
+    }
+}
+
+pub struct Jail(BTreeMap<Address, Prisoner>);
+#[derive(Clone, Debug, Eq, PartialEq, RlpEncodable, RlpDecodable)]
+pub struct Prisoner {
+    pub address: Address,
+    pub deposit: Deposit,
+    pub custody_until: u64,
+    pub kicked_at: u64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ReleaseResult {
+    NotExists,
+    InCustody,
+    Released(Prisoner),
+}
+
+impl Jail {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Jail> {
+        let key = *JAIL_KEY;
+        let prisoner = state.action_data(&key)?.map(|data| decode_list::<Prisoner>(&data)).unwrap_or_default();
+        let indexed = prisoner.into_iter().map(|c| (c.address, c)).collect();
+        Ok(Jail(indexed))
+    }
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let key = *JAIL_KEY;
+        if !self.0.is_empty() {
+            let encoded = encode_iter(self.0.values());
+            state.update_action_data(&key, encoded)?;
+        } else {
+            state.remove_action_data(&key);
+        }
+        Ok(())
+    }
+
+    pub fn get_prisoner(&self, address: &Address) -> Option<&Prisoner> {
+        self.0.get(address)
+    }
+
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn add(&mut self, candidate: Candidate, custody_until: u64, kicked_at: u64) {
+        assert!(custody_until <= kicked_at);
+        self.0.insert(candidate.address, Prisoner {
+            address: candidate.address,
+            deposit: candidate.deposit,
+            custody_until,
+            kicked_at,
+        });
+    }
+
+    pub fn remove(&mut self, address: &Address) {
+        self.0.remove(address);
+    }
+
+    pub fn try_release(&mut self, address: &Address, term_index: u64) -> ReleaseResult {
+        match self.0.entry(*address) {
+            Entry::Occupied(entry) => {
+                if entry.get().custody_until < term_index {
+                    ReleaseResult::Released(entry.remove())
+                } else {
+                    ReleaseResult::InCustody
+                }
+            }
+            _ => ReleaseResult::NotExists,
+        }
+    }
+
+    pub fn kick_prisoners(&mut self, term_index: u64) -> Vec<Prisoner> {
+        let (kicked, retained): (Vec<_>, Vec<_>) = self.0.values().cloned().partition(|c| c.kicked_at <= term_index);
+        self.0 = retained.into_iter().map(|c| (c.address, c)).collect();
+        kicked
+    }
+}
+
+pub struct Banned(BTreeSet<Address>);
+impl Banned {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Banned> {
+        let key = *BANNED_KEY;
+        let action_data = state.action_data(&key)?;
+        Ok(Banned(decode_set(action_data.as_ref())))
+    }
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let key = *BANNED_KEY;
+        if !self.0.is_empty() {
+            let encoded = encode_set(&self.0);
+            state.update_action_data(&key, encoded)?;
+        } else {
+            state.remove_action_data(&key);
+        }
+        Ok(())
+    }
+
+    pub fn add(&mut self, address: Address) {
+        self.0.insert(address);
+    }
+
+    pub fn is_banned(&self, address: &Address) -> bool {
+        self.0.contains(address)
     }
 }
 
@@ -331,6 +522,18 @@ where
     encode_map_impl(&mut rlp, map0);
     encode_map_impl(&mut rlp, map1);
 
+    rlp.drain().into_vec()
+}
+
+fn encode_iter<'a, V, I>(iter: I) -> Vec<u8>
+where
+    V: 'a + Encodable,
+    I: ExactSizeIterator<Item = &'a V> + Clone, {
+    let mut rlp = RlpStream::new();
+    rlp.begin_list(iter.clone().count());
+    for value in iter {
+        rlp.append(value);
+    }
     rlp.drain().into_vec()
 }
 
@@ -582,6 +785,45 @@ mod tests {
     }
 
     #[test]
+    fn delegation_can_subtract() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let delegator = Address::random();
+        let delegatee = Address::random();
+
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.add_quantity(delegatee, 100).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Do subtract
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.subtract_quantity(delegatee, 30).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Assert
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegation.get_quantity(&delegatee), 70);
+    }
+
+    #[test]
+    fn delegation_cannot_subtract_mor_than_delegated() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let delegator = Address::random();
+        let delegatee = Address::random();
+
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.add_quantity(delegatee, 100).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Do subtract
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert!(delegation.subtract_quantity(delegatee, 130).is_err());
+    }
+
+    #[test]
     fn delegation_empty_removed_from_state() {
         let mut state = helpers::get_temp_state();
 
@@ -594,6 +836,28 @@ mod tests {
         delegation.add_quantity(delegatee, 0).unwrap();
         delegation.save_to_state(&mut state).unwrap();
 
+        let result = state.action_data(&get_delegation_key(&delegator)).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn delegation_became_empty_removed_from_state() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let delegator = Address::random();
+        let delegatee = Address::random();
+
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.add_quantity(delegatee, 100).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Do subtract
+        let mut delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        delegation.subtract_quantity(delegatee, 100).unwrap();
+        delegation.save_to_state(&mut state).unwrap();
+
+        // Assert
         let result = state.action_data(&get_delegation_key(&delegator)).unwrap();
         assert_eq!(result, None);
     }
@@ -637,5 +901,422 @@ mod tests {
         final_rewards.move_current_to_previous();
         assert_eq!(BTreeMap::new(), final_rewards.current);
         assert_eq!(current, final_rewards.previous);
+    }
+
+    #[test]
+    fn candidates_deposit_add() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let account = Address::random();
+        let deposits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+        for deposit in deposits.iter() {
+            let mut candidates = Candidates::load_from_state(&state).unwrap();
+            candidates.add_deposit(&account, *deposit, 0);
+            candidates.save_to_state(&mut state).unwrap();
+        }
+
+        // Assert
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let candidate = candidates.get_candidate(&account);
+        assert_ne!(candidate, None);
+        assert_eq!(candidate.unwrap().deposit, 55);
+    }
+
+    #[test]
+    fn candidates_deposit_can_be_zero() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let account = Address::random();
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        candidates.add_deposit(&account, 0, 10);
+        candidates.save_to_state(&mut state).unwrap();
+
+        // Assert
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let candidate = candidates.get_candidate(&account);
+        assert_ne!(candidate, None);
+        assert_eq!(candidate.unwrap().deposit, 0);
+        assert_eq!(candidate.unwrap().nomination_ends_at, 10, "Can be a candidate with 0 deposit");
+    }
+
+    #[test]
+    fn candidates_deposit_should_update_nomination_ends_at() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let account = Address::random();
+        let deposit_and_nomination_ends_at = [(10, 11), (20, 22), (30, 33), (0, 44)];
+
+        for (deposit, nomination_ends_at) in &deposit_and_nomination_ends_at {
+            let mut candidates = Candidates::load_from_state(&state).unwrap();
+            candidates.add_deposit(&account, *deposit, *nomination_ends_at);
+            candidates.save_to_state(&mut state).unwrap();
+        }
+
+        // Assert
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let candidate = candidates.get_candidate(&account);
+        assert_ne!(candidate, None);
+        assert_eq!(candidate.unwrap().deposit, 60);
+        assert_eq!(
+            candidate.unwrap().nomination_ends_at,
+            44,
+            "nomination_ends_at should be updated incrementally, and including zero deposit"
+        );
+    }
+
+    #[test]
+    fn candidates_can_remove_expired_deposit() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let candidates_prepared = [
+            Candidate {
+                address: Address::from(0),
+                deposit: 20,
+                nomination_ends_at: 11,
+            },
+            Candidate {
+                address: Address::from(1),
+                deposit: 30,
+                nomination_ends_at: 22,
+            },
+            Candidate {
+                address: Address::from(2),
+                deposit: 40,
+                nomination_ends_at: 33,
+            },
+            Candidate {
+                address: Address::from(3),
+                deposit: 50,
+                nomination_ends_at: 44,
+            },
+        ];
+
+        for Candidate {
+            address,
+            deposit,
+            nomination_ends_at,
+        } in &candidates_prepared
+        {
+            let mut candidates = Candidates::load_from_state(&state).unwrap();
+            candidates.add_deposit(&address, *deposit, *nomination_ends_at);
+            candidates.save_to_state(&mut state).unwrap();
+        }
+
+        // Remove Expired
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        let expired = candidates.drain_expired_candidates(22);
+        candidates.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(expired[..], candidates_prepared[0..=1],);
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(candidates.len(), 2);
+        assert_eq!(candidates.get_candidate(&candidates_prepared[2].address), Some(&candidates_prepared[2]));
+        assert_eq!(candidates.get_candidate(&candidates_prepared[3].address), Some(&candidates_prepared[3]));
+    }
+
+    #[test]
+    fn candidates_expire_all_cleanup_state() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let candidates_prepared = [
+            Candidate {
+                address: Address::from(0),
+                deposit: 20,
+                nomination_ends_at: 11,
+            },
+            Candidate {
+                address: Address::from(1),
+                deposit: 30,
+                nomination_ends_at: 22,
+            },
+            Candidate {
+                address: Address::from(2),
+                deposit: 40,
+                nomination_ends_at: 33,
+            },
+            Candidate {
+                address: Address::from(3),
+                deposit: 50,
+                nomination_ends_at: 44,
+            },
+        ];
+
+        for Candidate {
+            address,
+            deposit,
+            nomination_ends_at,
+        } in &candidates_prepared
+        {
+            let mut candidates = Candidates::load_from_state(&state).unwrap();
+            candidates.add_deposit(&address, *deposit, *nomination_ends_at);
+            candidates.save_to_state(&mut state).unwrap();
+        }
+
+        // Remove Expired
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        let expired = candidates.drain_expired_candidates(99);
+        candidates.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(expired[..], candidates_prepared[0..4]);
+        let result = state.action_data(&*CANDIDATES_KEY).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn jail_try_free_not_existing() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let address = Address::from(1);
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address,
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let freed = jail.try_release(&Address::from(1000), 5);
+        assert_eq!(freed, ReleaseResult::NotExists);
+        assert_eq!(jail.len(), 1);
+        assert_ne!(jail.get_prisoner(&address), None);
+    }
+
+    #[test]
+    fn jail_try_release_none_until_custody() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let address = Address::from(1);
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address,
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let released = jail.try_release(&address, 10);
+        assert_eq!(released, ReleaseResult::InCustody);
+        assert_eq!(jail.len(), 1);
+        assert_ne!(jail.get_prisoner(&address), None);
+    }
+
+    #[test]
+    fn jail_try_release_prisoner_after_custody() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let address = Address::from(1);
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address,
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let released = jail.try_release(&address, 11);
+        jail.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(
+            released,
+            ReleaseResult::Released(Prisoner {
+                address,
+                deposit: 100,
+                custody_until: 10,
+                kicked_at: 20,
+            })
+        );
+        assert_eq!(jail.len(), 0);
+        assert_eq!(jail.get_prisoner(&address), None);
+
+        let result = state.action_data(&*JAIL_KEY).unwrap();
+        assert_eq!(result, None, "Should clean the state if all prisoners are released");
+    }
+
+    #[test]
+    fn jail_keep_prisoners_until_kick_at() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address: Address::from(1),
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.add(
+            Candidate {
+                address: Address::from(2),
+                deposit: 200,
+                nomination_ends_at: 0,
+            },
+            15,
+            25,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        // Kick
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let kicked = jail.kick_prisoners(19);
+        jail.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(kicked, Vec::new());
+        assert_eq!(jail.len(), 2);
+        assert_ne!(jail.get_prisoner(&Address::from(1)), None);
+        assert_ne!(jail.get_prisoner(&Address::from(2)), None);
+    }
+
+    #[test]
+    fn jail_partially_kick_prisoners() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address: Address::from(1),
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.add(
+            Candidate {
+                address: Address::from(2),
+                deposit: 200,
+                nomination_ends_at: 0,
+            },
+            15,
+            25,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        // Kick
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let kicked = jail.kick_prisoners(20);
+        jail.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(kicked, vec![Prisoner {
+            address: Address::from(1),
+            deposit: 100,
+            custody_until: 10,
+            kicked_at: 20,
+        }]);
+        assert_eq!(jail.len(), 1);
+        assert_eq!(jail.get_prisoner(&Address::from(1)), None);
+        assert_ne!(jail.get_prisoner(&Address::from(2)), None);
+    }
+
+    #[test]
+    fn jail_kick_all_prisoners() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        jail.add(
+            Candidate {
+                address: Address::from(1),
+                deposit: 100,
+                nomination_ends_at: 0,
+            },
+            10,
+            20,
+        );
+        jail.add(
+            Candidate {
+                address: Address::from(2),
+                deposit: 200,
+                nomination_ends_at: 0,
+            },
+            15,
+            25,
+        );
+        jail.save_to_state(&mut state).unwrap();
+
+        // Kick
+        let mut jail = Jail::load_from_state(&state).unwrap();
+        let kicked = jail.kick_prisoners(25);
+        jail.save_to_state(&mut state).unwrap();
+
+        // Assert
+        assert_eq!(kicked, vec![
+            Prisoner {
+                address: Address::from(1),
+                deposit: 100,
+                custody_until: 10,
+                kicked_at: 20,
+            },
+            Prisoner {
+                address: Address::from(2),
+                deposit: 200,
+                custody_until: 15,
+                kicked_at: 25,
+            }
+        ]);
+        assert_eq!(jail.len(), 0);
+        assert_eq!(jail.get_prisoner(&Address::from(1)), None);
+        assert_eq!(jail.get_prisoner(&Address::from(2)), None);
+
+        let result = state.action_data(&*JAIL_KEY).unwrap();
+        assert_eq!(result, None, "Should clean the state if all prisoners are kicked");
+    }
+
+    #[test]
+    fn empty_ban_save_clean_state() {
+        let mut state = helpers::get_temp_state();
+        let banned = Banned::load_from_state(&state).unwrap();
+        banned.save_to_state(&mut state).unwrap();
+
+        let result = state.action_data(&*BANNED_KEY).unwrap();
+        assert_eq!(result, None, "Should clean the state if there are no banned accounts");
+    }
+
+    #[test]
+    fn added_to_ban_is_banned() {
+        let mut state = helpers::get_temp_state();
+
+        let address = Address::from(1);
+        let innocent = Address::from(2);
+
+        let mut banned = Banned::load_from_state(&state).unwrap();
+        banned.add(address);
+        banned.save_to_state(&mut state).unwrap();
+
+        let banned = Banned::load_from_state(&state).unwrap();
+        assert!(banned.is_banned(&address));
+        assert!(!banned.is_banned(&innocent));
     }
 }
