@@ -23,7 +23,6 @@ use std::sync::{Arc, Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 
 use cio::IoChannel;
-use num_cpus;
 use parking_lot::{Mutex, RwLock};
 use primitives::{H256, U256};
 
@@ -36,8 +35,8 @@ use crate::types::{BlockStatus as Status, VerificationQueueInfo as QueueInfo};
 const MIN_MEM_LIMIT: usize = 16384;
 const MIN_QUEUE_LIMIT: usize = 512;
 
-// maximum possible number of verification threads.
-const MAX_VERIFIERS: usize = 8;
+// number of verification threads.
+const NUM_VERIFIERS: usize = 2;
 
 /// Type alias for block queue convenience.
 pub type BlockQueue = VerificationQueue<kind::Blocks>;
@@ -150,10 +149,9 @@ impl<K: Kind> VerificationQueue<K> {
         let empty = Arc::new(SCondvar::new());
         let more_to_verify = Arc::new(SCondvar::new());
 
-        let num_verifiers = cmp::min(num_cpus::get(), MAX_VERIFIERS);
-        let mut verifier_handles = Vec::with_capacity(num_verifiers);
+        let mut verifier_handles = Vec::with_capacity(NUM_VERIFIERS);
 
-        for i in 0..num_verifiers {
+        for i in 0..NUM_VERIFIERS {
             let engine = engine.clone();
             let verification = verification.clone();
             let more_to_verify = more_to_verify.clone();
