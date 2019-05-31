@@ -15,19 +15,23 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
+use std::sync::Weak;
 
 use ckey::{public_to_address, Address, Public};
 use ctypes::util::unexpected::OutOfBounds;
+use parking_lot::RwLock;
 use primitives::H256;
 
 use super::super::BitSet;
 use super::ValidatorSet;
+use crate::client::ConsensusClient;
 use crate::consensus::EngineError;
 
 /// Validator set containing a known set of public keys.
 pub struct ValidatorList {
     validators: Vec<Public>,
     addresses: HashSet<Address>,
+    client: RwLock<Option<Weak<ConsensusClient>>>,
 }
 
 impl ValidatorList {
@@ -36,6 +40,7 @@ impl ValidatorList {
         ValidatorList {
             validators,
             addresses,
+            client: Default::default(),
         }
     }
 }
@@ -80,6 +85,10 @@ impl ValidatorSet for ValidatorList {
                 found: voted,
             }))
         }
+    }
+
+    fn register_client(&self, client: Weak<ConsensusClient>) {
+        *self.client.write() = Some(client);
     }
 
     fn addresses(&self, _parent: &H256) -> Vec<Address> {
