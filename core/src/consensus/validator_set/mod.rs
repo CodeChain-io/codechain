@@ -16,7 +16,7 @@
 
 use std::sync::{Arc, Weak};
 
-use ckey::{public_to_address, Address, Public};
+use ckey::{Address, Public};
 use ctypes::BlockNumber;
 use primitives::{Bytes, H256};
 
@@ -44,16 +44,13 @@ pub trait ValidatorSet: Send + Sync {
     /// Draws a validator from nonce modulo number of validators.
     fn get(&self, parent: &H256, nonce: usize) -> Public;
 
-    /// Draws a validator address from nonce modulo number of validators.
-    fn get_address(&self, parent: &H256, nonce: usize) -> Address {
-        public_to_address(&self.get(parent, nonce))
-    }
-
     /// Draws a validator from nonce modulo number of validators.
     fn get_index(&self, parent: &H256, public: &Public) -> Option<usize>;
 
     /// Draws a validator index from validator address.
     fn get_index_by_address(&self, parent: &H256, address: &Address) -> Option<usize>;
+
+    fn next_block_proposer(&self, parent: &H256, view: u64) -> Option<Address>;
 
     /// Returns the current number of validators.
     fn count(&self, parent: &H256) -> usize;

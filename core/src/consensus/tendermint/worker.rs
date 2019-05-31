@@ -401,11 +401,7 @@ impl Worker {
 
     /// Find the designated for the given view.
     fn view_proposer(&self, prev_block_hash: &H256, view: View) -> Option<Address> {
-        self.block_proposer_idx(*prev_block_hash).map(|prev_proposer_idx| {
-            let proposer_nonce = prev_proposer_idx + 1 + view as usize;
-            ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
-            self.validators.get_address(prev_block_hash, proposer_nonce)
-        })
+        self.validators.next_block_proposer(prev_block_hash, view)
     }
 
     pub fn proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, Address, Public};
 use ctypes::util::unexpected::OutOfBounds;
@@ -26,6 +26,7 @@ use super::super::BitSet;
 use super::ValidatorSet;
 use crate::client::ConsensusClient;
 use crate::consensus::EngineError;
+use crate::types::BlockId;
 
 /// Validator set containing a known set of public keys.
 pub struct ValidatorList {
@@ -66,6 +67,18 @@ impl ValidatorSet for ValidatorList {
 
     fn get_index_by_address(&self, _bh: &H256, address: &Address) -> Option<usize> {
         self.validators.iter().position(|v| public_to_address(v) == *address)
+    }
+
+    fn next_block_proposer(&self, parent: &H256, view: u64) -> Option<Address> {
+        let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
+        client.block_header(&BlockId::from(*parent)).map(|header| {
+            let proposer = header.author();
+            let prev_proposer_idx =
+                self.get_index_by_address(&parent, &proposer).expect("The proposer must be in the validator set");
+            let proposer_nonce = prev_proposer_idx + 1 + view as usize;
+            ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
+            public_to_address(&self.get(&parent, proposer_nonce))
+        })
     }
 
     fn count(&self, _bh: &H256) -> usize {
