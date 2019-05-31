@@ -21,7 +21,9 @@ use ctypes::BlockNumber;
 use primitives::{Bytes, H256};
 
 use self::validator_list::ValidatorList;
+use super::BitSet;
 use crate::client::ConsensusClient;
+use crate::consensus::EngineError;
 
 pub mod validator_list;
 
@@ -55,6 +57,8 @@ pub trait ValidatorSet: Send + Sync {
 
     /// Returns the current number of validators.
     fn count(&self, parent: &H256) -> usize;
+
+    fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError>;
 
     /// Notifies about malicious behaviour.
     fn report_malicious(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber, _proof: Bytes) {}
