@@ -24,6 +24,8 @@ use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Encodable, RlpStream};
 
+use super::BitSet;
+
 pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
     type Round: Clone + Copy + PartialEq + Eq + Hash + Default + Debug + Ord;
 
@@ -87,13 +89,26 @@ impl<M: Message> StepCollector<M> {
     }
 
     /// Count all votes for the given block hash at this round.
-    fn count_block(&self, block_hash: &Option<H256>) -> usize {
-        self.block_votes.get(block_hash).map_or(0, BTreeMap::len)
+    fn count_block(&self, block_hash: &Option<H256>) -> BitSet {
+        let mut result = BitSet::new();
+        if let Some(votes) = self.block_votes.get(block_hash) {
+            for index in votes.keys() {
+                result.set(*index);
+            }
+        }
+        result
     }
 
     /// Count all votes collected for the given round.
-    fn count(&self) -> usize {
-        self.block_votes.values().map(BTreeMap::len).sum()
+    fn count(&self) -> BitSet {
+        let mut result = BitSet::new();
+        for votes in self.block_votes.values() {
+            for index in votes.keys() {
+                assert!(!result.is_set(*index), "Cannot vote twice in a round");
+                result.set(*index);
+            }
+        }
+        result
     }
 }
 
@@ -171,17 +186,29 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     }
 
     /// Count votes which agree with the given message.
-    pub fn count_aligned_votes(&self, message: &M) -> usize {
-        self.votes.read().get(&message.round()).map_or(0, |m| m.count_block(&message.block_hash()))
+    pub fn aligned_votes(&self, message: &M) -> BitSet {
+        if let Some(votes) = self.votes.read().get(&message.round()) {
+            votes.count_block(&message.block_hash())
+        } else {
+            Default::default()
+        }
     }
 
-    pub fn count_block_round_votes(&self, round: &M::Round, block_hash: &Option<H256>) -> usize {
-        self.votes.read().get(round).map_or(0, |m| m.count_block(block_hash))
+    pub fn block_round_votes(&self, round: &M::Round, block_hash: &Option<H256>) -> BitSet {
+        if let Some(votes) = self.votes.read().get(round) {
+            votes.count_block(block_hash)
+        } else {
+            Default::default()
+        }
     }
 
     /// Count all votes collected for a given round.
-    pub fn count_round_votes(&self, vote_round: &M::Round) -> usize {
-        self.votes.read().get(vote_round).map_or(0, StepCollector::count)
+    pub fn round_votes(&self, vote_round: &M::Round) -> BitSet {
+        if let Some(votes) = self.votes.read().get(vote_round) {
+            votes.count()
+        } else {
+            Default::default()
+        }
     }
 
     pub fn get_block_hashes(&self, round: &M::Round) -> Vec<H256> {

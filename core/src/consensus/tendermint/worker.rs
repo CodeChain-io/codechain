@@ -24,7 +24,7 @@ use ccrypto::blake256;
 use ckey::{public_to_address, verify_schnorr, Address, SchnorrSignature};
 use cnetwork::{EventSender, NodeId};
 use crossbeam_channel as crossbeam;
-use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockNumber, Header};
 use primitives::{u256_from_u128, Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
@@ -485,38 +485,25 @@ impl Worker {
         self.validators.contains_address(&prev_hash, address)
     }
 
-    fn check_above_threshold(&self, n: usize) -> Result<(), EngineError> {
-        let threshold = self.validators.count(&self.prev_block_hash()) * 2 / 3;
-        if n > threshold {
-            Ok(())
-        } else {
-            Err(EngineError::BadSealFieldSize(OutOfBounds {
-                min: Some(threshold),
-                max: None,
-                found: n,
-            }))
-        }
-    }
-
     fn has_enough_any_votes(&self) -> bool {
-        let step_votes = self.votes.count_round_votes(&VoteStep::new(self.height, self.view, self.step.to_step()));
-        self.check_above_threshold(step_votes).is_ok()
+        let step_votes = self.votes.round_votes(&VoteStep::new(self.height, self.view, self.step.to_step()));
+        self.validators.check_enough_votes(&self.prev_block_hash(), &step_votes).is_ok()
     }
 
     fn has_all_votes(&self, vote_step: &VoteStep) -> bool {
-        let step_votes = self.votes.count_round_votes(vote_step);
-        self.validators.count(&self.prev_block_hash()) == step_votes
+        let step_votes = self.votes.round_votes(vote_step);
+        self.validators.count(&self.prev_block_hash()) == step_votes.count()
     }
 
     fn has_enough_aligned_votes(&self, message: &ConsensusMessage) -> bool {
-        let aligned_count = self.votes.count_aligned_votes(&message);
-        self.check_above_threshold(aligned_count).is_ok()
+        let aligned_votes = self.votes.aligned_votes(&message);
+        self.validators.check_enough_votes(&self.prev_block_hash(), &aligned_votes).is_ok()
     }
 
     fn has_enough_precommit_votes(&self, block_hash: H256) -> bool {
         let vote_step = VoteStep::new(self.height, self.view, Step::Precommit);
-        let count = self.votes.count_block_round_votes(&vote_step, &Some(block_hash));
-        self.check_above_threshold(count).is_ok()
+        let votes = self.votes.block_round_votes(&vote_step, &Some(block_hash));
+        self.validators.check_enough_votes(&self.prev_block_hash(), &votes).is_ok()
     }
 
     fn broadcast_message(&self, message: Bytes) {
@@ -1111,22 +1098,24 @@ impl Worker {
         let previous_block_view = previous_block_view(header)?;
         let step = VoteStep::new(header.number() - 1, previous_block_view, Step::Precommit);
         let precommit_hash = message_hash(step, *header.parent_hash());
-        let mut counter = 0;
 
+        let mut voted_validators = BitSet::new();
         for (bitset_index, signature) in seal_view.signatures()? {
             let public = self.validators.get(header.parent_hash(), bitset_index);
             if !verify_schnorr(&public, &signature, &precommit_hash)? {
                 let address = public_to_address(&public);
                 return Err(EngineError::BlockNotAuthorized(address.to_owned()).into())
             }
-            counter += 1;
+            assert!(!voted_validators.is_set(bitset_index), "Double vote");
+            voted_validators.set(bitset_index);
         }
 
         // Genesisblock does not have signatures
         if header.number() == 1 {
             return Ok(())
         }
-        self.check_above_threshold(counter).map_err(Into::into)
+        self.validators.check_enough_votes(&self.prev_block_hash(), &voted_validators)?;
+        Ok(())
     }
 
     fn calculate_score(&self, block_number: Height) -> U256 {

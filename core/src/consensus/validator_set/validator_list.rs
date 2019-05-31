@@ -17,9 +17,12 @@
 use std::collections::HashSet;
 
 use ckey::{public_to_address, Address, Public};
+use ctypes::util::unexpected::OutOfBounds;
 use primitives::H256;
 
+use super::super::BitSet;
 use super::ValidatorSet;
+use crate::consensus::EngineError;
 
 /// Validator set containing a known set of public keys.
 pub struct ValidatorList {
@@ -62,6 +65,21 @@ impl ValidatorSet for ValidatorList {
 
     fn count(&self, _bh: &H256) -> usize {
         self.validators.len()
+    }
+
+    fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError> {
+        let validator_count = self.count(parent);
+        let voted = votes.count();
+        if voted * 3 > validator_count * 2 {
+            Ok(())
+        } else {
+            let threshold = validator_count * 2 / 3;
+            Err(EngineError::BadSealFieldSize(OutOfBounds {
+                min: Some(threshold),
+                max: None,
+                found: voted,
+            }))
+        }
     }
 
     fn addresses(&self, _parent: &H256) -> Vec<Address> {
