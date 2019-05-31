@@ -29,11 +29,12 @@ use ctypes::{BlockNumber, Header};
 use primitives::{u256_from_u128, Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
+use super::super::BitSet;
 use super::backup::{backup, restore, BackupView};
 use super::message::*;
 use super::network;
 use super::params::TimeGapParams;
-use super::types::{BitSet, Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
+use super::types::{Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::{
     BlockHash, ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
     SEAL_FIELDS,
