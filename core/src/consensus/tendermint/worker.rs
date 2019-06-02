@@ -363,9 +363,8 @@ impl Worker {
     fn block_proposer_idx(&self, block_hash: H256) -> Option<usize> {
         self.client().block_header(&BlockId::Hash(block_hash)).map(|header| {
             let proposer = header.author();
-            self.validators
-                .get_index_by_address(&self.prev_block_hash(), &proposer)
-                .expect("The proposer must be in the validator set")
+            let parent = header.parent_hash();
+            self.validators.get_index_by_address(&parent, &proposer).expect("The proposer must be in the validator set")
         })
     }
 
@@ -610,8 +609,8 @@ impl Worker {
                         return
                     }
                 } else {
-                    let parent_block_hash = &self.prev_block_hash();
-                    if self.is_signer_proposer(parent_block_hash) {
+                    let parent_block_hash = self.prev_block_hash();
+                    if self.is_signer_proposer(&parent_block_hash) {
                         if let TwoThirdsMajority::Lock(lock_view, _) = self.last_two_thirds_majority {
                             cinfo!(ENGINE, "I am a proposer, I'll re-propose a locked block");
                             match self.locked_proposal_block(lock_view) {
@@ -620,9 +619,9 @@ impl Worker {
                             }
                         } else {
                             cinfo!(ENGINE, "I am a proposer, I'll create a block");
-                            self.update_sealing(*parent_block_hash);
+                            self.update_sealing(parent_block_hash);
                             self.step = TendermintState::ProposeWaitBlockGeneration {
-                                parent_hash: *parent_block_hash,
+                                parent_hash: parent_block_hash,
                             };
                         }
                     } else {
@@ -979,14 +978,12 @@ impl Worker {
 
         let view = self.view;
 
-        let last_block_hash = &self.prev_block_hash();
         let last_block_view = &self.last_confirmed_view;
-        assert_eq!(last_block_hash, &parent_hash);
+        assert_eq!(self.prev_block_hash(), parent_hash);
 
-        let (precommits, precommit_indices) = self.votes.round_signatures_and_indices(
-            &VoteStep::new(height - 1, *last_block_view, Step::Precommit),
-            &last_block_hash,
-        );
+        let (precommits, precommit_indices) = self
+            .votes
+            .round_signatures_and_indices(&VoteStep::new(height - 1, *last_block_view, Step::Precommit), &parent_hash);
         ctrace!(ENGINE, "Collected seal: {:?}({:?})", precommits, precommit_indices);
         let precommit_bitset = BitSet::new_with_indices(&precommit_indices);
         Seal::Tendermint {
@@ -1000,28 +997,27 @@ impl Worker {
     fn proposal_generated(&mut self, sealed_block: &SealedBlock) {
         let header = sealed_block.header();
         let hash = header.hash();
+        let parent_hash = header.parent_hash();
 
         if let TendermintState::ProposeWaitBlockGeneration {
             parent_hash: expected_parent_hash,
         } = self.step
         {
             assert_eq!(
-                *header.parent_hash(),
-                expected_parent_hash,
+                *parent_hash, expected_parent_hash,
                 "Generated hash({:?}) is different from expected({:?})",
-                *header.parent_hash(),
-                expected_parent_hash
+                parent_hash, expected_parent_hash
             );
         } else {
             panic!("Block is generated at unexpected step {:?}", self.step);
         }
-        let prev_proposer_idx = self.block_proposer_idx(*header.parent_hash()).expect("Prev block must exists");
+        let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
 
         debug_assert_eq!(self.view, consensus_view(&header).expect("I am proposer"));
 
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
-        let num_validators = self.validators.count(&self.prev_block_hash());
+        let num_validators = self.validators.count(parent_hash);
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(
             ConsensusMessage::new_proposal(signature, num_validators, header, self.view, prev_proposer_idx)
@@ -1110,7 +1106,7 @@ impl Worker {
         if header.number() == 1 {
             return Ok(())
         }
-        self.validators.check_enough_votes(&self.prev_block_hash(), &voted_validators)?;
+        self.validators.check_enough_votes(header.parent_hash(), &voted_validators)?;
         Ok(())
     }
 
@@ -1289,7 +1285,7 @@ impl Worker {
             if message.on.step == current_vote_step {
                 let vote_index = self
                     .validators
-                    .get_index(&self.prev_block_hash(), &sender_public)
+                    .get_index(&prev_block_hash, &sender_public)
                     .expect("is_authority already checked the existence");
                 self.votes_received.set(vote_index);
             }
@@ -1327,8 +1323,9 @@ impl Worker {
         let header = block.decode_header();
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(header.hash()));
-        let num_validators = self.validators.count(&self.prev_block_hash());
-        let prev_proposer_idx = self.block_proposer_idx(*header.parent_hash()).expect("Prev block must exists");
+        let parent_hash = header.parent_hash();
+        let num_validators = self.validators.count(&parent_hash);
+        let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(
             ConsensusMessage::new_proposal(signature, num_validators, &header, self.view, prev_proposer_idx)

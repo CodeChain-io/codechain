@@ -73,8 +73,9 @@ impl ValidatorSet for ValidatorList {
         let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
         client.block_header(&BlockId::from(*parent)).map(|header| {
             let proposer = header.author();
+            let grand_parent = header.parent_hash();
             let prev_proposer_idx =
-                self.get_index_by_address(&parent, &proposer).expect("The proposer must be in the validator set");
+                self.get_index_by_address(&grand_parent, &proposer).expect("The proposer must be in the validator set");
             let proposer_nonce = prev_proposer_idx + 1 + view as usize;
             ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
             public_to_address(&self.get(&parent, proposer_nonce))
