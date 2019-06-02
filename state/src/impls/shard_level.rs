@@ -324,7 +324,7 @@ impl<'db> ShardLevelState<'db> {
         let mut values_to_hash = vec![None; inputs.len()];
         for order_tx in orders {
             let order = &order_tx.order;
-            for input_idx in order_tx.input_indices.iter() {
+            for input_idx in order_tx.input_from_indices.iter().chain(order_tx.input_fee_indices.iter()) {
                 values_to_hash[*input_idx] = Some(order);
             }
         }
@@ -355,7 +355,13 @@ impl<'db> ShardLevelState<'db> {
         let mut output_order_hashes = vec![None; outputs.len()];
         for order_tx in orders {
             let order = &order_tx.order;
-            for output_idx in order_tx.output_indices.iter() {
+            for output_idx in order_tx
+                .output_from_indices
+                .iter()
+                .chain(order_tx.output_to_indices.iter())
+                .chain(order_tx.output_owned_fee_indices.iter())
+                .chain(order_tx.output_transferred_fee_indices.iter())
+            {
                 output_order_hashes[*output_idx] = Some(order.consume(order_tx.spent_quantity).hash());
             }
         }
@@ -410,7 +416,7 @@ impl<'db> ShardLevelState<'db> {
         for order_tx in orders {
             let order = &order_tx.order;
             let mut counter: usize = 0;
-            for input_idx in order_tx.input_indices.iter() {
+            for input_idx in order_tx.input_from_indices.iter().chain(order_tx.input_fee_indices.iter()) {
                 let input = &inputs[*input_idx];
                 let tracker = input.prev_out.tracker;
                 let index = input.prev_out.index;
@@ -1738,8 +1744,12 @@ mod tests {
             vec![order_on_transfer! (
                 order,
                 20,
-                input_indices: [0, 2],
-                output_indices: [0, 1, 2, 5]
+                input_from_indices: [0],
+                input_fee_indices: [2],
+                output_from_indices: [0],
+                output_to_indices: [1],
+                output_owned_fee_indices: [2],
+                output_transferred_fee_indices: [5]
             )]
         );
         let transfer_tracker = transfer.tracker();
