@@ -716,7 +716,7 @@ impl Worker {
     }
 
     fn already_generated_message(&self) -> bool {
-        match self.signer_index(&self.prev_block_hash()) {
+        match self.signer_index() {
             Some(signer_index) => self.votes_received.is_set(signer_index),
             _ => false,
         }
@@ -739,7 +739,7 @@ impl Worker {
             block_hash,
         };
         let vote_info = on.rlp_bytes();
-        match (self.signer_index(&self.prev_block_hash()), self.sign(blake256(&vote_info))) {
+        match (self.signer_index(), self.sign(blake256(&vote_info))) {
             (Some(signer_index), Ok(signature)) => {
                 let message = ConsensusMessage {
                     signature,
@@ -1370,9 +1370,10 @@ impl Worker {
         self.signer.sign(hash).map_err(Into::into)
     }
 
-    fn signer_index(&self, bh: &H256) -> Option<usize> {
+    fn signer_index(&self) -> Option<usize> {
+        let parent = self.prev_block_hash();
         // FIXME: More effecient way to find index
-        self.signer.public().and_then(|public| self.validators.get_index(bh, public))
+        self.signer.public().and_then(|public| self.validators.get_index(&parent, public))
     }
 
     fn new_blocks(&mut self, imported: Vec<H256>, enacted: Vec<H256>) {
