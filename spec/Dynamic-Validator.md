@@ -83,17 +83,25 @@ It means there can be 100 valid candidates with the potential to be validators.
 The rate of becoming the block proposer is related to the number of delegations that the validator received.
 In other words, CodeChain allows the validator that receives more delegations to generate more blocks than others.
 
+## How to update validators
 ```rust
-let mut validators: Vec<(u64, u64, Account)> = // (Delegation, Deposit, Account)
-let mut proposers: Vec<Account> = vec![];
-validators.reverse_sort();
-let min_delegation = validator.last().0;
-while !validators.is_empty() {
-    for (delegation, _, validator) in validators {
-        proposers.push_back(validator);
-    }
-    validators.retain(|(delegation, _, _)| delegation > min_delegation);
-    validators.for_each(|(mut delegation, _, _)| delegation -= min_delegation);
+let initial_validators: Vec<(Delegation, Deposit, Public)> = // the validator list at the term begin
+let validators: Vec<(Delegation, Deposit, Public)> = // (Delegation, Deposit, Pubkey)
+
+let min_delegation: u64 = initial_validators.into_iter().map(|(delegation, _, _)| delegation).min();
+
+let author_index = validators.position(|(_, _, pubkey)| pubkey == block_author).unwrap();
+for (&mut delegation, _, pubkey) in validators[(author_index + 1)..] {
+    // Deprioritize fast since they are neglecting as a validator.
+	delegation -= min_delegation * 2;
+}
+// Deprioritize author
+validators[author_index].2 -= min_delegation;
+
+validators.sort();
+
+if validators.into_iter().all(|(delegation, _, _)| delegation == 0) {
+    validators = initial_validators;
 }
 ```
 
@@ -224,10 +232,13 @@ banned = [ address+ ], address asc
 jailed = [ [address, deposits, custody_until, released_at]+ ], address asc
 term_id = [ the last block number of the previous term, the current term id ]
 intermediate_rewards = [ [ address, rewards ]+ address asc, [ address, rewards ]+ address asc ]
+validators = [ [ delegation, deposit, pubkey ] ] (delegation, deposit, pubkey) asc
 ```
 
 ### on TermEnd events
 1. Update `term_id` to the current block number and the next term id
-3. Remove the expired candidates and give back the deposits
+2. Remove the expired candidates and give back the deposits
 3. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits
 4. Calculate rewards of the previous block and update `intermediate_rewards`
+5. Elect validators
+    * Store validators in the ascending order
