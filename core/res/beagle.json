@@ -1,0 +1,130 @@
+{
+  "name": "Beagle",
+  "engine": {
+    "tendermint": {
+      "params": {
+        "blockReward": "0x0",
+        "validators": [
+          "0x6043db3a371245b7d38fcfad955c18b73f271d83c92af4021a2a5ffd8ea338b2d3976b5951375695ad4ca856bdb3da317e8e95e694a1d184313d53545452ec80",
+          "0xd6a39b0d5edb6fa2e0811f8b6b98d4f3c21fde32d9c2c77a46fa65c7e15ddcbae4b9452e2c3e12b6730c68582baaad4d9cea2a732651937ec60480bc4c0d70df",
+          "0xe0531a6eb7c2f94cf11a717c705d43f2a43fdfe3ab7acafd3eba266991c9b7e0365679a344b8d9206c89f84d524252786b2dbc3d6926da9af0f4afc1fe353860",
+          "0x6ad4289be24d86af470d7126cffbf5b6c994cad34120501488963e1b8b49956bdbab28b5e25721cf848d15a71e2bcc52fc114b628f3915d82a5d8b6ddab68b38",
+          "0xb99840b8fc3d6dc6acf657438436ac2ecc27910979356ab7aa298e93fa0f7fda47dccd3751745ea3972b8298e3a8e87087a16c915d5bc301f1db9479e2394213",
+          "0x7e3ef01aed8f9d0c981d695dc07db56d19b14b6bf90c7a754138c80f3aeef63e44e89525b350e0b486e549a8fd463f27caf3b9765cebb7a07cfd13ef3abef6b4",
+          "0x0f4c1b6c01f398e09d714850b0da5a4ad962af4fcce5068bc78501c0552c063774d839b50beb259cc63c86320c09199a9e6360661356d5836790c2db2943b821",
+          "0x2bfe6a3a371f3db8ff0f3c112820348e2440ca93e3c7b95a1aaac321fd55e45db6eaca3c4e88b32c35a6858fb43f74d1f193f5c28b65ef81d02d94370dee23a6"
+        ],
+        "timeoutPropose": 10000,
+        "timeoutProposeDelta": 5000,
+        "timeoutPrevote": 10000,
+        "timeoutPrevoteDelta": 5000,
+        "timeoutPrecommit": 10000,
+        "timeoutPrecommitDelta": 5000,
+        "timeoutCommit": 10000,
+        "genesisStakes": {
+          "bccqypclxxrlr8f9n75dt6ayasvkdkxx6k3qgedauzj": 3000000,
+          "bccqy204w0m6stuahxlx3p58kc0hsgd42npqcrx8lce": 2000000,
+          "bccqxkppqfqwwl6vwge62qq22eh3xkmzqwvschr8thm": 1000000,
+          "bccq8mjrws63vw27na5t6nxjf5yvjhpac5nyga4psjx": 500000,
+          "bccq9apfpuhwe5m62ejpfyxtmad2536xj9sfqpdt76p": 500000,
+          "bccq8yrcc4tlwlfrtmuaewv9u9fv9xjfj9czsfeyra7": 500000,
+          "bccqy9tavttkl87gscjmkpmc56evz3m42ugxclxwp2h": 500000,
+          "bccq8ah0efv5ckpx6wy5mwva2aklzwsdw027s4t6vux": 500000,
+          "bccqyfrwupcdmj85gzam90yua50qz3mkgskgudmg7df": 500000,
+          "bccqyczcz3lgeun43tujs5fkygfg4phvuk2gcs2sny0": 500000
+        }
+      }
+    }
+  },
+  "params": {
+    "maxExtraDataSize": "0x20",
+    "maxAssetSchemeMetadataSize": "0x0400",
+    "maxTransferMetadataSize": "0x0100",
+    "maxTextContentSize": "0x0200",
+    "networkID": "bc",
+    "minPayCost" : 100,
+    "minSetRegularKeyCost" : 10000,
+    "minCreateShardCost" : 1000000,
+    "minSetShardOwnersCost" : 100000,
+    "minSetShardUsersCost" : 10000,
+    "minWrapCccCost" : 100000,
+    "minCustomCost" : 0,
+    "minStoreCost" : 5000,
+    "minRemoveCost" : 5000,
+    "minMintAssetCost" : 100000,
+    "minTransferAssetCost" : 100,
+    "minChangeAssetSchemeCost" : 100000,
+    "minIncreaseAssetSupplyCost" : 100000,
+    "minComposeAssetCost" : 100000,
+    "minDecomposeAssetCost" : 100000,
+    "minUnwrapCccCost" : 100,
+    "maxBodySize": 4194304,
+    "snapshotPeriod": 16384
+  },
+  "genesis": {
+    "seal": {
+      "tendermint": {
+        "prev_view": "0x0",
+        "cur_view": "0x0",
+        "precommits": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    "score": "0x20000",
+    "author": "bccq8m5rgjw60rcxvsruydafsze6tdhkm8hsu7rpm56",
+    "timestamp": "0x00",
+    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "extraData": "0x"
+  },
+  "accounts": {
+    "bccqypclxxrlr8f9n75dt6ayasvkdkxx6k3qgedauzj": {
+      "balance": "10000000000"
+    },
+    "bccqy204w0m6stuahxlx3p58kc0hsgd42npqcrx8lce": {
+      "balance": "10000000000"
+    },
+    "bccqxkppqfqwwl6vwge62qq22eh3xkmzqwvschr8thm": {
+      "balance": "10000000000"
+    },
+    "bccq8mjrws63vw27na5t6nxjf5yvjhpac5nyga4psjx": {
+      "balance": "10000000000"
+    },
+    "bccq9apfpuhwe5m62ejpfyxtmad2536xj9sfqpdt76p": {
+      "balance": "10000000000"
+    },
+    "bccq8yrcc4tlwlfrtmuaewv9u9fv9xjfj9czsfeyra7": {
+      "balance": "10000000000"
+    },
+    "bccqy9tavttkl87gscjmkpmc56evz3m42ugxclxwp2h": {
+      "balance": "10000000000"
+    },
+    "bccq8ah0efv5ckpx6wy5mwva2aklzwsdw027s4t6vux": {
+      "balance": "10000000000"
+    },
+    "bccqyfrwupcdmj85gzam90yua50qz3mkgskgudmg7df": {
+      "balance": "10000000000"
+    },
+    "bccqyczcz3lgeun43tujs5fkygfg4phvuk2gcs2sny0": {
+      "balance": "10000000000"
+    }
+  },
+  "shards": {
+    "0": {
+      "seq": 0,
+      "owners": [
+        "bccqypclxxrlr8f9n75dt6ayasvkdkxx6k3qgedauzj",
+        "bccqy204w0m6stuahxlx3p58kc0hsgd42npqcrx8lce",
+        "bccqxkppqfqwwl6vwge62qq22eh3xkmzqwvschr8thm",
+        "bccq8mjrws63vw27na5t6nxjf5yvjhpac5nyga4psjx",
+        "bccq9apfpuhwe5m62ejpfyxtmad2536xj9sfqpdt76p",
+        "bccq8yrcc4tlwlfrtmuaewv9u9fv9xjfj9czsfeyra7",
+        "bccqy9tavttkl87gscjmkpmc56evz3m42ugxclxwp2h",
+        "bccq8ah0efv5ckpx6wy5mwva2aklzwsdw027s4t6vux",
+        "bccqyfrwupcdmj85gzam90yua50qz3mkgskgudmg7df",
+        "bccqyczcz3lgeun43tujs5fkygfg4phvuk2gcs2sny0"
+      ],
+      "users": []
+    }
+  }
+}
