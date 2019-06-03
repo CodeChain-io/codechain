@@ -202,8 +202,9 @@ impl ConsensusEngine for Tendermint {
             self.machine.add_balance(block, &address, reward)?;
         }
 
-        self.machine.increase_term_id(block, last_term_finished_block_num)?;
         stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
+        stake::on_term_close(block.state_mut(), last_term_finished_block_num)?;
+
         Ok(())
     }
 

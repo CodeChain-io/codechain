@@ -23,7 +23,7 @@ use std::collections::HashMap;
 
 use ccrypto::Blake;
 use ckey::{public_to_address, recover, Address, Public, Signature};
-use cstate::{ActionHandler, StateResult, TopLevelState, TopState};
+use cstate::{ActionHandler, StateResult, TopLevelState, TopState, TopStateView};
 use ctypes::errors::{RuntimeError, SyntaxError};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{CommonParams, Header};
@@ -96,7 +96,20 @@ impl ActionHandler for Stake {
             Action::SelfNominate {
                 deposit,
                 metadata,
-            } => self_nominate(state, sender, sender_public, deposit, 0, 0, metadata),
+            } => {
+                let (current_term, nomination_ends_at) = {
+                    let metadata = state.metadata()?.expect("Metadata must exist");
+                    const DEFAULT_NOMINATION_EXPIRATION: u64 = 24;
+                    let current_term = metadata.current_term_id();
+                    let expiration = metadata
+                        .params()
+                        .map(CommonParams::nomination_expiration)
+                        .unwrap_or(DEFAULT_NOMINATION_EXPIRATION);
+                    let nomination_ends_at = current_term + expiration;
+                    (current_term, nomination_ends_at)
+                };
+                self_nominate(state, sender, sender_public, deposit, current_term, nomination_ends_at, metadata)
+            }
             Action::ChangeParams {
                 metadata_seq,
                 params,
@@ -188,8 +201,6 @@ fn self_nominate(
     nomination_ends_at: u64,
     metadata: Bytes,
 ) -> StateResult<()> {
-    // TODO: proper handling of get_current_term
-    // TODO: proper handling of NOMINATE_EXPIRATION
     let blacklist = Banned::load_from_state(state)?;
     if blacklist.is_banned(&sender) {
         return Err(RuntimeError::FailedToHandleCustomAction("Account is blacklisted".to_string()).into())
@@ -281,8 +292,8 @@ fn change_params(
     Ok(())
 }
 
-#[allow(dead_code)]
-pub fn on_term_close(state: &mut TopLevelState, current_term: u64) -> StateResult<()> {
+pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u64) -> StateResult<()> {
+    let current_term = state.metadata()?.expect("The metadata must exist").current_term_id();
     // TODO: total_slash = slash_unresponsive(headers, pending_rewards)
     // TODO: pending_rewards.update(signature_reward(blocks, total_slash))
 
@@ -309,6 +320,8 @@ pub fn on_term_close(state: &mut TopLevelState, current_term: u64) -> StateResul
     revert_delegations(state, &reverted)?;
 
     // TODO: validators, validator_order = elect()
+
+    state.increase_term_id(last_term_finished_block_num)?;
     Ok(())
 }
 
@@ -846,12 +859,23 @@ mod tests {
         assert!(result.is_err(), "Cannot self-nominate without a sufficient balance");
     }
 
+    fn increase_term_id_until(state: &mut TopLevelState, term_id: u64) {
+        let mut block_num = state.metadata().unwrap().unwrap().last_term_finished_block_num() + 1;
+        while state.metadata().unwrap().unwrap().current_term_id() != term_id {
+            assert_eq!(Ok(()), state.increase_term_id(block_num));
+            block_num += 1;
+        }
+    }
+
     #[test]
     fn self_nominate_returns_deposits_after_expiration() {
         let address_pubkey = Public::random();
         let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
+        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        increase_term_id_until(&mut state, 29);
+
         state.add_balance(&address, 1000).unwrap();
 
         let stake = Stake::new(HashMap::new());
@@ -860,7 +884,7 @@ mod tests {
         // TODO: change with stake.execute()
         self_nominate(&mut state, &address, &address_pubkey, 200, 0, 30, b"".to_vec()).unwrap();
 
-        let result = on_term_close(&mut state, 29);
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29));
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 800, "Should keep nomination before expiration");
@@ -876,7 +900,7 @@ mod tests {
             "Keep deposit before expiration",
         );
 
-        let result = on_term_close(&mut state, 30);
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30));
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 1000, "Return deposit after expiration");
@@ -892,6 +916,8 @@ mod tests {
         let delegator = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
+        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        increase_term_id_until(&mut state, 29);
         state.add_balance(&address, 1000).unwrap();
 
         let stake = {
@@ -910,7 +936,7 @@ mod tests {
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        let result = on_term_close(&mut state, 29);
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29));
         assert_eq!(result, Ok(()));
 
         let account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -918,7 +944,7 @@ mod tests {
         let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
         assert_eq!(delegation.get_quantity(&address), 40, "Should keep delegation before expiration");
 
-        let result = on_term_close(&mut state, 30);
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30));
         assert_eq!(result, Ok(()));
 
         let account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -971,6 +997,7 @@ mod tests {
         let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
+        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
         state.add_balance(&address, 1000).unwrap();
 
         let stake = Stake::new(HashMap::new());
@@ -1000,7 +1027,7 @@ mod tests {
                 current_term,
                 custody_until
             );
-            on_term_close(&mut state, current_term).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
         }
     }
 
@@ -1010,6 +1037,7 @@ mod tests {
         let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
+        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
         state.add_balance(&address, 1000).unwrap();
 
         let stake = Stake::new(HashMap::new());
@@ -1024,7 +1052,7 @@ mod tests {
             .unwrap();
         jail(&mut state, &address, custody_until, released_at).unwrap();
         for current_term in 0..=custody_until {
-            on_term_close(&mut state, current_term).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
         }
 
         let current_term = custody_until + 1;
@@ -1064,6 +1092,7 @@ mod tests {
         let address = public_to_address(&address_pubkey);
 
         let mut state = helpers::get_temp_state();
+        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
         state.add_balance(&address, 1000).unwrap();
 
         let stake = Stake::new(HashMap::new());
@@ -1078,7 +1107,7 @@ mod tests {
         jail(&mut state, &address, custody_until, released_at).unwrap();
 
         for current_term in 0..released_at {
-            on_term_close(&mut state, current_term).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
 
             let candidates = Candidates::load_from_state(&state).unwrap();
             assert_eq!(candidates.get_candidate(&address), None);
@@ -1087,7 +1116,7 @@ mod tests {
             assert!(jail.get_prisoner(&address).is_some());
         }
 
-        on_term_close(&mut state, released_at).unwrap();
+        on_term_close(&mut state, pseudo_term_to_block_num_calculator(released_at)).unwrap();
 
         let candidates = Candidates::load_from_state(&state).unwrap();
         assert_eq!(candidates.get_candidate(&address), None, "A prisoner should not become a candidate");
@@ -1106,6 +1135,7 @@ mod tests {
         let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
+        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
         state.add_balance(&address, 1000).unwrap();
 
         let stake = {
@@ -1131,7 +1161,7 @@ mod tests {
             let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
             assert!(result.is_ok());
 
-            on_term_close(&mut state, current_term).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
         }
 
         let action = Action::DelegateCCS {
@@ -1150,6 +1180,7 @@ mod tests {
         let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
+        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
         state.add_balance(&address, 1000).unwrap();
 
         let stake = {
@@ -1174,7 +1205,7 @@ mod tests {
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
         for current_term in 0..=released_at {
-            on_term_close(&mut state, current_term).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
         }
 
         let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
@@ -1192,6 +1223,7 @@ mod tests {
         let delegator = public_to_address(&delegator_pubkey);
 
         let mut state = helpers::get_temp_state();
+        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
         state.add_balance(&address, 1000).unwrap();
 
         let stake = {
@@ -1214,7 +1246,7 @@ mod tests {
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
         for current_term in 0..custody_until {
-            on_term_close(&mut state, current_term).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
         }
 
         let current_term = custody_until + 1;
@@ -1297,5 +1329,9 @@ mod tests {
 
         let jail = Jail::load_from_state(&state).unwrap();
         assert_eq!(jail.get_prisoner(&criminal), None, "Should be removed from the jail");
+    }
+
+    fn pseudo_term_to_block_num_calculator(term_id: u64) -> u64 {
+        term_id * 10 + 1
     }
 }

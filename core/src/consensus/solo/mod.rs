@@ -120,7 +120,8 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
         for (address, reward) in rewards {
             self.machine.add_balance(block, &address, reward)?;
         }
-        self.machine.increase_term_id(block, last_term_finished_block_num)?;
+
+        stake::on_term_close(block.state_mut(), last_term_finished_block_num)?;
         Ok(())
     }
 
