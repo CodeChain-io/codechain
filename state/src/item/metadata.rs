@@ -93,11 +93,10 @@ impl Metadata {
         self.params = Some(params);
     }
 
-    pub fn change_term(&mut self, last_term_finished_block_num: u64, current_term_id: u64) {
+    pub fn increase_term_id(&mut self, last_term_finished_block_num: u64) {
         assert!(self.term.last_term_finished_block_num < last_term_finished_block_num);
-        assert!(self.term.current_term_id < current_term_id);
         self.term.last_term_finished_block_num = last_term_finished_block_num;
-        self.term.current_term_id = current_term_id;
+        self.term.current_term_id += 1;
     }
 
     pub fn last_term_finished_block_num(&self) -> u64 {

@@ -251,13 +251,8 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    pub fn change_term_id(
-        &self,
-        live: &mut ExecutedBlock,
-        last_term_finished_block_num: u64,
-        current_term_id: u64,
-    ) -> Result<(), Error> {
-        live.state_mut().change_term_id(last_term_finished_block_num, current_term_id)?;
+    pub fn increase_term_id(&self, live: &mut ExecutedBlock, last_term_finished_block_num: u64) -> Result<(), Error> {
+        live.state_mut().increase_term_id(last_term_finished_block_num)?;
         Ok(())
     }
 }

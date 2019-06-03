@@ -106,21 +106,21 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
             return Ok(())
         }
         stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
-        let (last_term_finished_block_num, current_term_id) = {
+        let last_term_finished_block_num = {
             let header = block.header();
-            let term_id = header.timestamp() / term_seconds;
-            let parent_term_id = parent_header.timestamp() / term_seconds;
-            if term_id == parent_term_id {
+            let current_term_period = header.timestamp() / term_seconds;
+            let parent_term_period = parent_header.timestamp() / term_seconds;
+            if current_term_period == parent_term_period {
                 return Ok(())
             }
-            (header.number(), term_id)
+            header.number()
         };
         stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
         for (address, reward) in rewards {
             self.machine.add_balance(block, &address, reward)?;
         }
-        self.machine.change_term_id(block, last_term_finished_block_num, current_term_id)?;
+        self.machine.increase_term_id(block, last_term_finished_block_num)?;
         Ok(())
     }
 
