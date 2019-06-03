@@ -17,7 +17,6 @@
 use cjson::scheme::Params;
 use ckey::NetworkId;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
-use std::ops::RangeInclusive;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct CommonParams {
@@ -55,6 +54,13 @@ pub struct CommonParams {
     snapshot_period: u64,
 
     term_seconds: u64,
+    nomination_expiration: u64,
+    custody_period: u64,
+    release_period: u64,
+    max_num_of_validators: usize,
+    min_num_of_validators: usize,
+    delegation_threshold: u64,
+    min_deposit: u64,
 }
 
 impl CommonParams {
@@ -130,8 +136,30 @@ impl CommonParams {
     pub fn snapshot_period(&self) -> u64 {
         self.snapshot_period
     }
+
     pub fn term_seconds(&self) -> u64 {
         self.term_seconds
+    }
+    pub fn nomination_expiration(&self) -> u64 {
+        self.nomination_expiration
+    }
+    pub fn custody_period(&self) -> u64 {
+        self.custody_period
+    }
+    pub fn release_period(&self) -> u64 {
+        self.release_period
+    }
+    pub fn max_num_of_validators(&self) -> usize {
+        self.max_num_of_validators
+    }
+    pub fn min_num_of_validators(&self) -> usize {
+        self.min_num_of_validators
+    }
+    pub fn delegation_threshold(&self) -> u64 {
+        self.delegation_threshold
+    }
+    pub fn min_deposit(&self) -> u64 {
+        self.min_deposit
     }
 }
 
@@ -139,7 +167,7 @@ impl From<Params> for CommonParams {
     fn from(p: Params) -> Self {
         let mut size = 23;
         if p.term_seconds.is_some() {
-            size += 1;
+            size += 8;
         }
         Self {
             size,
@@ -167,13 +195,20 @@ impl From<Params> for CommonParams {
             max_body_size: p.max_body_size.into(),
             snapshot_period: p.snapshot_period.into(),
             term_seconds: p.term_seconds.map(From::from).unwrap_or_default(),
+            nomination_expiration: p.nomination_expiration.map(From::from).unwrap_or_default(),
+            custody_period: p.custody_period.map(From::from).unwrap_or_default(),
+            release_period: p.release_period.map(From::from).unwrap_or_default(),
+            max_num_of_validators: p.max_num_of_validators.map(From::from).unwrap_or_default(),
+            min_num_of_validators: p.min_num_of_validators.map(From::from).unwrap_or_default(),
+            delegation_threshold: p.delegation_threshold.map(From::from).unwrap_or_default(),
+            min_deposit: p.min_deposit.map(From::from).unwrap_or_default(),
         }
     }
 }
 
 impl Encodable for CommonParams {
     fn rlp_append(&self, s: &mut RlpStream) {
-        const VALID_SIZE: RangeInclusive<usize> = 23..=24;
+        const VALID_SIZE: &[usize] = &[23, 31];
         assert!(VALID_SIZE.contains(&self.size), "{} must be in {:?}", self.size, VALID_SIZE);
         s.begin_list(self.size)
             .append(&self.max_extra_data_size)
@@ -199,8 +234,15 @@ impl Encodable for CommonParams {
             .append(&self.min_asset_unwrap_ccc_cost)
             .append(&self.max_body_size)
             .append(&self.snapshot_period);
-        if self.size == 24 {
-            s.append(&self.term_seconds);
+        if self.size == 31 {
+            s.append(&self.term_seconds)
+                .append(&self.nomination_expiration)
+                .append(&self.custody_period)
+                .append(&self.release_period)
+                .append(&self.max_num_of_validators)
+                .append(&self.min_num_of_validators)
+                .append(&self.delegation_threshold)
+                .append(&self.min_deposit);
         }
     }
 }
@@ -208,7 +250,7 @@ impl Encodable for CommonParams {
 impl Decodable for CommonParams {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let size = rlp.item_count()?;
-        const VALID_SIZE: RangeInclusive<usize> = 23..=24;
+        const VALID_SIZE: &[usize] = &[23, 31];
         if !VALID_SIZE.contains(&size) {
             return Err(DecoderError::RlpIncorrectListLen {
                 expected: 23,
@@ -239,10 +281,29 @@ impl Decodable for CommonParams {
         let min_asset_unwrap_ccc_cost = rlp.val_at(20)?;
         let max_body_size = rlp.val_at(21)?;
         let snapshot_period = rlp.val_at(22)?;
-        let term_seconds = if size >= 24 {
-            rlp.val_at(23)?
+
+        let (
+            term_seconds,
+            nomination_expiration,
+            custody_period,
+            release_period,
+            max_num_of_validators,
+            min_num_of_validators,
+            delegation_threshold,
+            min_deposit,
+        ) = if size >= 31 {
+            (
+                rlp.val_at(23)?,
+                rlp.val_at(24)?,
+                rlp.val_at(25)?,
+                rlp.val_at(26)?,
+                rlp.val_at(27)?,
+                rlp.val_at(28)?,
+                rlp.val_at(29)?,
+                rlp.val_at(30)?,
+            )
         } else {
-            0
+            Default::default()
         };
         Ok(Self {
             size,
@@ -270,6 +331,13 @@ impl Decodable for CommonParams {
             max_body_size,
             snapshot_period,
             term_seconds,
+            nomination_expiration,
+            custody_period,
+            release_period,
+            max_num_of_validators,
+            min_num_of_validators,
+            delegation_threshold,
+            min_deposit,
         })
     }
 }
@@ -314,10 +382,11 @@ mod tests {
     }
 
     #[test]
-    fn rlp_with_term_seconds() {
+    fn rlp_with_extra_fields() {
         let mut params = CommonParams::default_for_test();
-        params.size = 24;
+        params.size = 31;
         params.term_seconds = 100;
+        params.min_deposit = 123;
         rlp_encode_and_decode_test!(params);
     }
 
@@ -325,11 +394,12 @@ mod tests {
     fn rlp_encoding_are_different_if_the_size_are_different() {
         let origin = CommonParams::default_for_test();
         let mut params = origin;
-        params.size = 24;
+        params.size = 31;
         assert_ne!(rlp::encode(&origin), rlp::encode(&params));
     }
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn params_from_json() {
         let s = r#"{
             "maxExtraDataSize": "0x20",
@@ -382,9 +452,17 @@ mod tests {
         assert_eq!(deserialized.max_body_size, 4_194_304);
         assert_eq!(deserialized.snapshot_period, 16_384);
         assert_eq!(deserialized.term_seconds, 0);
+        assert_eq!(deserialized.nomination_expiration, 0);
+        assert_eq!(deserialized.custody_period, 0);
+        assert_eq!(deserialized.release_period, 0);
+        assert_eq!(deserialized.max_num_of_validators, 0);
+        assert_eq!(deserialized.min_num_of_validators, 0);
+        assert_eq!(deserialized.delegation_threshold, 0);
+        assert_eq!(deserialized.min_deposit, 0);
     }
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn params_from_json_with_term_seconds() {
         let s = r#"{
             "maxExtraDataSize": "0x20",
@@ -438,5 +516,83 @@ mod tests {
         assert_eq!(deserialized.max_body_size, 4_194_304);
         assert_eq!(deserialized.snapshot_period, 16_384);
         assert_eq!(deserialized.term_seconds, 3600);
+        assert_eq!(deserialized.nomination_expiration, 0);
+        assert_eq!(deserialized.custody_period, 0);
+        assert_eq!(deserialized.release_period, 0);
+        assert_eq!(deserialized.max_num_of_validators, 0);
+        assert_eq!(deserialized.min_num_of_validators, 0);
+        assert_eq!(deserialized.delegation_threshold, 0);
+        assert_eq!(deserialized.min_deposit, 0);
+    }
+
+    #[test]
+    #[allow(clippy::cognitive_complexity)]
+    fn params_from_json_with_stake_params() {
+        let s = r#"{
+            "maxExtraDataSize": "0x20",
+            "maxAssetSchemeMetadataSize": "0x0400",
+            "maxTransferMetadataSize": "0x0100",
+            "maxTextContentSize": "0x0200",
+            "networkID" : "tc",
+            "minPayCost" : 10,
+            "minSetRegularKeyCost" : 11,
+            "minCreateShardCost" : 12,
+            "minSetShardOwnersCost" : 13,
+            "minSetShardUsersCost" : 14,
+            "minWrapCccCost" : 15,
+            "minCustomCost" : 16,
+            "minStoreCost" : 17,
+            "minRemoveCost" : 18,
+            "minMintAssetCost" : 19,
+            "minTransferAssetCost" : 20,
+            "minChangeAssetSchemeCost" : 21,
+            "minComposeAssetCost" : 22,
+            "minDecomposeAssetCost" : 23,
+            "minUnwrapCccCost" : 24,
+            "minIncreaseAssetSupplyCost": 25,
+            "maxBodySize" : 4194304,
+            "snapshotPeriod": 16384,
+            "termSeconds": 3600,
+            "nominationExpiration": 26,
+            "custodyPeriod": 27,
+            "releasePeriod": 28,
+            "maxNumOfValidators": 29,
+            "minNumOfValidators": 30,
+            "delegationThreshold": 31,
+            "minDeposit": 32
+        }"#;
+
+        let deserialized = CommonParams::from(serde_json::from_str::<Params>(s).unwrap());
+        assert_eq!(deserialized.max_extra_data_size, 0x20);
+        assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400);
+        assert_eq!(deserialized.max_transfer_metadata_size, 0x0100);
+        assert_eq!(deserialized.max_text_content_size, 0x0200);
+        assert_eq!(deserialized.network_id, "tc".into());
+        assert_eq!(deserialized.min_pay_transaction_cost, 10);
+        assert_eq!(deserialized.min_set_regular_key_transaction_cost, 11);
+        assert_eq!(deserialized.min_create_shard_transaction_cost, 12);
+        assert_eq!(deserialized.min_set_shard_owners_transaction_cost, 13);
+        assert_eq!(deserialized.min_set_shard_users_transaction_cost, 14);
+        assert_eq!(deserialized.min_wrap_ccc_transaction_cost, 15);
+        assert_eq!(deserialized.min_custom_transaction_cost, 16);
+        assert_eq!(deserialized.min_store_transaction_cost, 17);
+        assert_eq!(deserialized.min_remove_transaction_cost, 18);
+        assert_eq!(deserialized.min_asset_mint_cost, 19);
+        assert_eq!(deserialized.min_asset_transfer_cost, 20);
+        assert_eq!(deserialized.min_asset_scheme_change_cost, 21);
+        assert_eq!(deserialized.min_asset_compose_cost, 22);
+        assert_eq!(deserialized.min_asset_decompose_cost, 23);
+        assert_eq!(deserialized.min_asset_unwrap_ccc_cost, 24);
+        assert_eq!(deserialized.min_asset_supply_increase_cost, 25);
+        assert_eq!(deserialized.max_body_size, 4_194_304);
+        assert_eq!(deserialized.snapshot_period, 16_384);
+        assert_eq!(deserialized.term_seconds, 3600);
+        assert_eq!(deserialized.nomination_expiration, 26);
+        assert_eq!(deserialized.custody_period, 27);
+        assert_eq!(deserialized.release_period, 28);
+        assert_eq!(deserialized.max_num_of_validators, 29);
+        assert_eq!(deserialized.min_num_of_validators, 30);
+        assert_eq!(deserialized.delegation_threshold, 31);
+        assert_eq!(deserialized.min_deposit, 32);
     }
 }
