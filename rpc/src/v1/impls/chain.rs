@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 use ccore::{AccountData, AssetClient, BlockId, EngineInfo, ExecuteClient, MiningBlockChainClient, Shard, TextClient};
 use ccrypto::Blake;
+use cjson::scheme::Params;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
@@ -292,6 +293,11 @@ where
 
     fn get_network_id(&self) -> Result<NetworkId> {
         Ok(self.client.common_params(BlockId::Latest).unwrap().network_id())
+    }
+
+    fn get_common_params(&self, block_number: Option<u64>) -> Result<Option<Params>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self.client.common_params(block_id).map(Params::from))
     }
 
     fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Option<String>> {

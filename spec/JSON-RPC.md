@@ -241,6 +241,40 @@ When `Transaction` is included in any response, there will be an additional fiel
 ## Signature
 `H520` for ECDSA signature | `H512` for Schnorr signature
 
+## CommonParams
+
+ - maxExtraDataSize: `U64`
+ - maxAssetSchemeMetadataSize: `U64`
+ - maxTransferMetadataSize: `U64`
+ - maxTextContentSize: `U64`
+ - networkID: `string`
+ - minPayCost: `U64`
+ - minSetRegularKeyCost: `U64`
+ - minCreateShardCost: `U64`
+ - minSetShardOwnersCost: `U64`
+ - minSetShardUsersCost: `U64`
+ - minWrapCccCost: `U64`
+ - minCustomCost: `U64`
+ - minStoreCost: `U64`
+ - minRemoveCost: `U64`
+ - minMintAssetCost: `U64`
+ - minTransferAssetCost: `U64`
+ - minChangeAssetSchemeCost: `U64`
+ - minIncreaseAssetSupplyCost: `U64`
+ - minComposeAssetCost: `U64`
+ - minDecomposeAssetCost: `U64`
+ - minUnwrapCccCost: `U64`
+ - maxBodySize: `U64`
+ - snapshotPeriod: `U64`
+ - term_seconds?: `U64`
+ - nomination_expiration?: `U64`
+ - custody_period?: `U64`
+ - release_period?: `U64`
+ - max_num_of_validators?: `U64`
+ - min_num_of_validators?: `U64`
+ - delegation_threshold?: `U64`
+ - min_deposit?: `U64`
+
 # Error codes
 
 |  Code  |         Message        |                          Description                         |
@@ -300,6 +334,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getShardUsers](#chain_getshardusers)
  * [chain_getMiningReward](#chain_getminingreward)
  * [chain_getMinTransactionFee](#chain_getmintransactionfee)
+ * [chain_getCommonParams](#chain_getcommonparams)
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_executeVM](#chain_executevm)
  * [chain_getNetworkId](#chain_getnetworkid)
@@ -1335,6 +1370,61 @@ Errors: `Invalid Params`
 {
   "jsonrpc":"2.0",
   "result":100,
+  "id":7
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+# chain_getCommonParams
+Gets the common parameters.
+It returns null if the block number parameter is larger than the current best block.
+
+### Params
+ 1. block number - `number` | `null`
+
+### Returns
+`CommonParams` | `null`
+
+Errors: `Invalid Params`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getCommonParams", "params": [3], "id": 7}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "maxExtraDataSize":"0x20",
+    "maxAssetSchemeMetadataSize":"0x0400",
+    "maxTransferMetadataSize":"0x0100",
+    "maxTextContentSize":"0x0200",
+    "networkID":"tc",
+    "minPayCost":10,
+    "minSetRegularKeyCost":10,
+    "minCreateShardCost":10,
+    "minSetShardOwnersCost":10,
+    "minSetShardUsersCost":10,
+    "minWrapCccCost":10,
+    "minCustomCost":10,
+    "minStoreCost":10,
+    "minRemoveCost":10,
+    "minMintAssetCost":10,
+    "minTransferAssetCost":10,
+    "minChangeAssetSchemeCost":10,
+    "minIncreaseAssetSupplyCost":10,
+    "minComposeAssetCost":10,
+    "minDecomposeAssetCost":10,
+    "minUnwrapCccCost":10,
+    "maxBodySize":4194304,
+    "snapshotPeriod":16384
+  },
   "id":7
 }
 ```
