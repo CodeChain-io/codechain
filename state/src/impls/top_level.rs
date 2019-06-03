@@ -974,9 +974,9 @@ impl TopState for TopLevelState {
         Ok(())
     }
 
-    fn change_term_id(&mut self, last_term_finished_block_num: u64, current_term_id: u64) -> StateResult<()> {
+    fn increase_term_id(&mut self, last_term_finished_block_num: u64) -> StateResult<()> {
         let mut metadata = self.get_metadata_mut()?;
-        metadata.change_term(last_term_finished_block_num, current_term_id);
+        metadata.increase_term_id(last_term_finished_block_num);
         Ok(())
     }
 
