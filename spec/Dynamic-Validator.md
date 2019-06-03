@@ -223,7 +223,7 @@ delegation(delegator) = [ [delegatee, quantity]+ ], delegatee asc
 candidates = [ [pubkey, deposits, nominate_end_at]+ ], pubkey asc
 pending_rewards = [ [withdraw_at, address, quantity]+ ], [withdraw_at, address] asc
 banned = [ address+ ], address asc
-jailed = [ [address, deposits, custody_until, kicked_at]+ ], address asc
+jailed = [ [address, deposits, custody_until, released_at]+ ], address asc
 term_id = [ the last block number of the previous term, the current term id ]
 intermediate_rewards = [ [ address, rewards ]+ address asc, [ address, rewards ]+ address asc ]
 ```
@@ -231,6 +231,6 @@ intermediate_rewards = [ [ address, rewards ]+ address asc, [ address, rewards ]
 ### on TermEnd events
 1. Update `term_id` to the current block number and the next term id
 3. Remove the expired candidates and give back the deposits
-3. Remove the jailed accounts if the current term is greater than `kicked_at` and give back the deposits
+3. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits
 4. Pay the pending rewards
 5. Calculate rewards and update `pending_rewards`
