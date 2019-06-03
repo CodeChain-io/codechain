@@ -20,7 +20,7 @@ use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::{self, BTreeSet};
 use std::mem;
 
-use ckey::Address;
+use ckey::{public_to_address, Address, Public};
 use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
 use ctypes::errors::RuntimeError;
 use primitives::H256;
@@ -265,7 +265,7 @@ impl IntermediateRewards {
 pub struct Candidates(BTreeMap<Address, Candidate>);
 #[derive(Clone, Debug, Eq, PartialEq, RlpEncodable, RlpDecodable)]
 pub struct Candidate {
-    pub address: Address,
+    pub pubkey: Public,
     pub deposit: Deposit,
     pub nomination_ends_at: u64,
 }
@@ -274,7 +274,7 @@ impl Candidates {
     pub fn load_from_state(state: &TopLevelState) -> StateResult<Candidates> {
         let key = *CANDIDATES_KEY;
         let candidates = state.action_data(&key)?.map(|data| decode_list::<Candidate>(&data)).unwrap_or_default();
-        let indexed = candidates.into_iter().map(|c| (c.address, c)).collect();
+        let indexed = candidates.into_iter().map(|c| (public_to_address(&c.pubkey), c)).collect();
         Ok(Candidates(indexed))
     }
 
@@ -298,9 +298,9 @@ impl Candidates {
         self.0.len()
     }
 
-    pub fn add_deposit(&mut self, address: &Address, quantity: Deposit, nomination_ends_at: u64) {
-        let candidate = self.0.entry(*address).or_insert(Candidate {
-            address: *address,
+    pub fn add_deposit(&mut self, pubkey: &Public, quantity: Deposit, nomination_ends_at: u64) {
+        let candidate = self.0.entry(public_to_address(pubkey)).or_insert(Candidate {
+            pubkey: *pubkey,
             deposit: 0,
             nomination_ends_at: 0,
         });
@@ -313,7 +313,7 @@ impl Candidates {
     pub fn drain_expired_candidates(&mut self, term_index: u64) -> Vec<Candidate> {
         let (expired, retained): (Vec<_>, Vec<_>) =
             self.0.values().cloned().partition(|c| c.nomination_ends_at <= term_index);
-        self.0 = retained.into_iter().map(|c| (c.address, c)).collect();
+        self.0 = retained.into_iter().map(|c| (public_to_address(&c.pubkey), c)).collect();
         expired
     }
 
@@ -368,8 +368,9 @@ impl Jail {
 
     pub fn add(&mut self, candidate: Candidate, custody_until: u64, kicked_at: u64) {
         assert!(custody_until <= kicked_at);
-        self.0.insert(candidate.address, Prisoner {
-            address: candidate.address,
+        let address = public_to_address(&candidate.pubkey);
+        self.0.insert(address, Prisoner {
+            address,
             deposit: candidate.deposit,
             custody_until,
             kicked_at,
@@ -908,12 +909,13 @@ mod tests {
         let mut state = helpers::get_temp_state();
 
         // Prepare
-        let account = Address::random();
+        let pubkey = Public::random();
+        let account = public_to_address(&pubkey);
         let deposits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
         for deposit in deposits.iter() {
             let mut candidates = Candidates::load_from_state(&state).unwrap();
-            candidates.add_deposit(&account, *deposit, 0);
+            candidates.add_deposit(&pubkey, *deposit, 0);
             candidates.save_to_state(&mut state).unwrap();
         }
 
@@ -929,9 +931,10 @@ mod tests {
         let mut state = helpers::get_temp_state();
 
         // Prepare
-        let account = Address::random();
+        let pubkey = Public::random();
+        let account = public_to_address(&pubkey);
         let mut candidates = Candidates::load_from_state(&state).unwrap();
-        candidates.add_deposit(&account, 0, 10);
+        candidates.add_deposit(&pubkey, 0, 10);
         candidates.save_to_state(&mut state).unwrap();
 
         // Assert
@@ -947,12 +950,13 @@ mod tests {
         let mut state = helpers::get_temp_state();
 
         // Prepare
-        let account = Address::random();
+        let pubkey = Public::random();
+        let account = public_to_address(&pubkey);
         let deposit_and_nomination_ends_at = [(10, 11), (20, 22), (30, 33), (0, 44)];
 
         for (deposit, nomination_ends_at) in &deposit_and_nomination_ends_at {
             let mut candidates = Candidates::load_from_state(&state).unwrap();
-            candidates.add_deposit(&account, *deposit, *nomination_ends_at);
+            candidates.add_deposit(&pubkey, *deposit, *nomination_ends_at);
             candidates.save_to_state(&mut state).unwrap();
         }
 
@@ -972,100 +976,123 @@ mod tests {
     fn candidates_can_remove_expired_deposit() {
         let mut state = helpers::get_temp_state();
 
+        let pubkey0 = 0.into();
+        let pubkey1 = 1.into();
+        let pubkey2 = 2.into();
+        let pubkey3 = 3.into();
+
         // Prepare
         let candidates_prepared = [
             Candidate {
-                address: Address::from(0),
+                pubkey: pubkey0,
                 deposit: 20,
                 nomination_ends_at: 11,
             },
             Candidate {
-                address: Address::from(1),
+                pubkey: pubkey1,
                 deposit: 30,
                 nomination_ends_at: 22,
             },
             Candidate {
-                address: Address::from(2),
+                pubkey: pubkey2,
                 deposit: 40,
                 nomination_ends_at: 33,
             },
             Candidate {
-                address: Address::from(3),
+                pubkey: pubkey3,
                 deposit: 50,
                 nomination_ends_at: 44,
             },
         ];
 
         for Candidate {
-            address,
+            pubkey,
             deposit,
             nomination_ends_at,
         } in &candidates_prepared
         {
             let mut candidates = Candidates::load_from_state(&state).unwrap();
-            candidates.add_deposit(&address, *deposit, *nomination_ends_at);
+            candidates.add_deposit(&pubkey, *deposit, *nomination_ends_at);
             candidates.save_to_state(&mut state).unwrap();
         }
 
         // Remove Expired
         let mut candidates = Candidates::load_from_state(&state).unwrap();
-        let expired = candidates.drain_expired_candidates(22);
+        let mut expired = candidates.drain_expired_candidates(22);
         candidates.save_to_state(&mut state).unwrap();
 
         // Assert
-        assert_eq!(expired[..], candidates_prepared[0..=1],);
+        expired.sort_unstable_by_key(|c| c.pubkey);
+        let mut prepared_expired = candidates_prepared[0..=1].to_vec();
+        prepared_expired.sort_unstable_by_key(|c| c.pubkey);
+        assert_eq!(expired, prepared_expired);
         let candidates = Candidates::load_from_state(&state).unwrap();
         assert_eq!(candidates.len(), 2);
-        assert_eq!(candidates.get_candidate(&candidates_prepared[2].address), Some(&candidates_prepared[2]));
-        assert_eq!(candidates.get_candidate(&candidates_prepared[3].address), Some(&candidates_prepared[3]));
+        assert_eq!(
+            candidates.get_candidate(&public_to_address(&candidates_prepared[2].pubkey)),
+            Some(&candidates_prepared[2])
+        );
+        assert_eq!(
+            candidates.get_candidate(&public_to_address(&candidates_prepared[3].pubkey)),
+            Some(&candidates_prepared[3])
+        );
     }
 
     #[test]
     fn candidates_expire_all_cleanup_state() {
         let mut state = helpers::get_temp_state();
 
+        let pubkey0 = 0.into();
+        let pubkey1 = 1.into();
+        let pubkey2 = 2.into();
+        let pubkey3 = 3.into();
+
         // Prepare
         let candidates_prepared = [
             Candidate {
-                address: Address::from(0),
+                pubkey: pubkey0,
                 deposit: 20,
                 nomination_ends_at: 11,
             },
             Candidate {
-                address: Address::from(1),
+                pubkey: pubkey1,
                 deposit: 30,
                 nomination_ends_at: 22,
             },
             Candidate {
-                address: Address::from(2),
+                pubkey: pubkey2,
                 deposit: 40,
                 nomination_ends_at: 33,
             },
             Candidate {
-                address: Address::from(3),
+                pubkey: pubkey3,
                 deposit: 50,
                 nomination_ends_at: 44,
             },
         ];
 
         for Candidate {
-            address,
+            pubkey,
             deposit,
             nomination_ends_at,
         } in &candidates_prepared
         {
             let mut candidates = Candidates::load_from_state(&state).unwrap();
-            candidates.add_deposit(&address, *deposit, *nomination_ends_at);
+            candidates.add_deposit(&pubkey, *deposit, *nomination_ends_at);
             candidates.save_to_state(&mut state).unwrap();
         }
 
         // Remove Expired
         let mut candidates = Candidates::load_from_state(&state).unwrap();
-        let expired = candidates.drain_expired_candidates(99);
+        let mut expired = candidates.drain_expired_candidates(99);
         candidates.save_to_state(&mut state).unwrap();
 
+        expired.sort_unstable_by_key(|c| c.pubkey);
+        let mut prepared_expired = candidates_prepared[0..4].to_vec();
+        prepared_expired.sort_unstable_by_key(|c| c.pubkey);
+
         // Assert
-        assert_eq!(expired[..], candidates_prepared[0..4]);
+        assert_eq!(expired, prepared_expired);
         let result = state.action_data(&*CANDIDATES_KEY).unwrap();
         assert_eq!(result, None);
     }
@@ -1075,11 +1102,12 @@ mod tests {
         let mut state = helpers::get_temp_state();
 
         // Prepare
-        let address = Address::from(1);
+        let pubkey = 1.into();
+        let address = public_to_address(&pubkey);
         let mut jail = Jail::load_from_state(&state).unwrap();
         jail.add(
             Candidate {
-                address,
+                pubkey,
                 deposit: 100,
                 nomination_ends_at: 0,
             },
@@ -1100,11 +1128,12 @@ mod tests {
         let mut state = helpers::get_temp_state();
 
         // Prepare
-        let address = Address::from(1);
+        let pubkey = 1.into();
+        let address = public_to_address(&pubkey);
         let mut jail = Jail::load_from_state(&state).unwrap();
         jail.add(
             Candidate {
-                address,
+                pubkey,
                 deposit: 100,
                 nomination_ends_at: 0,
             },
@@ -1125,11 +1154,12 @@ mod tests {
         let mut state = helpers::get_temp_state();
 
         // Prepare
-        let address = Address::from(1);
+        let pubkey = 1.into();
+        let address = public_to_address(&pubkey);
         let mut jail = Jail::load_from_state(&state).unwrap();
         jail.add(
             Candidate {
-                address,
+                pubkey,
                 deposit: 100,
                 nomination_ends_at: 0,
             },
@@ -1163,11 +1193,16 @@ mod tests {
     fn jail_keep_prisoners_until_kick_at() {
         let mut state = helpers::get_temp_state();
 
+        let pubkey1 = 1.into();
+        let pubkey2 = 2.into();
+        let address1 = public_to_address(&pubkey1);
+        let address2 = public_to_address(&pubkey2);
+
         // Prepare
         let mut jail = Jail::load_from_state(&state).unwrap();
         jail.add(
             Candidate {
-                address: Address::from(1),
+                pubkey: pubkey1,
                 deposit: 100,
                 nomination_ends_at: 0,
             },
@@ -1176,7 +1211,7 @@ mod tests {
         );
         jail.add(
             Candidate {
-                address: Address::from(2),
+                pubkey: pubkey2,
                 deposit: 200,
                 nomination_ends_at: 0,
             },
@@ -1193,19 +1228,24 @@ mod tests {
         // Assert
         assert_eq!(kicked, Vec::new());
         assert_eq!(jail.len(), 2);
-        assert_ne!(jail.get_prisoner(&Address::from(1)), None);
-        assert_ne!(jail.get_prisoner(&Address::from(2)), None);
+        assert_ne!(jail.get_prisoner(&address1), None);
+        assert_ne!(jail.get_prisoner(&address2), None);
     }
 
     #[test]
     fn jail_partially_kick_prisoners() {
         let mut state = helpers::get_temp_state();
 
+        let pubkey1 = 1.into();
+        let pubkey2 = 2.into();
+        let address1 = public_to_address(&pubkey1);
+        let address2 = public_to_address(&pubkey2);
+
         // Prepare
         let mut jail = Jail::load_from_state(&state).unwrap();
         jail.add(
             Candidate {
-                address: Address::from(1),
+                pubkey: pubkey1,
                 deposit: 100,
                 nomination_ends_at: 0,
             },
@@ -1214,7 +1254,7 @@ mod tests {
         );
         jail.add(
             Candidate {
-                address: Address::from(2),
+                pubkey: pubkey2,
                 deposit: 200,
                 nomination_ends_at: 0,
             },
@@ -1230,25 +1270,30 @@ mod tests {
 
         // Assert
         assert_eq!(kicked, vec![Prisoner {
-            address: Address::from(1),
+            address: address1,
             deposit: 100,
             custody_until: 10,
             kicked_at: 20,
         }]);
         assert_eq!(jail.len(), 1);
-        assert_eq!(jail.get_prisoner(&Address::from(1)), None);
-        assert_ne!(jail.get_prisoner(&Address::from(2)), None);
+        assert_eq!(jail.get_prisoner(&address1), None);
+        assert_ne!(jail.get_prisoner(&address2), None);
     }
 
     #[test]
     fn jail_kick_all_prisoners() {
         let mut state = helpers::get_temp_state();
 
+        let pubkey1 = 1.into();
+        let pubkey2 = 2.into();
+        let address1 = public_to_address(&pubkey1);
+        let address2 = public_to_address(&pubkey2);
+
         // Prepare
         let mut jail = Jail::load_from_state(&state).unwrap();
         jail.add(
             Candidate {
-                address: Address::from(1),
+                pubkey: pubkey1,
                 deposit: 100,
                 nomination_ends_at: 0,
             },
@@ -1257,7 +1302,7 @@ mod tests {
         );
         jail.add(
             Candidate {
-                address: Address::from(2),
+                pubkey: pubkey2,
                 deposit: 200,
                 nomination_ends_at: 0,
             },
@@ -1274,21 +1319,21 @@ mod tests {
         // Assert
         assert_eq!(kicked, vec![
             Prisoner {
-                address: Address::from(1),
+                address: address1,
                 deposit: 100,
                 custody_until: 10,
                 kicked_at: 20,
             },
             Prisoner {
-                address: Address::from(2),
+                address: address2,
                 deposit: 200,
                 custody_until: 15,
                 kicked_at: 25,
             }
         ]);
         assert_eq!(jail.len(), 0);
-        assert_eq!(jail.get_prisoner(&Address::from(1)), None);
-        assert_eq!(jail.get_prisoner(&Address::from(2)), None);
+        assert_eq!(jail.get_prisoner(&address1), None);
+        assert_eq!(jail.get_prisoner(&address2), None);
 
         let result = state.action_data(&*JAIL_KEY).unwrap();
         assert_eq!(result, None, "Should clean the state if all prisoners are kicked");
