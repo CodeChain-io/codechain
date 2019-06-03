@@ -320,6 +320,25 @@ impl Decodable for String {
     }
 }
 
+impl<T1: Encodable, T2: Encodable, T3: Encodable> Encodable for (T1, T2, T3) {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.begin_list(3).append(&self.0).append(&self.1).append(&self.2);
+    }
+}
+
+impl<T1: Decodable, T2: Decodable, T3: Decodable> Decodable for (T1, T2, T3) {
+    fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
+        let item_count = rlp.item_count()?;
+        if item_count != 3 {
+            return Err(DecoderError::RlpIncorrectListLen {
+                expected: 3,
+                got: item_count,
+            })
+        }
+        Ok((rlp.val_at(0)?, rlp.val_at(1)?, rlp.val_at(2)?))
+    }
+}
+
 #[macro_export]
 macro_rules! rlp_encode_and_decode_test {
     ($origin:expr) => {
@@ -425,5 +444,11 @@ mod tests {
         let mut stream = RlpStream::new();
         stream.begin_list(0);
         assert_eq!(vec![0xC0], stream.out());
+    }
+
+    #[test]
+    fn tuple() {
+        let tuple: (u32, u32, u32) = (1, 2, 3);
+        rlp_encode_and_decode_test!(tuple);
     }
 }
