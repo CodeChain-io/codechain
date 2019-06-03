@@ -141,6 +141,10 @@ build_rpc_trait! {
         #[rpc(name = "chain_getCommonParams")]
         fn get_common_params(&self, Option<u64>) -> Result<Option<Params>>;
 
+        /// Return the current term id at given block number
+        #[rpc(name = "chain_getTermMetadata")]
+        fn get_term_metadata(&self, Option<u64>) -> Result<Option<(u64, u64)>>;
+
         /// Execute Transactions
         # [rpc(name = "chain_executeTransaction")]
         fn execute_transaction(&self, UnsignedTransaction, PlatformAddress) -> Result<Option<String>>;
