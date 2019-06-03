@@ -327,8 +327,6 @@ pub fn on_term_close(state: &mut TopLevelState, current_term: u64) -> StateResul
     }
     candidates.save_to_state(state)?;
 
-    // TODO: auto_withdraw(pending_rewards)
-
     let mut jailed = Jail::load_from_state(&state)?;
     let released = jailed.drain_released_prisoners(current_term);
     for prisoner in &released {
