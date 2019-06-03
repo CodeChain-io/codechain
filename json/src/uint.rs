@@ -43,9 +43,15 @@ impl From<Uint> for u32 {
     }
 }
 
-impl From<u64> for Uint {
-    fn from(f: u64) -> Self {
-        Uint(f.into())
+impl From<Uint> for u16 {
+    fn from(f: Uint) -> Self {
+        u64::from(f.0) as u16
+    }
+}
+
+impl From<Uint> for u8 {
+    fn from(f: Uint) -> Self {
+        u64::from(f.0) as u8
     }
 }
 
@@ -56,9 +62,40 @@ impl From<Uint> for usize {
     }
 }
 
-impl From<Uint> for u8 {
-    fn from(f: Uint) -> Self {
-        u64::from(f.0) as u8
+impl From<u64> for Uint {
+    fn from(f: u64) -> Self {
+        Uint(f.into())
+    }
+}
+
+impl From<u32> for Uint {
+    fn from(f: u32) -> Self {
+        Uint(f.into())
+    }
+}
+
+impl From<u16> for Uint {
+    fn from(f: u16) -> Self {
+        Uint(f.into())
+    }
+}
+
+impl From<u8> for Uint {
+    fn from(f: u8) -> Self {
+        Uint(f.into())
+    }
+}
+
+impl From<usize> for Uint {
+    fn from(f: usize) -> Self {
+        Uint(f.into())
+    }
+}
+
+// This impl is to support expressions like `0.into()`
+impl From<i32> for Uint {
+    fn from(f: i32) -> Self {
+        Uint(f.into())
     }
 }
 
