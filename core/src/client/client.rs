@@ -793,6 +793,9 @@ impl TermInfo for Client {
 
     fn state_at_term_begin(&self, id: BlockId) -> Option<TopLevelState> {
         if let Some(block_num) = self.last_term_finished_block_num(id) {
+            if block_num == 0 {
+                return None
+            }
             self.state_at(block_num.into())
         } else {
             None

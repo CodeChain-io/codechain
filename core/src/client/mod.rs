@@ -111,7 +111,7 @@ pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     fn get_kvdb(&self) -> Arc<KeyValueDB>;
 }
 
-pub trait ConsensusClient: BlockChainTrait + EngineClient + TermInfo {}
+pub trait ConsensusClient: BlockChainTrait + EngineClient + EngineInfo + TermInfo + StateInfo {}
 
 pub trait TermInfo {
     fn last_term_finished_block_num(&self, id: BlockId) -> Option<BlockNumber>;
