@@ -2221,10 +2221,10 @@ mod tests_tx {
 
         let tx = transaction!(fee: 10, store!(content.clone(), sender, signature));
 
-        assert_eq!(
-            Err(RuntimeError::TextVerificationFail("Invalid Signature".to_string()).into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
-        );
+        match state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0) {
+            Err(StateError::Runtime(RuntimeError::TextVerificationFail(_))) => {}
+            err => panic!("The transaction must fail with text verification failure, but {:?}", err),
+        }
 
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 20)),
