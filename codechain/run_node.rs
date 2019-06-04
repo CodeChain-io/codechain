@@ -248,7 +248,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             (None, _) => return Err("email-alarm-to is not specified".to_string()),
             (_, None) => return Err("email-alarm-sendgrid-key is not specified".to_string()),
         };
-        config.as_ref().map(EmailAlarm::new)
+        config.map(EmailAlarm::new)
     } else {
         None
     };
