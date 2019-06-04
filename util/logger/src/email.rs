@@ -1,9 +1,9 @@
 use sendgrid::v3 as sendgrid;
 
 pub struct EmailAlarmConfig {
-    pub to: String,
-    pub sendgrid_key: String,
-    pub network_id: String,
+    to: String,
+    sendgrid_key: String,
+    network_id: String,
 }
 
 impl EmailAlarmConfig {
@@ -18,9 +18,9 @@ impl EmailAlarmConfig {
 
 #[derive(Clone)]
 pub struct EmailAlarm {
-    pub to: String,
-    pub sendgrid_key: String,
-    pub network_id: String,
+    to: String,
+    sendgrid_key: String,
+    network_id: String,
 }
 
 impl EmailAlarm {
