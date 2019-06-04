@@ -14,17 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[cfg(test)]
-use std::collections::btree_map;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::{self, BTreeSet};
+use std::collections::{btree_map, HashMap};
 use std::mem;
 
 use ckey::{public_to_address, Address, Public};
 use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
 use ctypes::errors::RuntimeError;
 use primitives::{Bytes, H256};
-use rlp::{decode_list, Decodable, Encodable, Rlp, RlpStream};
+use rlp::{decode_list, encode_list, Decodable, Encodable, Rlp, RlpStream};
 
 use super::CUSTOM_ACTION_HANDLER_ID;
 
@@ -40,6 +39,8 @@ lazy_static! {
     pub static ref JAIL_KEY: H256 = ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Jail").into_key();
     pub static ref BANNED_KEY: H256 =
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Banned").into_key();
+    pub static ref VALIDATORS_KEY: H256 =
+        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Validators").into_key();
 }
 
 pub fn get_delegation_key(address: &Address) -> H256 {
@@ -121,6 +122,19 @@ impl Stakeholders {
         }
         Ok(())
     }
+
+    fn delegatees(state: &TopLevelState) -> StateResult<HashMap<Address, u64>> {
+        let stakeholders = Stakeholders::load_from_state(state)?;
+        let mut result = HashMap::new();
+        for stakeholder in stakeholders.iter() {
+            let delegation = Delegation::load_from_state(state, stakeholder)?;
+            for (delegatee, quantity) in delegation.iter() {
+                *result.entry(*delegatee).or_default() += *quantity;
+            }
+        }
+        Ok(result)
+    }
+
 
     #[cfg(test)]
     pub fn contains(&self, address: &Address) -> bool {
@@ -204,13 +218,135 @@ impl<'a> Delegation<'a> {
         self.delegatees.get(delegatee).cloned().unwrap_or(0)
     }
 
-    #[cfg(test)]
     pub fn iter(&self) -> btree_map::Iter<Address, StakeQuantity> {
         self.delegatees.iter()
     }
 
     pub fn sum(&self) -> u64 {
         self.delegatees.values().sum()
+    }
+}
+
+pub struct Validators(Vec<(StakeQuantity, Deposit, Public)>);
+impl Validators {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
+        let key = &*VALIDATORS_KEY;
+        let validators = state.action_data(&key)?.map(|data| decode_list(&data)).unwrap_or_default();
+
+        Ok(Validators(validators))
+    }
+
+    pub fn elect(state: &TopLevelState) -> StateResult<Self> {
+        let (delegation_threshold, max_num_of_validators, min_num_of_validators, min_deposit) = {
+            let metadata = state.metadata()?.expect("Metadata must exist");
+            let common_params = metadata.params().expect("CommonParams must exist in the metadata when elect");
+            (
+                common_params.delegation_threshold(),
+                common_params.max_num_of_validators(),
+                common_params.min_num_of_validators(),
+                common_params.min_deposit(),
+            )
+        };
+        assert!(max_num_of_validators > min_num_of_validators);
+
+        let active_candidates = Candidates::active(&state, min_deposit).unwrap();
+        let candidates: HashMap<_, _> =
+            active_candidates.keys().map(|pubkey| (public_to_address(pubkey), *pubkey)).collect();
+
+        // FIXME: Remove banned accounts
+        // step 1
+        let mut delegatees: Vec<(StakeQuantity, Public)> = Stakeholders::delegatees(&state)?
+            .into_iter()
+            .filter_map(|(address, delegation)| candidates.get(&address).map(|pubkey| (delegation, *pubkey)))
+            .collect();
+
+        delegatees.sort_unstable();
+        delegatees.reverse();
+        let the_highest_score_dropout = delegatees.get(max_num_of_validators).map(|(delegation, _address)| *delegation);
+        let the_lowest_score_first_class = delegatees.get(min_num_of_validators).map(|(delegation, _address)| *delegation)
+            // None means there are less than MIN_NUM_OF_VALIDATORS. Allow all remains.
+            .unwrap_or_default();
+
+        // step 2
+        delegatees.truncate(max_num_of_validators);
+
+        // step 3
+        if let Some(the_highest_score_dropout) = the_highest_score_dropout {
+            delegatees.retain(|(delegation, _address)| *delegation > the_highest_score_dropout);
+        }
+
+        if delegatees.len() < min_num_of_validators {
+            cerror!(
+                ENGINE,
+                "There must be something wrong. {}, {} < {}",
+                "delegatees.len() < min_num_of_validators",
+                delegatees.len(),
+                min_num_of_validators
+            );
+        }
+        let validators = delegatees
+            .into_iter()
+            .filter(|(delegation, _pubkey)| {
+                // step 4
+                if *delegation >= the_lowest_score_first_class {
+                    true
+                } else {
+                    // step 5
+                    *delegation >= delegation_threshold
+                }
+            })
+            .map(|(delegation, pubkey)| {
+                let deposit = *active_candidates.get(&pubkey).unwrap();
+                (delegation, deposit, pubkey)
+            })
+            .collect();
+
+        Ok(Self(validators))
+    }
+
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let key = &*VALIDATORS_KEY;
+        if !self.is_empty() {
+            state.update_action_data(&key, encode_list(&self.0).to_vec())?;
+        } else {
+            state.remove_action_data(&key);
+        }
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub fn update(&mut self, block_author: Address, min_delegation: StakeQuantity) {
+        for (weight, _deposit, pubkey) in self.0.iter_mut().rev() {
+            if public_to_address(pubkey) == block_author {
+                // block author
+                *weight = weight.saturating_sub(min_delegation);
+                break
+            }
+            // neglecting validators
+            *weight = weight.saturating_sub(min_delegation * 2);
+        }
+        self.0.sort();
+    }
+
+    pub fn pubkeys(&self) -> Vec<Public> {
+        self.0.iter().map(|(_weight, _deposit, pubkey)| *pubkey).collect()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn total_weight(&self) -> StakeQuantity {
+        self.0.iter().map(|(weight, _deposit, _pubkey)| weight).sum()
+    }
+
+    pub fn weight(&self, pubkey: &Public) -> Option<StakeQuantity> {
+        self.0.iter().find(|(_weight, _deposit, val)| val == pubkey).map(|(weight, _deposit, _val)| *weight)
     }
 }
 
@@ -290,6 +426,12 @@ impl Candidates {
         Ok(())
     }
 
+    fn active(state: &TopLevelState, min_deposit: Deposit) -> StateResult<HashMap<Public, Deposit>> {
+        let candidates = Self::load_from_state(state)?;
+        Ok(candidates.filter_active(min_deposit))
+    }
+
+
     pub fn get_candidate(&self, account: &Address) -> Option<&Candidate> {
         self.0.get(&account)
     }
@@ -318,6 +460,15 @@ impl Candidates {
             self.0.values().cloned().partition(|c| c.nomination_ends_at <= term_index);
         self.0 = retained.into_iter().map(|c| (public_to_address(&c.pubkey), c)).collect();
         expired
+    }
+
+
+    pub fn filter_active(self, min_deposit: Deposit) -> HashMap<Public, Deposit> {
+        self.0
+            .into_iter()
+            .filter(|(_, candidate)| candidate.deposit >= min_deposit)
+            .map(|(_, deposit)| (deposit.pubkey, deposit.deposit))
+            .collect()
     }
 
     pub fn remove(&mut self, address: &Address) -> Option<Candidate> {
@@ -548,7 +699,6 @@ mod tests {
     use cstate::tests::helpers;
     use rand::{Rng, SeedableRng};
     use rand_xorshift::XorShiftRng;
-    use std::collections::HashMap;
 
     fn rng() -> XorShiftRng {
         let seed: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7];

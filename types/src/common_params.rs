@@ -461,6 +461,11 @@ impl CommonParams {
     pub fn set_max_text_content_size(&mut self, max_text_content_size: usize) {
         self.max_text_content_size = max_text_content_size;
     }
+
+    pub fn set_validator_num_for_test(&mut self, min: usize, max: usize) {
+        self.min_num_of_validators = min;
+        self.max_num_of_validators = max;
+    }
 }
 
 #[cfg(test)]
