@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ckey::{Address, Signature};
+use ccrypto::Blake;
+use ckey::{recover, Address, Signature};
+use ctypes::errors::SyntaxError;
 use ctypes::CommonParams;
-use primitives::Bytes;
+use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 const ACTION_TAG_TRANSFER_CCS: u8 = 1;
@@ -48,6 +50,46 @@ pub enum Action {
         params: Box<CommonParams>,
         signatures: Vec<Signature>,
     },
+}
+
+impl Action {
+    pub fn verify(&self) -> Result<(), SyntaxError> {
+        match self {
+            Action::TransferCCS {
+                ..
+            } => {}
+            Action::DelegateCCS {
+                ..
+            } => {}
+            Action::Revoke {
+                ..
+            } => {}
+            Action::SelfNominate {
+                ..
+            } => {
+                // FIXME: Metadata size limit
+            }
+            Action::ChangeParams {
+                metadata_seq,
+                params,
+                signatures,
+            } => {
+                let action = Action::ChangeParams {
+                    metadata_seq: *metadata_seq,
+                    params: params.clone(),
+                    signatures: vec![],
+                };
+                let encoded_action = H256::blake(rlp::encode(&action));
+                for signature in signatures {
+                    // XXX: Signature recovery is an expensive job. Should we do it twice?
+                    recover(&signature, &encoded_action).map_err(|err| {
+                        SyntaxError::InvalidCustomAction(format!("Cannot decode the signature: {}", err))
+                    })?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl Encodable for Action {
