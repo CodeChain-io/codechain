@@ -116,6 +116,59 @@ describe("ChangeParams", function() {
         expect(U64.ensure(params.minPayCost)).to.be.deep.equal(new U64(11));
     });
 
+    it("cannot change the network id", async function() {
+        const newParams = [
+            0x20, // maxExtraDataSize
+            0x0400, // maxAssetSchemeMetadataSize
+            0x0100, // maxTransferMetadataSize
+            0x0200, // maxTextContentSize
+            "cc", // networkID
+            11, // minPayCost
+            10, // minSetRegularKeyCost
+            10, // minCreateShardCost
+            10, // minSetShardOwnersCost
+            10, // minSetShardUsersCost
+            10, // minWrapCccCost
+            10, // minCustomCost
+            10, // minStoreCost
+            10, // minRemoveCost
+            10, // minMintAssetCost
+            10, // minTransferAssetCost
+            10, // minChangeAssetSchemeCost
+            10, // minIncreaseAssetSupplyCost
+            10, // minComposeAssetCost
+            10, // minDecomposeAssetCost
+            10, // minUnwrapCccCost
+            4194304, // maxBodySize
+            16384 // snapshotPeriod
+        ];
+        const changeParams: (number | string | (number | string)[])[] = [
+            0xff,
+            0,
+            newParams
+        ];
+        const message = blake256(RLP.encode(changeParams).toString("hex"));
+        changeParams.push(`0x${node.sdk.util.signEcdsa(message, aliceSecret)}`);
+        changeParams.push(`0x${node.sdk.util.signEcdsa(message, carolSecret)}`);
+
+        const tx = node.sdk.core
+            .createCustomTransaction({
+                handlerId: stakeActionHandlerId,
+                bytes: RLP.encode(changeParams)
+            })
+            .sign({
+                secret: faucetSecret,
+                seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
+                fee: 10
+            });
+        try {
+            await node.sdk.rpc.chain.sendSignedTransaction(tx);
+            expect.fail("The transaction must fail");
+        } catch (err) {
+            expect(err.message).contains("network id");
+        }
+    });
+
     it("should keep default common params value", async function() {
         const params = await node.sdk.rpc.sendRpcRequest(
             "chain_getCommonParams",

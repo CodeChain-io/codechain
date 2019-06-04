@@ -80,6 +80,14 @@ impl Action {
                 params,
                 signatures,
             } => {
+                let current_network_id = current_params.network_id();
+                let transaction_network_id = params.network_id();
+                if current_network_id != transaction_network_id {
+                    return Err(SyntaxError::InvalidCustomAction(format!(
+                        "The current network id is {} but the transaction tries to change the network id to {}",
+                        current_network_id, transaction_network_id
+                    )))
+                }
                 params.verify().map_err(SyntaxError::InvalidCustomAction)?;
                 let action = Action::ChangeParams {
                     metadata_seq: *metadata_seq,
