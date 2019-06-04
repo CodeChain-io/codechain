@@ -240,11 +240,15 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     );
     let email_alarm = if !config.email_alarm.disable.unwrap() {
         let config = match (&config.email_alarm.to, &config.email_alarm.sendgrid_key) {
-            (Some(to), Some(sendgrid_key)) => Some(EmailAlarmConfig::new(to.to_string(), sendgrid_key.to_string())),
+            (Some(to), Some(sendgrid_key)) => Some(EmailAlarmConfig::new(
+                to.to_string(),
+                sendgrid_key.to_string(),
+                scheme.genesis_params().network_id().to_string(),
+            )),
             (None, _) => return Err("email-alarm-to is not specified".to_string()),
             (_, None) => return Err("email-alarm-sendgrid-key is not specified".to_string()),
         };
-        config.as_ref().map(EmailAlarm::new)
+        config.map(EmailAlarm::new)
     } else {
         None
     };

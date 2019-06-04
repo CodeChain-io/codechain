@@ -974,9 +974,9 @@ impl TopState for TopLevelState {
         Ok(())
     }
 
-    fn change_term_id(&mut self, last_term_finished_block_num: u64, current_term_id: u64) -> StateResult<()> {
+    fn increase_term_id(&mut self, last_term_finished_block_num: u64) -> StateResult<()> {
         let mut metadata = self.get_metadata_mut()?;
-        metadata.change_term(last_term_finished_block_num, current_term_id);
+        metadata.increase_term_id(last_term_finished_block_num);
         Ok(())
     }
 
@@ -2221,10 +2221,10 @@ mod tests_tx {
 
         let tx = transaction!(fee: 10, store!(content.clone(), sender, signature));
 
-        assert_eq!(
-            Err(RuntimeError::TextVerificationFail("Invalid Signature".to_string()).into()),
-            state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0)
-        );
+        match state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0) {
+            Err(StateError::Runtime(RuntimeError::TextVerificationFail(_))) => {}
+            err => panic!("The transaction must fail with text verification failure, but {:?}", err),
+        }
 
         check_top_level_state!(state, [
             (account: sender => (seq: 0, balance: 20)),
