@@ -31,7 +31,7 @@ describe("solo - 1 node", function() {
 
     it("getNodeVersion", async function() {
         expect(await node.sdk.rpc.node.getNodeVersion()).to.match(
-            /^[0-9]+\.[0-9]+\.[0-9]+$/
+            /^[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]*)?$/
         );
     });
 
