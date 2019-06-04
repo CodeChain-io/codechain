@@ -24,11 +24,11 @@ pub struct EmailAlarm {
 }
 
 impl EmailAlarm {
-    pub fn new(config: &EmailAlarmConfig) -> Self {
+    pub fn new(config: EmailAlarmConfig) -> Self {
         Self {
-            to: config.to.clone(),
-            sendgrid_key: config.sendgrid_key.clone(),
-            network_id: config.network_id.clone(),
+            to: config.to,
+            sendgrid_key: config.sendgrid_key,
+            network_id: config.network_id,
         }
     }
 
