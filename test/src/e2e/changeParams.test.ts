@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
-import { H256, PlatformAddress } from "codechain-primitives/lib";
+import { H256, PlatformAddress, U64 } from "codechain-primitives/lib";
 import { blake256 } from "codechain-sdk/lib/utils";
 import "mocha";
 import {
@@ -108,6 +108,20 @@ describe("ChangeParams", function() {
         } catch (err) {
             expect(err.message).contains("Too Low Fee");
         }
+
+        const params = await node.sdk.rpc.sendRpcRequest(
+            "chain_getCommonParams",
+            [null]
+        );
+        expect(U64.ensure(params.minPayCost)).to.be.deep.equal(new U64(11));
+    });
+
+    it("should keep default common params value", async function() {
+        const params = await node.sdk.rpc.sendRpcRequest(
+            "chain_getCommonParams",
+            [null]
+        );
+        expect(U64.ensure(params.minPayCost)).to.be.deep.equal(new U64(10));
     });
 
     it("the parameter is applied from the next block", async function() {
