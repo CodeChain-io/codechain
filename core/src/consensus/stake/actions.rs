@@ -80,6 +80,7 @@ impl Action {
                 params,
                 signatures,
             } => {
+                params.verify().map_err(SyntaxError::InvalidCustomAction)?;
                 let action = Action::ChangeParams {
                     metadata_seq: *metadata_seq,
                     params: params.clone(),
