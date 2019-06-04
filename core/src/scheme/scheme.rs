@@ -326,6 +326,7 @@ fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
     let g = Genesis::from(s.genesis);
     let GenericSeal(seal_rlp) = g.seal.into();
     let params = CommonParams::from(s.params);
+    params.verify().map_err(|reason| Error::Syntax(SyntaxError::InvalidCustomAction(reason)))?;
     let engine = Scheme::engine(s.engine, params);
 
     let mut s = Scheme {

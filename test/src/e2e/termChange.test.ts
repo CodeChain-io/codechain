@@ -75,13 +75,13 @@ describe("Term change", function() {
             4194304, // maxBodySize
             16384, // snapshotPeriod
             termSeconds, // termSeconds
-            0, // nominationExpiration
-            0, // custodyPeriod
-            0, // releasePeriod
-            0, // maxNumOfValidators
-            0, // minNumOfValidators
-            0, // delegationThreshold
-            0, // minDeposit
+            10, // nominationExpiration
+            10, // custodyPeriod
+            30, // releasePeriod
+            30, // maxNumOfValidators
+            4, // minNumOfValidators
+            4, // delegationThreshold
+            1000, // minDeposit
             128 // maxCandidateMetadataSize
         ];
         const changeParams: (number | string | (number | string)[])[] = [

@@ -165,6 +165,51 @@ impl CommonParams {
     pub fn max_candidate_metadata_size(&self) -> usize {
         self.max_candidate_metadata_size
     }
+
+    pub fn verify(&self) -> Result<(), String> {
+        if self.term_seconds != 0 {
+            if self.nomination_expiration == 0 {
+                return Err("You should set the nomination expiration".to_string())
+            }
+            if self.custody_period == 0 {
+                return Err("You should set the custody period".to_string())
+            }
+            if self.release_period == 0 {
+                return Err("You should set the release period".to_string())
+            }
+            if self.max_num_of_validators == 0 {
+                return Err("You should set the maximum number of validators".to_string())
+            }
+            if self.min_num_of_validators == 0 {
+                return Err("You should set the minimum number of validators".to_string())
+            }
+            if self.delegation_threshold == 0 {
+                return Err("You should set the delegation threshold".to_string())
+            }
+            if self.min_deposit == 0 {
+                return Err("You should set the minimum deposit".to_string())
+            }
+            if self.min_num_of_validators > self.max_num_of_validators {
+                return Err(format!(
+                    "The minimum number of validators({}) is larger than the maximum number of validators({})",
+                    self.min_num_of_validators, self.max_num_of_validators
+                ))
+            }
+            if self.custody_period >= self.release_period {
+                return Err(format!(
+                    "The release period({}) should be longer than the custody period({})",
+                    self.release_period, self.custody_period
+                ))
+            }
+            if self.max_candidate_metadata_size >= self.max_text_content_size {
+                return Err(format!(
+                    "The candidate metadata size limit({}) should be shorter than the text limit({})",
+                    self.max_candidate_metadata_size, self.max_text_content_size
+                ))
+            }
+        }
+        Ok(())
+    }
 }
 
 const DEFAULT_PARAMS_SIZE: usize = 23;
