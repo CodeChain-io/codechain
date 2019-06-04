@@ -177,7 +177,7 @@ pub trait TopState {
     fn store_text(&mut self, key: &H256, text: Text, sig: &Signature) -> StateResult<()>;
     fn remove_text(&mut self, key: &H256, sig: &Signature) -> StateResult<()>;
 
-    fn change_term_id(&mut self, last_term_finished_block_num: u64, current_term_id: u64) -> StateResult<()>;
+    fn increase_term_id(&mut self, last_term_finished_block_num: u64) -> StateResult<()>;
 
     fn update_action_data(&mut self, key: &H256, data: Bytes) -> StateResult<()>;
     fn remove_action_data(&mut self, key: &H256);
