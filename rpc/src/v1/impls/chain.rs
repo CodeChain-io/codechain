@@ -17,8 +17,12 @@
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 
-use ccore::{AccountData, AssetClient, BlockId, EngineInfo, ExecuteClient, MiningBlockChainClient, Shard, TextClient};
+use ccore::{
+    AccountData, AssetClient, BlockId, EngineInfo, ExecuteClient, MetadataInfo, MiningBlockChainClient, Shard,
+    TextClient,
+};
 use ccrypto::Blake;
+use cjson::scheme::Params;
 use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
@@ -59,6 +63,7 @@ where
         + EngineInfo
         + FindActionHandler
         + TextClient
+        + MetadataInfo
         + 'static,
 {
     fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
@@ -292,6 +297,16 @@ where
 
     fn get_network_id(&self) -> Result<NetworkId> {
         Ok(self.client.common_params(BlockId::Latest).unwrap().network_id())
+    }
+
+    fn get_common_params(&self, block_number: Option<u64>) -> Result<Option<Params>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self.client.common_params(block_id).map(Params::from))
+    }
+
+    fn get_term_metadata(&self, block_number: Option<u64>) -> Result<Option<(u64, u64)>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self.client.metadata(block_id).map(|m| (m.last_term_finished_block_num(), m.current_term_id())))
     }
 
     fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Option<String>> {

@@ -206,6 +206,48 @@ impl From<Params> for CommonParams {
     }
 }
 
+impl From<CommonParams> for Params {
+    fn from(p: CommonParams) -> Params {
+        let mut result = Params {
+            max_extra_data_size: p.max_extra_data_size().into(),
+            max_asset_scheme_metadata_size: p.max_asset_scheme_metadata_size().into(),
+            max_transfer_metadata_size: p.max_transfer_metadata_size().into(),
+            max_text_content_size: p.max_text_content_size().into(),
+            network_id: p.network_id(),
+            min_pay_cost: p.min_pay_transaction_cost().into(),
+            min_set_regular_key_cost: p.min_set_regular_key_transaction_cost().into(),
+            min_create_shard_cost: p.min_create_shard_transaction_cost().into(),
+            min_set_shard_owners_cost: p.min_set_shard_owners_transaction_cost().into(),
+            min_set_shard_users_cost: p.min_set_shard_users_transaction_cost().into(),
+            min_wrap_ccc_cost: p.min_wrap_ccc_transaction_cost().into(),
+            min_custom_cost: p.min_custom_transaction_cost().into(),
+            min_store_cost: p.min_store_transaction_cost().into(),
+            min_remove_cost: p.min_remove_transaction_cost().into(),
+            min_mint_asset_cost: p.min_asset_mint_cost().into(),
+            min_transfer_asset_cost: p.min_asset_transfer_cost().into(),
+            min_change_asset_scheme_cost: p.min_asset_scheme_change_cost().into(),
+            min_increase_asset_supply_cost: p.min_asset_supply_increase_cost().into(),
+            min_compose_asset_cost: p.min_asset_compose_cost().into(),
+            min_decompose_asset_cost: p.min_asset_decompose_cost().into(),
+            min_unwrap_ccc_cost: p.min_asset_unwrap_ccc_cost().into(),
+            max_body_size: p.max_body_size().into(),
+            snapshot_period: p.snapshot_period().into(),
+            ..Default::default()
+        };
+        if p.size == 31 {
+            result.term_seconds = Some(p.term_seconds().into());
+            result.nomination_expiration = Some(p.nomination_expiration().into());
+            result.custody_period = Some(p.custody_period().into());
+            result.release_period = Some(p.release_period().into());
+            result.max_num_of_validators = Some(p.max_num_of_validators().into());
+            result.min_num_of_validators = Some(p.min_num_of_validators().into());
+            result.delegation_threshold = Some(p.delegation_threshold().into());
+            result.min_deposit = Some(p.min_deposit().into());
+        }
+        result
+    }
+}
+
 impl Encodable for CommonParams {
     fn rlp_append(&self, s: &mut RlpStream) {
         const VALID_SIZE: &[usize] = &[23, 31];
@@ -427,7 +469,8 @@ mod tests {
             "snapshotPeriod": 16384
         }"#;
 
-        let deserialized = CommonParams::from(serde_json::from_str::<Params>(s).unwrap());
+        let params = serde_json::from_str::<Params>(s).unwrap();
+        let deserialized = CommonParams::from(params.clone());
         assert_eq!(deserialized.max_extra_data_size, 0x20);
         assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400);
         assert_eq!(deserialized.max_transfer_metadata_size, 0x0100);
@@ -459,6 +502,8 @@ mod tests {
         assert_eq!(deserialized.min_num_of_validators, 0);
         assert_eq!(deserialized.delegation_threshold, 0);
         assert_eq!(deserialized.min_deposit, 0);
+
+        assert_eq!(params, deserialized.into());
     }
 
     #[test]
@@ -491,7 +536,8 @@ mod tests {
             "termSeconds": 3600
         }"#;
 
-        let deserialized = CommonParams::from(serde_json::from_str::<Params>(s).unwrap());
+        let params = serde_json::from_str::<Params>(s).unwrap();
+        let deserialized = CommonParams::from(params.clone());
         assert_eq!(deserialized.max_extra_data_size, 0x20);
         assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400);
         assert_eq!(deserialized.max_transfer_metadata_size, 0x0100);
@@ -523,6 +569,21 @@ mod tests {
         assert_eq!(deserialized.min_num_of_validators, 0);
         assert_eq!(deserialized.delegation_threshold, 0);
         assert_eq!(deserialized.min_deposit, 0);
+
+        assert_eq!(
+            Params {
+                nomination_expiration: Some(0.into()),
+                custody_period: Some(0.into()),
+                release_period: Some(0.into()),
+                max_num_of_validators: Some(0.into()),
+                min_num_of_validators: Some(0.into()),
+                delegation_threshold: Some(0.into()),
+                min_deposit: Some(0.into()),
+                ..params
+            },
+            deserialized.into(),
+            "Convert back will fill default values"
+        );
     }
 
     #[test]
@@ -561,8 +622,8 @@ mod tests {
             "delegationThreshold": 31,
             "minDeposit": 32
         }"#;
-
-        let deserialized = CommonParams::from(serde_json::from_str::<Params>(s).unwrap());
+        let params = serde_json::from_str::<Params>(s).unwrap();
+        let deserialized = CommonParams::from(params.clone());
         assert_eq!(deserialized.max_extra_data_size, 0x20);
         assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400);
         assert_eq!(deserialized.max_transfer_metadata_size, 0x0100);
@@ -594,5 +655,7 @@ mod tests {
         assert_eq!(deserialized.min_num_of_validators, 30);
         assert_eq!(deserialized.delegation_threshold, 31);
         assert_eq!(deserialized.min_deposit, 32);
+
+        assert_eq!(params, deserialized.into());
     }
 }
