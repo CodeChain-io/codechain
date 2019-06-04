@@ -366,7 +366,7 @@ pub trait CodeChainEngine: ConsensusEngine {
             let handler = self
                 .find_action_handler_for(*handler_id)
                 .ok_or_else(|| SyntaxError::InvalidCustomAction(format!("{} is an invalid handler id", handler_id)))?;
-            handler.verify(bytes)?;
+            handler.verify(bytes, common_params)?;
         }
         self.machine().verify_transaction_with_params(tx, common_params)
     }

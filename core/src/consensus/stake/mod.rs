@@ -105,10 +105,10 @@ impl ActionHandler for Stake {
         }
     }
 
-    fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
+    fn verify(&self, bytes: &[u8], current_params: &CommonParams) -> Result<(), SyntaxError> {
         let action = Action::decode(&UntrustedRlp::new(bytes))
             .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
-        action.verify()
+        action.verify(current_params)
     }
 
     fn on_close_block(

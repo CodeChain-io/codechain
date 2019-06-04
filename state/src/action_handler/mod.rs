@@ -39,7 +39,7 @@ pub trait ActionHandler: Send + Sync {
         sender: &Address,
         sender_pubkey: &Public,
     ) -> StateResult<()>;
-    fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError>;
+    fn verify(&self, bytes: &[u8], common_params: &CommonParams) -> Result<(), SyntaxError>;
 
     fn query(&self, key_fragment: &[u8], state: &TopLevelState) -> StateResult<Option<Vec<u8>>> {
         let key = ActionDataKeyBuilder::key_from_fragment(self.handler_id(), key_fragment);
