@@ -81,7 +81,7 @@ impl ActionHandler for HitHandler {
         Ok(())
     }
 
-    fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
+    fn verify(&self, bytes: &[u8], _params: &CommonParams) -> Result<(), SyntaxError> {
         HitAction::decode(&UntrustedRlp::new(bytes))
             .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
         Ok(())

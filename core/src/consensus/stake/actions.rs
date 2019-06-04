@@ -53,7 +53,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn verify(&self) -> Result<(), SyntaxError> {
+    pub fn verify(&self, current_params: &CommonParams) -> Result<(), SyntaxError> {
         match self {
             Action::TransferCCS {
                 ..
@@ -65,9 +65,15 @@ impl Action {
                 ..
             } => {}
             Action::SelfNominate {
+                metadata,
                 ..
             } => {
-                // FIXME: Metadata size limit
+                if metadata.len() > current_params.max_candidate_metadata_size() {
+                    return Err(SyntaxError::InvalidCustomAction(format!(
+                        "Too long candidata metadata: the size limit is {}",
+                        current_params.max_candidate_metadata_size()
+                    )))
+                }
             }
             Action::ChangeParams {
                 metadata_seq,

@@ -61,6 +61,7 @@ pub struct CommonParams {
     min_num_of_validators: usize,
     delegation_threshold: u64,
     min_deposit: u64,
+    max_candidate_metadata_size: usize,
 }
 
 impl CommonParams {
@@ -161,13 +162,19 @@ impl CommonParams {
     pub fn min_deposit(&self) -> u64 {
         self.min_deposit
     }
+    pub fn max_candidate_metadata_size(&self) -> usize {
+        self.max_candidate_metadata_size
+    }
 }
+
+const DEFAULT_PARAMS_SIZE: usize = 23;
+const NUMBER_OF_STAKE_PARAMS: usize = 9;
 
 impl From<Params> for CommonParams {
     fn from(p: Params) -> Self {
-        let mut size = 23;
+        let mut size = DEFAULT_PARAMS_SIZE;
         if p.term_seconds.is_some() {
-            size += 8;
+            size += NUMBER_OF_STAKE_PARAMS;
         }
         Self {
             size,
@@ -202,6 +209,7 @@ impl From<Params> for CommonParams {
             min_num_of_validators: p.min_num_of_validators.map(From::from).unwrap_or_default(),
             delegation_threshold: p.delegation_threshold.map(From::from).unwrap_or_default(),
             min_deposit: p.min_deposit.map(From::from).unwrap_or_default(),
+            max_candidate_metadata_size: p.max_candidate_metadata_size.map(From::from).unwrap_or_default(),
         }
     }
 }
@@ -234,7 +242,7 @@ impl From<CommonParams> for Params {
             snapshot_period: p.snapshot_period().into(),
             ..Default::default()
         };
-        if p.size == 31 {
+        if p.size == DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS {
             result.term_seconds = Some(p.term_seconds().into());
             result.nomination_expiration = Some(p.nomination_expiration().into());
             result.custody_period = Some(p.custody_period().into());
@@ -243,6 +251,7 @@ impl From<CommonParams> for Params {
             result.min_num_of_validators = Some(p.min_num_of_validators().into());
             result.delegation_threshold = Some(p.delegation_threshold().into());
             result.min_deposit = Some(p.min_deposit().into());
+            result.max_candidate_metadata_size = Some(p.max_candidate_metadata_size().into());
         }
         result
     }
@@ -250,7 +259,7 @@ impl From<CommonParams> for Params {
 
 impl Encodable for CommonParams {
     fn rlp_append(&self, s: &mut RlpStream) {
-        const VALID_SIZE: &[usize] = &[23, 31];
+        const VALID_SIZE: &[usize] = &[DEFAULT_PARAMS_SIZE, DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS];
         assert!(VALID_SIZE.contains(&self.size), "{} must be in {:?}", self.size, VALID_SIZE);
         s.begin_list(self.size)
             .append(&self.max_extra_data_size)
@@ -276,7 +285,7 @@ impl Encodable for CommonParams {
             .append(&self.min_asset_unwrap_ccc_cost)
             .append(&self.max_body_size)
             .append(&self.snapshot_period);
-        if self.size == 31 {
+        if self.size == DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS {
             s.append(&self.term_seconds)
                 .append(&self.nomination_expiration)
                 .append(&self.custody_period)
@@ -284,7 +293,8 @@ impl Encodable for CommonParams {
                 .append(&self.max_num_of_validators)
                 .append(&self.min_num_of_validators)
                 .append(&self.delegation_threshold)
-                .append(&self.min_deposit);
+                .append(&self.min_deposit)
+                .append(&self.max_candidate_metadata_size);
         }
     }
 }
@@ -292,10 +302,10 @@ impl Encodable for CommonParams {
 impl Decodable for CommonParams {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let size = rlp.item_count()?;
-        const VALID_SIZE: &[usize] = &[23, 31];
+        const VALID_SIZE: &[usize] = &[DEFAULT_PARAMS_SIZE, DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS];
         if !VALID_SIZE.contains(&size) {
             return Err(DecoderError::RlpIncorrectListLen {
-                expected: 23,
+                expected: DEFAULT_PARAMS_SIZE,
                 got: size,
             })
         }
@@ -333,7 +343,8 @@ impl Decodable for CommonParams {
             min_num_of_validators,
             delegation_threshold,
             min_deposit,
-        ) = if size >= 31 {
+            max_candidate_metadata_size,
+        ) = if size >= DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS {
             (
                 rlp.val_at(23)?,
                 rlp.val_at(24)?,
@@ -343,6 +354,7 @@ impl Decodable for CommonParams {
                 rlp.val_at(28)?,
                 rlp.val_at(29)?,
                 rlp.val_at(30)?,
+                rlp.val_at(31)?,
             )
         } else {
             Default::default()
@@ -380,6 +392,7 @@ impl Decodable for CommonParams {
             min_num_of_validators,
             delegation_threshold,
             min_deposit,
+            max_candidate_metadata_size,
         })
     }
 }
@@ -426,7 +439,7 @@ mod tests {
     #[test]
     fn rlp_with_extra_fields() {
         let mut params = CommonParams::default_for_test();
-        params.size = 31;
+        params.size = DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS;
         params.term_seconds = 100;
         params.min_deposit = 123;
         rlp_encode_and_decode_test!(params);
@@ -436,7 +449,7 @@ mod tests {
     fn rlp_encoding_are_different_if_the_size_are_different() {
         let origin = CommonParams::default_for_test();
         let mut params = origin;
-        params.size = 31;
+        params.size = DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS;
         assert_ne!(rlp::encode(&origin), rlp::encode(&params));
     }
 
@@ -502,6 +515,7 @@ mod tests {
         assert_eq!(deserialized.min_num_of_validators, 0);
         assert_eq!(deserialized.delegation_threshold, 0);
         assert_eq!(deserialized.min_deposit, 0);
+        assert_eq!(deserialized.max_candidate_metadata_size, 0);
 
         assert_eq!(params, deserialized.into());
     }
@@ -569,6 +583,7 @@ mod tests {
         assert_eq!(deserialized.min_num_of_validators, 0);
         assert_eq!(deserialized.delegation_threshold, 0);
         assert_eq!(deserialized.min_deposit, 0);
+        assert_eq!(deserialized.max_candidate_metadata_size, 0);
 
         assert_eq!(
             Params {
@@ -579,6 +594,7 @@ mod tests {
                 min_num_of_validators: Some(0.into()),
                 delegation_threshold: Some(0.into()),
                 min_deposit: Some(0.into()),
+                max_candidate_metadata_size: Some(0.into()),
                 ..params
             },
             deserialized.into(),
@@ -620,7 +636,8 @@ mod tests {
             "maxNumOfValidators": 29,
             "minNumOfValidators": 30,
             "delegationThreshold": 31,
-            "minDeposit": 32
+            "minDeposit": 32,
+            "maxCandidateMetadataSize": 33
         }"#;
         let params = serde_json::from_str::<Params>(s).unwrap();
         let deserialized = CommonParams::from(params.clone());
@@ -655,6 +672,7 @@ mod tests {
         assert_eq!(deserialized.min_num_of_validators, 30);
         assert_eq!(deserialized.delegation_threshold, 31);
         assert_eq!(deserialized.min_deposit, 32);
+        assert_eq!(deserialized.max_candidate_metadata_size, 33);
 
         assert_eq!(params, deserialized.into());
     }
