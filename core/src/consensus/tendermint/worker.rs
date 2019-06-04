@@ -43,7 +43,7 @@ use crate::account_provider::AccountProvider;
 use crate::block::*;
 use crate::client::ConsensusClient;
 use crate::consensus::signer::EngineSigner;
-use crate::consensus::validator_set::ValidatorSet;
+use crate::consensus::validator_set::{DynamicValidator, ValidatorSet};
 use crate::consensus::vote_collector::VoteCollector;
 use crate::consensus::{EngineError, Seal};
 use crate::encoded;
@@ -59,7 +59,7 @@ type SpawnResult = (
     crossbeam::Sender<()>,
 );
 
-pub fn spawn(validators: Arc<ValidatorSet>) -> SpawnResult {
+pub fn spawn(validators: Arc<DynamicValidator>) -> SpawnResult {
     Worker::spawn(validators)
 }
 
@@ -86,7 +86,7 @@ struct Worker {
     /// The last confirmed view from the commit step.
     last_confirmed_view: View,
     /// Set used to determine the current validators.
-    validators: Arc<ValidatorSet>,
+    validators: Arc<DynamicValidator>,
     /// Channel to the network extension, must be set later.
     extension: EventSender<network::Event>,
     time_gap_params: TimeGapParams,
@@ -164,7 +164,7 @@ pub enum Event {
 impl Worker {
     /// Create a new instance of Tendermint engine
     fn new(
-        validators: Arc<ValidatorSet>,
+        validators: Arc<DynamicValidator>,
         extension: EventSender<network::Event>,
         client: Weak<ConsensusClient>,
         time_gap_params: TimeGapParams,
@@ -188,7 +188,7 @@ impl Worker {
         }
     }
 
-    fn spawn(validators: Arc<ValidatorSet>) -> SpawnResult {
+    fn spawn(validators: Arc<DynamicValidator>) -> SpawnResult {
         let (sender, receiver) = crossbeam::unbounded();
         let (quit, quit_receiver) = crossbeam::bounded(1);
         let (external_params_initializer, external_params_receiver) = crossbeam::bounded(1);

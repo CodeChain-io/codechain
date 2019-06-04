@@ -21,14 +21,14 @@ use std::time::Duration;
 use cjson;
 use ckey::{Address, PlatformAddress};
 
-use super::super::validator_set::{new_validator_set, ValidatorSet};
+use super::super::validator_set::DynamicValidator;
 use super::types::View;
 use super::Step;
 
 /// `Tendermint` params.
 pub struct TendermintParams {
     /// List of validators.
-    pub validators: Arc<ValidatorSet>,
+    pub validators: Arc<DynamicValidator>,
     /// Timeout durations for different steps.
     pub timeouts: TimeoutParams,
     /// Reward per block in base units.
@@ -41,7 +41,7 @@ impl From<cjson::scheme::TendermintParams> for TendermintParams {
     fn from(p: cjson::scheme::TendermintParams) -> Self {
         let dt = TimeoutParams::default();
         TendermintParams {
-            validators: new_validator_set(p.validators),
+            validators: Arc::new(DynamicValidator::new(p.validators)),
             timeouts: TimeoutParams {
                 propose: p.timeout_propose.map_or(dt.propose, to_duration),
                 propose_delta: p.timeout_propose_delta.map_or(dt.propose_delta, to_duration),

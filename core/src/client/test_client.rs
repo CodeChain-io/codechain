@@ -56,7 +56,7 @@ use crate::blockchain_info::BlockChainInfo;
 use crate::client::ImportResult;
 use crate::client::{
     AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock,
-    MiningBlockChainClient, StateOrBlock, TermInfo,
+    MiningBlockChainClient, StateInfo, StateOrBlock, TermInfo,
 };
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
@@ -613,6 +613,12 @@ impl TermInfo for TestBlockChainClient {
     }
 
     fn state_at_term_begin(&self, _id: BlockId) -> Option<TopLevelState> {
+        None
+    }
+}
+
+impl StateInfo for TestBlockChainClient {
+    fn state_at(&self, _id: BlockId) -> Option<TopLevelState> {
         None
     }
 }
