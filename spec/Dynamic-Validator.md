@@ -7,7 +7,6 @@
 | **NOMINATION_EXPIRATION**        | 24 **TERM**s  |
 | **CUSTODY_PERIOD**               | 24 **TERM**s  |
 | **RELEASE_PERIOD**               | 240 **TERM**s |
-| **WITHDRAW_DELAY**               | 1 **TERM**    |
 | **MAX_NUM_OF_VALIDATORS**        | 30            |
 | **MIN_NUM_OF_VALIDATORS**        | 4             |
 | **DELEGATION_THRESHOLD**         | 100,000       |
@@ -105,7 +104,7 @@ The block is valid only if the sum of voting power is more than 2/3 of the total
 
 ## Validator Reward
 The block proposer gets the express fee of the blocks at the end of a term.
-Validators get the reward after **WITHDRAW_DELAY** terms; however, the proposers cannot get all the reward if they are not loyal to their duty.
+Validators get the reward after 1 term; however, the proposers cannot get all the reward if they are not loyal to their duty.
 The reward is decreased according to the rate of the blocks the validator misses to sign.
 
 The reward is decreased when a validator doesn't sign blocks proposed by others.
@@ -142,7 +141,7 @@ for validators in total_validators {
 The remaining rewards as a result of the additional reward algorithm are burned.
 At the worst case, **MAX_NUM_OF_VALIDATORS** CCC can be burned every term.
 
-The rewards the validators earn are paid after **WITHDRAW_DELAY**.
+The rewards the validators earn are paid after 1 term.
 
 ## Punishment for Validators
 ### Downtime
@@ -202,8 +201,8 @@ The transaction fails when the delegator revokes more than it delegates.
 * sig2
 
 This is a transaction that reports malicious validator.
-The **REPORT_DOUBLE_VOTE** should be reported during **WITHDRAW_DELAY**.
-The transaction that reports a double vote have occurred before **WITHDRAW_DELAY** fails.
+The **REPORT_DOUBLE_VOTE** should be reported before 1 term passes.
+The transaction that reports a double vote have occurred before 1 term passes fails.
 
 The criminal loses all his deposit and rewards and is banned immediately; it is the only case where a validator set is changed during the term.
 
@@ -221,9 +220,8 @@ stakeholders = [ address+ ], address asc
 balance(address) = quantity
 delegation(delegator) = [ [delegatee, quantity]+ ], delegatee asc
 candidates = [ [pubkey, deposits, nominate_end_at]+ ], pubkey asc
-pending_rewards = [ [withdraw_at, address, quantity]+ ], [withdraw_at, address] asc
 banned = [ address+ ], address asc
-jailed = [ [address, deposits, custody_until, kicked_at]+ ], address asc
+jailed = [ [address, deposits, custody_until, released_at]+ ], address asc
 term_id = [ the last block number of the previous term, the current term id ]
 intermediate_rewards = [ [ address, rewards ]+ address asc, [ address, rewards ]+ address asc ]
 ```
@@ -231,6 +229,5 @@ intermediate_rewards = [ [ address, rewards ]+ address asc, [ address, rewards ]
 ### on TermEnd events
 1. Update `term_id` to the current block number and the next term id
 3. Remove the expired candidates and give back the deposits
-3. Remove the jailed accounts if the current term is greater than `kicked_at` and give back the deposits
-4. Pay the pending rewards
-5. Calculate rewards and update `pending_rewards`
+3. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits
+4. Calculate rewards of the previous block and update `intermediate_rewards`

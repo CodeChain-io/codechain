@@ -328,7 +328,7 @@ pub struct Prisoner {
     pub address: Address,
     pub deposit: Deposit,
     pub custody_until: u64,
-    pub kicked_at: u64,
+    pub released_at: u64,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -366,14 +366,14 @@ impl Jail {
         self.0.len()
     }
 
-    pub fn add(&mut self, candidate: Candidate, custody_until: u64, kicked_at: u64) {
-        assert!(custody_until <= kicked_at);
+    pub fn add(&mut self, candidate: Candidate, custody_until: u64, released_at: u64) {
+        assert!(custody_until <= released_at);
         let address = public_to_address(&candidate.pubkey);
         self.0.insert(address, Prisoner {
             address,
             deposit: candidate.deposit,
             custody_until,
-            kicked_at,
+            released_at,
         });
     }
 
@@ -394,10 +394,11 @@ impl Jail {
         }
     }
 
-    pub fn kick_prisoners(&mut self, term_index: u64) -> Vec<Prisoner> {
-        let (kicked, retained): (Vec<_>, Vec<_>) = self.0.values().cloned().partition(|c| c.kicked_at <= term_index);
+    pub fn drain_released_prisoners(&mut self, term_index: u64) -> Vec<Prisoner> {
+        let (released, retained): (Vec<_>, Vec<_>) =
+            self.0.values().cloned().partition(|c| c.released_at <= term_index);
         self.0 = retained.into_iter().map(|c| (c.address, c)).collect();
-        kicked
+        released
     }
 }
 
@@ -1179,7 +1180,7 @@ mod tests {
                 address,
                 deposit: 100,
                 custody_until: 10,
-                kicked_at: 20,
+                released_at: 20,
             })
         );
         assert_eq!(jail.len(), 0);
@@ -1222,11 +1223,11 @@ mod tests {
 
         // Kick
         let mut jail = Jail::load_from_state(&state).unwrap();
-        let kicked = jail.kick_prisoners(19);
+        let released = jail.drain_released_prisoners(19);
         jail.save_to_state(&mut state).unwrap();
 
         // Assert
-        assert_eq!(kicked, Vec::new());
+        assert_eq!(released, Vec::new());
         assert_eq!(jail.len(), 2);
         assert_ne!(jail.get_prisoner(&address1), None);
         assert_ne!(jail.get_prisoner(&address2), None);
@@ -1265,15 +1266,15 @@ mod tests {
 
         // Kick
         let mut jail = Jail::load_from_state(&state).unwrap();
-        let kicked = jail.kick_prisoners(20);
+        let released = jail.drain_released_prisoners(20);
         jail.save_to_state(&mut state).unwrap();
 
         // Assert
-        assert_eq!(kicked, vec![Prisoner {
+        assert_eq!(released, vec![Prisoner {
             address: address1,
             deposit: 100,
             custody_until: 10,
-            kicked_at: 20,
+            released_at: 20,
         }]);
         assert_eq!(jail.len(), 1);
         assert_eq!(jail.get_prisoner(&address1), None);
@@ -1313,22 +1314,22 @@ mod tests {
 
         // Kick
         let mut jail = Jail::load_from_state(&state).unwrap();
-        let kicked = jail.kick_prisoners(25);
+        let released = jail.drain_released_prisoners(25);
         jail.save_to_state(&mut state).unwrap();
 
         // Assert
-        assert_eq!(kicked, vec![
+        assert_eq!(released, vec![
             Prisoner {
                 address: address1,
                 deposit: 100,
                 custody_until: 10,
-                kicked_at: 20,
+                released_at: 20,
             },
             Prisoner {
                 address: address2,
                 deposit: 200,
                 custody_until: 15,
-                kicked_at: 25,
+                released_at: 25,
             }
         ]);
         assert_eq!(jail.len(), 0);
@@ -1336,7 +1337,7 @@ mod tests {
         assert_eq!(jail.get_prisoner(&address2), None);
 
         let result = state.action_data(&*JAIL_KEY).unwrap();
-        assert_eq!(result, None, "Should clean the state if all prisoners are kicked");
+        assert_eq!(result, None, "Should clean the state if all prisoners are released");
     }
 
     #[test]
