@@ -330,8 +330,8 @@ pub fn on_term_close(state: &mut TopLevelState, current_term: u64) -> StateResul
     // TODO: auto_withdraw(pending_rewards)
 
     let mut jailed = Jail::load_from_state(&state)?;
-    let kicked = jailed.kick_prisoners(current_term);
-    for prisoner in &kicked {
+    let released = jailed.drain_released_prisoners(current_term);
+    for prisoner in &released {
         state.add_balance(&prisoner.address, prisoner.deposit)?;
     }
     jailed.save_to_state(state)?;
@@ -340,7 +340,7 @@ pub fn on_term_close(state: &mut TopLevelState, current_term: u64) -> StateResul
     let reverted: Vec<_> = expired
         .into_iter()
         .map(|c| public_to_address(&c.pubkey))
-        .chain(kicked.into_iter().map(|p| p.address))
+        .chain(released.into_iter().map(|p| p.address))
         .collect();
     revert_delegations(state, &reverted)?;
 
@@ -975,8 +975,8 @@ mod tests {
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, 5).unwrap();
 
         let custody_until = 10;
-        let kicked_at = 20;
-        let result = jail(&mut state, &address, custody_until, kicked_at);
+        let released_at = 20;
+        let result = jail(&mut state, &address, custody_until, released_at);
         assert!(result.is_ok());
 
         let candidates = Candidates::load_from_state(&state).unwrap();
@@ -989,7 +989,7 @@ mod tests {
                 address,
                 deposit,
                 custody_until,
-                kicked_at,
+                released_at,
             }),
             "The candidate become a prisoner"
         );
@@ -1012,9 +1012,9 @@ mod tests {
         let deposit = 200;
         let nominate_expire = 5;
         let custody_until = 10;
-        let kicked_at = 20;
+        let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
-        jail(&mut state, &address, custody_until, kicked_at).unwrap();
+        jail(&mut state, &address, custody_until, released_at).unwrap();
 
         for current_term in 0..=custody_until {
             let result =
@@ -1044,9 +1044,9 @@ mod tests {
         let deposit = 200;
         let nominate_expire = 5;
         let custody_until = 10;
-        let kicked_at = 20;
+        let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
-        jail(&mut state, &address, custody_until, kicked_at).unwrap();
+        jail(&mut state, &address, custody_until, released_at).unwrap();
         for current_term in 0..=custody_until {
             on_term_close(&mut state, current_term).unwrap();
         }
@@ -1081,7 +1081,7 @@ mod tests {
     }
 
     #[test]
-    fn jail_kicked_after() {
+    fn jail_released_after() {
         let address_pubkey = Public::random();
         let address = public_to_address(&address_pubkey);
 
@@ -1095,11 +1095,11 @@ mod tests {
         let deposit = 200;
         let nominate_expire = 5;
         let custody_until = 10;
-        let kicked_at = 20;
+        let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
-        jail(&mut state, &address, custody_until, kicked_at).unwrap();
+        jail(&mut state, &address, custody_until, released_at).unwrap();
 
-        for current_term in 0..kicked_at {
+        for current_term in 0..released_at {
             on_term_close(&mut state, current_term).unwrap();
 
             let candidates = Candidates::load_from_state(&state).unwrap();
@@ -1109,19 +1109,19 @@ mod tests {
             assert!(jail.get_prisoner(&address).is_some());
         }
 
-        on_term_close(&mut state, kicked_at).unwrap();
+        on_term_close(&mut state, released_at).unwrap();
 
         let candidates = Candidates::load_from_state(&state).unwrap();
         assert_eq!(candidates.get_candidate(&address), None, "A prisoner should not become a candidate");
 
         let jail = Jail::load_from_state(&state).unwrap();
-        assert_eq!(jail.get_prisoner(&address), None, "A prisoner should be kicked");
+        assert_eq!(jail.get_prisoner(&address), None, "A prisoner should be released");
 
-        assert_eq!(state.balance(&address).unwrap(), 1000, "Balance should be restored after being kicked");
+        assert_eq!(state.balance(&address).unwrap(), 1000, "Balance should be restored after being released");
     }
 
     #[test]
-    fn can_delegate_until_kicked() {
+    fn can_delegate_until_released() {
         let address_pubkey = Public::random();
         let delegator_pubkey = Public::random();
         let address = public_to_address(&address_pubkey);
@@ -1141,11 +1141,11 @@ mod tests {
         let deposit = 200;
         let nominate_expire = 5;
         let custody_until = 10;
-        let kicked_at = 20;
+        let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
-        jail(&mut state, &address, custody_until, kicked_at).unwrap();
+        jail(&mut state, &address, custody_until, released_at).unwrap();
 
-        for current_term in 0..=kicked_at {
+        for current_term in 0..=released_at {
             let action = Action::DelegateCCS {
                 address,
                 quantity: 1,
@@ -1185,9 +1185,9 @@ mod tests {
         let deposit = 200;
         let nominate_expire = 5;
         let custody_until = 10;
-        let kicked_at = 20;
+        let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
-        jail(&mut state, &address, custody_until, kicked_at).unwrap();
+        jail(&mut state, &address, custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
@@ -1195,7 +1195,7 @@ mod tests {
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        for current_term in 0..=kicked_at {
+        for current_term in 0..=released_at {
             on_term_close(&mut state, current_term).unwrap();
         }
 
@@ -1226,9 +1226,9 @@ mod tests {
         // TODO: change with stake.execute()
         let nominate_expire = 5;
         let custody_until = 10;
-        let kicked_at = 20;
+        let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, 0, 0, nominate_expire).unwrap();
-        jail(&mut state, &address, custody_until, kicked_at).unwrap();
+        jail(&mut state, &address, custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
@@ -1304,8 +1304,8 @@ mod tests {
 
         self_nominate(&mut state, &criminal, &criminal_pubkey, 0, 0, 10).unwrap();
         let custody_until = 10;
-        let kicked_at = 20;
-        jail(&mut state, &criminal, custody_until, kicked_at).unwrap();
+        let released_at = 20;
+        jail(&mut state, &criminal, custody_until, released_at).unwrap();
 
         let result = ban(&mut state, criminal);
         assert!(result.is_ok());
