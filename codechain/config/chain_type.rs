@@ -34,6 +34,7 @@ pub enum ChainType {
     Husky,
     Saluki,
     Corgi,
+    Beagle,
     Custom(String),
 }
 
@@ -57,6 +58,7 @@ impl FromStr for ChainType {
             "husky" => ChainType::Husky,
             "saluki" => ChainType::Saluki,
             "corgi" => ChainType::Corgi,
+            "beagle" => ChainType::Beagle,
             other => ChainType::Custom(other.into()),
         };
         Ok(scheme)
@@ -75,6 +77,7 @@ impl fmt::Display for ChainType {
             ChainType::Husky => "husky",
             ChainType::Saluki => "saluki",
             ChainType::Corgi => "corgi",
+            ChainType::Beagle => "beagle",
             ChainType::Custom(custom) => custom,
         })
     }
@@ -92,6 +95,7 @@ impl ChainType {
             ChainType::Husky => Ok(Scheme::new_husky()),
             ChainType::Saluki => Ok(Scheme::new_saluki()),
             ChainType::Corgi => Ok(Scheme::new_corgi()),
+            ChainType::Beagle => Ok(Scheme::new_beagle()),
             ChainType::Custom(filename) => {
                 let file = fs::File::open(filename)
                     .map_err(|e| format!("Could not load specification file at {}: {}", filename, e))?;
