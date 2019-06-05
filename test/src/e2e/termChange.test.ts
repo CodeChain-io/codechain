@@ -30,7 +30,7 @@ import CodeChain from "../helper/spawn";
 
 const RLP = require("rlp");
 
-describe("ChangeParams", function() {
+describe("Term change", function() {
     const chain = `${__dirname}/../scheme/solo-block-reward-50.json`;
     let node: CodeChain;
 
