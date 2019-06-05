@@ -24,7 +24,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use snap;
 
 use super::super::vote_collector::Message;
-use super::types::BitSet;
+use super::super::BitSet;
 use super::{BlockHash, Height, Step, View};
 use crate::error::Error;
 

@@ -29,9 +29,10 @@ use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
 
+use super::super::BitSet;
 use super::message::*;
 use super::params::TimeoutParams;
-use super::types::{BitSet, Height, PeerState, Step, View};
+use super::types::{Height, PeerState, Step, View};
 use super::worker;
 use crate::consensus::EngineError;
 

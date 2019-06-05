@@ -123,8 +123,8 @@ mod tests {
     use ctypes::{CommonParams, Header};
     use primitives::Bytes;
 
+    use super::super::BitSet;
     use super::message::{message_info_rlp, VoteStep};
-    use super::types::BitSet;
     use crate::account_provider::AccountProvider;
     use crate::block::{ClosedBlock, IsBlock, OpenBlock};
     use crate::client::TestBlockChainClient;
