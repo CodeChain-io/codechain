@@ -65,6 +65,7 @@ pub struct Params {
     pub min_num_of_validators: Option<Uint>,
     pub delegation_threshold: Option<Uint>,
     pub min_deposit: Option<Uint>,
+    pub max_candidate_metadata_size: Option<Uint>,
 }
 
 #[cfg(test)]
@@ -134,6 +135,7 @@ mod tests {
         assert_eq!(deserialized.min_num_of_validators, None);
         assert_eq!(deserialized.delegation_threshold, None);
         assert_eq!(deserialized.min_deposit, None);
+        assert_eq!(deserialized.max_candidate_metadata_size, None);
     }
 
 
@@ -199,6 +201,7 @@ mod tests {
         assert_eq!(deserialized.min_num_of_validators, None);
         assert_eq!(deserialized.delegation_threshold, None);
         assert_eq!(deserialized.min_deposit, None);
+        assert_eq!(deserialized.max_candidate_metadata_size, None);
     }
 
 
@@ -236,7 +239,8 @@ mod tests {
             "maxNumOfValidators": 29,
             "minNumOfValidators": 30,
             "delegationThreshold": 31,
-            "minDeposit": 32
+            "minDeposit": 32,
+            "maxCandidateMetadataSize": 33
         }"#;
 
         let deserialized: Params = serde_json::from_str(s).unwrap();
@@ -271,5 +275,6 @@ mod tests {
         assert_eq!(deserialized.min_num_of_validators, Some(30.into()));
         assert_eq!(deserialized.delegation_threshold, Some(31.into()));
         assert_eq!(deserialized.min_deposit, Some(32.into()));
+        assert_eq!(deserialized.max_candidate_metadata_size, Some(33.into()));
     }
 }

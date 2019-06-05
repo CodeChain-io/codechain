@@ -11,6 +11,7 @@
 | **MIN_NUM_OF_VALIDATORS**        | 4             |
 | **DELEGATION_THRESHOLD**         | 100,000       |
 | **MIN_DEPOSIT**                  | 10M CCC       |
+| **MAX_CANDIDATE_METADATA_SIZE**  | 128 Bytes     |
 
 
 ## FSM of Account States
@@ -179,6 +180,7 @@ The account cannot withdraw the deposit manually, and is returned automatically 
 
 The metadata is text information that proves the identity of the candidate.
 It can be a URL, a phone number, a messenger Id, etc.
+The size of the metadata cannot exceed **MAX_CANDIDATE_METADATA_SIZE** bytes.
 
 ### DELEGATE
 * delegatee

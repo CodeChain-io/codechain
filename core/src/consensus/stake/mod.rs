@@ -105,45 +105,10 @@ impl ActionHandler for Stake {
         }
     }
 
-    fn verify(&self, bytes: &[u8]) -> Result<(), SyntaxError> {
+    fn verify(&self, bytes: &[u8], current_params: &CommonParams) -> Result<(), SyntaxError> {
         let action = Action::decode(&UntrustedRlp::new(bytes))
             .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
-        match action {
-            Action::TransferCCS {
-                ..
-            } => Ok(()),
-            Action::DelegateCCS {
-                ..
-            } => Ok(()),
-            Action::Revoke {
-                ..
-            } => Ok(()),
-            Action::SelfNominate {
-                ..
-            } => {
-                // FIXME: Metadata size limit
-                Ok(())
-            }
-            Action::ChangeParams {
-                metadata_seq,
-                params,
-                signatures,
-            } => {
-                let action = Action::ChangeParams {
-                    metadata_seq,
-                    params,
-                    signatures: vec![],
-                };
-                let encoded_action = H256::blake(rlp::encode(&action));
-                for signature in signatures {
-                    // XXX: Signature recovery is an expensive job. Should we do it twice?
-                    recover(&signature, &encoded_action).map_err(|err| {
-                        SyntaxError::InvalidCustomAction(format!("Cannot decode the signature: {}", err))
-                    })?;
-                }
-                Ok(())
-            }
-        }
+        action.verify(current_params)
     }
 
     fn on_close_block(
