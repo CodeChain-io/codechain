@@ -977,7 +977,7 @@ impl MinerService for Miner {
                 };
                 get_next_seq(self.future_transactions(), &addresses)
                     .map(|seq| {
-                        cerror!(RPC, "There are future transactions for {}", platform_address);
+                        cwarn!(RPC, "There are future transactions for {}", platform_address);
                         seq
                     })
                     .unwrap_or_else(|| {
