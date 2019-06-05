@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cjson::scheme::Params;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
 use ctypes::{BlockNumber, ShardId};
@@ -135,6 +136,14 @@ build_rpc_trait! {
         /// Return the network id that is used in this chain.
         # [rpc(name = "chain_getNetworkId")]
         fn get_network_id(&self) -> Result<NetworkId>;
+
+        /// Return common params at given block number
+        #[rpc(name = "chain_getCommonParams")]
+        fn get_common_params(&self, Option<u64>) -> Result<Option<Params>>;
+
+        /// Return the current term id at given block number
+        #[rpc(name = "chain_getTermMetadata")]
+        fn get_term_metadata(&self, Option<u64>) -> Result<Option<(u64, u64)>>;
 
         /// Execute Transactions
         # [rpc(name = "chain_executeTransaction")]

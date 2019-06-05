@@ -24,16 +24,17 @@ use ccrypto::blake256;
 use ckey::{public_to_address, verify_schnorr, Address, SchnorrSignature};
 use cnetwork::{EventSender, NodeId};
 use crossbeam_channel as crossbeam;
-use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockNumber, Header};
 use primitives::{u256_from_u128, Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
+use super::super::BitSet;
 use super::backup::{backup, restore, BackupView};
 use super::message::*;
 use super::network;
 use super::params::TimeGapParams;
-use super::types::{BitSet, Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
+use super::types::{Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::{
     BlockHash, ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
     SEAL_FIELDS,
@@ -362,9 +363,8 @@ impl Worker {
     fn block_proposer_idx(&self, block_hash: H256) -> Option<usize> {
         self.client().block_header(&BlockId::Hash(block_hash)).map(|header| {
             let proposer = header.author();
-            self.validators
-                .get_index_by_address(&self.prev_block_hash(), &proposer)
-                .expect("The proposer must be in the validator set")
+            let parent = header.parent_hash();
+            self.validators.get_index_by_address(&parent, &proposer).expect("The proposer must be in the validator set")
         })
     }
 
@@ -400,11 +400,7 @@ impl Worker {
 
     /// Find the designated for the given view.
     fn view_proposer(&self, prev_block_hash: &H256, view: View) -> Option<Address> {
-        self.block_proposer_idx(*prev_block_hash).map(|prev_proposer_idx| {
-            let proposer_nonce = prev_proposer_idx + 1 + view as usize;
-            ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
-            self.validators.get_address(prev_block_hash, proposer_nonce)
-        })
+        self.validators.next_block_proposer(prev_block_hash, view)
     }
 
     pub fn proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {
@@ -484,38 +480,25 @@ impl Worker {
         self.validators.contains_address(&prev_hash, address)
     }
 
-    fn check_above_threshold(&self, n: usize) -> Result<(), EngineError> {
-        let threshold = self.validators.count(&self.prev_block_hash()) * 2 / 3;
-        if n > threshold {
-            Ok(())
-        } else {
-            Err(EngineError::BadSealFieldSize(OutOfBounds {
-                min: Some(threshold),
-                max: None,
-                found: n,
-            }))
-        }
-    }
-
     fn has_enough_any_votes(&self) -> bool {
-        let step_votes = self.votes.count_round_votes(&VoteStep::new(self.height, self.view, self.step.to_step()));
-        self.check_above_threshold(step_votes).is_ok()
+        let step_votes = self.votes.round_votes(&VoteStep::new(self.height, self.view, self.step.to_step()));
+        self.validators.check_enough_votes(&self.prev_block_hash(), &step_votes).is_ok()
     }
 
     fn has_all_votes(&self, vote_step: &VoteStep) -> bool {
-        let step_votes = self.votes.count_round_votes(vote_step);
-        self.validators.count(&self.prev_block_hash()) == step_votes
+        let step_votes = self.votes.round_votes(vote_step);
+        self.validators.count(&self.prev_block_hash()) == step_votes.count()
     }
 
     fn has_enough_aligned_votes(&self, message: &ConsensusMessage) -> bool {
-        let aligned_count = self.votes.count_aligned_votes(&message);
-        self.check_above_threshold(aligned_count).is_ok()
+        let aligned_votes = self.votes.aligned_votes(&message);
+        self.validators.check_enough_votes(&self.prev_block_hash(), &aligned_votes).is_ok()
     }
 
     fn has_enough_precommit_votes(&self, block_hash: H256) -> bool {
         let vote_step = VoteStep::new(self.height, self.view, Step::Precommit);
-        let count = self.votes.count_block_round_votes(&vote_step, &Some(block_hash));
-        self.check_above_threshold(count).is_ok()
+        let votes = self.votes.block_round_votes(&vote_step, &Some(block_hash));
+        self.validators.check_enough_votes(&self.prev_block_hash(), &votes).is_ok()
     }
 
     fn broadcast_message(&self, message: Bytes) {
@@ -626,8 +609,8 @@ impl Worker {
                         return
                     }
                 } else {
-                    let parent_block_hash = &self.prev_block_hash();
-                    if self.is_signer_proposer(parent_block_hash) {
+                    let parent_block_hash = self.prev_block_hash();
+                    if self.is_signer_proposer(&parent_block_hash) {
                         if let TwoThirdsMajority::Lock(lock_view, _) = self.last_two_thirds_majority {
                             cinfo!(ENGINE, "I am a proposer, I'll re-propose a locked block");
                             match self.locked_proposal_block(lock_view) {
@@ -636,9 +619,9 @@ impl Worker {
                             }
                         } else {
                             cinfo!(ENGINE, "I am a proposer, I'll create a block");
-                            self.update_sealing(*parent_block_hash);
+                            self.update_sealing(parent_block_hash);
                             self.step = TendermintState::ProposeWaitBlockGeneration {
-                                parent_hash: *parent_block_hash,
+                                parent_hash: parent_block_hash,
                             };
                         }
                     } else {
@@ -728,7 +711,7 @@ impl Worker {
     }
 
     fn already_generated_message(&self) -> bool {
-        match self.signer_index(&self.prev_block_hash()) {
+        match self.signer_index() {
             Some(signer_index) => self.votes_received.is_set(signer_index),
             _ => false,
         }
@@ -751,7 +734,7 @@ impl Worker {
             block_hash,
         };
         let vote_info = on.rlp_bytes();
-        match (self.signer_index(&self.prev_block_hash()), self.sign(blake256(&vote_info))) {
+        match (self.signer_index(), self.sign(blake256(&vote_info))) {
             (Some(signer_index), Ok(signature)) => {
                 let message = ConsensusMessage {
                     signature,
@@ -995,14 +978,12 @@ impl Worker {
 
         let view = self.view;
 
-        let last_block_hash = &self.prev_block_hash();
         let last_block_view = &self.last_confirmed_view;
-        assert_eq!(last_block_hash, &parent_hash);
+        assert_eq!(self.prev_block_hash(), parent_hash);
 
-        let (precommits, precommit_indices) = self.votes.round_signatures_and_indices(
-            &VoteStep::new(height - 1, *last_block_view, Step::Precommit),
-            &last_block_hash,
-        );
+        let (precommits, precommit_indices) = self
+            .votes
+            .round_signatures_and_indices(&VoteStep::new(height - 1, *last_block_view, Step::Precommit), &parent_hash);
         ctrace!(ENGINE, "Collected seal: {:?}({:?})", precommits, precommit_indices);
         let precommit_bitset = BitSet::new_with_indices(&precommit_indices);
         Seal::Tendermint {
@@ -1016,28 +997,27 @@ impl Worker {
     fn proposal_generated(&mut self, sealed_block: &SealedBlock) {
         let header = sealed_block.header();
         let hash = header.hash();
+        let parent_hash = header.parent_hash();
 
         if let TendermintState::ProposeWaitBlockGeneration {
             parent_hash: expected_parent_hash,
         } = self.step
         {
             assert_eq!(
-                *header.parent_hash(),
-                expected_parent_hash,
+                *parent_hash, expected_parent_hash,
                 "Generated hash({:?}) is different from expected({:?})",
-                *header.parent_hash(),
-                expected_parent_hash
+                parent_hash, expected_parent_hash
             );
         } else {
             panic!("Block is generated at unexpected step {:?}", self.step);
         }
-        let prev_proposer_idx = self.block_proposer_idx(*header.parent_hash()).expect("Prev block must exists");
+        let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
 
         debug_assert_eq!(self.view, consensus_view(&header).expect("I am proposer"));
 
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
-        let num_validators = self.validators.count(&self.prev_block_hash());
+        let num_validators = self.validators.count(parent_hash);
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(
             ConsensusMessage::new_proposal(signature, num_validators, header, self.view, prev_proposer_idx)
@@ -1110,22 +1090,24 @@ impl Worker {
         let previous_block_view = previous_block_view(header)?;
         let step = VoteStep::new(header.number() - 1, previous_block_view, Step::Precommit);
         let precommit_hash = message_hash(step, *header.parent_hash());
-        let mut counter = 0;
 
+        let mut voted_validators = BitSet::new();
         for (bitset_index, signature) in seal_view.signatures()? {
             let public = self.validators.get(header.parent_hash(), bitset_index);
             if !verify_schnorr(&public, &signature, &precommit_hash)? {
                 let address = public_to_address(&public);
                 return Err(EngineError::BlockNotAuthorized(address.to_owned()).into())
             }
-            counter += 1;
+            assert!(!voted_validators.is_set(bitset_index), "Double vote");
+            voted_validators.set(bitset_index);
         }
 
         // Genesisblock does not have signatures
         if header.number() == 1 {
             return Ok(())
         }
-        self.check_above_threshold(counter).map_err(Into::into)
+        self.validators.check_enough_votes(header.parent_hash(), &voted_validators)?;
+        Ok(())
     }
 
     fn calculate_score(&self, block_number: Height) -> U256 {
@@ -1303,7 +1285,7 @@ impl Worker {
             if message.on.step == current_vote_step {
                 let vote_index = self
                     .validators
-                    .get_index(&self.prev_block_hash(), &sender_public)
+                    .get_index(&prev_block_hash, &sender_public)
                     .expect("is_authority already checked the existence");
                 self.votes_received.set(vote_index);
             }
@@ -1341,8 +1323,9 @@ impl Worker {
         let header = block.decode_header();
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(header.hash()));
-        let num_validators = self.validators.count(&self.prev_block_hash());
-        let prev_proposer_idx = self.block_proposer_idx(*header.parent_hash()).expect("Prev block must exists");
+        let parent_hash = header.parent_hash();
+        let num_validators = self.validators.count(&parent_hash);
+        let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(
             ConsensusMessage::new_proposal(signature, num_validators, &header, self.view, prev_proposer_idx)
@@ -1380,9 +1363,10 @@ impl Worker {
         self.signer.sign(hash).map_err(Into::into)
     }
 
-    fn signer_index(&self, bh: &H256) -> Option<usize> {
+    fn signer_index(&self) -> Option<usize> {
+        let parent = self.prev_block_hash();
         // FIXME: More effecient way to find index
-        self.signer.public().and_then(|public| self.validators.get_index(bh, public))
+        self.signer.public().and_then(|public| self.validators.get_index(&parent, public))
     }
 
     fn new_blocks(&mut self, imported: Vec<H256>, enacted: Vec<H256>) {

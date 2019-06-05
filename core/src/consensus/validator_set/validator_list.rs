@@ -15,16 +15,24 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
+use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, Address, Public};
+use ctypes::util::unexpected::OutOfBounds;
+use parking_lot::RwLock;
 use primitives::H256;
 
+use super::super::BitSet;
 use super::ValidatorSet;
+use crate::client::ConsensusClient;
+use crate::consensus::EngineError;
+use crate::types::BlockId;
 
 /// Validator set containing a known set of public keys.
 pub struct ValidatorList {
     validators: Vec<Public>,
     addresses: HashSet<Address>,
+    client: RwLock<Option<Weak<ConsensusClient>>>,
 }
 
 impl ValidatorList {
@@ -33,6 +41,7 @@ impl ValidatorList {
         ValidatorList {
             validators,
             addresses,
+            client: Default::default(),
         }
     }
 }
@@ -60,8 +69,40 @@ impl ValidatorSet for ValidatorList {
         self.validators.iter().position(|v| public_to_address(v) == *address)
     }
 
+    fn next_block_proposer(&self, parent: &H256, view: u64) -> Option<Address> {
+        let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
+        client.block_header(&BlockId::from(*parent)).map(|header| {
+            let proposer = header.author();
+            let grand_parent = header.parent_hash();
+            let prev_proposer_idx =
+                self.get_index_by_address(&grand_parent, &proposer).expect("The proposer must be in the validator set");
+            let proposer_nonce = prev_proposer_idx + 1 + view as usize;
+            ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
+            public_to_address(&self.get(&parent, proposer_nonce))
+        })
+    }
+
     fn count(&self, _bh: &H256) -> usize {
         self.validators.len()
+    }
+
+    fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError> {
+        let validator_count = self.count(parent);
+        let voted = votes.count();
+        if voted * 3 > validator_count * 2 {
+            Ok(())
+        } else {
+            let threshold = validator_count * 2 / 3;
+            Err(EngineError::BadSealFieldSize(OutOfBounds {
+                min: Some(threshold),
+                max: None,
+                found: voted,
+            }))
+        }
+    }
+
+    fn register_client(&self, client: Weak<ConsensusClient>) {
+        *self.client.write() = Some(client);
     }
 
     fn addresses(&self, _parent: &H256) -> Vec<Address> {
