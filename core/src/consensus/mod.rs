@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod bit_set;
 mod blake_pow;
 mod cuckoo;
 mod null_engine;
@@ -46,7 +47,8 @@ use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::{CommonParams, Header};
 use primitives::{Bytes, H256, U256};
 
-use self::tendermint::types::{BitSet, View};
+use self::bit_set::BitSet;
+use self::tendermint::types::View;
 use crate::account_provider::AccountProvider;
 use crate::block::{ExecutedBlock, SealedBlock};
 use crate::client::ConsensusClient;
