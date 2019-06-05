@@ -469,7 +469,7 @@ where
         self.host_channel
             .lock()
             .send(IoMessage::Shutdown)
-            .unwrap_or_else(|e| cwarn!(IO, "Error on IO service shutdown: {:?}", e));
+            .unwrap_or_else(|e| cerror!(IO, "Error on IO service shutdown: {:?}", e));
         if let Some(thread) = self.thread.lock().take() {
             thread.join().unwrap_or_else(|e| {
                 cdebug!(SHUTDOWN, "Error joining IO service event loop thread: {:?}", e);
