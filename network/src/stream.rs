@@ -142,7 +142,7 @@ impl<Stream: TryRead + TryWrite + PeerAddr + Shutdown> TryStream<Stream> {
                 return Ok(Some(bytes))
             }
             let from_socket = self.peer_addr()?;
-            cerror!(NETWORK, "Invalid messages({:?}) from {}", bytes, from_socket);
+            cwarn!(NETWORK, "Invalid messages({:?}) from {}", bytes, from_socket);
             self.shutdown()?;
             Ok(None)
         } else {
