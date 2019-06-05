@@ -159,7 +159,7 @@ describe("Term change", function() {
             [blockNumber2]
         );
         expect(params2).to.be.deep.equals([blockNumber2, 2]);
-    });
+    }).timeout(10_000);
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
