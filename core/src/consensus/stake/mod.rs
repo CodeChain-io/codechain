@@ -27,7 +27,7 @@ use cstate::{ActionHandler, StateResult, TopLevelState, TopState};
 use ctypes::errors::{RuntimeError, SyntaxError};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{CommonParams, Header};
-use primitives::H256;
+use primitives::{Bytes, H256};
 use rlp::{Decodable, UntrustedRlp};
 
 use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
@@ -95,8 +95,8 @@ impl ActionHandler for Stake {
             } => revoke(state, sender, &address, quantity),
             Action::SelfNominate {
                 deposit,
-                ..
-            } => self_nominate(state, sender, sender_public, deposit, 0, 0),
+                metadata,
+            } => self_nominate(state, sender, sender_public, deposit, 0, 0, metadata),
             Action::ChangeParams {
                 metadata_seq,
                 params,
@@ -186,6 +186,7 @@ fn self_nominate(
     deposit: u64,
     current_term: u64,
     nomination_ends_at: u64,
+    metadata: Bytes,
 ) -> StateResult<()> {
     // TODO: proper handling of get_current_term
     // TODO: proper handling of NOMINATE_EXPIRATION
@@ -208,7 +209,7 @@ fn self_nominate(
 
     let mut candidates = Candidates::load_from_state(&state)?;
     state.sub_balance(sender, deposit)?;
-    candidates.add_deposit(sender_public, total_deposit, nomination_ends_at);
+    candidates.add_deposit(sender_public, total_deposit, nomination_ends_at, metadata);
 
     jail.save_to_state(state)?;
     candidates.save_to_state(state)?;
@@ -474,7 +475,7 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -517,7 +518,7 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -585,7 +586,7 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -610,7 +611,7 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -641,7 +642,7 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -672,7 +673,7 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -710,7 +711,7 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -748,7 +749,7 @@ mod tests {
             Stake::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
-        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
         let action = Action::DelegateCCS {
             address: delegatee,
@@ -781,7 +782,7 @@ mod tests {
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
-        let result = self_nominate(&mut state, &address, &address_pubkey, 0, 0, 5);
+        let result = self_nominate(&mut state, &address, &address_pubkey, 0, 0, 5, b"metadata1".to_vec());
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 1000);
@@ -792,11 +793,12 @@ mod tests {
                 pubkey: address_pubkey,
                 deposit: 0,
                 nomination_ends_at: 5,
+                metadata: b"metadata1".to_vec(),
             }),
             "nomination_ends_at should be updated even if candidate deposits 0"
         );
 
-        let result = self_nominate(&mut state, &address, &address_pubkey, 200, 0, 10);
+        let result = self_nominate(&mut state, &address, &address_pubkey, 200, 0, 10, b"metadata2".to_vec());
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 800);
@@ -807,10 +809,11 @@ mod tests {
                 pubkey: address_pubkey,
                 deposit: 200,
                 nomination_ends_at: 10,
+                metadata: b"metadata2".to_vec(),
             })
         );
 
-        let result = self_nominate(&mut state, &address, &address_pubkey, 0, 0, 15);
+        let result = self_nominate(&mut state, &address, &address_pubkey, 0, 0, 15, b"metadata3".to_vec());
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 800);
@@ -821,6 +824,7 @@ mod tests {
                 pubkey: address_pubkey,
                 deposit: 200,
                 nomination_ends_at: 15,
+                metadata: b"metadata3".to_vec(),
             }),
             "nomination_ends_at should be updated even if candidate deposits 0"
         );
@@ -838,7 +842,7 @@ mod tests {
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
-        let result = self_nominate(&mut state, &address, &address_pubkey, 2000, 0, 5);
+        let result = self_nominate(&mut state, &address, &address_pubkey, 2000, 0, 5, b"".to_vec());
         assert!(result.is_err(), "Cannot self-nominate without a sufficient balance");
     }
 
@@ -854,7 +858,7 @@ mod tests {
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
-        self_nominate(&mut state, &address, &address_pubkey, 200, 0, 30).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, 200, 0, 30, b"".to_vec()).unwrap();
 
         let result = on_term_close(&mut state, 29);
         assert_eq!(result, Ok(()));
@@ -867,6 +871,7 @@ mod tests {
                 pubkey: address_pubkey,
                 deposit: 200,
                 nomination_ends_at: 30,
+                metadata: b"".to_vec(),
             }),
             "Keep deposit before expiration",
         );
@@ -897,7 +902,7 @@ mod tests {
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
-        self_nominate(&mut state, &address, &address_pubkey, 0, 0, 30).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, 0, 0, 30, b"".to_vec()).unwrap();
 
         let action = Action::DelegateCCS {
             address,
@@ -935,7 +940,7 @@ mod tests {
 
         // TODO: change with stake.execute()
         let deposit = 200;
-        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, 5).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, 5, b"".to_vec()).unwrap();
 
         let custody_until = 10;
         let released_at = 20;
@@ -976,12 +981,19 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let released_at = 20;
-        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
         jail(&mut state, &address, custody_until, released_at).unwrap();
 
         for current_term in 0..=custody_until {
-            let result =
-                self_nominate(&mut state, &address, &address_pubkey, 0, current_term, current_term + nominate_expire);
+            let result = self_nominate(
+                &mut state,
+                &address,
+                &address_pubkey,
+                0,
+                current_term,
+                current_term + nominate_expire,
+                b"".to_vec(),
+            );
             assert!(
                 result.is_err(),
                 "Shouldn't nominate while current_term({}) <= custody_until({})",
@@ -1008,7 +1020,8 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let released_at = 20;
-        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"metadata-before".to_vec())
+            .unwrap();
         jail(&mut state, &address, custody_until, released_at).unwrap();
         for current_term in 0..=custody_until {
             on_term_close(&mut state, current_term).unwrap();
@@ -1023,6 +1036,7 @@ mod tests {
             additional_deposit,
             current_term,
             current_term + nominate_expire,
+            b"metadata-after".to_vec(),
         );
         assert!(result.is_ok());
 
@@ -1033,6 +1047,7 @@ mod tests {
                 deposit: deposit + additional_deposit,
                 nomination_ends_at: current_term + nominate_expire,
                 pubkey: address_pubkey,
+                metadata: "metadata-after".into()
             }),
             "The prisoner is become a candidate",
         );
@@ -1059,7 +1074,7 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let released_at = 20;
-        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
         jail(&mut state, &address, custody_until, released_at).unwrap();
 
         for current_term in 0..released_at {
@@ -1105,7 +1120,7 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let released_at = 20;
-        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
         jail(&mut state, &address, custody_until, released_at).unwrap();
 
         for current_term in 0..=released_at {
@@ -1149,7 +1164,7 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let released_at = 20;
-        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
         jail(&mut state, &address, custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
@@ -1190,7 +1205,7 @@ mod tests {
         let nominate_expire = 5;
         let custody_until = 10;
         let released_at = 20;
-        self_nominate(&mut state, &address, &address_pubkey, 0, 0, nominate_expire).unwrap();
+        self_nominate(&mut state, &address, &address_pubkey, 0, 0, nominate_expire, b"".to_vec()).unwrap();
         jail(&mut state, &address, custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
@@ -1203,8 +1218,15 @@ mod tests {
         }
 
         let current_term = custody_until + 1;
-        let result =
-            self_nominate(&mut state, &address, &address_pubkey, 0, current_term, current_term + nominate_expire);
+        let result = self_nominate(
+            &mut state,
+            &address,
+            &address_pubkey,
+            0,
+            current_term,
+            current_term + nominate_expire,
+            b"".to_vec(),
+        );
         assert!(result.is_ok());
 
         let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
@@ -1231,7 +1253,7 @@ mod tests {
         };
         stake.init(&mut state).unwrap();
 
-        self_nominate(&mut state, &criminal, &criminal_pubkey, 100, 0, 10).unwrap();
+        self_nominate(&mut state, &criminal, &criminal_pubkey, 100, 0, 10, b"".to_vec()).unwrap();
         let action = Action::DelegateCCS {
             address: criminal,
             quantity: 40,
@@ -1265,7 +1287,7 @@ mod tests {
         let stake = Stake::new(HashMap::new());
         stake.init(&mut state).unwrap();
 
-        self_nominate(&mut state, &criminal, &criminal_pubkey, 0, 0, 10).unwrap();
+        self_nominate(&mut state, &criminal, &criminal_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
         let custody_until = 10;
         let released_at = 20;
         jail(&mut state, &criminal, custody_until, released_at).unwrap();
