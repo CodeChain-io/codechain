@@ -5,7 +5,6 @@ pull_request_rules:
       - "#review-requested=0"
       - "#changes-requested-reviews-by=0"
       - status-success=continuous-integration/travis-ci/pr
-      - status-success=clahub
       - base=master
       - label!=do-not-merge
       - "- title~=\\b(wip|WIP)\\b"
