@@ -167,13 +167,5 @@ cargo +nightly-2019-05-17 clippy --all --all-targets
 
 Developers are strongly encouraged to write unit tests for new code, and to submit new unit tests for old code. Unit tests can be compiled and run with: `cargo test --all`. For more details, please reference [Unit Tests](https://github.com/CodeChain-io/codechain/wiki/Unit-Tests).
 
-## User Manual
-
-Under `docs` folder, run following command.
-```sh
-make html
-```
-User manual will be generated at `docs/_build/html`.
-
 ## License
 CodeChain is licensed under the AGPL License - see the [LICENSE](https://github.com/CodeChain-io/codechain/blob/master/LICENSE) file for details
