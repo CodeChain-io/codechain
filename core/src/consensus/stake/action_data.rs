@@ -23,7 +23,7 @@ use std::mem;
 use ckey::{public_to_address, Address, Public};
 use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
 use ctypes::errors::RuntimeError;
-use primitives::H256;
+use primitives::{Bytes, H256};
 use rlp::{decode_list, Decodable, Encodable, Rlp, RlpStream};
 
 use super::CUSTOM_ACTION_HANDLER_ID;
@@ -268,6 +268,7 @@ pub struct Candidate {
     pub pubkey: Public,
     pub deposit: Deposit,
     pub nomination_ends_at: u64,
+    pub metadata: Bytes,
 }
 
 impl Candidates {
@@ -298,16 +299,18 @@ impl Candidates {
         self.0.len()
     }
 
-    pub fn add_deposit(&mut self, pubkey: &Public, quantity: Deposit, nomination_ends_at: u64) {
+    pub fn add_deposit(&mut self, pubkey: &Public, quantity: Deposit, nomination_ends_at: u64, metadata: Bytes) {
         let candidate = self.0.entry(public_to_address(pubkey)).or_insert(Candidate {
             pubkey: *pubkey,
             deposit: 0,
             nomination_ends_at: 0,
+            metadata: Bytes::default(),
         });
         candidate.deposit += quantity;
         if candidate.nomination_ends_at < nomination_ends_at {
             candidate.nomination_ends_at = nomination_ends_at;
         }
+        candidate.metadata = metadata;
     }
 
     pub fn drain_expired_candidates(&mut self, term_index: u64) -> Vec<Candidate> {
@@ -916,7 +919,7 @@ mod tests {
 
         for deposit in deposits.iter() {
             let mut candidates = Candidates::load_from_state(&state).unwrap();
-            candidates.add_deposit(&pubkey, *deposit, 0);
+            candidates.add_deposit(&pubkey, *deposit, 0, b"".to_vec());
             candidates.save_to_state(&mut state).unwrap();
         }
 
@@ -928,6 +931,48 @@ mod tests {
     }
 
     #[test]
+    fn candidates_metadata() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let pubkey = Public::random();
+        let account = public_to_address(&pubkey);
+
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        candidates.add_deposit(&pubkey, 10, 0, b"metadata".to_vec());
+        candidates.save_to_state(&mut state).unwrap();
+
+        // Assert
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let candidate = candidates.get_candidate(&account);
+        assert_ne!(candidate, None);
+        assert_eq!(&candidate.unwrap().metadata, b"metadata");
+    }
+
+    #[test]
+    fn candidates_update_metadata() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let pubkey = Public::random();
+        let account = public_to_address(&pubkey);
+
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        candidates.add_deposit(&pubkey, 10, 0, b"metadata".to_vec());
+        candidates.save_to_state(&mut state).unwrap();
+
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        candidates.add_deposit(&pubkey, 10, 0, b"metadata-updated".to_vec());
+        candidates.save_to_state(&mut state).unwrap();
+
+        // Assert
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let candidate = candidates.get_candidate(&account);
+        assert_ne!(candidate, None);
+        assert_eq!(&candidate.unwrap().metadata, b"metadata-updated");
+    }
+
+    #[test]
     fn candidates_deposit_can_be_zero() {
         let mut state = helpers::get_temp_state();
 
@@ -935,7 +980,7 @@ mod tests {
         let pubkey = Public::random();
         let account = public_to_address(&pubkey);
         let mut candidates = Candidates::load_from_state(&state).unwrap();
-        candidates.add_deposit(&pubkey, 0, 10);
+        candidates.add_deposit(&pubkey, 0, 10, b"".to_vec());
         candidates.save_to_state(&mut state).unwrap();
 
         // Assert
@@ -944,6 +989,29 @@ mod tests {
         assert_ne!(candidate, None);
         assert_eq!(candidate.unwrap().deposit, 0);
         assert_eq!(candidate.unwrap().nomination_ends_at, 10, "Can be a candidate with 0 deposit");
+    }
+
+    #[test]
+    fn candidates_update_metadata_with_zero_additional_deposit() {
+        let mut state = helpers::get_temp_state();
+
+        // Prepare
+        let pubkey = Public::random();
+        let account = public_to_address(&pubkey);
+
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        candidates.add_deposit(&pubkey, 10, 0, b"metadata".to_vec());
+        candidates.save_to_state(&mut state).unwrap();
+
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        candidates.add_deposit(&pubkey, 0, 0, b"metadata-updated".to_vec());
+        candidates.save_to_state(&mut state).unwrap();
+
+        // Assert
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let candidate = candidates.get_candidate(&account);
+        assert_ne!(candidate, None);
+        assert_eq!(&candidate.unwrap().metadata, b"metadata-updated");
     }
 
     #[test]
@@ -957,7 +1025,7 @@ mod tests {
 
         for (deposit, nomination_ends_at) in &deposit_and_nomination_ends_at {
             let mut candidates = Candidates::load_from_state(&state).unwrap();
-            candidates.add_deposit(&pubkey, *deposit, *nomination_ends_at);
+            candidates.add_deposit(&pubkey, *deposit, *nomination_ends_at, b"".to_vec());
             candidates.save_to_state(&mut state).unwrap();
         }
 
@@ -988,21 +1056,25 @@ mod tests {
                 pubkey: pubkey0,
                 deposit: 20,
                 nomination_ends_at: 11,
+                metadata: b"".to_vec(),
             },
             Candidate {
                 pubkey: pubkey1,
                 deposit: 30,
                 nomination_ends_at: 22,
+                metadata: b"".to_vec(),
             },
             Candidate {
                 pubkey: pubkey2,
                 deposit: 40,
                 nomination_ends_at: 33,
+                metadata: b"".to_vec(),
             },
             Candidate {
                 pubkey: pubkey3,
                 deposit: 50,
                 nomination_ends_at: 44,
+                metadata: b"".to_vec(),
             },
         ];
 
@@ -1010,10 +1082,11 @@ mod tests {
             pubkey,
             deposit,
             nomination_ends_at,
+            metadata,
         } in &candidates_prepared
         {
             let mut candidates = Candidates::load_from_state(&state).unwrap();
-            candidates.add_deposit(&pubkey, *deposit, *nomination_ends_at);
+            candidates.add_deposit(&pubkey, *deposit, *nomination_ends_at, metadata.clone());
             candidates.save_to_state(&mut state).unwrap();
         }
 
@@ -1054,21 +1127,25 @@ mod tests {
                 pubkey: pubkey0,
                 deposit: 20,
                 nomination_ends_at: 11,
+                metadata: b"".to_vec(),
             },
             Candidate {
                 pubkey: pubkey1,
                 deposit: 30,
                 nomination_ends_at: 22,
+                metadata: b"".to_vec(),
             },
             Candidate {
                 pubkey: pubkey2,
                 deposit: 40,
                 nomination_ends_at: 33,
+                metadata: b"".to_vec(),
             },
             Candidate {
                 pubkey: pubkey3,
                 deposit: 50,
                 nomination_ends_at: 44,
+                metadata: b"".to_vec(),
             },
         ];
 
@@ -1076,10 +1153,11 @@ mod tests {
             pubkey,
             deposit,
             nomination_ends_at,
+            metadata,
         } in &candidates_prepared
         {
             let mut candidates = Candidates::load_from_state(&state).unwrap();
-            candidates.add_deposit(&pubkey, *deposit, *nomination_ends_at);
+            candidates.add_deposit(&pubkey, *deposit, *nomination_ends_at, metadata.clone());
             candidates.save_to_state(&mut state).unwrap();
         }
 
@@ -1111,6 +1189,7 @@ mod tests {
                 pubkey,
                 deposit: 100,
                 nomination_ends_at: 0,
+                metadata: b"".to_vec(),
             },
             10,
             20,
@@ -1137,6 +1216,7 @@ mod tests {
                 pubkey,
                 deposit: 100,
                 nomination_ends_at: 0,
+                metadata: b"".to_vec(),
             },
             10,
             20,
@@ -1163,6 +1243,7 @@ mod tests {
                 pubkey,
                 deposit: 100,
                 nomination_ends_at: 0,
+                metadata: b"".to_vec(),
             },
             10,
             20,
@@ -1206,6 +1287,7 @@ mod tests {
                 pubkey: pubkey1,
                 deposit: 100,
                 nomination_ends_at: 0,
+                metadata: b"".to_vec(),
             },
             10,
             20,
@@ -1215,6 +1297,7 @@ mod tests {
                 pubkey: pubkey2,
                 deposit: 200,
                 nomination_ends_at: 0,
+                metadata: b"".to_vec(),
             },
             15,
             25,
@@ -1249,6 +1332,7 @@ mod tests {
                 pubkey: pubkey1,
                 deposit: 100,
                 nomination_ends_at: 0,
+                metadata: b"".to_vec(),
             },
             10,
             20,
@@ -1258,6 +1342,7 @@ mod tests {
                 pubkey: pubkey2,
                 deposit: 200,
                 nomination_ends_at: 0,
+                metadata: b"".to_vec(),
             },
             15,
             25,
@@ -1297,6 +1382,7 @@ mod tests {
                 pubkey: pubkey1,
                 deposit: 100,
                 nomination_ends_at: 0,
+                metadata: b"".to_vec(),
             },
             10,
             20,
@@ -1306,6 +1392,7 @@ mod tests {
                 pubkey: pubkey2,
                 deposit: 200,
                 nomination_ends_at: 0,
+                metadata: b"".to_vec(),
             },
             15,
             25,
