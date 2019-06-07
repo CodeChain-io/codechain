@@ -266,14 +266,14 @@ When `Transaction` is included in any response, there will be an additional fiel
  - minUnwrapCccCost: `U64`
  - maxBodySize: `U64`
  - snapshotPeriod: `U64`
- - term_seconds?: `U64`
- - nomination_expiration?: `U64`
- - custody_period?: `U64`
- - release_period?: `U64`
- - max_num_of_validators?: `U64`
- - min_num_of_validators?: `U64`
- - delegation_threshold?: `U64`
- - min_deposit?: `U64`
+ - termSeconds?: `U64`
+ - nominationExpiration?: `U64`
+ - custodyPeriod?: `U64`
+ - releasePeriod?: `U64`
+ - maxNumOfValidators?: `U64`
+ - minNumOfValidators?: `U64`
+ - delegationThreshold?: `U64`
+ - minDeposit?: `U64`
 
 # Error codes
 
