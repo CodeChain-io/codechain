@@ -29,16 +29,16 @@ use crate::consensus::EngineError;
 use crate::types::BlockId;
 
 /// Validator set containing a known set of public keys.
-pub struct ValidatorList {
+pub struct RoundRobinValidator {
     validators: Vec<Public>,
     addresses: HashSet<Address>,
     client: RwLock<Option<Weak<ConsensusClient>>>,
 }
 
-impl ValidatorList {
+impl RoundRobinValidator {
     pub fn new(validators: Vec<Public>) -> Self {
         let addresses = validators.iter().map(public_to_address).collect();
-        ValidatorList {
+        RoundRobinValidator {
             validators,
             addresses,
             client: Default::default(),
@@ -46,7 +46,7 @@ impl ValidatorList {
     }
 }
 
-impl ValidatorSet for ValidatorList {
+impl ValidatorSet for RoundRobinValidator {
     fn contains(&self, _bh: &H256, public: &Public) -> bool {
         self.validators.contains(public)
     }
@@ -117,13 +117,13 @@ mod tests {
     use ckey::Public;
 
     use super::super::ValidatorSet;
-    use super::ValidatorList;
+    use super::RoundRobinValidator;
 
     #[test]
     fn validator_set() {
         let a1 = Public::from_str("34959b60d54703e9dfe36afb1e9950a4abe34d666cbb64c92969013bc9cc74063f9e4680d9d48c4597ee623bd4b507a1b2f43a9c5766a06463f85b73a94c51d1").unwrap();
         let a2 = Public::from_str("8c5a25bfafceea03073e2775cfb233a46648a088c12a1ca18a5865534887ccf60e1670be65b5f8e29643f463fdf84b1cbadd6027e71d8d04496570cb6b04885d").unwrap();
-        let set = ValidatorList::new(vec![a1, a2]);
+        let set = RoundRobinValidator::new(vec![a1, a2]);
         assert!(set.contains(&Default::default(), &a1));
         assert_eq!(set.get(&Default::default(), 0), a1);
         assert_eq!(set.get(&Default::default(), 1), a2);

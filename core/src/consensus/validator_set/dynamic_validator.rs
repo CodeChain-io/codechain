@@ -21,7 +21,7 @@ use ctypes::util::unexpected::OutOfBounds;
 use parking_lot::RwLock;
 use primitives::H256;
 
-use super::{ValidatorList, ValidatorSet};
+use super::{RoundRobinValidator, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::consensus::bit_set::BitSet;
 use crate::consensus::EngineError;
@@ -29,14 +29,14 @@ use consensus::stake::{get_validators, Validators};
 
 /// Validator set containing a known set of public keys.
 pub struct DynamicValidator {
-    initial_list: ValidatorList,
+    initial_list: RoundRobinValidator,
     client: RwLock<Option<Weak<ConsensusClient>>>,
 }
 
 impl DynamicValidator {
     pub fn new(initial_validators: Vec<Public>) -> Self {
         DynamicValidator {
-            initial_list: ValidatorList::new(initial_validators),
+            initial_list: RoundRobinValidator::new(initial_validators),
             client: Default::default(),
         }
     }
