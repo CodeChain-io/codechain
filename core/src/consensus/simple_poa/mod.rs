@@ -24,7 +24,7 @@ use parking_lot::RwLock;
 
 use self::params::SimplePoAParams;
 use super::signer::EngineSigner;
-use super::validator_set::validator_list::ValidatorList;
+use super::validator_set::validator_list::RoundRobinValidator;
 use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, EngineError, Seal};
 use crate::account_provider::AccountProvider;
@@ -48,7 +48,7 @@ impl SimplePoA {
         SimplePoA {
             machine,
             signer: Default::default(),
-            validators: Box::new(ValidatorList::new(params.validators)),
+            validators: Box::new(RoundRobinValidator::new(params.validators)),
             block_reward: params.block_reward,
         }
     }

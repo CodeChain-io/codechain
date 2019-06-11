@@ -20,7 +20,7 @@ use ckey::{Address, Public};
 use ctypes::BlockNumber;
 use primitives::{Bytes, H256};
 
-use self::validator_list::ValidatorList;
+use self::validator_list::RoundRobinValidator;
 use super::BitSet;
 use crate::client::ConsensusClient;
 use crate::consensus::EngineError;
