@@ -33,12 +33,12 @@
     "@types/seedrandom": "^2.4.28",
     "@types/snappy": "^6.0.0",
     "mocha": "^6.1.4",
-    "prettier": "^1.17.1",
-    "tslint": "^5.16.0",
+    "prettier": "^1.18.2",
+    "ts-node": "^8.2.0",
+    "tslint": "^5.17.0",
     "tslint-config-prettier": "^1.18.0",
     "tslint-no-unused-expression-chai": "^0.1.4",
-    "ts-node": "^8.2.0",
-    "typescript": "^3.4.5"
+    "typescript": "^3.5.1"
   },
   "dependencies": {
     "blakejs": "^1.1.0",
