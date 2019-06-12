@@ -470,6 +470,13 @@ mod tests {
         }
 
         {
+            let number_of_signatures = 125;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(50, final_rewards);
+        }
+
+        {
             let number_of_signatures = 100;
             let number_of_blocks_in_term = 300;
             let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
@@ -520,6 +527,13 @@ mod tests {
             let number_of_blocks_in_term = 300;
             let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
             assert_eq!(432, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 125;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(216, final_rewards);
         }
 
         {
