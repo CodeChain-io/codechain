@@ -46,7 +46,7 @@ use super::{
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress};
 use crate::client::{ConsensusClient, TermInfo};
-use crate::consensus::CodeChainEngine;
+use crate::consensus::{CodeChainEngine, EngineError};
 use crate::encoded;
 use crate::error::{BlockImportError, Error, ImportError, SchemeError};
 use crate::miner::{Miner, MinerService};
@@ -517,6 +517,18 @@ impl EngineInfo for Client {
 
     fn recommended_confirmation(&self) -> u32 {
         self.engine().recommended_confirmation()
+    }
+
+    fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>, EngineError> {
+        let network_id = self.common_params(BlockId::Latest).unwrap().network_id();
+        if block_number == Some(0) {
+            let genesis_author = self.block_header(&0.into()).expect("genesis block").author();
+            return Ok(Some(vec![PlatformAddress::new_v1(network_id, genesis_author)]))
+        }
+        let addresses = self.engine().possible_authors(block_number)?;
+        Ok(addresses.map(|addresses| {
+            addresses.into_iter().map(|address| PlatformAddress::new_v1(network_id, address)).collect()
+        }))
     }
 }
 

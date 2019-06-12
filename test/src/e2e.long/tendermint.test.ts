@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { expect } from "chai";
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
 import "mocha";
 import {
     validator0Address,
@@ -24,6 +25,9 @@ import {
 } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import CodeChain from "../helper/spawn";
+
+chai.use(chaiAsPromised);
+const expect = chai.expect;
 
 describe("Tendermint ", function() {
     const promiseExpect = new PromiseExpect();
@@ -53,6 +57,93 @@ describe("Tendermint ", function() {
             });
         });
         await Promise.all(nodes.map(node => node.start()));
+    });
+
+    describe("getPossibleAuthors", function() {
+        it("latest", async function() {
+            const validators = [
+                "tccq94guhkrfndnehnca06dlkxcfuq0gdlamvw9ga4f",
+                "tccq8p9hr53lnxnhzcn0d065lux7etz22azaca786tt",
+                "tccq8fj6lxn9tchqdqqe93yaga6fzxh5rndzu8k2gdw",
+                "tccq9y6e0k6af9058qq4h4ffpt9xmat2vkeyue23j8y"
+            ];
+            expect(
+                await nodes[0].sdk.rpc.sendRpcRequest(
+                    "chain_getPossibleAuthors",
+                    [null]
+                )
+            ).deep.equal(validators);
+            expect(
+                await nodes[1].sdk.rpc.sendRpcRequest(
+                    "chain_getPossibleAuthors",
+                    [null]
+                )
+            ).deep.equal(validators);
+            expect(
+                await nodes[2].sdk.rpc.sendRpcRequest(
+                    "chain_getPossibleAuthors",
+                    [null]
+                )
+            ).deep.equal(validators);
+            expect(
+                await nodes[3].sdk.rpc.sendRpcRequest(
+                    "chain_getPossibleAuthors",
+                    [null]
+                )
+            ).deep.equal(validators);
+        });
+
+        it("genesis", async function() {
+            const validators = ["tccq94guhkrfndnehnca06dlkxcfuq0gdlamvw9ga4f"];
+            expect(
+                await nodes[0].sdk.rpc.sendRpcRequest(
+                    "chain_getPossibleAuthors",
+                    [0]
+                )
+            ).deep.equal(validators);
+            expect(
+                await nodes[1].sdk.rpc.sendRpcRequest(
+                    "chain_getPossibleAuthors",
+                    [0]
+                )
+            ).deep.equal(validators);
+            expect(
+                await nodes[2].sdk.rpc.sendRpcRequest(
+                    "chain_getPossibleAuthors",
+                    [0]
+                )
+            ).deep.equal(validators);
+            expect(
+                await nodes[3].sdk.rpc.sendRpcRequest(
+                    "chain_getPossibleAuthors",
+                    [0]
+                )
+            ).deep.equal(validators);
+        });
+
+        it("larger than the current block", async function() {
+            const currentBlock = await nodes[0].getBestBlockNumber();
+            expect(
+                nodes[0].sdk.rpc.sendRpcRequest("chain_getPossibleAuthors", [
+                    currentBlock + 10
+                ])
+            ).be.rejectedWith("Engine");
+            expect(
+                nodes[1].sdk.rpc.sendRpcRequest("chain_getPossibleAuthors", [
+                    currentBlock + 100
+                ])
+            ).be.rejectedWith("Engine");
+            expect(
+                nodes[2].sdk.rpc.sendRpcRequest("chain_getPossibleAuthors", [
+                    currentBlock + 1000
+                ])
+            ).be.rejectedWith("Engine");
+            expect(
+                nodes[3].sdk.rpc.sendRpcRequest("chain_getPossibleAuthors", [
+                    currentBlock + 10000
+                ])
+            ).be.rejectedWith("Engine");
+        });
     });
 
     it("Block generation", async function() {

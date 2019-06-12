@@ -56,6 +56,7 @@ extern crate util_error;
 #[macro_use]
 extern crate log;
 extern crate core;
+extern crate hyper;
 
 mod account_provider;
 pub mod block;
