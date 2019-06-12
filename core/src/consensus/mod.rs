@@ -278,6 +278,8 @@ pub trait ConsensusEngine: Sync + Send {
     fn find_action_handler_for(&self, id: u64) -> Option<&ActionHandler> {
         self.action_handlers().iter().find(|handler| handler.handler_id() == id).map(AsRef::as_ref)
     }
+
+    fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError>;
 }
 
 /// Voting errors.

@@ -18,6 +18,7 @@ mod params;
 
 use std::sync::Arc;
 
+use ckey::Address;
 use cstate::{ActionHandler, HitHandler};
 use ctypes::{CommonParams, Header};
 
@@ -26,7 +27,7 @@ use super::stake;
 use super::{ConsensusEngine, Seal};
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::codechain_machine::CodeChainMachine;
-use crate::consensus::EngineType;
+use crate::consensus::{EngineError, EngineType};
 use crate::error::Error;
 
 /// A consensus engine which does not provide any consensus mechanism.
@@ -135,6 +136,10 @@ impl ConsensusEngine for Solo<CodeChainMachine> {
 
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
         &self.action_handlers
+    }
+
+    fn possible_authors(&self, _block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError> {
+        Ok(None)
     }
 }
 

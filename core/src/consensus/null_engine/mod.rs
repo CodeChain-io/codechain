@@ -16,13 +16,14 @@
 
 mod params;
 
+use ckey::Address;
 use ctypes::{CommonParams, Header};
 
 use self::params::NullEngineParams;
 use super::ConsensusEngine;
 use crate::block::ExecutedBlock;
 use crate::codechain_machine::CodeChainMachine;
-use crate::consensus::EngineType;
+use crate::consensus::{EngineError, EngineType};
 use crate::error::Error;
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
@@ -76,5 +77,9 @@ impl ConsensusEngine for NullEngine {
 
     fn recommended_confirmation(&self) -> u32 {
         1
+    }
+
+    fn possible_authors(&self, _block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError> {
+        Ok(None)
     }
 }
