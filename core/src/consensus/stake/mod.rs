@@ -303,6 +303,8 @@ pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u6
     // TODO: total_slash = slash_unresponsive(headers, pending_rewards)
     // TODO: pending_rewards.update(signature_reward(blocks, total_slash))
 
+    let banned = Banned::load_from_state(state)?;
+
     let mut candidates = Candidates::load_from_state(state)?;
     let nomination_ends_at = {
         let expiration =
@@ -310,7 +312,7 @@ pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u6
         current_term + expiration
     };
     let current_validatros = Validators::load_from_state(state)?;
-    candidates.renew_candidates(&current_validatros, nomination_ends_at);
+    candidates.renew_candidates(&current_validatros, nomination_ends_at, &banned);
 
     let expired = candidates.drain_expired_candidates(current_term);
     for candidate in &expired {
