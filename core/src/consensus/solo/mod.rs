@@ -31,15 +31,15 @@ use crate::consensus::{EngineError, EngineType};
 use crate::error::Error;
 
 /// A consensus engine which does not provide any consensus mechanism.
-pub struct Solo<M> {
+pub struct Solo {
     params: SoloParams,
-    machine: M,
+    machine: CodeChainMachine,
     action_handlers: Vec<Arc<ActionHandler>>,
 }
 
-impl<M> Solo<M> {
+impl Solo {
     /// Returns new instance of Solo over the given state machine.
-    pub fn new(params: SoloParams, machine: M) -> Self {
+    pub fn new(params: SoloParams, machine: CodeChainMachine) -> Self {
         let mut action_handlers: Vec<Arc<ActionHandler>> = Vec::new();
         if params.enable_hit_handler {
             action_handlers.push(Arc::new(HitHandler::new()));
@@ -54,7 +54,7 @@ impl<M> Solo<M> {
     }
 }
 
-impl ConsensusEngine for Solo<CodeChainMachine> {
+impl ConsensusEngine for Solo {
     fn name(&self) -> &str {
         "Solo"
     }
