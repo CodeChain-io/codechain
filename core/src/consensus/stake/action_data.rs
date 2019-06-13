@@ -315,10 +315,9 @@ impl Validators {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub fn update(&mut self, block_author: Address, min_delegation: StakeQuantity) {
+    pub fn update(&mut self, block_author: &Address, min_delegation: StakeQuantity) {
         for (weight, _deposit, pubkey) in self.0.iter_mut().rev() {
-            if public_to_address(pubkey) == block_author {
+            if public_to_address(pubkey) == *block_author {
                 // block author
                 *weight = weight.saturating_sub(min_delegation);
                 break
@@ -347,6 +346,10 @@ impl Validators {
 
     pub fn weight(&self, pubkey: &Public) -> Option<StakeQuantity> {
         self.0.iter().find(|(_weight, _deposit, val)| val == pubkey).map(|(weight, _deposit, _val)| *weight)
+    }
+
+    pub fn min_delegation(&self) -> StakeQuantity {
+        self.0.iter().map(|(delegation, ..)| *delegation).min().expect("There must be at least one validators")
     }
 }
 
