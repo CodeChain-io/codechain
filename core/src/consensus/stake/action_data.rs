@@ -253,7 +253,11 @@ impl Validators {
         let candidates: HashMap<_, _> =
             active_candidates.keys().map(|pubkey| (public_to_address(pubkey), *pubkey)).collect();
 
-        // FIXME: Remove banned accounts
+        let banned = Banned::load_from_state(&state)?;
+        for address in candidates.keys() {
+            assert!(!banned.0.contains(address), "{} is banned address", address);
+        }
+
         // step 1
         let mut delegatees: Vec<(StakeQuantity, Public)> = Stakeholders::delegatees(&state)?
             .into_iter()
@@ -459,8 +463,9 @@ impl Candidates {
         candidate.metadata = metadata;
     }
 
-    pub fn renew_candidates(&mut self, validators: &Validators, nomination_ends_at: u64) {
+    pub fn renew_candidates(&mut self, validators: &Validators, nomination_ends_at: u64, banned: &Banned) {
         for address in validators.0.iter().map(|(_, _, pubkey)| public_to_address(pubkey)) {
+            assert!(!banned.0.contains(&address), "{} is banned address", address);
             self.0.get_mut(&address).expect("Validators must be in the candidates").nomination_ends_at =
                 nomination_ends_at;
         }
