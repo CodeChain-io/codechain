@@ -655,8 +655,13 @@ impl Worker {
                         TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
                     };
                     let block_hash = block_hash_candidate.filter(|hash| {
-                        let block =
-                            self.client().block(&BlockId::Hash(*hash)).expect("Already got imported block hash");
+                        let block = match self.client().block(&BlockId::Hash(*hash)) {
+                            Some(block) => block,
+                            // When a node locks on a proposal and doesn't imported the proposal yet,
+                            // we could not check the proposal's generated time.
+                            // To make the network healthier in the corner case, we send a prevote message to the locked block.
+                            None => return true,
+                        };
                         self.is_generation_time_relevant(&block.decode_header())
                     });
                     self.generate_and_broadcast_message(block_hash, is_restoring);
