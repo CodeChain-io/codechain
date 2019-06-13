@@ -43,6 +43,7 @@ use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{EngineType, ValidatorSet};
 use crate::error::Error;
 use crate::views::HeaderView;
+use crate::BlockId;
 use consensus::tendermint::params::TimeGapParams;
 
 impl ConsensusEngine for Tendermint {
@@ -184,8 +185,8 @@ impl ConsensusEngine for Tendermint {
 
         let (start_of_the_current_term, start_of_the_previous_term) = {
             let end_of_the_one_level_previous_term = block.state().metadata()?.unwrap().last_term_finished_block_num();
-            let metadata = client.metadata(end_of_the_one_level_previous_term.into()).unwrap();
-            let end_of_the_two_level_previous_term = metadata.last_term_finished_block_num();
+            let end_of_the_two_level_previous_term =
+                client.last_term_finished_block_num(end_of_the_one_level_previous_term.into()).unwrap();
 
             (end_of_the_one_level_previous_term + 1, end_of_the_two_level_previous_term + 1)
         };
@@ -291,6 +292,26 @@ impl ConsensusEngine for Tendermint {
 
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
         &self.action_handlers
+    }
+
+    fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError> {
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .ok_or(EngineError::CannotOpenBlock)?
+            .upgrade()
+            .ok_or(EngineError::CannotOpenBlock)?;
+        let block_hash = match block_number {
+            None => {
+                client.block_header(&BlockId::Latest).expect("latest block must exist").hash() // the latest block
+            }
+            Some(block_number) => {
+                assert_ne!(0, block_number);
+                client.block_header(&(block_number - 1).into()).ok_or(EngineError::CannotOpenBlock)?.hash() // the parent of the given block number
+            }
+        };
+        Ok(Some(self.validators.addresses(&block_hash)))
     }
 }
 

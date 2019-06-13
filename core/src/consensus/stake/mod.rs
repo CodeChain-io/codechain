@@ -30,6 +30,7 @@ use ctypes::{CommonParams, Header};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, UntrustedRlp};
 
+pub use self::action_data::Validators;
 use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
@@ -238,6 +239,10 @@ pub fn get_stakes(state: &TopLevelState) -> StateResult<HashMap<Address, u64>> {
     Ok(result)
 }
 
+pub fn get_validators(state: &TopLevelState) -> StateResult<Validators> {
+    Validators::load_from_state(state)
+}
+
 pub fn add_intermediate_rewards(state: &mut TopLevelState, address: Address, reward: u64) -> StateResult<()> {
     let mut rewards = IntermediateRewards::load_from_state(state)?;
     rewards.add_quantity(address, reward);
@@ -319,7 +324,8 @@ pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u6
         .collect();
     revert_delegations(state, &reverted)?;
 
-    // TODO: validators, validator_order = elect()
+    let validators = Validators::elect(state)?;
+    validators.save_to_state(state)?;
 
     state.increase_term_id(last_term_finished_block_num)?;
     Ok(())
@@ -390,6 +396,15 @@ mod tests {
     use cstate::tests::helpers;
     use cstate::TopStateView;
     use rlp::Encodable;
+
+    fn metadata_for_election() -> TopLevelState {
+        let mut state = helpers::get_temp_state_with_metadata();
+        state.metadata().unwrap().unwrap().set_params(CommonParams::default_for_test());
+        let mut params = CommonParams::default_for_test();
+        params.set_validator_num_for_test(4, 30);
+        assert_eq!(Ok(()), state.update_params(0, params));
+        state
+    }
 
     #[test]
     fn genesis_stakes() {
@@ -872,10 +887,8 @@ mod tests {
         let address_pubkey = Public::random();
         let address = public_to_address(&address_pubkey);
 
-        let mut state = helpers::get_temp_state();
-        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        let mut state = metadata_for_election();
         increase_term_id_until(&mut state, 29);
-
         state.add_balance(&address, 1000).unwrap();
 
         let stake = Stake::new(HashMap::new());
@@ -915,8 +928,7 @@ mod tests {
         let delegator_pubkey = Public::random();
         let delegator = public_to_address(&address_pubkey);
 
-        let mut state = helpers::get_temp_state();
-        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        let mut state = metadata_for_election();
         increase_term_id_until(&mut state, 29);
         state.add_balance(&address, 1000).unwrap();
 
@@ -996,8 +1008,7 @@ mod tests {
         let address_pubkey = Public::random();
         let address = public_to_address(&address_pubkey);
 
-        let mut state = helpers::get_temp_state();
-        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        let mut state = metadata_for_election();
         state.add_balance(&address, 1000).unwrap();
 
         let stake = Stake::new(HashMap::new());
@@ -1036,8 +1047,7 @@ mod tests {
         let address_pubkey = Public::random();
         let address = public_to_address(&address_pubkey);
 
-        let mut state = helpers::get_temp_state();
-        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        let mut state = metadata_for_election();
         state.add_balance(&address, 1000).unwrap();
 
         let stake = Stake::new(HashMap::new());
@@ -1091,8 +1101,7 @@ mod tests {
         let address_pubkey = Public::random();
         let address = public_to_address(&address_pubkey);
 
-        let mut state = helpers::get_temp_state();
-        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        let mut state = metadata_for_election();
         state.add_balance(&address, 1000).unwrap();
 
         let stake = Stake::new(HashMap::new());
@@ -1134,8 +1143,7 @@ mod tests {
         let address = public_to_address(&address_pubkey);
         let delegator = public_to_address(&delegator_pubkey);
 
-        let mut state = helpers::get_temp_state();
-        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        let mut state = metadata_for_election();
         state.add_balance(&address, 1000).unwrap();
 
         let stake = {
@@ -1179,8 +1187,7 @@ mod tests {
         let address = public_to_address(&address_pubkey);
         let delegator = public_to_address(&delegator_pubkey);
 
-        let mut state = helpers::get_temp_state();
-        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        let mut state = metadata_for_election();
         state.add_balance(&address, 1000).unwrap();
 
         let stake = {
@@ -1222,8 +1229,7 @@ mod tests {
         let address = public_to_address(&address_pubkey);
         let delegator = public_to_address(&delegator_pubkey);
 
-        let mut state = helpers::get_temp_state();
-        assert_eq!(Ok(()), state.update_params(0, CommonParams::default_for_test()));
+        let mut state = metadata_for_election();
         state.add_balance(&address, 1000).unwrap();
 
         let stake = {

@@ -145,6 +145,10 @@ build_rpc_trait! {
         #[rpc(name = "chain_getTermMetadata")]
         fn get_term_metadata(&self, Option<u64>) -> Result<Option<(u64, u64)>>;
 
+        /// Return the valid block authors
+        #[rpc(name = "chain_getPossibleAuthors")]
+        fn get_possible_authors(&self, Option<u64>) -> Result<Option<Vec<PlatformAddress>>>;
+
         /// Execute Transactions
         # [rpc(name = "chain_executeTransaction")]
         fn execute_transaction(&self, UnsignedTransaction, PlatformAddress) -> Result<Option<String>>;

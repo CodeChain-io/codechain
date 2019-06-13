@@ -19,6 +19,7 @@ mod params;
 use std::cmp::{max, min};
 
 use ccrypto::blake256;
+use ckey::Address;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::{CommonParams, Header};
 use primitives::U256;
@@ -28,7 +29,7 @@ use self::params::BlakePoWParams;
 use super::ConsensusEngine;
 use crate::block::ExecutedBlock;
 use crate::codechain_machine::CodeChainMachine;
-use crate::consensus::EngineType;
+use crate::consensus::{EngineError, EngineType};
 use crate::error::{BlockError, Error};
 
 /// BlakePoW specific seal
@@ -181,5 +182,9 @@ impl ConsensusEngine for BlakePoW {
 
     fn recommended_confirmation(&self) -> u32 {
         self.params.recommmended_confirmation
+    }
+
+    fn possible_authors(&self, _block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError> {
+        Ok(None)
     }
 }

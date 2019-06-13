@@ -24,8 +24,7 @@ use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
-    ActionHandler, AssetScheme, FindActionHandler, Metadata, OwnedAsset, StateDB, StateResult, Text, TopLevelState,
-    TopStateView,
+    ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
@@ -46,8 +45,8 @@ use super::{
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress};
-use crate::client::{ConsensusClient, MetadataInfo};
-use crate::consensus::CodeChainEngine;
+use crate::client::{ConsensusClient, TermInfo};
+use crate::consensus::{CodeChainEngine, EngineError};
 use crate::encoded;
 use crate::error::{BlockImportError, Error, ImportError, SchemeError};
 use crate::miner::{Miner, MinerService};
@@ -519,6 +518,18 @@ impl EngineInfo for Client {
     fn recommended_confirmation(&self) -> u32 {
         self.engine().recommended_confirmation()
     }
+
+    fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>, EngineError> {
+        let network_id = self.common_params(BlockId::Latest).unwrap().network_id();
+        if block_number == Some(0) {
+            let genesis_author = self.block_header(&0.into()).expect("genesis block").author();
+            return Ok(Some(vec![PlatformAddress::new_v1(network_id, genesis_author)]))
+        }
+        let addresses = self.engine().possible_authors(block_number)?;
+        Ok(addresses.map(|addresses| {
+            addresses.into_iter().map(|address| PlatformAddress::new_v1(network_id, address)).collect()
+        }))
+    }
 }
 
 impl EngineClient for Client {
@@ -781,9 +792,26 @@ impl BlockChainClient for Client {
     }
 }
 
-impl MetadataInfo for Client {
-    fn metadata(&self, id: BlockId) -> Option<Metadata> {
-        self.state_at(id).and_then(|state| state.metadata().unwrap())
+impl TermInfo for Client {
+    fn last_term_finished_block_num(&self, id: BlockId) -> Option<BlockNumber> {
+        self.state_at(id)
+            .and_then(|state| state.metadata().unwrap())
+            .map(|metadata| metadata.last_term_finished_block_num())
+    }
+
+    fn current_term_id(&self, id: BlockId) -> Option<u64> {
+        self.state_at(id).and_then(|state| state.metadata().unwrap()).map(|metadata| metadata.current_term_id())
+    }
+
+    fn state_at_term_begin(&self, id: BlockId) -> Option<TopLevelState> {
+        if let Some(block_num) = self.last_term_finished_block_num(id) {
+            if block_num == 0 {
+                return None
+            }
+            self.state_at(block_num.into())
+        } else {
+            None
+        }
     }
 }
 

@@ -14,23 +14,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::{Arc, Weak};
+use std::sync::Weak;
 
 use ckey::{Address, Public};
 use ctypes::BlockNumber;
 use primitives::{Bytes, H256};
 
-use self::validator_list::ValidatorList;
+use self::validator_list::RoundRobinValidator;
 use super::BitSet;
 use crate::client::ConsensusClient;
 use crate::consensus::EngineError;
 
+mod dynamic_validator;
 pub mod validator_list;
 
-/// Creates a validator set from validator public keys.
-pub fn new_validator_set(validators: Vec<Public>) -> Arc<ValidatorSet> {
-    Arc::new(ValidatorList::new(validators))
-}
+pub use self::dynamic_validator::DynamicValidator;
 
 /// A validator set.
 pub trait ValidatorSet: Send + Sync {

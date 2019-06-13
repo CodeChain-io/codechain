@@ -56,6 +56,7 @@ extern crate util_error;
 #[macro_use]
 extern crate log;
 extern crate core;
+extern crate hyper;
 
 mod account_provider;
 pub mod block;
@@ -84,7 +85,7 @@ pub use crate::block::Block;
 pub use crate::client::Error::Database;
 pub use crate::client::{
     AccountData, AssetClient, BlockChainClient, BlockChainTrait, ChainNotify, Client, ClientConfig, DatabaseClient,
-    EngineClient, EngineInfo, ExecuteClient, ImportBlock, MetadataInfo, MiningBlockChainClient, Shard, StateInfo,
+    EngineClient, EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, Shard, StateInfo, TermInfo,
     TestBlockChainClient, TextClient,
 };
 pub use crate::consensus::{EngineType, TimeGapParams};

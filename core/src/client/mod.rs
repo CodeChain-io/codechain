@@ -35,7 +35,7 @@ use std::sync::Arc;
 use ckey::{Address, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
-use cstate::{AssetScheme, FindActionHandler, Metadata, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
+use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockNumber, CommonParams, ShardId};
 use cvm::ChainTimeInfo;
@@ -44,6 +44,7 @@ use primitives::{Bytes, H160, H256, U256};
 
 use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
+use crate::consensus::EngineError;
 use crate::encoded;
 use crate::error::BlockImportError;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions};
@@ -90,6 +91,7 @@ pub trait EngineInfo: Send + Sync {
     fn block_reward(&self, block_number: u64) -> u64;
     fn mining_reward(&self, block_number: u64) -> Option<u64>;
     fn recommended_confirmation(&self) -> u32;
+    fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>, EngineError>;
 }
 
 /// Client facilities used by internally sealing Engines.
@@ -111,10 +113,13 @@ pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     fn get_kvdb(&self) -> Arc<KeyValueDB>;
 }
 
-pub trait ConsensusClient: BlockChainTrait + EngineClient + MetadataInfo {}
+pub trait ConsensusClient: BlockChainTrait + EngineClient + EngineInfo + TermInfo + StateInfo {}
 
-pub trait MetadataInfo {
-    fn metadata(&self, id: BlockId) -> Option<Metadata>;
+pub trait TermInfo {
+    fn last_term_finished_block_num(&self, id: BlockId) -> Option<BlockNumber>;
+    fn current_term_id(&self, id: BlockId) -> Option<u64>;
+
+    fn state_at_term_begin(&self, id: BlockId) -> Option<TopLevelState>;
 }
 
 /// Provides methods to access account info

@@ -24,7 +24,7 @@ use parking_lot::RwLock;
 
 use self::params::SimplePoAParams;
 use super::signer::EngineSigner;
-use super::validator_set::validator_list::ValidatorList;
+use super::validator_set::validator_list::RoundRobinValidator;
 use super::validator_set::ValidatorSet;
 use super::{ConsensusEngine, EngineError, Seal};
 use crate::account_provider::AccountProvider;
@@ -48,7 +48,8 @@ impl SimplePoA {
         SimplePoA {
             machine,
             signer: Default::default(),
-            validators: Box::new(ValidatorList::new(params.validators)),
+            // If you want to change the type of validator set, please fix possible_authors first.
+            validators: Box::new(RoundRobinValidator::new(params.validators)),
             block_reward: params.block_reward,
         }
     }
@@ -140,6 +141,12 @@ impl ConsensusEngine for SimplePoA {
 
     fn recommended_confirmation(&self) -> u32 {
         1
+    }
+
+    fn possible_authors(&self, _block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError> {
+        // TODO: It works because the round robin validator doesn't use the parent hash.
+        let parent = 0.into();
+        Ok(Some(self.validators.addresses(&parent)))
     }
 }
 

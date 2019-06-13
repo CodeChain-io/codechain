@@ -32,7 +32,7 @@ pub use self::null_engine::NullEngine;
 pub use self::simple_poa::SimplePoA;
 pub use self::solo::Solo;
 pub use self::tendermint::{Tendermint, TendermintParams, TimeGapParams};
-pub use self::validator_set::validator_list::ValidatorList;
+pub use self::validator_set::validator_list::RoundRobinValidator;
 pub use self::validator_set::ValidatorSet;
 
 use std::fmt;
@@ -278,6 +278,8 @@ pub trait ConsensusEngine: Sync + Send {
     fn find_action_handler_for(&self, id: u64) -> Option<&ActionHandler> {
         self.action_handlers().iter().find(|handler| handler.handler_id() == id).map(AsRef::as_ref)
     }
+
+    fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError>;
 }
 
 /// Voting errors.
