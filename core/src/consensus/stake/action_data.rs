@@ -329,6 +329,10 @@ impl Validators {
         self.0.sort();
     }
 
+    pub fn remove(&mut self, target: &Address) {
+        self.0.retain(|(_, _, pubkey)| public_to_address(pubkey) != *target);
+    }
+
     pub fn pubkeys(&self) -> Vec<Public> {
         self.0.iter().map(|(_weight, _deposit, pubkey)| *pubkey).collect()
     }
