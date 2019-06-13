@@ -356,20 +356,22 @@ pub fn jail(state: &mut TopLevelState, address: &Address, custody_until: u64, ki
 #[allow(dead_code)]
 pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
     // TODO: remove pending rewards.
-    // TODO: remove from validators.
     // TODO: give criminal's deposits to the informant
     // TODO: give criminal's rewards to diligent validators
     let mut candidates = Candidates::load_from_state(state)?;
     let mut banned = Banned::load_from_state(state)?;
     let mut jailed = Jail::load_from_state(state)?;
+    let mut validators = Validators::load_from_state(state)?;
 
     candidates.remove(&criminal);
     jailed.remove(&criminal);
     banned.add(criminal);
+    validators.remove(&criminal);
 
     jailed.save_to_state(state)?;
     banned.save_to_state(state)?;
     candidates.save_to_state(state)?;
+    validators.save_to_state(state)?;
 
     // Revert delegations
     revert_delegations(state, &[criminal])?;
