@@ -196,12 +196,25 @@ impl Worker {
         let join = Builder::new()
             .name("tendermint".to_string())
             .spawn(move || {
-                let time_gap_params = match external_params_receiver.recv() {
+                let time_gap_params = crossbeam::select! {
+                recv(external_params_receiver) -> msg => {
+                match msg {
                     Ok(time_gap_params) => time_gap_params,
                     Err(crossbeam::RecvError) => {
                         cerror!(ENGINE, "The tendermint external parameters are not initialized");
                         return
                     }
+                }
+                }
+                recv(quit_receiver) -> msg => {
+                    match msg {
+                        Ok(()) => {},
+                        Err(crossbeam::RecvError) => {
+                            cerror!(ENGINE, "The quit channel for tendermint thread had been closed.");
+                        }
+                    }
+                    return
+                }
                 };
                 let (extension, client) = crossbeam::select! {
                 recv(extension_receiver) -> msg => {

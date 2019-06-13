@@ -48,6 +48,7 @@ impl SimplePoA {
         SimplePoA {
             machine,
             signer: Default::default(),
+            // If you want to change the type of validator set, please fix possible_authors first.
             validators: Box::new(RoundRobinValidator::new(params.validators)),
             block_reward: params.block_reward,
         }
@@ -140,6 +141,12 @@ impl ConsensusEngine for SimplePoA {
 
     fn recommended_confirmation(&self) -> u32 {
         1
+    }
+
+    fn possible_authors(&self, _block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError> {
+        // TODO: It works because the round robin validator doesn't use the parent hash.
+        let parent = 0.into();
+        Ok(Some(self.validators.addresses(&parent)))
     }
 }
 
