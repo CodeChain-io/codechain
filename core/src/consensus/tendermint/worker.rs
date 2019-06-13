@@ -1319,7 +1319,7 @@ impl Worker {
 
             if let Some(double) = self.votes.vote(message.clone()) {
                 let height = message.on.step.height as BlockNumber;
-                cwarn!(ENGINE, "Double vote found {:?}", double);
+                cerror!(ENGINE, "Double vote found {:?}", double);
                 self.validators.report_malicious(&sender, height, height, ::rlp::encode(&double).into_vec());
                 return Err(EngineError::DoubleVote(sender))
             }
