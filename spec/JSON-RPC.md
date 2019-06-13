@@ -339,6 +339,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_executeTransaction](#chain_executetransaction)
  * [chain_executeVM](#chain_executevm)
  * [chain_getNetworkId](#chain_getnetworkid)
+ * [chain_getPossibleAuthors](#chain_getpossibleauthors)
 ***
  * [mempool_sendSignedTransaction](#mempool_sendsignedtransaction)
  * [mempool_getErrorHint](#mempool_geterrorhint)
@@ -1556,6 +1557,39 @@ No parameters
   "jsonrpc":"2.0",
   "result": 17,
   "id":6
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## chain_getPossibleAuthors
+Returns the list of accounts that can generate the blocks at the given block number.
+
+It returns `null` if anyone can generate the block.
+Only PoW and Solo chains can return `null`. Other chains never return `null`.
+
+The possible authors of the genesis block are always in the list that contains only the author of the genesis block, regardless of the chain types.
+
+### Params
+1. block number: `number` | `null`
+
+### Returns
+`null` | `PlatformAddress[]`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getPossibleAuthors", "params": [null], "id": "who-can-be-authors"}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": ["tccq94guhkrfndnehnca06dlkxcfuq0gdlamvw9ga4f", "tccq8p9hr53lnxnhzcn0d065lux7etz22azaca786tt", "tccq8fj6lxn9tchqdqqe93yaga6fzxh5rndzu8k2gdw", "tccq9y6e0k6af9058qq4h4ffpt9xmat2vkeyue23j8y"],
+  "id": "who-can-be-authors"
 }
 ```
 
