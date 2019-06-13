@@ -58,6 +58,7 @@ use crate::client::{
     AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock,
     MiningBlockChainClient, StateInfo, StateOrBlock, TermInfo,
 };
+use crate::consensus::EngineError;
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
 use crate::error::BlockImportError;
@@ -597,6 +598,10 @@ impl EngineInfo for TestBlockChainClient {
     }
 
     fn recommended_confirmation(&self) -> u32 {
+        unimplemented!()
+    }
+
+    fn possible_authors(&self, _block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>, EngineError> {
         unimplemented!()
     }
 }

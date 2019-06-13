@@ -316,6 +316,10 @@ where
         }
     }
 
+    fn get_possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
+        Ok(self.client.possible_authors(block_number).map_err(errors::core)?)
+    }
+
     fn execute_transaction(&self, tx: UnsignedTransaction, sender: PlatformAddress) -> Result<Option<String>> {
         let sender_address = sender.try_address().map_err(errors::core)?;
         let action = Action::try_from(tx.action).map_err(errors::conversion)?;
