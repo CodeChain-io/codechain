@@ -298,11 +298,20 @@ fn change_params(
 }
 
 pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u64) -> StateResult<()> {
-    let current_term = state.metadata()?.expect("The metadata must exist").current_term_id();
+    let metadata = state.metadata()?.expect("The metadata must exist");
+    let current_term = metadata.current_term_id();
     // TODO: total_slash = slash_unresponsive(headers, pending_rewards)
     // TODO: pending_rewards.update(signature_reward(blocks, total_slash))
 
     let mut candidates = Candidates::load_from_state(state)?;
+    let nomination_ends_at = {
+        let expiration =
+            metadata.params().map(CommonParams::nomination_expiration).expect("The nomination expiration must exist");
+        current_term + expiration
+    };
+    let current_validatros = Validators::load_from_state(state)?;
+    candidates.renew_candidates(&current_validatros, nomination_ends_at);
+
     let expired = candidates.drain_expired_candidates(current_term);
     for candidate in &expired {
         state.add_balance(&public_to_address(&candidate.pubkey), candidate.deposit)?;
