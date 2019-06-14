@@ -239,8 +239,9 @@ validators = [ [ delegation, deposit, pubkey ] ] (delegation, deposit, pubkey) a
 
 ### on TermEnd events
 1. Update `term_id` to the current block number and the next term id
-2. Remove the expired candidates and give back the deposits
-3. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits
-4. Calculate rewards of the previous block and update `intermediate_rewards`
-5. Elect validators
+2. Renew the nomination expiration of the current validators
+3. Remove the expired candidates and give back the deposits
+4. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits
+5. Calculate rewards of the previous block and update `intermediate_rewards`
+6. Elect validators
     * Store validators in the ascending order

@@ -196,12 +196,25 @@ impl Worker {
         let join = Builder::new()
             .name("tendermint".to_string())
             .spawn(move || {
-                let time_gap_params = match external_params_receiver.recv() {
+                let time_gap_params = crossbeam::select! {
+                recv(external_params_receiver) -> msg => {
+                match msg {
                     Ok(time_gap_params) => time_gap_params,
                     Err(crossbeam::RecvError) => {
                         cerror!(ENGINE, "The tendermint external parameters are not initialized");
                         return
                     }
+                }
+                }
+                recv(quit_receiver) -> msg => {
+                    match msg {
+                        Ok(()) => {},
+                        Err(crossbeam::RecvError) => {
+                            cerror!(ENGINE, "The quit channel for tendermint thread had been closed.");
+                        }
+                    }
+                    return
+                }
                 };
                 let (extension, client) = crossbeam::select! {
                 recv(extension_receiver) -> msg => {
@@ -642,8 +655,13 @@ impl Worker {
                         TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
                     };
                     let block_hash = block_hash_candidate.filter(|hash| {
-                        let block =
-                            self.client().block(&BlockId::Hash(*hash)).expect("Already got imported block hash");
+                        let block = match self.client().block(&BlockId::Hash(*hash)) {
+                            Some(block) => block,
+                            // When a node locks on a proposal and doesn't imported the proposal yet,
+                            // we could not check the proposal's generated time.
+                            // To make the network healthier in the corner case, we send a prevote message to the locked block.
+                            None => return true,
+                        };
                         self.is_generation_time_relevant(&block.decode_header())
                     });
                     self.generate_and_broadcast_message(block_hash, is_restoring);
