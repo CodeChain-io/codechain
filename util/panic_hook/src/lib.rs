@@ -44,7 +44,7 @@ This is a bug. Please report it at:
 fn panic_hook(info: &PanicInfo) {
     let message = panic_message(info);
     eprintln!("{}", message);
-    exit_on_debug_mode();
+    exit_on_debug_or_env_set_on_release();
 }
 
 fn panic_hook_with_email_alarm(email_alarm: &EmailAlarm, info: &PanicInfo) {
@@ -54,7 +54,7 @@ fn panic_hook_with_email_alarm(email_alarm: &EmailAlarm, info: &PanicInfo) {
 
     let message_for_email = message.replace("\n", "<br>");
     email_alarm.send(&format!("IP: {}<br>{}", ip_addresses, message_for_email));
-    exit_on_debug_mode();
+    exit_on_debug_or_env_set_on_release();
 }
 
 fn panic_message(info: &PanicInfo) -> String {
@@ -89,12 +89,16 @@ fn panic_message(info: &PanicInfo) -> String {
 }
 
 #[cfg(debug_assertions)]
-fn exit_on_debug_mode() {
+fn exit_on_debug_or_env_set_on_release() {
     std::process::exit(-1);
 }
 
 #[cfg(not(debug_assertions))]
-fn exit_on_debug_mode() {}
+fn exit_on_debug_or_env_set_on_release() {
+    if (std::env::var("EXIT_ON_CRASH").is_ok()) {
+        std::process::exit(-1);
+    }
+}
 
 fn get_ip_addresses() -> String {
     match my_internet_ip::get() {
