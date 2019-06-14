@@ -250,56 +250,54 @@ impl Validators {
         assert!(max_num_of_validators > min_num_of_validators);
 
         let active_candidates = Candidates::active(&state, min_deposit).unwrap();
-        let candidates: HashMap<_, _> =
-            active_candidates.keys().map(|pubkey| (public_to_address(pubkey), *pubkey)).collect();
+        let mut candidates: HashMap<_, (_, Deposit)> = active_candidates
+            .into_iter()
+            .map(|(pubkey, deposit)| (public_to_address(&pubkey), (pubkey, deposit)))
+            .collect();
 
         // FIXME: Remove banned accounts
         // step 1
-        let mut delegatees: Vec<(StakeQuantity, Public)> = Stakeholders::delegatees(&state)?
+        let mut validators: Vec<(StakeQuantity, Deposit, Public)> = Stakeholders::delegatees(&state)?
             .into_iter()
-            .filter_map(|(address, delegation)| candidates.get(&address).map(|pubkey| (delegation, *pubkey)))
+            .filter_map(|(address, delegation)| {
+                candidates.remove(&address).map(|(pubkey, deposit)| (delegation, deposit, pubkey))
+            })
             .collect();
 
-        delegatees.sort_unstable();
-        delegatees.reverse();
-        let the_highest_score_dropout = delegatees.get(max_num_of_validators).map(|(delegation, _address)| *delegation);
-        let the_lowest_score_first_class = delegatees.get(min_num_of_validators).map(|(delegation, _address)| *delegation)
+        validators.sort_unstable();
+        validators.reverse();
+        let the_highest_score_dropout =
+            validators.get(max_num_of_validators).map(|(delegation, deposit, _address)| (*delegation, *deposit));
+        let the_lowest_score_first_class = validators.get(min_num_of_validators).map(|(delegation, deposit, _address)| (*delegation, *deposit))
             // None means there are less than MIN_NUM_OF_VALIDATORS. Allow all remains.
             .unwrap_or_default();
 
         // step 2
-        delegatees.truncate(max_num_of_validators);
+        validators.truncate(max_num_of_validators);
 
         // step 3
         if let Some(the_highest_score_dropout) = the_highest_score_dropout {
-            delegatees.retain(|(delegation, _address)| *delegation > the_highest_score_dropout);
+            validators.retain(|(delegation, deposit, _address)| (*delegation, *deposit) > the_highest_score_dropout);
         }
 
-        if delegatees.len() < min_num_of_validators {
+        if validators.len() < min_num_of_validators {
             cerror!(
                 ENGINE,
                 "There must be something wrong. {}, {} < {}",
-                "delegatees.len() < min_num_of_validators",
-                delegatees.len(),
+                "validators.len() < min_num_of_validators",
+                validators.len(),
                 min_num_of_validators
             );
         }
-        let validators = delegatees
-            .into_iter()
-            .filter(|(delegation, _pubkey)| {
-                // step 4
-                if *delegation >= the_lowest_score_first_class {
-                    true
-                } else {
-                    // step 5
-                    *delegation >= delegation_threshold
-                }
-            })
-            .map(|(delegation, pubkey)| {
-                let deposit = *active_candidates.get(&pubkey).unwrap();
-                (delegation, deposit, pubkey)
-            })
-            .collect();
+        validators.retain(|(delegation, deposit, _pubkey)| {
+            // step 4
+            if (*delegation, *deposit) >= the_lowest_score_first_class {
+                true
+            } else {
+                // step 5
+                *delegation >= delegation_threshold
+            }
+        });
 
         Ok(Self(validators))
     }
