@@ -104,8 +104,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 5000,
-                        inputIndices: [0],
-                        outputIndices: [0]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -192,8 +196,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -284,8 +292,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: _.range(10),
-                        outputIndices: [0, 1]
+                        inputFromIndices: _.range(10),
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await Promise.all(
                     _.range((transferTx as any)._transaction.inputs.length).map(
@@ -348,8 +360,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 10000,
-                        inputIndices: [0],
-                        outputIndices: [0]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [],
+                        outputToIndices: [0],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -421,8 +437,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 1000,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [1],
+                        outputToIndices: [0],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -501,14 +521,22 @@ describe("order is disabled", function() {
                     .addOrder({
                         order: aliceOrder,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     })
                     .addOrder({
                         order: bobOrder,
                         spentQuantity: 1000,
-                        inputIndices: [1],
-                        outputIndices: [2, 3]
+                        inputFromIndices: [1],
+                        inputFeeIndices: [],
+                        outputFromIndices: [3],
+                        outputToIndices: [2],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -589,14 +617,22 @@ describe("order is disabled", function() {
                     .addOrder({
                         order: aliceOrder,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     })
                     .addOrder({
                         order: bobOrder,
                         spentQuantity: 1000,
-                        inputIndices: [1],
-                        outputIndices: [2, 3]
+                        inputFromIndices: [1],
+                        inputFeeIndices: [],
+                        outputFromIndices: [3],
+                        outputToIndices: [2],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -687,8 +723,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 1000,
-                        inputIndices: [0],
-                        outputIndices: [0]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [],
+                        outputToIndices: [0],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -744,8 +784,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 0,
-                        inputIndices: [0],
-                        outputIndices: [0]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -814,8 +858,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 200,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -882,8 +930,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -953,8 +1005,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
 
                 (transferTx.orders()[0].order
@@ -1029,8 +1085,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
 
                 (transferTx.orders()[0].order.parametersFrom as any) = [];
@@ -1106,8 +1166,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1, 2]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0, 1],
+                        outputToIndices: [2],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -1122,9 +1186,7 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(
-                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
-                    );
+                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
                 }
             });
 
@@ -1182,8 +1244,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1, 2]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1, 2],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -1198,9 +1264,7 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(
-                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
-                    );
+                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
                 }
             });
 
@@ -1264,8 +1328,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1, 2, 3]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0, 1],
+                        outputToIndices: [2, 3],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -1280,9 +1348,7 @@ describe("order is disabled", function() {
                     await node.sdk.rpc.chain.sendSignedTransaction(signed);
                     expect.fail();
                 } catch (e) {
-                    expect(e).is.similarTo(
-                        ERROR.INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS
-                    );
+                    expect(e).is.similarTo(ERROR.DISABLED_TRANSACTION);
                 }
             });
 
@@ -1336,8 +1402,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -1405,8 +1475,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -1491,8 +1565,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 3000,
-                        inputIndices: [0, 1, 2],
-                        outputIndices: [0]
+                        inputFromIndices: [0, 1, 2],
+                        inputFeeIndices: [],
+                        outputFromIndices: [],
+                        outputToIndices: [0],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
 
                 const signed = transferTx.sign({
@@ -1584,8 +1662,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: _.range(10),
-                        outputIndices: [0, 1]
+                        inputFromIndices: _.range(10),
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await Promise.all(
                     _.range((transferTx as any)._transaction.inputs.length).map(
@@ -1680,8 +1762,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: _.range(9),
-                        outputIndices: [0, 1]
+                        inputFromIndices: _.range(9),
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await Promise.all(
                     _.range((transferTx as any)._transaction.inputs.length).map(
@@ -1753,8 +1839,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -1825,8 +1915,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -1895,8 +1989,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -1964,8 +2062,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 50,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx1, 0);
                 await node.signTransactionInput(transferTx1, 1);
@@ -2044,14 +2146,22 @@ describe("order is disabled", function() {
                     .addOrder({
                         order: aliceOrder,
                         spentQuantity: 10,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     })
                     .addOrder({
                         order: bobOrder,
                         spentQuantity: 100,
-                        inputIndices: [1],
-                        outputIndices: [2, 3]
+                        inputFromIndices: [1],
+                        inputFeeIndices: [],
+                        outputFromIndices: [3],
+                        outputToIndices: [2],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx1, 0);
                 await node.signTransactionInput(transferTx1, 1);
@@ -2118,8 +2228,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 50,
-                        inputIndices: [0],
-                        outputIndices: [0, 1]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 await node.signTransactionInput(transferTx1, 0);
                 await node.signTransactionInput(transferTx1, 1);
@@ -2275,8 +2389,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0, 2],
-                        outputIndices: [0, 1, 2, 5]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [2],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [2],
+                        outputTransferredFeeIndices: [5]
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -2360,8 +2478,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0, 2],
-                        outputIndices: [0, 1, 2, 5]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [2],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [2],
+                        outputTransferredFeeIndices: [5]
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -2507,14 +2629,22 @@ describe("order is disabled", function() {
                     .addOrder({
                         order: aliceOrder,
                         spentQuantity: 100,
-                        inputIndices: [0, 1],
-                        outputIndices: [0, 1, 2, 3]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [1],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [2],
+                        outputTransferredFeeIndices: [3]
                     })
                     .addOrder({
                         order: bobOrder,
                         spentQuantity: 1000,
-                        inputIndices: [2, 3],
-                        outputIndices: [4, 5, 6, 7]
+                        inputFromIndices: [2],
+                        inputFeeIndices: [3],
+                        outputFromIndices: [5],
+                        outputToIndices: [4],
+                        outputOwnedFeeIndices: [6],
+                        outputTransferredFeeIndices: [7]
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -2667,14 +2797,22 @@ describe("order is disabled", function() {
                     .addOrder({
                         order: aliceOrder,
                         spentQuantity: 100,
-                        inputIndices: [0, 1],
-                        outputIndices: [0, 1, 2, 3]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [1],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [2],
+                        outputTransferredFeeIndices: [3]
                     })
                     .addOrder({
                         order: bobOrder,
                         spentQuantity: 1000,
-                        inputIndices: [2, 3],
-                        outputIndices: [5, 6, 7, 8]
+                        inputFromIndices: [2],
+                        inputFeeIndices: [3],
+                        outputFromIndices: [6],
+                        outputToIndices: [5],
+                        outputOwnedFeeIndices: [7],
+                        outputTransferredFeeIndices: [8]
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -2759,8 +2897,12 @@ describe("order is disabled", function() {
                     .addOrder({
                         order,
                         spentQuantity: 100,
-                        inputIndices: [0, 2],
-                        outputIndices: [0, 1, 2, 5]
+                        inputFromIndices: [0],
+                        inputFeeIndices: [2],
+                        outputFromIndices: [0],
+                        outputToIndices: [1],
+                        outputOwnedFeeIndices: [2],
+                        outputTransferredFeeIndices: [5]
                     });
                 await node.signTransactionInput(transferTx, 0);
                 await node.signTransactionInput(transferTx, 1);
@@ -2835,8 +2977,12 @@ describe("order is disabled", function() {
                     transferTx.addOrder({
                         order,
                         spentQuantity: 50,
-                        inputIndices: [i],
-                        outputIndices: [i, i + 5]
+                        inputFromIndices: [i],
+                        inputFeeIndices: [],
+                        outputFromIndices: [i + 5],
+                        outputToIndices: [i],
+                        outputOwnedFeeIndices: [],
+                        outputTransferredFeeIndices: []
                     });
                 }
 
