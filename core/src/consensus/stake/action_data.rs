@@ -458,6 +458,13 @@ impl Candidates {
         candidate.metadata = metadata;
     }
 
+    pub fn renew_candidates(&mut self, validators: &Validators, nomination_ends_at: u64) {
+        for address in validators.0.iter().map(|(_, _, pubkey)| public_to_address(pubkey)) {
+            self.0.get_mut(&address).expect("Validators must be in the candidates").nomination_ends_at =
+                nomination_ends_at;
+        }
+    }
+
     pub fn drain_expired_candidates(&mut self, term_index: u64) -> Vec<Candidate> {
         let (expired, retained): (Vec<_>, Vec<_>) =
             self.0.values().cloned().partition(|c| c.nomination_ends_at <= term_index);
