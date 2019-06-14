@@ -186,6 +186,18 @@ impl<'a> TendermintSealView<'a> {
         }
     }
 
+    pub fn previous_block_view(&self) -> Result<u64, DecoderError> {
+        let view_rlp =
+            self.seal.get(0).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
+        UntrustedRlp::new(view_rlp.as_slice()).as_val()
+    }
+
+    pub fn consensus_view(&self) -> Result<u64, DecoderError> {
+        let view_rlp =
+            self.seal.get(1).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
+        UntrustedRlp::new(view_rlp.as_slice()).as_val()
+    }
+
     pub fn bitset(&self) -> Result<BitSet, Error> {
         Ok(UntrustedRlp::new(
             &self.seal.get(3).expect("block went through verify_block_basic; block has .seal_fields() fields; qed"),
