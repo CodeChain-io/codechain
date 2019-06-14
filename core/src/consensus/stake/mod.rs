@@ -153,6 +153,7 @@ fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address,
     sender_account.save_to_state(state)?;
     receiver_account.save_to_state(state)?;
 
+    ctrace!(ENGINE, "Transferred CCS sender: {}, receiver: {}, quantity: {}", sender, receiver, quantity);
     Ok(())
 }
 
@@ -178,6 +179,8 @@ fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address
 
     delegation.save_to_state(state)?;
     delegator.save_to_state(state)?;
+
+    ctrace!(ENGINE, "Delegated CCS. delegator: {}, delegatee: {}, quantity: {}", sender, delegatee, quantity);
     Ok(())
 }
 
@@ -191,6 +194,8 @@ fn revoke(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quan
 
     delegation.save_to_state(state)?;
     delegator.save_to_state(state)?;
+
+    ctrace!(ENGINE, "Revoked CCS. delegator: {}, delegatee: {}, quantity: {}", sender, delegatee, quantity);
     Ok(())
 }
 
@@ -226,6 +231,15 @@ fn self_nominate(
 
     jail.save_to_state(state)?;
     candidates.save_to_state(state)?;
+
+    ctrace!(
+        ENGINE,
+        "Self-nominated. nominee: {}, deposit: {}, current_term: {}, ends_at: {}",
+        sender,
+        deposit,
+        current_term,
+        nomination_ends_at
+    );
     Ok(())
 }
 
@@ -301,6 +315,8 @@ fn change_params(
         })
         .into())
     }
+
+    ctrace!(ENGINE, "ChangeParams. params: {:?}", params);
     Ok(())
 }
 
@@ -311,6 +327,8 @@ pub fn on_term_close(
 ) -> StateResult<()> {
     let metadata = state.metadata()?.expect("The metadata must exist");
     let current_term = metadata.current_term_id();
+    ctrace!(ENGINE, "on_term_close. current_term: {}", current_term);
+
     let (nomination_expiration, custody_until, kick_at) = {
         let metadata = metadata.params().expect(
             "Term close events can be called after the ChangeParams called, \
@@ -359,7 +377,9 @@ fn update_candidates(
 
     let expired = candidates.drain_expired_candidates(current_term);
     for candidate in &expired {
-        state.add_balance(&public_to_address(&candidate.pubkey), candidate.deposit)?;
+        let address = public_to_address(&candidate.pubkey);
+        state.add_balance(&address, candidate.deposit)?;
+        ctrace!(ENGINE, "on_term_close::expired. candidate: {}, deposit: {}", address, candidate.deposit);
     }
     candidates.save_to_state(state)?;
     Ok(expired.into_iter().map(|c| public_to_address(&c.pubkey)).collect())
@@ -370,6 +390,7 @@ fn release_jailed_prisoners(state: &mut TopLevelState, current_term: u64) -> Sta
     let released = jailed.drain_released_prisoners(current_term);
     for prisoner in &released {
         state.add_balance(&prisoner.address, prisoner.deposit)?;
+        ctrace!(ENGINE, "on_term_close::released. prisoner: {}, deposit: {}", prisoner.address, prisoner.deposit);
     }
     jailed.save_to_state(state)?;
     Ok(released.into_iter().map(|p| p.address).collect())
@@ -435,6 +456,13 @@ fn revert_delegations(state: &mut TopLevelState, reverted_delegatees: &[Address]
             if quantity > 0 {
                 delegation.subtract_quantity(*delegatee, quantity)?;
                 delegator.add_balance(quantity)?;
+                ctrace!(
+                    ENGINE,
+                    "revert_delegation delegator: {}, delegatee: {}, quantity: {}",
+                    stakeholder,
+                    delegatee,
+                    quantity
+                );
             }
         }
         delegation.save_to_state(state)?;

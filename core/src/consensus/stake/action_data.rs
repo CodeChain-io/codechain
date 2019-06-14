@@ -260,6 +260,7 @@ impl Validator {
     }
 }
 
+#[derive(Debug)]
 pub struct Validators(Vec<Validator>);
 impl Validators {
     pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
