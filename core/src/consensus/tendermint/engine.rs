@@ -164,6 +164,18 @@ impl ConsensusEngine for Tendermint {
             self.machine.add_balance(block, &author, block_author_reward)?;
             return Ok(())
         }
+
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .ok_or(EngineError::CannotOpenBlock)?
+            .upgrade()
+            .ok_or(EngineError::CannotOpenBlock)?;
+        let state_at_term_begin = client.state_at_term_begin(block.header().hash().into()).expect("It must exist");
+        let block_author = *block.header().author();
+        stake::update_validator_weights(&mut block.state_mut(), &block_author, &state_at_term_begin)?;
+
         stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
         let last_term_finished_block_num = {
             let header = block.header();
@@ -175,13 +187,6 @@ impl ConsensusEngine for Tendermint {
             header.number()
         };
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
-        let client = self
-            .client
-            .read()
-            .as_ref()
-            .ok_or(EngineError::CannotOpenBlock)?
-            .upgrade()
-            .ok_or(EngineError::CannotOpenBlock)?;
 
         let (start_of_the_current_term, start_of_the_previous_term) = {
             let end_of_the_one_level_previous_term = block.state().metadata()?.unwrap().last_term_finished_block_num();
