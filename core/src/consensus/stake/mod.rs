@@ -399,18 +399,18 @@ pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
 fn revert_delegations(state: &mut TopLevelState, reverted_delegatees: &[Address]) -> StateResult<()> {
     let stakeholders = Stakeholders::load_from_state(state)?;
     for stakeholder in stakeholders.iter() {
-        let mut balance = StakeAccount::load_from_state(state, stakeholder)?;
+        let mut delegator = StakeAccount::load_from_state(state, stakeholder)?;
         let mut delegation = Delegation::load_from_state(state, stakeholder)?;
 
-        for prisoner in reverted_delegatees.iter() {
-            let quantity = delegation.get_quantity(prisoner);
+        for delegatee in reverted_delegatees {
+            let quantity = delegation.get_quantity(delegatee);
             if quantity > 0 {
-                delegation.subtract_quantity(*prisoner, quantity)?;
-                balance.add_balance(quantity)?;
+                delegation.subtract_quantity(*delegatee, quantity)?;
+                delegator.add_balance(quantity)?;
             }
         }
         delegation.save_to_state(state)?;
-        balance.save_to_state(state)?;
+        delegator.save_to_state(state)?;
     }
     Ok(())
 }
