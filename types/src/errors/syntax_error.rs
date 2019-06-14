@@ -66,8 +66,18 @@ pub enum Error {
         to: u64,
         fee: u64,
     },
-    /// two of {asset_type_from, asset_type_to, asset_type_fee) are equal
+    /// asset_type_from and asset_type_to are equal.
     InvalidOrderAssetTypes,
+    /// The input/output indices of the order on transfer indicate assets of different type from the order.
+    InvalidAssetTypesWithOrder {
+        asset_type: String,
+        idx: usize,
+    },
+    /// Owner of the assets indicated by the input/output indices of the order on transfer is not valid
+    InvalidAssetOwnerWithOrder {
+        asset_type: String,
+        idx: usize,
+    },
     /// The input/output indices of the order on transfer is not valid.
     InvalidOrderInOutIndices,
     /// the lock script hash of the order is different from the output
@@ -108,22 +118,24 @@ const ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT: u8 = 10;
 const ERROR_ID_INVALID_NETWORK_ID: u8 = 11;
 const ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES: u8 = 12;
 const ERROR_ID_INVALID_ORDER_ASSET_TYPES: u8 = 13;
-const ERROR_ID_INVALID_ORDER_IN_OUT_INDICES: u8 = 14;
-const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 15;
-const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 16;
-const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 17;
-const ERROR_ID_INVALID_APPROVAL: u8 = 18;
-const ERROR_ID_METADATA_TOO_BIG: u8 = 20;
-const ERROR_ID_ORDER_RECIPIENTS_ARE_SAME: u8 = 21;
-const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 22;
-const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 24;
-const ERROR_ID_TX_IS_TOO_BIG: u8 = 25;
-const ERROR_ID_ZERO_QUANTITY: u8 = 26;
-const ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME: u8 = 27;
-const ERROR_ID_DISABLED_TRANSACTION: u8 = 28;
-const ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC: u8 = 29;
-const ERROR_ID_INVALID_CUSTOM_ACTION: u8 = 30;
-const ERROR_ID_INVALID_SPENT_QUANTITY: u8 = 31;
+const ERROR_ID_INVALID_ASSET_TYPES_WITH_ORDER: u8 = 14;
+const ERROR_ID_INVALID_ASSET_OWNER_WITH_ORDER: u8 = 15;
+const ERROR_ID_INVALID_ORDER_IN_OUT_INDICES: u8 = 16;
+const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 17;
+const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 18;
+const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 19;
+const ERROR_ID_INVALID_APPROVAL: u8 = 21;
+const ERROR_ID_METADATA_TOO_BIG: u8 = 22;
+const ERROR_ID_ORDER_RECIPIENTS_ARE_SAME: u8 = 23;
+const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 24;
+const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 26;
+const ERROR_ID_TX_IS_TOO_BIG: u8 = 27;
+const ERROR_ID_ZERO_QUANTITY: u8 = 28;
+const ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME: u8 = 29;
+const ERROR_ID_DISABLED_TRANSACTION: u8 = 30;
+const ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC: u8 = 31;
+const ERROR_ID_INVALID_CUSTOM_ACTION: u8 = 32;
+const ERROR_ID_INVALID_SPENT_QUANTITY: u8 = 33;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -145,6 +157,8 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_INVALID_NETWORK_ID => 2,
             ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => 4,
             ERROR_ID_INVALID_ORDER_ASSET_TYPES => 1,
+            ERROR_ID_INVALID_ASSET_TYPES_WITH_ORDER => 3,
+            ERROR_ID_INVALID_ASSET_OWNER_WITH_ORDER => 3,
             ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => 1,
             ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => 2,
             ERROR_ID_INVALID_ORDER_PARAMETERS => 2,
@@ -214,6 +228,14 @@ impl Encodable for Error {
                 .append(to)
                 .append(fee),
             Error::InvalidOrderAssetTypes => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORDER_ASSET_TYPES),
+            Error::InvalidAssetTypesWithOrder {
+                asset_type,
+                idx,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_TYPES_WITH_ORDER).append(asset_type).append(idx),
+            Error::InvalidAssetOwnerWithOrder {
+                asset_type,
+                idx,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_OWNER_WITH_ORDER).append(asset_type).append(idx),
             Error::InvalidOrderInOutIndices => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORDER_IN_OUT_INDICES),
             Error::InvalidOrderLockScriptHash(lock_script_hash) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH).append(lock_script_hash)
@@ -280,6 +302,14 @@ impl Decodable for Error {
                 fee: rlp.val_at(3)?,
             },
             ERROR_ID_INVALID_ORDER_ASSET_TYPES => Error::InvalidOrderAssetTypes,
+            ERROR_ID_INVALID_ASSET_TYPES_WITH_ORDER => Error::InvalidAssetTypesWithOrder {
+                asset_type: rlp.val_at(1)?,
+                idx: rlp.val_at(2)?,
+            },
+            ERROR_ID_INVALID_ASSET_OWNER_WITH_ORDER => Error::InvalidAssetOwnerWithOrder {
+                asset_type: rlp.val_at(1)?,
+                idx: rlp.val_at(2)?,
+            },
             ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => Error::InvalidOrderInOutIndices,
             ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => Error::InvalidOrderLockScriptHash(rlp.val_at(1)?),
             ERROR_ID_INVALID_ORDER_PARAMETERS => Error::InvalidOrderParameters(rlp.val_at(1)?),
@@ -339,6 +369,14 @@ impl Display for Error {
                 fee,
             } => write!(f, "The asset exchange ratio of the order is invalid: from:to:fee = {}:{}:{}", from, to, fee),
             Error::InvalidOrderAssetTypes => write!(f, "There are same shard asset types in the order"),
+            Error::InvalidAssetTypesWithOrder {
+                asset_type,
+                idx
+            } => write!(f, "{}th {} asset has a different type from the order", idx, asset_type),
+            Error::InvalidAssetOwnerWithOrder {
+                asset_type,
+                idx
+            } => write!(f, "Owner of the {}th {} assets is not valid", idx, asset_type),
             Error::InvalidOrderInOutIndices  => write!(f, "The order on transfer is invalid because its input/output indices are wrong or overlapped with other orders"),
             Error::InvalidOrderLockScriptHash (lock_script_hash) => write!(f, "The lock script hash of the order is different from the output: {}", lock_script_hash),
             Error::InvalidOrderParameters (parameters) => write!(f, "The parameters of the order is different from the output: {:?}", parameters),

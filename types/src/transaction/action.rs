@@ -1176,7 +1176,10 @@ fn verify_input_and_output_consistent_with_order(
             if prev_out.asset_type == order.asset_type_from && prev_out.shard_id == order.shard_id_from {
                 input_quantity_from += prev_out.quantity
             } else {
-                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InvalidAssetTypesWithOrder {
+                    asset_type: "INPUT FROM".to_string(),
+                    idx: *idx,
+                })
             }
         }
 
@@ -1185,7 +1188,10 @@ fn verify_input_and_output_consistent_with_order(
             if prev_out.asset_type == order.asset_type_fee && prev_out.shard_id == order.shard_id_fee {
                 input_quantity_fee += prev_out.quantity
             } else {
-                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InvalidAssetTypesWithOrder {
+                    asset_type: "INPUT FEE".to_string(),
+                    idx: *idx,
+                })
             }
         }
 
@@ -1193,40 +1199,76 @@ fn verify_input_and_output_consistent_with_order(
         for idx in order_tx.output_from_indices.iter() {
             let output = &outputs[*idx];
             let owned_by_maker = order.check_transfer_output(output)?;
-            if output.asset_type == order.asset_type_from && output.shard_id == order.shard_id_from && owned_by_maker {
+            if !owned_by_maker {
+                return Err(SyntaxError::InvalidAssetOwnerWithOrder {
+                    asset_type: "OUTPUT FROM".to_string(),
+                    idx: *idx,
+                })
+            }
+            if output.asset_type == order.asset_type_from && output.shard_id == order.shard_id_from {
                 output_quantity_from += output.quantity
             } else {
-                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InvalidAssetTypesWithOrder {
+                    asset_type: "OUTPUT FROM".to_string(),
+                    idx: *idx,
+                })
             }
         }
 
         for idx in order_tx.output_to_indices.iter() {
             let output = &outputs[*idx];
             let owned_by_maker = order.check_transfer_output(output)?;
-            if output.asset_type == order.asset_type_to && output.shard_id == order.shard_id_to && owned_by_maker {
+            if !owned_by_maker {
+                return Err(SyntaxError::InvalidAssetOwnerWithOrder {
+                    asset_type: "OUTPUT TO".to_string(),
+                    idx: *idx,
+                })
+            }
+            if output.asset_type == order.asset_type_to && output.shard_id == order.shard_id_to {
                 output_quantity_to += output.quantity
             } else {
-                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InvalidAssetTypesWithOrder {
+                    asset_type: "OUTPUT TO".to_string(),
+                    idx: *idx,
+                })
             }
         }
 
         for idx in order_tx.output_owned_fee_indices.iter() {
             let output = &outputs[*idx];
             let owned_by_maker = order.check_transfer_output(output)?;
-            if output.asset_type == order.asset_type_fee && output.shard_id == order.shard_id_fee && owned_by_maker {
+            if !owned_by_maker {
+                return Err(SyntaxError::InvalidAssetOwnerWithOrder {
+                    asset_type: "OUTPUT OWNED FEE".to_string(),
+                    idx: *idx,
+                })
+            }
+            if output.asset_type == order.asset_type_fee && output.shard_id == order.shard_id_fee {
                 output_quantity_fee_remaining += output.quantity
             } else {
-                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InvalidAssetTypesWithOrder {
+                    asset_type: "OUTPUT OWNED FEE".to_string(),
+                    idx: *idx,
+                })
             }
         }
 
         for idx in order_tx.output_transferred_fee_indices.iter() {
             let output = &outputs[*idx];
             let owned_by_maker = order.check_transfer_output(output)?;
-            if output.asset_type == order.asset_type_fee && output.shard_id == order.shard_id_fee && !owned_by_maker {
+            if owned_by_maker {
+                return Err(SyntaxError::InvalidAssetOwnerWithOrder {
+                    asset_type: "OUTPUT TRANSFERRED FEE".to_string(),
+                    idx: *idx,
+                })
+            }
+            if output.asset_type == order.asset_type_fee && output.shard_id == order.shard_id_fee {
                 output_quantity_fee_given += output.quantity
             } else {
-                return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
+                return Err(SyntaxError::InvalidAssetTypesWithOrder {
+                    asset_type: "OUTPUT TRANSFERRED FEE".to_string(),
+                    idx: *idx,
+                })
             }
         }
 
