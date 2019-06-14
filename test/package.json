@@ -45,7 +45,7 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "codechain-primitives": "^1.0.1",
-    "codechain-sdk": "^1.2.0",
+    "codechain-sdk": "https://github.com/GNUp/codechain-sdk-js.git#be72a672d7016dc6d8ad3cc919e89f9912a055f5",
     "elliptic": "^6.4.1",
     "lodash": "^4.17.11",
     "mkdirp": "^0.5.1",
