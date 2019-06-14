@@ -462,9 +462,29 @@ impl CommonParams {
         self.max_text_content_size = max_text_content_size;
     }
 
-    pub fn set_validator_num_for_test(&mut self, min: usize, max: usize) {
-        self.min_num_of_validators = min;
-        self.max_num_of_validators = max;
+    pub fn set_dynamic_validator_params_for_test(
+        &mut self,
+        term_seconds: u64,
+        nomination_expiration: u64,
+        custody_period: u64,
+        release_period: u64,
+        max_num_of_validators: usize,
+        min_num_of_validators: usize,
+        delegation_threshold: u64,
+        min_deposit: u64,
+        max_candidate_metadata_size: usize,
+    ) {
+        self.term_seconds = term_seconds;
+        self.nomination_expiration = nomination_expiration;
+        self.custody_period = custody_period;
+        self.release_period = release_period;
+
+        self.min_num_of_validators = min_num_of_validators;
+        self.max_num_of_validators = max_num_of_validators;
+
+        self.delegation_threshold = delegation_threshold;
+        self.min_deposit = min_deposit;
+        self.max_candidate_metadata_size = max_candidate_metadata_size;
     }
 }
 
