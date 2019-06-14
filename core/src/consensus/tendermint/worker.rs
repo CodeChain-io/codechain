@@ -860,12 +860,12 @@ impl Worker {
         }
 
         let height = proposal.number() as Height;
-        let prev_block_view = previous_block_view(proposal).expect("The proposal is verified");
+        let seal_view = TendermintSealView::new(proposal.seal());
+        let prev_block_view = seal_view.previous_block_view().expect("The proposal is verified");
         let on = VoteOn {
             step: VoteStep::new(height - 1, prev_block_view, Step::Precommit),
             block_hash: Some(*proposal.parent_hash()),
         };
-        let seal_view = TendermintSealView::new(proposal.seal());
         for (index, signature) in seal_view.signatures().expect("The proposal is verified") {
             let message = ConsensusMessage {
                 signature,
@@ -919,7 +919,7 @@ impl Worker {
             };
         } else if current_height < height {
             self.move_to_height(height);
-            let prev_block_view = previous_block_view(proposal).unwrap();
+            let prev_block_view = TendermintSealView::new(proposal.seal()).previous_block_view().unwrap();
             self.save_last_confirmed_view(prev_block_view);
             let proposal_at_view_0 = self
                 .votes
@@ -1034,7 +1034,7 @@ impl Worker {
         }
         let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
 
-        debug_assert_eq!(Ok(self.view), consensus_view(&header));
+        debug_assert_eq!(Ok(self.view), TendermintSealView::new(header.seal()).consensus_view());
 
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
@@ -1061,7 +1061,7 @@ impl Worker {
         }
 
         let height = header.number();
-        let view = consensus_view(header).unwrap();
+        let view = TendermintSealView::new(header.seal()).consensus_view().unwrap();
         let score = calculate_score(height, view);
 
         if *header.score() != score {
@@ -1077,13 +1077,13 @@ impl Worker {
 
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
         let height = header.number() as usize;
-        let view = consensus_view(header).unwrap();
+        let view = TendermintSealView::new(header.seal()).consensus_view()?;
         ctrace!(ENGINE, "Verify external at {}-{}, {:?}", height, view, header);
         let proposer = header.author();
         if !self.is_authority(header.parent_hash(), proposer) {
             return Err(EngineError::BlockNotAuthorized(*proposer).into())
         }
-        self.check_view_proposer(header.parent_hash(), header.number(), consensus_view(header)?, &proposer)?;
+        self.check_view_proposer(header.parent_hash(), header.number(), view, &proposer)?;
         let seal_view = TendermintSealView::new(header.seal());
         let bitset_count = seal_view.bitset()?.count();
         let precommits_count = seal_view.precommits().item_count()?;
@@ -1106,7 +1106,7 @@ impl Worker {
             return Err(BlockError::InvalidSeal.into())
         }
 
-        let previous_block_view = previous_block_view(header)?;
+        let previous_block_view = TendermintSealView::new(header.seal()).previous_block_view()?;
         let step = VoteStep::new(header.number() - 1, previous_block_view, Step::Precommit);
         let precommit_hash = message_hash(step, *header.parent_hash());
 
@@ -1410,7 +1410,9 @@ impl Worker {
                 } else if self.height < header.number() {
                     height_changed = true;
                     cinfo!(ENGINE, "Received a commit: {:?}.", header.number());
-                    let prev_block_view = previous_block_view(&full_header).expect("Imported block already checked");
+                    let prev_block_view = TendermintSealView::new(full_header.seal())
+                        .previous_block_view()
+                        .expect("Imported block already checked");
                     self.move_to_height(header.number());
                     self.save_last_confirmed_view(prev_block_view);
                 }
@@ -1556,7 +1558,9 @@ impl Worker {
                 // The proposer re-proposed its locked proposal.
                 // If we already imported the proposal, we should set `proposal` here.
                 if c.block(&BlockId::Hash(header_view.hash())).is_some() {
-                    let generated_view = consensus_view(&header_view).expect("Imported block is verified");
+                    let generated_view = TendermintSealView::new(header_view.seal())
+                        .consensus_view()
+                        .expect("Imported block is verified");
                     cdebug!(
                         ENGINE,
                         "Received a proposal({}) by a locked proposer. current view: {}, original proposal's view: {}",
