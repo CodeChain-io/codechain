@@ -327,7 +327,6 @@ pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u6
     let expired = update_candidates(state, current_term, nomination_expiration)?;
     let released = release_jailed_prisoners(state, current_term)?;
 
-    // Stakeholders list isn't changed while reverting.
     let reverted: Vec<_> = expired.into_iter().chain(released).collect();
     revert_delegations(state, &reverted)?;
 
@@ -409,6 +408,8 @@ pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
 }
 
 fn revert_delegations(state: &mut TopLevelState, reverted_delegatees: &[Address]) -> StateResult<()> {
+    // Stakeholders list isn't changed while reverting.
+
     let stakeholders = Stakeholders::load_from_state(state)?;
     for stakeholder in stakeholders.iter() {
         let mut delegator = StakeAccount::load_from_state(state, stakeholder)?;
