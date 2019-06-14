@@ -312,37 +312,23 @@ fn change_params(
 pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u64) -> StateResult<()> {
     let metadata = state.metadata()?.expect("The metadata must exist");
     let current_term = metadata.current_term_id();
+    let nomination_expiration = metadata
+        .params()
+        .expect(
+            "Term close events can be called after the ChangeParams called, \
+             so the metadata always has CommonParams",
+        )
+        .nomination_expiration();
+    assert_ne!(0, nomination_expiration);
+
     // TODO: total_slash = slash_unresponsive(headers, pending_rewards)
     // TODO: pending_rewards.update(signature_reward(blocks, total_slash))
 
-    let mut candidates = Candidates::load_from_state(state)?;
-    let nomination_ends_at = {
-        let expiration =
-            metadata.params().map(CommonParams::nomination_expiration).expect("The nomination expiration must exist");
-        current_term + expiration
-    };
-    let current_validatros = Validators::load_from_state(state)?;
-    candidates.renew_candidates(&current_validatros, nomination_ends_at);
-
-    let expired = candidates.drain_expired_candidates(current_term);
-    for candidate in &expired {
-        state.add_balance(&public_to_address(&candidate.pubkey), candidate.deposit)?;
-    }
-    candidates.save_to_state(state)?;
-
-    let mut jailed = Jail::load_from_state(&state)?;
-    let released = jailed.drain_released_prisoners(current_term);
-    for prisoner in &released {
-        state.add_balance(&prisoner.address, prisoner.deposit)?;
-    }
-    jailed.save_to_state(state)?;
+    let expired = update_candidates(state, current_term, nomination_expiration)?;
+    let released = release_jailed_prisoners(state, current_term)?;
 
     // Stakeholders list isn't changed while reverting.
-    let reverted: Vec<_> = expired
-        .into_iter()
-        .map(|c| public_to_address(&c.pubkey))
-        .chain(released.into_iter().map(|p| p.address))
-        .collect();
+    let reverted: Vec<_> = expired.into_iter().chain(released).collect();
     revert_delegations(state, &reverted)?;
 
     let validators = Validators::elect(state)?;
@@ -350,6 +336,37 @@ pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u6
 
     state.increase_term_id(last_term_finished_block_num)?;
     Ok(())
+}
+
+fn update_candidates(
+    state: &mut TopLevelState,
+    current_term: u64,
+    nomination_expiration: u64,
+) -> StateResult<Vec<Address>> {
+    let banned = Banned::load_from_state(state)?;
+
+    let mut candidates = Candidates::load_from_state(state)?;
+    let nomination_ends_at = current_term + nomination_expiration;
+
+    let current_validators = Validators::load_from_state(state)?;
+    candidates.renew_candidates(&current_validators, nomination_ends_at, &banned);
+
+    let expired = candidates.drain_expired_candidates(current_term);
+    for candidate in &expired {
+        state.add_balance(&public_to_address(&candidate.pubkey), candidate.deposit)?;
+    }
+    candidates.save_to_state(state)?;
+    Ok(expired.into_iter().map(|c| public_to_address(&c.pubkey)).collect())
+}
+
+fn release_jailed_prisoners(state: &mut TopLevelState, current_term: u64) -> StateResult<Vec<Address>> {
+    let mut jailed = Jail::load_from_state(&state)?;
+    let released = jailed.drain_released_prisoners(current_term);
+    for prisoner in &released {
+        state.add_balance(&prisoner.address, prisoner.deposit)?;
+    }
+    jailed.save_to_state(state)?;
+    Ok(released.into_iter().map(|p| p.address).collect())
 }
 
 #[allow(dead_code)]
@@ -368,20 +385,22 @@ pub fn jail(state: &mut TopLevelState, address: &Address, custody_until: u64, ki
 #[allow(dead_code)]
 pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
     // TODO: remove pending rewards.
-    // TODO: remove from validators.
     // TODO: give criminal's deposits to the informant
     // TODO: give criminal's rewards to diligent validators
     let mut candidates = Candidates::load_from_state(state)?;
     let mut banned = Banned::load_from_state(state)?;
     let mut jailed = Jail::load_from_state(state)?;
+    let mut validators = Validators::load_from_state(state)?;
 
     candidates.remove(&criminal);
     jailed.remove(&criminal);
     banned.add(criminal);
+    validators.remove(&criminal);
 
     jailed.save_to_state(state)?;
     banned.save_to_state(state)?;
     candidates.save_to_state(state)?;
+    validators.save_to_state(state)?;
 
     // Revert delegations
     revert_delegations(state, &[criminal])?;
@@ -392,18 +411,18 @@ pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
 fn revert_delegations(state: &mut TopLevelState, reverted_delegatees: &[Address]) -> StateResult<()> {
     let stakeholders = Stakeholders::load_from_state(state)?;
     for stakeholder in stakeholders.iter() {
-        let mut balance = StakeAccount::load_from_state(state, stakeholder)?;
+        let mut delegator = StakeAccount::load_from_state(state, stakeholder)?;
         let mut delegation = Delegation::load_from_state(state, stakeholder)?;
 
-        for prisoner in reverted_delegatees.iter() {
-            let quantity = delegation.get_quantity(prisoner);
+        for delegatee in reverted_delegatees {
+            let quantity = delegation.get_quantity(delegatee);
             if quantity > 0 {
-                delegation.subtract_quantity(*prisoner, quantity)?;
-                balance.add_balance(quantity)?;
+                delegation.subtract_quantity(*delegatee, quantity)?;
+                delegator.add_balance(quantity)?;
             }
         }
         delegation.save_to_state(state)?;
-        balance.save_to_state(state)?;
+        delegator.save_to_state(state)?;
     }
     Ok(())
 }
@@ -422,7 +441,7 @@ mod tests {
         let mut state = helpers::get_temp_state_with_metadata();
         state.metadata().unwrap().unwrap().set_params(CommonParams::default_for_test());
         let mut params = CommonParams::default_for_test();
-        params.set_validator_num_for_test(4, 30);
+        params.set_dynamic_validator_params_for_test(30, 10, 3, 20, 30, 4, 1000, 10000, 100);
         assert_eq!(Ok(()), state.update_params(0, params));
         state
     }
