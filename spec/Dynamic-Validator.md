@@ -211,10 +211,10 @@ The transaction fails when the delegator revokes more than it delegates.
 * sig2
 
 This is a transaction that reports malicious validator.
-The **REPORT_DOUBLE_VOTE** should be reported before 1 term passes.
-The transaction that reports a double vote have occurred before 1 term passes fails.
 
 The criminal loses all his deposit and rewards and is banned immediately; it is the only case where a validator set is changed during the term.
+It's possible that the criminal has neither deposit nor rewards if the **REPORT_DOUBLE_VOTE** is reported after 1 term passes.
+In this case, the informant gets no reward; however, the transaction still bans the criminal.
 
 The informant receives the deposit of the criminal as prize money immediately.
 The express fee that the criminal would earn is used as additional rewards for diligent validators.
