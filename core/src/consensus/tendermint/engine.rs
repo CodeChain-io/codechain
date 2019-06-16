@@ -43,6 +43,7 @@ use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{EngineType, ValidatorSet};
 use crate::error::Error;
 use crate::views::HeaderView;
+use crate::BlockId;
 use consensus::tendermint::params::TimeGapParams;
 
 impl ConsensusEngine for Tendermint {
@@ -163,6 +164,18 @@ impl ConsensusEngine for Tendermint {
             self.machine.add_balance(block, &author, block_author_reward)?;
             return Ok(())
         }
+
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .ok_or(EngineError::CannotOpenBlock)?
+            .upgrade()
+            .ok_or(EngineError::CannotOpenBlock)?;
+        let state_at_term_begin = client.state_at_term_begin(block.header().hash().into()).expect("It must exist");
+        let block_author = *block.header().author();
+        stake::update_validator_weights(&mut block.state_mut(), &block_author, &state_at_term_begin)?;
+
         stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
         let last_term_finished_block_num = {
             let header = block.header();
@@ -174,13 +187,6 @@ impl ConsensusEngine for Tendermint {
             header.number()
         };
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
-        let client = self
-            .client
-            .read()
-            .as_ref()
-            .ok_or(EngineError::CannotOpenBlock)?
-            .upgrade()
-            .ok_or(EngineError::CannotOpenBlock)?;
 
         let (start_of_the_current_term, start_of_the_previous_term) = {
             let end_of_the_one_level_previous_term = block.state().metadata()?.unwrap().last_term_finished_block_num();
@@ -292,6 +298,26 @@ impl ConsensusEngine for Tendermint {
     fn action_handlers(&self) -> &[Arc<ActionHandler>] {
         &self.action_handlers
     }
+
+    fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError> {
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .ok_or(EngineError::CannotOpenBlock)?
+            .upgrade()
+            .ok_or(EngineError::CannotOpenBlock)?;
+        let block_hash = match block_number {
+            None => {
+                client.block_header(&BlockId::Latest).expect("latest block must exist").hash() // the latest block
+            }
+            Some(block_number) => {
+                assert_ne!(0, block_number);
+                client.block_header(&(block_number - 1).into()).ok_or(EngineError::CannotOpenBlock)?.hash() // the parent of the given block number
+            }
+        };
+        Ok(Some(self.validators.addresses(&block_hash)))
+    }
 }
 
 fn calculate_pending_rewards_of_the_previous_term(
@@ -353,19 +379,23 @@ fn final_rewards(intermediate_reward: u64, number_of_signatures: u64, number_of_
         // number_of_signatures / number_of_blocks_in_term >= 2 / 3
         // x * 3/10 + 7/10
         (3, 7)
+    } else if number_of_signatures * 2 >= number_of_blocks_in_term {
+        // number_of_signatures / number_of_blocks_in_term >= 1 / 2
+        // x * 48/10 - 23/10
+        (48, -23)
     } else if number_of_signatures * 3 >= number_of_blocks_in_term {
         // number_of_signatures / number_of_blocks_in_term >= 1 / 3
-        // x * 24/10 - 7/10
-        (24, -7)
+        // x * 6/10 - 2/10
+        (6, -2)
     } else {
         // 1 / 3 > number_of_signatures / number_of_blocks_in_term
-        // x * 3/10 + 0
+        // 0
         assert!(
             number_of_blocks_in_term > 3 * number_of_signatures,
             "number_of_signatures / number_of_blocks_in_term = {}",
             (number_of_signatures as f64) / (number_of_blocks_in_term as f64)
         );
-        (3, 0)
+        (0, 0)
     };
     let numerator = i128::from(intermediate_reward)
         * (a * i128::from(number_of_signatures) + b * i128::from(number_of_blocks_in_term));
@@ -431,24 +461,31 @@ mod tests {
         }
 
         {
-            let number_of_signatures = 150;
+            let number_of_signatures = 175;
             let number_of_blocks_in_term = 300;
             let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
             assert_eq!(500, final_rewards);
         }
 
         {
-            let number_of_signatures = 100;
+            let number_of_signatures = 150;
             let number_of_blocks_in_term = 300;
             let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
             assert_eq!(100, final_rewards);
         }
 
         {
-            let number_of_signatures = 50;
+            let number_of_signatures = 125;
             let number_of_blocks_in_term = 300;
             let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
             assert_eq!(50, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 100;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(0, final_rewards);
         }
 
         {
@@ -484,24 +521,31 @@ mod tests {
         }
 
         {
-            let number_of_signatures = 150;
+            let number_of_signatures = 175;
             let number_of_blocks_in_term = 300;
             let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
             assert_eq!(2160, final_rewards);
         }
 
         {
-            let number_of_signatures = 100;
+            let number_of_signatures = 150;
             let number_of_blocks_in_term = 300;
             let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
             assert_eq!(432, final_rewards);
         }
 
         {
-            let number_of_signatures = 50;
+            let number_of_signatures = 125;
             let number_of_blocks_in_term = 300;
             let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
             assert_eq!(216, final_rewards);
+        }
+
+        {
+            let number_of_signatures = 100;
+            let number_of_blocks_in_term = 300;
+            let final_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+            assert_eq!(0, final_rewards);
         }
 
         {

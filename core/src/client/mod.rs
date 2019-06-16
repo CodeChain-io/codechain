@@ -44,6 +44,7 @@ use primitives::{Bytes, H160, H256, U256};
 
 use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
+use crate::consensus::EngineError;
 use crate::encoded;
 use crate::error::BlockImportError;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions};
@@ -90,6 +91,7 @@ pub trait EngineInfo: Send + Sync {
     fn block_reward(&self, block_number: u64) -> u64;
     fn mining_reward(&self, block_number: u64) -> Option<u64>;
     fn recommended_confirmation(&self) -> u32;
+    fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>, EngineError>;
 }
 
 /// Client facilities used by internally sealing Engines.

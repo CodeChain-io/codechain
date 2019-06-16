@@ -52,6 +52,20 @@ describe("chain", function() {
         expect(await node.sdk.rpc.chain.getBestBlockNumber()).to.be.a("number");
     });
 
+    it("getPossibleAuthors", async function() {
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getPossibleAuthors", [
+                null
+            ])
+        ).be.null;
+    });
+
+    it("getPossibleAuthors of the genesis block", async function() {
+        expect(
+            await node.sdk.rpc.sendRpcRequest("chain_getPossibleAuthors", [0])
+        ).deep.equal(["tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3"]);
+    });
+
     it("getBestBlockId", async function() {
         const value = await node.sdk.rpc.sendRpcRequest(
             "chain_getBestBlockId",

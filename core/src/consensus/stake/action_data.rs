@@ -253,7 +253,11 @@ impl Validators {
         let candidates: HashMap<_, _> =
             active_candidates.keys().map(|pubkey| (public_to_address(pubkey), *pubkey)).collect();
 
-        // FIXME: Remove banned accounts
+        let banned = Banned::load_from_state(&state)?;
+        for address in candidates.keys() {
+            assert!(!banned.0.contains(address), "{} is banned address", address);
+        }
+
         // step 1
         let mut delegatees: Vec<(StakeQuantity, Public)> = Stakeholders::delegatees(&state)?
             .into_iter()
@@ -315,10 +319,9 @@ impl Validators {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub fn update(&mut self, block_author: Address, min_delegation: StakeQuantity) {
+    pub fn update(&mut self, block_author: &Address, min_delegation: StakeQuantity) {
         for (weight, _deposit, pubkey) in self.0.iter_mut().rev() {
-            if public_to_address(pubkey) == block_author {
+            if public_to_address(pubkey) == *block_author {
                 // block author
                 *weight = weight.saturating_sub(min_delegation);
                 break
@@ -327,6 +330,10 @@ impl Validators {
             *weight = weight.saturating_sub(min_delegation * 2);
         }
         self.0.sort();
+    }
+
+    pub fn remove(&mut self, target: &Address) {
+        self.0.retain(|(_, _, pubkey)| public_to_address(pubkey) != *target);
     }
 
     pub fn pubkeys(&self) -> Vec<Public> {
@@ -347,6 +354,10 @@ impl Validators {
 
     pub fn weight(&self, pubkey: &Public) -> Option<StakeQuantity> {
         self.0.iter().find(|(_weight, _deposit, val)| val == pubkey).map(|(weight, _deposit, _val)| *weight)
+    }
+
+    pub fn min_delegation(&self) -> StakeQuantity {
+        self.0.iter().map(|(delegation, ..)| *delegation).min().expect("There must be at least one validators")
     }
 }
 
@@ -453,6 +464,14 @@ impl Candidates {
             candidate.nomination_ends_at = nomination_ends_at;
         }
         candidate.metadata = metadata;
+    }
+
+    pub fn renew_candidates(&mut self, validators: &Validators, nomination_ends_at: u64, banned: &Banned) {
+        for address in validators.0.iter().map(|(_, _, pubkey)| public_to_address(pubkey)) {
+            assert!(!banned.0.contains(&address), "{} is banned address", address);
+            self.0.get_mut(&address).expect("Validators must be in the candidates").nomination_ends_at =
+                nomination_ends_at;
+        }
     }
 
     pub fn drain_expired_candidates(&mut self, term_index: u64) -> Vec<Candidate> {

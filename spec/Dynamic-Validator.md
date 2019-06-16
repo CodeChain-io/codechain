@@ -211,10 +211,10 @@ The transaction fails when the delegator revokes more than it delegates.
 * sig2
 
 This is a transaction that reports malicious validator.
-The **REPORT_DOUBLE_VOTE** should be reported before 1 term passes.
-The transaction that reports a double vote have occurred before 1 term passes fails.
 
 The criminal loses all his deposit and rewards and is banned immediately; it is the only case where a validator set is changed during the term.
+It's possible that the criminal has neither deposit nor rewards if the **REPORT_DOUBLE_VOTE** is reported after 1 term passes.
+In this case, the informant gets no reward; however, the transaction still bans the criminal.
 
 The informant receives the deposit of the criminal as prize money immediately.
 The express fee that the criminal would earn is used as additional rewards for diligent validators.
@@ -239,8 +239,9 @@ validators = [ [ delegation, deposit, pubkey ] ] (delegation, deposit, pubkey) a
 
 ### on TermEnd events
 1. Update `term_id` to the current block number and the next term id
-2. Remove the expired candidates and give back the deposits
-3. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits
-4. Calculate rewards of the previous block and update `intermediate_rewards`
-5. Elect validators
+2. Renew the nomination expiration of the current validators
+3. Remove the expired candidates and give back the deposits
+4. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits
+5. Calculate rewards of the previous block and update `intermediate_rewards`
+6. Elect validators
     * Store validators in the ascending order

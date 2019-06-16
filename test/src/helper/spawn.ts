@@ -250,9 +250,7 @@ export default class CodeChain {
             this.process.on("exit", (code, signal) => {
                 if (code !== 0) {
                     console.error(
-                        `CodeChain(${
-                            this.id
-                        }) exited with code ${code}, ${signal}`
+                        `CodeChain(${this.id}) exited with code ${code}, ${signal}`
                     );
                 } else if (!this.isTestFailed) {
                     unlinkSync(this.logPath);
