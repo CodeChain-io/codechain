@@ -14,8 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use ccrypto::Blake;
 use ckey::{recover, Address, Signature};
+use client::ConsensusClient;
+use consensus::vote_collector::Message;
+use consensus::ValidatorSet;
 use ctypes::errors::SyntaxError;
 use ctypes::CommonParams;
 use primitives::{Bytes, H256};
@@ -25,10 +30,11 @@ const ACTION_TAG_TRANSFER_CCS: u8 = 1;
 const ACTION_TAG_DELEGATE_CCS: u8 = 2;
 const ACTION_TAG_REVOKE: u8 = 3;
 const ACTION_TAG_SELF_NOMINATE: u8 = 4;
+const ACTION_TAG_REPORT_DOUBLE_VOTE: u8 = 5;
 const ACTION_TAG_CHANGE_PARAMS: u8 = 0xFF;
 
 #[derive(Debug, PartialEq)]
-pub enum Action {
+pub enum Action<M: Message> {
     TransferCCS {
         address: Address,
         quantity: u64,
@@ -50,10 +56,19 @@ pub enum Action {
         params: Box<CommonParams>,
         signatures: Vec<Signature>,
     },
+    ReportDoubleVote {
+        message1: M,
+        message2: M,
+    },
 }
 
-impl Action {
-    pub fn verify(&self, current_params: &CommonParams) -> Result<(), SyntaxError> {
+impl<M: Message> Action<M> {
+    pub fn verify(
+        &self,
+        current_params: &CommonParams,
+        client: Option<Arc<ConsensusClient>>,
+        validators: Option<Arc<ValidatorSet>>,
+    ) -> Result<(), SyntaxError> {
         match self {
             Action::TransferCCS {
                 ..
@@ -89,7 +104,7 @@ impl Action {
                     )))
                 }
                 params.verify().map_err(SyntaxError::InvalidCustomAction)?;
-                let action = Action::ChangeParams {
+                let action = Action::<M>::ChangeParams {
                     metadata_seq: *metadata_seq,
                     params: params.clone(),
                     signatures: vec![],
@@ -102,12 +117,64 @@ impl Action {
                     })?;
                 }
             }
+            Action::ReportDoubleVote {
+                message1,
+                message2,
+            } => {
+                if message1 == message2 {
+                    return Err(SyntaxError::InvalidCustomAction(String::from("Messages are duplicated")))
+                }
+                if message1.round() != message2.round() {
+                    return Err(SyntaxError::InvalidCustomAction(String::from(
+                        "The messages are from two different voting rounds",
+                    )))
+                }
+
+                let signer_idx1 = message1.signer_index();
+                let signer_idx2 = message2.signer_index();
+
+                if signer_idx1 != signer_idx2 {
+                    return Err(SyntaxError::InvalidCustomAction(format!(
+                        "Two messages have different signer indexes: {}, {}",
+                        signer_idx1, signer_idx2
+                    )))
+                }
+
+                assert_eq!(
+                    message1.height(),
+                    message2.height(),
+                    "Heights of both messages must be same because message1.round() == message2.round()"
+                );
+                let signed_block_height = message1.height();
+                let (client, validators) = (
+                    client.expect("Client should be initialized"),
+                    validators.expect("ValidatorSet should be initialized"),
+                );
+                if signed_block_height == 0 {
+                    return Err(SyntaxError::InvalidCustomAction(String::from(
+                        "Double vote on the genesis block does not make sense",
+                    )))
+                }
+                let parent_hash = client
+                    .block_header(&(signed_block_height - 1).into())
+                    .ok_or_else(|| {
+                        SyntaxError::InvalidCustomAction(format!(
+                            "Cannot get header from the height {}",
+                            signed_block_height
+                        ))
+                    })?
+                    .hash();
+                let signer = validators.get(&parent_hash, signer_idx1);
+                if message1.verify(&signer) != Ok(true) || message2.verify(&signer) != Ok(true) {
+                    return Err(SyntaxError::InvalidCustomAction(String::from("Schnorr signature verification fails")))
+                }
+            }
         }
         Ok(())
     }
 }
 
-impl Encodable for Action {
+impl<M: Message> Encodable for Action<M> {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             Action::TransferCCS {
@@ -147,11 +214,17 @@ impl Encodable for Action {
                     s.append(signature);
                 }
             }
+            Action::ReportDoubleVote {
+                message1,
+                message2,
+            } => {
+                s.begin_list(3).append(&ACTION_TAG_REPORT_DOUBLE_VOTE).append(message1).append(message2);
+            }
         };
     }
 }
 
-impl Decodable for Action {
+impl<M: Message> Decodable for Action<M> {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at(0)?;
         match tag {
@@ -224,6 +297,21 @@ impl Decodable for Action {
                     signatures,
                 })
             }
+            ACTION_TAG_REPORT_DOUBLE_VOTE => {
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        expected: 3,
+                        got: item_count,
+                    })
+                }
+                let message1 = rlp.val_at(1)?;
+                let message2 = rlp.val_at(2)?;
+                Ok(Action::ReportDoubleVote {
+                    message1,
+                    message2,
+                })
+            }
             _ => Err(DecoderError::Custom("Unexpected Tendermint Stake Action Type")),
         }
     }
@@ -231,6 +319,11 @@ impl Decodable for Action {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use ccrypto::blake256;
+    use ckey::sign_schnorr;
+    use client::TestBlockChainClient;
+    use consensus::solo::SoloMessage;
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
@@ -247,7 +340,7 @@ mod tests {
                 expected: 4,
                 got: 3,
             }),
-            UntrustedRlp::new(&rlp::encode(&action)).as_val::<Action>()
+            UntrustedRlp::new(&rlp::encode(&action)).as_val::<Action>::<_>()
         );
     }
 

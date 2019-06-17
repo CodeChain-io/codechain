@@ -117,6 +117,10 @@ pub enum Error {
     },
     SignatureOfInvalidAccount(Address),
     InsufficientStakes(Mismatch<u64>),
+    InvalidValidatorIndex {
+        idx: usize,
+        parent_height: u64,
+    },
 }
 
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 1;
@@ -151,6 +155,7 @@ const ERROR_ID_NON_ACTIVE_ACCOUNT: u8 = 30;
 const ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION: u8 = 31;
 const ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT: u8 = 32;
 const ERROR_ID_INSUFFICIENT_STAKES: u8 = 33;
+const ERROR_ID_INVALID_VALIDATOR_INDEX: u8 = 34;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -190,6 +195,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_NON_ACTIVE_ACCOUNT => 3,
             ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT => 2,
             ERROR_ID_INSUFFICIENT_STAKES => 3,
+            ERROR_ID_INVALID_VALIDATOR_INDEX => 3,
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         })
     }
@@ -317,6 +323,10 @@ impl Encodable for Error {
                 expected,
                 found,
             }) => RlpHelper::new_tagged_list(s, ERROR_ID_INSUFFICIENT_STAKES).append(expected).append(found),
+            Error::InvalidValidatorIndex {
+                idx,
+                parent_height,
+            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_VALIDATOR_INDEX).append(idx).append(parent_height),
         };
     }
 }
@@ -405,6 +415,10 @@ impl Decodable for Error {
                 expected: rlp.val_at(1)?,
                 found: rlp.val_at(2)?,
             }),
+            ERROR_ID_INVALID_VALIDATOR_INDEX => Error::InvalidValidatorIndex {
+                idx: rlp.val_at(1)?,
+                parent_height: rlp.val_at(2)?,
+            },
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -503,6 +517,9 @@ impl Display for Error {
                 write!(f, "Signature of invalid account({}) received", address),
             Error::InsufficientStakes(mismatch) =>
                 write!(f, "Insufficient stakes: {}", mismatch),
+            Error::InvalidValidatorIndex {
+                idx, parent_height,
+            } =>  write!(f, "The validator index {} is invalid at the parent hash {}", idx, parent_height),
         }
     }
 }

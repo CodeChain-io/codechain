@@ -17,7 +17,7 @@
 use std::cmp;
 
 use ccrypto::blake256;
-use ckey::{verify_schnorr, Public, SchnorrSignature};
+use ckey::{verify_schnorr, Error as KeyError, Public, SchnorrSignature};
 use ctypes::Header;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -27,7 +27,6 @@ use super::super::validator_set::DynamicValidator;
 use super::super::vote_collector::Message;
 use super::super::BitSet;
 use super::{BlockHash, Height, Step, View};
-use crate::error::Error;
 
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RlpDecodable, RlpEncodable)]
@@ -295,11 +294,6 @@ impl ConsensusMessage {
             },
         })
     }
-
-    pub fn verify(&self, signer_public: &Public) -> Result<bool, Error> {
-        let vote_info = message_info_rlp(self.on.step, self.on.block_hash);
-        Ok(verify_schnorr(signer_public, &self.signature, &blake256(vote_info))?)
-    }
 }
 
 impl Message for ConsensusMessage {
@@ -321,8 +315,17 @@ impl Message for ConsensusMessage {
         &self.on.step
     }
 
+    fn height(&self) -> u64 {
+        self.on.step.height
+    }
+
     fn is_broadcastable(&self) -> bool {
         self.on.step.step.is_pre()
+    }
+
+    fn verify(&self, signer_public: &Public) -> Result<bool, KeyError> {
+        let vote_info = message_info_rlp(self.on.step, self.on.block_hash);
+        verify_schnorr(signer_public, &self.signature, &blake256(vote_info))
     }
 }
 
