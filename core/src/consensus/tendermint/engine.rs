@@ -192,24 +192,29 @@ impl ConsensusEngine for Tendermint {
         };
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
 
-        let (start_of_the_current_term, start_of_the_previous_term) = {
-            let end_of_the_one_level_previous_term = block.state().metadata()?.unwrap().last_term_finished_block_num();
-            let end_of_the_two_level_previous_term =
-                client.last_term_finished_block_num(end_of_the_one_level_previous_term.into()).unwrap();
+        if block.state().metadata()?.expect("Metadata must exist").current_term_id() == 1 {
+            assert!(rewards.is_empty());
+        } else {
+            let (start_of_the_current_term, start_of_the_previous_term) = {
+                let end_of_the_one_level_previous_term =
+                    block.state().metadata()?.unwrap().last_term_finished_block_num();
+                let end_of_the_two_level_previous_term =
+                    client.last_term_finished_block_num(end_of_the_one_level_previous_term.into()).unwrap();
 
-            (end_of_the_one_level_previous_term + 1, end_of_the_two_level_previous_term + 1)
-        };
+                (end_of_the_one_level_previous_term + 1, end_of_the_two_level_previous_term + 1)
+            };
 
-        let pending_rewards = calculate_pending_rewards_of_the_previous_term(
-            &*client,
-            &*self.validators,
-            rewards,
-            start_of_the_current_term,
-            start_of_the_previous_term,
-        )?;
+            let pending_rewards = calculate_pending_rewards_of_the_previous_term(
+                &*client,
+                &*self.validators,
+                rewards,
+                start_of_the_current_term,
+                start_of_the_previous_term,
+            )?;
 
-        for (address, reward) in pending_rewards {
-            self.machine.add_balance(block, &address, reward)?;
+            for (address, reward) in pending_rewards {
+                self.machine.add_balance(block, &address, reward)?;
+            }
         }
 
         stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
