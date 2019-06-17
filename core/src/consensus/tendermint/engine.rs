@@ -25,7 +25,7 @@ use ckey::Address;
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::{ActionHandler, TopStateView};
-use ctypes::{CommonParams, Header};
+use ctypes::{BlockNumber, CommonParams, Header};
 use num_rational::Ratio;
 use primitives::H256;
 
@@ -159,9 +159,14 @@ impl ConsensusEngine for Tendermint {
 
         let block_author_reward = total_reward - total_min_fee + distributor.remaining_fee();
 
-        let term_seconds = parent_common_params.term_seconds();
-        if term_seconds == 0 {
+        if block.state().metadata()?.expect("Metadata must exist").current_term_id() == 0 {
             self.machine.add_balance(block, &author, block_author_reward)?;
+
+            if let Some(block_number) =
+                block_number_if_term_changed(block.header(), parent_header, parent_common_params)
+            {
+                stake::on_term_close(block.state_mut(), block_number)?;
+            }
             return Ok(())
         }
 
@@ -177,14 +182,13 @@ impl ConsensusEngine for Tendermint {
         stake::update_validator_weights(&mut block.state_mut(), &block_author, &state_at_term_begin)?;
 
         stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
-        let last_term_finished_block_num = {
-            let header = block.header();
-            let current_term_period = header.timestamp() / term_seconds;
-            let parent_term_period = parent_header.timestamp() / term_seconds;
-            if current_term_period == parent_term_period {
-                return Ok(())
-            }
-            header.number()
+
+        let last_term_finished_block_num = if let Some(block_number) =
+            block_number_if_term_changed(block.header(), parent_header, parent_common_params)
+        {
+            block_number
+        } else {
+            return Ok(())
         };
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
 
@@ -307,6 +311,24 @@ impl ConsensusEngine for Tendermint {
         };
         Ok(Some(self.validators.addresses(&block_hash)))
     }
+}
+
+fn block_number_if_term_changed(
+    header: &Header,
+    parent_header: &Header,
+    parent_common_params: &CommonParams,
+) -> Option<BlockNumber> {
+    let term_seconds = parent_common_params.term_seconds();
+    if term_seconds == 0 {
+        return None
+    }
+
+    let current_term_period = header.timestamp() / term_seconds;
+    let parent_term_period = parent_header.timestamp() / term_seconds;
+    if current_term_period == parent_term_period {
+        return None
+    }
+    Some(header.number())
 }
 
 fn calculate_pending_rewards_of_the_previous_term(
