@@ -218,17 +218,6 @@ impl ConsensusEngine for Tendermint {
         *self.client.write() = Some(Weak::clone(&client));
     }
 
-    fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
-        let (result, receiver) = crossbeam::bounded(1);
-        self.inner
-            .send(worker::Event::HandleMessages {
-                messages: vec![rlp.to_owned()],
-                result,
-            })
-            .unwrap();
-        receiver.recv().unwrap()
-    }
-
     fn is_proposal(&self, header: &Header) -> bool {
         let (result, receiver) = crossbeam::bounded(1);
         self.inner
