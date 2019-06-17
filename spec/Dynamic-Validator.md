@@ -235,7 +235,7 @@ banned = [ address+ ], address asc
 jailed = [ [address, deposits, custody_until, released_at]+ ], address asc
 term_id = [ the last block number of the previous term, the current term id ]
 intermediate_rewards = [ [ address, rewards ]+ address asc, [ address, rewards ]+ address asc ]
-validators = [ [ delegation, deposit, pubkey ] ] (delegation, deposit, pubkey) asc
+validators = [ [ weight, delegation, deposit, pubkey ] ] (weight, delegation, deposit, pubkey) asc
 ```
 
 ### on TermEnd events

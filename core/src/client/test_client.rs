@@ -620,10 +620,6 @@ impl TermInfo for TestBlockChainClient {
     fn current_term_id(&self, _id: BlockId) -> Option<u64> {
         None
     }
-
-    fn state_at_term_begin(&self, _id: BlockId) -> Option<TopLevelState> {
-        None
-    }
 }
 
 impl StateInfo for TestBlockChainClient {

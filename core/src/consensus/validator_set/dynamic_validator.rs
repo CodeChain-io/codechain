@@ -24,8 +24,8 @@ use primitives::H256;
 use super::{RoundRobinValidator, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::consensus::bit_set::BitSet;
+use crate::consensus::stake::{get_validators, Validator};
 use crate::consensus::EngineError;
-use consensus::stake::{get_validators, Validators};
 
 /// Validator set containing a known set of public keys.
 pub struct DynamicValidator {
@@ -41,13 +41,7 @@ impl DynamicValidator {
         }
     }
 
-    fn validators_at_term_begin(&self, parent: H256) -> Option<Validators> {
-        let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
-        let state = client.state_at_term_begin(parent.into())?;
-        Some(get_validators(&state).unwrap())
-    }
-
-    fn validators(&self, parent: H256) -> Option<Validators> {
+    fn validators(&self, parent: H256) -> Option<Vec<Validator>> {
         let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
         let block_id = parent.into();
         if client.current_term_id(block_id)? == 0 {
@@ -58,12 +52,14 @@ impl DynamicValidator {
         if validators.is_empty() {
             None
         } else {
+            let mut validators: Vec<_> = validators.into();
+            validators.reverse();
             Some(validators)
         }
     }
 
     fn validators_pubkey(&self, parent: H256) -> Option<Vec<Public>> {
-        self.validators(parent).map(|validators| validators.pubkeys())
+        self.validators(parent).map(|validators| validators.into_iter().map(|val| *val.pubkey()).collect())
     }
 
     pub fn proposer_index(&self, parent: H256, prev_proposer_index: usize, proposed_view: usize) -> usize {
@@ -126,8 +122,8 @@ impl ValidatorSet for DynamicValidator {
     fn next_block_proposer(&self, parent: &H256, view: u64) -> Option<Address> {
         if let Some(validators) = self.validators_pubkey(*parent) {
             let n_validators = validators.len();
-            let nonce = view as usize % n_validators;
-            Some(public_to_address(validators.get(n_validators - nonce - 1).unwrap()))
+            let index = view as usize % n_validators;
+            Some(public_to_address(validators.get(index).unwrap()))
         } else {
             self.initial_list.next_block_proposer(parent, view)
         }
@@ -142,28 +138,28 @@ impl ValidatorSet for DynamicValidator {
     }
 
     fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError> {
-        if let Some(validators_at_term_begin) = self.validators_at_term_begin(*parent) {
-            let validators =
-                self.validators(*parent).expect("The validator must exist in the middle of term").pubkeys();
-            let mut weight = 0;
+        if let Some(validators) = self.validators(*parent) {
+            let mut voted_delegation = 0u64;
+            let n_validators = validators.len();
             for index in votes.true_index_iter() {
-                let pubkey = validators.get(index).ok_or_else(|| {
+                assert!(index < n_validators);
+                let validator = validators.get(index).ok_or_else(|| {
                     EngineError::ValidatorNotExist {
                         height: 0, // FIXME
                         index,
                     }
                 })?;
-                weight += validators_at_term_begin.weight(pubkey).unwrap() as usize;
+                voted_delegation += validator.delegation();
             }
-            let total_weight = validators_at_term_begin.total_weight() as usize;
-            if weight * 3 > total_weight * 2 {
+            let total_delegation: u64 = validators.iter().map(Validator::delegation).sum();
+            if voted_delegation * 3 > total_delegation * 2 {
                 Ok(())
             } else {
-                let threshold = total_weight * 2 / 3;
+                let threshold = total_delegation as usize * 2 / 3;
                 Err(EngineError::BadSealFieldSize(OutOfBounds {
                     min: Some(threshold),
-                    max: Some(total_weight),
-                    found: weight,
+                    max: Some(total_delegation as usize),
+                    found: voted_delegation as usize,
                 }))
             }
         } else {
