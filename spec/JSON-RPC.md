@@ -1467,6 +1467,35 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
+# chain_getMetadataSeq
+Gets the sequence of metadata.
+It returns null if the block number parameter is larger than the current best block.
+
+### Params
+ 1. block number - `number` | `null`
+
+### Returns
+`number` | `null`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getMeatadataSeq", "params": [53], "id": 7}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":43,
+  "id":7
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
 ## chain_executeTransaction
 Executes the transactions and returns whether the execution is successful.
 
