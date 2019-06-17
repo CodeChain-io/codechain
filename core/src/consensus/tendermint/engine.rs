@@ -159,7 +159,8 @@ impl ConsensusEngine for Tendermint {
 
         let block_author_reward = total_reward - total_min_fee + distributor.remaining_fee();
 
-        if block.state().metadata()?.expect("Metadata must exist").current_term_id() == 0 {
+        let metadata = block.state().metadata()?.expect("Metadata must exist");
+        if metadata.current_term_id() == 0 {
             self.machine.add_balance(block, &author, block_author_reward)?;
 
             if let Some(block_number) =
@@ -170,16 +171,8 @@ impl ConsensusEngine for Tendermint {
             return Ok(())
         }
 
-        let client = self
-            .client
-            .read()
-            .as_ref()
-            .ok_or(EngineError::CannotOpenBlock)?
-            .upgrade()
-            .ok_or(EngineError::CannotOpenBlock)?;
-        let state_at_term_begin = client.state_at_term_begin(block.header().hash().into()).expect("It must exist");
         let block_author = *block.header().author();
-        stake::update_validator_weights(&mut block.state_mut(), &block_author, &state_at_term_begin)?;
+        stake::update_validator_weights(&mut block.state_mut(), &block_author)?;
 
         stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
 
@@ -195,6 +188,14 @@ impl ConsensusEngine for Tendermint {
         if block.state().metadata()?.expect("Metadata must exist").current_term_id() == 1 {
             assert!(rewards.is_empty());
         } else {
+            let client = self
+                .client
+                .read()
+                .as_ref()
+                .ok_or(EngineError::CannotOpenBlock)?
+                .upgrade()
+                .ok_or(EngineError::CannotOpenBlock)?;
+
             let (start_of_the_current_term, start_of_the_previous_term) = {
                 let end_of_the_one_level_previous_term =
                     block.state().metadata()?.unwrap().last_term_finished_block_num();

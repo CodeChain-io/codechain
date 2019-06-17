@@ -119,8 +119,6 @@ pub trait ConsensusClient: BlockChainTrait + EngineClient + EngineInfo + TermInf
 pub trait TermInfo {
     fn last_term_finished_block_num(&self, id: BlockId) -> Option<BlockNumber>;
     fn current_term_id(&self, id: BlockId) -> Option<u64>;
-
-    fn state_at_term_begin(&self, id: BlockId) -> Option<TopLevelState>;
 }
 
 /// Provides methods to access account info

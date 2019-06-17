@@ -30,8 +30,8 @@ use ctypes::{CommonParams, Header};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, UntrustedRlp};
 
-pub use self::action_data::Validators;
 use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
+pub use self::action_data::{Validator, Validators};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
 use consensus::stake::action_data::Banned;
@@ -263,16 +263,10 @@ pub fn move_current_to_previous_intermediate_rewards(state: &mut TopLevelState) 
     rewards.save_to_state(state)
 }
 
-pub fn update_validator_weights(
-    state: &mut TopLevelState,
-    block_author: &Address,
-    state_at_term_begin: &TopLevelState,
-) -> StateResult<()> {
-    let min_delegation = Validators::load_from_state(state_at_term_begin)?.min_delegation();
+pub fn update_validator_weights(state: &mut TopLevelState, block_author: &Address) -> StateResult<()> {
     let mut validators = Validators::load_from_state(state)?;
-    validators.update(block_author, min_delegation);
-    validators.save_to_state(state)?;
-    Ok(())
+    validators.update_weight(block_author);
+    validators.save_to_state(state)
 }
 
 fn change_params(
