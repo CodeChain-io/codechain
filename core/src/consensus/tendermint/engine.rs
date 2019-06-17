@@ -29,7 +29,7 @@ use primitives::H256;
 use rlp::UntrustedRlp;
 
 use super::super::stake;
-use super::super::{ConsensusEngine, ConstructedVerifier, EngineError, EpochChange, Seal};
+use super::super::{ConsensusEngine, ConstructedVerifier, EpochChange, Seal};
 use super::epoch_verifier::EpochVerifier;
 use super::network::TendermintExtension;
 pub use super::params::{TendermintParams, TimeoutParams};
@@ -217,17 +217,6 @@ impl ConsensusEngine<CodeChainMachine> for Tendermint {
 
     fn register_client(&self, client: Weak<EngineClient>) {
         *self.client.write() = Some(Weak::clone(&client));
-    }
-
-    fn handle_message(&self, rlp: &[u8]) -> Result<(), EngineError> {
-        let (result, receiver) = crossbeam::bounded(1);
-        self.inner
-            .send(worker::Event::HandleMessages {
-                messages: vec![rlp.to_owned()],
-                result,
-            })
-            .unwrap();
-        receiver.recv().unwrap()
     }
 
     fn is_proposal(&self, header: &Header) -> bool {

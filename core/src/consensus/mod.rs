@@ -261,12 +261,6 @@ pub trait ConsensusEngine<M: Machine>: Sync + Send {
     /// Add Client which can be used for sealing, potentially querying the state and sending messages.
     fn register_client(&self, _client: Weak<M::EngineClient>) {}
 
-    /// Handle any potential consensus messages;
-    /// updating consensus state and potentially issuing a new one.
-    fn handle_message(&self, _message: &[u8]) -> Result<(), EngineError> {
-        Err(EngineError::UnexpectedMessage)
-    }
-
     /// Find out if the block is a proposal block and should not be inserted into the DB.
     /// Takes a header of a fully verified block.
     fn is_proposal(&self, _verified_header: &M::Header) -> bool {
