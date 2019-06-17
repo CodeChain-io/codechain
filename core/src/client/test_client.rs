@@ -589,6 +589,10 @@ impl EngineInfo for TestBlockChainClient {
         unimplemented!()
     }
 
+    fn metadata_seq(&self, _block_id: BlockId) -> Option<u64> {
+        unimplemented!()
+    }
+
     fn block_reward(&self, _block_number: u64) -> u64 {
         unimplemented!()
     }

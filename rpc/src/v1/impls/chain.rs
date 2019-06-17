@@ -316,6 +316,11 @@ where
         }
     }
 
+    fn get_metadata_seq(&self, block_number: Option<u64>) -> Result<Option<u64>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self.client.metadata_seq(block_id))
+    }
+
     fn get_possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
         Ok(self.client.possible_authors(block_number).map_err(errors::core)?)
     }

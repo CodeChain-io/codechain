@@ -505,6 +505,16 @@ impl EngineInfo for Client {
         })
     }
 
+    fn metadata_seq(&self, block_id: BlockId) -> Option<u64> {
+        self.state_info(block_id.into()).map(|state| {
+            state
+                .metadata()
+                .unwrap_or_else(|err| unreachable!("Unexpected failure. Maybe DB was corrupted: {:?}", err))
+                .unwrap()
+                .seq()
+        })
+    }
+
     fn block_reward(&self, block_number: u64) -> u64 {
         self.engine().block_reward(block_number)
     }
