@@ -54,7 +54,12 @@ impl DynamicValidator {
             return None
         }
         let state = client.state_at(block_id)?;
-        Some(get_validators(&state).unwrap())
+        let validators = get_validators(&state).unwrap();
+        if validators.is_empty() {
+            None
+        } else {
+            Some(validators)
+        }
     }
 
     fn validators_pubkey(&self, parent: H256) -> Option<Vec<Public>> {
