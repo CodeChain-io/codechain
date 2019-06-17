@@ -44,7 +44,7 @@ use crate::block::*;
 use crate::client::ConsensusClient;
 use crate::consensus::signer::EngineSigner;
 use crate::consensus::validator_set::{DynamicValidator, ValidatorSet};
-use crate::consensus::vote_collector::VoteCollector;
+use crate::consensus::vote_collector::{Message, VoteCollector};
 use crate::consensus::{EngineError, Seal};
 use crate::encoded;
 use crate::error::{BlockError, Error};

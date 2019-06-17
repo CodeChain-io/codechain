@@ -19,15 +19,17 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::Iterator;
 
-use ckey::SchnorrSignature;
+use ckey::{Error as KeyError, Public, SchnorrSignature};
 use parking_lot::RwLock;
 use primitives::H256;
-use rlp::{Encodable, RlpStream};
+use rlp::{Decodable, Encodable, RlpStream};
 
 use super::BitSet;
 
-pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
+pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Decodable + Debug + Sync + Send {
     type Round: Clone + Copy + PartialEq + Eq + Hash + Default + Debug + Ord;
+
+    fn height(&self) -> u64;
 
     fn signature(&self) -> SchnorrSignature;
 
@@ -38,6 +40,8 @@ pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Debug {
     fn round(&self) -> &Self::Round;
 
     fn is_broadcastable(&self) -> bool;
+
+    fn verify(&self, signer_public: &Public) -> Result<bool, KeyError>;
 }
 
 /// Storing all Proposals, Prevotes and Precommits.

@@ -20,38 +20,52 @@ mod distribute;
 
 use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
+use std::marker::PhantomData;
+use std::sync::{Arc, Weak};
 
+use crate::client::ConsensusClient;
 use ccrypto::Blake;
 use ckey::{public_to_address, recover, Address, Public, Signature};
+use consensus::vote_collector::Message;
 use cstate::{ActionHandler, StateResult, TopLevelState, TopState, TopStateView};
 use ctypes::errors::{RuntimeError, SyntaxError};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{CommonParams, Header};
+use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, UntrustedRlp};
 
 pub use self::action_data::{Banned, Validator, Validators};
-use self::action_data::{
-    Candidates, Delegation, Deposit, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders,
-};
+use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
+use super::ValidatorSet;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 
-pub struct Stake {
+pub struct Stake<M> {
     genesis_stakes: HashMap<Address, u64>,
+    client: RwLock<Option<Weak<ConsensusClient>>>,
+    validators: RwLock<Option<Weak<ValidatorSet>>>,
+    phantom: PhantomData<M>,
 }
 
-impl Stake {
-    pub fn new(genesis_stakes: HashMap<Address, u64>) -> Stake {
+impl<M> Stake<M> {
+    pub fn new(genesis_stakes: HashMap<Address, u64>) -> Stake<M> {
         Stake {
             genesis_stakes,
+            phantom: PhantomData,
+            client: Default::default(),
+            validators: Default::default(),
         }
+    }
+    pub fn register_resources(&self, client: Weak<ConsensusClient>, validators: Weak<ValidatorSet>) {
+        *self.client.write() = Some(Weak::clone(&client));
+        *self.validators.write() = Some(Weak::clone(&validators));
     }
 }
 
-impl ActionHandler for Stake {
+impl<M: Message> ActionHandler for Stake<M> {
     fn name(&self) -> &'static str {
         "stake handler"
     }
@@ -81,7 +95,7 @@ impl ActionHandler for Stake {
         fee_payer: &Address,
         sender_public: &Public,
     ) -> StateResult<()> {
-        let action = Action::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
+        let action = Action::<M>::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
         match action {
             Action::TransferCCS {
                 address,
@@ -116,14 +130,29 @@ impl ActionHandler for Stake {
                 metadata_seq,
                 params,
                 signatures,
-            } => change_params(state, metadata_seq, *params, &signatures),
+            } => change_params::<M>(state, metadata_seq, *params, &signatures),
+            Action::ReportDoubleVote {
+                message1,
+                ..
+            } => {
+                let validator_set =
+                    self.validators.read().as_ref().and_then(Weak::upgrade).expect("ValidatorSet must be initialized");
+                let client = self.client.read().as_ref().and_then(Weak::upgrade).expect("Client must be initialized");
+                let parent_hash =
+                    client.block_header(&(message1.height() - 1).into()).expect("Parent header verified").hash();
+                let malicious_user_public = validator_set.get(&parent_hash, message1.signer_index());
+
+                ban(state, sender_public, public_to_address(&malicious_user_public))
+            }
         }
     }
 
     fn verify(&self, bytes: &[u8], current_params: &CommonParams) -> Result<(), SyntaxError> {
-        let action = Action::decode(&UntrustedRlp::new(bytes))
+        let action = Action::<M>::decode(&UntrustedRlp::new(bytes))
             .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
-        action.verify(current_params)
+        let client: Option<Arc<ConsensusClient>> = self.client.read().as_ref().and_then(Weak::upgrade);
+        let validators: Option<Arc<ValidatorSet>> = self.validators.read().as_ref().and_then(Weak::upgrade);
+        action.verify(current_params, client, validators)
     }
 
     fn on_close_block(
@@ -286,7 +315,7 @@ pub fn update_validator_weights(state: &mut TopLevelState, block_author: &Addres
     validators.save_to_state(state)
 }
 
-fn change_params(
+fn change_params<M: Message>(
     state: &mut TopLevelState,
     metadata_seq: u64,
     params: CommonParams,
@@ -295,7 +324,7 @@ fn change_params(
     // Update state first because the signature validation is more expensive.
     state.update_params(metadata_seq, params)?;
 
-    let action = Action::ChangeParams {
+    let action = Action::<M>::ChangeParams {
         metadata_seq,
         params: params.into(),
         signatures: vec![],
@@ -413,13 +442,13 @@ pub fn jail(state: &mut TopLevelState, addresses: &[Address], custody_until: u64
     Ok(())
 }
 
-#[allow(dead_code)]
-pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<Deposit> {
-    // TODO: remove pending rewards.
-    // TODO: give criminal's deposits to the informant
-    // TODO: give criminal's rewards to diligent validators
-    let mut candidates = Candidates::load_from_state(state)?;
+pub fn ban(state: &mut TopLevelState, informant: &Public, criminal: Address) -> StateResult<()> {
     let mut banned = Banned::load_from_state(state)?;
+    if banned.is_banned(&criminal) {
+        return Err(RuntimeError::FailedToHandleCustomAction("Account is already banned".to_string()).into())
+    }
+
+    let mut candidates = Candidates::load_from_state(state)?;
     let mut jailed = Jail::load_from_state(state)?;
     let mut validators = Validators::load_from_state(state)?;
 
@@ -429,6 +458,10 @@ pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<Deposit>
         (_, Some(jailed)) => jailed.deposit,
         _ => 0,
     };
+    // confiscate criminal's deposit and give the same deposit amount to the informant.
+    state.add_balance(&public_to_address(informant), deposit)?;
+
+    jailed.remove(&criminal);
     banned.add(criminal);
     validators.remove(&criminal);
 
@@ -440,7 +473,7 @@ pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<Deposit>
     // Revert delegations
     revert_delegations(state, &[criminal])?;
 
-    Ok(deposit)
+    Ok(())
 }
 
 fn revert_delegations(state: &mut TopLevelState, reverted_delegatees: &[Address]) -> StateResult<()> {
@@ -1386,7 +1419,7 @@ mod tests {
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        assert_eq!(Ok(deposit), ban(&mut state, criminal));
+        assert_eq!(Ok(()), ban(&mut state, criminal));
 
         let banned = Banned::load_from_state(&state).unwrap();
         assert!(banned.is_banned(&criminal));
@@ -1419,7 +1452,7 @@ mod tests {
         let released_at = 20;
         jail(&mut state, &[criminal], custody_until, released_at).unwrap();
 
-        assert_eq!(Ok(deposit), ban(&mut state, criminal));
+        assert_eq!(Ok(()), ban(&mut state, criminal));
 
         let jail = Jail::load_from_state(&state).unwrap();
         assert_eq!(jail.get_prisoner(&criminal), None, "Should be removed from the jail");

@@ -34,6 +34,7 @@ pub use self::solo::Solo;
 pub use self::tendermint::{Tendermint, TendermintParams, TimeGapParams};
 pub use self::validator_set::validator_list::RoundRobinValidator;
 pub use self::validator_set::ValidatorSet;
+pub use self::vote_collector::Message;
 
 use std::fmt;
 use std::sync::{Arc, Weak};

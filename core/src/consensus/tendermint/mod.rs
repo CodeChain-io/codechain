@@ -34,6 +34,7 @@ use parking_lot::RwLock;
 use primitives::H256;
 
 use self::chain_notify::TendermintChainNotify;
+use self::message::ConsensusMessage;
 pub use self::params::{TendermintParams, TimeGapParams, TimeoutParams};
 use self::types::{Height, Step, View};
 use super::{stake, ValidatorSet};
@@ -69,6 +70,8 @@ pub struct Tendermint {
     machine: Arc<CodeChainMachine>,
     /// Action handlers for this consensus method
     action_handlers: Vec<Arc<ActionHandler>>,
+    /// stake object to register client data later
+    stake: Arc<stake::Stake<ConsensusMessage>>,
     /// Chain notify
     chain_notify: Arc<TendermintChainNotify>,
     has_signer: AtomicBool,
@@ -87,13 +90,13 @@ impl Tendermint {
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let validators = Arc::clone(&our_params.validators);
-        let stake = stake::Stake::new(our_params.genesis_stakes);
+        let stake = Arc::new(stake::Stake::<ConsensusMessage>::new(our_params.genesis_stakes));
         let timeouts = our_params.timeouts;
         let machine = Arc::new(machine);
 
         let (join, external_params_initializer, extension_initializer, inner, quit_tendermint) =
             worker::spawn(our_params.validators);
-        let action_handlers: Vec<Arc<ActionHandler>> = vec![Arc::new(stake)];
+        let action_handlers: Vec<Arc<ActionHandler>> = vec![stake.clone()];
         let chain_notify = Arc::new(TendermintChainNotify::new(inner.clone()));
 
         Arc::new(Tendermint {
@@ -108,6 +111,7 @@ impl Tendermint {
             block_reward: our_params.block_reward,
             machine,
             action_handlers,
+            stake,
             chain_notify,
             has_signer: false.into(),
         })
