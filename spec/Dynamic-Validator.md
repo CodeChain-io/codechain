@@ -205,10 +205,8 @@ The revoke occurs immediately, but the validator cannot be ousted before its ter
 The transaction fails when the delegator revokes more than it delegates.
 
 ### REPORT_DOUBLE_VOTE
-* header1
-* sig1
-* header2
-* sig2
+* message1
+* message2
 
 This is a transaction that reports malicious validator.
 
@@ -222,6 +220,9 @@ The express fee that the criminal would earn is used as additional rewards for d
 The criminal becomes a banned account.
 The account cannot become a candidate anymore.
 In other words, the *DELEGATE* transaction to the banned account and the *SELF_NOMINATE* transaction from the banned account fail.
+
+The type of the messages depends on the consensus engine. For example, type Message type of Tendermint is
+[ConsensusMessage](https://github.com/CodeChain-io/codechain/blob/91125ae49891c375d63e75fd5ac81b0a0d3a9cff/core/src/consensus/tendermint/message.rs#L269).
 
 ## Implementation
 ### States
