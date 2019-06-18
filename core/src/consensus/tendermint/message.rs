@@ -273,25 +273,6 @@ pub struct ConsensusMessage {
 }
 
 impl ConsensusMessage {
-    #[cfg(test)]
-    fn new(
-        signature: SchnorrSignature,
-        signer_index: usize,
-        height: Height,
-        view: View,
-        step: Step,
-        block_hash: Option<BlockHash>,
-    ) -> Self {
-        ConsensusMessage {
-            signature,
-            signer_index,
-            on: VoteOn {
-                step: VoteStep::new(height, view, step),
-                block_hash,
-            },
-        }
-    }
-
     /// If a locked node re-proposes locked proposal, the proposed_view is different from the header's view.
     pub fn new_proposal(
         signature: SchnorrSignature,
@@ -441,14 +422,14 @@ mod tests {
 
     #[test]
     fn encode_and_decode_consensus_message_2() {
-        let message = ConsensusMessage::new(
-            SchnorrSignature::random(),
-            0x1234,
-            2,
-            3,
-            Step::Commit,
-            Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050")),
-        );
+        let message = ConsensusMessage {
+            signature: SchnorrSignature::random(),
+            signer_index: 0x1234,
+            on: VoteOn {
+                step: VoteStep::new(2, 3, Step::Commit),
+                block_hash: Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050")),
+            },
+        };
         rlp_encode_and_decode_test!(message);
     }
 
@@ -458,9 +439,16 @@ mod tests {
         let view = 3;
         let step = Step::Commit;
         let signature = SchnorrSignature::random();
-        let index = 0x1234;
+        let signer_index = 0x1234;
         let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"));
-        let consensus_message = ConsensusMessage::new(signature, index, height, view, step, block_hash);
+        let consensus_message = ConsensusMessage {
+            signature,
+            signer_index,
+            on: VoteOn {
+                step: VoteStep::new(height, view, step),
+                block_hash,
+            },
+        };
         let encoded = consensus_message.rlp_bytes();
         let decoded = rlp::decode::<ConsensusMessage>(&encoded);
         assert_eq!(consensus_message, decoded);
