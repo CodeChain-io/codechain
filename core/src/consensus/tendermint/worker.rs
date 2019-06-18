@@ -1007,7 +1007,7 @@ impl Worker {
         Seal::Tendermint {
             prev_view: *last_block_view,
             cur_view: view,
-            precommits: precommits.clone(),
+            precommits,
             precommit_bitset,
         }
     }
