@@ -246,6 +246,7 @@ impl TwoThirdsMajority {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Proposal {
     ProposalReceived(H256, Bytes, SchnorrSignature),
     ProposalImported(H256),
