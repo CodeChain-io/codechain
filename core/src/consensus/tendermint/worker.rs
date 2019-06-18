@@ -987,9 +987,9 @@ impl Worker {
             return Seal::None
         }
 
-        assert_eq!(true, self.is_signer_proposer(&parent_hash));
-        assert_eq!(true, self.proposal.is_none());
-        assert_eq!(true, height == self.height);
+        assert!(self.is_signer_proposer(&parent_hash));
+        assert_eq!(Proposal::None, self.proposal);
+        assert_eq!(height, self.height);
 
         let view = self.view;
 
@@ -1031,7 +1031,7 @@ impl Worker {
         }
         let prev_proposer_idx = self.block_proposer_idx(*header.parent_hash()).expect("Prev block must exists");
 
-        debug_assert_eq!(self.view, consensus_view(&header).expect("I am proposer"));
+        debug_assert_eq!(Ok(self.view), consensus_view(&header));
 
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
