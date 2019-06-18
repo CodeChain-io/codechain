@@ -39,8 +39,8 @@ pub trait ValidatorSet: Send + Sync {
     /// Checks if a given address is a validator.
     fn contains_address(&self, parent: &H256, address: &Address) -> bool;
 
-    /// Draws a validator from nonce modulo number of validators.
-    fn get(&self, parent: &H256, nonce: usize) -> Public;
+    /// Draws a validator from index modulo number of validators.
+    fn get(&self, parent: &H256, index: usize) -> Public;
 
     /// Draws a validator from nonce modulo number of validators.
     fn get_index(&self, parent: &H256, public: &Public) -> Option<usize>;

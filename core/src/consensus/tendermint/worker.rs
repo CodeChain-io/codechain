@@ -460,8 +460,14 @@ impl Worker {
     }
 
     /// Check if address is a proposer for given view.
-    fn check_view_proposer(&self, bh: &H256, height: Height, view: View, address: &Address) -> Result<(), EngineError> {
-        let proposer = self.view_proposer(bh, view).ok_or_else(|| EngineError::PrevBlockNotExist {
+    fn check_view_proposer(
+        &self,
+        parent: &H256,
+        height: Height,
+        view: View,
+        address: &Address,
+    ) -> Result<(), EngineError> {
+        let proposer = self.view_proposer(parent, view).ok_or_else(|| EngineError::PrevBlockNotExist {
             height: height as u64,
         })?;
         if proposer == *address {
