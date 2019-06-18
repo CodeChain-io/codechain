@@ -1033,10 +1033,9 @@ impl Worker {
 
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
-        let num_validators = self.validators.count(parent_hash);
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(
-            ConsensusMessage::new_proposal(signature, num_validators, header, self.view, prev_proposer_idx)
+            ConsensusMessage::new_proposal(signature, &*self.validators, header, self.view, prev_proposer_idx)
                 .expect("I am proposer"),
         );
 
@@ -1341,11 +1340,10 @@ impl Worker {
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(header.hash()));
         let parent_hash = header.parent_hash();
-        let num_validators = self.validators.count(&parent_hash);
         let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(
-            ConsensusMessage::new_proposal(signature, num_validators, &header, self.view, prev_proposer_idx)
+            ConsensusMessage::new_proposal(signature, &*self.validators, &header, self.view, prev_proposer_idx)
                 .expect("I am proposer"),
         );
 
@@ -1499,7 +1497,6 @@ impl Worker {
                 }
             }
 
-            let num_validators = self.validators.count(&parent_hash);
             let prev_proposer_idx = match self.block_proposer_idx(*parent_hash) {
                 Some(idx) => idx,
                 None => {
@@ -1510,7 +1507,7 @@ impl Worker {
 
             let message = ConsensusMessage::new_proposal(
                 signature,
-                num_validators,
+                &*self.validators,
                 &header_view,
                 proposed_view,
                 prev_proposer_idx,
