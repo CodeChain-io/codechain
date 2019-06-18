@@ -1170,61 +1170,58 @@ impl Worker {
                         .expect("Height is increased when previous block is imported");
                     self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
                 }
-                Some(Step::Prevote)
+                Step::Prevote
             }
             TendermintState::ProposeWaitBlockGeneration {
                 ..
             } => {
                 cwarn!(ENGINE, "Propose timed out but block is not generated yet");
-                None
+                return
             }
             TendermintState::ProposeWaitImported {
                 ..
             } => {
                 cwarn!(ENGINE, "Propose timed out but still waiting for the block imported");
-                None
+                return
             }
             TendermintState::ProposeWaitEmptyBlockTimer {
                 ..
             } => {
                 cwarn!(ENGINE, "Propose timed out but still waiting for the empty block");
-                None
+                return
             }
             TendermintState::Prevote if self.has_enough_any_votes() => {
                 cinfo!(ENGINE, "Prevote timeout.");
-                Some(Step::Precommit)
+                Step::Precommit
             }
             TendermintState::Prevote => {
                 cinfo!(ENGINE, "Prevote timeout without enough votes.");
-                Some(Step::Prevote)
+                Step::Prevote
             }
             TendermintState::Precommit if self.has_enough_any_votes() => {
                 cinfo!(ENGINE, "Precommit timeout.");
                 self.increment_view(1);
-                Some(Step::Propose)
+                Step::Propose
             }
             TendermintState::Precommit => {
                 cinfo!(ENGINE, "Precommit timeout without enough votes.");
-                Some(Step::Precommit)
+                Step::Precommit
             }
             TendermintState::Commit => {
                 cinfo!(ENGINE, "Commit timeout.");
-                if self.check_current_block_exists() {
-                    let height = self.height;
-                    self.move_to_height(height + 1);
-                    Some(Step::Propose)
-                } else {
+                if !self.check_current_block_exists() {
                     cwarn!(ENGINE, "Best chain is not updated yet, wait until imported");
                     self.step = TendermintState::CommitTimedout;
-                    None
+                    return
                 }
+                let height = self.height;
+                self.move_to_height(height + 1);
+                Step::Propose
             }
             TendermintState::CommitTimedout => unreachable!(),
         };
 
-        if let Some(next_step) = next_step {
-            self.move_to_step(next_step, false);
-        }
+        self.move_to_step(next_step, false);
     }
 
     fn is_expired_timeout_token(&self, nonce: usize) -> bool {
