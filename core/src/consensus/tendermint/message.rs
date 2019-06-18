@@ -23,6 +23,7 @@ use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use snap;
 
+use super::super::validator_set::DynamicValidator;
 use super::super::vote_collector::Message;
 use super::super::BitSet;
 use super::{BlockHash, Height, Step, View};
@@ -276,13 +277,14 @@ impl ConsensusMessage {
     /// If a locked node re-proposes locked proposal, the proposed_view is different from the header's view.
     pub fn new_proposal(
         signature: SchnorrSignature,
-        num_validators: usize,
+        validators: &DynamicValidator,
         proposal_header: &Header,
         proposed_view: View,
         prev_proposer_idx: usize,
     ) -> Result<Self, ::rlp::DecoderError> {
         let height = proposal_header.number() as Height;
-        let signer_index = (prev_proposer_idx + proposed_view as usize + 1) % num_validators;
+        let signer_index =
+            validators.proposer_index(*proposal_header.parent_hash(), prev_proposer_idx, proposed_view as usize);
 
         Ok(ConsensusMessage {
             signature,

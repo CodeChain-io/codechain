@@ -65,6 +65,16 @@ impl DynamicValidator {
     fn validators_pubkey(&self, parent: H256) -> Option<Vec<Public>> {
         self.validators(parent).map(|validators| validators.pubkeys())
     }
+
+    pub fn proposer_index(&self, parent: H256, prev_proposer_index: usize, proposed_view: usize) -> usize {
+        if let Some(validators) = self.validators(parent) {
+            let num_validators = validators.len();
+            proposed_view % num_validators
+        } else {
+            let num_validators = self.initial_list.count(&parent);
+            (prev_proposer_index + proposed_view + 1) % num_validators
+        }
+    }
 }
 
 impl ValidatorSet for DynamicValidator {
