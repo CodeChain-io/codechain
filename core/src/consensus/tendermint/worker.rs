@@ -424,13 +424,11 @@ impl Worker {
         };
 
         let all_votes = self.votes.get_all_votes_in_round(&vote_step);
-        let proposal = all_votes.first();
+        let proposal = all_votes.first()?;
 
-        proposal.and_then(|proposal| {
-            let block_hash = proposal.on.block_hash.expect("Proposal message always include block hash");
-            let bytes = self.client().block(&BlockId::Hash(block_hash)).map(encoded::Block::into_inner);
-            bytes.map(|bytes| (proposal.signature, proposal.signer_index, bytes))
-        })
+        let block_hash = proposal.on.block_hash.expect("Proposal message always include block hash");
+        let bytes = self.client().block(&BlockId::Hash(block_hash))?.into_inner();
+        Some((proposal.signature, proposal.signer_index, bytes))
     }
 
     pub fn vote_step(&self) -> VoteStep {
@@ -463,21 +461,17 @@ impl Worker {
 
     /// Check if address is a proposer for given view.
     fn check_view_proposer(&self, bh: &H256, height: Height, view: View, address: &Address) -> Result<(), EngineError> {
-        self.view_proposer(bh, view).map_or(
-            Err(EngineError::PrevBlockNotExist {
-                height: height as u64,
-            }),
-            |proposer| {
-                if proposer == *address {
-                    Ok(())
-                } else {
-                    Err(EngineError::NotProposer(Mismatch {
-                        expected: proposer,
-                        found: *address,
-                    }))
-                }
-            },
-        )
+        let proposer = self.view_proposer(bh, view).ok_or_else(|| EngineError::PrevBlockNotExist {
+            height: height as u64,
+        })?;
+        if proposer == *address {
+            Ok(())
+        } else {
+            Err(EngineError::NotProposer(Mismatch {
+                expected: proposer,
+                found: *address,
+            }))
+        }
     }
 
     /// Check if current signer is the current proposer.
@@ -1079,8 +1073,7 @@ impl Worker {
         if !self.is_authority(header.parent_hash(), proposer) {
             return Err(EngineError::BlockNotAuthorized(*proposer).into())
         }
-        self.check_view_proposer(header.parent_hash(), header.number(), consensus_view(header)?, &proposer)
-            .map_err(Error::from)?;
+        self.check_view_proposer(header.parent_hash(), header.number(), consensus_view(header)?, &proposer)?;
         let seal_view = TendermintSealView::new(header.seal());
         let bitset_count = seal_view.bitset()?.count();
         let precommits_count = seal_view.precommits().item_count()?;
@@ -1474,10 +1467,7 @@ impl Worker {
         proposed_view: View,
         bytes: Bytes,
     ) -> Option<Arc<ConsensusClient>> {
-        let c = match self.client.upgrade() {
-            Some(c) => c,
-            None => return None,
-        };
+        let c = self.client.upgrade()?;
 
         // This block borrows bytes
         {
@@ -1510,19 +1500,17 @@ impl Worker {
                 }
             };
 
-            let message = match ConsensusMessage::new_proposal(
+            let message = ConsensusMessage::new_proposal(
                 signature,
                 num_validators,
                 &header_view,
                 proposed_view,
                 prev_proposer_idx,
-            ) {
-                Ok(message) => message,
-                Err(err) => {
-                    cwarn!(ENGINE, "Invalid proposal received: {:?}", err);
-                    return None
-                }
-            };
+            )
+            .map_err(|err| {
+                cwarn!(ENGINE, "Invalid proposal received: {:?}", err);
+            })
+            .ok()?;
 
             // If the proposal's height is current height + 1 and the proposal has valid precommits,
             // we should import it and increase height
