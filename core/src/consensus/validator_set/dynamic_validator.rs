@@ -79,12 +79,12 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
-    fn get(&self, parent: &H256, nonce: usize) -> Public {
+    fn get(&self, parent: &H256, index: usize) -> Public {
         if let Some(validators) = self.validators_pubkey(*parent) {
             let n_validators = validators.len();
-            validators.into_iter().nth(nonce % n_validators).unwrap()
+            *validators.get(index % n_validators).unwrap()
         } else {
-            self.initial_list.get(parent, nonce)
+            self.initial_list.get(parent, index)
         }
     }
 

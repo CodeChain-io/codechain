@@ -55,10 +55,10 @@ impl ValidatorSet for RoundRobinValidator {
         self.addresses.contains(address)
     }
 
-    fn get(&self, _bh: &H256, nonce: usize) -> Public {
+    fn get(&self, _bh: &H256, index: usize) -> Public {
         let validator_n = self.validators.len();
         assert_ne!(0, validator_n, "Cannot operate with an empty validator set.");
-        *self.validators.get(nonce % validator_n).expect("There are validator_n authorities; taking number modulo validator_n gives number in validator_n range; qed")
+        *self.validators.get(index % validator_n).expect("There are validator_n authorities; taking number modulo validator_n gives number in validator_n range; qed")
     }
 
     fn get_index(&self, _bh: &H256, public: &Public) -> Option<usize> {
@@ -76,9 +76,9 @@ impl ValidatorSet for RoundRobinValidator {
             let grand_parent = header.parent_hash();
             let prev_proposer_idx =
                 self.get_index_by_address(&grand_parent, &proposer).expect("The proposer must be in the validator set");
-            let proposer_nonce = prev_proposer_idx + 1 + view as usize;
-            ctrace!(ENGINE, "Proposer nonce: {}", proposer_nonce);
-            public_to_address(&self.get(&parent, proposer_nonce))
+            let proposer_index = prev_proposer_idx + 1 + view as usize;
+            ctrace!(ENGINE, "Proposer index: {}", proposer_index);
+            public_to_address(&self.get(&parent, proposer_index))
         })
     }
 
