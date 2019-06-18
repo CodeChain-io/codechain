@@ -1107,8 +1107,13 @@ impl Worker {
         let precommit_hash = message_hash(step, *header.parent_hash());
 
         let mut voted_validators = BitSet::new();
+        let grand_parent_hash = self
+            .client()
+            .block_header(&(*header.parent_hash()).into())
+            .expect("The parent block must exist")
+            .parent_hash();
         for (bitset_index, signature) in seal_view.signatures()? {
-            let public = self.validators.get(header.parent_hash(), bitset_index);
+            let public = self.validators.get(&grand_parent_hash, bitset_index);
             if !verify_schnorr(&public, &signature, &precommit_hash)? {
                 let address = public_to_address(&public);
                 return Err(EngineError::BlockNotAuthorized(address.to_owned()).into())
@@ -1121,7 +1126,7 @@ impl Worker {
         if header.number() == 1 {
             return Ok(())
         }
-        self.validators.check_enough_votes(header.parent_hash(), &voted_validators)?;
+        self.validators.check_enough_votes(&grand_parent_hash, &voted_validators)?;
         Ok(())
     }
 
