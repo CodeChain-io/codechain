@@ -752,30 +752,28 @@ impl Worker {
             block_hash,
         };
         let vote_info = on.rlp_bytes();
-        match (self.signer_index(), self.sign(blake256(&vote_info))) {
-            (Some(signer_index), Ok(signature)) => {
-                let message = ConsensusMessage {
-                    signature,
-                    signer_index,
-                    on,
-                };
-                let message_rlp = message.rlp_bytes().into_vec();
-                self.votes_received.set(signer_index);
-                self.votes.vote(message.clone());
-                cinfo!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
-                self.handle_valid_message(&message, is_restoring);
-
-                Some(message_rlp)
-            }
-            (None, _) => {
-                ctrace!(ENGINE, "No message, since there is no engine signer.");
-                None
-            }
-            (Some(signer_index), Err(error)) => {
+        let signer_index = self.signer_index().or_else(|| {
+            ctrace!(ENGINE, "No message, since there is no engine signer.");
+            None
+        })?;
+        let signature = self
+            .sign(blake256(&vote_info))
+            .map_err(|error| {
                 ctrace!(ENGINE, "{}th validator could not sign the message {}", signer_index, error);
-                None
-            }
-        }
+                error
+            })
+            .ok()?;
+        let message = ConsensusMessage {
+            signature,
+            signer_index,
+            on,
+        };
+        self.votes_received.set(signer_index);
+        self.votes.vote(message.clone());
+        cinfo!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
+        self.handle_valid_message(&message, is_restoring);
+
+        Some(message.rlp_bytes().into_vec())
     }
 
     fn handle_valid_message(&mut self, message: &ConsensusMessage, is_restoring: bool) {
