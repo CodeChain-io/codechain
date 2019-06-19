@@ -122,7 +122,7 @@ impl ConsensusEngine for Solo {
             self.machine.add_balance(block, &address, reward)?;
         }
 
-        stake::on_term_close(block.state_mut(), last_term_finished_block_num)?;
+        stake::on_term_close(block.state_mut(), last_term_finished_block_num, &[])?;
         Ok(())
     }
 

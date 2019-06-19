@@ -304,7 +304,11 @@ fn change_params(
     Ok(())
 }
 
-pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u64) -> StateResult<()> {
+pub fn on_term_close(
+    state: &mut TopLevelState,
+    last_term_finished_block_num: u64,
+    inactive_validators: &[Address],
+) -> StateResult<()> {
     let metadata = state.metadata()?.expect("The metadata must exist");
     let current_term = metadata.current_term_id();
     let nomination_expiration = metadata
@@ -319,7 +323,7 @@ pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u6
     // TODO: total_slash = slash_unresponsive(headers, pending_rewards)
     // TODO: pending_rewards.update(signature_reward(blocks, total_slash))
 
-    let expired = update_candidates(state, current_term, nomination_expiration)?;
+    let expired = update_candidates(state, current_term, nomination_expiration, inactive_validators)?;
     let released = release_jailed_prisoners(state, current_term)?;
 
     let reverted: Vec<_> = expired.into_iter().chain(released).collect();
@@ -336,6 +340,7 @@ fn update_candidates(
     state: &mut TopLevelState,
     current_term: u64,
     nomination_expiration: u64,
+    inactive_validators: &[Address],
 ) -> StateResult<Vec<Address>> {
     let banned = Banned::load_from_state(state)?;
 
@@ -343,7 +348,7 @@ fn update_candidates(
     let nomination_ends_at = current_term + nomination_expiration;
 
     let current_validators = Validators::load_from_state(state)?;
-    candidates.renew_candidates(&current_validators, nomination_ends_at, &banned);
+    candidates.renew_candidates(&current_validators, nomination_ends_at, &inactive_validators, &banned);
 
     let expired = candidates.drain_expired_candidates(current_term);
     for candidate in &expired {
@@ -937,7 +942,7 @@ mod tests {
         // TODO: change with stake.execute()
         self_nominate(&mut state, &address, &address_pubkey, 200, 0, 30, b"".to_vec()).unwrap();
 
-        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29));
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29), &[]);
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 800, "Should keep nomination before expiration");
@@ -953,7 +958,7 @@ mod tests {
             "Keep deposit before expiration",
         );
 
-        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30));
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30), &[]);
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 1000, "Return deposit after expiration");
@@ -988,7 +993,7 @@ mod tests {
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29));
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29), &[]);
         assert_eq!(result, Ok(()));
 
         let account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -996,7 +1001,7 @@ mod tests {
         let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
         assert_eq!(delegation.get_quantity(&address), 40, "Should keep delegation before expiration");
 
-        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30));
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30), &[]);
         assert_eq!(result, Ok(()));
 
         let account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -1078,7 +1083,7 @@ mod tests {
                 current_term,
                 custody_until
             );
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
     }
 
@@ -1102,7 +1107,7 @@ mod tests {
             .unwrap();
         jail(&mut state, &address, custody_until, released_at).unwrap();
         for current_term in 0..=custody_until {
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
 
         let current_term = custody_until + 1;
@@ -1156,7 +1161,7 @@ mod tests {
         jail(&mut state, &address, custody_until, released_at).unwrap();
 
         for current_term in 0..released_at {
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
 
             let candidates = Candidates::load_from_state(&state).unwrap();
             assert_eq!(candidates.get_candidate(&address), None);
@@ -1165,7 +1170,7 @@ mod tests {
             assert!(jail.get_prisoner(&address).is_some());
         }
 
-        on_term_close(&mut state, pseudo_term_to_block_num_calculator(released_at)).unwrap();
+        on_term_close(&mut state, pseudo_term_to_block_num_calculator(released_at), &[]).unwrap();
 
         let candidates = Candidates::load_from_state(&state).unwrap();
         assert_eq!(candidates.get_candidate(&address), None, "A prisoner should not become a candidate");
@@ -1209,7 +1214,7 @@ mod tests {
             let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
             assert!(result.is_ok());
 
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
 
         let action = Action::DelegateCCS {
@@ -1252,7 +1257,7 @@ mod tests {
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
         for current_term in 0..=released_at {
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
 
         let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
@@ -1292,7 +1297,7 @@ mod tests {
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
         for current_term in 0..custody_until {
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
 
         let current_term = custody_until + 1;

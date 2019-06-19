@@ -19,6 +19,7 @@ use std::collections::btree_set::{self, BTreeSet};
 use std::collections::{btree_map, HashMap};
 use std::mem;
 use std::ops::Deref;
+use std::vec;
 
 use ckey::{public_to_address, Address, Public};
 use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
@@ -404,6 +405,15 @@ impl From<Validators> for Vec<Validator> {
     }
 }
 
+impl IntoIterator for Validators {
+    type Item = Validator;
+    type IntoIter = vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 #[derive(Default, Debug, PartialEq)]
 pub struct IntermediateRewards {
     previous: BTreeMap<Address, u64>,
@@ -509,8 +519,19 @@ impl Candidates {
         candidate.metadata = metadata;
     }
 
-    pub fn renew_candidates(&mut self, validators: &Validators, nomination_ends_at: u64, banned: &Banned) {
-        for address in validators.0.iter().map(|validator| public_to_address(&validator.pubkey)) {
+    pub fn renew_candidates(
+        &mut self,
+        validators: &Validators,
+        nomination_ends_at: u64,
+        inactive_validators: &[Address],
+        banned: &Banned,
+    ) {
+        for address in validators
+            .0
+            .iter()
+            .map(|validator| public_to_address(&validator.pubkey))
+            .filter(|address| !inactive_validators.contains(address))
+        {
             assert!(!banned.0.contains(&address), "{} is banned address", address);
             self.0.get_mut(&address).expect("Validators must be in the candidates").nomination_ends_at =
                 nomination_ends_at;
