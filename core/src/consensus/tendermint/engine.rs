@@ -205,12 +205,14 @@ impl ConsensusEngine for Tendermint {
                 (end_of_the_one_level_previous_term + 1, end_of_the_two_level_previous_term + 1)
             };
 
+            let banned = stake::Banned::load_from_state(block.state())?;
             let pending_rewards = calculate_pending_rewards_of_the_previous_term(
                 &*client,
                 &*self.validators,
                 rewards,
                 start_of_the_current_term,
                 start_of_the_previous_term,
+                &banned,
             )?;
 
             for (address, reward) in pending_rewards {
@@ -343,6 +345,7 @@ fn calculate_pending_rewards_of_the_previous_term(
     rewards: BTreeMap<Address, u64>,
     start_of_the_current_term: u64,
     start_of_the_previous_term: u64,
+    banned: &stake::Banned,
 ) -> Result<HashMap<Address, u64>, Error> {
     // XXX: It's okay because we don't have a plan to increasing the maximum number of validators.
     //      However, it's better to use the correct number.
@@ -381,7 +384,10 @@ fn calculate_pending_rewards_of_the_previous_term(
     // Penalty disloyal validators
     let number_of_blocks_in_term = start_of_the_current_term - start_of_the_previous_term;
     for (address, intermediate_reward) in rewards {
-        // FIXME: Consider banned accounts
+        if banned.is_banned(&address) {
+            reduced_rewards += intermediate_reward;
+            continue
+        }
         let number_of_signatures = u64::try_from(*signed_blocks.get(&address).unwrap()).unwrap();
         let final_block_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
         reduced_rewards += intermediate_reward - final_block_rewards;

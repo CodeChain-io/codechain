@@ -30,11 +30,10 @@ use ctypes::{CommonParams, Header};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, UntrustedRlp};
 
+pub use self::action_data::{Banned, Validator, Validators};
 use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
-pub use self::action_data::{Validator, Validators};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
-use consensus::stake::action_data::Banned;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 
