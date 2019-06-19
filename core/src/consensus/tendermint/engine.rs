@@ -185,25 +185,29 @@ impl ConsensusEngine for Tendermint {
         };
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
 
-        let inactive_validators = if block.state().metadata()?.expect("Metadata must exist").current_term_id() == 1 {
+        let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .ok_or(EngineError::CannotOpenBlock)?
+            .upgrade()
+            .ok_or(EngineError::CannotOpenBlock)?;
+
+        let inactive_validators = if metadata.current_term_id() == 1 {
             assert!(rewards.is_empty());
-            Default::default()
+
+            let validators = stake::Validators::load_from_state(block.state())?
+                .into_iter()
+                .map(|val| public_to_address(val.pubkey()))
+                .collect();
+            inactive_validators(&*client, start_of_the_current_term, block.header(), validators)
         } else {
-            let client = self
-                .client
-                .read()
-                .as_ref()
-                .ok_or(EngineError::CannotOpenBlock)?
-                .upgrade()
-                .ok_or(EngineError::CannotOpenBlock)?;
-
-            let (start_of_the_current_term, start_of_the_previous_term) = {
-                let end_of_the_one_level_previous_term =
-                    block.state().metadata()?.unwrap().last_term_finished_block_num();
+            let start_of_the_previous_term = {
                 let end_of_the_two_level_previous_term =
-                    client.last_term_finished_block_num(end_of_the_one_level_previous_term.into()).unwrap();
+                    client.last_term_finished_block_num(metadata.last_term_finished_block_num().into()).unwrap();
 
-                (end_of_the_one_level_previous_term + 1, end_of_the_two_level_previous_term + 1)
+                end_of_the_two_level_previous_term + 1
             };
 
             let banned = stake::Banned::load_from_state(block.state())?;
@@ -356,8 +360,8 @@ fn inactive_validators(
     let hash = *current_block.parent_hash();
     let mut header = client.block_header(&hash.into()).expect("Header of the parent must exist");
     while start_of_the_current_term <= header.number() {
-        header = client.block_header(&header.parent_hash().into()).expect("Header of the parent must exist");
         validators.remove(&header.author());
+        header = client.block_header(&header.parent_hash().into()).expect("Header of the parent must exist");
     }
 
     validators.into_iter().collect()

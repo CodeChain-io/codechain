@@ -311,14 +311,19 @@ pub fn on_term_close(
 ) -> StateResult<()> {
     let metadata = state.metadata()?.expect("The metadata must exist");
     let current_term = metadata.current_term_id();
-    let nomination_expiration = metadata
-        .params()
-        .expect(
+    let (nomination_expiration, custody_until, kick_at) = {
+        let metadata = metadata.params().expect(
             "Term close events can be called after the ChangeParams called, \
              so the metadata always has CommonParams",
-        )
-        .nomination_expiration();
-    assert_ne!(0, nomination_expiration);
+        );
+        let nomination_expiration = metadata.nomination_expiration();
+        assert_ne!(0, nomination_expiration);
+        let custody_period = metadata.custody_period();
+        assert_ne!(0, custody_period);
+        let release_period = metadata.release_period();
+        assert_ne!(0, release_period);
+        (nomination_expiration, current_term + custody_period, current_term + release_period)
+    };
 
     // TODO: total_slash = slash_unresponsive(headers, pending_rewards)
     // TODO: pending_rewards.update(signature_reward(blocks, total_slash))
@@ -328,6 +333,8 @@ pub fn on_term_close(
 
     let reverted: Vec<_> = expired.into_iter().chain(released).collect();
     revert_delegations(state, &reverted)?;
+
+    jail(state, inactive_validators, custody_until, kick_at)?;
 
     let validators = Validators::elect(state)?;
     validators.save_to_state(state)?;
@@ -368,13 +375,17 @@ fn release_jailed_prisoners(state: &mut TopLevelState, current_term: u64) -> Sta
     Ok(released.into_iter().map(|p| p.address).collect())
 }
 
-#[allow(dead_code)]
-pub fn jail(state: &mut TopLevelState, address: &Address, custody_until: u64, kick_at: u64) -> StateResult<()> {
+pub fn jail(state: &mut TopLevelState, addresses: &[Address], custody_until: u64, kick_at: u64) -> StateResult<()> {
+    if addresses.is_empty() {
+        return Ok(())
+    }
     let mut candidates = Candidates::load_from_state(state)?;
     let mut jail = Jail::load_from_state(state)?;
 
-    let candidate = candidates.remove(address).expect("There should be a candidate to jail");
-    jail.add(candidate, custody_until, kick_at);
+    for address in addresses {
+        let candidate = candidates.remove(address).expect("There should be a candidate to jail");
+        jail.add(candidate, custody_until, kick_at);
+    }
 
     jail.save_to_state(state)?;
     candidates.save_to_state(state)?;
@@ -1027,7 +1038,7 @@ mod tests {
 
         let custody_until = 10;
         let released_at = 20;
-        let result = jail(&mut state, &address, custody_until, released_at);
+        let result = jail(&mut state, &[address], custody_until, released_at);
         assert!(result.is_ok());
 
         let candidates = Candidates::load_from_state(&state).unwrap();
@@ -1065,7 +1076,7 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         for current_term in 0..=custody_until {
             let result = self_nominate(
@@ -1105,7 +1116,7 @@ mod tests {
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"metadata-before".to_vec())
             .unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
         for current_term in 0..=custody_until {
             on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
@@ -1158,7 +1169,7 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         for current_term in 0..released_at {
             on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
@@ -1204,7 +1215,7 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         for current_term in 0..=released_at {
             let action = Action::DelegateCCS {
@@ -1248,7 +1259,7 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
@@ -1289,7 +1300,7 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, 0, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
@@ -1375,7 +1386,7 @@ mod tests {
         self_nominate(&mut state, &criminal, &criminal_pubkey, deposit, 0, 10, b"".to_vec()).unwrap();
         let custody_until = 10;
         let released_at = 20;
-        jail(&mut state, &criminal, custody_until, released_at).unwrap();
+        jail(&mut state, &[criminal], custody_until, released_at).unwrap();
 
         assert_eq!(Ok(deposit), ban(&mut state, criminal));
 
