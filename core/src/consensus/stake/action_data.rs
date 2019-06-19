@@ -593,8 +593,8 @@ impl Jail {
         });
     }
 
-    pub fn remove(&mut self, address: &Address) {
-        self.0.remove(address);
+    pub fn remove(&mut self, address: &Address) -> Option<Prisoner> {
+        self.0.remove(address)
     }
 
     pub fn try_release(&mut self, address: &Address, term_index: u64) -> ReleaseResult {
