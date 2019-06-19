@@ -31,7 +31,9 @@ use primitives::{Bytes, H256};
 use rlp::{Decodable, UntrustedRlp};
 
 pub use self::action_data::{Banned, Validator, Validators};
-use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
+use self::action_data::{
+    Candidates, Delegation, Deposit, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders,
+};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
 
@@ -375,7 +377,7 @@ pub fn jail(state: &mut TopLevelState, address: &Address, custody_until: u64, ki
 }
 
 #[allow(dead_code)]
-pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
+pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<Deposit> {
     // TODO: remove pending rewards.
     // TODO: give criminal's deposits to the informant
     // TODO: give criminal's rewards to diligent validators
@@ -384,8 +386,12 @@ pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
     let mut jailed = Jail::load_from_state(state)?;
     let mut validators = Validators::load_from_state(state)?;
 
-    candidates.remove(&criminal);
-    jailed.remove(&criminal);
+    let deposit = match (candidates.remove(&criminal), jailed.remove(&criminal)) {
+        (Some(_), Some(_)) => unreachable!("A candidate that are jailed cannot exist"),
+        (Some(candidate), _) => candidate.deposit,
+        (_, Some(jailed)) => jailed.deposit,
+        _ => 0,
+    };
     banned.add(criminal);
     validators.remove(&criminal);
 
@@ -397,7 +403,7 @@ pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
     // Revert delegations
     revert_delegations(state, &[criminal])?;
 
-    Ok(())
+    Ok(deposit)
 }
 
 fn revert_delegations(state: &mut TopLevelState, reverted_delegatees: &[Address]) -> StateResult<()> {
@@ -1325,15 +1331,15 @@ mod tests {
         };
         stake.init(&mut state).unwrap();
 
-        self_nominate(&mut state, &criminal, &criminal_pubkey, 100, 0, 10, b"".to_vec()).unwrap();
+        let deposit = 100;
+        self_nominate(&mut state, &criminal, &criminal_pubkey, deposit, 0, 10, b"".to_vec()).unwrap();
         let action = Action::DelegateCCS {
             address: criminal,
             quantity: 40,
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        let result = ban(&mut state, criminal);
-        assert!(result.is_ok());
+        assert_eq!(Ok(deposit), ban(&mut state, criminal));
 
         let banned = Banned::load_from_state(&state).unwrap();
         assert!(banned.is_banned(&criminal));
@@ -1358,14 +1364,15 @@ mod tests {
         let mut state = helpers::get_temp_state();
         let stake = Stake::new(HashMap::new());
         stake.init(&mut state).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&criminal, 100));
 
-        self_nominate(&mut state, &criminal, &criminal_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+        let deposit = 10;
+        self_nominate(&mut state, &criminal, &criminal_pubkey, deposit, 0, 10, b"".to_vec()).unwrap();
         let custody_until = 10;
         let released_at = 20;
         jail(&mut state, &criminal, custody_until, released_at).unwrap();
 
-        let result = ban(&mut state, criminal);
-        assert!(result.is_ok());
+        assert_eq!(Ok(deposit), ban(&mut state, criminal));
 
         let jail = Jail::load_from_state(&state).unwrap();
         assert_eq!(jail.get_prisoner(&criminal), None, "Should be removed from the jail");
