@@ -344,29 +344,36 @@ fn calculate_pending_rewards_of_the_previous_term(
     start_of_the_current_term: u64,
     start_of_the_previous_term: u64,
 ) -> Result<HashMap<Address, u64>, Error> {
-    let authors = {
-        let header = chain.block_header(&start_of_the_previous_term.into()).unwrap();
-        validators.addresses(&header.parent_hash())
-    };
-    let mut pending_rewards: HashMap<Address, u64> = authors.iter().map(|author| (*author, 0)).collect();
-
-    let mut missed_signatures = HashMap::<Address, (usize, usize)>::with_capacity(30);
-    let mut signed_blocks = HashMap::<Address, usize>::with_capacity(30);
+    // XXX: It's okay because we don't have a plan to increasing the maximum number of validators.
+    //      However, it's better to use the correct number.
+    const MAX_NUM_OF_VALIDATORS: usize = 30;
+    let mut pending_rewards = HashMap::<Address, u64>::with_capacity(MAX_NUM_OF_VALIDATORS);
+    let mut missed_signatures = HashMap::<Address, (usize, usize)>::with_capacity(MAX_NUM_OF_VALIDATORS);
+    let mut signed_blocks = HashMap::<Address, usize>::with_capacity(MAX_NUM_OF_VALIDATORS);
 
     let mut header = chain.block_header(&start_of_the_current_term.into()).unwrap();
+    let mut parent_validators = {
+        let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
+        validators.addresses(&grand_parent_header.parent_hash())
+    };
     while start_of_the_previous_term != header.number() {
         for index in TendermintSealView::new(&header.seal()).bitset()?.true_index_iter() {
-            // FIXME: Change it after implementing ban
-            *signed_blocks.entry(authors[index]).or_default() += 1;
+            let signer = *parent_validators.get(index).expect("The seal must be the signature of the validator");
+            *signed_blocks.entry(signer).or_default() += 1;
         }
 
         header = chain.block_header(&header.parent_hash().into()).unwrap();
+        parent_validators = {
+            // The seal of the current block has the signatures of the parent block.
+            // It needs the hash of the grand parent block to find the validators of the parent block.
+            let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
+            validators.addresses(&grand_parent_header.parent_hash())
+        };
 
         let author = header.author();
         let (proposed, missed) = missed_signatures.entry(author).or_default();
         *proposed += 1;
-        // FIXME: Consider banned accounts
-        *missed += authors.len() - TendermintSealView::new(&header.seal()).bitset()?.count();
+        *missed += parent_validators.len() - TendermintSealView::new(&header.seal()).bitset()?.count();
     }
 
     let mut reduced_rewards = 0;
