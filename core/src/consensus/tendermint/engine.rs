@@ -15,13 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::btree_map::BTreeMap;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::iter::Iterator;
 use std::sync::atomic::Ordering as AtomicOrdering;
 use std::sync::{Arc, Weak};
 
-use ckey::Address;
+use ckey::{public_to_address, Address};
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::{ActionHandler, TopStateView};
@@ -166,7 +166,7 @@ impl ConsensusEngine for Tendermint {
             if let Some(block_number) =
                 block_number_if_term_changed(block.header(), parent_header, parent_common_params)
             {
-                stake::on_term_close(block.state_mut(), block_number)?;
+                stake::on_term_close(block.state_mut(), block_number, &[])?;
             }
             return Ok(())
         }
@@ -185,8 +185,9 @@ impl ConsensusEngine for Tendermint {
         };
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
 
-        if block.state().metadata()?.expect("Metadata must exist").current_term_id() == 1 {
+        let inactive_validators = if block.state().metadata()?.expect("Metadata must exist").current_term_id() == 1 {
             assert!(rewards.is_empty());
+            Default::default()
         } else {
             let client = self
                 .client
@@ -218,10 +219,16 @@ impl ConsensusEngine for Tendermint {
             for (address, reward) in pending_rewards {
                 self.machine.add_balance(block, &address, reward)?;
             }
-        }
+
+            let validators = stake::Validators::load_from_state(block.state())?
+                .into_iter()
+                .map(|val| public_to_address(val.pubkey()))
+                .collect();
+            inactive_validators(&*client, start_of_the_current_term, block.header(), validators)
+        };
 
         stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
-        stake::on_term_close(block.state_mut(), last_term_finished_block_num)?;
+        stake::on_term_close(block.state_mut(), last_term_finished_block_num, &inactive_validators)?;
 
         Ok(())
     }
@@ -337,6 +344,23 @@ fn block_number_if_term_changed(
         return None
     }
     Some(header.number())
+}
+
+fn inactive_validators(
+    client: &ConsensusClient,
+    start_of_the_current_term: u64,
+    current_block: &Header,
+    mut validators: HashSet<Address>,
+) -> Vec<Address> {
+    validators.remove(current_block.author());
+    let hash = *current_block.parent_hash();
+    let mut header = client.block_header(&hash.into()).expect("Header of the parent must exist");
+    while start_of_the_current_term <= header.number() {
+        header = client.block_header(&header.parent_hash().into()).expect("Header of the parent must exist");
+        validators.remove(&header.author());
+    }
+
+    validators.into_iter().collect()
 }
 
 fn calculate_pending_rewards_of_the_previous_term(
