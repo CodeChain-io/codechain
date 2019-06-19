@@ -357,7 +357,7 @@ impl Validators {
             weight,
             pubkey,
             ..
-        } in self.0.iter_mut()
+        } in self.0.iter_mut().rev()
         {
             if public_to_address(pubkey) == *block_author {
                 // block author
