@@ -509,6 +509,7 @@ mod tests {
     use super::action_data::get_account_key;
     use super::*;
 
+    use consensus::solo::SoloMessage;
     use consensus::stake::action_data::{get_delegation_key, Candidate, Prisoner};
     use cstate::tests::helpers;
     use cstate::TopStateView;
@@ -532,7 +533,7 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(address1, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -557,7 +558,7 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(address1, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -585,7 +586,7 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(address1, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -617,12 +618,12 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
         self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: delegatee,
             quantity: 40,
         };
@@ -660,12 +661,12 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
         self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: delegatee,
             quantity: 100,
         };
@@ -704,11 +705,11 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: delegatee,
             quantity: 40,
         };
@@ -728,12 +729,12 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
         self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: delegatee,
             quantity: 200,
         };
@@ -753,18 +754,18 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
         self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        let action = Action::TransferCCS {
+        let action = Action::<SoloMessage>::TransferCCS {
             address: delegatee,
             quantity: 50,
         };
@@ -784,18 +785,18 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
         self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        let action = Action::TransferCCS {
+        let action = Action::<SoloMessage>::TransferCCS {
             address: delegatee,
             quantity: 100,
         };
@@ -815,19 +816,19 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
         self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
         let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_ok());
 
-        let action = Action::Revoke {
+        let action = Action::<SoloMessage>::Revoke {
             address: delegatee,
             quantity: 20,
         };
@@ -853,19 +854,19 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
         self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
         let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_ok());
 
-        let action = Action::Revoke {
+        let action = Action::<SoloMessage>::Revoke {
             address: delegatee,
             quantity: 70,
         };
@@ -891,19 +892,19 @@ mod tests {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegatee, 100);
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
         self_nominate(&mut state, &delegatee, &delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: delegatee,
             quantity: 50,
         };
         let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
         assert!(result.is_ok());
 
-        let action = Action::Revoke {
+        let action = Action::<SoloMessage>::Revoke {
             address: delegatee,
             quantity: 50,
         };
@@ -923,7 +924,7 @@ mod tests {
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
 
-        let stake = Stake::new(HashMap::new());
+        let stake = Stake::<SoloMessage>::new(HashMap::new());
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
@@ -983,7 +984,7 @@ mod tests {
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
 
-        let stake = Stake::new(HashMap::new());
+        let stake = Stake::<SoloMessage>::new(HashMap::new());
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
@@ -1008,7 +1009,7 @@ mod tests {
         increase_term_id_until(&mut state, 29);
         state.add_balance(&address, 1000).unwrap();
 
-        let stake = Stake::new(HashMap::new());
+        let stake = Stake::<SoloMessage>::new(HashMap::new());
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
@@ -1052,14 +1053,14 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
         self_nominate(&mut state, &address, &address_pubkey, 0, 0, 30, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address,
             quantity: 40,
         };
@@ -1090,7 +1091,7 @@ mod tests {
         let mut state = helpers::get_temp_state();
         state.add_balance(&address, 1000).unwrap();
 
-        let stake = Stake::new(HashMap::new());
+        let stake = Stake::<SoloMessage>::new(HashMap::new());
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
@@ -1128,7 +1129,7 @@ mod tests {
         let mut state = metadata_for_election();
         state.add_balance(&address, 1000).unwrap();
 
-        let stake = Stake::new(HashMap::new());
+        let stake = Stake::<SoloMessage>::new(HashMap::new());
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
@@ -1167,7 +1168,7 @@ mod tests {
         let mut state = metadata_for_election();
         state.add_balance(&address, 1000).unwrap();
 
-        let stake = Stake::new(HashMap::new());
+        let stake = Stake::<SoloMessage>::new(HashMap::new());
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
@@ -1221,7 +1222,7 @@ mod tests {
         let mut state = metadata_for_election();
         state.add_balance(&address, 1000).unwrap();
 
-        let stake = Stake::new(HashMap::new());
+        let stake = Stake::<SoloMessage>::new(HashMap::new());
         stake.init(&mut state).unwrap();
 
         // TODO: change with stake.execute()
@@ -1266,7 +1267,7 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -1279,7 +1280,7 @@ mod tests {
         jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         for current_term in 0..=released_at {
-            let action = Action::DelegateCCS {
+            let action = Action::<SoloMessage>::DelegateCCS {
                 address,
                 quantity: 1,
             };
@@ -1289,7 +1290,7 @@ mod tests {
             on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address,
             quantity: 1,
         };
@@ -1310,7 +1311,7 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -1321,7 +1322,7 @@ mod tests {
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address,
             quantity: 40,
         };
@@ -1353,7 +1354,7 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
@@ -1363,7 +1364,7 @@ mod tests {
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, 0, 0, nominate_expire, b"".to_vec()).unwrap();
 
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address,
             quantity: 40,
         };
@@ -1396,6 +1397,7 @@ mod tests {
 
     #[test]
     fn test_ban() {
+        let informant_pubkey = Public::random();
         let criminal_pubkey = Public::random();
         let delegator_pubkey = Public::random();
         let criminal = public_to_address(&criminal_pubkey);
@@ -1407,19 +1409,19 @@ mod tests {
         let stake = {
             let mut genesis_stakes = HashMap::new();
             genesis_stakes.insert(delegator, 100);
-            Stake::new(genesis_stakes)
+            Stake::<SoloMessage>::new(genesis_stakes)
         };
         stake.init(&mut state).unwrap();
 
         let deposit = 100;
         self_nominate(&mut state, &criminal, &criminal_pubkey, deposit, 0, 10, b"".to_vec()).unwrap();
-        let action = Action::DelegateCCS {
+        let action = Action::<SoloMessage>::DelegateCCS {
             address: criminal,
             quantity: 40,
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        assert_eq!(Ok(()), ban(&mut state, criminal));
+        assert_eq!(Ok(()), ban(&mut state, &informant_pubkey, criminal));
 
         let banned = Banned::load_from_state(&state).unwrap();
         assert!(banned.is_banned(&criminal));
@@ -1438,11 +1440,12 @@ mod tests {
 
     #[test]
     fn ban_should_remove_prisoner_from_jail() {
+        let informant_pubkey = Public::random();
         let criminal_pubkey = Public::random();
         let criminal = public_to_address(&criminal_pubkey);
 
         let mut state = helpers::get_temp_state();
-        let stake = Stake::new(HashMap::new());
+        let stake = Stake::<SoloMessage>::new(HashMap::new());
         stake.init(&mut state).unwrap();
         assert_eq!(Ok(()), state.add_balance(&criminal, 100));
 
@@ -1452,7 +1455,7 @@ mod tests {
         let released_at = 20;
         jail(&mut state, &[criminal], custody_until, released_at).unwrap();
 
-        assert_eq!(Ok(()), ban(&mut state, criminal));
+        assert_eq!(Ok(()), ban(&mut state, &informant_pubkey, criminal));
 
         let jail = Jail::load_from_state(&state).unwrap();
         assert_eq!(jail.get_prisoner(&criminal), None, "Should be removed from the jail");

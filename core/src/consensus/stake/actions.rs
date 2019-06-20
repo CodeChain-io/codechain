@@ -327,10 +327,12 @@ mod tests {
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
+    use consensus::solo::SoloMessage;
+    use rlp::rlp_encode_and_decode_test;
 
     #[test]
     fn decode_fail_if_change_params_have_no_signatures() {
-        let action = Action::ChangeParams {
+        let action = Action::<SoloMessage>::ChangeParams {
             metadata_seq: 3,
             params: CommonParams::default_for_test().into(),
             signatures: vec![],
@@ -340,13 +342,13 @@ mod tests {
                 expected: 4,
                 got: 3,
             }),
-            UntrustedRlp::new(&rlp::encode(&action)).as_val::<Action>::<_>()
+            UntrustedRlp::new(&rlp::encode(&action)).as_val::<Action<SoloMessage>>()
         );
     }
 
     #[test]
     fn rlp_of_change_params() {
-        rlp_encode_and_decode_test!(Action::ChangeParams {
+        rlp_encode_and_decode_test!(Action::<SoloMessage>::ChangeParams {
             metadata_seq: 3,
             params: CommonParams::default_for_test().into(),
             signatures: vec![Signature::random(), Signature::random()],
