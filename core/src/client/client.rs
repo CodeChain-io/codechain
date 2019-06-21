@@ -805,12 +805,14 @@ impl BlockChainClient for Client {
 impl TermInfo for Client {
     fn last_term_finished_block_num(&self, id: BlockId) -> Option<BlockNumber> {
         self.state_at(id)
-            .and_then(|state| state.metadata().unwrap())
+            .map(|state| state.metadata().unwrap().expect("Meatadata always exist"))
             .map(|metadata| metadata.last_term_finished_block_num())
     }
 
     fn current_term_id(&self, id: BlockId) -> Option<u64> {
-        self.state_at(id).and_then(|state| state.metadata().unwrap()).map(|metadata| metadata.current_term_id())
+        self.state_at(id)
+            .map(|state| state.metadata().unwrap().expect("Metadata always exist"))
+            .map(|metadata| metadata.current_term_id())
     }
 }
 
