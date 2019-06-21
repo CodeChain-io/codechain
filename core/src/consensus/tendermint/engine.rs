@@ -40,11 +40,11 @@ use crate::account_provider::AccountProvider;
 use crate::block::*;
 use crate::client::{Client, ConsensusClient};
 use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::tendermint::params::TimeGapParams;
 use crate::consensus::{EngineType, ValidatorSet};
 use crate::error::Error;
 use crate::views::HeaderView;
 use crate::BlockId;
-use consensus::tendermint::params::TimeGapParams;
 
 impl ConsensusEngine for Tendermint {
     fn name(&self) -> &str {

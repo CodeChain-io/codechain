@@ -302,17 +302,6 @@ impl ConsensusMessage {
     }
 }
 
-/// Header consensus view.
-pub fn consensus_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
-    let view_rlp = header.seal().get(1).expect("seal passed basic verification; seal has 3 fields; qed");
-    UntrustedRlp::new(view_rlp.as_slice()).as_val()
-}
-
-pub fn previous_block_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
-    let view_rlp = header.seal().get(0).expect("seal passed basic verification; seal has 3 fields; qed");
-    UntrustedRlp::new(view_rlp.as_slice()).as_val()
-}
-
 impl Message for ConsensusMessage {
     type Round = VoteStep;
 
