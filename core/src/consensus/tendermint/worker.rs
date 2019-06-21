@@ -376,7 +376,14 @@ impl Worker {
     fn block_proposer_idx(&self, block_hash: H256) -> Option<usize> {
         self.client().block_header(&BlockId::Hash(block_hash)).map(|header| {
             let proposer = header.author();
-            let parent = header.parent_hash();
+            let parent = if header.number() == 0 {
+                // Genesis block's parent is not exist
+                // FIXME: The DynamicValidator should handle the Genesis block correctly.
+                block_hash
+            } else {
+                header.parent_hash()
+            };
+
             self.validators.get_index_by_address(&parent, &proposer).expect("The proposer must be in the validator set")
         })
     }
