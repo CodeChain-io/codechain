@@ -267,7 +267,7 @@ impl Header {
 
         header.set_parent_hash(self.hash());
         header.set_number(self.number() + 1);
-        header.set_timestamp_now(self.timestamp());
+        header.set_timestamp_now(self.timestamp() + 1);
         header.note_dirty();
 
         header
