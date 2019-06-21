@@ -100,6 +100,8 @@ pub struct TestBlockChainClient {
     pub latest_block_timestamp: RwLock<u64>,
     /// Pruning history size to report.
     pub history: RwLock<Option<u64>>,
+    /// Term ID
+    pub term_id: Option<u64>,
 }
 
 impl Default for TestBlockChainClient {
@@ -151,6 +153,7 @@ impl TestBlockChainClient {
             scheme,
             latest_block_timestamp: RwLock::new(10_000_000),
             history: RwLock::new(None),
+            term_id: None,
         };
 
         // insert genesis hash.
@@ -618,7 +621,7 @@ impl TermInfo for TestBlockChainClient {
     }
 
     fn current_term_id(&self, _id: BlockId) -> Option<u64> {
-        None
+        self.term_id
     }
 }
 
