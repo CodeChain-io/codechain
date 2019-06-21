@@ -504,8 +504,13 @@ impl Worker {
     }
 
     fn has_enough_aligned_votes(&self, message: &ConsensusMessage) -> bool {
+        let parent_hash = self
+            .client()
+            .block_header(&(message.on.step.height - 1).into())
+            .expect("The parent of the vote must exist")
+            .hash();
         let aligned_votes = self.votes.aligned_votes(&message);
-        self.validators.check_enough_votes(&self.prev_block_hash(), &aligned_votes).is_ok()
+        self.validators.check_enough_votes(&parent_hash, &aligned_votes).is_ok()
     }
 
     fn has_enough_precommit_votes(&self, block_hash: H256) -> bool {

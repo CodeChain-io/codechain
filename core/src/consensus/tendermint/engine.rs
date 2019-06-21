@@ -15,13 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::btree_map::BTreeMap;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::iter::Iterator;
 use std::sync::atomic::Ordering as AtomicOrdering;
 use std::sync::{Arc, Weak};
 
-use ckey::Address;
+use ckey::{public_to_address, Address};
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::{ActionHandler, TopStateView};
@@ -166,7 +166,7 @@ impl ConsensusEngine for Tendermint {
             if let Some(block_number) =
                 block_number_if_term_changed(block.header(), parent_header, parent_common_params)
             {
-                stake::on_term_close(block.state_mut(), block_number)?;
+                stake::on_term_close(block.state_mut(), block_number, &[])?;
             }
             return Ok(())
         }
@@ -185,41 +185,54 @@ impl ConsensusEngine for Tendermint {
         };
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
 
-        if block.state().metadata()?.expect("Metadata must exist").current_term_id() == 1 {
+        let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
+        let client = self
+            .client
+            .read()
+            .as_ref()
+            .ok_or(EngineError::CannotOpenBlock)?
+            .upgrade()
+            .ok_or(EngineError::CannotOpenBlock)?;
+
+        let inactive_validators = if metadata.current_term_id() == 1 {
             assert!(rewards.is_empty());
+
+            let validators = stake::Validators::load_from_state(block.state())?
+                .into_iter()
+                .map(|val| public_to_address(val.pubkey()))
+                .collect();
+            inactive_validators(&*client, start_of_the_current_term, block.header(), validators)
         } else {
-            let client = self
-                .client
-                .read()
-                .as_ref()
-                .ok_or(EngineError::CannotOpenBlock)?
-                .upgrade()
-                .ok_or(EngineError::CannotOpenBlock)?;
-
-            let (start_of_the_current_term, start_of_the_previous_term) = {
-                let end_of_the_one_level_previous_term =
-                    block.state().metadata()?.unwrap().last_term_finished_block_num();
+            let start_of_the_previous_term = {
                 let end_of_the_two_level_previous_term =
-                    client.last_term_finished_block_num(end_of_the_one_level_previous_term.into()).unwrap();
+                    client.last_term_finished_block_num(metadata.last_term_finished_block_num().into()).unwrap();
 
-                (end_of_the_one_level_previous_term + 1, end_of_the_two_level_previous_term + 1)
+                end_of_the_two_level_previous_term + 1
             };
 
+            let banned = stake::Banned::load_from_state(block.state())?;
             let pending_rewards = calculate_pending_rewards_of_the_previous_term(
                 &*client,
                 &*self.validators,
                 rewards,
                 start_of_the_current_term,
                 start_of_the_previous_term,
+                &banned,
             )?;
 
             for (address, reward) in pending_rewards {
                 self.machine.add_balance(block, &address, reward)?;
             }
-        }
+
+            let validators = stake::Validators::load_from_state(block.state())?
+                .into_iter()
+                .map(|val| public_to_address(val.pubkey()))
+                .collect();
+            inactive_validators(&*client, start_of_the_current_term, block.header(), validators)
+        };
 
         stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
-        stake::on_term_close(block.state_mut(), last_term_finished_block_num)?;
+        stake::on_term_close(block.state_mut(), last_term_finished_block_num, &inactive_validators)?;
 
         Ok(())
     }
@@ -337,36 +350,61 @@ fn block_number_if_term_changed(
     Some(header.number())
 }
 
+fn inactive_validators(
+    client: &ConsensusClient,
+    start_of_the_current_term: u64,
+    current_block: &Header,
+    mut validators: HashSet<Address>,
+) -> Vec<Address> {
+    validators.remove(current_block.author());
+    let hash = *current_block.parent_hash();
+    let mut header = client.block_header(&hash.into()).expect("Header of the parent must exist");
+    while start_of_the_current_term <= header.number() {
+        validators.remove(&header.author());
+        header = client.block_header(&header.parent_hash().into()).expect("Header of the parent must exist");
+    }
+
+    validators.into_iter().collect()
+}
+
 fn calculate_pending_rewards_of_the_previous_term(
     chain: &ConsensusClient,
     validators: &ValidatorSet,
     rewards: BTreeMap<Address, u64>,
     start_of_the_current_term: u64,
     start_of_the_previous_term: u64,
+    banned: &stake::Banned,
 ) -> Result<HashMap<Address, u64>, Error> {
-    let authors = {
-        let header = chain.block_header(&start_of_the_previous_term.into()).unwrap();
-        validators.addresses(&header.parent_hash())
-    };
-    let mut pending_rewards: HashMap<Address, u64> = authors.iter().map(|author| (*author, 0)).collect();
-
-    let mut missed_signatures = HashMap::<Address, (usize, usize)>::with_capacity(30);
-    let mut signed_blocks = HashMap::<Address, usize>::with_capacity(30);
+    // XXX: It's okay because we don't have a plan to increasing the maximum number of validators.
+    //      However, it's better to use the correct number.
+    const MAX_NUM_OF_VALIDATORS: usize = 30;
+    let mut pending_rewards = HashMap::<Address, u64>::with_capacity(MAX_NUM_OF_VALIDATORS);
+    let mut missed_signatures = HashMap::<Address, (usize, usize)>::with_capacity(MAX_NUM_OF_VALIDATORS);
+    let mut signed_blocks = HashMap::<Address, usize>::with_capacity(MAX_NUM_OF_VALIDATORS);
 
     let mut header = chain.block_header(&start_of_the_current_term.into()).unwrap();
+    let mut parent_validators = {
+        let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
+        validators.addresses(&grand_parent_header.parent_hash())
+    };
     while start_of_the_previous_term != header.number() {
         for index in TendermintSealView::new(&header.seal()).bitset()?.true_index_iter() {
-            // FIXME: Change it after implementing ban
-            *signed_blocks.entry(authors[index]).or_default() += 1;
+            let signer = *parent_validators.get(index).expect("The seal must be the signature of the validator");
+            *signed_blocks.entry(signer).or_default() += 1;
         }
 
         header = chain.block_header(&header.parent_hash().into()).unwrap();
+        parent_validators = {
+            // The seal of the current block has the signatures of the parent block.
+            // It needs the hash of the grand parent block to find the validators of the parent block.
+            let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
+            validators.addresses(&grand_parent_header.parent_hash())
+        };
 
         let author = header.author();
         let (proposed, missed) = missed_signatures.entry(author).or_default();
         *proposed += 1;
-        // FIXME: Consider banned accounts
-        *missed += authors.len() - TendermintSealView::new(&header.seal()).bitset()?.count();
+        *missed += parent_validators.len() - TendermintSealView::new(&header.seal()).bitset()?.count();
     }
 
     let mut reduced_rewards = 0;
@@ -374,7 +412,10 @@ fn calculate_pending_rewards_of_the_previous_term(
     // Penalty disloyal validators
     let number_of_blocks_in_term = start_of_the_current_term - start_of_the_previous_term;
     for (address, intermediate_reward) in rewards {
-        // FIXME: Consider banned accounts
+        if banned.is_banned(&address) {
+            reduced_rewards += intermediate_reward;
+            continue
+        }
         let number_of_signatures = u64::try_from(*signed_blocks.get(&address).unwrap()).unwrap();
         let final_block_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
         reduced_rewards += intermediate_reward - final_block_rewards;
