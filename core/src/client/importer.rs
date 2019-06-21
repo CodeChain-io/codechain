@@ -384,19 +384,6 @@ impl Importer {
             );
             return false
         };
-
-        // "external" verification.
-        if let Err(e) = self.engine.verify_block_external(&header) {
-            cwarn!(
-                CLIENT,
-                "Stage 4 block verification failed for #{} ({})\nError: {:?}",
-                header.number(),
-                header.hash(),
-                e
-            );
-            return false
-        };
-
         true
     }
 
