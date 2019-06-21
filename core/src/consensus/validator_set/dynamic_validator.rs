@@ -42,9 +42,15 @@ impl DynamicValidator {
     }
 
     fn validators(&self, parent: H256) -> Option<Vec<Validator>> {
-        let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
+        let client: Arc<ConsensusClient> =
+            self.client.read().as_ref().and_then(Weak::upgrade).expect("Client is not initialized");
         let block_id = parent.into();
-        if client.current_term_id(block_id)? == 0 {
+        let term_id = client.current_term_id(block_id).expect(
+            "valdators() is called when creating a block or verifying a block.
+            Minor creates a block only when the parent block is imported.
+            The n'th block is verified only when the parent block is imported.",
+        );
+        if term_id == 0 {
             return None
         }
         let state = client.state_at(block_id)?;
