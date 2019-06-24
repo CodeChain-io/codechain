@@ -205,7 +205,7 @@ impl ConsensusEngine for Tendermint {
         } else {
             let start_of_the_previous_term = {
                 let end_of_the_two_level_previous_term =
-                    client.last_term_finished_block_num(metadata.last_term_finished_block_num().into()).unwrap();
+                    client.last_term_finished_block_num((metadata.last_term_finished_block_num() - 1).into()).unwrap();
 
                 end_of_the_two_level_previous_term + 1
             };
