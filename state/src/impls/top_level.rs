@@ -302,13 +302,19 @@ impl TopLevelState {
         parent_block_timestamp: u64,
         current_block_timestamp: u64,
     ) -> StateResult<()> {
-        let (fee_payer, restricted_master_key) = if self.regular_account_exists_and_not_null(signer_public)? {
+        let fee_payer = if self.regular_account_exists_and_not_null(signer_public)? {
             let regular_account = self.get_regular_account_mut(signer_public)?;
-            (public_to_address(&regular_account.owner_public()), false)
+            public_to_address(&regular_account.owner_public())
         } else {
             let address = public_to_address(signer_public);
-            let account = self.get_account_mut(&address)?;
-            (address, !tx.is_master_key_allowed() && account.regular_key().is_some())
+
+            if !tx.is_master_key_allowed() {
+                let account = self.get_account_mut(&address)?;
+                if account.regular_key().is_some() {
+                    return Err(RuntimeError::CannotUseMasterKey.into())
+                }
+            }
+            address
         };
         let seq = self.seq(&fee_payer)?;
 
@@ -324,10 +330,6 @@ impl TopLevelState {
 
         self.inc_seq(&fee_payer)?;
         self.sub_balance(&fee_payer, fee)?;
-
-        if restricted_master_key {
-            return Err(RuntimeError::CannotUseMasterKey.into())
-        }
 
         // The failed transaction also must pay the fee and increase seq.
         self.create_checkpoint(ACTION_CHECKPOINT);
