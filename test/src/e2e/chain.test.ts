@@ -158,6 +158,36 @@ describe("chain", function() {
         expect(signed!.unsigned).to.deep.equal(tx);
     });
 
+    it("sendPayTx, getTransactionSigner", async function() {
+        const tx = node.sdk.core.createPayTransaction({
+            recipient: "tccqxv9y4cw0jwphhu65tn4605wadyd2sxu5yezqghw",
+            quantity: 0
+        });
+        const seq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+        const hash = await node.sdk.rpc.chain.sendSignedTransaction(
+            tx.sign({
+                secret: faucetSecret,
+                fee: 10,
+                seq
+            })
+        );
+        expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
+        const signer = await node.sdk.rpc.sendRpcRequest(
+            "chain_getTransactionSigner",
+            [hash]
+        );
+        expect(signer).equal(faucetAddress.toString());
+        const signed = await node.sdk.rpc.chain.getTransaction(hash);
+        expect(signed).not.null;
+        expect(signed!.unsigned).to.deep.equal(tx);
+        expect(
+            node.sdk.core.classes.PlatformAddress.fromPublic(
+                signed!.getSignerPublic(),
+                { networkId: "tc" }
+            ).toString()
+        ).equal(signer);
+    });
+
     it("getRegularKey, getRegularKeyOwner", async function() {
         const key = node.sdk.util.getPublicFromPrivate(
             node.sdk.util.generatePrivateKey()

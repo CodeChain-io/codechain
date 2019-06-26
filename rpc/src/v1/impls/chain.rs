@@ -77,6 +77,14 @@ where
         Ok(self.client.transaction(&id).map(From::from))
     }
 
+    fn get_transaction_signer(&self, transaction_hash: H256) -> Result<Option<PlatformAddress>> {
+        let id = transaction_hash.into();
+        Ok(self.client.transaction(&id).map(|mut tx| {
+            let address = public_to_address(&tx.signer());
+            PlatformAddress::new_v1(tx.network_id, address)
+        }))
+    }
+
     fn contains_transaction(&self, transaction_hash: H256) -> Result<bool> {
         Ok(self.client.transaction_block(&transaction_hash.into()).is_some())
     }
