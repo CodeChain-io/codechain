@@ -36,7 +36,7 @@ pub trait ActionHandler: Send + Sync {
         &self,
         bytes: &[u8],
         state: &mut TopLevelState,
-        sender: &Address,
+        fee_payer: &Address,
         sender_pubkey: &Public,
     ) -> StateResult<()>;
     fn verify(&self, bytes: &[u8], common_params: &CommonParams) -> Result<(), SyntaxError>;

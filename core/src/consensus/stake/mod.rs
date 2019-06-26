@@ -78,7 +78,7 @@ impl ActionHandler for Stake {
         &self,
         bytes: &[u8],
         state: &mut TopLevelState,
-        sender: &Address,
+        fee_payer: &Address,
         sender_public: &Public,
     ) -> StateResult<()> {
         let action = Action::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
@@ -86,15 +86,15 @@ impl ActionHandler for Stake {
             Action::TransferCCS {
                 address,
                 quantity,
-            } => transfer_ccs(state, sender, &address, quantity),
+            } => transfer_ccs(state, fee_payer, &address, quantity),
             Action::DelegateCCS {
                 address,
                 quantity,
-            } => delegate_ccs(state, sender, &address, quantity),
+            } => delegate_ccs(state, fee_payer, &address, quantity),
             Action::Revoke {
                 address,
                 quantity,
-            } => revoke(state, sender, &address, quantity),
+            } => revoke(state, fee_payer, &address, quantity),
             Action::SelfNominate {
                 deposit,
                 metadata,
@@ -110,7 +110,7 @@ impl ActionHandler for Stake {
                     let nomination_ends_at = current_term + expiration;
                     (current_term, nomination_ends_at)
                 };
-                self_nominate(state, sender, sender_public, deposit, current_term, nomination_ends_at, metadata)
+                self_nominate(state, fee_payer, sender_public, deposit, current_term, nomination_ends_at, metadata)
             }
             Action::ChangeParams {
                 metadata_seq,
@@ -137,11 +137,11 @@ impl ActionHandler for Stake {
     }
 }
 
-fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address, quantity: u64) -> StateResult<()> {
+fn transfer_ccs(state: &mut TopLevelState, fee_payer: &Address, receiver: &Address, quantity: u64) -> StateResult<()> {
     let mut stakeholders = Stakeholders::load_from_state(state)?;
-    let mut sender_account = StakeAccount::load_from_state(state, sender)?;
+    let mut sender_account = StakeAccount::load_from_state(state, fee_payer)?;
     let mut receiver_account = StakeAccount::load_from_state(state, receiver)?;
-    let sender_delegations = Delegation::load_from_state(state, sender)?;
+    let sender_delegations = Delegation::load_from_state(state, fee_payer)?;
 
     sender_account.subtract_balance(quantity)?;
     receiver_account.add_balance(quantity)?;
@@ -153,11 +153,11 @@ fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address,
     sender_account.save_to_state(state)?;
     receiver_account.save_to_state(state)?;
 
-    ctrace!(ENGINE, "Transferred CCS sender: {}, receiver: {}, quantity: {}", sender, receiver, quantity);
+    ctrace!(ENGINE, "Transferred CCS fee_payer: {}, receiver: {}, quantity: {}", fee_payer, receiver, quantity);
     Ok(())
 }
 
-fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
+fn delegate_ccs(state: &mut TopLevelState, fee_payer: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
     let candidates = Candidates::load_from_state(state)?;
     if candidates.get_candidate(delegatee).is_none() {
         return Err(RuntimeError::FailedToHandleCustomAction("Can delegate to who is a candidate".into()).into())
@@ -168,8 +168,8 @@ fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address
     assert!(!banned.is_banned(&delegatee), "A candidate must not be banned");
     assert_eq!(None, jailed.get_prisoner(delegatee), "A candidate must not be jailed");
 
-    let mut delegator = StakeAccount::load_from_state(state, sender)?;
-    let mut delegation = Delegation::load_from_state(state, &sender)?;
+    let mut delegator = StakeAccount::load_from_state(state, fee_payer)?;
+    let mut delegation = Delegation::load_from_state(state, &fee_payer)?;
 
     delegator.subtract_balance(quantity)?;
     delegation.add_quantity(*delegatee, quantity)?;
@@ -178,13 +178,13 @@ fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address
     delegation.save_to_state(state)?;
     delegator.save_to_state(state)?;
 
-    ctrace!(ENGINE, "Delegated CCS. delegator: {}, delegatee: {}, quantity: {}", sender, delegatee, quantity);
+    ctrace!(ENGINE, "Delegated CCS. delegator: {}, delegatee: {}, quantity: {}", fee_payer, delegatee, quantity);
     Ok(())
 }
 
-fn revoke(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
-    let mut delegator = StakeAccount::load_from_state(state, sender)?;
-    let mut delegation = Delegation::load_from_state(state, &sender)?;
+fn revoke(state: &mut TopLevelState, fee_payer: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
+    let mut delegator = StakeAccount::load_from_state(state, fee_payer)?;
+    let mut delegation = Delegation::load_from_state(state, &fee_payer)?;
 
     delegator.add_balance(quantity)?;
     delegation.subtract_quantity(*delegatee, quantity)?;
@@ -193,13 +193,13 @@ fn revoke(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quan
     delegation.save_to_state(state)?;
     delegator.save_to_state(state)?;
 
-    ctrace!(ENGINE, "Revoked CCS. delegator: {}, delegatee: {}, quantity: {}", sender, delegatee, quantity);
+    ctrace!(ENGINE, "Revoked CCS. delegator: {}, delegatee: {}, quantity: {}", fee_payer, delegatee, quantity);
     Ok(())
 }
 
 fn self_nominate(
     state: &mut TopLevelState,
-    sender: &Address,
+    fee_payer: &Address,
     sender_public: &Public,
     deposit: u64,
     current_term: u64,
@@ -207,24 +207,24 @@ fn self_nominate(
     metadata: Bytes,
 ) -> StateResult<()> {
     let blacklist = Banned::load_from_state(state)?;
-    if blacklist.is_banned(&sender) {
+    if blacklist.is_banned(&fee_payer) {
         return Err(RuntimeError::FailedToHandleCustomAction("Account is blacklisted".to_string()).into())
     }
 
     let mut jail = Jail::load_from_state(&state)?;
-    let total_deposit = match jail.try_release(sender, current_term) {
+    let total_deposit = match jail.try_release(fee_payer, current_term) {
         ReleaseResult::InCustody => {
             return Err(RuntimeError::FailedToHandleCustomAction("Account is still in custody".to_string()).into())
         }
         ReleaseResult::NotExists => deposit,
         ReleaseResult::Released(prisoner) => {
-            assert_eq!(&prisoner.address, sender);
+            assert_eq!(&prisoner.address, fee_payer);
             prisoner.deposit + deposit
         }
     };
 
     let mut candidates = Candidates::load_from_state(&state)?;
-    state.sub_balance(sender, deposit)?;
+    state.sub_balance(fee_payer, deposit)?;
     candidates.add_deposit(sender_public, total_deposit, nomination_ends_at, metadata);
 
     jail.save_to_state(state)?;
@@ -233,7 +233,7 @@ fn self_nominate(
     ctrace!(
         ENGINE,
         "Self-nominated. nominee: {}, deposit: {}, current_term: {}, ends_at: {}",
-        sender,
+        fee_payer,
         deposit,
         current_term,
         nomination_ends_at
