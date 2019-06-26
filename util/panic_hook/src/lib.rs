@@ -95,7 +95,7 @@ fn exit_on_debug_or_env_set_on_release() {
 
 #[cfg(not(debug_assertions))]
 fn exit_on_debug_or_env_set_on_release() {
-    if (std::env::var("EXIT_ON_CRASH").is_ok()) {
+    if std::env::var("EXIT_ON_CRASH").is_ok() {
         std::process::exit(-1);
     }
 }
