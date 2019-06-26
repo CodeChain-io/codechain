@@ -30,6 +30,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getTransaction")]
         fn get_transaction(&self, H256) -> Result<Option<Transaction>>;
 
+        /// Gets the signer of transaction with given hash.
+        # [rpc(name = "chain_getTransactionSigner")]
+        fn get_transaction_signer(&self, H256) -> Result<Option<PlatformAddress>>;
+
         /// Query whether the chain has the transaction with given transaction hash.
         # [rpc(name = "chain_containsTransaction")]
         fn contains_transaction(&self, H256) -> Result<bool>;
