@@ -612,7 +612,7 @@ export default class CodeChain {
     }
 
     public async sendSignedTransactionExpectedToFail(
-        tx: SignedTransaction,
+        tx: SignedTransaction | (() => Promise<H256>),
         options: { error?: string } = {}
     ): Promise<H256> {
         await this.sdk.rpc.devel.stopSealing();
@@ -622,7 +622,11 @@ export default class CodeChain {
             fee: 1000,
             quantity: 1
         })).hash();
-        const targetTxHash = await this.sdk.rpc.chain.sendSignedTransaction(tx);
+
+        const targetTxHash =
+            tx instanceof SignedTransaction
+                ? await this.sdk.rpc.chain.sendSignedTransaction(tx)
+                : await tx();
 
         await this.sdk.rpc.devel.startSealing();
         await this.waitBlockNumber(blockNumber + 1);
