@@ -42,9 +42,15 @@ impl DynamicValidator {
     }
 
     fn validators(&self, parent: H256) -> Option<Vec<Validator>> {
-        let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
+        let client: Arc<ConsensusClient> =
+            self.client.read().as_ref().and_then(Weak::upgrade).expect("Client is not initialized");
         let block_id = parent.into();
-        if client.current_term_id(block_id)? == 0 {
+        let term_id = client.current_term_id(block_id).expect(
+            "valdators() is called when creating a block or verifying a block.
+            Minor creates a block only when the parent block is imported.
+            The n'th block is verified only when the parent block is imported.",
+        );
+        if term_id == 0 {
             return None
         }
         let state = client.state_at(block_id)?;
@@ -187,17 +193,26 @@ impl ValidatorSet for DynamicValidator {
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
+    use std::sync::Arc;
 
     use ckey::Public;
 
     use super::super::ValidatorSet;
     use super::DynamicValidator;
+    use crate::client::TestBlockChainClient;
+    use client::ConsensusClient;
 
     #[test]
     fn validator_set() {
         let a1 = Public::from_str("34959b60d54703e9dfe36afb1e9950a4abe34d666cbb64c92969013bc9cc74063f9e4680d9d48c4597ee623bd4b507a1b2f43a9c5766a06463f85b73a94c51d1").unwrap();
         let a2 = Public::from_str("8c5a25bfafceea03073e2775cfb233a46648a088c12a1ca18a5865534887ccf60e1670be65b5f8e29643f463fdf84b1cbadd6027e71d8d04496570cb6b04885d").unwrap();
         let set = DynamicValidator::new(vec![a1, a2]);
+        let test_client: Arc<ConsensusClient> = Arc::new({
+            let mut client = TestBlockChainClient::new();
+            client.term_id = Some(1);
+            client
+        });
+        set.register_client(Arc::downgrade(&test_client));
         assert!(set.contains(&Default::default(), &a1));
         assert_eq!(set.get(&Default::default(), 0), a1);
         assert_eq!(set.get(&Default::default(), 1), a2);

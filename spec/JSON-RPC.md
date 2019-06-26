@@ -349,7 +349,8 @@ When `Transaction` is included in any response, there will be an additional fiel
 ***
  * [engine_getCoinbase](#engine_getcoinbase)
  * [engine_getBlockReward](#engine_getblockreward)
- * [engine_getRecommendedConfimation](#engine_getrecommendedconfimation)
+ * [engine_getRecommendedConfirmation](#engine_getrecommendedconfirmation)
+ * [engine_getCustomActionData](#engine_getcustomactiondata)
 ***
  * [miner_getWork](#miner_getwork)
  * [miner_submitWork](#miner_submitwork)
