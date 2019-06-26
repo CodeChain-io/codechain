@@ -206,6 +206,10 @@ fn self_nominate(
     nomination_ends_at: u64,
     metadata: Bytes,
 ) -> StateResult<()> {
+    if public_to_address(sender_public) != *fee_payer {
+        return Err(RuntimeError::FailedToHandleCustomAction("Cannot Self-nominate with regular key".to_string()).into())
+    }
+
     let blacklist = Banned::load_from_state(state)?;
     if blacklist.is_banned(&fee_payer) {
         return Err(RuntimeError::FailedToHandleCustomAction("Account is blacklisted".to_string()).into())
