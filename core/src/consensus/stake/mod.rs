@@ -343,9 +343,6 @@ pub fn on_term_close(
         (nomination_expiration, current_term + custody_period, current_term + release_period)
     };
 
-    // TODO: total_slash = slash_unresponsive(headers, pending_rewards)
-    // TODO: pending_rewards.update(signature_reward(blocks, total_slash))
-
     let expired = update_candidates(state, current_term, nomination_expiration, inactive_validators)?;
     let released = release_jailed_prisoners(state, current_term)?;
 
