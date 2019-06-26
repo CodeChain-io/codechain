@@ -191,7 +191,7 @@ The stakeholders can delegate as much stakes as they have.
 The stakeholders can delegate any candidates, including validators and jailed accounts.
 The delegations return automatically when the delegatee becomes eligible or banned.
 
-*DELEGATE* transactions to banned or eligible accounts fail.
+*DELEGATE* transactions to banned, jailed or eligible accounts fail.
 
 
 ### REVOKE

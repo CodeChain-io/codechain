@@ -158,17 +158,15 @@ fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address,
 }
 
 fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
-    let banned = Banned::load_from_state(state)?;
-    if banned.is_banned(&delegatee) {
-        return Err(RuntimeError::FailedToHandleCustomAction("Delegatee is banned".to_string()).into())
-    }
     let candidates = Candidates::load_from_state(state)?;
-    let jail = Jail::load_from_state(state)?;
-    if candidates.get_candidate(delegatee).is_none() && jail.get_prisoner(delegatee).is_none() {
-        return Err(
-            RuntimeError::FailedToHandleCustomAction("Can delegate to who is a candidate or a prisoner".into()).into()
-        )
+    if candidates.get_candidate(delegatee).is_none() {
+        return Err(RuntimeError::FailedToHandleCustomAction("Can delegate to who is a candidate".into()).into())
     }
+
+    let banned = Banned::load_from_state(state)?;
+    let jailed = Jail::load_from_state(state)?;
+    assert!(!banned.is_banned(&delegatee), "A candidate must not be banned");
+    assert_eq!(None, jailed.get_prisoner(delegatee), "A candidate must not be jailed");
 
     let mut delegator = StakeAccount::load_from_state(state, sender)?;
     let mut delegation = Delegation::load_from_state(state, &sender)?;
@@ -1218,7 +1216,7 @@ mod tests {
     }
 
     #[test]
-    fn can_delegate_until_released() {
+    fn cannot_delegate_until_released() {
         let address_pubkey = Public::random();
         let delegator_pubkey = Public::random();
         let address = public_to_address(&address_pubkey);
@@ -1248,7 +1246,7 @@ mod tests {
                 quantity: 1,
             };
             let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
-            assert!(result.is_ok());
+            assert_ne!(Ok(()), result);
 
             on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
@@ -1284,13 +1282,14 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
             quantity: 40,
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
+
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         for current_term in 0..=released_at {
             on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
@@ -1325,13 +1324,15 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, 0, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
             quantity: 40,
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
+
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
+
         for current_term in 0..custody_until {
             on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
