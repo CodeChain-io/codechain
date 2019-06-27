@@ -230,7 +230,7 @@ The type of the messages depends on the consensus engine. For example, type Mess
 stakeholders = [ address+ ], address asc
 balance(address) = quantity
 delegation(delegator) = [ [delegatee, quantity]+ ], delegatee asc
-candidates = [ [pubkey, deposits, nominate_end_at]+ ], pubkey asc
+candidates = [ [pubkey, deposits, nominate_end_at, metadata]+ ], pubkey asc
 banned = [ address+ ], address asc
 jailed = [ [address, deposits, custody_until, released_at]+ ], address asc
 term_id = [ the last block number of the previous term, the current term id ]
