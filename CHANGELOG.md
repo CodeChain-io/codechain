@@ -22,3 +22,8 @@
 * Added base-path option #236
 * Fixed the crash on exit #348
 * Reduced the booting time #1513
+
+# 1.4.0 - 2019-06-17
+* Do not prevote to the block with irrelevant generation time #1512
+* Change the name of verification threads
+* Add email alarm feature #1561 #1571

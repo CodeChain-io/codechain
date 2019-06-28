@@ -88,6 +88,7 @@ pub trait BlockChainTrait {
 
 pub trait EngineInfo: Send + Sync {
     fn common_params(&self, block_id: BlockId) -> Option<CommonParams>;
+    fn metadata_seq(&self, block_id: BlockId) -> Option<u64>;
     fn block_reward(&self, block_number: u64) -> u64;
     fn mining_reward(&self, block_number: u64) -> Option<u64>;
     fn recommended_confirmation(&self) -> u32;
@@ -118,8 +119,6 @@ pub trait ConsensusClient: BlockChainTrait + EngineClient + EngineInfo + TermInf
 pub trait TermInfo {
     fn last_term_finished_block_num(&self, id: BlockId) -> Option<BlockNumber>;
     fn current_term_id(&self, id: BlockId) -> Option<u64>;
-
-    fn state_at_term_begin(&self, id: BlockId) -> Option<TopLevelState>;
 }
 
 /// Provides methods to access account info

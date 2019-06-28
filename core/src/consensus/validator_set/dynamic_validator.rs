@@ -24,8 +24,8 @@ use primitives::H256;
 use super::{RoundRobinValidator, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::consensus::bit_set::BitSet;
+use crate::consensus::stake::{get_validators, Validator};
 use crate::consensus::EngineError;
-use consensus::stake::{get_validators, Validators};
 
 /// Validator set containing a known set of public keys.
 pub struct DynamicValidator {
@@ -41,24 +41,41 @@ impl DynamicValidator {
         }
     }
 
-    fn validators_at_term_begin(&self, parent: H256) -> Option<Validators> {
-        let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
-        let state = client.state_at_term_begin(parent.into())?;
-        Some(get_validators(&state).unwrap())
-    }
-
-    fn validators(&self, parent: H256) -> Option<Validators> {
-        let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
+    fn validators(&self, parent: H256) -> Option<Vec<Validator>> {
+        let client: Arc<ConsensusClient> =
+            self.client.read().as_ref().and_then(Weak::upgrade).expect("Client is not initialized");
         let block_id = parent.into();
-        if client.current_term_id(block_id)? == 0 {
+        let term_id = client.current_term_id(block_id).expect(
+            "valdators() is called when creating a block or verifying a block.
+            Minor creates a block only when the parent block is imported.
+            The n'th block is verified only when the parent block is imported.",
+        );
+        if term_id == 0 {
             return None
         }
         let state = client.state_at(block_id)?;
-        Some(get_validators(&state).unwrap())
+        let validators = get_validators(&state).unwrap();
+        if validators.is_empty() {
+            None
+        } else {
+            let mut validators: Vec<_> = validators.into();
+            validators.reverse();
+            Some(validators)
+        }
     }
 
     fn validators_pubkey(&self, parent: H256) -> Option<Vec<Public>> {
-        self.validators(parent).map(|validators| validators.pubkeys())
+        self.validators(parent).map(|validators| validators.into_iter().map(|val| *val.pubkey()).collect())
+    }
+
+    pub fn proposer_index(&self, parent: H256, prev_proposer_index: usize, proposed_view: usize) -> usize {
+        if let Some(validators) = self.validators(parent) {
+            let num_validators = validators.len();
+            proposed_view % num_validators
+        } else {
+            let num_validators = self.initial_list.count(&parent);
+            (prev_proposer_index + proposed_view + 1) % num_validators
+        }
     }
 }
 
@@ -79,12 +96,12 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
-    fn get(&self, parent: &H256, nonce: usize) -> Public {
+    fn get(&self, parent: &H256, index: usize) -> Public {
         if let Some(validators) = self.validators_pubkey(*parent) {
             let n_validators = validators.len();
-            validators.into_iter().nth(nonce % n_validators).unwrap()
+            *validators.get(index % n_validators).unwrap()
         } else {
-            self.initial_list.get(parent, nonce)
+            self.initial_list.get(parent, index)
         }
     }
 
@@ -111,8 +128,8 @@ impl ValidatorSet for DynamicValidator {
     fn next_block_proposer(&self, parent: &H256, view: u64) -> Option<Address> {
         if let Some(validators) = self.validators_pubkey(*parent) {
             let n_validators = validators.len();
-            let nonce = view as usize % n_validators;
-            Some(public_to_address(validators.get(n_validators - nonce - 1).unwrap()))
+            let index = view as usize % n_validators;
+            Some(public_to_address(validators.get(index).unwrap()))
         } else {
             self.initial_list.next_block_proposer(parent, view)
         }
@@ -127,28 +144,28 @@ impl ValidatorSet for DynamicValidator {
     }
 
     fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError> {
-        if let Some(validators_at_term_begin) = self.validators_at_term_begin(*parent) {
-            let validators =
-                self.validators(*parent).expect("The validator must exist in the middle of term").pubkeys();
-            let mut weight = 0;
+        if let Some(validators) = self.validators(*parent) {
+            let mut voted_delegation = 0u64;
+            let n_validators = validators.len();
             for index in votes.true_index_iter() {
-                let pubkey = validators.get(index).ok_or_else(|| {
+                assert!(index < n_validators);
+                let validator = validators.get(index).ok_or_else(|| {
                     EngineError::ValidatorNotExist {
                         height: 0, // FIXME
                         index,
                     }
                 })?;
-                weight += validators_at_term_begin.weight(pubkey).unwrap() as usize;
+                voted_delegation += validator.delegation();
             }
-            let total_weight = validators_at_term_begin.total_weight() as usize;
-            if weight * 3 > total_weight * 2 {
+            let total_delegation: u64 = validators.iter().map(Validator::delegation).sum();
+            if voted_delegation * 3 > total_delegation * 2 {
                 Ok(())
             } else {
-                let threshold = total_weight * 2 / 3;
+                let threshold = total_delegation as usize * 2 / 3;
                 Err(EngineError::BadSealFieldSize(OutOfBounds {
                     min: Some(threshold),
-                    max: Some(total_weight),
-                    found: weight,
+                    max: Some(total_delegation as usize),
+                    found: voted_delegation as usize,
                 }))
             }
         } else {
@@ -176,17 +193,26 @@ impl ValidatorSet for DynamicValidator {
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
+    use std::sync::Arc;
 
     use ckey::Public;
 
     use super::super::ValidatorSet;
     use super::DynamicValidator;
+    use crate::client::TestBlockChainClient;
+    use client::ConsensusClient;
 
     #[test]
     fn validator_set() {
         let a1 = Public::from_str("34959b60d54703e9dfe36afb1e9950a4abe34d666cbb64c92969013bc9cc74063f9e4680d9d48c4597ee623bd4b507a1b2f43a9c5766a06463f85b73a94c51d1").unwrap();
         let a2 = Public::from_str("8c5a25bfafceea03073e2775cfb233a46648a088c12a1ca18a5865534887ccf60e1670be65b5f8e29643f463fdf84b1cbadd6027e71d8d04496570cb6b04885d").unwrap();
         let set = DynamicValidator::new(vec![a1, a2]);
+        let test_client: Arc<ConsensusClient> = Arc::new({
+            let mut client = TestBlockChainClient::new();
+            client.term_id = Some(1);
+            client
+        });
+        set.register_client(Arc::downgrade(&test_client));
         assert!(set.contains(&Default::default(), &a1));
         assert_eq!(set.get(&Default::default(), 0), a1);
         assert_eq!(set.get(&Default::default(), 1), a2);

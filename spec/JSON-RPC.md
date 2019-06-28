@@ -315,6 +315,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getBlockByHash](#chain_getblockbyhash)
  * [chain_getBlockTransactionCountByHash](#chain_getblocktransactioncountbyhash)
  * [chain_getTransaction](#chain_gettransaction)
+ * [chain_getTrnsactionSigner](#chain_gettrnsactionsigner)
  * [chain_containsTransaction](#chain_containstransaction)
  * [chain_getTransactionByTracker](#chain_gettransactionbytracker)
  * [chain_getAssetSchemeByTracker](#chain_getassetschemebytracker)
@@ -349,7 +350,8 @@ When `Transaction` is included in any response, there will be an additional fiel
 ***
  * [engine_getCoinbase](#engine_getcoinbase)
  * [engine_getBlockReward](#engine_getblockreward)
- * [engine_getRecommendedConfimation](#engine_getrecommendedconfimation)
+ * [engine_getRecommendedConfirmation](#engine_getrecommendedconfirmation)
+ * [engine_getCustomActionData](#engine_getcustomactiondata)
 ***
  * [miner_getWork](#miner_getwork)
  * [miner_submitWork](#miner_submitwork)
@@ -753,6 +755,36 @@ Errors: `Invalid Params`
         "sig":"0x291d932e55162407eb01915923d68cf78df4815a25fc6033488b644bda44b02251123feac3a3c56a399a2b32331599fd50b7a39ec2c1a2325e37f383c6aeedc301"
     }
     "id": null,
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## chain_getTrnsactionSigner
+Returns the signer of the given transaction hash.
+
+It returns `null` if the transaction hash doesn't exist in the chain.
+
+### Params
+1. tx hash: `H256`
+
+### Returns
+`null` | `PlatformAddress`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTrnsactionSigner", "params": ["0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6"], "id": "who-is-authors"}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": "tccq94guhkrfndnehnca06dlkxcfuq0gdlamvw9ga4f",
+  "id": "who-is-authors"
 }
 ```
 
@@ -1461,6 +1493,35 @@ Errors: `Invalid Params`
 {
   "jsonrpc":"2.0",
   "result":[43,4],
+  "id":7
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+# chain_getMetadataSeq
+Gets the sequence of metadata.
+It returns null if the block number parameter is larger than the current best block.
+
+### Params
+ 1. block number - `number` | `null`
+
+### Returns
+`number` | `null`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getMeatadataSeq", "params": [53], "id": 7}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":43,
   "id":7
 }
 ```

@@ -70,6 +70,14 @@ where
         Ok(self.client.transaction(&id).map(From::from))
     }
 
+    fn get_transaction_signer(&self, transaction_hash: H256) -> Result<Option<PlatformAddress>> {
+        let id = transaction_hash.into();
+        Ok(self.client.transaction(&id).map(|mut tx| {
+            let address = public_to_address(&tx.signer());
+            PlatformAddress::new_v1(tx.network_id, address)
+        }))
+    }
+
     fn contains_transaction(&self, transaction_hash: H256) -> Result<bool> {
         Ok(self.client.transaction_block(&transaction_hash.into()).is_some())
     }
@@ -314,6 +322,11 @@ where
             (None, None) => Ok(None),
             _ => unreachable!(),
         }
+    }
+
+    fn get_metadata_seq(&self, block_number: Option<u64>) -> Result<Option<u64>> {
+        let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
+        Ok(self.client.metadata_seq(block_id))
     }
 
     fn get_possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {

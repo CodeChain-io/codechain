@@ -505,6 +505,16 @@ impl EngineInfo for Client {
         })
     }
 
+    fn metadata_seq(&self, block_id: BlockId) -> Option<u64> {
+        self.state_info(block_id.into()).map(|state| {
+            state
+                .metadata()
+                .unwrap_or_else(|err| unreachable!("Unexpected failure. Maybe DB was corrupted: {:?}", err))
+                .unwrap()
+                .seq()
+        })
+    }
+
     fn block_reward(&self, block_number: u64) -> u64 {
         self.engine().block_reward(block_number)
     }
@@ -795,23 +805,14 @@ impl BlockChainClient for Client {
 impl TermInfo for Client {
     fn last_term_finished_block_num(&self, id: BlockId) -> Option<BlockNumber> {
         self.state_at(id)
-            .and_then(|state| state.metadata().unwrap())
+            .map(|state| state.metadata().unwrap().expect("Meatadata always exist"))
             .map(|metadata| metadata.last_term_finished_block_num())
     }
 
     fn current_term_id(&self, id: BlockId) -> Option<u64> {
-        self.state_at(id).and_then(|state| state.metadata().unwrap()).map(|metadata| metadata.current_term_id())
-    }
-
-    fn state_at_term_begin(&self, id: BlockId) -> Option<TopLevelState> {
-        if let Some(block_num) = self.last_term_finished_block_num(id) {
-            if block_num == 0 {
-                return None
-            }
-            self.state_at(block_num.into())
-        } else {
-            None
-        }
+        self.state_at(id)
+            .map(|state| state.metadata().unwrap().expect("Metadata always exist"))
+            .map(|metadata| metadata.current_term_id())
     }
 }
 

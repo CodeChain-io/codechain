@@ -66,7 +66,7 @@ The delegated stakes are returned when the account becomes an eligible account o
 The election is a process that elects validators of a term according to the following rule:
 
 1. Select the candidates who deposited **MIN_DEPOSIT** or more.
-2. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of the amount of received delegations.
+2. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of the amount of received delegations and the amount of deposit that the candidate made.
 3. If there are candidates who have tied delegation scores with the dropouts, drop those candidates as well.
 4. Select **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
 5. Among the rest of them, drop the accounts that received less than **DELEGATION_THRESHOLD**; the remaining accounts become validators.
@@ -191,7 +191,7 @@ The stakeholders can delegate as much stakes as they have.
 The stakeholders can delegate any candidates, including validators and jailed accounts.
 The delegations return automatically when the delegatee becomes eligible or banned.
 
-*DELEGATE* transactions to banned or eligible accounts fail.
+*DELEGATE* transactions to banned, jailed or eligible accounts fail.
 
 
 ### REVOKE
@@ -205,16 +205,14 @@ The revoke occurs immediately, but the validator cannot be ousted before its ter
 The transaction fails when the delegator revokes more than it delegates.
 
 ### REPORT_DOUBLE_VOTE
-* header1
-* sig1
-* header2
-* sig2
+* message1
+* message2
 
 This is a transaction that reports malicious validator.
-The **REPORT_DOUBLE_VOTE** should be reported before 1 term passes.
-The transaction that reports a double vote have occurred before 1 term passes fails.
 
 The criminal loses all his deposit and rewards and is banned immediately; it is the only case where a validator set is changed during the term.
+It's possible that the criminal has neither deposit nor rewards if the **REPORT_DOUBLE_VOTE** is reported after 1 term passes.
+In this case, the informant gets no reward; however, the transaction still bans the criminal.
 
 The informant receives the deposit of the criminal as prize money immediately.
 The express fee that the criminal would earn is used as additional rewards for diligent validators.
@@ -223,18 +221,21 @@ The criminal becomes a banned account.
 The account cannot become a candidate anymore.
 In other words, the *DELEGATE* transaction to the banned account and the *SELF_NOMINATE* transaction from the banned account fail.
 
+The type of the messages depends on the consensus engine. For example, type Message type of Tendermint is
+[ConsensusMessage](https://github.com/CodeChain-io/codechain/blob/91125ae49891c375d63e75fd5ac81b0a0d3a9cff/core/src/consensus/tendermint/message.rs#L269).
+
 ## Implementation
 ### States
 ```
 stakeholders = [ address+ ], address asc
 balance(address) = quantity
 delegation(delegator) = [ [delegatee, quantity]+ ], delegatee asc
-candidates = [ [pubkey, deposits, nominate_end_at]+ ], pubkey asc
+candidates = [ [pubkey, deposits, nominate_end_at, metadata]+ ], pubkey asc
 banned = [ address+ ], address asc
 jailed = [ [address, deposits, custody_until, released_at]+ ], address asc
 term_id = [ the last block number of the previous term, the current term id ]
 intermediate_rewards = [ [ address, rewards ]+ address asc, [ address, rewards ]+ address asc ]
-validators = [ [ delegation, deposit, pubkey ] ] (delegation, deposit, pubkey) asc
+validators = [ [ weight, delegation, deposit, pubkey ] ] (weight, delegation, deposit, pubkey) asc
 ```
 
 ### on TermEnd events

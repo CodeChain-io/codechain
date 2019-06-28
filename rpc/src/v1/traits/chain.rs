@@ -30,6 +30,10 @@ build_rpc_trait! {
         # [rpc(name = "chain_getTransaction")]
         fn get_transaction(&self, H256) -> Result<Option<Transaction>>;
 
+        /// Gets the signer of transaction with given hash.
+        # [rpc(name = "chain_getTransactionSigner")]
+        fn get_transaction_signer(&self, H256) -> Result<Option<PlatformAddress>>;
+
         /// Query whether the chain has the transaction with given transaction hash.
         # [rpc(name = "chain_containsTransaction")]
         fn contains_transaction(&self, H256) -> Result<bool>;
@@ -144,6 +148,10 @@ build_rpc_trait! {
         /// Return the current term id at given block number
         #[rpc(name = "chain_getTermMetadata")]
         fn get_term_metadata(&self, Option<u64>) -> Result<Option<(u64, u64)>>;
+
+        /// Return the current metadata seq at given block number
+        #[rpc(name = "chain_getMetadataSeq")]
+        fn get_metadata_seq(&self, Option<u64>) -> Result<Option<u64>>;
 
         /// Return the valid block authors
         #[rpc(name = "chain_getPossibleAuthors")]

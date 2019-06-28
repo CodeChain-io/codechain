@@ -23,7 +23,6 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use super::super::BitSet;
 use super::message::VoteStep;
 use crate::block::{IsBlock, SealedBlock};
-use crate::error::Error;
 
 pub type Height = u64;
 pub type View = u64;
@@ -186,11 +185,22 @@ impl<'a> TendermintSealView<'a> {
         }
     }
 
-    pub fn bitset(&self) -> Result<BitSet, Error> {
-        Ok(UntrustedRlp::new(
-            &self.seal.get(3).expect("block went through verify_block_basic; block has .seal_fields() fields; qed"),
-        )
-        .as_val()?)
+    pub fn previous_block_view(&self) -> Result<u64, DecoderError> {
+        let view_rlp =
+            self.seal.get(0).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
+        UntrustedRlp::new(view_rlp.as_slice()).as_val()
+    }
+
+    pub fn consensus_view(&self) -> Result<u64, DecoderError> {
+        let view_rlp =
+            self.seal.get(1).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
+        UntrustedRlp::new(view_rlp.as_slice()).as_val()
+    }
+
+    pub fn bitset(&self) -> Result<BitSet, DecoderError> {
+        let view_rlp =
+            self.seal.get(3).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
+        UntrustedRlp::new(view_rlp.as_slice()).as_val()
     }
 
     pub fn precommits(&self) -> UntrustedRlp<'a> {
@@ -199,7 +209,7 @@ impl<'a> TendermintSealView<'a> {
         )
     }
 
-    pub fn signatures(&self) -> Result<Vec<(usize, SchnorrSignature)>, Error> {
+    pub fn signatures(&self) -> Result<Vec<(usize, SchnorrSignature)>, DecoderError> {
         let precommits = self.precommits();
         let bitset = self.bitset()?;
         debug_assert_eq!(bitset.count(), precommits.item_count()?);
@@ -207,10 +217,10 @@ impl<'a> TendermintSealView<'a> {
         let bitset_iter = bitset.true_index_iter();
 
         let signatures = precommits.iter().map(|rlp| rlp.as_val::<SchnorrSignature>());
-        Ok(bitset_iter
+        bitset_iter
             .zip(signatures)
             .map(|(index, signature)| signature.map(|signature| (index, signature)))
-            .collect::<Result<_, _>>()?)
+            .collect::<Result<_, _>>()
     }
 }
 
@@ -246,6 +256,7 @@ impl TwoThirdsMajority {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Proposal {
     ProposalReceived(H256, Bytes, SchnorrSignature),
     ProposalImported(H256),

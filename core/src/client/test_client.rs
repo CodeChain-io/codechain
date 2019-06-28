@@ -100,6 +100,8 @@ pub struct TestBlockChainClient {
     pub latest_block_timestamp: RwLock<u64>,
     /// Pruning history size to report.
     pub history: RwLock<Option<u64>>,
+    /// Term ID
+    pub term_id: Option<u64>,
 }
 
 impl Default for TestBlockChainClient {
@@ -151,6 +153,7 @@ impl TestBlockChainClient {
             scheme,
             latest_block_timestamp: RwLock::new(10_000_000),
             history: RwLock::new(None),
+            term_id: None,
         };
 
         // insert genesis hash.
@@ -589,6 +592,10 @@ impl EngineInfo for TestBlockChainClient {
         unimplemented!()
     }
 
+    fn metadata_seq(&self, _block_id: BlockId) -> Option<u64> {
+        unimplemented!()
+    }
+
     fn block_reward(&self, _block_number: u64) -> u64 {
         unimplemented!()
     }
@@ -614,11 +621,7 @@ impl TermInfo for TestBlockChainClient {
     }
 
     fn current_term_id(&self, _id: BlockId) -> Option<u64> {
-        None
-    }
-
-    fn state_at_term_begin(&self, _id: BlockId) -> Option<TopLevelState> {
-        None
+        self.term_id
     }
 }
 

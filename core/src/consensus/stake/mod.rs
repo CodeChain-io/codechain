@@ -30,11 +30,12 @@ use ctypes::{CommonParams, Header};
 use primitives::{Bytes, H256};
 use rlp::{Decodable, UntrustedRlp};
 
-pub use self::action_data::Validators;
-use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
+pub use self::action_data::{Banned, Validator, Validators};
+use self::action_data::{
+    Candidates, Delegation, Deposit, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders,
+};
 use self::actions::Action;
 pub use self::distribute::fee_distribute;
-use consensus::stake::action_data::Banned;
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 
@@ -77,7 +78,7 @@ impl ActionHandler for Stake {
         &self,
         bytes: &[u8],
         state: &mut TopLevelState,
-        sender: &Address,
+        fee_payer: &Address,
         sender_public: &Public,
     ) -> StateResult<()> {
         let action = Action::decode(&UntrustedRlp::new(bytes)).expect("Verification passed");
@@ -85,15 +86,15 @@ impl ActionHandler for Stake {
             Action::TransferCCS {
                 address,
                 quantity,
-            } => transfer_ccs(state, sender, &address, quantity),
+            } => transfer_ccs(state, fee_payer, &address, quantity),
             Action::DelegateCCS {
                 address,
                 quantity,
-            } => delegate_ccs(state, sender, &address, quantity),
+            } => delegate_ccs(state, fee_payer, &address, quantity),
             Action::Revoke {
                 address,
                 quantity,
-            } => revoke(state, sender, &address, quantity),
+            } => revoke(state, fee_payer, &address, quantity),
             Action::SelfNominate {
                 deposit,
                 metadata,
@@ -109,7 +110,7 @@ impl ActionHandler for Stake {
                     let nomination_ends_at = current_term + expiration;
                     (current_term, nomination_ends_at)
                 };
-                self_nominate(state, sender, sender_public, deposit, current_term, nomination_ends_at, metadata)
+                self_nominate(state, fee_payer, sender_public, deposit, current_term, nomination_ends_at, metadata)
             }
             Action::ChangeParams {
                 metadata_seq,
@@ -136,11 +137,11 @@ impl ActionHandler for Stake {
     }
 }
 
-fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address, quantity: u64) -> StateResult<()> {
+fn transfer_ccs(state: &mut TopLevelState, fee_payer: &Address, receiver: &Address, quantity: u64) -> StateResult<()> {
     let mut stakeholders = Stakeholders::load_from_state(state)?;
-    let mut sender_account = StakeAccount::load_from_state(state, sender)?;
+    let mut sender_account = StakeAccount::load_from_state(state, fee_payer)?;
     let mut receiver_account = StakeAccount::load_from_state(state, receiver)?;
-    let sender_delegations = Delegation::load_from_state(state, sender)?;
+    let sender_delegations = Delegation::load_from_state(state, fee_payer)?;
 
     sender_account.subtract_balance(quantity)?;
     receiver_account.add_balance(quantity)?;
@@ -152,24 +153,23 @@ fn transfer_ccs(state: &mut TopLevelState, sender: &Address, receiver: &Address,
     sender_account.save_to_state(state)?;
     receiver_account.save_to_state(state)?;
 
+    ctrace!(ENGINE, "Transferred CCS fee_payer: {}, receiver: {}, quantity: {}", fee_payer, receiver, quantity);
     Ok(())
 }
 
-fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
-    let banned = Banned::load_from_state(state)?;
-    if banned.is_banned(&delegatee) {
-        return Err(RuntimeError::FailedToHandleCustomAction("Delegatee is banned".to_string()).into())
-    }
+fn delegate_ccs(state: &mut TopLevelState, fee_payer: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
     let candidates = Candidates::load_from_state(state)?;
-    let jail = Jail::load_from_state(state)?;
-    if candidates.get_candidate(delegatee).is_none() && jail.get_prisoner(delegatee).is_none() {
-        return Err(
-            RuntimeError::FailedToHandleCustomAction("Can delegate to who is a candidate or a prisoner".into()).into()
-        )
+    if candidates.get_candidate(delegatee).is_none() {
+        return Err(RuntimeError::FailedToHandleCustomAction("Can delegate to who is a candidate".into()).into())
     }
 
-    let mut delegator = StakeAccount::load_from_state(state, sender)?;
-    let mut delegation = Delegation::load_from_state(state, &sender)?;
+    let banned = Banned::load_from_state(state)?;
+    let jailed = Jail::load_from_state(state)?;
+    assert!(!banned.is_banned(&delegatee), "A candidate must not be banned");
+    assert_eq!(None, jailed.get_prisoner(delegatee), "A candidate must not be jailed");
+
+    let mut delegator = StakeAccount::load_from_state(state, fee_payer)?;
+    let mut delegation = Delegation::load_from_state(state, &fee_payer)?;
 
     delegator.subtract_balance(quantity)?;
     delegation.add_quantity(*delegatee, quantity)?;
@@ -177,12 +177,14 @@ fn delegate_ccs(state: &mut TopLevelState, sender: &Address, delegatee: &Address
 
     delegation.save_to_state(state)?;
     delegator.save_to_state(state)?;
+
+    ctrace!(ENGINE, "Delegated CCS. delegator: {}, delegatee: {}, quantity: {}", fee_payer, delegatee, quantity);
     Ok(())
 }
 
-fn revoke(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
-    let mut delegator = StakeAccount::load_from_state(state, sender)?;
-    let mut delegation = Delegation::load_from_state(state, &sender)?;
+fn revoke(state: &mut TopLevelState, fee_payer: &Address, delegatee: &Address, quantity: u64) -> StateResult<()> {
+    let mut delegator = StakeAccount::load_from_state(state, fee_payer)?;
+    let mut delegation = Delegation::load_from_state(state, &fee_payer)?;
 
     delegator.add_balance(quantity)?;
     delegation.subtract_quantity(*delegatee, quantity)?;
@@ -190,41 +192,56 @@ fn revoke(state: &mut TopLevelState, sender: &Address, delegatee: &Address, quan
 
     delegation.save_to_state(state)?;
     delegator.save_to_state(state)?;
+
+    ctrace!(ENGINE, "Revoked CCS. delegator: {}, delegatee: {}, quantity: {}", fee_payer, delegatee, quantity);
     Ok(())
 }
 
 fn self_nominate(
     state: &mut TopLevelState,
-    sender: &Address,
+    fee_payer: &Address,
     sender_public: &Public,
     deposit: u64,
     current_term: u64,
     nomination_ends_at: u64,
     metadata: Bytes,
 ) -> StateResult<()> {
+    if public_to_address(sender_public) != *fee_payer {
+        return Err(RuntimeError::FailedToHandleCustomAction("Cannot Self-nominate with regular key".to_string()).into())
+    }
+
     let blacklist = Banned::load_from_state(state)?;
-    if blacklist.is_banned(&sender) {
+    if blacklist.is_banned(&fee_payer) {
         return Err(RuntimeError::FailedToHandleCustomAction("Account is blacklisted".to_string()).into())
     }
 
     let mut jail = Jail::load_from_state(&state)?;
-    let total_deposit = match jail.try_release(sender, current_term) {
+    let total_deposit = match jail.try_release(fee_payer, current_term) {
         ReleaseResult::InCustody => {
             return Err(RuntimeError::FailedToHandleCustomAction("Account is still in custody".to_string()).into())
         }
         ReleaseResult::NotExists => deposit,
         ReleaseResult::Released(prisoner) => {
-            assert_eq!(&prisoner.address, sender);
+            assert_eq!(&prisoner.address, fee_payer);
             prisoner.deposit + deposit
         }
     };
 
     let mut candidates = Candidates::load_from_state(&state)?;
-    state.sub_balance(sender, deposit)?;
+    state.sub_balance(fee_payer, deposit)?;
     candidates.add_deposit(sender_public, total_deposit, nomination_ends_at, metadata);
 
     jail.save_to_state(state)?;
     candidates.save_to_state(state)?;
+
+    ctrace!(
+        ENGINE,
+        "Self-nominated. nominee: {}, deposit: {}, current_term: {}, ends_at: {}",
+        fee_payer,
+        deposit,
+        current_term,
+        nomination_ends_at
+    );
     Ok(())
 }
 
@@ -263,16 +280,10 @@ pub fn move_current_to_previous_intermediate_rewards(state: &mut TopLevelState) 
     rewards.save_to_state(state)
 }
 
-pub fn update_validator_weights(
-    state: &mut TopLevelState,
-    block_author: &Address,
-    state_at_term_begin: &TopLevelState,
-) -> StateResult<()> {
-    let min_delegation = Validators::load_from_state(state_at_term_begin)?.min_delegation();
+pub fn update_validator_weights(state: &mut TopLevelState, block_author: &Address) -> StateResult<()> {
     let mut validators = Validators::load_from_state(state)?;
-    validators.update(block_author, min_delegation);
-    validators.save_to_state(state)?;
-    Ok(())
+    validators.update_weight(block_author);
+    validators.save_to_state(state)
 }
 
 fn change_params(
@@ -306,29 +317,41 @@ fn change_params(
         })
         .into())
     }
+
+    ctrace!(ENGINE, "ChangeParams. params: {:?}", params);
     Ok(())
 }
 
-pub fn on_term_close(state: &mut TopLevelState, last_term_finished_block_num: u64) -> StateResult<()> {
+pub fn on_term_close(
+    state: &mut TopLevelState,
+    last_term_finished_block_num: u64,
+    inactive_validators: &[Address],
+) -> StateResult<()> {
     let metadata = state.metadata()?.expect("The metadata must exist");
     let current_term = metadata.current_term_id();
-    let nomination_expiration = metadata
-        .params()
-        .expect(
+    ctrace!(ENGINE, "on_term_close. current_term: {}", current_term);
+
+    let (nomination_expiration, custody_until, kick_at) = {
+        let metadata = metadata.params().expect(
             "Term close events can be called after the ChangeParams called, \
              so the metadata always has CommonParams",
-        )
-        .nomination_expiration();
-    assert_ne!(0, nomination_expiration);
+        );
+        let nomination_expiration = metadata.nomination_expiration();
+        assert_ne!(0, nomination_expiration);
+        let custody_period = metadata.custody_period();
+        assert_ne!(0, custody_period);
+        let release_period = metadata.release_period();
+        assert_ne!(0, release_period);
+        (nomination_expiration, current_term + custody_period, current_term + release_period)
+    };
 
-    // TODO: total_slash = slash_unresponsive(headers, pending_rewards)
-    // TODO: pending_rewards.update(signature_reward(blocks, total_slash))
-
-    let expired = update_candidates(state, current_term, nomination_expiration)?;
+    let expired = update_candidates(state, current_term, nomination_expiration, inactive_validators)?;
     let released = release_jailed_prisoners(state, current_term)?;
 
     let reverted: Vec<_> = expired.into_iter().chain(released).collect();
     revert_delegations(state, &reverted)?;
+
+    jail(state, inactive_validators, custody_until, kick_at)?;
 
     let validators = Validators::elect(state)?;
     validators.save_to_state(state)?;
@@ -341,6 +364,7 @@ fn update_candidates(
     state: &mut TopLevelState,
     current_term: u64,
     nomination_expiration: u64,
+    inactive_validators: &[Address],
 ) -> StateResult<Vec<Address>> {
     let banned = Banned::load_from_state(state)?;
 
@@ -348,11 +372,13 @@ fn update_candidates(
     let nomination_ends_at = current_term + nomination_expiration;
 
     let current_validators = Validators::load_from_state(state)?;
-    candidates.renew_candidates(&current_validators, nomination_ends_at, &banned);
+    candidates.renew_candidates(&current_validators, nomination_ends_at, &inactive_validators, &banned);
 
     let expired = candidates.drain_expired_candidates(current_term);
     for candidate in &expired {
-        state.add_balance(&public_to_address(&candidate.pubkey), candidate.deposit)?;
+        let address = public_to_address(&candidate.pubkey);
+        state.add_balance(&address, candidate.deposit)?;
+        ctrace!(ENGINE, "on_term_close::expired. candidate: {}, deposit: {}", address, candidate.deposit);
     }
     candidates.save_to_state(state)?;
     Ok(expired.into_iter().map(|c| public_to_address(&c.pubkey)).collect())
@@ -363,18 +389,23 @@ fn release_jailed_prisoners(state: &mut TopLevelState, current_term: u64) -> Sta
     let released = jailed.drain_released_prisoners(current_term);
     for prisoner in &released {
         state.add_balance(&prisoner.address, prisoner.deposit)?;
+        ctrace!(ENGINE, "on_term_close::released. prisoner: {}, deposit: {}", prisoner.address, prisoner.deposit);
     }
     jailed.save_to_state(state)?;
     Ok(released.into_iter().map(|p| p.address).collect())
 }
 
-#[allow(dead_code)]
-pub fn jail(state: &mut TopLevelState, address: &Address, custody_until: u64, kick_at: u64) -> StateResult<()> {
+pub fn jail(state: &mut TopLevelState, addresses: &[Address], custody_until: u64, kick_at: u64) -> StateResult<()> {
+    if addresses.is_empty() {
+        return Ok(())
+    }
     let mut candidates = Candidates::load_from_state(state)?;
     let mut jail = Jail::load_from_state(state)?;
 
-    let candidate = candidates.remove(address).expect("There should be a candidate to jail");
-    jail.add(candidate, custody_until, kick_at);
+    for address in addresses {
+        let candidate = candidates.remove(address).expect("There should be a candidate to jail");
+        jail.add(candidate, custody_until, kick_at);
+    }
 
     jail.save_to_state(state)?;
     candidates.save_to_state(state)?;
@@ -382,7 +413,7 @@ pub fn jail(state: &mut TopLevelState, address: &Address, custody_until: u64, ki
 }
 
 #[allow(dead_code)]
-pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
+pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<Deposit> {
     // TODO: remove pending rewards.
     // TODO: give criminal's deposits to the informant
     // TODO: give criminal's rewards to diligent validators
@@ -391,8 +422,12 @@ pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
     let mut jailed = Jail::load_from_state(state)?;
     let mut validators = Validators::load_from_state(state)?;
 
-    candidates.remove(&criminal);
-    jailed.remove(&criminal);
+    let deposit = match (candidates.remove(&criminal), jailed.remove(&criminal)) {
+        (Some(_), Some(_)) => unreachable!("A candidate that are jailed cannot exist"),
+        (Some(candidate), _) => candidate.deposit,
+        (_, Some(jailed)) => jailed.deposit,
+        _ => 0,
+    };
     banned.add(criminal);
     validators.remove(&criminal);
 
@@ -404,7 +439,7 @@ pub fn ban(state: &mut TopLevelState, criminal: Address) -> StateResult<()> {
     // Revert delegations
     revert_delegations(state, &[criminal])?;
 
-    Ok(())
+    Ok(deposit)
 }
 
 fn revert_delegations(state: &mut TopLevelState, reverted_delegatees: &[Address]) -> StateResult<()> {
@@ -420,6 +455,13 @@ fn revert_delegations(state: &mut TopLevelState, reverted_delegatees: &[Address]
             if quantity > 0 {
                 delegation.subtract_quantity(*delegatee, quantity)?;
                 delegator.add_balance(quantity)?;
+                ctrace!(
+                    ENGINE,
+                    "revert_delegation delegator: {}, delegatee: {}, quantity: {}",
+                    stakeholder,
+                    delegatee,
+                    quantity
+                );
             }
         }
         delegation.save_to_state(state)?;
@@ -938,7 +980,7 @@ mod tests {
         // TODO: change with stake.execute()
         self_nominate(&mut state, &address, &address_pubkey, 200, 0, 30, b"".to_vec()).unwrap();
 
-        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29));
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29), &[]);
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 800, "Should keep nomination before expiration");
@@ -954,7 +996,7 @@ mod tests {
             "Keep deposit before expiration",
         );
 
-        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30));
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30), &[]);
         assert_eq!(result, Ok(()));
 
         assert_eq!(state.balance(&address).unwrap(), 1000, "Return deposit after expiration");
@@ -989,7 +1031,7 @@ mod tests {
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29));
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(29), &[]);
         assert_eq!(result, Ok(()));
 
         let account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -997,7 +1039,7 @@ mod tests {
         let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
         assert_eq!(delegation.get_quantity(&address), 40, "Should keep delegation before expiration");
 
-        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30));
+        let result = on_term_close(&mut state, pseudo_term_to_block_num_calculator(30), &[]);
         assert_eq!(result, Ok(()));
 
         let account = StakeAccount::load_from_state(&state, &delegator).unwrap();
@@ -1023,7 +1065,7 @@ mod tests {
 
         let custody_until = 10;
         let released_at = 20;
-        let result = jail(&mut state, &address, custody_until, released_at);
+        let result = jail(&mut state, &[address], custody_until, released_at);
         assert!(result.is_ok());
 
         let candidates = Candidates::load_from_state(&state).unwrap();
@@ -1061,7 +1103,7 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         for current_term in 0..=custody_until {
             let result = self_nominate(
@@ -1079,7 +1121,7 @@ mod tests {
                 current_term,
                 custody_until
             );
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
     }
 
@@ -1101,9 +1143,9 @@ mod tests {
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"metadata-before".to_vec())
             .unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
         for current_term in 0..=custody_until {
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
 
         let current_term = custody_until + 1;
@@ -1154,10 +1196,10 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         for current_term in 0..released_at {
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
 
             let candidates = Candidates::load_from_state(&state).unwrap();
             assert_eq!(candidates.get_candidate(&address), None);
@@ -1166,7 +1208,7 @@ mod tests {
             assert!(jail.get_prisoner(&address).is_some());
         }
 
-        on_term_close(&mut state, pseudo_term_to_block_num_calculator(released_at)).unwrap();
+        on_term_close(&mut state, pseudo_term_to_block_num_calculator(released_at), &[]).unwrap();
 
         let candidates = Candidates::load_from_state(&state).unwrap();
         assert_eq!(candidates.get_candidate(&address), None, "A prisoner should not become a candidate");
@@ -1178,7 +1220,7 @@ mod tests {
     }
 
     #[test]
-    fn can_delegate_until_released() {
+    fn cannot_delegate_until_released() {
         let address_pubkey = Public::random();
         let delegator_pubkey = Public::random();
         let address = public_to_address(&address_pubkey);
@@ -1200,7 +1242,7 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
 
         for current_term in 0..=released_at {
             let action = Action::DelegateCCS {
@@ -1208,9 +1250,9 @@ mod tests {
                 quantity: 1,
             };
             let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
-            assert!(result.is_ok());
+            assert_ne!(Ok(()), result);
 
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
 
         let action = Action::DelegateCCS {
@@ -1244,7 +1286,6 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, deposit, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
@@ -1252,8 +1293,10 @@ mod tests {
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
+
         for current_term in 0..=released_at {
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
 
         let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
@@ -1285,15 +1328,17 @@ mod tests {
         let custody_until = 10;
         let released_at = 20;
         self_nominate(&mut state, &address, &address_pubkey, 0, 0, nominate_expire, b"".to_vec()).unwrap();
-        jail(&mut state, &address, custody_until, released_at).unwrap();
 
         let action = Action::DelegateCCS {
             address,
             quantity: 40,
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
+
+        jail(&mut state, &[address], custody_until, released_at).unwrap();
+
         for current_term in 0..custody_until {
-            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term)).unwrap();
+            on_term_close(&mut state, pseudo_term_to_block_num_calculator(current_term), &[]).unwrap();
         }
 
         let current_term = custody_until + 1;
@@ -1332,15 +1377,15 @@ mod tests {
         };
         stake.init(&mut state).unwrap();
 
-        self_nominate(&mut state, &criminal, &criminal_pubkey, 100, 0, 10, b"".to_vec()).unwrap();
+        let deposit = 100;
+        self_nominate(&mut state, &criminal, &criminal_pubkey, deposit, 0, 10, b"".to_vec()).unwrap();
         let action = Action::DelegateCCS {
             address: criminal,
             quantity: 40,
         };
         stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
 
-        let result = ban(&mut state, criminal);
-        assert!(result.is_ok());
+        assert_eq!(Ok(deposit), ban(&mut state, criminal));
 
         let banned = Banned::load_from_state(&state).unwrap();
         assert!(banned.is_banned(&criminal));
@@ -1365,14 +1410,15 @@ mod tests {
         let mut state = helpers::get_temp_state();
         let stake = Stake::new(HashMap::new());
         stake.init(&mut state).unwrap();
+        assert_eq!(Ok(()), state.add_balance(&criminal, 100));
 
-        self_nominate(&mut state, &criminal, &criminal_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+        let deposit = 10;
+        self_nominate(&mut state, &criminal, &criminal_pubkey, deposit, 0, 10, b"".to_vec()).unwrap();
         let custody_until = 10;
         let released_at = 20;
-        jail(&mut state, &criminal, custody_until, released_at).unwrap();
+        jail(&mut state, &[criminal], custody_until, released_at).unwrap();
 
-        let result = ban(&mut state, criminal);
-        assert!(result.is_ok());
+        assert_eq!(Ok(deposit), ban(&mut state, criminal));
 
         let jail = Jail::load_from_state(&state).unwrap();
         assert_eq!(jail.get_prisoner(&criminal), None, "Should be removed from the jail");

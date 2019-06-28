@@ -376,7 +376,14 @@ impl Worker {
     fn block_proposer_idx(&self, block_hash: H256) -> Option<usize> {
         self.client().block_header(&BlockId::Hash(block_hash)).map(|header| {
             let proposer = header.author();
-            let parent = header.parent_hash();
+            let parent = if header.number() == 0 {
+                // Genesis block's parent is not exist
+                // FIXME: The DynamicValidator should handle the Genesis block correctly.
+                block_hash
+            } else {
+                header.parent_hash()
+            };
+
             self.validators.get_index_by_address(&parent, &proposer).expect("The proposer must be in the validator set")
         })
     }
@@ -424,13 +431,11 @@ impl Worker {
         };
 
         let all_votes = self.votes.get_all_votes_in_round(&vote_step);
-        let proposal = all_votes.first();
+        let proposal = all_votes.first()?;
 
-        proposal.and_then(|proposal| {
-            let block_hash = proposal.on.block_hash.expect("Proposal message always include block hash");
-            let bytes = self.client().block(&BlockId::Hash(block_hash)).map(encoded::Block::into_inner);
-            bytes.map(|bytes| (proposal.signature, proposal.signer_index, bytes))
-        })
+        let block_hash = proposal.on.block_hash.expect("Proposal message always include block hash");
+        let bytes = self.client().block(&BlockId::Hash(block_hash))?.into_inner();
+        Some((proposal.signature, proposal.signer_index, bytes))
     }
 
     pub fn vote_step(&self) -> VoteStep {
@@ -462,22 +467,24 @@ impl Worker {
     }
 
     /// Check if address is a proposer for given view.
-    fn check_view_proposer(&self, bh: &H256, height: Height, view: View, address: &Address) -> Result<(), EngineError> {
-        self.view_proposer(bh, view).map_or(
-            Err(EngineError::PrevBlockNotExist {
-                height: height as u64,
-            }),
-            |proposer| {
-                if proposer == *address {
-                    Ok(())
-                } else {
-                    Err(EngineError::NotProposer(Mismatch {
-                        expected: proposer,
-                        found: *address,
-                    }))
-                }
-            },
-        )
+    fn check_view_proposer(
+        &self,
+        parent: &H256,
+        height: Height,
+        view: View,
+        address: &Address,
+    ) -> Result<(), EngineError> {
+        let proposer = self.view_proposer(parent, view).ok_or_else(|| EngineError::PrevBlockNotExist {
+            height: height as u64,
+        })?;
+        if proposer == *address {
+            Ok(())
+        } else {
+            Err(EngineError::NotProposer(Mismatch {
+                expected: proposer,
+                found: *address,
+            }))
+        }
     }
 
     /// Check if current signer is the current proposer.
@@ -504,8 +511,13 @@ impl Worker {
     }
 
     fn has_enough_aligned_votes(&self, message: &ConsensusMessage) -> bool {
+        let parent_hash = self
+            .client()
+            .block_header(&(message.on.step.height - 1).into())
+            .expect("The parent of the vote must exist")
+            .hash();
         let aligned_votes = self.votes.aligned_votes(&message);
-        self.validators.check_enough_votes(&self.prev_block_hash(), &aligned_votes).is_ok()
+        self.validators.check_enough_votes(&parent_hash, &aligned_votes).is_ok()
     }
 
     fn has_enough_precommit_votes(&self, block_hash: H256) -> bool {
@@ -752,30 +764,28 @@ impl Worker {
             block_hash,
         };
         let vote_info = on.rlp_bytes();
-        match (self.signer_index(), self.sign(blake256(&vote_info))) {
-            (Some(signer_index), Ok(signature)) => {
-                let message = ConsensusMessage {
-                    signature,
-                    signer_index,
-                    on,
-                };
-                let message_rlp = message.rlp_bytes().into_vec();
-                self.votes_received.set(signer_index);
-                self.votes.vote(message.clone());
-                cinfo!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
-                self.handle_valid_message(&message, is_restoring);
-
-                Some(message_rlp)
-            }
-            (None, _) => {
-                ctrace!(ENGINE, "No message, since there is no engine signer.");
-                None
-            }
-            (Some(signer_index), Err(error)) => {
+        let signer_index = self.signer_index().or_else(|| {
+            ctrace!(ENGINE, "No message, since there is no engine signer.");
+            None
+        })?;
+        let signature = self
+            .sign(blake256(&vote_info))
+            .map_err(|error| {
                 ctrace!(ENGINE, "{}th validator could not sign the message {}", signer_index, error);
-                None
-            }
-        }
+                error
+            })
+            .ok()?;
+        let message = ConsensusMessage {
+            signature,
+            signer_index,
+            on,
+        };
+        self.votes_received.set(signer_index);
+        self.votes.vote(message.clone());
+        cinfo!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
+        self.handle_valid_message(&message, is_restoring);
+
+        Some(message.rlp_bytes().into_vec())
     }
 
     fn handle_valid_message(&mut self, message: &ConsensusMessage, is_restoring: bool) {
@@ -857,12 +867,12 @@ impl Worker {
         }
 
         let height = proposal.number() as Height;
-        let prev_block_view = previous_block_view(proposal).expect("The proposal is verified");
+        let seal_view = TendermintSealView::new(proposal.seal());
+        let prev_block_view = seal_view.previous_block_view().expect("The proposal is verified");
         let on = VoteOn {
             step: VoteStep::new(height - 1, prev_block_view, Step::Precommit),
             block_hash: Some(*proposal.parent_hash()),
         };
-        let seal_view = TendermintSealView::new(proposal.seal());
         for (index, signature) in seal_view.signatures().expect("The proposal is verified") {
             let message = ConsensusMessage {
                 signature,
@@ -916,7 +926,7 @@ impl Worker {
             };
         } else if current_height < height {
             self.move_to_height(height);
-            let prev_block_view = previous_block_view(proposal).unwrap();
+            let prev_block_view = TendermintSealView::new(proposal.seal()).previous_block_view().unwrap();
             self.save_last_confirmed_view(prev_block_view);
             let proposal_at_view_0 = self
                 .votes
@@ -990,9 +1000,9 @@ impl Worker {
             return Seal::None
         }
 
-        assert_eq!(true, self.is_signer_proposer(&parent_hash));
-        assert_eq!(true, self.proposal.is_none());
-        assert_eq!(true, height == self.height);
+        assert!(self.is_signer_proposer(&parent_hash));
+        assert_eq!(Proposal::None, self.proposal);
+        assert_eq!(height, self.height);
 
         let view = self.view;
 
@@ -1007,7 +1017,7 @@ impl Worker {
         Seal::Tendermint {
             prev_view: *last_block_view,
             cur_view: view,
-            precommits: precommits.clone(),
+            precommits,
             precommit_bitset,
         }
     }
@@ -1031,14 +1041,13 @@ impl Worker {
         }
         let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
 
-        debug_assert_eq!(self.view, consensus_view(&header).expect("I am proposer"));
+        debug_assert_eq!(Ok(self.view), TendermintSealView::new(header.seal()).consensus_view());
 
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(hash));
-        let num_validators = self.validators.count(parent_hash);
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(
-            ConsensusMessage::new_proposal(signature, num_validators, header, self.view, prev_proposer_idx)
+            ConsensusMessage::new_proposal(signature, &*self.validators, header, self.view, prev_proposer_idx)
                 .expect("I am proposer"),
         );
 
@@ -1059,7 +1068,7 @@ impl Worker {
         }
 
         let height = header.number();
-        let view = consensus_view(header).unwrap();
+        let view = TendermintSealView::new(header.seal()).consensus_view().unwrap();
         let score = calculate_score(height, view);
 
         if *header.score() != score {
@@ -1075,14 +1084,13 @@ impl Worker {
 
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
         let height = header.number() as usize;
-        let view = consensus_view(header).unwrap();
+        let view = TendermintSealView::new(header.seal()).consensus_view()?;
         ctrace!(ENGINE, "Verify external at {}-{}, {:?}", height, view, header);
         let proposer = header.author();
         if !self.is_authority(header.parent_hash(), proposer) {
             return Err(EngineError::BlockNotAuthorized(*proposer).into())
         }
-        self.check_view_proposer(header.parent_hash(), header.number(), consensus_view(header)?, &proposer)
-            .map_err(Error::from)?;
+        self.check_view_proposer(header.parent_hash(), header.number(), view, &proposer)?;
         let seal_view = TendermintSealView::new(header.seal());
         let bitset_count = seal_view.bitset()?.count();
         let precommits_count = seal_view.precommits().item_count()?;
@@ -1105,13 +1113,18 @@ impl Worker {
             return Err(BlockError::InvalidSeal.into())
         }
 
-        let previous_block_view = previous_block_view(header)?;
+        let previous_block_view = TendermintSealView::new(header.seal()).previous_block_view()?;
         let step = VoteStep::new(header.number() - 1, previous_block_view, Step::Precommit);
         let precommit_hash = message_hash(step, *header.parent_hash());
 
         let mut voted_validators = BitSet::new();
+        let grand_parent_hash = self
+            .client()
+            .block_header(&(*header.parent_hash()).into())
+            .expect("The parent block must exist")
+            .parent_hash();
         for (bitset_index, signature) in seal_view.signatures()? {
-            let public = self.validators.get(header.parent_hash(), bitset_index);
+            let public = self.validators.get(&grand_parent_hash, bitset_index);
             if !verify_schnorr(&public, &signature, &precommit_hash)? {
                 let address = public_to_address(&public);
                 return Err(EngineError::BlockNotAuthorized(address.to_owned()).into())
@@ -1124,7 +1137,7 @@ impl Worker {
         if header.number() == 1 {
             return Ok(())
         }
-        self.validators.check_enough_votes(header.parent_hash(), &voted_validators)?;
+        self.validators.check_enough_votes(&grand_parent_hash, &voted_validators)?;
         Ok(())
     }
 
@@ -1179,61 +1192,58 @@ impl Worker {
                         .expect("Height is increased when previous block is imported");
                     self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
                 }
-                Some(Step::Prevote)
+                Step::Prevote
             }
             TendermintState::ProposeWaitBlockGeneration {
                 ..
             } => {
                 cwarn!(ENGINE, "Propose timed out but block is not generated yet");
-                None
+                return
             }
             TendermintState::ProposeWaitImported {
                 ..
             } => {
                 cwarn!(ENGINE, "Propose timed out but still waiting for the block imported");
-                None
+                return
             }
             TendermintState::ProposeWaitEmptyBlockTimer {
                 ..
             } => {
                 cwarn!(ENGINE, "Propose timed out but still waiting for the empty block");
-                None
+                return
             }
             TendermintState::Prevote if self.has_enough_any_votes() => {
                 cinfo!(ENGINE, "Prevote timeout.");
-                Some(Step::Precommit)
+                Step::Precommit
             }
             TendermintState::Prevote => {
                 cinfo!(ENGINE, "Prevote timeout without enough votes.");
-                Some(Step::Prevote)
+                Step::Prevote
             }
             TendermintState::Precommit if self.has_enough_any_votes() => {
                 cinfo!(ENGINE, "Precommit timeout.");
                 self.increment_view(1);
-                Some(Step::Propose)
+                Step::Propose
             }
             TendermintState::Precommit => {
                 cinfo!(ENGINE, "Precommit timeout without enough votes.");
-                Some(Step::Precommit)
+                Step::Precommit
             }
             TendermintState::Commit => {
                 cinfo!(ENGINE, "Commit timeout.");
-                if self.check_current_block_exists() {
-                    let height = self.height;
-                    self.move_to_height(height + 1);
-                    Some(Step::Propose)
-                } else {
+                if !self.check_current_block_exists() {
                     cwarn!(ENGINE, "Best chain is not updated yet, wait until imported");
                     self.step = TendermintState::CommitTimedout;
-                    None
+                    return
                 }
+                let height = self.height;
+                self.move_to_height(height + 1);
+                Step::Propose
             }
             TendermintState::CommitTimedout => unreachable!(),
         };
 
-        if let Some(next_step) = next_step {
-            self.move_to_step(next_step, false);
-        }
+        self.move_to_step(next_step, false);
     }
 
     fn is_expired_timeout_token(&self, nonce: usize) -> bool {
@@ -1342,11 +1352,10 @@ impl Worker {
         let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
         let vote_info = message_info_rlp(vote_step, Some(header.hash()));
         let parent_hash = header.parent_hash();
-        let num_validators = self.validators.count(&parent_hash);
         let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
         let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
         self.votes.vote(
-            ConsensusMessage::new_proposal(signature, num_validators, &header, self.view, prev_proposer_idx)
+            ConsensusMessage::new_proposal(signature, &*self.validators, &header, self.view, prev_proposer_idx)
                 .expect("I am proposer"),
         );
 
@@ -1408,7 +1417,9 @@ impl Worker {
                 } else if self.height < header.number() {
                     height_changed = true;
                     cinfo!(ENGINE, "Received a commit: {:?}.", header.number());
-                    let prev_block_view = previous_block_view(&full_header).expect("Imported block already checked");
+                    let prev_block_view = TendermintSealView::new(full_header.seal())
+                        .previous_block_view()
+                        .expect("Imported block already checked");
                     self.move_to_height(header.number());
                     self.save_last_confirmed_view(prev_block_view);
                 }
@@ -1476,10 +1487,7 @@ impl Worker {
         proposed_view: View,
         bytes: Bytes,
     ) -> Option<Arc<ConsensusClient>> {
-        let c = match self.client.upgrade() {
-            Some(c) => c,
-            None => return None,
-        };
+        let c = self.client.upgrade()?;
 
         // This block borrows bytes
         {
@@ -1503,7 +1511,6 @@ impl Worker {
                 }
             }
 
-            let num_validators = self.validators.count(&parent_hash);
             let prev_proposer_idx = match self.block_proposer_idx(*parent_hash) {
                 Some(idx) => idx,
                 None => {
@@ -1512,19 +1519,17 @@ impl Worker {
                 }
             };
 
-            let message = match ConsensusMessage::new_proposal(
+            let message = ConsensusMessage::new_proposal(
                 signature,
-                num_validators,
+                &*self.validators,
                 &header_view,
                 proposed_view,
                 prev_proposer_idx,
-            ) {
-                Ok(message) => message,
-                Err(err) => {
-                    cwarn!(ENGINE, "Invalid proposal received: {:?}", err);
-                    return None
-                }
-            };
+            )
+            .map_err(|err| {
+                cwarn!(ENGINE, "Invalid proposal received: {:?}", err);
+            })
+            .ok()?;
 
             // If the proposal's height is current height + 1 and the proposal has valid precommits,
             // we should import it and increase height
@@ -1560,7 +1565,9 @@ impl Worker {
                 // The proposer re-proposed its locked proposal.
                 // If we already imported the proposal, we should set `proposal` here.
                 if c.block(&BlockId::Hash(header_view.hash())).is_some() {
-                    let generated_view = consensus_view(&header_view).expect("Imported block is verified");
+                    let generated_view = TendermintSealView::new(header_view.seal())
+                        .consensus_view()
+                        .expect("Imported block is verified");
                     cdebug!(
                         ENGINE,
                         "Received a proposal({}) by a locked proposer. current view: {}, original proposal's view: {}",

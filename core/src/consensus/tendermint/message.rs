@@ -23,6 +23,7 @@ use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use snap;
 
+use super::super::validator_set::DynamicValidator;
 use super::super::vote_collector::Message;
 use super::super::BitSet;
 use super::{BlockHash, Height, Step, View};
@@ -273,35 +274,17 @@ pub struct ConsensusMessage {
 }
 
 impl ConsensusMessage {
-    #[cfg(test)]
-    fn new(
-        signature: SchnorrSignature,
-        signer_index: usize,
-        height: Height,
-        view: View,
-        step: Step,
-        block_hash: Option<BlockHash>,
-    ) -> Self {
-        ConsensusMessage {
-            signature,
-            signer_index,
-            on: VoteOn {
-                step: VoteStep::new(height, view, step),
-                block_hash,
-            },
-        }
-    }
-
     /// If a locked node re-proposes locked proposal, the proposed_view is different from the header's view.
     pub fn new_proposal(
         signature: SchnorrSignature,
-        num_validators: usize,
+        validators: &DynamicValidator,
         proposal_header: &Header,
         proposed_view: View,
         prev_proposer_idx: usize,
     ) -> Result<Self, ::rlp::DecoderError> {
         let height = proposal_header.number() as Height;
-        let signer_index = (prev_proposer_idx + proposed_view as usize + 1) % num_validators;
+        let signer_index =
+            validators.proposer_index(*proposal_header.parent_hash(), prev_proposer_idx, proposed_view as usize);
 
         Ok(ConsensusMessage {
             signature,
@@ -317,17 +300,6 @@ impl ConsensusMessage {
         let vote_info = message_info_rlp(self.on.step, self.on.block_hash);
         Ok(verify_schnorr(signer_public, &self.signature, &blake256(vote_info))?)
     }
-}
-
-/// Header consensus view.
-pub fn consensus_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
-    let view_rlp = header.seal().get(1).expect("seal passed basic verification; seal has 3 fields; qed");
-    UntrustedRlp::new(view_rlp.as_slice()).as_val()
-}
-
-pub fn previous_block_view(header: &Header) -> Result<View, ::rlp::DecoderError> {
-    let view_rlp = header.seal().get(0).expect("seal passed basic verification; seal has 3 fields; qed");
-    UntrustedRlp::new(view_rlp.as_slice()).as_val()
 }
 
 impl Message for ConsensusMessage {
@@ -441,14 +413,14 @@ mod tests {
 
     #[test]
     fn encode_and_decode_consensus_message_2() {
-        let message = ConsensusMessage::new(
-            SchnorrSignature::random(),
-            0x1234,
-            2,
-            3,
-            Step::Commit,
-            Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050")),
-        );
+        let message = ConsensusMessage {
+            signature: SchnorrSignature::random(),
+            signer_index: 0x1234,
+            on: VoteOn {
+                step: VoteStep::new(2, 3, Step::Commit),
+                block_hash: Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050")),
+            },
+        };
         rlp_encode_and_decode_test!(message);
     }
 
@@ -458,9 +430,16 @@ mod tests {
         let view = 3;
         let step = Step::Commit;
         let signature = SchnorrSignature::random();
-        let index = 0x1234;
+        let signer_index = 0x1234;
         let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"));
-        let consensus_message = ConsensusMessage::new(signature, index, height, view, step, block_hash);
+        let consensus_message = ConsensusMessage {
+            signature,
+            signer_index,
+            on: VoteOn {
+                step: VoteStep::new(height, view, step),
+                block_hash,
+            },
+        };
         let encoded = consensus_message.rlp_bytes();
         let decoded = rlp::decode::<ConsensusMessage>(&encoded);
         assert_eq!(consensus_message, decoded);

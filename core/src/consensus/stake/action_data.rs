@@ -18,6 +18,8 @@ use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::{self, BTreeSet};
 use std::collections::{btree_map, HashMap};
 use std::mem;
+use std::ops::Deref;
+use std::vec;
 
 use ckey::{public_to_address, Address, Public};
 use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
@@ -227,7 +229,39 @@ impl<'a> Delegation<'a> {
     }
 }
 
-pub struct Validators(Vec<(StakeQuantity, Deposit, Public)>);
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, RlpDecodable, RlpEncodable)]
+pub struct Validator {
+    weight: StakeQuantity,
+    delegation: StakeQuantity,
+    deposit: Deposit,
+    pubkey: Public,
+}
+
+impl Validator {
+    fn new(delegation: StakeQuantity, deposit: Deposit, pubkey: Public) -> Self {
+        Self {
+            weight: delegation,
+            delegation,
+            deposit,
+            pubkey,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.weight = self.delegation;
+    }
+
+    pub fn pubkey(&self) -> &Public {
+        &self.pubkey
+    }
+
+    pub fn delegation(&self) -> StakeQuantity {
+        self.delegation
+    }
+}
+
+#[derive(Debug)]
+pub struct Validators(Vec<Validator>);
 impl Validators {
     pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
         let key = &*VALIDATORS_KEY;
@@ -250,8 +284,10 @@ impl Validators {
         assert!(max_num_of_validators > min_num_of_validators);
 
         let active_candidates = Candidates::active(&state, min_deposit).unwrap();
-        let candidates: HashMap<_, _> =
-            active_candidates.keys().map(|pubkey| (public_to_address(pubkey), *pubkey)).collect();
+        let mut candidates: HashMap<_, (_, Deposit)> = active_candidates
+            .into_iter()
+            .map(|(pubkey, deposit)| (public_to_address(&pubkey), (pubkey, deposit)))
+            .collect();
 
         let banned = Banned::load_from_state(&state)?;
         for address in candidates.keys() {
@@ -259,52 +295,49 @@ impl Validators {
         }
 
         // step 1
-        let mut delegatees: Vec<(StakeQuantity, Public)> = Stakeholders::delegatees(&state)?
+        let mut validators: Vec<Validator> = Stakeholders::delegatees(&state)?
             .into_iter()
-            .filter_map(|(address, delegation)| candidates.get(&address).map(|pubkey| (delegation, *pubkey)))
+            .filter_map(|(address, delegation)| {
+                candidates.remove(&address).map(|(pubkey, deposit)| Validator::new(delegation, deposit, pubkey))
+            })
             .collect();
 
-        delegatees.sort_unstable();
-        delegatees.reverse();
-        let the_highest_score_dropout = delegatees.get(max_num_of_validators).map(|(delegation, _address)| *delegation);
-        let the_lowest_score_first_class = delegatees.get(min_num_of_validators).map(|(delegation, _address)| *delegation)
+        validators.sort_unstable();
+        validators.reverse();
+        let the_highest_score_dropout =
+            validators.get(max_num_of_validators).map(|&validator| (validator.delegation, validator.deposit));
+        let the_lowest_score_first_class = validators.get(min_num_of_validators).map(|&validator| (validator.delegation, validator.deposit))
             // None means there are less than MIN_NUM_OF_VALIDATORS. Allow all remains.
             .unwrap_or_default();
 
         // step 2
-        delegatees.truncate(max_num_of_validators);
+        validators.truncate(max_num_of_validators);
 
         // step 3
         if let Some(the_highest_score_dropout) = the_highest_score_dropout {
-            delegatees.retain(|(delegation, _address)| *delegation > the_highest_score_dropout);
+            validators.retain(|&validator| (validator.delegation, validator.deposit) > the_highest_score_dropout);
         }
 
-        if delegatees.len() < min_num_of_validators {
+        if validators.len() < min_num_of_validators {
             cerror!(
                 ENGINE,
                 "There must be something wrong. {}, {} < {}",
-                "delegatees.len() < min_num_of_validators",
-                delegatees.len(),
+                "validators.len() < min_num_of_validators",
+                validators.len(),
                 min_num_of_validators
             );
         }
-        let validators = delegatees
-            .into_iter()
-            .filter(|(delegation, _pubkey)| {
-                // step 4
-                if *delegation >= the_lowest_score_first_class {
-                    true
-                } else {
-                    // step 5
-                    *delegation >= delegation_threshold
-                }
-            })
-            .map(|(delegation, pubkey)| {
-                let deposit = *active_candidates.get(&pubkey).unwrap();
-                (delegation, deposit, pubkey)
-            })
-            .collect();
+        validators.retain(|&validator| {
+            // step 4
+            if (validator.delegation, validator.deposit) >= the_lowest_score_first_class {
+                true
+            } else {
+                // step 5
+                validator.delegation >= delegation_threshold
+            }
+        });
 
+        validators.reverse();
         Ok(Self(validators))
     }
 
@@ -319,8 +352,14 @@ impl Validators {
         Ok(())
     }
 
-    pub fn update(&mut self, block_author: &Address, min_delegation: StakeQuantity) {
-        for (weight, _deposit, pubkey) in self.0.iter_mut().rev() {
+    pub fn update_weight(&mut self, block_author: &Address) {
+        let min_delegation = self.min_delegation();
+        for Validator {
+            weight,
+            pubkey,
+            ..
+        } in self.0.iter_mut().rev()
+        {
             if public_to_address(pubkey) == *block_author {
                 // block author
                 *weight = weight.saturating_sub(min_delegation);
@@ -329,35 +368,50 @@ impl Validators {
             // neglecting validators
             *weight = weight.saturating_sub(min_delegation * 2);
         }
-        self.0.sort();
+        if self.0.iter().all(|validator| validator.weight == 0) {
+            self.0.iter_mut().for_each(Validator::reset);
+        }
+        self.0.sort_unstable();
     }
 
     pub fn remove(&mut self, target: &Address) {
-        self.0.retain(|(_, _, pubkey)| public_to_address(pubkey) != *target);
+        self.0.retain(
+            |Validator {
+                 pubkey,
+                 ..
+             }| public_to_address(pubkey) != *target,
+        );
     }
 
-    pub fn pubkeys(&self) -> Vec<Public> {
-        self.0.iter().map(|(_weight, _deposit, pubkey)| *pubkey).collect()
+    pub fn delegation(&self, pubkey: &Public) -> Option<StakeQuantity> {
+        self.0.iter().find(|validator| validator.pubkey == *pubkey).map(|&validator| validator.delegation)
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
+    fn min_delegation(&self) -> StakeQuantity {
+        self.0.iter().map(|&validator| validator.delegation).min().expect("There must be at least one validators")
     }
+}
 
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+impl Deref for Validators {
+    type Target = Vec<Validator>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
+}
 
-    pub fn total_weight(&self) -> StakeQuantity {
-        self.0.iter().map(|(weight, _deposit, _pubkey)| weight).sum()
+impl From<Validators> for Vec<Validator> {
+    fn from(val: Validators) -> Self {
+        val.0
     }
+}
 
-    pub fn weight(&self, pubkey: &Public) -> Option<StakeQuantity> {
-        self.0.iter().find(|(_weight, _deposit, val)| val == pubkey).map(|(weight, _deposit, _val)| *weight)
-    }
+impl IntoIterator for Validators {
+    type Item = Validator;
+    type IntoIter = vec::IntoIter<Self::Item>;
 
-    pub fn min_delegation(&self) -> StakeQuantity {
-        self.0.iter().map(|(delegation, ..)| *delegation).min().expect("There must be at least one validators")
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
@@ -466,8 +520,19 @@ impl Candidates {
         candidate.metadata = metadata;
     }
 
-    pub fn renew_candidates(&mut self, validators: &Validators, nomination_ends_at: u64, banned: &Banned) {
-        for address in validators.0.iter().map(|(_, _, pubkey)| public_to_address(pubkey)) {
+    pub fn renew_candidates(
+        &mut self,
+        validators: &Validators,
+        nomination_ends_at: u64,
+        inactive_validators: &[Address],
+        banned: &Banned,
+    ) {
+        for address in validators
+            .0
+            .iter()
+            .map(|validator| public_to_address(&validator.pubkey))
+            .filter(|address| !inactive_validators.contains(address))
+        {
             assert!(!banned.0.contains(&address), "{} is banned address", address);
             self.0.get_mut(&address).expect("Validators must be in the candidates").nomination_ends_at =
                 nomination_ends_at;
@@ -550,8 +615,8 @@ impl Jail {
         });
     }
 
-    pub fn remove(&mut self, address: &Address) {
-        self.0.remove(address);
+    pub fn remove(&mut self, address: &Address) -> Option<Prisoner> {
+        self.0.remove(address)
     }
 
     pub fn try_release(&mut self, address: &Address, term_index: u64) -> ReleaseResult {

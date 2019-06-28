@@ -143,7 +143,7 @@ pub enum Action {
     },
     #[serde(rename_all = "camelCase")]
     Custom {
-        handler_id: u64,
+        handler_id: Uint,
         bytes: Bytes,
     },
 }
@@ -279,7 +279,7 @@ pub enum ActionWithTracker {
     },
     #[serde(rename_all = "camelCase")]
     Custom {
-        handler_id: u64,
+        handler_id: Uint,
         bytes: Bytes,
     },
 }
@@ -482,7 +482,7 @@ impl ActionWithTracker {
                 handler_id,
                 bytes,
             } => ActionWithTracker::Custom {
-                handler_id,
+                handler_id: handler_id.into(),
                 bytes,
             },
         }
@@ -730,7 +730,7 @@ impl TryFrom<Action> for ActionType {
                 handler_id,
                 bytes,
             } => ActionType::Custom {
-                handler_id,
+                handler_id: handler_id.into(),
                 bytes,
             },
         })
