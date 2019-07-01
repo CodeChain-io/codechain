@@ -424,7 +424,8 @@ fn calculate_pending_rewards_of_the_previous_term(
 
     // Give additional rewards
     give_additional_rewards(reduced_rewards, missed_signatures, |address, reward| {
-        pending_rewards.insert(*address, reward);
+        let prev = pending_rewards.entry(*address).or_default();
+        *prev += reward;
         Ok(())
     })?;
 
