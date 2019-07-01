@@ -41,9 +41,9 @@ RUN file /build/codechain/target/release/codechain
 
 FROM ubuntu:18.04
 WORKDIR /app/codechain
+RUN apt-get update && apt-get install -y libssl-dev
 COPY --from=builder /build/codechain/target/release/codechain ./target/release/codechain
 COPY --from=builder /build/codechain/codechain/config/presets/ ./codechain/config/presets
-RUN apt-get update && apt-get install -y libssl-dev
 
 # show backtraces
 ENV RUST_BACKTRACE 1
