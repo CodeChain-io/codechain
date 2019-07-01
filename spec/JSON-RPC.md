@@ -315,7 +315,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [chain_getBlockByHash](#chain_getblockbyhash)
  * [chain_getBlockTransactionCountByHash](#chain_getblocktransactioncountbyhash)
  * [chain_getTransaction](#chain_gettransaction)
- * [chain_getTrnsactionSigner](#chain_gettrnsactionsigner)
+ * [chain_getTransactionSigner](#chain_gettransactionsigner)
  * [chain_containsTransaction](#chain_containstransaction)
  * [chain_getTransactionByTracker](#chain_gettransactionbytracker)
  * [chain_getAssetSchemeByTracker](#chain_getassetschemebytracker)
@@ -760,7 +760,7 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
-## chain_getTrnsactionSigner
+## chain_getTransactionSigner
 Returns the signer of the given transaction hash.
 
 It returns `null` if the transaction hash doesn't exist in the chain.
@@ -775,7 +775,7 @@ It returns `null` if the transaction hash doesn't exist in the chain.
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getTrnsactionSigner", "params": ["0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6"], "id": "who-is-authors"}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getTransactionSigner", "params": ["0xdb7c705d02e8961880783b4cb3dc051c41e551ade244bed5521901d8de190fc6"], "id": "who-is-authors"}' \
     localhost:8080
 ```
 
