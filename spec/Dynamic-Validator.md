@@ -182,6 +182,8 @@ The metadata is text information that proves the identity of the candidate.
 It can be a URL, a phone number, a messenger Id, etc.
 The size of the metadata cannot exceed **MAX_CANDIDATE_METADATA_SIZE** bytes.
 
+The transaction will reprioritize the sender.
+
 ### DELEGATE
 * delegatee
 * quantity
@@ -230,7 +232,7 @@ The type of the messages depends on the consensus engine. For example, type Mess
 stakeholders = [ address+ ], address asc
 balance(address) = quantity
 delegation(delegator) = [ [delegatee, quantity]+ ], delegatee asc
-candidates = [ [pubkey, deposits, nominate_end_at, metadata]+ ], pubkey asc
+candidates = [ [pubkey, deposits, nominate_end_at, metadata]+ ], 'priority' asc. See candidate prioritizing
 banned = [ address+ ], address asc
 jailed = [ [address, deposits, custody_until, released_at]+ ], address asc
 term_id = [ the last block number of the previous term, the current term id ]
@@ -238,9 +240,33 @@ intermediate_rewards = [ [ address, rewards ]+ address asc, [ address, rewards ]
 validators = [ [ weight, delegation, deposit, pubkey ] ] (weight, delegation, deposit, pubkey) asc
 ```
 
+### Candidate prioritizing
+
+We elect validators based on the delegated CCS quantity and deposit amount.
+However, there may be a tie with the same delegations and deposit amount.
+To break a tie, we give priority to the candidate who have responded most recently.
+
+Current validators will have highest priority among candidates with the same `(delegation, deposit)` at the next election.
+The sender of most recent `SelfNominate` transaction will be after them.
+
+Thus, We repriortize candidates on `SelfNomination` transaction and `TermEnd` event with the following algorithm.
+A candidate with higher priority will be stored with a higher index in the `candidates` state.
+
+```rust
+fn reprioritize(candidates: &mut Vec<Candidate>, target: &Address) {
+    let index = candiates
+        .iter()
+        .position(|c| public_to_address(c.pubkey) == target)
+        .unwrap();
+    let existing = candidates.remove(index);
+    candidates.push(existing);
+}
+```
+
 ### on TermEnd events
 1. Update `term_id` to the current block number and the next term id
-2. Renew the nomination expiration of the current validators
+2. Renew the nomination expiration of the current validators, and reprioritize them.
+    * Reprioritization preserves the relative order of the reprioritized validators.
 3. Remove the expired candidates and give back the deposits
 4. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits
 5. Calculate rewards of the previous block and update `intermediate_rewards`

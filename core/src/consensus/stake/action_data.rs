@@ -16,7 +16,7 @@
 
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::{self, BTreeSet};
-use std::collections::{btree_map, HashMap};
+use std::collections::{btree_map, HashMap, HashSet};
 use std::mem;
 use std::ops::Deref;
 use std::vec;
@@ -286,6 +286,7 @@ impl Validators {
         let delegatees = Stakeholders::delegatees(&state)?;
         // Step 1
         let mut validators = Candidates::prepare_validators(&state, min_deposit, &delegatees)?;
+        // validators are now sorted in descending order of (delegation, deposit, priority)
         validators.reverse();
 
         let banned = Banned::load_from_state(&state)?;
@@ -319,7 +320,7 @@ impl Validators {
         let over_threshold = rest.iter().filter(|c| c.delegation >= delegation_threshold);
 
         let mut result: Vec<_> = minimum.iter().chain(over_threshold).cloned().collect();
-        result.reverse();
+        result.reverse(); // Ascending order of (delegation, deposit, priority)
         Ok(Self(result))
     }
 
@@ -472,7 +473,7 @@ impl Candidates {
         Ok(())
     }
 
-    // Sorted list of validators in descending order
+    // Sorted list of validators in ascending order of (delegation, deposit, priority).
     fn prepare_validators(
         state: &TopLevelState,
         min_deposit: Deposit,
@@ -486,7 +487,10 @@ impl Candidates {
                 result.push(Validator::new(delegation, candidate.deposit, candidate.pubkey));
             }
         }
-        result.sort_unstable();
+        // Candidates are sorted in low priority: low index, high priority: high index
+        // so stable sorting with the key (delegation, deposit) preserves its priority order.
+        // ascending order of (delegation, deposit, priority)
+        result.sort_by_key(|v| (v.delegation, v.deposit));
         Ok(result)
     }
 
@@ -497,6 +501,11 @@ impl Candidates {
     #[cfg(test)]
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    #[cfg(test)]
+    pub fn get_index(&self, account: &Address) -> Option<usize> {
+        self.0.iter().position(|c| public_to_address(&c.pubkey) == *account)
     }
 
     pub fn add_deposit(&mut self, pubkey: &Public, quantity: Deposit, nomination_ends_at: u64, metadata: Bytes) {
@@ -514,8 +523,8 @@ impl Candidates {
                 nomination_ends_at,
                 metadata,
             });
-            self.0.sort_unstable_by_key(|c| c.pubkey);
         };
+        self.reprioritize(&[public_to_address(pubkey)]);
     }
 
     pub fn renew_candidates(
@@ -525,20 +534,21 @@ impl Candidates {
         inactive_validators: &[Address],
         banned: &Banned,
     ) {
-        for address in validators
-            .0
-            .iter()
-            .map(|validator| public_to_address(&validator.pubkey))
-            .filter(|address| !inactive_validators.contains(address))
-        {
+        let to_renew: HashSet<_> = (validators.iter())
+            .map(|validator| validator.pubkey)
+            .filter(|pubkey| !inactive_validators.contains(&public_to_address(pubkey)))
+            .collect();
+
+        for candidate in self.0.iter_mut().filter(|c| to_renew.contains(&c.pubkey)) {
+            let address = public_to_address(&candidate.pubkey);
             assert!(!banned.is_banned(&address), "{} is banned address", address);
-            let index = self
-                .0
-                .iter()
-                .position(|c| public_to_address(&c.pubkey) == address)
-                .expect("Validators must be in the candidates");
-            self.0[index].nomination_ends_at = nomination_ends_at;
+            candidate.nomination_ends_at = nomination_ends_at;
         }
+
+        let to_reprioritize: Vec<_> =
+            self.0.iter().filter(|c| to_renew.contains(&c.pubkey)).map(|c| public_to_address(&c.pubkey)).collect();
+
+        self.reprioritize(&to_reprioritize);
     }
 
     pub fn drain_expired_candidates(&mut self, term_index: u64) -> Vec<Candidate> {
@@ -553,6 +563,17 @@ impl Candidates {
         } else {
             None
         }
+    }
+
+    fn reprioritize(&mut self, targets: &[Address]) {
+        let mut renewed = Vec::new();
+        for target in targets {
+            let position = (self.0.iter())
+                .position(|c| public_to_address(&c.pubkey) == *target)
+                .expect("Reprioritize target should be a candidate");
+            renewed.push(self.0.remove(position));
+        }
+        self.0.append(&mut renewed);
     }
 }
 
@@ -1681,5 +1702,61 @@ mod tests {
         let banned = Banned::load_from_state(&state).unwrap();
         assert!(banned.is_banned(&address));
         assert!(!banned.is_banned(&innocent));
+    }
+
+    #[test]
+    fn latest_deposit_higher_priority() {
+        let mut state = helpers::get_temp_state();
+        let pubkeys = (0..10).map(|_| Public::random()).collect::<Vec<_>>();
+
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        for _ in 0..10 {
+            // Random pre-fill
+            let i = rand::thread_rng().gen_range(0, pubkeys.len());
+            let pubkey = &pubkeys[i];
+            candidates.add_deposit(pubkey, 0, 0, Bytes::new());
+        }
+        // Inserting pubkey in this order, they'll get sorted.
+        for pubkey in &pubkeys {
+            candidates.add_deposit(pubkey, 10, 0, Bytes::new());
+        }
+        candidates.save_to_state(&mut state).unwrap();
+
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        let results: Vec<_> = pubkeys.iter().map(|pubkey| candidates.get_index(&public_to_address(&pubkey))).collect();
+        // TODO assert!(results.is_sorted(), "Should be sorted in the insertion order");
+        for i in 0..results.len() - 1 {
+            assert!(results[i] < results[i + 1], "Should be sorted in the insertion order");
+        }
+    }
+
+    #[test]
+    fn renew_doesnt_change_relative_priority() {
+        let mut state = helpers::get_temp_state();
+        let pubkeys = (0..10).map(|_| Public::random()).collect::<Vec<_>>();
+
+        let mut candidates = Candidates::load_from_state(&state).unwrap();
+        for pubkey in &pubkeys {
+            candidates.add_deposit(pubkey, 10, 0, Bytes::new());
+        }
+        candidates.save_to_state(&mut state).unwrap();
+
+        let dummy_validators = Validators(
+            pubkeys[0..5]
+                .iter()
+                .map(|pubkey| Validator {
+                    pubkey: *pubkey,
+                    deposit: 0,
+                    delegation: 0,
+                    weight: 0,
+                })
+                .collect(),
+        );
+        let dummy_banned = Banned::load_from_state(&state).unwrap();
+        candidates.renew_candidates(&dummy_validators, 0, &[], &dummy_banned);
+
+        let indexes: Vec<_> =
+            pubkeys.iter().map(|pubkey| candidates.get_index(&public_to_address(pubkey)).unwrap()).collect();
+        assert_eq!(indexes, vec![5, 6, 7, 8, 9, 0, 1, 2, 3, 4]);
     }
 }
