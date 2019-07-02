@@ -284,7 +284,7 @@ impl Validators {
         assert!(max_num_of_validators > min_num_of_validators);
 
         let delegatees = Stakeholders::delegatees(&state)?;
-        // Step 1
+        // Step 1 & 2.
         let mut validators = Candidates::prepare_validators(&state, min_deposit, &delegatees)?;
         // validators are now sorted in descending order of (delegation, deposit, priority)
         validators.reverse();
@@ -295,16 +295,8 @@ impl Validators {
             assert!(!banned.is_banned(&address), "{} is banned address", address);
         }
 
-        let the_highest_score_dropout =
-            validators.get(max_num_of_validators).map(|&validator| (validator.delegation, validator.deposit));
-
-        // step 2
+        // Step 3
         validators.truncate(max_num_of_validators);
-
-        // step 3
-        if let Some(the_highest_score_dropout) = the_highest_score_dropout {
-            validators.retain(|&validator| (validator.delegation, validator.deposit) > the_highest_score_dropout);
-        }
 
         if validators.len() < min_num_of_validators {
             cerror!(
@@ -315,7 +307,7 @@ impl Validators {
                 min_num_of_validators
             );
         }
-
+        // Step 4 & 5
         let (minimum, rest) = validators.split_at(min_num_of_validators.min(validators.len()));
         let over_threshold = rest.iter().filter(|c| c.delegation >= delegation_threshold);
 
