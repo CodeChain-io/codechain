@@ -65,10 +65,12 @@ The delegated stakes are returned when the account becomes an eligible account o
 ## Election
 The election is a process that elects validators of a term according to the following rule:
 
-1. Select the candidates who deposited **MIN_DEPOSIT** or more.
-2. Pick **MAX_NUM_OF_VALIDATORS** candidates in order of the amount of received delegations and the amount of deposit that the candidate made.
-3. If there are candidates who have tied delegation scores with the dropouts, drop those candidates as well.
-4. Select **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
+1. Calculate the rankings of candidates.
+   * Candidates who receive the most delegation will have the highest ranking.
+   * If there is a tie between them, candidates with the higher index in the `candidates` list will have the higher ranking.
+2. Select the candidates who deposited **MIN_DEPOSIT** or more.
+3. Pick the top **MAX_NUM_OF_VALIDATORS** candidates.
+4. Select the top **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
 5. Among the rest of them, drop the accounts that received less than **DELEGATION_THRESHOLD**; the remaining accounts become validators.
 
 This process guarantees two things:
@@ -97,7 +99,7 @@ for (&mut delegation, _, pubkey) in validators[(author_index + 1)..] {
 	delegation -= min_delegation * 2;
 }
 // Deprioritize author
-validators[author_index].2 -= min_delegation;
+validators[author_index].0 -= min_delegation;
 
 validators.sort();
 
