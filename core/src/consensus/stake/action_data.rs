@@ -296,9 +296,6 @@ impl Validators {
 
         let the_highest_score_dropout =
             validators.get(max_num_of_validators).map(|&validator| (validator.delegation, validator.deposit));
-        let the_lowest_score_first_class = validators.get(min_num_of_validators).map(|&validator| (validator.delegation, validator.deposit))
-            // None means there are less than MIN_NUM_OF_VALIDATORS. Allow all remains.
-            .unwrap_or_default();
 
         // step 2
         validators.truncate(max_num_of_validators);
@@ -317,18 +314,13 @@ impl Validators {
                 min_num_of_validators
             );
         }
-        validators.retain(|&validator| {
-            // step 4
-            if (validator.delegation, validator.deposit) >= the_lowest_score_first_class {
-                true
-            } else {
-                // step 5
-                validator.delegation >= delegation_threshold
-            }
-        });
 
-        validators.reverse();
-        Ok(Self(validators))
+        let (minimum, rest) = validators.split_at(min_num_of_validators.min(validators.len()));
+        let over_threshold = rest.iter().filter(|c| c.delegation >= delegation_threshold);
+
+        let mut result: Vec<_> = minimum.iter().chain(over_threshold).cloned().collect();
+        result.reverse();
+        Ok(Self(result))
     }
 
 
