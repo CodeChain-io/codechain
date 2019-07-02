@@ -283,27 +283,17 @@ impl Validators {
         };
         assert!(max_num_of_validators > min_num_of_validators);
 
-        let active_candidates = Candidates::active(&state, min_deposit).unwrap();
-        let mut candidates: HashMap<_, (_, Deposit)> = active_candidates
-            .into_iter()
-            .map(|(pubkey, deposit)| (public_to_address(&pubkey), (pubkey, deposit)))
-            .collect();
+        let delegatees = Stakeholders::delegatees(&state)?;
+        // Step 1
+        let mut validators = Candidates::prepare_validators(&state, min_deposit, &delegatees)?;
+        validators.reverse();
 
         let banned = Banned::load_from_state(&state)?;
-        for address in candidates.keys() {
-            assert!(!banned.0.contains(address), "{} is banned address", address);
+        for validator in &validators {
+            let address = public_to_address(&validator.pubkey);
+            assert!(!banned.is_banned(&address), "{} is banned address", address);
         }
 
-        // step 1
-        let mut validators: Vec<Validator> = Stakeholders::delegatees(&state)?
-            .into_iter()
-            .filter_map(|(address, delegation)| {
-                candidates.remove(&address).map(|(pubkey, deposit)| Validator::new(delegation, deposit, pubkey))
-            })
-            .collect();
-
-        validators.sort_unstable();
-        validators.reverse();
         let the_highest_score_dropout =
             validators.get(max_num_of_validators).map(|&validator| (validator.delegation, validator.deposit));
         let the_lowest_score_first_class = validators.get(min_num_of_validators).map(|&validator| (validator.delegation, validator.deposit))
@@ -490,9 +480,22 @@ impl Candidates {
         Ok(())
     }
 
-    fn active(state: &TopLevelState, min_deposit: Deposit) -> StateResult<HashMap<Public, Deposit>> {
-        let candidates = Self::load_from_state(state)?;
-        Ok(candidates.filter_active(min_deposit))
+    // Sorted list of validators in descending order
+    fn prepare_validators(
+        state: &TopLevelState,
+        min_deposit: Deposit,
+        delegations: &HashMap<Address, StakeQuantity>,
+    ) -> StateResult<Vec<Validator>> {
+        let Candidates(candidates) = Self::load_from_state(state)?;
+        let mut result = Vec::new();
+        for candidate in candidates.into_iter().filter(|c| c.deposit >= min_deposit) {
+            let address = public_to_address(&candidate.pubkey);
+            if let Some(delegation) = delegations.get(&address).cloned() {
+                result.push(Validator::new(delegation, candidate.deposit, candidate.pubkey));
+            }
+        }
+        result.sort_unstable();
+        Ok(result)
     }
 
     pub fn get_candidate(&self, account: &Address) -> Option<&Candidate> {
@@ -550,15 +553,6 @@ impl Candidates {
         let (expired, retained): (Vec<_>, Vec<_>) = self.0.drain(..).partition(|c| c.nomination_ends_at <= term_index);
         self.0 = retained;
         expired
-    }
-
-
-    pub fn filter_active(self, min_deposit: Deposit) -> HashMap<Public, Deposit> {
-        self.0
-            .into_iter()
-            .filter(|candidate| candidate.deposit >= min_deposit)
-            .map(|deposit| (deposit.pubkey, deposit.deposit))
-            .collect()
     }
 
     pub fn remove(&mut self, address: &Address) -> Option<Candidate> {
