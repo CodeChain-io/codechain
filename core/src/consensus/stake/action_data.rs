@@ -463,7 +463,7 @@ impl IntermediateRewards {
     }
 }
 
-pub struct Candidates(BTreeMap<Address, Candidate>);
+pub struct Candidates(Vec<Candidate>);
 #[derive(Clone, Debug, Eq, PartialEq, RlpEncodable, RlpDecodable)]
 pub struct Candidate {
     pub pubkey: Public,
@@ -476,14 +476,13 @@ impl Candidates {
     pub fn load_from_state(state: &TopLevelState) -> StateResult<Candidates> {
         let key = *CANDIDATES_KEY;
         let candidates = state.action_data(&key)?.map(|data| decode_list::<Candidate>(&data)).unwrap_or_default();
-        let indexed = candidates.into_iter().map(|c| (public_to_address(&c.pubkey), c)).collect();
-        Ok(Candidates(indexed))
+        Ok(Candidates(candidates))
     }
 
     pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
         let key = *CANDIDATES_KEY;
         if !self.0.is_empty() {
-            let encoded = encode_iter(self.0.values());
+            let encoded = encode_iter(self.0.iter());
             state.update_action_data(&key, encoded)?;
         } else {
             state.remove_action_data(&key);
@@ -496,9 +495,8 @@ impl Candidates {
         Ok(candidates.filter_active(min_deposit))
     }
 
-
     pub fn get_candidate(&self, account: &Address) -> Option<&Candidate> {
-        self.0.get(&account)
+        self.0.iter().find(|c| public_to_address(&c.pubkey) == *account)
     }
 
     #[cfg(test)]
@@ -507,17 +505,22 @@ impl Candidates {
     }
 
     pub fn add_deposit(&mut self, pubkey: &Public, quantity: Deposit, nomination_ends_at: u64, metadata: Bytes) {
-        let candidate = self.0.entry(public_to_address(pubkey)).or_insert(Candidate {
-            pubkey: *pubkey,
-            deposit: 0,
-            nomination_ends_at: 0,
-            metadata: Bytes::default(),
-        });
-        candidate.deposit += quantity;
-        if candidate.nomination_ends_at < nomination_ends_at {
-            candidate.nomination_ends_at = nomination_ends_at;
-        }
-        candidate.metadata = metadata;
+        if let Some(index) = self.0.iter().position(|c| c.pubkey == *pubkey) {
+            let candidate = &mut self.0[index];
+            candidate.deposit += quantity;
+            if candidate.nomination_ends_at < nomination_ends_at {
+                candidate.nomination_ends_at = nomination_ends_at;
+            }
+            candidate.metadata = metadata;
+        } else {
+            self.0.push(Candidate {
+                pubkey: *pubkey,
+                deposit: quantity,
+                nomination_ends_at,
+                metadata,
+            });
+            self.0.sort_unstable_by_key(|c| c.pubkey);
+        };
     }
 
     pub fn renew_candidates(
@@ -533,16 +536,19 @@ impl Candidates {
             .map(|validator| public_to_address(&validator.pubkey))
             .filter(|address| !inactive_validators.contains(address))
         {
-            assert!(!banned.0.contains(&address), "{} is banned address", address);
-            self.0.get_mut(&address).expect("Validators must be in the candidates").nomination_ends_at =
-                nomination_ends_at;
+            assert!(!banned.is_banned(&address), "{} is banned address", address);
+            let index = self
+                .0
+                .iter()
+                .position(|c| public_to_address(&c.pubkey) == address)
+                .expect("Validators must be in the candidates");
+            self.0[index].nomination_ends_at = nomination_ends_at;
         }
     }
 
     pub fn drain_expired_candidates(&mut self, term_index: u64) -> Vec<Candidate> {
-        let (expired, retained): (Vec<_>, Vec<_>) =
-            self.0.values().cloned().partition(|c| c.nomination_ends_at <= term_index);
-        self.0 = retained.into_iter().map(|c| (public_to_address(&c.pubkey), c)).collect();
+        let (expired, retained): (Vec<_>, Vec<_>) = self.0.drain(..).partition(|c| c.nomination_ends_at <= term_index);
+        self.0 = retained;
         expired
     }
 
@@ -550,13 +556,17 @@ impl Candidates {
     pub fn filter_active(self, min_deposit: Deposit) -> HashMap<Public, Deposit> {
         self.0
             .into_iter()
-            .filter(|(_, candidate)| candidate.deposit >= min_deposit)
-            .map(|(_, deposit)| (deposit.pubkey, deposit.deposit))
+            .filter(|candidate| candidate.deposit >= min_deposit)
+            .map(|deposit| (deposit.pubkey, deposit.deposit))
             .collect()
     }
 
     pub fn remove(&mut self, address: &Address) -> Option<Candidate> {
-        self.0.remove(address)
+        if let Some(index) = self.0.iter().position(|c| public_to_address(&c.pubkey) == *address) {
+            Some(self.0.remove(index))
+        } else {
+            None
+        }
     }
 }
 
