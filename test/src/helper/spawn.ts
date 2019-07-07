@@ -34,6 +34,7 @@ import {
 import { AssetTransaction } from "codechain-sdk/lib/core/Transaction";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
+import * as stake from "codechain-stakeholder-sdk";
 import { createWriteStream, mkdtempSync, unlinkSync } from "fs";
 import * as mkdirp from "mkdirp";
 import { ncp } from "ncp";
@@ -671,5 +672,60 @@ export default class CodeChain {
                 })
                 .catch(reject);
         });
+    }
+
+    public async waitForTx(
+        hashlikes: H256 | Promise<H256> | (H256 | Promise<H256>)[],
+        option?: { timeout?: number }
+    ) {
+        const { timeout = 10000 } = option || {};
+
+        const hashes = await Promise.all(
+            Array.isArray(hashlikes) ? hashlikes : [hashlikes]
+        );
+
+        const containsAll = async () => {
+            const contains = await Promise.all(
+                hashes.map(hash => this.sdk.rpc.chain.containsTransaction(hash))
+            );
+            return contains.every(x => x);
+        };
+        const checkNoError = async () => {
+            const errorHints = await Promise.all(
+                hashes.map(hash => this.sdk.rpc.chain.getErrorHint(hash))
+            );
+            for (const errorHint of errorHints) {
+                if (errorHint !== null && errorHint !== "") {
+                    throw Error(`waitForTx: Error found: ${errorHint}`);
+                }
+            }
+        };
+
+        const start = Date.now();
+        while (!(await containsAll())) {
+            await checkNoError();
+
+            await wait(500);
+            if (Date.now() - start >= timeout) {
+                throw Error("Timeout on waitForTx");
+            }
+        }
+        await checkNoError();
+    }
+
+    public async waitForTermChange(target: number, timeout?: number) {
+        const start = Date.now();
+        while (true) {
+            const termMetadata = await stake.getTermMetadata(this.sdk);
+            if (termMetadata && termMetadata.currentTermId >= target) {
+                break;
+            }
+            await wait(1000);
+            if (timeout) {
+                if (Date.now() - start > timeout * 1000) {
+                    throw new Error(`Term didn't changed in ${timeout} s`);
+                }
+            }
+        }
     }
 }
