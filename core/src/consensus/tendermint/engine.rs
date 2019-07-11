@@ -472,6 +472,12 @@ fn give_additional_rewards<F: FnMut(&Address, u64) -> Result<(), Error>>(
     let sorted_validators = missed_signatures
         .into_iter()
         .map(|(address, (proposed, missed))| (address, Ratio::new(missed, proposed)))
+        // When one sees the Ratio crate's Order trait implementation, he/she can easily realize that the
+        // comparing routine is erroneous. It inversely compares denominators when the numerators are the same.
+        // That's problematic when it makes comparisons between ratios such as Ratio{numer: 0, denom:2} and Ratio{numer: 0, denom: 3}.
+        // But Ratio::new() calls Ratio::reduce() from within so that the numerator and the denominator are
+        // divided equally by the gcd. Therefore the comparison between above two instances would never happen and only
+        // comparisons between the reduced ones like Ratio{numer:0, denom:1} and Ratio{numer:0, denom: 1} should occur.
         .fold(BTreeMap::<Ratio<usize>, Vec<Address>>::new(), |mut map, (address, average_missed)| {
             map.entry(average_missed).or_default().push(address);
             map
