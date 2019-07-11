@@ -22,6 +22,7 @@ import { SDK } from "codechain-sdk";
 import "mocha";
 
 import { validators as originalValidators } from "../../tendermint.dynval/constants";
+import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import { withNodes } from "./setup";
 
@@ -97,6 +98,76 @@ describe("Dynamic Validator N -> N-1", function() {
 
             await checkingNode.waitForTermChange(2, termSeconds * margin);
 
+            await aliceDropOutCheck(checkingNode.sdk);
+        });
+    });
+
+    describe("A node dropped out of validator list by revoke action", async function() {
+        this.slow(termSeconds * 1000);
+        this.timeout(termSeconds * 2 * 1000);
+
+        const nodes = withNodes(this, {
+            promiseExpect,
+            validators: allDynValidators.map((signer, index) => ({
+                signer,
+                delegation: 5_000,
+                deposit: 10_000_000 - index // tie-breaker
+            }))
+        });
+
+        it("Revoke all delegation deposits from Alice", async function() {
+            const checkingNode = nodes[1];
+            await aliceContainedCheck(checkingNode.sdk);
+
+            const faucetSeq = await checkingNode.sdk.rpc.chain.getSeq(
+                faucetAddress
+            );
+            // Revoke all the delegation deposits
+            const tx = stake
+                .createRevokeTransaction(
+                    checkingNode.sdk,
+                    alice.platformAddress,
+                    5_000
+                )
+                .sign({
+                    secret: faucetSecret,
+                    seq: faucetSeq,
+                    fee: 10
+                });
+            const revokeTx = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                tx
+            );
+            await checkingNode.waitForTx(revokeTx);
+
+            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await aliceDropOutCheck(checkingNode.sdk);
+        });
+
+        it("Revoke delegation deposits to make it be under threshold", async function() {
+            const checkingNode = nodes[1];
+            await aliceContainedCheck(checkingNode.sdk);
+
+            const faucetSeq = await checkingNode.sdk.rpc.chain.getSeq(
+                faucetAddress
+            );
+            // make remaining deposits under threshold.
+            const tx = stake
+                .createRevokeTransaction(
+                    checkingNode.sdk,
+                    alice.platformAddress,
+                    4_500
+                )
+                .sign({
+                    secret: faucetSecret,
+                    seq: faucetSeq,
+                    fee: 10
+                });
+            const revokeTx = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                tx
+            );
+            await checkingNode.waitForTx(revokeTx);
+
+            await checkingNode.waitForTermChange(2, termSeconds * margin);
             await aliceDropOutCheck(checkingNode.sdk);
         });
     });
