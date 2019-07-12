@@ -40,7 +40,7 @@ export function withNodes(
         promiseExpect: PromiseExpect;
         validators: ValidatorConfig[];
         overrideParams?: Partial<typeof defaultParams>;
-        onBeforeEnable?: (nodes: CodeChain[]) => void;
+        onBeforeEnable?: (nodes: CodeChain[]) => Promise<CodeChain[]>;
     }
 ): CodeChain[] {
     const result: CodeChain[] = [];
@@ -66,7 +66,7 @@ export async function createNodes(options: {
     promiseExpect: PromiseExpect;
     validators: ValidatorConfig[];
     overrideParams?: Partial<typeof defaultParams>;
-    onBeforeEnable?: (nodes: CodeChain[]) => void;
+    onBeforeEnable?: (nodes: CodeChain[]) => Promise<CodeChain[]>;
 }): Promise<CodeChain[]> {
     const chain = `${__dirname}/../scheme/tendermint-dynval.json`;
     const { promiseExpect, validators, overrideParams = {} } = options;
@@ -92,7 +92,7 @@ export async function createNodes(options: {
         });
     }
 
-    const nodes: CodeChain[] = [];
+    let nodes: CodeChain[] = [];
     for (let i = 0; i < validators.length; i++) {
         const { signer: validator } = validators[i];
         nodes[i] = new CodeChain({
@@ -200,7 +200,7 @@ export async function createNodes(options: {
         }
 
         if (options.onBeforeEnable) {
-            options.onBeforeEnable(nodes);
+            nodes = await options.onBeforeEnable(nodes);
         }
 
         // enable!
@@ -209,7 +209,7 @@ export async function createNodes(options: {
             ...overrideParams
         });
 
-        for (let i = 0; i < validators.length; i++) {
+        for (let i = 0; i < nodes.length; i++) {
             await promiseExpect.shouldFulfill(
                 `node ${i} wait for changeTx`,
                 nodes[i].waitForTx(changeTx)
