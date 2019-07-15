@@ -42,10 +42,6 @@ chai.use(chaiAsPromised);
 
 const RLP = require("rlp");
 
-// alice : Elected as a validator, but does not send precommits and does not propose.
-//   Alice should be jailed.
-// betty : Not elected as validator because of small delegation. She acquire more delegation in the first term.
-//   betty should be a validator in the second term.
 const [alice, betty, notUsed, ...otherDynValidators] = originalDynValidators;
 const allDynValidators = [alice, betty, ...otherDynValidators];
 
@@ -55,6 +51,10 @@ describe("Dynamic Validator N -> N'", function() {
     const margin = 1.2;
 
     describe("1. Jail one of the validator + increase the delegation of a candidate who doesn’t have enough delegation", async function() {
+        // alice : Elected as a validator, but does not send precommits and does not propose.
+        //   Alice should be jailed.
+        // betty : Not elected as validator because of small delegation. She acquire more delegation in the first term.
+        //   betty should be a validator in the second term.
         const allDynNodes = withNodes(this, {
             promiseExpect,
             overrideParams: {
