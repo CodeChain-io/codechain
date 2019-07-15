@@ -74,14 +74,12 @@ describe("Dynamic Validator N -> N'", function() {
                 const aliceNode = allDynNodes[0];
                 // Kill the alice node first to make alice not to participate in the term 1.
                 await aliceNode.clean();
-
-                return allDynNodes.slice(1);
             }
         });
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
             const margin = 1.1;
-            const [, ...otherDynNodes] = allDynNodes;
+            const [_aliceNode, _bettyNode, ...otherDynNodes] = allDynNodes;
             {
                 const authors = (await stake.getPossibleAuthors(
                     otherDynNodes[0].sdk

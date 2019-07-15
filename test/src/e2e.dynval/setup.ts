@@ -40,7 +40,7 @@ export function withNodes(
         promiseExpect: PromiseExpect;
         validators: ValidatorConfig[];
         overrideParams?: Partial<typeof defaultParams>;
-        onBeforeEnable?: (nodes: CodeChain[]) => Promise<CodeChain[]>;
+        onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
     }
 ): CodeChain[] {
     const result: CodeChain[] = [];
@@ -62,7 +62,7 @@ export async function createNodes(options: {
     promiseExpect: PromiseExpect;
     validators: ValidatorConfig[];
     overrideParams?: Partial<typeof defaultParams>;
-    onBeforeEnable?: (nodes: CodeChain[]) => Promise<CodeChain[]>;
+    onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
 }): Promise<CodeChain[]> {
     const chain = `${__dirname}/../scheme/tendermint-dynval.json`;
     const { promiseExpect, validators, overrideParams = {} } = options;
@@ -196,7 +196,7 @@ export async function createNodes(options: {
         }
 
         if (options.onBeforeEnable) {
-            nodes = await options.onBeforeEnable(nodes);
+            await options.onBeforeEnable(nodes);
         }
 
         // enable!
@@ -205,11 +205,21 @@ export async function createNodes(options: {
             ...overrideParams
         });
 
-        for (let i = 0; i < nodes.length; i++) {
-            await promiseExpect.shouldFulfill(
-                `node ${i} wait for changeTx`,
-                nodes[i].waitForTx(changeTx)
-            );
+        for (let i = 0; i < validators.length; i++) {
+            // nodes can be cleaned in `onBeforeEnable`
+            if (nodes[i].processState === "running") {
+                await promiseExpect.shouldFulfill(
+                    `node ${i} wait for changeTx`,
+                    nodes[i].waitForTx(changeTx)
+                );
+            }
+        }
+        for (let i = 0; i < validators.length; i++) {
+            // nodes can be cleaned in `onBeforeEnable. Pick any running node.
+            if (nodes[i].processState === "running") {
+                await nodes[i].waitForTermChange(1);
+                break;
+            }
         }
 
         return nodes;
