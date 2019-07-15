@@ -53,7 +53,27 @@ export type ChainType =
     | "blake_pow"
     | "husky"
     | SchemeFilepath;
-
+export type ProcessState =
+    | "stopped"
+    | "initializing"
+    | "running"
+    | "stopping"
+    | { state: "error"; message: string; source?: Error };
+export class ProcessStateError extends Error {
+    constructor(state: ProcessState) {
+        if (typeof state === "string") {
+            super(`Process state is invalid: ${state}`);
+        } else {
+            super(
+                `Process state is invalid: ${JSON.stringify(
+                    state,
+                    undefined,
+                    4
+                )}`
+            );
+        }
+    }
+}
 export default class CodeChain {
     private static idCounter = 0;
     private readonly _id: number;
@@ -69,6 +89,7 @@ export default class CodeChain {
     private readonly argv: string[];
     private readonly env: { [key: string]: string };
     private process?: ChildProcess;
+    private _processState: ProcessState;
     private _keepLogs: boolean;
     private readonly keyFileMovePromise?: Promise<{}>;
 
@@ -76,7 +97,11 @@ export default class CodeChain {
         return this._id;
     }
     public get sdk(): SDK {
-        return this._sdk;
+        if (this._processState === "running") {
+            return this._sdk;
+        } else {
+            throw new ProcessStateError(this._processState);
+        }
     }
     public get localKeyStorePath(): string {
         return this._localKeyStorePath;
@@ -107,6 +132,9 @@ export default class CodeChain {
     }
     public get chain(): ChainType {
         return this._chain;
+    }
+    public get processState(): ProcessState {
+        return this._processState;
     }
 
     constructor(
@@ -153,6 +181,7 @@ export default class CodeChain {
         this._chain = chain || "solo";
         this.argv = argv || [];
         this.env = env || {};
+        this._processState = "stopped";
         this._keepLogs = false;
     }
 
@@ -162,6 +191,10 @@ export default class CodeChain {
         disableLog?: boolean;
         disableIpc?: boolean;
     }) {
+        if (this._processState !== "stopped") {
+            throw new ProcessStateError(this._processState);
+        }
+
         const {
             argv = [],
             logLevel = "trace,mio=warn,tokio=warn,hyper=warn,timer=warn",
@@ -185,6 +218,7 @@ export default class CodeChain {
         // Resolves when CodeChain initialization completed.
         return new Promise((resolve, reject) => {
             this._keepLogs = true;
+            this._processState = "initializing";
             this.process = spawn(
                 `target/${useDebugBuild ? "debug" : "release"}/codechain`,
                 [
@@ -212,26 +246,63 @@ export default class CodeChain {
                 }
             );
             if (!disableLog) {
-                const logStream = createWriteStream(this.logPath);
+                const logStream = createWriteStream(this.logPath, {
+                    flags: "a"
+                });
                 this.process!.stdout!.pipe(logStream);
                 this.process!.stderr!.pipe(logStream);
             }
 
-            this.process
-                .on("error", e => {
-                    reject(e);
-                })
-                .on("close", (code, _signal) => {
-                    reject(Error(`CodeChain exited with code ${code}`));
-                });
-
             const readline = createReadline({ input: this.process!.stderr! });
-            readline.on("line", (line: string) => {
+            const self = this;
+            function clearListeners() {
+                if (self.process) {
+                    self.process
+                        .removeListener("error", onError)
+                        .removeListener("exit", onExit);
+                    readline.removeListener("line", onLine);
+                }
+            }
+            function onError(e: Error) {
+                clearListeners();
+                self.process = undefined;
+                self._processState = {
+                    state: "error",
+                    message: "Error while spawning CodeChain",
+                    source: e
+                };
+                self._keepLogs = true;
+                reject(new ProcessStateError(self._processState));
+            }
+            function onExit(code: number, signal: number) {
+                clearListeners();
+                self.process = undefined;
+                self._processState = {
+                    state: "error",
+                    message: `CodeChain unexpectedly exited on start: code ${code}, signal ${signal}`
+                };
+                self._keepLogs = true;
+                reject(new ProcessStateError(self._processState));
+            }
+            function onLine(line: string) {
                 if (line.includes("Initialization complete")) {
-                    this.isTestFailed = false;
+                    clearListeners();
+                    self._processState = "running";
+                    self._keepLogs = false;
+                    self.process!.on("exit", (code, signal) => {
+                        self.process = undefined;
+                        self._processState = {
+                            state: "error",
+                            message: `CodeChain unexpectedly exited while running: code ${code}, signal ${signal}`
+                        };
+                        self._keepLogs = true;
+                    });
                     resolve();
                 }
-            });
+            }
+
+            this.process.on("error", onError).on("exit", onExit);
+            readline.on("line", onLine);
         });
     }
 
@@ -241,20 +312,33 @@ export default class CodeChain {
     }
 
     public async clean() {
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             if (!this.process) {
                 return resolve();
             }
-            this.process.on("exit", (code, signal) => {
-                if (code !== 0) {
-                    console.error(
-                        `CodeChain(${this.id}) exited with code ${code}, ${signal}`
-                    );
-                } else if (!this.isTestFailed) {
-                    unlinkSync(this.logPath);
-                }
-                resolve();
-            });
+            this.process
+                .removeAllListeners("error")
+                .on("error", e => {
+                    this._processState = {
+                        state: "error",
+                        message: "CodeChain unexpectedly exited on clean",
+                        source: e
+                    };
+                    reject(new ProcessStateError(this._processState));
+                })
+                .removeAllListeners("exit")
+                .on("exit", (code, signal) => {
+                    if (code !== 0) {
+                        console.error(
+                            `CodeChain(${this.id}) exited with code ${code}, ${signal}`
+                        );
+                    } else if (!this._keepLogs) {
+                        unlinkSync(this.logPath);
+                    }
+                    this._processState = "stopped";
+                    resolve();
+                });
+            this._processState = "stopping";
             this.process.kill();
             this.process = undefined;
         });
