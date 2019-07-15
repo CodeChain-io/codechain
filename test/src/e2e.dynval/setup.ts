@@ -46,15 +46,12 @@ export function withNodes(
     const result: CodeChain[] = [];
     suite.beforeEach(async function() {
         result.length = 0;
-        const nodes = await createNodes({
-            ...options,
-            testName: this.currentTest!.fullTitle()
-        });
+        const nodes = await createNodes(options);
         result.push(...nodes);
     });
     suite.afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            result.map(node => node.testFailed(this.currentTest!.fullTitle()));
+            result.map(node => node.keepLogs());
         }
         await Promise.all(result.map(node => node.clean()));
     });
@@ -62,7 +59,6 @@ export function withNodes(
 }
 
 export async function createNodes(options: {
-    testName: string;
     promiseExpect: PromiseExpect;
     validators: ValidatorConfig[];
     overrideParams?: Partial<typeof defaultParams>;
@@ -215,13 +211,10 @@ export async function createNodes(options: {
                 nodes[i].waitForTx(changeTx)
             );
         }
-        await nodes[0].waitForTermChange(1);
 
         return nodes;
     } catch (e) {
-        initialNodes
-            .concat(nodes)
-            .forEach(node => node.testFailed(options.testName));
+        initialNodes.concat(nodes).forEach(node => node.keepLogs());
         bootstrapFailed = true;
         throw e;
     } finally {

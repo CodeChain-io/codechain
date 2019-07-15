@@ -443,7 +443,7 @@ describe("Tendermint ", function() {
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            nodes.map(node => node.testFailed(this.currentTest!.fullTitle()));
+            nodes.map(node => node.keepLogs());
         }
         await Promise.all(nodes.map(node => node.clean()));
         promiseExpect.checkFulfilled();

@@ -2978,7 +2978,7 @@ describe("orders", function() {
 
     afterEach(function() {
         if (this.currentTest!.state === "failed") {
-            node.testFailed(this.currentTest!.fullTitle());
+            node.keepLogs();
         }
     });
 

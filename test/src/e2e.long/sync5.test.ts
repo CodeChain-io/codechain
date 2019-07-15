@@ -226,7 +226,7 @@ describe("sync 5 nodes", function() {
         this.timeout(5000 + 3000 * NUM_NODES);
 
         if (this.currentTest!.state === "failed") {
-            nodes.map(node => node.testFailed(this.currentTest!.fullTitle()));
+            nodes.map(node => node.keepLogs());
         }
 
         await Promise.all(nodes.map(node => node.clean()));

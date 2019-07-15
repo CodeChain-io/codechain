@@ -3009,7 +3009,7 @@ describe("order is disabled", function() {
 
     afterEach(function() {
         if (this.currentTest!.state === "failed") {
-            node.testFailed(this.currentTest!.fullTitle());
+            node.keepLogs();
         }
     });
 
