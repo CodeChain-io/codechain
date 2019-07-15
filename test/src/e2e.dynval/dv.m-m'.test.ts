@@ -1,0 +1,346 @@
+// Copyright 2019 Kodebox, Inc.
+// This file is part of CodeChain.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import * as chai from "chai";
+import { expect } from "chai";
+import * as chaiAsPromised from "chai-as-promised";
+import { SDK } from "codechain-sdk";
+import * as stake from "codechain-stakeholder-sdk";
+import "mocha";
+
+import { validators } from "../../tendermint.dynval/constants";
+import { faucetAddress, faucetSecret } from "../helper/constants";
+import { PromiseExpect } from "../helper/promise";
+import { withNodes } from "./setup";
+
+chai.use(chaiAsPromised);
+
+describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum number)", function() {
+    const promiseExpect = new PromiseExpect();
+    const termSeconds = 20;
+    const margin = 1.2;
+
+    const maxNumOfValidators = 6;
+    const alice = maxNumOfValidators - 1; // will be replaced
+    const bob = maxNumOfValidators; // will be elected by doing nothing
+    const charlie = maxNumOfValidators + 1; // will be elected by delegating enough
+    const dave = maxNumOfValidators + 2; // will be elected by depositing enough
+
+    const nodeParams = {
+        promiseExpect,
+        overrideParams: {
+            termSeconds,
+            maxNumOfValidators,
+            delegationThreshold: 1000,
+            minDeposit: 10000
+        },
+        validators: [
+            // Validators
+            { signer: validators[0], delegation: 5000, deposit: 100000 },
+            { signer: validators[1], delegation: 4900, deposit: 100000 },
+            { signer: validators[2], delegation: 4800, deposit: 100000 },
+            { signer: validators[3], delegation: 4700, deposit: 100000 },
+            { signer: validators[4], delegation: 4600, deposit: 100000 },
+            { signer: validators[5], delegation: 4000, deposit: 100000 }, // Alice
+            // Candidates
+            { signer: validators[6], delegation: 3000, deposit: 100000 }, // Bob
+            { signer: validators[7], delegation: 100, deposit: 100000 }, // Charlie
+            { signer: validators[8], delegation: 4100, deposit: 100 }, // Dave
+            { signer: validators[9], delegation: 100, deposit: 100 }
+        ]
+    };
+    const enoughDelegationToCatchBob = 3000;
+    const enoughDepositToCatchBob = 100000;
+    const aliceRevokeToBeLowerThanBob = 2000;
+    const enoughDelegationToCatchAlice = 4000;
+    const enoughDepositToCatchAlice = 100000;
+
+    async function expectAllValidatorsArePossibleAuthors(sdk: SDK) {
+        const possibleAuthors = (await stake.getPossibleAuthors(sdk))!;
+        expect(possibleAuthors).to.have.lengthOf(maxNumOfValidators);
+        expect(possibleAuthors.map(x => x.toString())).to.includes.members(
+            validators
+                .slice(0, maxNumOfValidators)
+                .map(x => x.platformAddress.toString())
+        );
+    }
+
+    async function expectAliceIsReplacedBy(
+        sdk: SDK,
+        name: string,
+        index: number
+    ) {
+        const possibleAuthors = await stake.getPossibleAuthors(sdk);
+        expect(possibleAuthors).not.to.be.null;
+        expect(possibleAuthors!).to.have.lengthOf(maxNumOfValidators);
+        const authorAddresses = possibleAuthors!.map(x => x.toString());
+        expect(authorAddresses).to.includes.members(
+            validators.slice(0, alice).map(x => x.platformAddress.toString()),
+            "Contains previous validators except for Alice"
+        );
+        expect(authorAddresses).not.contains(
+            validators[alice].platformAddress.toString(),
+            "Alice should not be elected as a validator"
+        );
+        expect(authorAddresses).contains(
+            validators[index].platformAddress.toString(),
+            `${name} should be elected as a validator instead of alice`
+        );
+    }
+
+    describe("1. Jail one of the validator", async function() {
+        const nodes = withNodes(this, {
+            ...nodeParams,
+            onBeforeEnable: async bootstrappingNodes => {
+                await bootstrappingNodes[alice].clean(); // alice will be jailed!
+            }
+        });
+
+        beforeEach(async function() {
+            await expectAllValidatorsArePossibleAuthors(nodes[0].sdk);
+        });
+
+        it("Bob should be a validator when doing nothing", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            // Do nothing
+            await nodes[0].waitForTermChange(2, termSeconds * margin);
+
+            expect(
+                (await stake.getJailed(nodes[0].sdk)).map(x =>
+                    x.address.toString()
+                )
+            ).contains(
+                validators[alice].platformAddress.toString(),
+                "Alice should be jailed for doing nothing"
+            );
+            await expectAliceIsReplacedBy(nodes[0].sdk, "Bob", bob);
+        });
+
+        it("Charlie should be a validator when gets enough delegation", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const delegateToCharlie = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
+                stake
+                    .createDelegateCCSTransaction(
+                        nodes[0].sdk,
+                        validators[charlie].platformAddress,
+                        enoughDelegationToCatchBob
+                    )
+                    .sign({
+                        secret: faucetSecret,
+                        seq: await nodes[0].sdk.rpc.chain.getSeq(faucetAddress),
+                        fee: 10
+                    })
+            );
+            await nodes[0].waitForTx(delegateToCharlie);
+            await nodes[0].waitForTermChange(2, termSeconds * margin);
+
+            expect(
+                (await stake.getJailed(nodes[0].sdk)).map(x =>
+                    x.address.toString()
+                )
+            ).contains(
+                validators[alice].platformAddress.toString(),
+                "Alice should be jailed for doing nothing"
+            );
+            await expectAliceIsReplacedBy(nodes[0].sdk, "Charlie", charlie);
+        });
+
+        it("Dave should be a validator when deposit enough", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const depositDave = await nodes[
+                dave
+            ].sdk.rpc.chain.sendSignedTransaction(
+                stake
+                    .createSelfNominateTransaction(
+                        nodes[dave].sdk,
+                        enoughDepositToCatchBob,
+                        ""
+                    )
+                    .sign({
+                        secret: validators[dave].privateKey,
+                        seq: await nodes[dave].sdk.rpc.chain.getSeq(
+                            validators[dave].platformAddress
+                        ),
+                        fee: 10
+                    })
+            );
+            await nodes[0].waitForTx(depositDave);
+            await nodes[0].waitForTermChange(2, termSeconds * margin);
+
+            expect(
+                (await stake.getJailed(nodes[0].sdk)).map(x =>
+                    x.address.toString()
+                )
+            ).contains(
+                validators[alice].platformAddress.toString(),
+                "Alice should be jailed for doing nothing"
+            );
+            await expectAliceIsReplacedBy(nodes[0].sdk, "Dave", dave);
+        });
+    });
+
+    describe("2. Revoke the validator", async function() {
+        const nodes = withNodes(this, nodeParams);
+
+        beforeEach(async function() {
+            this.timeout(5000);
+
+            await expectAllValidatorsArePossibleAuthors(nodes[0].sdk);
+
+            const revokeTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
+                stake
+                    .createRevokeTransaction(
+                        nodes[0].sdk,
+                        validators[alice].platformAddress,
+                        aliceRevokeToBeLowerThanBob
+                    )
+                    .sign({
+                        secret: faucetSecret,
+                        seq: await nodes[0].sdk.rpc.chain.getSeq(faucetAddress),
+                        fee: 10
+                    })
+            );
+            await nodes[0].waitForTx(revokeTx);
+        });
+
+        it("Bob should be a validator when doing nothing", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            // Do nothing
+            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await expectAliceIsReplacedBy(nodes[0].sdk, "Bob", bob);
+        });
+
+        it("Charlie should be a validator when gets enough delegation", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const delegateToCharlie = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
+                stake
+                    .createDelegateCCSTransaction(
+                        nodes[0].sdk,
+                        validators[charlie].platformAddress,
+                        enoughDelegationToCatchBob
+                    )
+                    .sign({
+                        secret: faucetSecret,
+                        seq: await nodes[0].sdk.rpc.chain.getSeq(faucetAddress),
+                        fee: 10
+                    })
+            );
+            await nodes[0].waitForTx(delegateToCharlie);
+
+            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await expectAliceIsReplacedBy(nodes[0].sdk, "Charlie", charlie);
+        });
+
+        it("Dave should be a validator when deposit enough", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const depositDave = await nodes[
+                dave
+            ].sdk.rpc.chain.sendSignedTransaction(
+                stake
+                    .createSelfNominateTransaction(
+                        nodes[dave].sdk,
+                        enoughDepositToCatchBob,
+                        ""
+                    )
+                    .sign({
+                        secret: validators[dave].privateKey,
+                        seq: await nodes[dave].sdk.rpc.chain.getSeq(
+                            validators[dave].platformAddress
+                        ),
+                        fee: 10
+                    })
+            );
+            await nodes[0].waitForTx(depositDave);
+
+            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await expectAliceIsReplacedBy(nodes[0].sdk, "Dave", dave);
+        });
+    });
+
+    describe("3. Change the order of candidates", async function() {
+        const nodes = withNodes(this, nodeParams);
+
+        beforeEach(async function() {
+            await expectAllValidatorsArePossibleAuthors(nodes[0].sdk);
+        });
+
+        it("Charlie should be a validator when gets enough delegation", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const delegateToCharlie = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
+                stake
+                    .createDelegateCCSTransaction(
+                        nodes[0].sdk,
+                        validators[charlie].platformAddress,
+                        enoughDelegationToCatchAlice
+                    )
+                    .sign({
+                        secret: faucetSecret,
+                        seq: await nodes[0].sdk.rpc.chain.getSeq(faucetAddress),
+                        fee: 10
+                    })
+            );
+            await nodes[0].waitForTx(delegateToCharlie);
+
+            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await expectAliceIsReplacedBy(nodes[0].sdk, "Charlie", charlie);
+        });
+
+        it("Dave should be a validator when deposit enough", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const depositDave = await nodes[
+                dave
+            ].sdk.rpc.chain.sendSignedTransaction(
+                stake
+                    .createSelfNominateTransaction(
+                        nodes[dave].sdk,
+                        enoughDepositToCatchAlice,
+                        ""
+                    )
+                    .sign({
+                        secret: validators[dave].privateKey,
+                        seq: await nodes[dave].sdk.rpc.chain.getSeq(
+                            validators[dave].platformAddress
+                        ),
+                        fee: 10
+                    })
+            );
+            await nodes[0].waitForTx(depositDave);
+
+            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await expectAliceIsReplacedBy(nodes[0].sdk, "Dave", dave);
+        });
+    });
+
+    afterEach(async function() {
+        promiseExpect.checkFulfilled();
+    });
+});
