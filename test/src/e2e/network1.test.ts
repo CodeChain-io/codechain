@@ -95,7 +95,7 @@ describe("network1 node test", function() {
 
     afterEach(function() {
         if (this.currentTest!.state === "failed") {
-            node.testFailed(this.currentTest!.fullTitle());
+            node.keepLogs();
         }
     });
 

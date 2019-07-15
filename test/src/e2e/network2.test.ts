@@ -114,8 +114,8 @@ describe("network2 nodes", function() {
 
     afterEach(function() {
         if (this.currentTest!.state === "failed") {
-            nodeA.testFailed(this.currentTest!.fullTitle());
-            nodeB.testFailed(this.currentTest!.fullTitle());
+            nodeA.keepLogs();
+            nodeB.keepLogs();
         }
     });
 
