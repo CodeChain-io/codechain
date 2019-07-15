@@ -23,6 +23,7 @@ import "mocha";
 import { validators as originalValidators } from "../../tendermint.dynval/constants";
 import { PromiseExpect } from "../helper/promise";
 import { withNodes, changeParams, defaultParams } from "./setup";
+import { faucetSecret, faucetAddress } from "../helper/constants";
 
 chai.use(chaiAsPromised);
 
@@ -98,6 +99,39 @@ describe("Change commonParams", function() {
             ).to.be.equals(
                 Math.floor(secondTermLastBlockTimeStamp / termSeconds)
             );
+        });
+    });
+
+    describe("Change minimum fee", async function() {
+        it("Change minimum fee of pay transaction", async function() {
+            const checkingNode = nodes[0];
+
+            const secsPerBlock = 5;
+            this.slow(secsPerBlock * 3 * 1000);
+            this.timeout(secsPerBlock * 6 * 1000);
+
+            const changeTxHash = await changeParams(checkingNode, 1, {
+                ...defaultParams,
+                minPayCost: 11
+            });
+
+            await checkingNode.waitForTx(changeTxHash);
+
+            const tx = checkingNode.sdk.core
+                .createPayTransaction({
+                    recipient: allDynValidators[0].platformAddress,
+                    quantity: 100
+                })
+                .sign({
+                    secret: faucetSecret,
+                    seq: await checkingNode.sdk.rpc.chain.getSeq(faucetAddress),
+                    fee: 10
+                });
+            try {
+                await checkingNode.sdk.rpc.chain.sendSignedTransaction(tx);
+            } catch (err) {
+                expect(err.message).contains("Too Low Fee");
+            }
         });
     });
 });
