@@ -189,6 +189,54 @@ describe("Dynamic Validator N -> N+1", function() {
         });
     });
 
+    describe("Delegate more stake to whose stake is less than the minimum delegation", async function() {
+        this.slow(termSeconds * 1000);
+        this.timeout(termSeconds * 2 * 1000);
+
+        const nodes = withNodes(this, {
+            promiseExpect,
+            validators: otherDynValidators
+                .map((signer, index) => ({
+                    signer,
+                    delegation: 5_000,
+                    deposit: 10_000_000 - index // tie-breaker
+                }))
+                .concat([
+                    {
+                        signer: betty,
+                        delegation: 999,
+                        deposit: 10_000_000
+                    }
+                ])
+        });
+
+        it("betty should be included in validators", async function() {
+            const checkingNode = nodes[0];
+            await beforeInsertionCheck(checkingNode.sdk);
+            const faucetSeq = await checkingNode.sdk.rpc.chain.getSeq(
+                faucetAddress
+            );
+            const delegateTx = stake
+                .createDelegateCCSTransaction(
+                    checkingNode.sdk,
+                    betty.platformAddress,
+                    2
+                )
+                .sign({
+                    secret: faucetSecret,
+                    seq: faucetSeq,
+                    fee: 10
+                });
+            const delegateTxHash = checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                delegateTx
+            );
+            await checkingNode.waitForTx(delegateTxHash);
+
+            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await bettyInsertionCheck(checkingNode.sdk);
+        });
+    });
+
     afterEach(async function() {
         await promiseExpect.checkFulfilled();
     });
