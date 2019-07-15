@@ -94,7 +94,7 @@ async function setupEach(): Promise<[CodeChain, Mock]> {
 
 async function teardownEach(currentTest: Test, mock: Mock, node: CodeChain) {
     if (currentTest.state === "failed") {
-        node.testFailed(currentTest.fullTitle());
+        node.keepLogs();
     }
     await mock.end();
     await node.clean();

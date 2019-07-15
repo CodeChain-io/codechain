@@ -60,7 +60,7 @@ describe("Handle future transactions", function() {
 
         afterEach(async function() {
             if (this.currentTest!.state === "failed") {
-                nodeB.testFailed(this.currentTest!.fullTitle());
+                nodeB.keepLogs();
             }
             promiseExpect.checkFulfilled();
             await nodeB.clean();
@@ -69,7 +69,7 @@ describe("Handle future transactions", function() {
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            nodeA.testFailed(this.currentTest!.fullTitle());
+            nodeA.keepLogs();
         }
         await nodeA.clean();
     });

@@ -39,7 +39,7 @@ describe("Sealing test", function() {
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            node.testFailed(this.currentTest!.fullTitle());
+            node.keepLogs();
         }
         await node.clean();
     });
@@ -70,7 +70,7 @@ describe("Future queue", function() {
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            node.testFailed(this.currentTest!.fullTitle());
+            node.keepLogs();
         }
         await node.clean();
     });
@@ -153,7 +153,7 @@ describe("Timelock", function() {
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            node.testFailed(this.currentTest!.fullTitle());
+            node.keepLogs();
         }
         await node.clean();
     });

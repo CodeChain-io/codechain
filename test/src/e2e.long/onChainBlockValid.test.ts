@@ -144,7 +144,7 @@ describe("Test onChain block communication", async function() {
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            nodeA.testFailed(this.currentTest!.fullTitle());
+            nodeA.keepLogs();
         }
         await mock.end();
         await nodeA.clean();

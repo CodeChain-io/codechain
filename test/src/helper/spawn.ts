@@ -68,8 +68,8 @@ export default class CodeChain {
     private readonly _rpcPort: number;
     private readonly argv: string[];
     private readonly env: { [key: string]: string };
-    private isTestFailed: boolean;
     private process?: ChildProcess;
+    private _keepLogs: boolean;
     private readonly keyFileMovePromise?: Promise<{}>;
 
     public get id(): number {
@@ -153,7 +153,7 @@ export default class CodeChain {
         this._chain = chain || "solo";
         this.argv = argv || [];
         this.env = env || {};
-        this.isTestFailed = false;
+        this._keepLogs = false;
     }
 
     public async start(params?: {
@@ -184,6 +184,7 @@ export default class CodeChain {
 
         // Resolves when CodeChain initialization completed.
         return new Promise((resolve, reject) => {
+            this._keepLogs = true;
             this.process = spawn(
                 `target/${useDebugBuild ? "debug" : "release"}/codechain`,
                 [
@@ -210,8 +211,6 @@ export default class CodeChain {
                     }
                 }
             );
-
-            this.isTestFailed = true;
             if (!disableLog) {
                 const logStream = createWriteStream(this.logPath);
                 this.process!.stdout!.pipe(logStream);
@@ -236,11 +235,9 @@ export default class CodeChain {
         });
     }
 
-    public testFailed(testName: string) {
-        console.log(
-            `Test [${testName}] Failed.\nIts log file is: ${this.logFile}.`
-        );
-        this.isTestFailed = true;
+    public keepLogs() {
+        console.log(`Keep log file: ${this._logPath}`);
+        this._keepLogs = true;
     }
 
     public async clean() {
