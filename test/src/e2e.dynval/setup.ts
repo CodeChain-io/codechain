@@ -213,7 +213,7 @@ export async function createNodes(options: {
         }
 
         // enable!
-        const changeTx = await changeParams(initialNodes[0], {
+        const changeTx = await changeParams(initialNodes[0], 0, {
             ...defaultParams,
             ...overrideParams
         });
@@ -258,7 +258,7 @@ async function fullyConnect(nodes: CodeChain[], promiseExpect: PromiseExpect) {
     );
 }
 
-const defaultParams = {
+export const defaultParams = {
     maxExtraDataSize: 0x20,
     maxAssetSchemeMetadataSize: 0x0400,
     maxTransferMetadataSize: 0x0100,
@@ -294,7 +294,11 @@ const defaultParams = {
     maxCandidateMetadataSize: 128
 };
 
-async function changeParams(node: CodeChain, params: typeof defaultParams) {
+export async function changeParams(
+    node: CodeChain,
+    metadataSeq: number,
+    params: typeof defaultParams
+) {
     const newParams: any[] = [
         params.maxExtraDataSize,
         params.maxAssetSchemeMetadataSize,
@@ -334,7 +338,7 @@ async function changeParams(node: CodeChain, params: typeof defaultParams) {
         number,
         (number | string)[],
         ...string[]
-    ] = [0xff, 0, newParams];
+    ] = [0xff, metadataSeq, newParams];
     const message = blake256(RLP.encode(changeParamsActionRlp).toString("hex"));
     changeParamsActionRlp.push(
         `0x${SDK.util.signEcdsa(message, faucetSecret)}`
