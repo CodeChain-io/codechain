@@ -88,7 +88,7 @@ export async function createNodes(options: {
         });
     }
 
-    let nodes: CodeChain[] = [];
+    const nodes: CodeChain[] = [];
     for (let i = 0; i < validators.length; i++) {
         const { signer: validator } = validators[i];
         nodes[i] = new CodeChain({
