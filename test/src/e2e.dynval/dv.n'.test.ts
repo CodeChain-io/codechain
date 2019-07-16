@@ -17,30 +17,15 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
-import { blake256, H256 } from "codechain-primitives/lib";
-import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
 import { validators as originalDynValidators } from "../../tendermint.dynval/constants";
-import {
-    aliceSecret,
-    bobSecret,
-    faucetAddress,
-    faucetSecret,
-    stakeActionHandlerId,
-    validator0Address,
-    validator1Address,
-    validator2Address,
-    validator3Address
-} from "../helper/constants";
-import { PromiseExpect, wait } from "../helper/promise";
-import CodeChain from "../helper/spawn";
+import { faucetAddress, faucetSecret } from "../helper/constants";
+import { PromiseExpect } from "../helper/promise";
 import { withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
-
-const RLP = require("rlp");
 
 const alice = originalDynValidators[0];
 const betty = originalDynValidators[1];
@@ -70,8 +55,8 @@ describe("Dynamic Validator N -> N'", function() {
                     deposit: 100000
                 }))
             ],
-            onBeforeEnable: async allDynNodes => {
-                const aliceNode = allDynNodes[0];
+            onBeforeEnable: async nodes => {
+                const aliceNode = nodes[0];
                 // Kill the alice node first to make alice not to participate in the term 1.
                 await aliceNode.clean();
             }
