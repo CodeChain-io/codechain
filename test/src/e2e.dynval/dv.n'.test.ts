@@ -42,8 +42,9 @@ chai.use(chaiAsPromised);
 
 const RLP = require("rlp");
 
-const [alice, betty, notUsed, ...otherDynValidators] = originalDynValidators;
-const allDynValidators = [alice, betty, ...otherDynValidators];
+const alice = originalDynValidators[0];
+const betty = originalDynValidators[1];
+const otherDynValidators = originalDynValidators.slice(2, 2 + 6);
 
 describe("Dynamic Validator N -> N'", function() {
     const promiseExpect = new PromiseExpect();
@@ -89,7 +90,7 @@ describe("Dynamic Validator N -> N'", function() {
             expect(beforeAuthors).not.to.includes(
                 betty.platformAddress.toString()
             );
-            expect(beforeAuthors.length).to.be.equals(8);
+            expect(beforeAuthors.length).to.be.equals(7);
 
             const tx = stake
                 .createDelegateCCSTransaction(
@@ -158,7 +159,7 @@ describe("Dynamic Validator N -> N'", function() {
             expect(beforeAuthors).not.to.includes(
                 betty.platformAddress.toString()
             );
-            expect(beforeAuthors.length).to.be.equals(8);
+            expect(beforeAuthors.length).to.be.equals(7);
 
             const tx = stake
                 .createSelfNominateTransaction(bettyNode.sdk, 100000, "")
@@ -183,7 +184,7 @@ describe("Dynamic Validator N -> N'", function() {
                 alice.platformAddress.toString()
             );
             expect(afterAuthors).to.includes(betty.platformAddress.toString());
-            expect(afterAuthors.length).to.be.equals(8);
+            expect(afterAuthors.length).to.be.equals(7);
         });
     });
 
@@ -221,7 +222,7 @@ describe("Dynamic Validator N -> N'", function() {
             expect(beforeAuthors).not.to.includes(
                 betty.platformAddress.toString()
             );
-            expect(beforeAuthors.length).to.be.equals(8);
+            expect(beforeAuthors.length).to.be.equals(7);
 
             const seq = await rpcNode.sdk.rpc.chain.getSeq(faucetAddress);
             const tx = stake
@@ -260,7 +261,7 @@ describe("Dynamic Validator N -> N'", function() {
                 alice.platformAddress.toString()
             );
             expect(afterAuthors).to.includes(betty.platformAddress.toString());
-            expect(afterAuthors.length).to.be.equals(8);
+            expect(afterAuthors.length).to.be.equals(7);
         });
     });
 
@@ -298,7 +299,7 @@ describe("Dynamic Validator N -> N'", function() {
             expect(beforeAuthors).not.to.includes(
                 betty.platformAddress.toString()
             );
-            expect(beforeAuthors.length).to.be.equals(8);
+            expect(beforeAuthors.length).to.be.equals(7);
 
             const tx = stake
                 .createSelfNominateTransaction(bettyNode.sdk, 100000, "")
@@ -339,7 +340,7 @@ describe("Dynamic Validator N -> N'", function() {
                 alice.platformAddress.toString()
             );
             expect(afterAuthors).to.includes(betty.platformAddress.toString());
-            expect(afterAuthors.length).to.be.equals(8);
+            expect(afterAuthors.length).to.be.equals(7);
         });
     });
 });
