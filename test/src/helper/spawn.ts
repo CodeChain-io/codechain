@@ -256,6 +256,7 @@ export default class CodeChain {
             function clearListeners() {
                 child
                     .removeListener("error", onError)
+                    .removeListener("close", onClose)
                     .removeListener("exit", onExit);
                 readline.removeListener("line", onLine);
             }
@@ -277,6 +278,13 @@ export default class CodeChain {
                 });
                 reject(new ProcessStateError(self.id, self.process));
             }
+            function onClose(code: number, signal: number) {
+                clearListeners();
+                reportErrorState({
+                    message: `CodeChain unexpectedly closed on start: code ${code}, signal ${signal}`
+                });
+                return reject(new ProcessStateError(self.id, self.process));
+            }
             function onExit(code: number, signal: number) {
                 clearListeners();
                 reportErrorState({
@@ -291,7 +299,14 @@ export default class CodeChain {
                         state: "running",
                         process: child
                     };
+                    child.on("close", (code, signal) => {
+                        clearListeners();
+                        reportErrorState({
+                            message: `CodeChain unexpectedly closed while running: code ${code}, signal ${signal}`
+                        });
+                    });
                     child.on("exit", (code, signal) => {
+                        clearListeners();
                         reportErrorState({
                             message: `CodeChain unexpectedly exited while running: code ${code}, signal ${signal}`
                         });
@@ -300,7 +315,10 @@ export default class CodeChain {
                 }
             }
 
-            child.on("error", onError).on("exit", onExit);
+            child
+                .on("error", onError)
+                .on("close", onClose)
+                .on("exit", onExit);
             readline.on("line", onLine);
         });
     }
@@ -322,8 +340,9 @@ export default class CodeChain {
             const { process: child } = this.process;
             this.process = { state: "stopping" };
             child
-                .removeAllListeners("error")
+                .removeAllListeners()
                 .on("error", e => {
+                    child.removeAllListeners();
                     this.process = {
                         state: "error",
                         message: "CodeChain unexpectedly exited on clean",
@@ -331,8 +350,20 @@ export default class CodeChain {
                     };
                     reject(new ProcessStateError(this.id, this.process));
                 })
-                .removeAllListeners("exit")
+                .on("close", (code, signal) => {
+                    child.removeAllListeners();
+                    if (code !== 0) {
+                        console.error(
+                            `CodeChain(${this.id}) closed with code ${code}, ${signal}`
+                        );
+                    } else if (!this._keepLogs) {
+                        unlinkSync(this.logPath);
+                    }
+                    this.process = { state: "stopped" };
+                    resolve();
+                })
                 .on("exit", (code, signal) => {
+                    child.removeAllListeners();
                     if (code !== 0) {
                         console.error(
                             `CodeChain(${this.id}) exited with code ${code}, ${signal}`
