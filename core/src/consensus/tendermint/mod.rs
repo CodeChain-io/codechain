@@ -34,9 +34,9 @@ use parking_lot::RwLock;
 use primitives::H256;
 
 use self::chain_notify::TendermintChainNotify;
-use self::message::ConsensusMessage;
+pub use self::message::{message_info_rlp, ConsensusMessage, VoteOn, VoteStep};
 pub use self::params::{TendermintParams, TimeGapParams, TimeoutParams};
-use self::types::{Height, Step, View};
+pub use self::types::{Height, Step, View};
 use super::{stake, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;

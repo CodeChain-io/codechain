@@ -324,10 +324,7 @@ mod tests {
     use ckey::sign_schnorr;
     use client::TestBlockChainClient;
     use consensus::solo::SoloMessage;
-    use rlp::rlp_encode_and_decode_test;
-
-    use super::*;
-    use consensus::solo::SoloMessage;
+    use consensus::{message_info_rlp, ConsensusMessage, DynamicValidator, Step, VoteOn, VoteStep};
     use rlp::rlp_encode_and_decode_test;
 
     #[test]
@@ -353,5 +350,271 @@ mod tests {
             params: CommonParams::default_for_test().into(),
             signatures: vec![Signature::random(), Signature::random()],
         });
+    }
+
+    struct ConsensusMessageInfo {
+        pub height: u64,
+        pub view: u64,
+        pub step: Step,
+        pub block_hash: Option<H256>,
+        pub signer_index: usize,
+    }
+
+    fn create_consensus_message<F, G>(
+        info: ConsensusMessageInfo,
+        client: &TestBlockChainClient,
+        vote_step_twister: &F,
+        block_hash_twister: &G,
+    ) -> ConsensusMessage
+    where
+        F: Fn(VoteStep) -> VoteStep,
+        G: Fn(Option<H256>) -> Option<H256>, {
+        let ConsensusMessageInfo {
+            height,
+            view,
+            step,
+            block_hash,
+            signer_index,
+        } = info;
+        let vote_step = VoteStep::new(height, view, step);
+        let on = VoteOn {
+            step: vote_step,
+            block_hash,
+        };
+        let message_for_signature =
+            blake256(message_info_rlp(vote_step_twister(vote_step), block_hash_twister(block_hash)));
+        let reversed_idx = client.get_validators().len() - 1 - signer_index;
+        let pubkey = *client.get_validators().get(reversed_idx).unwrap().pubkey();
+        let privkey = *client.validator_keys.read().get(&pubkey).unwrap();
+        let signature = sign_schnorr(&privkey, &message_for_signature).unwrap();
+
+        ConsensusMessage {
+            signature,
+            signer_index,
+            on,
+        }
+    }
+
+    fn double_vote_verification_result<F, G>(
+        message_info1: ConsensusMessageInfo,
+        message_info2: ConsensusMessageInfo,
+        vote_step_twister: &F,
+        block_hash_twister: &G,
+    ) -> Result<(), SyntaxError>
+    where
+        F: Fn(VoteStep) -> VoteStep,
+        G: Fn(Option<H256>) -> Option<H256>, {
+        let mut test_client = TestBlockChainClient::default();
+        test_client.add_blocks(10, 1);
+        test_client.set_random_validators(10);
+        let validator_set =
+            DynamicValidator::new(test_client.get_validators().iter().map(|val| *val.pubkey()).collect());
+
+        let consensus_message1 =
+            create_consensus_message(message_info1, &test_client, vote_step_twister, block_hash_twister);
+        let consensus_message2 =
+            create_consensus_message(message_info2, &test_client, vote_step_twister, block_hash_twister);
+        let action = Action::<ConsensusMessage>::ReportDoubleVote {
+            message1: consensus_message1,
+            message2: consensus_message2,
+        };
+        let arced_client: Arc<ConsensusClient> = Arc::new(test_client);
+        validator_set.register_client(Arc::downgrade(&arced_client));
+        action.verify(&CommonParams::default_for_test(), Some(Arc::clone(&arced_client)), Some(Arc::new(validator_set)))
+    }
+
+    #[test]
+    fn double_vote_verify_desirable_report() {
+        let result = double_vote_verification_result(
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: None,
+                signer_index: 0,
+            },
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: Some(H256::random()),
+                signer_index: 0,
+            },
+            &|v| v,
+            &|v| v,
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn double_vote_verify_same_message() {
+        let block_hash = Some(H256::random());
+        let result = double_vote_verification_result(
+            ConsensusMessageInfo {
+                height: 3,
+                view: 1,
+                step: Step::Precommit,
+                block_hash,
+                signer_index: 2,
+            },
+            ConsensusMessageInfo {
+                height: 3,
+                view: 1,
+                step: Step::Precommit,
+                block_hash,
+                signer_index: 2,
+            },
+            &|v| v,
+            &|v| v,
+        );
+        let expected_err = Err(SyntaxError::InvalidCustomAction(String::from("Messages are duplicated")));
+        assert_eq!(result, expected_err);
+    }
+
+    #[test]
+    fn double_vote_verify_different_height() {
+        let block_hash = Some(H256::random());
+        let result = double_vote_verification_result(
+            ConsensusMessageInfo {
+                height: 3,
+                view: 1,
+                step: Step::Precommit,
+                block_hash,
+                signer_index: 2,
+            },
+            ConsensusMessageInfo {
+                height: 2,
+                view: 1,
+                step: Step::Precommit,
+                block_hash,
+                signer_index: 2,
+            },
+            &|v| v,
+            &|v| v,
+        );
+        let expected_err =
+            Err(SyntaxError::InvalidCustomAction(String::from("The messages are from two different voting rounds")));
+        assert_eq!(result, expected_err);
+    }
+
+    #[test]
+    fn double_vote_verify_different_signer() {
+        let result = double_vote_verification_result(
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: None,
+                signer_index: 1,
+            },
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: Some(H256::random()),
+                signer_index: 0,
+            },
+            &|v| v,
+            &|v| v,
+        );
+        match result {
+            Err(SyntaxError::InvalidCustomAction(ref s))
+                if s.contains("Two messages have different signer indexes") => {}
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn double_vote_verify_different_message_and_signer() {
+        let hash1 = Some(H256::random());
+        let mut hash2 = Some(H256::random());
+        while hash1 == hash2 {
+            hash2 = Some(H256::random());
+        }
+        let result = double_vote_verification_result(
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: hash1,
+                signer_index: 1,
+            },
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: hash2,
+                signer_index: 0,
+            },
+            &|v| v,
+            &|v| v,
+        );
+        match result {
+            Err(SyntaxError::InvalidCustomAction(ref s))
+                if s.contains("Two messages have different signer indexes") => {}
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn double_vote_verify_strange_sig1() {
+        let vote_step_twister = |original: VoteStep| VoteStep {
+            height: original.height + 1,
+            view: original.height + 1,
+            step: original.step,
+        };
+        let result = double_vote_verification_result(
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: None,
+                signer_index: 0,
+            },
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: Some(H256::random()),
+                signer_index: 0,
+            },
+            &vote_step_twister,
+            &|v| v,
+        );
+        let expected_err = Err(SyntaxError::InvalidCustomAction(String::from("Schnorr signature verification fails")));
+        assert_eq!(result, expected_err);
+    }
+
+    #[test]
+    fn double_vote_verify_strange_sig2() {
+        let block_hash_twister = |original: Option<H256>| {
+            original.map(|hash| {
+                let mut twisted = H256::random();
+                while twisted == hash {
+                    twisted = H256::random();
+                }
+                twisted
+            })
+        };
+        let result = double_vote_verification_result(
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: None,
+                signer_index: 0,
+            },
+            ConsensusMessageInfo {
+                height: 2,
+                view: 0,
+                step: Step::Precommit,
+                block_hash: Some(H256::random()),
+                signer_index: 0,
+            },
+            &|v| v,
+            &block_hash_twister,
+        );
+        let expected_err = Err(SyntaxError::InvalidCustomAction(String::from("Schnorr signature verification fails")));
+        assert_eq!(result, expected_err);
     }
 }

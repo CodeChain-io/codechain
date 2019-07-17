@@ -21,7 +21,7 @@ mod null_engine;
 mod signer;
 mod simple_poa;
 mod solo;
-mod stake;
+pub mod stake;
 mod tendermint;
 mod validator_set;
 mod vote_collector;
@@ -31,9 +31,12 @@ pub use self::cuckoo::Cuckoo;
 pub use self::null_engine::NullEngine;
 pub use self::simple_poa::SimplePoA;
 pub use self::solo::Solo;
-pub use self::tendermint::{Tendermint, TendermintParams, TimeGapParams};
+pub use self::tendermint::{
+    message_info_rlp, ConsensusMessage, Height, Step, Tendermint, TendermintParams, TimeGapParams, View, VoteOn,
+    VoteStep,
+};
 pub use self::validator_set::validator_list::RoundRobinValidator;
-pub use self::validator_set::ValidatorSet;
+pub use self::validator_set::{DynamicValidator, ValidatorSet};
 pub use self::vote_collector::Message;
 
 use std::fmt;
@@ -49,7 +52,6 @@ use ctypes::{CommonParams, Header};
 use primitives::{Bytes, H256, U256};
 
 use self::bit_set::BitSet;
-use self::tendermint::types::View;
 use crate::account_provider::AccountProvider;
 use crate::block::{ExecutedBlock, SealedBlock};
 use crate::client::ConsensusClient;

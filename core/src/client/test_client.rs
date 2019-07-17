@@ -36,9 +36,10 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
-use ckey::{public_to_address, Address, Generator, NetworkId, PlatformAddress, Public, Random};
+use ckey::{public_to_address, Address, Generator, KeyPair, NetworkId, PlatformAddress, Private, Public, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
+use cstate::tests::helpers::empty_top_state;
 use cstate::{FindActionHandler, StateDB, TopLevelState};
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
@@ -58,6 +59,7 @@ use crate::client::{
     AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock,
     MiningBlockChainClient, StateInfo, StateOrBlock, TermInfo,
 };
+use crate::consensus::stake::{Validator, Validators};
 use crate::consensus::EngineError;
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
@@ -102,6 +104,10 @@ pub struct TestBlockChainClient {
     pub history: RwLock<Option<u64>>,
     /// Term ID
     pub term_id: Option<u64>,
+    /// Fixed validator keys
+    pub validator_keys: RwLock<HashMap<Public, Private>>,
+    /// Fixed validators
+    pub validators: Validators,
 }
 
 impl Default for TestBlockChainClient {
@@ -153,7 +159,9 @@ impl TestBlockChainClient {
             scheme,
             latest_block_timestamp: RwLock::new(10_000_000),
             history: RwLock::new(None),
-            term_id: None,
+            term_id: Some(1),
+            validator_keys: RwLock::new(HashMap::new()),
+            validators: Validators::from_vector_to_test(vec![]),
         };
 
         // insert genesis hash.
@@ -307,6 +315,26 @@ impl TestBlockChainClient {
     /// Set reported history size.
     pub fn set_history(&self, h: Option<u64>) {
         *self.history.write() = h;
+    }
+
+    /// Set validators which can be brought from state.
+    pub fn set_random_validators(&mut self, count: usize) {
+        let mut pubkeys: Vec<Public> = vec![];
+        for _ in 0..count {
+            let random_priv_key = Private::from(H256::random());
+            let key_pair = KeyPair::from_private(random_priv_key).unwrap();
+            self.validator_keys.write().insert(*key_pair.public(), *key_pair.private());
+            pubkeys.push(*key_pair.public());
+        }
+        let fixed_validators: Validators = Validators::from_vector_to_test(
+            pubkeys.into_iter().map(|pubkey| Validator::new_for_test(0, 0, pubkey)).collect(),
+        );
+
+        self.validators = fixed_validators;
+    }
+
+    pub fn get_validators(&self) -> &Validators {
+        &self.validators
     }
 }
 
@@ -627,6 +655,10 @@ impl TermInfo for TestBlockChainClient {
 
 impl StateInfo for TestBlockChainClient {
     fn state_at(&self, _id: BlockId) -> Option<TopLevelState> {
-        None
+        let statedb = StateDB::new_with_memorydb();
+        let mut top_state = empty_top_state(statedb);
+        let _ = self.validators.save_to_state(&mut top_state);
+
+        Some(top_state)
     }
 }
