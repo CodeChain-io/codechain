@@ -70,7 +70,7 @@ impl Action {
             } => {
                 if metadata.len() > current_params.max_candidate_metadata_size() {
                     return Err(SyntaxError::InvalidCustomAction(format!(
-                        "Too long candidata metadata: the size limit is {}",
+                        "Too long candidate metadata: the size limit is {}",
                         current_params.max_candidate_metadata_size()
                     )))
                 }
