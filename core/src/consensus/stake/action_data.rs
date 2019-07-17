@@ -238,6 +238,15 @@ pub struct Validator {
 }
 
 impl Validator {
+    pub fn new_for_test(delegation: StakeQuantity, deposit: Deposit, pubkey: Public) -> Self {
+        Self {
+            weight: delegation,
+            delegation,
+            deposit,
+            pubkey,
+        }
+    }
+
     fn new(delegation: StakeQuantity, deposit: Deposit, pubkey: Public) -> Self {
         Self {
             weight: delegation,
@@ -263,6 +272,10 @@ impl Validator {
 #[derive(Debug)]
 pub struct Validators(Vec<Validator>);
 impl Validators {
+    pub fn from_vector_to_test(vec: Vec<Validator>) -> Self {
+        Validators(vec)
+    }
+
     pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
         let key = &*VALIDATORS_KEY;
         let validators = state.action_data(&key)?.map(|data| decode_list(&data)).unwrap_or_default();
