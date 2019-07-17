@@ -36,6 +36,9 @@ describe("Change commonParams", function() {
     const promiseExpect = new PromiseExpect();
     const nodes = withNodes(this, {
         promiseExpect,
+        overrideParams: {
+            maxCandidateMetadataSize: 128
+        },
         validators: allDynValidators.map((signer, index) => ({
             signer,
             delegation: 5_000,
@@ -200,6 +203,103 @@ describe("Change commonParams", function() {
                 val.platformAddress.toString()
             );
             await checkValidators(checkingNode.sdk, expectedValidators);
+        });
+    });
+    describe("Change the maximum size of candidate metadata", async function() {
+        function nominationWithMetadata(size: number) {
+            return stake.createSelfNominateTransaction(
+                nodes[0].sdk,
+                1,
+                " ".repeat(size)
+            );
+        }
+
+        it("Should apply larger metadata limit after increment", async function() {
+            const termSeconds = 20;
+            const margin = 1.2;
+
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const [alice] = allDynValidators;
+            const checkingNode = nodes[0];
+            const changeTxHash = await changeParams(checkingNode, 1, {
+                ...defaultParams,
+                maxCandidateMetadataSize: 256
+            });
+            await checkingNode.waitForTx(changeTxHash);
+            const normalNomination = nominationWithMetadata(129);
+            const seq = await checkingNode.sdk.rpc.chain.getSeq(
+                alice.platformAddress
+            );
+            const normalHash = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                normalNomination.sign({
+                    secret: alice.privateKey,
+                    seq,
+                    fee: 10
+                })
+            );
+            await checkingNode.waitForTx(normalHash);
+
+            const largeNomination = nominationWithMetadata(257);
+            try {
+                await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                    largeNomination.sign({
+                        secret: alice.privateKey,
+                        seq,
+                        fee: 10
+                    })
+                );
+                expect.fail(
+                    "Transaction with large metadata should not be included"
+                );
+            } catch (err) {
+                expect(err.message).include("Too long");
+            }
+        });
+
+        it("Should apply smaller metadata limit after decrement", async function() {
+            const termSeconds = 20;
+            const margin = 1.2;
+
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const [alice] = allDynValidators;
+            const checkingNode = nodes[0];
+            const changeTxHash = await changeParams(checkingNode, 1, {
+                ...defaultParams,
+                maxCandidateMetadataSize: 64
+            });
+            await checkingNode.waitForTx(changeTxHash);
+            const normalNomination = nominationWithMetadata(63);
+            const seq = await checkingNode.sdk.rpc.chain.getSeq(
+                alice.platformAddress
+            );
+            const normalHash = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                normalNomination.sign({
+                    secret: alice.privateKey,
+                    seq,
+                    fee: 10
+                })
+            );
+            await checkingNode.waitForTx(normalHash);
+
+            const largeNomination = nominationWithMetadata(127);
+            try {
+                await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                    largeNomination.sign({
+                        secret: alice.privateKey,
+                        seq,
+                        fee: 10
+                    })
+                );
+                expect.fail(
+                    "Transaction with large metadata should not be included"
+                );
+            } catch (err) {
+                expect(err.message).include("Too long");
+            }
         });
     });
 });
