@@ -38,7 +38,7 @@ import * as stake from "codechain-stakeholder-sdk";
 import { createWriteStream, mkdtempSync, unlinkSync } from "fs";
 import * as mkdirp from "mkdirp";
 import { ncp } from "ncp";
-import { createInterface as createReadline } from "readline";
+import { createInterface as createReadline, ReadLine } from "readline";
 import { faucetAddress, faucetSecret } from "./constants";
 import { wait } from "./promise";
 
@@ -56,7 +56,7 @@ export type ChainType =
 type ProcessState =
     | { state: "stopped" }
     | { state: "initializing" }
-    | { state: "running"; process: ChildProcess }
+    | { state: "running"; process: ChildProcess; readline: ReadLine }
     | { state: "stopping" }
     | { state: "error"; message: string; source?: Error };
 export class ProcessStateError extends Error {
@@ -297,7 +297,8 @@ export default class CodeChain {
                     clearListeners();
                     self.process = {
                         state: "running",
-                        process: child
+                        process: child,
+                        readline
                     };
                     child.on("close", (code, signal) => {
                         clearListeners();
@@ -310,6 +311,14 @@ export default class CodeChain {
                         reportErrorState({
                             message: `CodeChain unexpectedly exited while running: code ${code}, signal ${signal}`
                         });
+                    });
+                    readline.on("line", (l: string) => {
+                        if (!l.startsWith("stack backtrace:")) {
+                            return;
+                        }
+                        console.error(
+                            `CodeChain(${self.id}) unexpectedly dumped backtrace`
+                        );
                     });
                     resolve();
                 }
@@ -337,8 +346,9 @@ export default class CodeChain {
             } else if (this.process.state !== "running") {
                 return reject(new ProcessStateError(this.id, this.process));
             }
-            const { process: child } = this.process;
+            const { process: child, readline } = this.process;
             this.process = { state: "stopping" };
+            readline.removeAllListeners("line");
             child
                 .removeAllListeners()
                 .on("error", e => {
