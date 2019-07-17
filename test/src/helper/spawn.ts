@@ -90,6 +90,7 @@ export default class CodeChain {
     private readonly env: { [key: string]: string };
     private process?: ChildProcess;
     private _processState: ProcessState;
+    private restarts: number;
     private _keepLogs: boolean;
     private readonly keyFileMovePromise?: Promise<{}>;
 
@@ -182,6 +183,7 @@ export default class CodeChain {
         this.argv = argv || [];
         this.env = env || {};
         this._processState = "stopped";
+        this.restarts = 0;
         this._keepLogs = false;
     }
 
@@ -217,6 +219,7 @@ export default class CodeChain {
 
         // Resolves when CodeChain initialization completed.
         return new Promise((resolve, reject) => {
+            this.restarts++;
             this._processState = "initializing";
             this.process = spawn(
                 `target/${useDebugBuild ? "debug" : "release"}/codechain`,
@@ -248,6 +251,7 @@ export default class CodeChain {
                 const logStream = createWriteStream(this.logPath, {
                     flags: "a"
                 });
+                logStream.write(`Process restart #${this.restarts}n`);
                 this.process!.stdout!.pipe(logStream);
                 this.process!.stderr!.pipe(logStream);
             }
