@@ -53,7 +53,7 @@ export type ChainType =
     | "blake_pow"
     | "husky"
     | SchemeFilepath;
-export type ProcessState =
+type ProcessState =
     | "stopped"
     | "initializing"
     | "running"
@@ -133,8 +133,8 @@ export default class CodeChain {
     public get chain(): ChainType {
         return this._chain;
     }
-    public get processState(): ProcessState {
-        return this._processState;
+    public get isRunning(): boolean {
+        return this._processState === "running";
     }
 
     constructor(
