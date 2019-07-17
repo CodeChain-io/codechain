@@ -65,8 +65,9 @@ The delegated stakes are returned when the account becomes an eligible account o
 ## Election
 The election is a process that elects validators of a term according to the following rule:
 
-1. Calculate the rankings of candidates.
+1. Calculate the rankings of candidates with `(delegation, deposit, index)`.
    * Candidates who receive the most delegation will have the highest ranking.
+   * If there is a tie between them, candidates with the higher deposit will have a higher ranking.
    * If there is a tie between them, candidates with the higher index in the `candidates` list will have the higher ranking.
 2. Select the candidates who deposited **MIN_DEPOSIT** or more.
 3. Pick the top **MAX_NUM_OF_VALIDATORS** candidates.
