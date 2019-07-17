@@ -217,7 +217,6 @@ export default class CodeChain {
 
         // Resolves when CodeChain initialization completed.
         return new Promise((resolve, reject) => {
-            this._keepLogs = true;
             this._processState = "initializing";
             this.process = spawn(
                 `target/${useDebugBuild ? "debug" : "release"}/codechain`,
@@ -271,7 +270,7 @@ export default class CodeChain {
                     message: "Error while spawning CodeChain",
                     source: e
                 };
-                self._keepLogs = true;
+                self.keepLogs();
                 reject(new ProcessStateError(self._processState));
             }
             function onExit(code: number, signal: number) {
@@ -281,21 +280,20 @@ export default class CodeChain {
                     state: "error",
                     message: `CodeChain unexpectedly exited on start: code ${code}, signal ${signal}`
                 };
-                self._keepLogs = true;
+                self.keepLogs();
                 reject(new ProcessStateError(self._processState));
             }
             function onLine(line: string) {
                 if (line.includes("Initialization complete")) {
                     clearListeners();
                     self._processState = "running";
-                    self._keepLogs = false;
                     self.process!.on("exit", (code, signal) => {
                         self.process = undefined;
                         self._processState = {
                             state: "error",
                             message: `CodeChain unexpectedly exited while running: code ${code}, signal ${signal}`
                         };
-                        self._keepLogs = true;
+                        self.keepLogs();
                     });
                     resolve();
                 }
@@ -307,8 +305,10 @@ export default class CodeChain {
     }
 
     public keepLogs() {
-        console.log(`Keep log file: ${this._logPath}`);
-        this._keepLogs = true;
+        if (!this._keepLogs) {
+            this._keepLogs = true;
+            console.log(`Keep log file: ${this._logPath}`);
+        }
     }
 
     public async clean() {
