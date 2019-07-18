@@ -250,7 +250,10 @@ export async function createNodes(options: {
     }
 }
 
-async function fullyConnect(nodes: CodeChain[], promiseExpect: PromiseExpect) {
+export async function fullyConnect(
+    nodes: CodeChain[],
+    promiseExpect: PromiseExpect
+) {
     const graph: { from: number; to: number }[] = [];
     for (let i = 0; i < nodes.length - 1; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
