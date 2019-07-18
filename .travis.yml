@@ -28,6 +28,7 @@ jobs:
         - cd test && yarn || exit 1
         - INT_TEST_FLAG=true && yarn start-short
         - yarn start-long
+        - yarn start-dyn-val
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - os: linux
@@ -48,6 +49,7 @@ jobs:
         - cd test && yarn || exit 1
         - INT_TEST_FLAG=true && yarn start-short
         - yarn start-long
+        - yarn start-dyn-val
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - os: linux
