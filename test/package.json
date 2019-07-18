@@ -47,7 +47,7 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "codechain-primitives": "^1.0.1",
-    "codechain-sdk": "^1.2.0",
+    "codechain-sdk": "^2.0.0-alpha.2",
     "codechain-stakeholder-sdk": "https://github.com/foriequal0/codechain-stakeholder-sdk.git#dist",
     "elliptic": "^6.4.1",
     "lodash": "^4.17.11",
