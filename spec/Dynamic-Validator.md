@@ -252,7 +252,7 @@ To break a tie, we give priority to the candidate who have responded most recent
 Current validators will have highest priority among candidates with the same `(delegation, deposit)` at the next election.
 The sender of most recent `SelfNominate` transaction will be after them.
 
-Thus, We repriortize candidates on `SelfNomination` transaction and `TermEnd` event with the following algorithm.
+Thus, we reprioritize candidates on the `SelfNomination` transaction and the `TermEnd` event with the following algorithm.
 A candidate with higher priority will be stored with a higher index in the `candidates` state.
 
 ```rust
