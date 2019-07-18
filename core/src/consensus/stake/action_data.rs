@@ -281,7 +281,7 @@ impl Validators {
                 common_params.min_deposit(),
             )
         };
-        assert!(max_num_of_validators > min_num_of_validators);
+        assert!(max_num_of_validators >= min_num_of_validators);
 
         let delegatees = Stakeholders::delegatees(&state)?;
         // Step 1 & 2.
