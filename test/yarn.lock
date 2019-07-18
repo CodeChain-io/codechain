@@ -731,21 +731,6 @@ codechain-primitives@^1.0.0, codechain-primitives@^1.0.1:
     ripemd160 "^2.0.2"
     rlp "^2.1.0"
 
-codechain-sdk@^1.2.0:
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-1.2.1.tgz#3976619f05af942cb5a2d511ff796fc26316cc2d"
-  integrity sha512-WeJb7QbMAGolPnh08+/5kz0FZ3p91/57P1u+f0j2iY07wI33+ta590KfQW1rSLkcJIVtaygKwGqkj+1CfGNOjQ==
-  dependencies:
-    buffer "5.1.0"
-    codechain-keystore "^0.6.0"
-    codechain-primitives "^1.0.0"
-    jayson "^2.0.6"
-    lodash "^4.17.10"
-    node-fetch "^2.1.2"
-    request "^2.88.0"
-    request-promise "^4.2.2"
-    rlp "^2.0.0"
-
 codechain-sdk@^2.0.0-alpha.2:
   version "2.0.0-alpha.2"
   resolved "https://registry.yarnpkg.com/codechain-sdk/-/codechain-sdk-2.0.0-alpha.2.tgz#6aeeff24aacfa3c83535faddf6072270b6f7cdef"
@@ -761,13 +746,13 @@ codechain-sdk@^2.0.0-alpha.2:
     request-promise "^4.2.2"
     rlp "^2.0.0"
 
-"codechain-stakeholder-sdk@https://github.com/foriequal0/codechain-stakeholder-sdk.git#dist":
-  version "0.1.0"
-  resolved "https://github.com/foriequal0/codechain-stakeholder-sdk.git#9b80fa3b370cae91a41dc0cb83c62752f9e49b09"
+"codechain-stakeholder-sdk@https://github.com/majecty/codechain-stakeholder-sdk-js#v2.0.0-alpha.1":
+  version "2.0.0-alpha.1"
+  resolved "https://github.com/majecty/codechain-stakeholder-sdk-js#ce02d99e7381a93aa9d6739792b140e4a95ebe7b"
   dependencies:
     cli-table3 "^0.5.1"
     codechain-primitives "^1.0.1"
-    codechain-sdk "^1.2.0"
+    codechain-sdk "^2.0.0-alpha.2"
     prompt-password "^1.2.0"
     rlp "^2.2.2"
     yargs "^13.2.2"
