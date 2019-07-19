@@ -65,8 +65,9 @@ The delegated stakes are returned when the account becomes an eligible account o
 ## Election
 The election is a process that elects validators of a term according to the following rule:
 
-1. Calculate the rankings of candidates.
+1. Calculate the rankings of candidates with `(delegation, deposit, index)`.
    * Candidates who receive the most delegation will have the highest ranking.
+   * If there is a tie between them, candidates with the higher deposit will have a higher ranking.
    * If there is a tie between them, candidates with the higher index in the `candidates` list will have the higher ranking.
 2. Select the candidates who deposited **MIN_DEPOSIT** or more.
 3. Pick the top **MAX_NUM_OF_VALIDATORS** candidates.
@@ -251,7 +252,7 @@ To break a tie, we give priority to the candidate who have responded most recent
 Current validators will have highest priority among candidates with the same `(delegation, deposit)` at the next election.
 The sender of most recent `SelfNominate` transaction will be after them.
 
-Thus, We repriortize candidates on `SelfNomination` transaction and `TermEnd` event with the following algorithm.
+Thus, we reprioritize candidates on the `SelfNomination` transaction and the `TermEnd` event with the following algorithm.
 A candidate with higher priority will be stored with a higher index in the `candidates` state.
 
 ```rust
