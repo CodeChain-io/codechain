@@ -50,10 +50,9 @@ const [alice, betty, notUsed, ...otherDynValidators] = originalDynValidators;
 const allDynValidators = [alice, betty, ...otherDynValidators];
 
 describe("Dynamic Validator N -> N'", function() {
-    this.timeout(0);
-
     const promiseExpect = new PromiseExpect();
     const TERM_SECONDS = 30;
+    const margin = 1.2;
 
     describe("1. Jail one of the validator + increase the delegation of a candidate who doesn’t have enough delegation", async function() {
         const allDynNodes = withNodes(this, {
@@ -78,7 +77,9 @@ describe("Dynamic Validator N -> N'", function() {
         });
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
-            const margin = 1.1;
+            this.slow(TERM_SECONDS * margin * 1000); // All tests waits at most 1 terms.
+            this.timeout(TERM_SECONDS * 2 * 1000);
+
             const [_aliceNode, _bettyNode, ...otherDynNodes] = allDynNodes;
             {
                 const authors = (await stake.getPossibleAuthors(
