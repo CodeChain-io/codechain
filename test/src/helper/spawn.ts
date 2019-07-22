@@ -38,7 +38,7 @@ import * as stake from "codechain-stakeholder-sdk";
 import { createWriteStream, mkdtempSync, unlinkSync } from "fs";
 import * as mkdirp from "mkdirp";
 import { ncp } from "ncp";
-import { createInterface as createReadline } from "readline";
+import { createInterface as createReadline, ReadLine } from "readline";
 import { faucetAddress, faucetSecret } from "./constants";
 import { wait } from "./promise";
 
@@ -53,25 +53,21 @@ export type ChainType =
     | "blake_pow"
     | "husky"
     | SchemeFilepath;
-export type ProcessState =
-    | "stopped"
-    | "initializing"
-    | "running"
-    | "stopping"
+type ProcessState =
+    | { state: "stopped" }
+    | { state: "initializing" }
+    | { state: "running"; process: ChildProcess; readline: ReadLine }
+    | { state: "stopping" }
     | { state: "error"; message: string; source?: Error };
 export class ProcessStateError extends Error {
-    constructor(state: ProcessState) {
-        if (typeof state === "string") {
-            super(`Process state is invalid: ${state}`);
-        } else {
-            super(
-                `Process state is invalid: ${JSON.stringify(
-                    state,
-                    undefined,
-                    4
-                )}`
-            );
-        }
+    constructor(nodeId: number, state: ProcessState) {
+        super(
+            `CodeChain(${nodeId}) process state is invalid: ${JSON.stringify(
+                state,
+                undefined,
+                4
+            )}`
+        );
     }
 }
 export default class CodeChain {
@@ -88,8 +84,8 @@ export default class CodeChain {
     private readonly _rpcPort: number;
     private readonly argv: string[];
     private readonly env: { [key: string]: string };
-    private process?: ChildProcess;
-    private _processState: ProcessState;
+    private process: ProcessState;
+    private restarts: number;
     private _keepLogs: boolean;
     private readonly keyFileMovePromise?: Promise<{}>;
 
@@ -97,10 +93,10 @@ export default class CodeChain {
         return this._id;
     }
     public get sdk(): SDK {
-        if (this._processState === "running") {
+        if (this.process.state === "running") {
             return this._sdk;
         } else {
-            throw new ProcessStateError(this._processState);
+            throw new ProcessStateError(this.id, this.process);
         }
     }
     public get localKeyStorePath(): string {
@@ -133,8 +129,8 @@ export default class CodeChain {
     public get chain(): ChainType {
         return this._chain;
     }
-    public get processState(): ProcessState {
-        return this._processState;
+    public get isRunning(): boolean {
+        return this.process.state === "running";
     }
 
     constructor(
@@ -181,7 +177,8 @@ export default class CodeChain {
         this._chain = chain || "solo";
         this.argv = argv || [];
         this.env = env || {};
-        this._processState = "stopped";
+        this.process = { state: "stopped" };
+        this.restarts = 0;
         this._keepLogs = false;
     }
 
@@ -191,8 +188,8 @@ export default class CodeChain {
         disableLog?: boolean;
         disableIpc?: boolean;
     }) {
-        if (this._processState !== "stopped") {
-            throw new ProcessStateError(this._processState);
+        if (this.process.state !== "stopped") {
+            throw new ProcessStateError(this.id, this.process);
         }
 
         const {
@@ -217,9 +214,9 @@ export default class CodeChain {
 
         // Resolves when CodeChain initialization completed.
         return new Promise((resolve, reject) => {
-            this._keepLogs = true;
-            this._processState = "initializing";
-            this.process = spawn(
+            this.restarts++;
+            this.process = { state: "initializing" };
+            const child = spawn(
                 `target/${useDebugBuild ? "debug" : "release"}/codechain`,
                 [
                     ...baseArgs,
@@ -249,85 +246,134 @@ export default class CodeChain {
                 const logStream = createWriteStream(this.logPath, {
                     flags: "a"
                 });
-                this.process!.stdout!.pipe(logStream);
-                this.process!.stderr!.pipe(logStream);
+                logStream.write(`Process restart #${this.restarts}\n`);
+                child.stdout.pipe(logStream);
+                child.stderr.pipe(logStream);
             }
 
-            const readline = createReadline({ input: this.process!.stderr! });
+            const readline = createReadline({ input: child.stderr });
             const self = this;
             function clearListeners() {
-                if (self.process) {
-                    self.process
-                        .removeListener("error", onError)
-                        .removeListener("exit", onExit);
-                    readline.removeListener("line", onLine);
-                }
+                child
+                    .removeListener("error", onError)
+                    .removeListener("close", onClose)
+                    .removeListener("exit", onExit);
+                readline.removeListener("line", onLine);
+            }
+            function reportErrorState(errorState: {
+                message: string;
+                source?: Error;
+            }) {
+                self.process = {
+                    state: "error",
+                    ...errorState
+                };
+                self.keepLogs();
             }
             function onError(e: Error) {
                 clearListeners();
-                self.process = undefined;
-                self._processState = {
-                    state: "error",
+                reportErrorState({
                     message: "Error while spawning CodeChain",
                     source: e
-                };
-                self._keepLogs = true;
-                reject(new ProcessStateError(self._processState));
+                });
+                reject(new ProcessStateError(self.id, self.process));
+            }
+            function onClose(code: number, signal: number) {
+                clearListeners();
+                reportErrorState({
+                    message: `CodeChain unexpectedly closed on start: code ${code}, signal ${signal}`
+                });
+                return reject(new ProcessStateError(self.id, self.process));
             }
             function onExit(code: number, signal: number) {
                 clearListeners();
-                self.process = undefined;
-                self._processState = {
-                    state: "error",
+                reportErrorState({
                     message: `CodeChain unexpectedly exited on start: code ${code}, signal ${signal}`
-                };
-                self._keepLogs = true;
-                reject(new ProcessStateError(self._processState));
+                });
+                reject(new ProcessStateError(self.id, self.process));
             }
             function onLine(line: string) {
                 if (line.includes("Initialization complete")) {
                     clearListeners();
-                    self._processState = "running";
-                    self._keepLogs = false;
-                    self.process!.on("exit", (code, signal) => {
-                        self.process = undefined;
-                        self._processState = {
-                            state: "error",
+                    self.process = {
+                        state: "running",
+                        process: child,
+                        readline
+                    };
+                    child.on("close", (code, signal) => {
+                        clearListeners();
+                        reportErrorState({
+                            message: `CodeChain unexpectedly closed while running: code ${code}, signal ${signal}`
+                        });
+                    });
+                    child.on("exit", (code, signal) => {
+                        clearListeners();
+                        reportErrorState({
                             message: `CodeChain unexpectedly exited while running: code ${code}, signal ${signal}`
-                        };
-                        self._keepLogs = true;
+                        });
+                    });
+                    readline.on("line", (l: string) => {
+                        if (!l.startsWith("stack backtrace:")) {
+                            return;
+                        }
+                        console.error(
+                            `CodeChain(${self.id}) unexpectedly dumped backtrace`
+                        );
                     });
                     resolve();
                 }
             }
 
-            this.process.on("error", onError).on("exit", onExit);
+            child
+                .on("error", onError)
+                .on("close", onClose)
+                .on("exit", onExit);
             readline.on("line", onLine);
         });
     }
 
     public keepLogs() {
-        console.log(`Keep log file: ${this._logPath}`);
-        this._keepLogs = true;
+        if (!this._keepLogs) {
+            this._keepLogs = true;
+            console.log(`Keep log file: ${this._logPath}`);
+        }
     }
 
     public async clean() {
         return new Promise((resolve, reject) => {
-            if (!this.process) {
+            if (this.process.state === "stopped") {
                 return resolve();
+            } else if (this.process.state !== "running") {
+                return reject(new ProcessStateError(this.id, this.process));
             }
-            this.process
-                .removeAllListeners("error")
+            const { process: child, readline } = this.process;
+            this.process = { state: "stopping" };
+            readline.removeAllListeners("line");
+            child
+                .removeAllListeners()
                 .on("error", e => {
-                    this._processState = {
+                    child.removeAllListeners();
+                    this.process = {
                         state: "error",
                         message: "CodeChain unexpectedly exited on clean",
                         source: e
                     };
-                    reject(new ProcessStateError(this._processState));
+                    reject(new ProcessStateError(this.id, this.process));
                 })
-                .removeAllListeners("exit")
+                .on("close", (code, signal) => {
+                    child.removeAllListeners();
+                    if (code !== 0) {
+                        console.error(
+                            `CodeChain(${this.id}) closed with code ${code}, ${signal}`
+                        );
+                    } else if (!this._keepLogs) {
+                        unlinkSync(this.logPath);
+                    }
+                    this.process = { state: "stopped" };
+                    resolve();
+                })
                 .on("exit", (code, signal) => {
+                    child.removeAllListeners();
                     if (code !== 0) {
                         console.error(
                             `CodeChain(${this.id}) exited with code ${code}, ${signal}`
@@ -335,12 +381,10 @@ export default class CodeChain {
                     } else if (!this._keepLogs) {
                         unlinkSync(this.logPath);
                     }
-                    this._processState = "stopped";
+                    this.process = { state: "stopped" };
                     resolve();
                 });
-            this._processState = "stopping";
-            this.process.kill();
-            this.process = undefined;
+            child.kill();
         });
     }
 
