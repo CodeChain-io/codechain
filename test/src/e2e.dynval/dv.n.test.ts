@@ -28,8 +28,6 @@ import { withNodes } from "./setup";
 chai.use(chaiAsPromised);
 
 describe("Dynamic Validator N -> N", function() {
-    this.timeout(0);
-
     const promiseExpect = new PromiseExpect();
     const termSeconds = 20;
     const margin = 1.2;
@@ -58,6 +56,9 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
             await nodes[0].waitForTermChange(2, termSeconds * margin);
             const blockNumber = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
             const termMetadata = await stake.getTermMetadata(
@@ -115,6 +116,9 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
                     .createDelegateCCSTransaction(
@@ -187,6 +191,9 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
                     .createDelegateCCSTransaction(
@@ -259,6 +266,9 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
                     .createRevokeTransaction(
@@ -331,6 +341,9 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
                     .createDelegateCCSTransaction(
@@ -425,6 +438,9 @@ describe("Dynamic Validator N -> N", function() {
         ].forEach(({ description, deposit, delegation }) => {
             describe(description, async function() {
                 it("should keep possible authors after a term change", async function() {
+                    this.slow(termSeconds * margin * 1000);
+                    this.timeout(termSeconds * 2 * 1000);
+
                     const nominationTx = await nodes[4].sdk.rpc.chain.sendSignedTransaction(
                         stake
                             .createSelfNominateTransaction(

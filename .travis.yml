@@ -1,6 +1,6 @@
 language: rust
 rust:
-  - 1.35.0
+  - 1.36.0
 stages:
   - name: test
     if: branch != docker-build

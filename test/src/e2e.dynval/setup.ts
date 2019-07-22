@@ -45,6 +45,14 @@ export function withNodes(
 ): CodeChain[] {
     const result: CodeChain[] = [];
     suite.beforeEach(async function() {
+        const termSeconds =
+            (options &&
+                options.overrideParams &&
+                options.overrideParams.termSeconds) ||
+            defaultParams.termSeconds;
+        const secsPerBlock = 5;
+        this.slow((secsPerBlock * 3 + termSeconds) * 1000); // createNodes will wait for 3 blocks + at most 1 terms
+        this.timeout((secsPerBlock * 3 + termSeconds) * 2 * 1000);
         result.length = 0;
         const nodes = await createNodes(options);
         result.push(...nodes);
