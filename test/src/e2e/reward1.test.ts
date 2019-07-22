@@ -100,7 +100,7 @@ describe("reward1", function() {
 
     afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            node.testFailed(this.currentTest!.fullTitle());
+            node.keepLogs();
         }
         await node.clean();
     });

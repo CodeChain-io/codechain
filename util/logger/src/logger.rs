@@ -76,7 +76,7 @@ impl Log for Logger {
     fn log(&self, record: &Record) {
         if self.filter.matches(record) {
             let thread_name = thread::current().name().unwrap_or_default().to_string();
-            let timestamp = time::strftime("%Y-%m-%d %H:%M:%S %Z", &time::now()).unwrap();
+            let timestamp = time::strftime("%Y-%m-%d %H:%M:%S.%f %Z", &time::now()).unwrap();
 
             let instance_id = self.instance_id;
             let timestamp = if self.stderr_is_tty {

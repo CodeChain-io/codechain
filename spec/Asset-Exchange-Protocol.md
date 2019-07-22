@@ -41,12 +41,16 @@ To write an order on a transfer transaction, the order should be wrapped once mo
 
 If there are inputs and outputs with the same order, it is wasteful to put the order in every input/output. Therefore, orders are wrapped into `OrderOnTransfer`.
 
-|       Name      |    Data Type    |                                                Description                                                |
-|-----------------|-----------------|-----------------------------------------------------------------------------------------------------------|
-| order           | Order           | The order to write on the transfer transaction                                                            |
-| spentQuantity     | U64             | The spent quantity of `assetTypeFrom` of the order in the transfer transaction                              |
-| inputIndices    | Index[]         | The indices of the transfer inputs which are protected by the order (Both assetFrom and assetFee)        |
-| outputIndices   | Index[]         | The indices of the transfer outputs which are protected by the order (Both assetFee and assetTo as well as assetFrom)   |
+| Name                        | Data Type | Description                                                                      |
+| --------------------------- | --------- | -------------------------------------------------------------------------------- |
+| order                       | Order     | The order to write on the transfer transaction                                   |
+| spentQuantity               | U64       | The spent quantity of `assetTypeFrom` of the order in the transfer transaction   |
+| inputFromIndices            | Index[]   | The indices of the transfer inputs that are protected by the order ( assetFrom) |
+| inputFeeIndices             | Index[]   | The indices of the transfer inputs that are protected by the order (assetFee)   |
+| outputFromIndices           | Index[]   | The indices of the transfer outputs that are protected by the order (assetFrom) |
+| outputToIndices             | Index[]   | The indices of the transfer outputs that are protected by the order (assetTo)   |
+| outputOwnedFeeIndices       | Index[]   | The indices of the transfer outputs that are protected by the order (assetFee)  |
+| outputTransferredFeeIndices | Index[]   | The indices of the transfer outputs that are protected by the order (assetFee)  |
 
 And the format of transfer transaction is as shown below.
 

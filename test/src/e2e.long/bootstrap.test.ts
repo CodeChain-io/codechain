@@ -71,7 +71,7 @@ describe("bootstrap", function() {
             this.timeout(5_000 + 3_000 * NUM_NODES);
 
             if (this.currentTest!.state === "failed") {
-                bootstrap.testFailed(this.currentTest!.fullTitle());
+                bootstrap.keepLogs();
             }
             await bootstrap.clean();
         });

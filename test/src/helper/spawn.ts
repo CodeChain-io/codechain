@@ -34,6 +34,7 @@ import {
 import { AssetTransaction } from "codechain-sdk/lib/core/Transaction";
 import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { P2PKHBurn } from "codechain-sdk/lib/key/P2PKHBurn";
+import * as stake from "codechain-stakeholder-sdk";
 import { createWriteStream, mkdtempSync, unlinkSync } from "fs";
 import * as mkdirp from "mkdirp";
 import { ncp } from "ncp";
@@ -52,7 +53,27 @@ export type ChainType =
     | "blake_pow"
     | "husky"
     | SchemeFilepath;
-
+export type ProcessState =
+    | "stopped"
+    | "initializing"
+    | "running"
+    | "stopping"
+    | { state: "error"; message: string; source?: Error };
+export class ProcessStateError extends Error {
+    constructor(state: ProcessState) {
+        if (typeof state === "string") {
+            super(`Process state is invalid: ${state}`);
+        } else {
+            super(
+                `Process state is invalid: ${JSON.stringify(
+                    state,
+                    undefined,
+                    4
+                )}`
+            );
+        }
+    }
+}
 export default class CodeChain {
     private static idCounter = 0;
     private readonly _id: number;
@@ -67,15 +88,20 @@ export default class CodeChain {
     private readonly _rpcPort: number;
     private readonly argv: string[];
     private readonly env: { [key: string]: string };
-    private isTestFailed: boolean;
     private process?: ChildProcess;
+    private _processState: ProcessState;
+    private _keepLogs: boolean;
     private readonly keyFileMovePromise?: Promise<{}>;
 
     public get id(): number {
         return this._id;
     }
     public get sdk(): SDK {
-        return this._sdk;
+        if (this._processState === "running") {
+            return this._sdk;
+        } else {
+            throw new ProcessStateError(this._processState);
+        }
     }
     public get localKeyStorePath(): string {
         return this._localKeyStorePath;
@@ -106,6 +132,9 @@ export default class CodeChain {
     }
     public get chain(): ChainType {
         return this._chain;
+    }
+    public get processState(): ProcessState {
+        return this._processState;
     }
 
     constructor(
@@ -152,7 +181,8 @@ export default class CodeChain {
         this._chain = chain || "solo";
         this.argv = argv || [];
         this.env = env || {};
-        this.isTestFailed = false;
+        this._processState = "stopped";
+        this._keepLogs = false;
     }
 
     public async start(params?: {
@@ -161,6 +191,10 @@ export default class CodeChain {
         disableLog?: boolean;
         disableIpc?: boolean;
     }) {
+        if (this._processState !== "stopped") {
+            throw new ProcessStateError(this._processState);
+        }
+
         const {
             argv = [],
             logLevel = "trace,mio=warn,tokio=warn,hyper=warn,timer=warn",
@@ -183,6 +217,8 @@ export default class CodeChain {
 
         // Resolves when CodeChain initialization completed.
         return new Promise((resolve, reject) => {
+            this._keepLogs = true;
+            this._processState = "initializing";
             this.process = spawn(
                 `target/${useDebugBuild ? "debug" : "release"}/codechain`,
                 [
@@ -209,54 +245,100 @@ export default class CodeChain {
                     }
                 }
             );
-
-            this.isTestFailed = true;
             if (!disableLog) {
-                const logStream = createWriteStream(this.logPath);
+                const logStream = createWriteStream(this.logPath, {
+                    flags: "a"
+                });
                 this.process!.stdout!.pipe(logStream);
                 this.process!.stderr!.pipe(logStream);
             }
 
-            this.process
-                .on("error", e => {
-                    reject(e);
-                })
-                .on("close", (code, _signal) => {
-                    reject(Error(`CodeChain exited with code ${code}`));
-                });
-
             const readline = createReadline({ input: this.process!.stderr! });
-            readline.on("line", (line: string) => {
+            const self = this;
+            function clearListeners() {
+                if (self.process) {
+                    self.process
+                        .removeListener("error", onError)
+                        .removeListener("exit", onExit);
+                    readline.removeListener("line", onLine);
+                }
+            }
+            function onError(e: Error) {
+                clearListeners();
+                self.process = undefined;
+                self._processState = {
+                    state: "error",
+                    message: "Error while spawning CodeChain",
+                    source: e
+                };
+                self._keepLogs = true;
+                reject(new ProcessStateError(self._processState));
+            }
+            function onExit(code: number, signal: number) {
+                clearListeners();
+                self.process = undefined;
+                self._processState = {
+                    state: "error",
+                    message: `CodeChain unexpectedly exited on start: code ${code}, signal ${signal}`
+                };
+                self._keepLogs = true;
+                reject(new ProcessStateError(self._processState));
+            }
+            function onLine(line: string) {
                 if (line.includes("Initialization complete")) {
-                    this.isTestFailed = false;
+                    clearListeners();
+                    self._processState = "running";
+                    self._keepLogs = false;
+                    self.process!.on("exit", (code, signal) => {
+                        self.process = undefined;
+                        self._processState = {
+                            state: "error",
+                            message: `CodeChain unexpectedly exited while running: code ${code}, signal ${signal}`
+                        };
+                        self._keepLogs = true;
+                    });
                     resolve();
                 }
-            });
+            }
+
+            this.process.on("error", onError).on("exit", onExit);
+            readline.on("line", onLine);
         });
     }
 
-    public testFailed(testName: string) {
-        console.log(
-            `Test [${testName}] Failed.\nIts log file is: ${this.logFile}.`
-        );
-        this.isTestFailed = true;
+    public keepLogs() {
+        console.log(`Keep log file: ${this._logPath}`);
+        this._keepLogs = true;
     }
 
     public async clean() {
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             if (!this.process) {
                 return resolve();
             }
-            this.process.on("exit", (code, signal) => {
-                if (code !== 0) {
-                    console.error(
-                        `CodeChain(${this.id}) exited with code ${code}, ${signal}`
-                    );
-                } else if (!this.isTestFailed) {
-                    unlinkSync(this.logPath);
-                }
-                resolve();
-            });
+            this.process
+                .removeAllListeners("error")
+                .on("error", e => {
+                    this._processState = {
+                        state: "error",
+                        message: "CodeChain unexpectedly exited on clean",
+                        source: e
+                    };
+                    reject(new ProcessStateError(this._processState));
+                })
+                .removeAllListeners("exit")
+                .on("exit", (code, signal) => {
+                    if (code !== 0) {
+                        console.error(
+                            `CodeChain(${this.id}) exited with code ${code}, ${signal}`
+                        );
+                    } else if (!this._keepLogs) {
+                        unlinkSync(this.logPath);
+                    }
+                    this._processState = "stopped";
+                    resolve();
+                });
+            this._processState = "stopping";
             this.process.kill();
             this.process = undefined;
         });
@@ -671,5 +753,60 @@ export default class CodeChain {
                 })
                 .catch(reject);
         });
+    }
+
+    public async waitForTx(
+        hashlikes: H256 | Promise<H256> | (H256 | Promise<H256>)[],
+        option?: { timeout?: number }
+    ) {
+        const { timeout = 10000 } = option || {};
+
+        const hashes = await Promise.all(
+            Array.isArray(hashlikes) ? hashlikes : [hashlikes]
+        );
+
+        const containsAll = async () => {
+            const contains = await Promise.all(
+                hashes.map(hash => this.sdk.rpc.chain.containsTransaction(hash))
+            );
+            return contains.every(x => x);
+        };
+        const checkNoError = async () => {
+            const errorHints = await Promise.all(
+                hashes.map(hash => this.sdk.rpc.chain.getErrorHint(hash))
+            );
+            for (const errorHint of errorHints) {
+                if (errorHint !== null && errorHint !== "") {
+                    throw Error(`waitForTx: Error found: ${errorHint}`);
+                }
+            }
+        };
+
+        const start = Date.now();
+        while (!(await containsAll())) {
+            await checkNoError();
+
+            await wait(500);
+            if (Date.now() - start >= timeout) {
+                throw Error("Timeout on waitForTx");
+            }
+        }
+        await checkNoError();
+    }
+
+    public async waitForTermChange(target: number, timeout?: number) {
+        const start = Date.now();
+        while (true) {
+            const termMetadata = await stake.getTermMetadata(this.sdk);
+            if (termMetadata && termMetadata.currentTermId >= target) {
+                break;
+            }
+            await wait(1000);
+            if (timeout) {
+                if (Date.now() - start > timeout * 1000) {
+                    throw new Error(`Term didn't changed in ${timeout} s`);
+                }
+            }
+        }
     }
 }
