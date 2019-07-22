@@ -30,6 +30,7 @@ interface ValidatorConfig {
         accountId: string;
         platformAddress: PlatformAddress;
     };
+
     deposit?: U64Value;
     delegation?: U64Value;
 }
