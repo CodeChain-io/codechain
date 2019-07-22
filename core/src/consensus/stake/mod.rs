@@ -404,6 +404,7 @@ pub fn jail(state: &mut TopLevelState, addresses: &[Address], custody_until: u64
 
     for address in addresses {
         let candidate = candidates.remove(address).expect("There should be a candidate to jail");
+        ctrace!(ENGINE, "on_term_close::jail. candidate: {}, deposit: {}", address, candidate.deposit);
         jail.add(candidate, custody_until, kick_at);
     }
 

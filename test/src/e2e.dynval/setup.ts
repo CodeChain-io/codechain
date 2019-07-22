@@ -214,28 +214,25 @@ export async function createNodes(options: {
             await options.onBeforeEnable(nodes);
         }
 
+        const runningNodes = nodes.filter(node => node.isRunning);
+        if (runningNodes.length === 0) {
+            throw new Error("Cannot proceed with no running nodes");
+        }
+
         // enable!
         const changeTx = await changeParams(initialNodes[0], {
             ...defaultParams,
             ...overrideParams
         });
 
-        for (let i = 0; i < validators.length; i++) {
+        for (const node of runningNodes) {
             // nodes can be cleaned in `onBeforeEnable`
-            if (nodes[i].processState === "running") {
-                await promiseExpect.shouldFulfill(
-                    `node ${i} wait for changeTx`,
-                    nodes[i].waitForTx(changeTx)
-                );
-            }
+            await promiseExpect.shouldFulfill(
+                `node ${nodes.findIndex(x => x === node)} wait for changeTx`,
+                node.waitForTx(changeTx)
+            );
         }
-        for (let i = 0; i < validators.length; i++) {
-            // nodes can be cleaned in `onBeforeEnable. Pick any running node.
-            if (nodes[i].processState === "running") {
-                await nodes[i].waitForTermChange(1);
-                break;
-            }
-        }
+        await runningNodes[0].waitForTermChange(1);
 
         return nodes;
     } catch (e) {
