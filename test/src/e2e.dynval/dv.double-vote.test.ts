@@ -34,6 +34,8 @@ import { validators as originalValidators } from "../../tendermint.dynval/consta
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import { Signer } from "../helper/spawn";
+import CodeChain from "../helper/spawn";
+import { withNodes, setTermTestTimeout } from "./setup";
 
 chai.use(chaiAsPromised);
 
@@ -145,6 +147,95 @@ async function ensureAliceIsBanned(sdk: SDK, blockNumber: number) {
 
 describe("Report Double Vote", function() {
     const promiseExpect = new PromiseExpect();
+
+    async function getAliceIndex(
+        sdk: SDK,
+        blockNumber: number
+    ): Promise<number> {
+        return (await stake.getPossibleAuthors(sdk, blockNumber))!
+            .map(platfromAddr => platfromAddr.toString())
+            .indexOf(alice.platformAddress.toString());
+    }
+
+    async function waitUntilAliceGetBanned(
+        checkingNode: CodeChain,
+        reportTxHash: H256
+    ): Promise<number> {
+        await checkingNode.waitForTx(reportTxHash);
+        const blockNumberAfterReport =
+            (await checkingNode.sdk.rpc.chain.getBestBlockNumber()) + 1;
+        await checkingNode.waitBlockNumber(blockNumberAfterReport);
+        return blockNumberAfterReport;
+    }
+
+    describe("Ban from the validator state", async function() {
+        const { nodes } = withNodes(this, {
+            promiseExpect,
+            validators: allDynValidators.map(signer => ({
+                signer,
+                delegation: 5_000,
+                deposit: 10_000_000
+            }))
+        });
+
+        it("alice should be banned from the validators", async function() {
+            const secsPerblock = 3;
+            this.slow(secsPerblock * 7 * 1000);
+            this.timeout(secsPerblock * 14 * 1000);
+
+            const checkingNode = nodes[1];
+            const blockNumber = await checkingNode.sdk.rpc.chain.getBestBlockNumber();
+            const termMetadata = await stake.getTermMetadata(
+                checkingNode.sdk,
+                blockNumber
+            );
+            const currentTermInitialBlockNumber =
+                termMetadata!.lastTermFinishedBlockNumber + 1;
+            expect(termMetadata!.currentTermId).to.be.equals(1);
+            await expectPossibleAuthors(checkingNode.sdk, allDynValidators);
+            await checkingNode.waitBlockNumber(
+                currentTermInitialBlockNumber + 1
+            );
+            const aliceIdx = await getAliceIndex(
+                checkingNode.sdk,
+                currentTermInitialBlockNumber
+            );
+
+            const [message1, message2] = createDoubleVoteMessages(
+                {
+                    height: currentTermInitialBlockNumber,
+                    view: 0,
+                    step: "precommit",
+                    privKey: alice.privateKey,
+                    signerIdx: aliceIdx
+                },
+                H256.ensure(
+                    "730f75dafd73e047b86acb2dbd74e75dcb93272fa084a9082848f2341aa1abb6"
+                ),
+                H256.ensure(
+                    "07f5937c9760f50867a78fa68982b1096cec0798448abf9395cd778fcded6f8d"
+                )
+            );
+
+            const reportTx = createReportDoubleVoteTransaction(
+                checkingNode.sdk,
+                message1,
+                message2
+            );
+            const reportTxHash = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                reportTx.sign({
+                    secret: faucetSecret,
+                    seq: await checkingNode.sdk.rpc.chain.getSeq(faucetAddress),
+                    fee: 10
+                })
+            );
+            const blockNumberAfterReport = await waitUntilAliceGetBanned(
+                checkingNode,
+                reportTxHash
+            );
+            await ensureAliceIsBanned(checkingNode.sdk, blockNumberAfterReport);
+        });
+    });
 
     afterEach(async function() {
         promiseExpect.checkFulfilled();
