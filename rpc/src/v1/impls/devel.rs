@@ -23,7 +23,7 @@ use std::vec::Vec;
 
 use ccore::{
     BlockId, DatabaseClient, EngineClient, EngineInfo, MinerService, MiningBlockChainClient, SignedTransaction,
-    COL_STATE,
+    TermInfo, COL_STATE,
 };
 use ccrypto::Blake;
 use cjson::bytes::Bytes;
@@ -69,7 +69,7 @@ where
 
 impl<C, M> Devel for DevelClient<C, M>
 where
-    C: DatabaseClient + EngineInfo + EngineClient + MiningBlockChainClient + 'static,
+    C: DatabaseClient + EngineInfo + EngineClient + MiningBlockChainClient + TermInfo + 'static,
     M: MinerService + 'static,
 {
     fn get_state_trie_keys(&self, offset: usize, limit: usize) -> Result<Vec<H256>> {
@@ -219,7 +219,7 @@ where
 
         fn send_tx<C, M>(tx: Transaction, client: &C, key_pair: &KeyPair, miner: &M) -> Result<H256>
         where
-            C: MiningBlockChainClient + EngineInfo,
+            C: MiningBlockChainClient + EngineInfo + TermInfo,
             M: MinerService, {
             let signed = SignedTransaction::new_with_sign(tx, key_pair.private());
             let hash = signed.hash();

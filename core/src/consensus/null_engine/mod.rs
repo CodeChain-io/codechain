@@ -60,6 +60,7 @@ impl ConsensusEngine for NullEngine {
         block: &mut ExecutedBlock,
         _parent_header: &Header,
         _parent_common_params: &CommonParams,
+        _term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
         let (author, total_reward) = {
             let header = block.header();

@@ -39,7 +39,7 @@ use super::{MinerService, MinerStatus, TransactionImportResult};
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use crate::block::{Block, ClosedBlock, IsBlock};
 use crate::client::{
-    AccountData, BlockChainTrait, BlockProducer, Client, EngineInfo, ImportBlock, MiningBlockChainClient,
+    AccountData, BlockChainTrait, BlockProducer, Client, EngineInfo, ImportBlock, MiningBlockChainClient, TermInfo,
 };
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{CodeChainEngine, EngineType};
@@ -445,7 +445,7 @@ impl Miner {
 
     /// Prepares new block for sealing including top transactions from queue.
     fn prepare_block<
-        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + EngineInfo + FindActionHandler,
+        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo,
     >(
         &self,
         parent_block_id: BlockId,
@@ -532,7 +532,17 @@ impl Miner {
             (parent_header.decode(), parent_hash)
         };
         let parent_common_params = chain.common_params(parent_hash.into()).unwrap();
-        let block = open_block.close(&parent_header, &parent_common_params)?;
+        let term_common_params = {
+            let block_number = chain
+                .last_term_finished_block_num(parent_hash.into())
+                .expect("The block of the parent hash should exist");
+            if block_number == 0 {
+                None
+            } else {
+                Some(chain.common_params((block_number).into()).expect("Common params should exist"))
+            }
+        };
+        let block = open_block.close(&parent_header, &parent_common_params, term_common_params.as_ref())?;
 
         let fetch_seq = |p: &Public| {
             let address = public_to_address(p);
@@ -751,7 +761,7 @@ impl MinerService for Miner {
     }
 
     fn prepare_work_sealing<
-        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + EngineInfo + FindActionHandler,
+        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo,
     >(
         &self,
         client: &C,
@@ -800,8 +810,14 @@ impl MinerService for Miner {
 
     fn update_sealing<C>(&self, chain: &C, parent_block: BlockId, allow_empty_block: bool)
     where
-        C: AccountData + BlockChainTrait + BlockProducer + EngineInfo + ImportBlock + ChainTimeInfo + FindActionHandler,
-    {
+        C: AccountData
+            + BlockChainTrait
+            + BlockProducer
+            + EngineInfo
+            + ImportBlock
+            + ChainTimeInfo
+            + FindActionHandler
+            + TermInfo, {
         ctrace!(MINER, "update_sealing: preparing a block");
 
         let parent_block_number = chain.block_header(&parent_block).expect("Parent is always exist").number();
@@ -879,7 +895,7 @@ impl MinerService for Miner {
 
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
     where
-        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + EngineInfo + FindActionHandler,
+        C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo,
         F: FnOnce(&ClosedBlock) -> T, {
         ctrace!(MINER, "map_sealing_work: entering");
         self.prepare_work_sealing(client);
@@ -890,7 +906,7 @@ impl MinerService for Miner {
         ret.map(f)
     }
 
-    fn import_external_transactions<C: MiningBlockChainClient + EngineInfo>(
+    fn import_external_transactions<C: MiningBlockChainClient + EngineInfo + TermInfo>(
         &self,
         client: &C,
         transactions: Vec<UnverifiedTransaction>,
@@ -915,7 +931,7 @@ impl MinerService for Miner {
         results
     }
 
-    fn import_own_transaction<C: MiningBlockChainClient + EngineInfo>(
+    fn import_own_transaction<C: MiningBlockChainClient + EngineInfo + TermInfo>(
         &self,
         chain: &C,
         tx: SignedTransaction,
@@ -960,7 +976,7 @@ impl MinerService for Miner {
         imported
     }
 
-    fn import_incomplete_transaction<C: MiningBlockChainClient + AccountData + EngineInfo>(
+    fn import_incomplete_transaction<C: MiningBlockChainClient + AccountData + EngineInfo + TermInfo>(
         &self,
         client: &C,
         account_provider: &AccountProvider,
@@ -1020,7 +1036,7 @@ impl MinerService for Miner {
         self.mem_pool.read().future_transactions()
     }
 
-    fn start_sealing<C: MiningBlockChainClient + EngineInfo>(&self, client: &C) {
+    fn start_sealing<C: MiningBlockChainClient + EngineInfo + TermInfo>(&self, client: &C) {
         cdebug!(MINER, "Start sealing");
         self.sealing_enabled.store(true, Ordering::Relaxed);
         // ------------------------------------------------------------------
