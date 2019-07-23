@@ -26,19 +26,12 @@ use super::super::errors;
 use super::super::traits::Miner;
 use super::super::types::Work;
 
-pub struct MinerClient<C, M>
-where
-    C: MiningBlockChainClient + EngineClient + EngineInfo,
-    M: MinerService, {
+pub struct MinerClient<C, M> {
     client: Arc<C>,
     miner: Arc<M>,
 }
 
-impl<C, M> MinerClient<C, M>
-where
-    C: MiningBlockChainClient + EngineClient + EngineInfo,
-    M: MinerService,
-{
+impl<C, M> MinerClient<C, M> {
     pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
         Self {
             client,

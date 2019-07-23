@@ -27,19 +27,12 @@ use super::super::errors;
 use super::super::traits::Mempool;
 use super::super::types::PendingTransactions;
 
-pub struct MempoolClient<C, M>
-where
-    C: MiningBlockChainClient + EngineInfo,
-    M: MinerService, {
+pub struct MempoolClient<C, M> {
     client: Arc<C>,
     miner: Arc<M>,
 }
 
-impl<C, M> MempoolClient<C, M>
-where
-    C: MiningBlockChainClient + EngineInfo,
-    M: MinerService,
-{
+impl<C, M> MempoolClient<C, M> {
     pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
         MempoolClient {
             client,
