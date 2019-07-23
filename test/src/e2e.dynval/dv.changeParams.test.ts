@@ -101,6 +101,61 @@ describe("Change commonParams", function() {
                 Math.floor(secondTermLastBlockTimeStamp / termSeconds)
             );
         });
+
+        it("should be applied after a term seconds", async function() {
+            this.slow(20_000 + 5_000);
+            this.timeout((20_000 + 5_000) * 1.5);
+
+            const initialTermSeconds = defaultParams.termSeconds;
+            const newTermSeconds = 5;
+
+            const term1Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
+            {
+                expect(term1Metadata.currentTermId).to.be.equal(1);
+            }
+            await nodes[0].waitForTx(
+                changeParams(nodes[0], 1, {
+                    ...defaultParams,
+                    termSeconds: newTermSeconds
+                })
+            );
+
+            await nodes[0].waitForTermChange(
+                2,
+                initialTermSeconds * 1000 * margin
+            );
+
+            const term2Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
+            {
+                expect(term2Metadata.currentTermId).to.be.equal(2);
+            }
+
+            await nodes[0].waitForTermChange(3, newTermSeconds * 1000 * margin);
+
+            const term3Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
+            {
+                expect(term2Metadata.currentTermId).to.be.equal(2);
+            }
+
+            const [ts1, ts2, ts3] = await Promise.all(
+                [term1Metadata, term2Metadata, term3Metadata].map(m =>
+                    nodes[0].sdk.rpc.chain
+                        .getBlock(m.lastTermFinishedBlockNumber)
+                        .then(block => block!.timestamp)
+                )
+            );
+
+            // allows +- 30% error
+            expect(ts2 - ts1)
+                .is.approximately(initialTermSeconds, initialTermSeconds * 0.3)
+                .but.not.approximately(newTermSeconds, newTermSeconds * 0.3);
+            expect(ts3 - ts2)
+                .is.approximately(newTermSeconds, newTermSeconds * 0.3)
+                .but.not.approximately(
+                    initialTermSeconds,
+                    initialTermSeconds * 0.3
+                );
+        });
     });
 
     describe("Change minimum fee", async function() {
