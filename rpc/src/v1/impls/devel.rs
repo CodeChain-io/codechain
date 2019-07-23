@@ -45,10 +45,7 @@ use super::super::errors;
 use super::super::traits::Devel;
 use super::super::types::{TPSTestOption, TPSTestSetting};
 
-pub struct DevelClient<C, M>
-where
-    C: DatabaseClient + EngineInfo + EngineClient + MiningBlockChainClient,
-    M: MinerService, {
+pub struct DevelClient<C, M> {
     client: Arc<C>,
     db: Arc<KeyValueDB>,
     miner: Arc<M>,
@@ -57,8 +54,7 @@ where
 
 impl<C, M> DevelClient<C, M>
 where
-    C: DatabaseClient + EngineInfo + EngineClient + MiningBlockChainClient,
-    M: MinerService,
+    C: DatabaseClient,
 {
     pub fn new(client: Arc<C>, miner: Arc<M>, block_sync: Option<EventSender<BlockSyncEvent>>) -> Self {
         let db = client.database();

@@ -29,10 +29,7 @@ use super::super::errors::{self, account_provider};
 use super::super::traits::Account;
 use super::super::types::{SendTransactionResult, UnsignedTransaction};
 
-pub struct AccountClient<C, M>
-where
-    C: EngineInfo + MiningBlockChainClient + AccountData,
-    M: MinerService, {
+pub struct AccountClient<C, M> {
     account_provider: Arc<AccountProvider>,
     client: Arc<C>,
     miner: Arc<M>,
@@ -40,8 +37,7 @@ where
 
 impl<C, M> AccountClient<C, M>
 where
-    C: EngineInfo + MiningBlockChainClient + AccountData,
-    M: MinerService,
+    C: EngineInfo,
 {
     pub fn new(account_provider: Arc<AccountProvider>, client: Arc<C>, miner: Arc<M>) -> Self {
         AccountClient {
