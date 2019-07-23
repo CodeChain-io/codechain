@@ -17,7 +17,7 @@
 use std::sync::Arc;
 
 use ccore::block::IsBlock;
-use ccore::{EngineClient, EngineInfo, MinerService, MiningBlockChainClient};
+use ccore::{EngineClient, EngineInfo, MinerService, MiningBlockChainClient, TermInfo};
 use cjson::bytes::Bytes;
 use jsonrpc_core::Result;
 use primitives::H256;
@@ -42,7 +42,7 @@ impl<C, M> MinerClient<C, M> {
 
 impl<C, M> Miner for MinerClient<C, M>
 where
-    C: MiningBlockChainClient + EngineClient + EngineInfo + 'static,
+    C: MiningBlockChainClient + EngineClient + EngineInfo + TermInfo + 'static,
     M: MinerService + 'static,
 {
     fn get_work(&self) -> Result<Work> {

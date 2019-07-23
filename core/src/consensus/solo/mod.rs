@@ -80,6 +80,7 @@ impl ConsensusEngine for Solo {
         block: &mut ExecutedBlock,
         parent_header: &Header,
         parent_common_params: &CommonParams,
+        _term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
         let author = *block.header().author();
         let (total_reward, total_min_fee) = {
@@ -160,7 +161,8 @@ mod tests {
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![]).unwrap();
         let parent_common_params = CommonParams::default_for_test();
-        let b = b.close_and_lock(&genesis_header, &parent_common_params).unwrap();
+        let term_common_params = CommonParams::default_for_test();
+        let b = b.close_and_lock(&genesis_header, &parent_common_params, Some(&term_common_params)).unwrap();
         if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {
             assert!(b.try_seal(engine, seal).is_ok());
         }

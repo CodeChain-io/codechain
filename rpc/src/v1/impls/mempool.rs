@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ccore::{EngineInfo, MinerService, MiningBlockChainClient, SignedTransaction};
+use ccore::{EngineInfo, MinerService, MiningBlockChainClient, SignedTransaction, TermInfo};
 use cjson::bytes::Bytes;
 use primitives::H256;
 use rlp::UntrustedRlp;
@@ -43,7 +43,7 @@ impl<C, M> MempoolClient<C, M> {
 
 impl<C, M> Mempool for MempoolClient<C, M>
 where
-    C: MiningBlockChainClient + EngineInfo + 'static,
+    C: MiningBlockChainClient + EngineInfo + TermInfo + 'static,
     M: MinerService + 'static,
 {
     fn send_signed_transaction(&self, raw: Bytes) -> Result<H256> {

@@ -18,7 +18,7 @@ use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::Duration;
 
-use ccore::{AccountData, AccountProvider, BlockId, EngineInfo, MinerService, MiningBlockChainClient};
+use ccore::{AccountData, AccountProvider, BlockId, EngineInfo, MinerService, MiningBlockChainClient, TermInfo};
 use ckey::{NetworkId, Password, PlatformAddress, Signature};
 use ctypes::transaction::IncompleteTransaction;
 use jsonrpc_core::Result;
@@ -55,7 +55,7 @@ where
 
 impl<C, M> Account for AccountClient<C, M>
 where
-    C: EngineInfo + MiningBlockChainClient + AccountData + 'static,
+    C: EngineInfo + MiningBlockChainClient + AccountData + TermInfo + 'static,
     M: MinerService + 'static,
 {
     fn get_account_list(&self) -> Result<Vec<PlatformAddress>> {

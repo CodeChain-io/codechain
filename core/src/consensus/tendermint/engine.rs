@@ -139,6 +139,7 @@ impl ConsensusEngine for Tendermint {
         block: &mut ExecutedBlock,
         parent_header: &Header,
         parent_common_params: &CommonParams,
+        term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
         let author = *block.header().author();
         let (total_reward, total_min_fee) = {
@@ -166,6 +167,7 @@ impl ConsensusEngine for Tendermint {
             if let Some(block_number) =
                 block_number_if_term_changed(block.header(), parent_header, parent_common_params)
             {
+                // First term change
                 stake::on_term_close(block.state_mut(), block_number, &[])?;
             }
             return Ok(())
@@ -176,8 +178,9 @@ impl ConsensusEngine for Tendermint {
 
         stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
 
+        let term_common_params = term_common_params.expect("TermCommonParams should exist");
         let last_term_finished_block_num = if let Some(block_number) =
-            block_number_if_term_changed(block.header(), parent_header, parent_common_params)
+            block_number_if_term_changed(block.header(), parent_header, term_common_params)
         {
             block_number
         } else {
@@ -335,9 +338,9 @@ impl ConsensusEngine for Tendermint {
 fn block_number_if_term_changed(
     header: &Header,
     parent_header: &Header,
-    parent_common_params: &CommonParams,
+    common_params: &CommonParams,
 ) -> Option<BlockNumber> {
-    let term_seconds = parent_common_params.term_seconds();
+    let term_seconds = common_params.term_seconds();
     if term_seconds == 0 {
         return None
     }

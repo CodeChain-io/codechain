@@ -219,6 +219,7 @@ pub trait ConsensusEngine: Sync + Send {
         _block: &mut ExecutedBlock,
         _parent_header: &Header,
         _parent_common_params: &CommonParams,
+        _term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
         Ok(())
     }

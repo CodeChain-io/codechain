@@ -165,6 +165,7 @@ impl ConsensusEngine for BlakePoW {
         block: &mut ExecutedBlock,
         _parent_header: &Header,
         _parent_common_params: &CommonParams,
+        _term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
         let author = *block.header().author();
         let total_reward = self.block_reward(block.header().number())
