@@ -63,7 +63,7 @@ use crate::consensus::stake::{Validator, Validators};
 use crate::consensus::EngineError;
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
-use crate::error::BlockImportError;
+use crate::error::{BlockImportError, Error as GenericError};
 use crate::miner::{Miner, MinerService, TransactionImportResult};
 use crate::scheme::Scheme;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
@@ -505,6 +505,11 @@ impl BlockChainClient for TestBlockChainClient {
             max_mem_use: 0,
             mem_used: 0,
         }
+    }
+
+    fn queue_own_transaction(&self, transaction: SignedTransaction) -> Result<(), GenericError> {
+        self.miner.import_own_transaction(self, transaction)?;
+        Ok(())
     }
 
     fn queue_transactions(&self, transactions: Vec<Bytes>, _peer_id: NodeId) {

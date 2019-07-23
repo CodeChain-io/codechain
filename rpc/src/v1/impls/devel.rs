@@ -217,13 +217,12 @@ where
             SignedTransaction::new_with_sign(tx, key_pair.private())
         }
 
-        fn send_tx<C, M>(tx: Transaction, client: &C, key_pair: &KeyPair, miner: &M) -> Result<H256>
+        fn send_tx<C>(tx: Transaction, client: &C, key_pair: &KeyPair) -> Result<H256>
         where
-            C: MiningBlockChainClient + EngineInfo + TermInfo,
-            M: MinerService, {
+            C: MiningBlockChainClient + EngineInfo + TermInfo, {
             let signed = SignedTransaction::new_with_sign(tx, key_pair.private());
             let hash = signed.hash();
-            miner.import_own_transaction(client, signed).map_err(errors::transaction_core)?;
+            client.queue_own_transaction(signed).map_err(errors::transaction_core)?;
             Ok(hash)
         }
 
@@ -255,7 +254,7 @@ where
                 let mint_tx = mint_tx!(base_seq, 1);
                 let asset_type = asset_type(&mint_tx);
                 let mut previous_tracker = mint_tx.tracker().unwrap();
-                send_tx(mint_tx, &*self.client, &genesis_keypair, &*self.miner)?;
+                send_tx(mint_tx, &*self.client, &genesis_keypair)?;
 
                 let mut transactions = Vec::with_capacity(count as usize);
                 for i in 0..count {
@@ -275,7 +274,7 @@ where
                 let mint_tx = mint_tx!(base_seq, number_of_in_out as u64);
                 let asset_type = asset_type(&mint_tx);
                 let mut previous_tracker = mint_tx.tracker().unwrap();
-                send_tx(mint_tx, &*self.client, &genesis_keypair, &*self.miner)?;
+                send_tx(mint_tx, &*self.client, &genesis_keypair)?;
 
                 fn create_inputs(
                     transaction_hash: H256,
@@ -308,7 +307,7 @@ where
                 let mint_tx = mint_tx!(base_seq, 1);
                 let asset_type = asset_type(&mint_tx);
                 let mut previous_tracker = mint_tx.tracker().unwrap();
-                send_tx(mint_tx, &*self.client, &genesis_keypair, &*self.miner)?;
+                send_tx(mint_tx, &*self.client, &genesis_keypair)?;
 
                 let mut transactions = Vec::with_capacity(count as usize);
                 for i in 0..count {
@@ -338,10 +337,10 @@ where
 
         let first_transaction = transactions[0].clone();
         for tx in transactions.into_iter().skip(1) {
-            self.miner.import_own_transaction(&*self.client, tx).map_err(errors::transaction_core)?;
+            self.client.queue_own_transaction(tx).map_err(errors::transaction_core)?;
         }
         let start_time = PreciseTime::now();
-        self.miner.import_own_transaction(&*self.client, first_transaction).map_err(errors::transaction_core)?;
+        self.client.queue_own_transaction(first_transaction).map_err(errors::transaction_core)?;
         while !self.client.is_pending_queue_empty() {
             thread::sleep(Duration::from_millis(50));
         }
