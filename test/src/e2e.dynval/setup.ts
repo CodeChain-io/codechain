@@ -247,6 +247,39 @@ export async function createNodes(options: {
     }
 }
 
+export async function selfNominate(
+    sdk: SDK,
+    validator: ValidatorConfig["signer"],
+    deposit: number
+): Promise<H256> {
+    const tx = stake.createSelfNominateTransaction(sdk, deposit, "").sign({
+        secret: validator.privateKey,
+        seq: await sdk.rpc.chain.getSeq(validator.platformAddress),
+        fee: 10
+    });
+
+    return await sdk.rpc.chain.sendSignedTransaction(tx);
+}
+
+export async function receiveDelegation(
+    sdk: SDK,
+    validator: ValidatorConfig["signer"],
+    delegation: number
+): Promise<H256> {
+    const tx = stake
+        .createDelegateCCSTransaction(
+            sdk,
+            validator.platformAddress,
+            delegation
+        )
+        .sign({
+            secret: faucetSecret,
+            seq: await sdk.rpc.chain.getSeq(faucetAddress),
+            fee: 10
+        });
+    return await sdk.rpc.chain.sendSignedTransaction(tx);
+}
+
 export async function fullyConnect(
     nodes: CodeChain[],
     promiseExpect: PromiseExpect

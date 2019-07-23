@@ -36,6 +36,10 @@ describe("Change commonParams", function() {
     const promiseExpect = new PromiseExpect();
     const nodes = withNodes(this, {
         promiseExpect,
+        overrideParams: {
+            maxNumOfValidators: 8,
+            maxCandidateMetadataSize: 128
+        },
         validators: allDynValidators.map((signer, index) => ({
             signer,
             delegation: 5_000,
@@ -191,7 +195,7 @@ describe("Change commonParams", function() {
         });
     });
 
-    async function checkValidators(sdk: SDK, target: string[]) {
+    async function checkValidators(sdk: SDK, term: number, target: string[]) {
         const blockNumber = await sdk.rpc.chain.getBestBlockNumber();
         const termMetadata = (await stake.getTermMetadata(sdk, blockNumber))!;
         const currentTermInitialBlockNumber =
@@ -201,7 +205,7 @@ describe("Change commonParams", function() {
             currentTermInitialBlockNumber
         ))!.map(platformAddr => platformAddr.toString());
 
-        expect(termMetadata.currentTermId).to.be.equals(2);
+        expect(termMetadata.currentTermId).to.be.equals(term);
         expect(validatorsAfter.length).to.be.equals(target.length);
         expect(validatorsAfter).contains.all.members(target);
     }
@@ -254,7 +258,159 @@ describe("Change commonParams", function() {
             const expectedValidators = [alice, betty, ...left].map(val =>
                 val.platformAddress.toString()
             );
-            await checkValidators(checkingNode.sdk, expectedValidators);
+            await checkValidators(checkingNode.sdk, 2, expectedValidators);
+        });
+    });
+    describe("Change the maximum number of validators", async function() {
+        it("Should select only MAX_NUM_OF_VALIDATORS validators", async function() {
+            const termSeconds = 20;
+            const margin = 1.2;
+
+            this.slow(termSeconds * 4 * margin * 1000);
+            this.timeout(termSeconds * 5 * 1000);
+
+            const checkingNode = nodes[0];
+
+            await changeParams(checkingNode, 1, {
+                ...defaultParams,
+                termSeconds
+            });
+
+            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await checkValidators(
+                checkingNode.sdk,
+                2,
+                allDynValidators
+                    .slice(0, 8)
+                    .map(val => val.platformAddress.toString())
+            );
+
+            const decreaseHash = await changeParams(checkingNode, 2, {
+                ...defaultParams,
+                maxNumOfValidators: 5,
+                termSeconds
+            });
+            await checkingNode.waitForTx(decreaseHash);
+            await checkingNode.waitForTermChange(3, termSeconds * margin);
+            await checkValidators(
+                checkingNode.sdk,
+                3,
+                allDynValidators
+                    .slice(0, 5)
+                    .map(val => val.platformAddress.toString())
+            );
+
+            const increaseHash = await changeParams(checkingNode, 3, {
+                ...defaultParams,
+                maxNumOfValidators: 7,
+                termSeconds
+            });
+            await checkingNode.waitForTx(increaseHash);
+            await checkingNode.waitForTermChange(4, termSeconds * margin);
+            await checkValidators(
+                checkingNode.sdk,
+                4,
+                allDynValidators
+                    .slice(0, 7)
+                    .map(val => val.platformAddress.toString())
+            );
+        });
+    });
+    describe("Change the maximum size of candidate metadata", async function() {
+        function nominationWithMetadata(size: number) {
+            return stake.createSelfNominateTransaction(
+                nodes[0].sdk,
+                1,
+                " ".repeat(size)
+            );
+        }
+
+        it("Should apply larger metadata limit after increment", async function() {
+            const termSeconds = 20;
+            const margin = 1.2;
+
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const [alice] = allDynValidators;
+            const checkingNode = nodes[0];
+            const changeTxHash = await changeParams(checkingNode, 1, {
+                ...defaultParams,
+                maxCandidateMetadataSize: 256
+            });
+            await checkingNode.waitForTx(changeTxHash);
+            const normalNomination = nominationWithMetadata(129);
+            const seq = await checkingNode.sdk.rpc.chain.getSeq(
+                alice.platformAddress
+            );
+            const normalHash = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                normalNomination.sign({
+                    secret: alice.privateKey,
+                    seq,
+                    fee: 10
+                })
+            );
+            await checkingNode.waitForTx(normalHash);
+
+            const largeNomination = nominationWithMetadata(257);
+            try {
+                await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                    largeNomination.sign({
+                        secret: alice.privateKey,
+                        seq,
+                        fee: 10
+                    })
+                );
+                expect.fail(
+                    "Transaction with large metadata should not be included"
+                );
+            } catch (err) {
+                expect(err.message).include("Too long");
+            }
+        });
+
+        it("Should apply smaller metadata limit after decrement", async function() {
+            const termSeconds = 20;
+            const margin = 1.2;
+
+            this.slow(termSeconds * margin * 1000);
+            this.timeout(termSeconds * 2 * 1000);
+
+            const [alice] = allDynValidators;
+            const checkingNode = nodes[0];
+            const changeTxHash = await changeParams(checkingNode, 1, {
+                ...defaultParams,
+                maxCandidateMetadataSize: 64
+            });
+            await checkingNode.waitForTx(changeTxHash);
+            const normalNomination = nominationWithMetadata(63);
+            const seq = await checkingNode.sdk.rpc.chain.getSeq(
+                alice.platformAddress
+            );
+            const normalHash = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                normalNomination.sign({
+                    secret: alice.privateKey,
+                    seq,
+                    fee: 10
+                })
+            );
+            await checkingNode.waitForTx(normalHash);
+
+            const largeNomination = nominationWithMetadata(127);
+            try {
+                await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                    largeNomination.sign({
+                        secret: alice.privateKey,
+                        seq,
+                        fee: 10
+                    })
+                );
+                expect.fail(
+                    "Transaction with large metadata should not be included"
+                );
+            } catch (err) {
+                expect(err.message).include("Too long");
+            }
         });
     });
 });
