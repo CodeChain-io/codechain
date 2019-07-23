@@ -96,17 +96,20 @@ impl ConsensusEngine for SimplePoA {
     }
 
     /// Attempt to seal the block internally.
-    fn generate_seal(&self, block: &ExecutedBlock, _parent: &Header) -> Seal {
-        let header = block.header();
-        let author = header.author();
-        if self.validators.contains_address(header.parent_hash(), author) {
-            // account should be permanently unlocked, otherwise sealing will fail
-            if let Ok(signature) = self.signer.read().sign(header.bare_hash()) {
-                return Seal::SimplePoA(signature)
-            } else {
-                ctrace!(ENGINE, "generate_seal: FAIL: accounts secret key unavailable");
+    fn generate_seal(&self, block: Option<&ExecutedBlock>, _parent: &Header) -> Seal {
+        if let Some(block) = block {
+            let header = block.header();
+            let author = header.author();
+            if self.validators.contains_address(header.parent_hash(), author) {
+                // account should be permanently unlocked, otherwise sealing will fail
+                if let Ok(signature) = self.signer.read().sign(header.bare_hash()) {
+                    return Seal::SimplePoA(signature)
+                } else {
+                    ctrace!(ENGINE, "generate_seal: FAIL: accounts secret key unavailable");
+                }
             }
         }
+
         Seal::None
     }
 
@@ -185,7 +188,7 @@ mod tests {
         let parent_common_params = CommonParams::default_for_test();
         let term_common_params = CommonParams::default_for_test();
         let b = b.close_and_lock(&genesis_header, &parent_common_params, Some(&term_common_params)).unwrap();
-        if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {
+        if let Some(seal) = engine.generate_seal(Some(b.block()), &genesis_header).seal_fields() {
             assert!(b.try_seal(engine, seal).is_ok());
         }
     }
