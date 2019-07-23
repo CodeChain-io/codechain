@@ -144,12 +144,12 @@ export async function createNodes(options: {
         // Self nominate
         const stakeTxs = [];
         for (let i = 0; i < validators.length; i++) {
-            const { signer: validator, deposit = 0 } = validators[i];
+            const { signer: validator, deposit } = validators[i];
             await promiseExpect.shouldFulfill(
                 `node ${i} wait for pay`,
                 nodes[i].waitForTx(payTxs)
             );
-            if (deposit === 0) {
+            if (deposit == null) {
                 continue;
             }
             const tx = stake
@@ -172,11 +172,18 @@ export async function createNodes(options: {
         );
         const delegateTxs = [];
         for (let i = 0; i < validators.length; i++) {
-            const { signer: validator, delegation = 0 } = validators[i];
+            const { signer: validator, deposit, delegation = 0 } = validators[
+                i
+            ];
             await promiseExpect.shouldFulfill(
                 `node ${i} wait for stake`,
                 nodes[i].waitForTx(stakeTxs)
             );
+            if (deposit == null && delegation !== 0) {
+                throw new Error(
+                    "Cannot delegate to who haven't self-nominated"
+                );
+            }
             if (delegation === 0) {
                 continue;
             }
@@ -188,7 +195,7 @@ export async function createNodes(options: {
                 )
                 .sign({
                     secret: faucetSecret,
-                    seq: faucetSeq2 + i,
+                    seq: faucetSeq2 + delegateTxs.length,
                     fee: 10
                 });
             delegateTxs.push(
@@ -213,7 +220,7 @@ export async function createNodes(options: {
         }
 
         // enable!
-        const changeTx = await changeParams(initialNodes[0], {
+        const changeTx = await changeParams(initialNodes[0], 0, {
             ...defaultParams,
             ...overrideParams
         });
@@ -240,7 +247,10 @@ export async function createNodes(options: {
     }
 }
 
-async function fullyConnect(nodes: CodeChain[], promiseExpect: PromiseExpect) {
+export async function fullyConnect(
+    nodes: CodeChain[],
+    promiseExpect: PromiseExpect
+) {
     const graph: { from: number; to: number }[] = [];
     for (let i = 0; i < nodes.length - 1; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
@@ -258,7 +268,7 @@ async function fullyConnect(nodes: CodeChain[], promiseExpect: PromiseExpect) {
     );
 }
 
-const defaultParams = {
+export const defaultParams = {
     maxExtraDataSize: 0x20,
     maxAssetSchemeMetadataSize: 0x0400,
     maxTransferMetadataSize: 0x0100,
@@ -294,7 +304,11 @@ const defaultParams = {
     maxCandidateMetadataSize: 128
 };
 
-async function changeParams(node: CodeChain, params: typeof defaultParams) {
+export async function changeParams(
+    node: CodeChain,
+    metadataSeq: number,
+    params: typeof defaultParams
+) {
     const newParams: any[] = [
         params.maxExtraDataSize,
         params.maxAssetSchemeMetadataSize,
@@ -334,7 +348,7 @@ async function changeParams(node: CodeChain, params: typeof defaultParams) {
         number,
         (number | string)[],
         ...string[]
-    ] = [0xff, 0, newParams];
+    ] = [0xff, metadataSeq, newParams];
     const message = blake256(RLP.encode(changeParamsActionRlp).toString("hex"));
     changeParamsActionRlp.push(
         `0x${SDK.util.signEcdsa(message, faucetSecret)}`
