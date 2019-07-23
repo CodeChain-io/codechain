@@ -126,7 +126,7 @@ mod tests {
     use super::super::BitSet;
     use super::message::{message_info_rlp, VoteStep};
     use crate::account_provider::AccountProvider;
-    use crate::block::{ClosedBlock, IsBlock, OpenBlock};
+    use crate::block::{ClosedBlock, OpenBlock};
     use crate::client::TestBlockChainClient;
     use crate::consensus::{CodeChainEngine, EngineError, Seal};
     use crate::error::BlockError;
@@ -153,14 +153,11 @@ mod tests {
         let db = scheme.ensure_genesis_state(db).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![]).unwrap();
+        let seal = scheme.engine.generate_seal(None, &genesis_header).seal_fields().unwrap();
         let common_params = CommonParams::default_for_test();
         let term_common_params = CommonParams::default_for_test();
         let b = b.close(&genesis_header, &common_params, Some(&term_common_params)).unwrap();
-        if let Some(seal) = scheme.engine.generate_seal(b.block(), &genesis_header).seal_fields() {
-            (b, seal)
-        } else {
-            panic!()
-        }
+        (b, seal)
     }
 
     fn insert_and_unlock(tap: &Arc<AccountProvider>, acc: &str) -> Address {
