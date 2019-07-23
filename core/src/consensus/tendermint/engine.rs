@@ -75,13 +75,12 @@ impl ConsensusEngine for Tendermint {
     ///
     /// This operation is synchronous and may (quite reasonably) not be available, in which case
     /// `Seal::None` will be returned.
-    fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
+    fn generate_seal(&self, _block: Option<&ExecutedBlock>, parent: &Header) -> Seal {
         let (result, receiver) = crossbeam::bounded(1);
-        let block_number = block.header().number();
         let parent_hash = parent.hash();
         self.inner
             .send(worker::Event::GenerateSeal {
-                block_number,
+                block_number: parent.number() + 1,
                 parent_hash,
                 result,
             })

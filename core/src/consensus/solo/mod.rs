@@ -71,7 +71,7 @@ impl ConsensusEngine for Solo {
         EngineType::Solo
     }
 
-    fn generate_seal(&self, _block: &ExecutedBlock, _parent: &Header) -> Seal {
+    fn generate_seal(&self, _block: Option<&ExecutedBlock>, _parent: &Header) -> Seal {
         Seal::Solo
     }
 
