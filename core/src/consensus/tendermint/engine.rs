@@ -217,7 +217,7 @@ impl ConsensusEngine for Tendermint {
             let banned = stake::Banned::load_from_state(block.state())?;
             let start_of_the_current_term_header = if block.header().number() == start_of_the_current_term {
                 // FIXME: calling `self.generate_seal` here is awkward.
-                let seal = self.generate_seal(block, parent_header);
+                let seal = self.generate_seal(Some(block), parent_header);
                 let mut header_with_not_seal = block.header().clone();
                 header_with_not_seal.set_seal(seal.seal_fields().unwrap());
                 encoded::Header::new(header_with_not_seal.rlp_bytes().to_vec())

@@ -128,6 +128,15 @@ impl EngineType {
             EngineType::PoW => false,
         }
     }
+
+    pub fn is_seal_first(&self) -> bool {
+        match self {
+            EngineType::PoA => false,
+            EngineType::PBFT => true,
+            EngineType::Solo => true,
+            EngineType::PoW => false,
+        }
+    }
 }
 
 /// A consensus mechanism for the chain.
