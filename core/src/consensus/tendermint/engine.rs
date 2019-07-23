@@ -42,9 +42,11 @@ use crate::client::{Client, ConsensusClient};
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::tendermint::params::TimeGapParams;
 use crate::consensus::{EngineType, ValidatorSet};
+use crate::encoded;
 use crate::error::Error;
 use crate::views::HeaderView;
 use crate::BlockId;
+use rlp::Encodable;
 
 impl ConsensusEngine for Tendermint {
     fn name(&self) -> &str {
@@ -214,11 +216,22 @@ impl ConsensusEngine for Tendermint {
             };
 
             let banned = stake::Banned::load_from_state(block.state())?;
+            let start_of_the_current_term_header = if block.header().number() == start_of_the_current_term {
+                // FIXME: calling `self.generate_seal` here is awkward.
+                let seal = self.generate_seal(block, parent_header);
+                let mut header_with_not_seal = block.header().clone();
+                header_with_not_seal.set_seal(seal.seal_fields().unwrap());
+                encoded::Header::new(header_with_not_seal.rlp_bytes().to_vec())
+            } else {
+                client.block_header(&start_of_the_current_term.into()).unwrap()
+            };
+
             let pending_rewards = calculate_pending_rewards_of_the_previous_term(
                 &*client,
                 &*self.validators,
                 rewards,
                 start_of_the_current_term,
+                start_of_the_current_term_header,
                 start_of_the_previous_term,
                 &banned,
             )?;
@@ -375,6 +388,7 @@ fn calculate_pending_rewards_of_the_previous_term(
     validators: &ValidatorSet,
     rewards: BTreeMap<Address, u64>,
     start_of_the_current_term: u64,
+    start_of_the_current_term_header: encoded::Header,
     start_of_the_previous_term: u64,
     banned: &stake::Banned,
 ) -> Result<HashMap<Address, u64>, Error> {
@@ -385,7 +399,7 @@ fn calculate_pending_rewards_of_the_previous_term(
     let mut missed_signatures = HashMap::<Address, (usize, usize)>::with_capacity(MAX_NUM_OF_VALIDATORS);
     let mut signed_blocks = HashMap::<Address, usize>::with_capacity(MAX_NUM_OF_VALIDATORS);
 
-    let mut header = chain.block_header(&start_of_the_current_term.into()).unwrap();
+    let mut header = start_of_the_current_term_header;
     let mut parent_validators = {
         let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
         validators.addresses(&grand_parent_header.parent_hash())
