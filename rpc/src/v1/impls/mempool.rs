@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ccore::{EngineInfo, MinerService, MiningBlockChainClient, SignedTransaction, TermInfo};
+use ccore::{BlockChainClient, SignedTransaction};
 use cjson::bytes::Bytes;
 use primitives::H256;
 use rlp::UntrustedRlp;
@@ -27,24 +27,21 @@ use super::super::errors;
 use super::super::traits::Mempool;
 use super::super::types::PendingTransactions;
 
-pub struct MempoolClient<C, M> {
+pub struct MempoolClient<C> {
     client: Arc<C>,
-    miner: Arc<M>,
 }
 
-impl<C, M> MempoolClient<C, M> {
-    pub fn new(client: Arc<C>, miner: Arc<M>) -> Self {
+impl<C> MempoolClient<C> {
+    pub fn new(client: Arc<C>) -> Self {
         MempoolClient {
             client,
-            miner,
         }
     }
 }
 
-impl<C, M> Mempool for MempoolClient<C, M>
+impl<C> Mempool for MempoolClient<C>
 where
-    C: MiningBlockChainClient + EngineInfo + TermInfo + 'static,
-    M: MinerService + 'static,
+    C: BlockChainClient + 'static,
 {
     fn send_signed_transaction(&self, raw: Bytes) -> Result<H256> {
         UntrustedRlp::new(&raw.into_vec())
@@ -53,7 +50,10 @@ where
             .and_then(|tx| SignedTransaction::try_new(tx).map_err(errors::transaction_core))
             .and_then(|signed| {
                 let hash = signed.hash();
-                self.miner.import_own_transaction(&*self.client, signed).map_err(errors::transaction_core).map(|_| hash)
+                match self.client.queue_own_transaction(signed) {
+                    Ok(_) => Ok(hash),
+                    Err(e) => Err(errors::transaction_core(e)),
+                }
             })
             .map(Into::into)
     }

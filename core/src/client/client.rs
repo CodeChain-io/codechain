@@ -52,7 +52,7 @@ use crate::error::{BlockImportError, Error, ImportError, SchemeError};
 use crate::miner::{Miner, MinerService};
 use crate::scheme::Scheme;
 use crate::service::ClientIoMessage;
-use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, UnverifiedTransaction};
+use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
@@ -718,6 +718,12 @@ impl ImportBlock for Client {
 impl BlockChainClient for Client {
     fn queue_info(&self) -> BlockQueueInfo {
         self.importer.block_queue.queue_info()
+    }
+
+    /// Import own transaction
+    fn queue_own_transaction(&self, transaction: SignedTransaction) -> Result<(), Error> {
+        self.importer.miner.import_own_transaction(self, transaction)?;
+        Ok(())
     }
 
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: NodeId) {

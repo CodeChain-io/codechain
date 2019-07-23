@@ -46,8 +46,8 @@ use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::consensus::EngineError;
 use crate::encoded;
-use crate::error::BlockImportError;
-use crate::transaction::{LocalizedTransaction, PendingSignedTransactions};
+use crate::error::{BlockImportError, Error as GenericError};
+use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 
 /// Provides various blockchain information, like block header, chain state etc.
@@ -213,6 +213,9 @@ pub trait ImportBlock {
 pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + ImportBlock + ChainTimeInfo {
     /// Get block queue information.
     fn queue_info(&self) -> BlockQueueInfo;
+
+    /// Queue own transaction for importing
+    fn queue_own_transaction(&self, transaction: SignedTransaction) -> Result<(), GenericError>;
 
     /// Queue transactions for importing.
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: NodeId);
