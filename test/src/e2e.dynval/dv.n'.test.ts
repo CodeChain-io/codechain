@@ -23,7 +23,7 @@ import "mocha";
 import { validators as originalDynValidators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import { withNodes } from "./setup";
+import { setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
@@ -34,7 +34,6 @@ const otherDynValidators = originalDynValidators.slice(2, 2 + 6);
 describe("Dynamic Validator N -> N'", function() {
     const promiseExpect = new PromiseExpect();
     const TERM_SECONDS = 30;
-    const margin = 1.2;
 
     describe("1. Jail one of the validator + increase the delegation of a candidate who doesn’t have enough delegation", async function() {
         // alice : Elected as a validator, but does not send precommits and does not propose.
@@ -63,8 +62,10 @@ describe("Dynamic Validator N -> N'", function() {
         });
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
-            this.slow(TERM_SECONDS * margin * 1000); // All tests waits at most 1 terms.
-            this.timeout(TERM_SECONDS * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds: TERM_SECONDS
+            });
 
             const [_aliceNode, _bettyNode, ...otherDynNodes] = allDynNodes;
             const rpcNode = otherDynNodes[0];
@@ -92,7 +93,10 @@ describe("Dynamic Validator N -> N'", function() {
                 rpcNode.sdk.rpc.chain.sendSignedTransaction(tx)
             );
 
-            await rpcNode.waitForTermChange(2, TERM_SECONDS * margin);
+            await termWaiter.waitNodeUntilTerm(rpcNode, {
+                target: 2,
+                termPeriods: 1
+            });
 
             const afterAuthors = (await stake.getPossibleAuthors(
                 rpcNode.sdk
@@ -132,8 +136,10 @@ describe("Dynamic Validator N -> N'", function() {
         });
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
-            this.slow(TERM_SECONDS * margin * 1000);
-            this.timeout(TERM_SECONDS * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds: TERM_SECONDS
+            });
             const [_aliceNode, bettyNode, ...otherDynNodes] = allDynNodes;
             const rpcNode = otherDynNodes[0];
 
@@ -160,7 +166,10 @@ describe("Dynamic Validator N -> N'", function() {
                 bettyNode.sdk.rpc.chain.sendSignedTransaction(tx)
             );
 
-            await rpcNode.waitForTermChange(2, TERM_SECONDS * margin);
+            await termWaiter.waitNodeUntilTerm(rpcNode, {
+                target: 2,
+                termPeriods: 1
+            });
 
             const afterAuthors = (await stake.getPossibleAuthors(
                 rpcNode.sdk
@@ -195,8 +204,10 @@ describe("Dynamic Validator N -> N'", function() {
         });
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
-            this.slow(TERM_SECONDS * margin * 1000);
-            this.timeout(TERM_SECONDS * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds: TERM_SECONDS
+            });
             const [, , ...otherDynNodes] = allDynNodes;
             const rpcNode = otherDynNodes[0];
 
@@ -237,7 +248,10 @@ describe("Dynamic Validator N -> N'", function() {
                 rpcNode.sdk.rpc.chain.sendSignedTransaction(tx2)
             ]);
 
-            await rpcNode.waitForTermChange(2, TERM_SECONDS * margin);
+            await termWaiter.waitNodeUntilTerm(rpcNode, {
+                target: 2,
+                termPeriods: 1
+            });
 
             const afterAuthors = (await stake.getPossibleAuthors(
                 rpcNode.sdk
@@ -272,8 +286,10 @@ describe("Dynamic Validator N -> N'", function() {
         });
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
-            this.slow(TERM_SECONDS * margin * 1000);
-            this.timeout(TERM_SECONDS * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds: TERM_SECONDS
+            });
             const [, bettyNode, ...otherDynNodes] = allDynNodes;
             const rpcNode = otherDynNodes[0];
 
@@ -316,7 +332,10 @@ describe("Dynamic Validator N -> N'", function() {
                 )
             ]);
 
-            await rpcNode.waitForTermChange(2, TERM_SECONDS * margin);
+            await termWaiter.waitNodeUntilTerm(rpcNode, {
+                target: 2,
+                termPeriods: 1
+            });
 
             const afterAuthors = (await stake.getPossibleAuthors(
                 rpcNode.sdk

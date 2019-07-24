@@ -24,14 +24,13 @@ import "mocha";
 import { validators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import { withNodes } from "./setup";
+import { setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
 describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum number)", function() {
     const promiseExpect = new PromiseExpect();
     const termSeconds = 20;
-    const margin = 1.2;
 
     const maxNumOfValidators = 6;
     const alice = maxNumOfValidators - 1; // will be replaced
@@ -114,11 +113,16 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
         });
 
         it("Bob should be a validator when doing nothing", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             // Do nothing
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
 
             expect(
                 (await stake.getJailed(nodes[0].sdk)).map(x =>
@@ -132,8 +136,10 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
         });
 
         it("Charlie should be a validator when gets enough delegation", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const delegateToCharlie = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
@@ -149,7 +155,10 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
                     })
             );
             await nodes[0].waitForTx(delegateToCharlie);
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
 
             expect(
                 (await stake.getJailed(nodes[0].sdk)).map(x =>
@@ -163,8 +172,10 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
         });
 
         it("Dave should be a validator when deposit enough", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const depositDave = await nodes[
                 dave
@@ -184,7 +195,10 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
                     })
             );
             await nodes[0].waitForTx(depositDave);
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
 
             expect(
                 (await stake.getJailed(nodes[0].sdk)).map(x =>
@@ -223,17 +237,24 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
         });
 
         it("Bob should be a validator when doing nothing", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             // Do nothing
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             await expectAliceIsReplacedBy(nodes[0].sdk, "Bob", bob);
         });
 
         it("Charlie should be a validator when gets enough delegation", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const delegateToCharlie = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
@@ -250,13 +271,18 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
             );
             await nodes[0].waitForTx(delegateToCharlie);
 
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             await expectAliceIsReplacedBy(nodes[0].sdk, "Charlie", charlie);
         });
 
         it("Dave should be a validator when deposit enough", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const depositDave = await nodes[
                 dave
@@ -277,7 +303,10 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
             );
             await nodes[0].waitForTx(depositDave);
 
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             await expectAliceIsReplacedBy(nodes[0].sdk, "Dave", dave);
         });
     });
@@ -290,8 +319,10 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
         });
 
         it("Charlie should be a validator when gets enough delegation", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const delegateToCharlie = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
@@ -308,13 +339,18 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
             );
             await nodes[0].waitForTx(delegateToCharlie);
 
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             await expectAliceIsReplacedBy(nodes[0].sdk, "Charlie", charlie);
         });
 
         it("Dave should be a validator when deposit enough", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const depositDave = await nodes[
                 dave
@@ -335,7 +371,10 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
             );
             await nodes[0].waitForTx(depositDave);
 
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             await expectAliceIsReplacedBy(nodes[0].sdk, "Dave", dave);
         });
     });

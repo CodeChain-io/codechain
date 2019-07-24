@@ -23,7 +23,7 @@ import "mocha";
 
 import { validators as originalDynValidators } from "../../tendermint.dynval/constants";
 import { PromiseExpect } from "../helper/promise";
-import { selfNominate, withNodes } from "./setup";
+import { selfNominate, setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
@@ -33,7 +33,6 @@ describe("Nomination", function() {
     const promiseExpect = new PromiseExpect();
     const NOMINATION_EXPIRATION = 2;
     const TERM_SECONDS = 20;
-    const margin = 1.2;
 
     describe("Alice doesn't self nominate in NOMINATION_EXPIRATION", async function() {
         // alice : Elected as a validator, but does not send precommits and does not propose.
@@ -57,8 +56,11 @@ describe("Nomination", function() {
         });
 
         it("Alice be eligible after 2 terms", async function() {
-            this.slow(TERM_SECONDS * 3 * margin * 1000);
-            this.timeout(TERM_SECONDS * 4 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 3,
+                termSeconds: TERM_SECONDS
+            });
+
             const [aliceNode, ...otherDynNodes] = allDynNodes;
 
             const selfNominationHash = await selfNominate(
@@ -76,10 +78,10 @@ describe("Nomination", function() {
                 beforeCandidates.map(candidate => candidate.pubkey.toString())
             ).to.includes(H512.ensure(alice.publicKey).toString());
 
-            await otherDynNodes[0].waitForTermChange(
-                4,
-                TERM_SECONDS * margin * 3
-            );
+            await termWaiter.waitNodeUntilTerm(otherDynNodes[0], {
+                target: 4,
+                termPeriods: 3
+            });
 
             const [validators, banned, candidates, jailed] = await Promise.all([
                 stake.getValidators(otherDynNodes[0].sdk),

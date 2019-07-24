@@ -24,7 +24,12 @@ import "mocha";
 import { validators as originalValidators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import { changeParams, defaultParams, withNodes } from "./setup";
+import {
+    changeParams,
+    defaultParams,
+    setTermTestTimeout,
+    withNodes
+} from "./setup";
 
 chai.use(chaiAsPromised);
 
@@ -153,10 +158,10 @@ describe("Change commonParams", function() {
             // revoke delegations of alice, betty, charlie and dorothy but we increased minNumOfValidators to 6,
             // Because alice and betty have more nomination deposit compared to the others, they should remain as validators.
             const termSeconds = 20;
-            const margin = 1.2;
-
-            this.slow(termSeconds * margin * 2 * 1000);
-            this.timeout(termSeconds * 4 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const [alice, betty, charlie, dorothy, ...left] = allDynValidators;
             const checkingNode = nodes[0];
@@ -190,7 +195,10 @@ describe("Change commonParams", function() {
                 )
             );
             await checkingNode.waitForTx(revokeTxHashes);
-            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
 
             const expectedValidators = [alice, betty, ...left].map(val =>
                 val.platformAddress.toString()
@@ -201,10 +209,10 @@ describe("Change commonParams", function() {
     describe("Change the maximum number of validators", async function() {
         it("Should select only MAX_NUM_OF_VALIDATORS validators", async function() {
             const termSeconds = 20;
-            const margin = 1.2;
-
-            this.slow(termSeconds * 3 * margin * 1000);
-            this.timeout(termSeconds * 4 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 2,
+                termSeconds
+            });
 
             const checkingNode = nodes[0];
 
@@ -221,7 +229,10 @@ describe("Change commonParams", function() {
                 maxNumOfValidators: 5
             });
             await checkingNode.waitForTx(decreaseHash);
-            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
             await checkValidators(
                 checkingNode.sdk,
                 2,
@@ -235,7 +246,10 @@ describe("Change commonParams", function() {
                 maxNumOfValidators: 7
             });
             await checkingNode.waitForTx(increaseHash);
-            await checkingNode.waitForTermChange(3, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 3,
+                termPeriods: 1
+            });
             await checkValidators(
                 checkingNode.sdk,
                 3,
