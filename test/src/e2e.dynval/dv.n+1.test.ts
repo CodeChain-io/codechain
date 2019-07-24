@@ -17,11 +17,11 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
 import { validators as originalValidators } from "../../tendermint.dynval/constants";
-import { SDK } from "codechain-sdk";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import { withNodes } from "./setup";

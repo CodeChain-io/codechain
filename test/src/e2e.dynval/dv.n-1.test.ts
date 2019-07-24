@@ -17,8 +17,8 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
-import * as stake from "codechain-stakeholder-sdk";
 import { SDK } from "codechain-sdk";
+import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
 import { validators as originalValidators } from "../../tendermint.dynval/constants";
