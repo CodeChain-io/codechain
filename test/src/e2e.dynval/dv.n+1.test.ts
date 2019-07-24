@@ -24,7 +24,7 @@ import "mocha";
 import { validators as originalValidators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import { withNodes } from "./setup";
+import { setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
@@ -34,7 +34,6 @@ const [betty, ...otherDynValidators] = allDynValidators;
 describe("Dynamic Validator N -> N+1", function() {
     const promiseExpect = new PromiseExpect();
     const termSeconds = 20;
-    const margin = 1.3;
 
     async function beforeInsertionCheck(sdk: SDK) {
         const blockNumber = await sdk.rpc.chain.getBestBlockNumber();
@@ -90,8 +89,10 @@ describe("Dynamic Validator N -> N+1", function() {
         });
 
         it("betty should be included in validators", async function() {
-            this.slow(termSeconds * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const checkingNode = nodes[0];
             await beforeInsertionCheck(checkingNode.sdk);
@@ -128,15 +129,15 @@ describe("Dynamic Validator N -> N+1", function() {
             );
             await checkingNode.waitForTx([nominateTxHash, delegateTxHash]);
 
-            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
             await bettyInsertionCheck(checkingNode.sdk);
         });
     });
 
     describe("Increase one candidate's deposit which is less than the minimum deposit", async function() {
-        this.slow(termSeconds * 1000);
-        this.timeout(termSeconds * 2 * 1000);
-
         const nodes = withNodes(this, {
             promiseExpect,
             validators: otherDynValidators
@@ -155,6 +156,11 @@ describe("Dynamic Validator N -> N+1", function() {
         });
 
         it("betty should be included in validators", async function() {
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
+
             const checkingNode = nodes[0];
             await beforeInsertionCheck(checkingNode.sdk);
             const nominateTx = stake
@@ -171,15 +177,15 @@ describe("Dynamic Validator N -> N+1", function() {
             );
             await checkingNode.waitForTx(nominateTxHash);
 
-            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
             await bettyInsertionCheck(checkingNode.sdk);
         });
     });
 
     describe("Delegate more stake to whose stake is less than the minimum delegation", async function() {
-        this.slow(termSeconds * 1000);
-        this.timeout(termSeconds * 2 * 1000);
-
         const nodes = withNodes(this, {
             promiseExpect,
             validators: otherDynValidators
@@ -198,6 +204,11 @@ describe("Dynamic Validator N -> N+1", function() {
         });
 
         it("betty should be included in validators", async function() {
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
+
             const checkingNode = nodes[0];
             await beforeInsertionCheck(checkingNode.sdk);
             const faucetSeq = await checkingNode.sdk.rpc.chain.getSeq(
@@ -219,7 +230,10 @@ describe("Dynamic Validator N -> N+1", function() {
             );
             await checkingNode.waitForTx(delegateTxHash);
 
-            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
             await bettyInsertionCheck(checkingNode.sdk);
         });
     });

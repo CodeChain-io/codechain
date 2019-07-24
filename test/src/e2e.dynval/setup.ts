@@ -6,7 +6,7 @@ import {
 } from "codechain-primitives/lib";
 import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
-import { Suite } from "mocha";
+import { Context, Suite } from "mocha";
 import {
     aliceSecret,
     bobSecret,
@@ -18,7 +18,7 @@ import {
     validator2Address,
     validator3Address
 } from "../helper/constants";
-import { PromiseExpect } from "../helper/promise";
+import { PromiseExpect, wait } from "../helper/promise";
 import CodeChain from "../helper/spawn";
 
 const RLP = require("rlp");
@@ -401,4 +401,51 @@ export async function changeParams(
                 fee: 10
             })
     );
+}
+
+interface TermWaiter {
+    termSeconds: number;
+    waitForTermPeriods(termPeriods: number, margin: number): Promise<void>;
+    waitNodeUntilTerm(
+        node: CodeChain,
+        params: {
+            target: number;
+            termPeriods: number;
+        }
+    ): Promise<void>;
+}
+
+export function setTermTestTimeout(
+    context: Context | Suite,
+    params: {
+        terms: number;
+        termSeconds?: number;
+    }
+): TermWaiter {
+    const { terms, termSeconds = defaultParams.termSeconds } = params;
+    const slowMargin = 0.5;
+    const timeoutMargin = 2.0;
+    context.slow(termSeconds * (terms + slowMargin) * 1000);
+    context.timeout(termSeconds * (terms + timeoutMargin) * 1000);
+    function termPeriodsToTime(termPeriods: number, margin: number): number {
+        return (termPeriods + margin) * termSeconds;
+    }
+    return {
+        termSeconds,
+        async waitForTermPeriods(termPeriods: number, margin: number) {
+            await wait(termPeriodsToTime(termPeriods, margin));
+        },
+        async waitNodeUntilTerm(
+            node: CodeChain,
+            waiterParams: {
+                target: number;
+                termPeriods: number;
+            }
+        ) {
+            await node.waitForTermChange(
+                waiterParams.target,
+                termPeriodsToTime(waiterParams.termPeriods, 0.5)
+            );
+        }
+    };
 }

@@ -23,14 +23,13 @@ import "mocha";
 import { validators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import { withNodes } from "./setup";
+import { setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
 describe("Dynamic Validator N -> N", function() {
     const promiseExpect = new PromiseExpect();
     const termSeconds = 20;
-    const margin = 1.2;
 
     describe("1. No delegation, nominate, revoke, jail", async function() {
         const nodes = withNodes(this, {
@@ -56,10 +55,15 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             const blockNumber = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
             const termMetadata = await stake.getTermMetadata(
                 nodes[0].sdk,
@@ -116,8 +120,10 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
@@ -134,7 +140,10 @@ describe("Dynamic Validator N -> N", function() {
             );
             await nodes[0].waitForTx(insufficientDelegationTx);
 
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             const blockNumber = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
             const termMetadata = await stake.getTermMetadata(
                 nodes[0].sdk,
@@ -191,8 +200,10 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
@@ -209,7 +220,10 @@ describe("Dynamic Validator N -> N", function() {
             );
             await nodes[0].waitForTx(insufficientDelegationTx);
 
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             const blockNumber = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
             const termMetadata = await stake.getTermMetadata(
                 nodes[0].sdk,
@@ -266,8 +280,10 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
@@ -284,7 +300,10 @@ describe("Dynamic Validator N -> N", function() {
             );
             await nodes[0].waitForTx(insufficientDelegationTx);
 
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             const blockNumber = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
             const termMetadata = await stake.getTermMetadata(
                 nodes[0].sdk,
@@ -341,8 +360,10 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         it("should keep possible authors after a term change", async function() {
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1,
+                termSeconds
+            });
 
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
@@ -359,7 +380,10 @@ describe("Dynamic Validator N -> N", function() {
             );
             await nodes[0].waitForTx(insufficientDelegationTx);
 
-            await nodes[0].waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 2,
+                termPeriods: 1
+            });
             const blockNumber = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
             const termMetadata = await stake.getTermMetadata(
                 nodes[0].sdk,
@@ -438,8 +462,10 @@ describe("Dynamic Validator N -> N", function() {
         ].forEach(({ description, deposit, delegation }) => {
             describe(description, async function() {
                 it("should keep possible authors after a term change", async function() {
-                    this.slow(termSeconds * margin * 1000);
-                    this.timeout(termSeconds * 2 * 1000);
+                    const termWaiter = setTermTestTimeout(this, {
+                        terms: 1,
+                        termSeconds
+                    });
 
                     const nominationTx = await nodes[4].sdk.rpc.chain.sendSignedTransaction(
                         stake
@@ -477,7 +503,10 @@ describe("Dynamic Validator N -> N", function() {
                         await nodes[0].waitForTx(tx);
                     }
 
-                    await nodes[0].waitForTermChange(2, termSeconds * margin);
+                    await termWaiter.waitNodeUntilTerm(nodes[0], {
+                        target: 2,
+                        termPeriods: 1
+                    });
                     const blockNumber = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
                     const termMetadata = await stake.getTermMetadata(
                         nodes[0].sdk,
