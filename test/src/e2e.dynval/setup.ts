@@ -339,7 +339,7 @@ export const defaultParams = {
     maxBodySize: 4194304,
     snapshotPeriod: 16384,
 
-    termSeconds: 20,
+    termSeconds: 15,
     nominationExpiration: 10,
     custodyPeriod: 10,
     releasePeriod: 30,
