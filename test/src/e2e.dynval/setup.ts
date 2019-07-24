@@ -433,7 +433,7 @@ export function setTermTestTimeout(
     return {
         termSeconds,
         async waitForTermPeriods(termPeriods: number, margin: number) {
-            await wait(termPeriodsToTime(termPeriods, margin));
+            await wait(termPeriodsToTime(termPeriods, margin) * 1000);
         },
         async waitNodeUntilTerm(
             node: CodeChain,

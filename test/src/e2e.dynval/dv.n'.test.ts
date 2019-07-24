@@ -33,7 +33,6 @@ const otherDynValidators = originalDynValidators.slice(2, 2 + 6);
 
 describe("Dynamic Validator N -> N'", function() {
     const promiseExpect = new PromiseExpect();
-    const TERM_SECONDS = 30;
 
     describe("1. Jail one of the validator + increase the delegation of a candidate who doesn’t have enough delegation", async function() {
         // alice : Elected as a validator, but does not send precommits and does not propose.
@@ -42,9 +41,6 @@ describe("Dynamic Validator N -> N'", function() {
         //   betty should be a validator in the second term.
         const allDynNodes = withNodes(this, {
             promiseExpect,
-            overrideParams: {
-                termSeconds: TERM_SECONDS
-            },
             validators: [
                 { signer: alice, delegation: 5000, deposit: 100000 },
                 { signer: betty, delegation: 2, deposit: 100000 },
@@ -63,8 +59,7 @@ describe("Dynamic Validator N -> N'", function() {
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds: TERM_SECONDS
+                terms: 1
             });
 
             const [_aliceNode, _bettyNode, ...otherDynNodes] = allDynNodes;
@@ -116,9 +111,6 @@ describe("Dynamic Validator N -> N'", function() {
         //   betty should be a validator in the second term.
         const allDynNodes = withNodes(this, {
             promiseExpect,
-            overrideParams: {
-                termSeconds: TERM_SECONDS
-            },
             validators: [
                 { signer: alice, delegation: 5000, deposit: 100000 },
                 { signer: betty, delegation: 5000, deposit: 100 },
@@ -137,8 +129,7 @@ describe("Dynamic Validator N -> N'", function() {
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds: TERM_SECONDS
+                terms: 1
             });
             const [_aliceNode, bettyNode, ...otherDynNodes] = allDynNodes;
             const rpcNode = otherDynNodes[0];
@@ -189,9 +180,6 @@ describe("Dynamic Validator N -> N'", function() {
         //   betty should be a validator in the second term.
         const allDynNodes = withNodes(this, {
             promiseExpect,
-            overrideParams: {
-                termSeconds: TERM_SECONDS
-            },
             validators: [
                 { signer: alice, delegation: 5000, deposit: 100000 },
                 { signer: betty, delegation: 50, deposit: 100000 },
@@ -205,8 +193,7 @@ describe("Dynamic Validator N -> N'", function() {
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds: TERM_SECONDS
+                terms: 1
             });
             const [, , ...otherDynNodes] = allDynNodes;
             const rpcNode = otherDynNodes[0];
@@ -271,9 +258,6 @@ describe("Dynamic Validator N -> N'", function() {
         //   betty should be a validator in the second term.
         const allDynNodes = withNodes(this, {
             promiseExpect,
-            overrideParams: {
-                termSeconds: TERM_SECONDS
-            },
             validators: [
                 { signer: alice, delegation: 5000, deposit: 100000 },
                 { signer: betty, delegation: 5000, deposit: 10 },
@@ -287,8 +271,7 @@ describe("Dynamic Validator N -> N'", function() {
 
         it("Alice should get out of the committee and Betty should be included in the committee", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds: TERM_SECONDS
+                terms: 1
             });
             const [, bettyNode, ...otherDynNodes] = allDynNodes;
             const rpcNode = otherDynNodes[0];

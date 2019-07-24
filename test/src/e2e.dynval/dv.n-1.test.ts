@@ -33,7 +33,6 @@ const [alice, ...otherDynValidators] = allDynValidators;
 
 describe("Dynamic Validator N -> N-1", function() {
     const promiseExpect = new PromiseExpect();
-    const termSeconds = 20;
 
     async function aliceContainedCheck(sdk: SDK) {
         const blockNumber = await sdk.rpc.chain.getBestBlockNumber();
@@ -90,8 +89,7 @@ describe("Dynamic Validator N -> N-1", function() {
 
         it("alice should be dropped out from validator list", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const checkingNode = nodes[1];
@@ -118,8 +116,7 @@ describe("Dynamic Validator N -> N-1", function() {
 
         it("Revoke all delegation deposits from Alice", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
             const checkingNode = nodes[1];
             await aliceContainedCheck(checkingNode.sdk);
@@ -153,8 +150,7 @@ describe("Dynamic Validator N -> N-1", function() {
 
         it("Revoke delegation deposits to make it be under threshold", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
             const checkingNode = nodes[1];
             await aliceContainedCheck(checkingNode.sdk);

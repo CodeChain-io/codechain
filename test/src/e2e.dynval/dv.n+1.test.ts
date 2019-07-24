@@ -33,7 +33,6 @@ const [betty, ...otherDynValidators] = allDynValidators;
 
 describe("Dynamic Validator N -> N+1", function() {
     const promiseExpect = new PromiseExpect();
-    const termSeconds = 20;
 
     async function beforeInsertionCheck(sdk: SDK) {
         const blockNumber = await sdk.rpc.chain.getBestBlockNumber();
@@ -90,8 +89,7 @@ describe("Dynamic Validator N -> N+1", function() {
 
         it("betty should be included in validators", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const checkingNode = nodes[0];
@@ -157,8 +155,7 @@ describe("Dynamic Validator N -> N+1", function() {
 
         it("betty should be included in validators", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const checkingNode = nodes[0];
@@ -205,8 +202,7 @@ describe("Dynamic Validator N -> N+1", function() {
 
         it("betty should be included in validators", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const checkingNode = nodes[0];

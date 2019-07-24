@@ -28,7 +28,6 @@ chai.use(chaiAsPromised);
 
 describe("Jail state transition test", function() {
     const promiseExpect = new PromiseExpect();
-    const termSeconds = 20;
 
     const alice = validators[1];
     const nodes = withNodes(this, {
@@ -39,7 +38,6 @@ describe("Jail state transition test", function() {
             deposit: 10_000_000 - index // tie-breaker
         })),
         overrideParams: {
-            termSeconds,
             custodyPeriod: 2,
             releasePeriod: 3
         },
@@ -93,8 +91,7 @@ describe("Jail state transition test", function() {
 
     beforeEach(async function() {
         const termWaiter = setTermTestTimeout(this, {
-            terms: 1,
-            termSeconds
+            terms: 1
         });
 
         // Wait until alice is sent to jail
@@ -105,8 +102,7 @@ describe("Jail state transition test", function() {
 
     it("Should be released if RELEASE_PERIOD have passed", async function() {
         const termWaiter = setTermTestTimeout(this, {
-            terms: 3,
-            termSeconds
+            terms: 3
         });
 
         const node = nodes[0];
@@ -118,8 +114,7 @@ describe("Jail state transition test", function() {
 
     it("Should become a candiate if a self-nomination was sent after CUSTODY_PERIOD", async function() {
         const termWaiter = setTermTestTimeout(this, {
-            terms: 3,
-            termSeconds
+            terms: 3
         });
 
         const node = nodes[0];
@@ -146,8 +141,7 @@ describe("Jail state transition test", function() {
 
     it("Should stay in jail if a self-nomination was sent to early", async function() {
         const termWaiter = setTermTestTimeout(this, {
-            terms: 1,
-            termSeconds
+            terms: 1
         });
 
         const node = nodes[0];

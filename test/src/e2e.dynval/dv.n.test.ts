@@ -29,7 +29,6 @@ chai.use(chaiAsPromised);
 
 describe("Dynamic Validator N -> N", function() {
     const promiseExpect = new PromiseExpect();
-    const termSeconds = 20;
 
     describe("1. No delegation, nominate, revoke, jail", async function() {
         const nodes = withNodes(this, {
@@ -38,10 +37,7 @@ describe("Dynamic Validator N -> N", function() {
                 signer,
                 delegation: 5000,
                 deposit: 10_000_000 - index // tie-breaker
-            })),
-            overrideParams: {
-                termSeconds
-            }
+            }))
         });
 
         beforeEach(async function() {
@@ -56,8 +52,7 @@ describe("Dynamic Validator N -> N", function() {
 
         it("should keep possible authors after a term change", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             await termWaiter.waitNodeUntilTerm(nodes[0], {
@@ -89,7 +84,6 @@ describe("Dynamic Validator N -> N", function() {
         const nodes = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                termSeconds,
                 maxNumOfValidators: 8,
                 delegationThreshold: 1000
             },
@@ -121,8 +115,7 @@ describe("Dynamic Validator N -> N", function() {
 
         it("should keep possible authors after a term change", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
@@ -169,7 +162,6 @@ describe("Dynamic Validator N -> N", function() {
         const nodes = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                termSeconds,
                 maxNumOfValidators: 8,
                 delegationThreshold: 1000
             },
@@ -201,8 +193,7 @@ describe("Dynamic Validator N -> N", function() {
 
         it("should keep possible authors after a term change", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
@@ -249,7 +240,6 @@ describe("Dynamic Validator N -> N", function() {
         const nodes = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                termSeconds,
                 maxNumOfValidators: 8,
                 delegationThreshold: 1000
             },
@@ -281,8 +271,7 @@ describe("Dynamic Validator N -> N", function() {
 
         it("should keep possible authors after a term change", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
@@ -329,7 +318,6 @@ describe("Dynamic Validator N -> N", function() {
         const nodes = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                termSeconds,
                 maxNumOfValidators: 8,
                 delegationThreshold: 1000
             },
@@ -361,8 +349,7 @@ describe("Dynamic Validator N -> N", function() {
 
         it("should keep possible authors after a term change", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
@@ -410,7 +397,6 @@ describe("Dynamic Validator N -> N", function() {
         const nodes = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                termSeconds,
                 maxNumOfValidators: 8,
                 delegationThreshold: 1000,
                 minDeposit: 10000
@@ -463,8 +449,7 @@ describe("Dynamic Validator N -> N", function() {
             describe(description, async function() {
                 it("should keep possible authors after a term change", async function() {
                     const termWaiter = setTermTestTimeout(this, {
-                        terms: 1,
-                        termSeconds
+                        terms: 1
                     });
 
                     const nominationTx = await nodes[4].sdk.rpc.chain.sendSignedTransaction(
