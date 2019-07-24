@@ -66,17 +66,14 @@ describe("Change commonParams", function() {
                 })
             );
 
-            await nodes[0].waitForTermChange(
-                2,
-                initialTermSeconds * 1000 * margin
-            );
+            await nodes[0].waitForTermChange(2, initialTermSeconds * margin);
 
             const term2Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
             {
                 expect(term2Metadata.currentTermId).to.be.equal(2);
             }
 
-            await nodes[0].waitForTermChange(3, newTermSeconds * 1000 * margin);
+            await nodes[0].waitForTermChange(3, newTermSeconds * margin);
 
             const term3Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
             {
