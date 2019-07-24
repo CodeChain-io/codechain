@@ -166,7 +166,6 @@ describe("Change commonParams", function() {
             const checkingNode = nodes[0];
             const changeTxHash = await changeParams(checkingNode, 1, {
                 ...defaultParams,
-                termSeconds,
                 minNumOfValidators: 6
             });
 
@@ -208,50 +207,42 @@ describe("Change commonParams", function() {
             const termSeconds = 20;
             const margin = 1.2;
 
-            this.slow(termSeconds * 4 * margin * 1000);
-            this.timeout(termSeconds * 5 * 1000);
+            this.slow(termSeconds * 3 * margin * 1000);
+            this.timeout(termSeconds * 4 * 1000);
 
             const checkingNode = nodes[0];
 
-            await changeParams(checkingNode, 1, {
-                ...defaultParams,
-                termSeconds
-            });
-
-            await checkingNode.waitForTermChange(2, termSeconds * margin);
             await checkValidators(
                 checkingNode.sdk,
-                2,
+                1,
                 allDynValidators
                     .slice(0, 8)
                     .map(val => val.platformAddress.toString())
             );
 
-            const decreaseHash = await changeParams(checkingNode, 2, {
+            const decreaseHash = await changeParams(checkingNode, 1, {
                 ...defaultParams,
-                maxNumOfValidators: 5,
-                termSeconds
+                maxNumOfValidators: 5
             });
             await checkingNode.waitForTx(decreaseHash);
-            await checkingNode.waitForTermChange(3, termSeconds * margin);
+            await checkingNode.waitForTermChange(2, termSeconds * margin);
             await checkValidators(
                 checkingNode.sdk,
-                3,
+                2,
                 allDynValidators
                     .slice(0, 5)
                     .map(val => val.platformAddress.toString())
             );
 
-            const increaseHash = await changeParams(checkingNode, 3, {
+            const increaseHash = await changeParams(checkingNode, 2, {
                 ...defaultParams,
-                maxNumOfValidators: 7,
-                termSeconds
+                maxNumOfValidators: 7
             });
             await checkingNode.waitForTx(increaseHash);
-            await checkingNode.waitForTermChange(4, termSeconds * margin);
+            await checkingNode.waitForTermChange(3, termSeconds * margin);
             await checkValidators(
                 checkingNode.sdk,
-                4,
+                3,
                 allDynValidators
                     .slice(0, 7)
                     .map(val => val.platformAddress.toString())
