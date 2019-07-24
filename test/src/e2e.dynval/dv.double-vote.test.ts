@@ -35,7 +35,7 @@ import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import { Signer } from "../helper/spawn";
 import CodeChain from "../helper/spawn";
-import { withNodes, setTermTestTimeout } from "./setup";
+import { withNodes, setTermTestTimeout, findNode } from "./setup";
 
 chai.use(chaiAsPromised);
 
@@ -132,7 +132,6 @@ async function expectPossibleAuthors(
 
 // FIXME: neeeds to use common refactored function when gets banned state accounts
 async function ensureAliceIsBanned(sdk: SDK, blockNumber: number) {
-    await expectPossibleAuthors(sdk, otherDynValidators, blockNumber);
     const bannedAfter = (await stake.getBanned(sdk, blockNumber)).map(
         platformAddr => platformAddr.toString()
     );
@@ -234,6 +233,109 @@ describe("Report Double Vote", function() {
                 reportTxHash
             );
             await ensureAliceIsBanned(checkingNode.sdk, blockNumberAfterReport);
+        });
+    });
+
+    describe("Ban from the jailed state", async function() {
+        const { nodes } = withNodes(this, {
+            promiseExpect,
+            validators: allDynValidators.map(signer => ({
+                signer,
+                delegation: 5_000,
+                deposit: 10_000_000
+            })),
+            onBeforeEnable: async nodes => {
+                // Kill the alice node first to make alice not to participate in the term 1.
+                await findNode(nodes, alice).clean();
+            }
+        });
+
+        async function ensureAliceIsJailed(sdk: SDK, bestBlockNumber: number) {
+            const jailedBefore = (await stake.getJailed(
+                sdk,
+                bestBlockNumber
+            )).map(prisoner => prisoner.address.toString());
+            expect(jailedBefore).to.includes(alice.platformAddress.toString());
+        }
+
+        async function ensureAliceIsReleased(
+            sdk: SDK,
+            bestBlockNumber: number
+        ) {
+            const jailedAfter = (await stake.getJailed(
+                sdk,
+                bestBlockNumber
+            )).map(prisoner => prisoner.address.toString());
+            expect(jailedAfter).not.to.includes(
+                alice.platformAddress.toString()
+            );
+        }
+
+        it("alice should be banned from the prisoners", async function() {
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1.5
+            });
+
+            const checkingNode = nodes[1];
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
+            const blockNumber = await checkingNode.sdk.rpc.chain.getBestBlockNumber();
+            const termMetadata = (await stake.getTermMetadata(
+                checkingNode.sdk,
+                blockNumber
+            ))!;
+            expect(termMetadata!.currentTermId).to.be.equals(2);
+
+            await expectPossibleAuthors(checkingNode.sdk, otherDynValidators);
+            await ensureAliceIsJailed(
+                checkingNode.sdk,
+                termMetadata.lastTermFinishedBlockNumber
+            );
+
+            const aliceIdxInPrevTerm = await getAliceIndex(
+                checkingNode.sdk,
+                termMetadata.lastTermFinishedBlockNumber
+            );
+
+            const [message1, message2] = createDoubleVoteMessages(
+                {
+                    height: termMetadata.lastTermFinishedBlockNumber,
+                    view: 0,
+                    step: "precommit",
+                    privKey: alice.privateKey,
+                    signerIdx: aliceIdxInPrevTerm
+                },
+                H256.ensure(
+                    "a556240c3ac4f33acbf78b33235ce13bc359bf96a01df5cc674539ae3b4978d0"
+                ),
+                H256.ensure(
+                    "9900a2c6f1166026013f76fd7c366846265fa15edcfe06c88fc1a87b79e9b787"
+                )
+            );
+
+            const reportTx = createReportDoubleVoteTransaction(
+                checkingNode.sdk,
+                message1,
+                message2
+            );
+            const reportTxHash = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                reportTx.sign({
+                    secret: faucetSecret,
+                    seq: await checkingNode.sdk.rpc.chain.getSeq(faucetAddress),
+                    fee: 10
+                })
+            );
+            const blockNumberAfterReport = await waitUntilAliceGetBanned(
+                checkingNode,
+                reportTxHash
+            );
+            await ensureAliceIsBanned(checkingNode.sdk, blockNumberAfterReport);
+            await ensureAliceIsReleased(
+                checkingNode.sdk,
+                blockNumberAfterReport
+            );
         });
     });
 
