@@ -32,7 +32,6 @@ const [alice, ...otherDynValidators] = originalDynValidators;
 describe("Nomination", function() {
     const promiseExpect = new PromiseExpect();
     const NOMINATION_EXPIRATION = 2;
-    const TERM_SECONDS = 20;
 
     describe("Alice doesn't self nominate in NOMINATION_EXPIRATION", async function() {
         // alice : Elected as a validator, but does not send precommits and does not propose.
@@ -42,8 +41,7 @@ describe("Nomination", function() {
         const allDynNodes = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                nominationExpiration: NOMINATION_EXPIRATION,
-                termSeconds: TERM_SECONDS
+                nominationExpiration: NOMINATION_EXPIRATION
             },
             validators: [
                 { signer: alice },
@@ -57,8 +55,7 @@ describe("Nomination", function() {
 
         it("Alice be eligible after 2 terms", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 3,
-                termSeconds: TERM_SECONDS
+                terms: 3
             });
 
             const [aliceNode, ...otherDynNodes] = allDynNodes;

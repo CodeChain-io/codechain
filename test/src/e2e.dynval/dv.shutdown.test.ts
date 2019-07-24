@@ -29,7 +29,6 @@ chai.use(chaiAsPromised);
 
 describe("Shutdown test", function() {
     const promiseExpect = new PromiseExpect();
-    const termSeconds = 20;
 
     function filterNodes(nodes: CodeChain[], from: number, to: number) {
         const selected = nodes
@@ -55,7 +54,6 @@ describe("Shutdown test", function() {
         const nodes = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                termSeconds,
                 minNumOfValidators: 4,
                 maxNumOfValidators: 8,
                 delegationThreshold: 1
@@ -129,8 +127,7 @@ describe("Shutdown test", function() {
 
         it("Alphas should be next validators after a complete shutdown", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 2,
-                termSeconds
+                terms: 2
             });
 
             // Only Alphas will validate.
@@ -208,7 +205,6 @@ describe("Shutdown test", function() {
         const nodes = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                termSeconds,
                 minNumOfValidators: 4,
                 maxNumOfValidators: 8,
                 delegationThreshold: 1
@@ -232,8 +228,7 @@ describe("Shutdown test", function() {
 
         it("only a term closer should be a validator after a complete shutdown", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 2,
-                termSeconds
+                terms: 2
             });
 
             // Shutdown all validators ASAP before any block is created.

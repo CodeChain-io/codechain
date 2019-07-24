@@ -30,7 +30,6 @@ chai.use(chaiAsPromised);
 
 describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum number)", function() {
     const promiseExpect = new PromiseExpect();
-    const termSeconds = 20;
 
     const maxNumOfValidators = 6;
     const alice = maxNumOfValidators - 1; // will be replaced
@@ -41,7 +40,6 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
     const nodeParams = {
         promiseExpect,
         overrideParams: {
-            termSeconds,
             maxNumOfValidators,
             delegationThreshold: 1000,
             minDeposit: 10000
@@ -114,8 +112,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
 
         it("Bob should be a validator when doing nothing", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             // Do nothing
@@ -137,8 +134,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
 
         it("Charlie should be a validator when gets enough delegation", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const delegateToCharlie = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
@@ -173,8 +169,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
 
         it("Dave should be a validator when deposit enough", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const depositDave = await nodes[
@@ -238,8 +233,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
 
         it("Bob should be a validator when doing nothing", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             // Do nothing
@@ -252,8 +246,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
 
         it("Charlie should be a validator when gets enough delegation", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const delegateToCharlie = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
@@ -280,8 +273,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
 
         it("Dave should be a validator when deposit enough", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const depositDave = await nodes[
@@ -320,8 +312,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
 
         it("Charlie should be a validator when gets enough delegation", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const delegateToCharlie = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
@@ -348,8 +339,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
 
         it("Dave should be a validator when deposit enough", async function() {
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const depositDave = await nodes[

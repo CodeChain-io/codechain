@@ -157,10 +157,8 @@ describe("Change commonParams", function() {
         it("Some nodes who have deposit less than delegation threshold should remain as validators", async function() {
             // revoke delegations of alice, betty, charlie and dorothy but we increased minNumOfValidators to 6,
             // Because alice and betty have more nomination deposit compared to the others, they should remain as validators.
-            const termSeconds = 20;
             const termWaiter = setTermTestTimeout(this, {
-                terms: 1,
-                termSeconds
+                terms: 1
             });
 
             const [alice, betty, charlie, dorothy, ...left] = allDynValidators;
@@ -208,10 +206,8 @@ describe("Change commonParams", function() {
     });
     describe("Change the maximum number of validators", async function() {
         it("Should select only MAX_NUM_OF_VALIDATORS validators", async function() {
-            const termSeconds = 20;
             const termWaiter = setTermTestTimeout(this, {
-                terms: 2,
-                termSeconds
+                terms: 2
             });
 
             const checkingNode = nodes[0];
