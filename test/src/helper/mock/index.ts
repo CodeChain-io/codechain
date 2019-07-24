@@ -18,6 +18,7 @@ import { SignedTransaction } from "codechain-sdk/lib/core/SignedTransaction";
 import { BlockSyncMessage, Emitter, IBodiesq, IHeadersq, MessageType, ResponseMessage } from "./blockSyncMessage";
 import { Header } from "./cHeader";
 import { P2pLayer } from "./p2pLayer";
+import { TendermintMessage } from "./tendermintMessage";
 import { TransactionSyncMessage } from "./transactionSyncMessage";
 
 type EncodedHeaders = Array<Array<Buffer>>;
@@ -63,6 +64,12 @@ export class Mock {
         this.sendStatus(score, best, genesis);
 
         await this.waitHeaderRequest();
+
+        if (this.log) { console.log("Connected\n"); }
+    }
+
+    public async establishWithoutSync() {
+        await this.p2psocket.connect();
 
         if (this.log) { console.log("Connected\n"); }
     }
@@ -174,6 +181,10 @@ export class Mock {
             data: transactions
         });
         await this.p2psocket.sendExtensionMessage("transaction-propagation", message.rlpBytes(), false);
+    }
+
+    public async sendTendermintMessage(message: TendermintMessage) {
+        await this.p2psocket.sendExtensionMessage("tendermint", message.rlpBytes(), false);
     }
 
     public async sendEncodedBlock(header: EncodedHeaders, body: EncodedBodies, bestBlockHash: H256, bestBlockScore: U256) {
