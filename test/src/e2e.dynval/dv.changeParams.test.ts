@@ -32,7 +32,6 @@ const [, , ...otherDynValidators] = originalValidators;
 const allDynValidators = [...otherDynValidators];
 
 describe("Change commonParams", function() {
-    const margin = 1.3;
     const promiseExpect = new PromiseExpect();
     const nodes = withNodes(this, {
         promiseExpect,
@@ -48,67 +47,10 @@ describe("Change commonParams", function() {
     });
 
     describe("Change term seconds", async function() {
-        it("Term seconds should be changed", async function() {
-            const checkingNode = nodes[0];
-            const termSeconds = 10;
-
-            this.slow(termSeconds * margin * 2 * 1000);
-            this.timeout(termSeconds * 4 * 1000);
-
-            const changeTxHash = await changeParams(checkingNode, 1, {
-                ...defaultParams,
-                termSeconds
-            });
-
-            await checkingNode.waitForTx(changeTxHash);
-            await checkingNode.waitForTermChange(2, termSeconds * margin * 2);
-
-            const termMetadataIn2ndTerm = (await stake.getTermMetadata(
-                checkingNode.sdk
-            ))!;
-            const firstTermSeoncdBlockFromTheLast = (await checkingNode.sdk.rpc.chain.getBlock(
-                termMetadataIn2ndTerm.lastTermFinishedBlockNumber - 1
-            ))!;
-            const firstTermSecondTimeStampFromTheLast =
-                firstTermSeoncdBlockFromTheLast.timestamp;
-            const firstTermlastBlock = (await checkingNode.sdk.rpc.chain.getBlock(
-                termMetadataIn2ndTerm.lastTermFinishedBlockNumber
-            ))!;
-            const firstTermLastBlockTimeStamp = firstTermlastBlock.timestamp;
-
-            // at least two checks are needed.
-            await checkingNode.waitForTermChange(3, termSeconds * margin);
-
-            const termMetadataIn3rdTerm = (await stake.getTermMetadata(
-                checkingNode.sdk
-            ))!;
-            const SecondTermSeoncdBlockFromTheLast = (await checkingNode.sdk.rpc.chain.getBlock(
-                termMetadataIn3rdTerm.lastTermFinishedBlockNumber - 1
-            ))!;
-            const secondTermSecondTimeStampFromTheLast =
-                SecondTermSeoncdBlockFromTheLast.timestamp;
-            const secondTermLastBlock = (await checkingNode.sdk.rpc.chain.getBlock(
-                termMetadataIn3rdTerm.lastTermFinishedBlockNumber
-            ))!;
-            const secondTermLastBlockTimeStamp = secondTermLastBlock.timestamp;
-
-            expect(
-                Math.floor(firstTermSecondTimeStampFromTheLast / termSeconds) +
-                    1
-            ).to.be.equals(
-                Math.floor(firstTermLastBlockTimeStamp / termSeconds)
-            );
-            expect(
-                Math.floor(secondTermSecondTimeStampFromTheLast / termSeconds) +
-                    1
-            ).to.be.equals(
-                Math.floor(secondTermLastBlockTimeStamp / termSeconds)
-            );
-        });
-
         it("should be applied after a term seconds", async function() {
             this.slow(20_000 + 5_000);
             this.timeout((20_000 + 5_000) * 1.5);
+            const margin = 1.3;
 
             const initialTermSeconds = defaultParams.termSeconds;
             const newTermSeconds = 5;
