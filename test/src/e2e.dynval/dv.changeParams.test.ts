@@ -105,9 +105,8 @@ describe("Change commonParams", function() {
         it("Change minimum fee of pay transaction", async function() {
             const checkingNode = nodes[0];
 
-            const secsPerBlock = 5;
-            this.slow(secsPerBlock * 3 * 1000);
-            this.timeout(secsPerBlock * 6 * 1000);
+            this.slow(4_000);
+            this.timeout(6_000);
 
             const changeTxHash = await changeParams(checkingNode, 1, {
                 ...defaultParams,
@@ -256,11 +255,8 @@ describe("Change commonParams", function() {
         }
 
         it("Should apply larger metadata limit after increment", async function() {
-            const termSeconds = 20;
-            const margin = 1.2;
-
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            this.slow(6_000);
+            this.timeout(9_000);
 
             const [alice] = allDynValidators;
             const checkingNode = nodes[0];
@@ -300,11 +296,8 @@ describe("Change commonParams", function() {
         });
 
         it("Should apply smaller metadata limit after decrement", async function() {
-            const termSeconds = 20;
-            const margin = 1.2;
-
-            this.slow(termSeconds * margin * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            this.slow(6_000);
+            this.timeout(9_000);
 
             const [alice] = allDynValidators;
             const checkingNode = nodes[0];
