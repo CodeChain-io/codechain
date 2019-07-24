@@ -19,6 +19,7 @@ import { ec } from "elliptic";
 import { Socket } from "net";
 import { BlockSyncMessage } from "./blockSyncMessage";
 import { Ack, fromBytes, MessageType, NegotiationRequest, SignedMessage, Sync1, Unencrypted } from "./message";
+import { TendermintMessage } from "./tendermintMessage";
 import { TransactionSyncMessage } from "./transactionSyncMessage";
 
 const EC = new ec("secp256k1");
@@ -27,7 +28,7 @@ export class P2pLayer {
     private readonly ip: string;
     private readonly port: number;
     private readonly socket: Socket;
-    private readonly arrivedExtensionMessage: (BlockSyncMessage | TransactionSyncMessage)[];
+    private readonly arrivedExtensionMessage: (BlockSyncMessage | TransactionSyncMessage | TendermintMessage)[];
     private tcpBuffer: Buffer;
     private genesisHash: H256;
     private recentHeaderNonce: U256;
@@ -60,7 +61,7 @@ export class P2pLayer {
         return this.genesisHash;
     }
 
-    public getArrivedExtensionMessage(): (BlockSyncMessage | TransactionSyncMessage)[] {
+    public getArrivedExtensionMessage(): (BlockSyncMessage | TransactionSyncMessage | TendermintMessage)[] {
         return this.arrivedExtensionMessage;
     }
 
@@ -285,6 +286,14 @@ export class P2pLayer {
                 }
                 break;
             }
+            case "tendermint": {
+                const extensionMsg = TendermintMessage.fromBytes(msg);
+                this.arrivedExtensionMessage.push(extensionMsg);
+                if (this.log) {
+                    console.log(extensionMsg);
+                }
+                break;
+            }
             default:
                 throw Error("Not implemented");
         }
@@ -311,7 +320,7 @@ export class P2pLayer {
             }
             case MessageType.REQUEST_ID: {
                 if (this.log) { console.log("Send REQUEST_ID Message"); }
-                const extensions = ["block-propagation", "transaction-propagation"];
+                const extensions = ["block-propagation", "transaction-propagation", "tendermint"];
                 const messages = extensions.map(extensionName => new NegotiationRequest(extensionName, [0]));
                 const signedMessages = messages.map(msg => new SignedMessage(msg, this.nonce!));
                 const sends = signedMessages.map(msg => this.writeData(msg.rlpBytes()));
