@@ -17,9 +17,10 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
-import { H160, H512 } from "codechain-primitives/lib";
+import { H512 } from "codechain-primitives/lib";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
+
 import { validators as originalDynValidators } from "../../tendermint.dynval/constants";
 import { PromiseExpect } from "../helper/promise";
 import { selfNominate, withNodes } from "./setup";
