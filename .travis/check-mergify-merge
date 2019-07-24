@@ -37,6 +37,12 @@ esac
 
 MERGIFY_COMMITTER="mergify[bot] <mergify[bot]@users.noreply.github.com>"
 COMMITTER=$(git show --format="%cN <%cE>" --no-patch "${TRAVIS_COMMIT}")
+RESULT=$?
+if [[ "$RESULT" -ne 0 ]]
+then
+    echo "Error: cannot get the committer"
+    exit $RESULT
+fi
 
 if [[ "${COMMITTER}" = "${MERGIFY_COMMITTER}" ]]
 then

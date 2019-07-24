@@ -101,21 +101,26 @@ esac
 git log --oneline --decorate --all --graph | head -n 10;
 echo "Check changes for: ${COMMIT_RANGE}"
 
-# `grep` uses return value to report both result and error.
-# So `set -e` should be disabled to catch them.
-set +e
-git diff --name-only "${COMMIT_RANGE}" | grep -qvE "$1"
-case $? in
-0) 
+FILE_CHANGES=$(git diff --name-only "${COMMIT_RANGE}")
+RESULT=$?
+if [[ "$RESULT" -ne 0 ]]
+then
+    echo "Error: cannot get changed files"
+    exit $RESULT
+fi
+
+grep -qvE "$1" <<< "$FILE_CHANGES" && RESULT=0 || RESULT=$?
+case $RESULT in
+0)
     noskip_travis
     ;;
 1)
     echo "Only '$1' were updated, or there's no change, not running the CI."
     skip_travis
     ;;
-*) 
+*)
     echo "Error in grep pattern"
-    exit -1
+    exit $RESULT
     ;;
 esac
 
