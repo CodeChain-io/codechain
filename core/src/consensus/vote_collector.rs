@@ -24,6 +24,7 @@ use parking_lot::RwLock;
 use primitives::H256;
 use rlp::{Decodable, Encodable, RlpStream};
 
+use super::stake::Action;
 use super::BitSet;
 
 pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Decodable + Debug + Sync + Send {
@@ -62,6 +63,15 @@ pub struct DoubleVote<M: Message> {
     author_index: usize,
     vote_one: M,
     vote_two: M,
+}
+
+impl<M: Message> DoubleVote<M> {
+    pub fn to_action(&self) -> Action<M> {
+        Action::ReportDoubleVote {
+            message1: self.vote_one.clone(),
+            message2: self.vote_two.clone(),
+        }
+    }
 }
 
 impl<M: Message> Encodable for DoubleVote<M> {
