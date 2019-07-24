@@ -453,7 +453,6 @@ impl Miner {
         chain: &C,
     ) -> Result<(ClosedBlock, Option<H256>), Error> {
         let (transactions, mut open_block, original_work_hash, block_number) = {
-            let mem_pool = self.mem_pool.read();
             let sealing_work = self.sealing_work.lock();
 
             let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
@@ -468,6 +467,9 @@ impl Miner {
             };
             let max_body_size = chain.common_params(parent_hash.into()).unwrap().max_body_size();
             const DEFAULT_RANGE: Range<u64> = 0..::std::u64::MAX;
+
+            // NOTE: This lock should be acquired after `prepare_open_block` to prevent deadlock
+            let mem_pool = self.mem_pool.read();
             let transactions = mem_pool
                 .top_transactions(max_body_size, Some(open_block.header().timestamp()), DEFAULT_RANGE)
                 .transactions;

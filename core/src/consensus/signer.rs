@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ckey::{Address, Public, SchnorrSignature};
+use ckey::{Address, Public, SchnorrSignature, Signature};
 use ckeystore::DecryptedAccount;
 use primitives::H256;
 
@@ -77,9 +77,27 @@ impl EngineSigner {
         Ok(result)
     }
 
+    /// Sign a message hash with ECDSA.
+    pub fn sign_ecdsa(&self, hash: H256) -> Result<Signature, AccountProviderError> {
+        let address = self.signer.map(|(address, _public)| address).unwrap_or_else(Default::default);
+        let result = match &self.decrypted_account {
+            Some(account) => account.sign(&hash)?,
+            None => {
+                let account = self.account_provider.get_unlocked_account(&address)?;
+                account.sign(&hash)?
+            }
+        };
+        Ok(result)
+    }
+
     /// Public Key of signer.
     pub fn public(&self) -> Option<&Public> {
         self.signer.as_ref().map(|(_address, public)| public)
+    }
+
+    /// Address of signer.
+    pub fn address(&self) -> Option<&Address> {
+        self.signer.as_ref().map(|(address, _)| address)
     }
 
     /// Check if the given address is the signing address.

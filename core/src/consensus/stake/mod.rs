@@ -37,11 +37,11 @@ use rlp::{Decodable, UntrustedRlp};
 
 pub use self::action_data::{Banned, Validator, Validators};
 use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
-use self::actions::Action;
+pub use self::actions::Action;
 pub use self::distribute::fee_distribute;
 use super::ValidatorSet;
 
-const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
+pub const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 
 pub struct Stake<M> {
     genesis_stakes: HashMap<Address, u64>,

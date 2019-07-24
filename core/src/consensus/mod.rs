@@ -24,7 +24,7 @@ mod solo;
 pub mod stake;
 mod tendermint;
 mod validator_set;
-mod vote_collector;
+pub mod vote_collector;
 
 pub use self::blake_pow::BlakePoW;
 pub use self::cuckoo::Cuckoo;

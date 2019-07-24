@@ -24,16 +24,19 @@ use ccrypto::blake256;
 use ckey::{public_to_address, verify_schnorr, Address, SchnorrSignature};
 use cnetwork::{EventSender, NodeId};
 use crossbeam_channel as crossbeam;
+use ctypes::transaction::{Action, Transaction};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockNumber, Header};
 use primitives::{u256_from_u128, Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
+use super::super::vote_collector::DoubleVote;
 use super::super::BitSet;
 use super::backup::{backup, restore, BackupView};
 use super::message::*;
 use super::network;
 use super::params::TimeGapParams;
+use super::stake::CUSTOM_ACTION_HANDLER_ID;
 use super::types::{Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::{
     BlockHash, ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
@@ -48,6 +51,7 @@ use crate::consensus::vote_collector::{Message, VoteCollector};
 use crate::consensus::{EngineError, Seal};
 use crate::encoded;
 use crate::error::{BlockError, Error};
+use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::BlockView;
 use crate::BlockId;
 
@@ -1321,6 +1325,7 @@ impl Worker {
             if let Some(double) = self.votes.vote(message.clone()) {
                 let height = message.on.step.height as BlockNumber;
                 cerror!(ENGINE, "Double vote found {:?}", double);
+                self.report_double_vote(&double);
                 self.validators.report_malicious(&sender, height, height, ::rlp::encode(&double).into_vec());
                 return Err(EngineError::DoubleVote(sender))
             }
@@ -1328,6 +1333,43 @@ impl Worker {
             self.handle_valid_message(&message, is_restoring);
         }
         Ok(())
+    }
+
+    fn report_double_vote(&self, double: &DoubleVote<ConsensusMessage>) {
+        let network_id = self.client().common_params(BlockId::Latest).unwrap().network_id();
+        let seq = match self.signer.address() {
+            Some(address) => self.client().latest_seq(address),
+            None => {
+                cerror!(ENGINE, "Found double vote, but signer was not assigned yet");
+                return
+            }
+        };
+
+        let tx = Transaction {
+            seq,
+            fee: 0,
+            network_id,
+            action: Action::Custom {
+                handler_id: CUSTOM_ACTION_HANDLER_ID,
+                bytes: double.to_action().rlp_bytes().into_vec(),
+            },
+        };
+        let signature = match self.signer.sign_ecdsa(tx.hash()) {
+            Ok(signature) => signature,
+            Err(e) => {
+                cerror!(ENGINE, "Found double vote, but could not sign the message: {}", e);
+                return
+            }
+        };
+        let unverified = UnverifiedTransaction::new(tx, signature);
+        let signed = SignedTransaction::try_new(unverified).expect("secret is valid so it's recoverable");
+
+        match self.client().queue_own_transaction(signed) {
+            Ok(_) => {}
+            Err(e) => {
+                cerror!(ENGINE, "Failed to queue double vote transaction: {}", e);
+            }
+        }
     }
 
     fn is_proposal(&self, block_number: BlockNumber, block_hash: H256) -> bool {
