@@ -228,20 +228,25 @@ impl<'x> OpenBlock<'x> {
 
     /// Turn this into a `ClosedBlock`.
     pub fn close(mut self, parent_transactions_root: H256) -> Result<ClosedBlock, Error> {
+        cdebug!(MINER, "Clone block state");
         let unclosed_state = self.block.state.clone();
 
+        cdebug!(MINER, "Call on_close_block");
         if let Err(e) = self.engine.on_close_block(&mut self.block) {
             warn!("Encountered error on closing the block: {}", e);
             return Err(e)
         }
+        cdebug!(MINER, "commit state");
         let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
             e
         })?;
+        cdebug!(MINER, "Set transactions root");
         self.block.header.set_transactions_root(skewed_merkle_root(
             parent_transactions_root,
             self.block.transactions.iter().map(Encodable::rlp_bytes),
         ));
+        cdebug!(MINER, "set state root");
         self.block.header.set_state_root(state_root);
 
         Ok(ClosedBlock {

@@ -519,11 +519,16 @@ impl Miner {
 
         let transactions_root = {
             let parent_hash = open_block.header().parent_hash();
+            cdebug!(MINER, "Get parent hash");
             let parent_header = chain.block_header(&BlockId::Hash(*parent_hash)).expect("Parent header MUST exist");
+            cdebug!(MINER, "Get parent header");
             let parent_view = parent_header.view();
+            cdebug!(MINER, "Get parent view");
             parent_view.transactions_root()
         };
+        cdebug!(MINER, "Get transactions root");
         let block = open_block.close(transactions_root)?;
+        cdebug!(MINER, "Close block");
 
         let fetch_seq = |p: &Public| {
             let address = public_to_address(p);
@@ -532,7 +537,9 @@ impl Miner {
         };
 
         {
+            cdebug!(MINER, "Before get write access of mem_pool");
             let mut mem_pool = self.mem_pool.write();
+            cdebug!(MINER, "After get write access of mem_pool");
             mem_pool.remove(
                 &invalid_transactions,
                 &fetch_seq,
