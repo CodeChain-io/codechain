@@ -15,8 +15,7 @@ import {
     stakeActionHandlerId,
     validator0Address,
     validator1Address,
-    validator2Address,
-    validator3Address
+    validator2Address
 } from "../helper/constants";
 import { PromiseExpect, wait } from "../helper/promise";
 import CodeChain, { Signer } from "../helper/spawn";
@@ -96,8 +95,7 @@ async function createNodes(options: {
     const initialValidators = [
         validator0Address,
         validator1Address,
-        validator2Address,
-        validator3Address
+        validator2Address
     ];
     for (let i = 0; i < initialValidators.length; i++) {
         initialNodes[i] = new CodeChain({
