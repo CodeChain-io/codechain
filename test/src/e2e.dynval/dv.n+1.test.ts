@@ -75,7 +75,7 @@ describe("Dynamic Validator N -> N+1", function() {
     }
 
     describe("Nominate a new candidate and delegate", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
                 ...otherDynValidators.map((signer, index) => ({
@@ -136,7 +136,7 @@ describe("Dynamic Validator N -> N+1", function() {
     });
 
     describe("Increase one candidate's deposit which is less than the minimum deposit", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: otherDynValidators
                 .map((signer, index) => ({
@@ -183,7 +183,7 @@ describe("Dynamic Validator N -> N+1", function() {
     });
 
     describe("Delegate more stake to whose stake is less than the minimum delegation", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: otherDynValidators
                 .map((signer, index) => ({

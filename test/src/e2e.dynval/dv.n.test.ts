@@ -31,7 +31,7 @@ describe("Dynamic Validator N -> N", function() {
     const promiseExpect = new PromiseExpect();
 
     describe("1. No delegation, nominate, revoke, jail", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: validators.map((signer, index) => ({
                 signer,
@@ -81,7 +81,7 @@ describe("Dynamic Validator N -> N", function() {
     });
 
     describe("2. Delegate to the candidates but the total delegation is still less than the minimum delegation (Capped by maxNumOfValidators)", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
                 maxNumOfValidators: 8,
@@ -159,7 +159,7 @@ describe("Dynamic Validator N -> N", function() {
     });
 
     describe("2. Delegate to the candidates but the total delegation is still less than the minimum delegation (Capped by delegationThreshold)", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
                 maxNumOfValidators: 8,
@@ -237,7 +237,7 @@ describe("Dynamic Validator N -> N", function() {
     });
 
     describe("3. Revoke the delegations of validator but it still delegated more than the minimum delegation (Capped by maxNumOfValidators)", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
                 maxNumOfValidators: 8,
@@ -315,7 +315,7 @@ describe("Dynamic Validator N -> N", function() {
     });
 
     describe("3. Revoke the delegations of validator but it still delegated more than the minimum delegation (Capped by delegationThreshold)", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
                 maxNumOfValidators: 8,
@@ -394,7 +394,7 @@ describe("Dynamic Validator N -> N", function() {
 
     describe("4. Nominate new candidate", async function() {
         const aliceIndex = 4;
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
                 maxNumOfValidators: 8,

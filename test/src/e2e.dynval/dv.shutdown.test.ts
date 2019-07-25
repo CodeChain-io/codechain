@@ -51,7 +51,7 @@ describe("Shutdown test", function() {
         const getAlphas = (n = nodes) => filterNodes(n, 1, 5);
         const getBetas = (n = nodes) => filterNodes(n, 5, 9);
         const getAlphaBetas = (n = nodes) => filterNodes(n, 1, 9);
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
                 minNumOfValidators: 4,
@@ -202,7 +202,7 @@ describe("Shutdown test", function() {
             signer: validators[0]
         });
         const getValidators = (n = nodes) => filterNodes(n, 1, 1 + 8);
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
                 minNumOfValidators: 4,

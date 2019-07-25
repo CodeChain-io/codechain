@@ -73,7 +73,7 @@ describe("Dynamic Validator N -> N-1", function() {
     }
 
     describe("A node is imprisoned to jail", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: allDynValidators.map((signer, index) => ({
                 signer,
@@ -105,7 +105,7 @@ describe("Dynamic Validator N -> N-1", function() {
     });
 
     describe("A node dropped out of validator list by revoke action", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: allDynValidators.map((signer, index) => ({
                 signer,

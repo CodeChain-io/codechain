@@ -42,38 +42,45 @@ export function withNodes(
         overrideParams?: Partial<typeof defaultParams>;
         onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
     }
-): CodeChain[] {
-    const result: CodeChain[] = [];
+) {
+    const nodes: CodeChain[] = [];
+    const { overrideParams = {} } = options;
+    const initialParams = {
+        ...defaultParams,
+        ...overrideParams
+    };
     suite.beforeEach(async function() {
-        const termSeconds =
-            (options &&
-                options.overrideParams &&
-                options.overrideParams.termSeconds) ||
-            defaultParams.termSeconds;
+        const termSeconds = initialParams.termSeconds;
         const secsPerBlock = 5;
         this.slow((secsPerBlock * 3 + termSeconds) * 1000); // createNodes will wait for 3 blocks + at most 1 terms
         this.timeout((secsPerBlock * 3 + termSeconds) * 2 * 1000);
-        result.length = 0;
-        const nodes = await createNodes(options);
-        result.push(...nodes);
+        nodes.length = 0;
+        const newNodes = await createNodes({
+            ...options,
+            initialParams
+        });
+        nodes.push(...newNodes);
     });
     suite.afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            result.map(node => node.keepLogs());
+            nodes.map(node => node.keepLogs());
         }
-        await Promise.all(result.map(node => node.clean()));
+        await Promise.all(nodes.map(node => node.clean()));
     });
-    return result;
+    return {
+        nodes,
+        initialParams
+    };
 }
 
-export async function createNodes(options: {
+async function createNodes(options: {
     promiseExpect: PromiseExpect;
     validators: ValidatorConfig[];
-    overrideParams?: Partial<typeof defaultParams>;
+    initialParams: typeof defaultParams;
     onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
 }): Promise<CodeChain[]> {
     const chain = `${__dirname}/../scheme/tendermint-dynval.json`;
-    const { promiseExpect, validators, overrideParams = {} } = options;
+    const { promiseExpect, validators, initialParams } = options;
 
     const initialNodes: CodeChain[] = [];
     const initialValidators = [
@@ -220,10 +227,7 @@ export async function createNodes(options: {
         }
 
         // enable!
-        const changeTx = await changeParams(initialNodes[0], 0, {
-            ...defaultParams,
-            ...overrideParams
-        });
+        const changeTx = await changeParams(initialNodes[0], 0, initialParams);
 
         for (const node of runningNodes) {
             // nodes can be cleaned in `onBeforeEnable`
@@ -417,12 +421,14 @@ interface TermWaiter {
 
 export function setTermTestTimeout(
     context: Context | Suite,
-    params: {
+    options: {
         terms: number;
-        termSeconds?: number;
+        params?: {
+            termSeconds: number;
+        };
     }
 ): TermWaiter {
-    const { terms, termSeconds = defaultParams.termSeconds } = params;
+    const { terms, params: { termSeconds } = defaultParams } = options;
     const slowMargin = 0.5;
     const timeoutMargin = 2.0;
     context.slow(termSeconds * (terms + slowMargin) * 1000);

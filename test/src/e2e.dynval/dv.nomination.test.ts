@@ -38,7 +38,7 @@ describe("Nomination", function() {
         //   Alice should be jailed.
         // betty : Not elected as validator because of small delegation. She acquire more delegation in the first term.
         //   betty should be a validator in the second term.
-        const allDynNodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
                 nominationExpiration: NOMINATION_EXPIRATION
@@ -58,7 +58,7 @@ describe("Nomination", function() {
                 terms: 3
             });
 
-            const [aliceNode, ...otherDynNodes] = allDynNodes;
+            const [aliceNode, ...otherDynNodes] = nodes;
 
             const selfNominationHash = await selfNominate(
                 aliceNode.sdk,

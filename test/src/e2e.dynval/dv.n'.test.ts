@@ -39,7 +39,7 @@ describe("Dynamic Validator N -> N'", function() {
         //   Alice should be jailed.
         // betty : Not elected as validator because of small delegation. She acquire more delegation in the first term.
         //   betty should be a validator in the second term.
-        const allDynNodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
                 { signer: alice, delegation: 5000, deposit: 100000 },
@@ -62,7 +62,7 @@ describe("Dynamic Validator N -> N'", function() {
                 terms: 1
             });
 
-            const [_aliceNode, _bettyNode, ...otherDynNodes] = allDynNodes;
+            const [_aliceNode, _bettyNode, ...otherDynNodes] = nodes;
             const rpcNode = otherDynNodes[0];
             const beforeAuthors = (await stake.getPossibleAuthors(
                 rpcNode.sdk
@@ -109,7 +109,7 @@ describe("Dynamic Validator N -> N'", function() {
         //   Alice should be jailed.
         // betty : Not elected as validator because of small deposit. She deposits more CCC in the first term.
         //   betty should be a validator in the second term.
-        const allDynNodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
                 { signer: alice, delegation: 5000, deposit: 100000 },
@@ -131,7 +131,7 @@ describe("Dynamic Validator N -> N'", function() {
             const termWaiter = setTermTestTimeout(this, {
                 terms: 1
             });
-            const [_aliceNode, bettyNode, ...otherDynNodes] = allDynNodes;
+            const [_aliceNode, bettyNode, ...otherDynNodes] = nodes;
             const rpcNode = otherDynNodes[0];
 
             const beforeAuthors = (await stake.getPossibleAuthors(
@@ -178,7 +178,7 @@ describe("Dynamic Validator N -> N'", function() {
         //   Alice must be kicked out of the validator group.
         // betty : Not elected as validator because of small delegation. She acquire more delegation in the first term.
         //   betty should be a validator in the second term.
-        const allDynNodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
                 { signer: alice, delegation: 5000, deposit: 100000 },
@@ -195,7 +195,7 @@ describe("Dynamic Validator N -> N'", function() {
             const termWaiter = setTermTestTimeout(this, {
                 terms: 1
             });
-            const [, , ...otherDynNodes] = allDynNodes;
+            const [, , ...otherDynNodes] = nodes;
             const rpcNode = otherDynNodes[0];
 
             const beforeAuthors = (await stake.getPossibleAuthors(
@@ -256,7 +256,7 @@ describe("Dynamic Validator N -> N'", function() {
         //   Alice must be kicked out of the validator group.
         // betty : Not elected as validator because of small deposit. She deposits more CCC in the first term.
         //   betty should be a validator in the second term.
-        const allDynNodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
                 { signer: alice, delegation: 5000, deposit: 100000 },
@@ -273,7 +273,7 @@ describe("Dynamic Validator N -> N'", function() {
             const termWaiter = setTermTestTimeout(this, {
                 terms: 1
             });
-            const [, bettyNode, ...otherDynNodes] = allDynNodes;
+            const [, bettyNode, ...otherDynNodes] = nodes;
             const rpcNode = otherDynNodes[0];
 
             const beforeAuthors = (await stake.getPossibleAuthors(
