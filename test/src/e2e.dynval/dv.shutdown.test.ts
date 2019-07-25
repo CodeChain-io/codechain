@@ -306,4 +306,8 @@ describe("Shutdown test", function() {
             }
         });
     });
+
+    afterEach(function() {
+        promiseExpect.checkFulfilled();
+    });
 });

@@ -328,4 +328,8 @@ describe("Dynamic Validator N -> N'", function() {
             expect(afterAuthors.length).to.be.equals(7);
         });
     });
+
+    afterEach(function() {
+        promiseExpect.checkFulfilled();
+    });
 });
