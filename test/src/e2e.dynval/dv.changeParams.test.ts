@@ -24,12 +24,7 @@ import "mocha";
 import { validators as originalValidators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import {
-    changeParams,
-    defaultParams,
-    setTermTestTimeout,
-    withNodes
-} from "./setup";
+import { changeParams, setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
@@ -38,7 +33,7 @@ const allDynValidators = [...otherDynValidators];
 
 describe("Change commonParams", function() {
     const promiseExpect = new PromiseExpect();
-    const nodes = withNodes(this, {
+    const { nodes, initialParams } = withNodes(this, {
         promiseExpect,
         overrideParams: {
             maxNumOfValidators: 8,
@@ -53,12 +48,9 @@ describe("Change commonParams", function() {
 
     describe("Change term seconds", async function() {
         it("should be applied after a term seconds", async function() {
-            this.slow(20_000 + 5_000);
-            this.timeout((20_000 + 5_000) * 1.5);
-            const margin = 1.3;
-
-            const initialTermSeconds = defaultParams.termSeconds;
+            const initialTermSeconds = initialParams.termSeconds;
             const newTermSeconds = 5;
+            const margin = 1.3;
 
             const term1Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
             {
@@ -66,7 +58,7 @@ describe("Change commonParams", function() {
             }
             await nodes[0].waitForTx(
                 changeParams(nodes[0], 1, {
-                    ...defaultParams,
+                    ...initialParams,
                     termSeconds: newTermSeconds
                 })
             );
@@ -114,7 +106,7 @@ describe("Change commonParams", function() {
             this.timeout(6_000);
 
             const changeTxHash = await changeParams(checkingNode, 1, {
-                ...defaultParams,
+                ...initialParams,
                 minPayCost: 11
             });
 
@@ -164,7 +156,7 @@ describe("Change commonParams", function() {
             const [alice, betty, charlie, dorothy, ...left] = allDynValidators;
             const checkingNode = nodes[0];
             const changeTxHash = await changeParams(checkingNode, 1, {
-                ...defaultParams,
+                ...initialParams,
                 minNumOfValidators: 6
             });
 
@@ -220,10 +212,11 @@ describe("Change commonParams", function() {
                     .map(val => val.platformAddress.toString())
             );
 
-            const decreaseHash = await changeParams(checkingNode, 1, {
-                ...defaultParams,
+            const param1 = {
+                ...initialParams,
                 maxNumOfValidators: 5
-            });
+            };
+            const decreaseHash = await changeParams(checkingNode, 1, param1);
             await checkingNode.waitForTx(decreaseHash);
             await termWaiter.waitNodeUntilTerm(checkingNode, {
                 target: 2,
@@ -237,10 +230,11 @@ describe("Change commonParams", function() {
                     .map(val => val.platformAddress.toString())
             );
 
-            const increaseHash = await changeParams(checkingNode, 2, {
-                ...defaultParams,
+            const param2 = {
+                ...param1,
                 maxNumOfValidators: 7
-            });
+            };
+            const increaseHash = await changeParams(checkingNode, 2, param2);
             await checkingNode.waitForTx(increaseHash);
             await termWaiter.waitNodeUntilTerm(checkingNode, {
                 target: 3,
@@ -271,7 +265,7 @@ describe("Change commonParams", function() {
             const [alice] = allDynValidators;
             const checkingNode = nodes[0];
             const changeTxHash = await changeParams(checkingNode, 1, {
-                ...defaultParams,
+                ...initialParams,
                 maxCandidateMetadataSize: 256
             });
             await checkingNode.waitForTx(changeTxHash);
@@ -312,7 +306,7 @@ describe("Change commonParams", function() {
             const [alice] = allDynValidators;
             const checkingNode = nodes[0];
             const changeTxHash = await changeParams(checkingNode, 1, {
-                ...defaultParams,
+                ...initialParams,
                 maxCandidateMetadataSize: 64
             });
             await checkingNode.waitForTx(changeTxHash);

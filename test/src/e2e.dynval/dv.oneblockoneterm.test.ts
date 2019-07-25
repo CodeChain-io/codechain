@@ -27,22 +27,24 @@ const alice = originalDynValidators[0];
 
 describe("one block one term test", function() {
     const promiseExpect = new PromiseExpect();
-    const TERM_SECONDS = 1;
     const margin = 1.2;
 
-    const nodes = withNodes(this, {
+    const { nodes, initialParams } = withNodes(this, {
         promiseExpect,
         overrideParams: {
-            termSeconds: TERM_SECONDS
+            termSeconds: 1
         },
         validators: [{ signer: alice, delegation: 5000, deposit: 100000 }]
     });
 
     it("Alice should success creating terms", async function() {
         const aliceNode = nodes[0];
-        this.slow(TERM_SECONDS * 2 * margin * 1000 + 5_000);
-        this.timeout(TERM_SECONDS * 3 * 1000 + 10_000);
-        await aliceNode.waitForTermChange(3, TERM_SECONDS * 2 * margin + 5_000);
+        this.slow(initialParams.termSeconds * 2 * margin * 1000 + 5_000);
+        this.timeout(initialParams.termSeconds * 3 * 1000 + 10_000);
+        await aliceNode.waitForTermChange(
+            3,
+            initialParams.termSeconds * 2 * margin + 5_000
+        );
     });
 
     afterEach(async function() {

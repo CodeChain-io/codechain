@@ -99,7 +99,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
     }
 
     describe("1. Jail one of the validator", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             ...nodeParams,
             onBeforeEnable: async bootstrappingNodes => {
                 await bootstrappingNodes[alice].clean(); // alice will be jailed!
@@ -208,7 +208,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
     });
 
     describe("2. Revoke the validator", async function() {
-        const nodes = withNodes(this, nodeParams);
+        const { nodes } = withNodes(this, nodeParams);
 
         beforeEach(async function() {
             this.timeout(5000);
@@ -304,7 +304,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
     });
 
     describe("3. Change the order of candidates", async function() {
-        const nodes = withNodes(this, nodeParams);
+        const { nodes } = withNodes(this, nodeParams);
 
         beforeEach(async function() {
             await expectAllValidatorsArePossibleAuthors(nodes[0].sdk);

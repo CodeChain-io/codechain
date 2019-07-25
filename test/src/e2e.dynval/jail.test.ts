@@ -30,7 +30,7 @@ describe("Jail state transition test", function() {
     const promiseExpect = new PromiseExpect();
 
     const alice = validators[1];
-    const nodes = withNodes(this, {
+    const { nodes } = withNodes(this, {
         promiseExpect,
         validators: validators.map((signer, index) => ({
             signer,
