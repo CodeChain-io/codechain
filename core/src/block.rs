@@ -262,10 +262,12 @@ impl<'x> OpenBlock<'x> {
             return Err(e)
         }
 
+        cdebug!(MINER, "Before lock block {}", self.block.header.number());
         let state_root = self.block.state.commit().map_err(|e| {
             warn!("Encountered error on state commit: {}", e);
             e
         })?;
+        cdebug!(MINER, "After lock block {}", self.block.header.number());
         if self.block.header.transactions_root().is_zero() || self.block.header.transactions_root() == &BLAKE_NULL_RLP {
             self.block.header.set_transactions_root(skewed_merkle_root(
                 parent_transactions_root,
