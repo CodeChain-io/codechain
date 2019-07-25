@@ -25,7 +25,8 @@ import {
     H256,
     signSchnorr,
     blake256,
-    H512
+    H512,
+    PlatformAddress
 } from "codechain-primitives/lib";
 import "mocha";
 import * as RLP from "rlp";
@@ -333,6 +334,134 @@ describe("Report Double Vote", function() {
             );
             await ensureAliceIsBanned(checkingNode.sdk, blockNumberAfterReport);
             await ensureAliceIsReleased(
+                checkingNode.sdk,
+                blockNumberAfterReport
+            );
+        });
+    });
+
+    describe("Ban from the candidate state", async function() {
+        const { nodes } = withNodes(this, {
+            promiseExpect,
+            validators: allDynValidators.map((signer, index) => ({
+                signer,
+                delegation: 5_000,
+                deposit: 10_000_000 - index // tie-breaker
+            })),
+            overrideParams: {
+                minNumOfValidators: 3
+            }
+        });
+
+        async function ensureAliceIsACandidate(sdk: SDK, blockNumber?: number) {
+            const candidatesBefore = (await stake.getCandidates(
+                sdk,
+                blockNumber
+            )).map(candidate =>
+                PlatformAddress.fromPublic(candidate.pubkey, {
+                    networkId: "tc"
+                }).toString()
+            );
+            expect(candidatesBefore).to.includes(
+                alice.platformAddress.toString()
+            );
+        }
+
+        async function ensureAliceIsNotACandidate(
+            sdk: SDK,
+            blockNumber?: number
+        ) {
+            const candidatesAfter = (await stake.getCandidates(
+                sdk,
+                blockNumber
+            )).map(candidate =>
+                PlatformAddress.fromPublic(candidate.pubkey, {
+                    networkId: "tc"
+                }).toString()
+            );
+            expect(candidatesAfter).not.to.includes(
+                alice.platformAddress.toString()
+            );
+        }
+
+        it("alice should be banned from the candidates", async function() {
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1.5
+            });
+
+            const checkingNode = nodes[1];
+            const blockNumber = await checkingNode.sdk.rpc.chain.getBestBlockNumber();
+            const termMetadata = await stake.getTermMetadata(
+                checkingNode.sdk,
+                blockNumber
+            );
+            const currentTermInitialBlockNumber =
+                termMetadata!.lastTermFinishedBlockNumber + 1;
+            await checkingNode.waitBlockNumber(
+                currentTermInitialBlockNumber + 1
+            );
+
+            const aliceIdx = await getAliceIndex(
+                checkingNode.sdk,
+                currentTermInitialBlockNumber
+            );
+
+            const revoketx = stake
+                .createRevokeTransaction(
+                    checkingNode.sdk,
+                    alice.platformAddress,
+                    4_500
+                )
+                .sign({
+                    secret: faucetSecret,
+                    seq: await checkingNode.sdk.rpc.chain.getSeq(faucetAddress),
+                    fee: 10
+                });
+            const revokeTxHash = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                revoketx
+            );
+            await checkingNode.waitForTx(revokeTxHash);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
+            await expectPossibleAuthors(checkingNode.sdk, otherDynValidators);
+            await ensureAliceIsACandidate(checkingNode.sdk);
+
+            const [message1, message2] = createDoubleVoteMessages(
+                {
+                    height: currentTermInitialBlockNumber,
+                    view: 0,
+                    step: "precommit",
+                    privKey: alice.privateKey,
+                    signerIdx: aliceIdx
+                },
+                H256.ensure(
+                    "a3ea5219612cde721a61f099fadda0d23007e561b4c3a50d04097e5ac7ef1e24"
+                ),
+                H256.ensure(
+                    "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
+                )
+            );
+
+            const reportTx = createReportDoubleVoteTransaction(
+                checkingNode.sdk,
+                message1,
+                message2
+            );
+            const reportTxHash = await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+                reportTx.sign({
+                    secret: faucetSecret,
+                    seq: await checkingNode.sdk.rpc.chain.getSeq(faucetAddress),
+                    fee: 10
+                })
+            );
+            const blockNumberAfterReport = await waitUntilAliceGetBanned(
+                checkingNode,
+                reportTxHash
+            );
+            await ensureAliceIsBanned(checkingNode.sdk, blockNumberAfterReport);
+            await ensureAliceIsNotACandidate(
                 checkingNode.sdk,
                 blockNumberAfterReport
             );
