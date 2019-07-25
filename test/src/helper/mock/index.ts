@@ -13,13 +13,15 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
-import { H160, H256, U256 } from "codechain-primitives";
+import { blake256, getPublicFromPrivate, H160, H256, recoverSchnorr, SchnorrSignature, signSchnorr, U256, U64 } from "codechain-primitives";
 import { SignedTransaction } from "codechain-sdk/lib/core/SignedTransaction";
+import * as RLP from "rlp";
 import { BlockSyncMessage, Emitter, IBodiesq, IHeadersq, MessageType, ResponseMessage } from "./blockSyncMessage";
 import { Header } from "./cHeader";
 import { P2pLayer } from "./p2pLayer";
-import { TendermintMessage } from "./tendermintMessage";
+import { ConsensusMessage, Emitter as TendermintEmitter, StepState, TendermintMessage } from "./tendermintMessage";
 import { TransactionSyncMessage } from "./transactionSyncMessage";
+
 
 type EncodedHeaders = Array<Array<Buffer>>;
 type EncodedTransactions = Array<Array<Buffer>>;
@@ -75,6 +77,7 @@ export class Mock {
     }
 
     public async end() {
+        TendermintEmitter.removeAllListeners();
         await this.p2psocket.close();
     }
 
@@ -374,6 +377,55 @@ export class Mock {
         );
 
         return header;
+    }
+
+    public startDoubleVote(priv: string) {
+        const pub = getPublicFromPrivate(priv);
+        TendermintEmitter.on("consensusmessage", (message: ConsensusMessage) => {
+            const digest = (on: ConsensusMessage["messages"][number]["on"]) =>
+                blake256(
+                    RLP.encode([
+                        [
+                            new U64(on.step.height).toEncodeObject(),
+                            new U64(on.step.view).toEncodeObject(),
+                            new U64(on.step.step).toEncodeObject(),
+                        ],
+                        on.blockHash == null ? [] : [on.blockHash.toEncodeObject()],
+                    ])
+                );
+
+            // Find message signed by `priv`
+            const original = message.messages.find((m) => {
+                const signature: SchnorrSignature = {
+                    r: m.signature.slice(0, 64),
+                    s: m.signature.slice(64),
+                };
+                return recoverSchnorr(digest(m.on), signature) === pub;
+            });
+            if (original != null) {
+                const newOn: ConsensusMessage["messages"][number]["on"] = {
+                    step: original.on.step,
+                    blockHash: H256.zero(),
+                };
+                const newDigest = digest(newOn);
+                const signature = signSchnorr(newDigest, priv);
+                this.sendTendermintMessage(new TendermintMessage({
+                    type: "consensusmessage",
+                    messages: [{
+                        on: newOn,
+                        signature: signature.r + signature.s,
+                        signerIndex: original.signerIndex,
+                    }],
+                }));
+            }
+        });
+        TendermintEmitter.on("stepstate", (message: StepState) => {
+            this.sendTendermintMessage(new TendermintMessage({
+                type: "requestmessage",
+                voteStep: message.voteStep,
+                requestedVotes: Buffer.alloc(100, 0xff),
+            }));
+        });
     }
 
     private async waitForBlockSyncMessage(type: MessageType): Promise<{}> {
