@@ -31,12 +31,154 @@ chai.use(chaiAsPromised);
 const [, , ...otherDynValidators] = originalValidators;
 const allDynValidators = [...otherDynValidators];
 
-describe("Change commonParams", function() {
+describe("Change commonParams that affects validator set", function() {
     const promiseExpect = new PromiseExpect();
     const { nodes, initialParams } = withNodes(this, {
         promiseExpect,
         overrideParams: {
-            maxNumOfValidators: 8,
+            minNumOfValidators: 4,
+            maxNumOfValidators: 8
+        },
+        validators: allDynValidators.map((signer, index) => ({
+            signer,
+            delegation: 5_000,
+            deposit: 10_000_000 - index // tie-breaker
+        }))
+    });
+
+    async function checkValidators(sdk: SDK, term: number, target: string[]) {
+        const blockNumber = await sdk.rpc.chain.getBestBlockNumber();
+        const termMetadata = (await stake.getTermMetadata(sdk, blockNumber))!;
+        const currentTermInitialBlockNumber =
+            termMetadata.lastTermFinishedBlockNumber + 1;
+        const validatorsAfter = (await stake.getPossibleAuthors(
+            sdk,
+            currentTermInitialBlockNumber
+        ))!.map(platformAddr => platformAddr.toString());
+
+        expect(termMetadata.currentTermId).to.be.equals(term);
+        expect(validatorsAfter.length).to.be.equals(target.length);
+        expect(validatorsAfter).contains.all.members(target);
+    }
+
+    describe("Change the minimum number of validators", async function() {
+        it("Some nodes who have deposit less than delegation threshold should remain as validators", async function() {
+            // revoke delegations of alice, betty, charlie and dorothy but we increased minNumOfValidators to 6,
+            // Because alice and betty have more nomination deposit compared to the others, they should remain as validators.
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1
+            });
+
+            const [alice, betty, charlie, dorothy, ...left] = allDynValidators;
+            const checkingNode = nodes[0];
+            const changeTxHash = await changeParams(checkingNode, 1, {
+                ...initialParams,
+                minNumOfValidators: 6
+            });
+
+            await checkingNode.waitForTx(changeTxHash);
+
+            const faucetSeq = await checkingNode.sdk.rpc.chain.getSeq(
+                faucetAddress
+            );
+            const revokeTxs = [alice, betty, charlie, dorothy].map((val, idx) =>
+                stake
+                    .createRevokeTransaction(
+                        checkingNode.sdk,
+                        val.platformAddress,
+                        4_999
+                    )
+                    .sign({
+                        secret: faucetSecret,
+                        seq: faucetSeq + idx,
+                        fee: 10
+                    })
+            );
+
+            const revokeTxHashes = await Promise.all(
+                revokeTxs.map(tx =>
+                    checkingNode.sdk.rpc.chain.sendSignedTransaction(tx)
+                )
+            );
+            await checkingNode.waitForTx(revokeTxHashes);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
+
+            const expectedValidators = [alice, betty, ...left].map(val =>
+                val.platformAddress.toString()
+            );
+            await checkValidators(checkingNode.sdk, 2, expectedValidators);
+        });
+    });
+
+    describe("Change the maximum number of validators", async function() {
+        it("Should select only MAX_NUM_OF_VALIDATORS validators", async function() {
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 2
+            });
+
+            const checkingNode = nodes[0];
+
+            await checkValidators(
+                checkingNode.sdk,
+                1,
+                allDynValidators
+                    .slice(0, 8)
+                    .map(val => val.platformAddress.toString())
+            );
+
+            const param1 = {
+                ...initialParams,
+                maxNumOfValidators: 5
+            };
+            const decreaseHash = await changeParams(checkingNode, 1, param1);
+            await checkingNode.waitForTx(decreaseHash);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
+            await checkValidators(
+                checkingNode.sdk,
+                2,
+                allDynValidators
+                    .slice(0, 5)
+                    .map(val => val.platformAddress.toString())
+            );
+
+            const param2 = {
+                ...param1,
+                maxNumOfValidators: 7
+            };
+            const increaseHash = await changeParams(checkingNode, 2, param2);
+            await checkingNode.waitForTx(increaseHash);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 3,
+                termPeriods: 1
+            });
+            await checkValidators(
+                checkingNode.sdk,
+                3,
+                allDynValidators
+                    .slice(0, 7)
+                    .map(val => val.platformAddress.toString())
+            );
+        });
+    });
+
+    afterEach(function() {
+        promiseExpect.checkFulfilled();
+    });
+});
+
+describe("Change commonParams that doesn't affects validator set", function() {
+    const promiseExpect = new PromiseExpect();
+    const { nodes, initialParams } = withNodes(this, {
+        promiseExpect,
+        overrideParams: {
+            termSeconds: 10,
+            minPayCost: 10,
             maxCandidateMetadataSize: 128
         },
         validators: allDynValidators.map((signer, index) => ({
@@ -51,6 +193,9 @@ describe("Change commonParams", function() {
             const initialTermSeconds = initialParams.termSeconds;
             const newTermSeconds = 5;
             const margin = 1.3;
+
+            this.slow((initialTermSeconds + newTermSeconds) * 1000 * margin);
+            this.timeout((initialTermSeconds + newTermSeconds) * 1000 * 2);
 
             const term1Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
             {
@@ -130,125 +275,6 @@ describe("Change commonParams", function() {
         });
     });
 
-    async function checkValidators(sdk: SDK, term: number, target: string[]) {
-        const blockNumber = await sdk.rpc.chain.getBestBlockNumber();
-        const termMetadata = (await stake.getTermMetadata(sdk, blockNumber))!;
-        const currentTermInitialBlockNumber =
-            termMetadata.lastTermFinishedBlockNumber + 1;
-        const validatorsAfter = (await stake.getPossibleAuthors(
-            sdk,
-            currentTermInitialBlockNumber
-        ))!.map(platformAddr => platformAddr.toString());
-
-        expect(termMetadata.currentTermId).to.be.equals(term);
-        expect(validatorsAfter.length).to.be.equals(target.length);
-        expect(validatorsAfter).contains.all.members(target);
-    }
-
-    describe("Change the minimum number of validators", async function() {
-        it("Some nodes who have deposit less than delegation threshold should remain as validators", async function() {
-            // revoke delegations of alice, betty, charlie and dorothy but we increased minNumOfValidators to 6,
-            // Because alice and betty have more nomination deposit compared to the others, they should remain as validators.
-            const termWaiter = setTermTestTimeout(this, {
-                terms: 1
-            });
-
-            const [alice, betty, charlie, dorothy, ...left] = allDynValidators;
-            const checkingNode = nodes[0];
-            const changeTxHash = await changeParams(checkingNode, 1, {
-                ...initialParams,
-                minNumOfValidators: 6
-            });
-
-            await checkingNode.waitForTx(changeTxHash);
-
-            const faucetSeq = await checkingNode.sdk.rpc.chain.getSeq(
-                faucetAddress
-            );
-            const revokeTxs = [alice, betty, charlie, dorothy].map((val, idx) =>
-                stake
-                    .createRevokeTransaction(
-                        checkingNode.sdk,
-                        val.platformAddress,
-                        4_999
-                    )
-                    .sign({
-                        secret: faucetSecret,
-                        seq: faucetSeq + idx,
-                        fee: 10
-                    })
-            );
-
-            const revokeTxHashes = await Promise.all(
-                revokeTxs.map(tx =>
-                    checkingNode.sdk.rpc.chain.sendSignedTransaction(tx)
-                )
-            );
-            await checkingNode.waitForTx(revokeTxHashes);
-            await termWaiter.waitNodeUntilTerm(checkingNode, {
-                target: 2,
-                termPeriods: 1
-            });
-
-            const expectedValidators = [alice, betty, ...left].map(val =>
-                val.platformAddress.toString()
-            );
-            await checkValidators(checkingNode.sdk, 2, expectedValidators);
-        });
-    });
-    describe("Change the maximum number of validators", async function() {
-        it("Should select only MAX_NUM_OF_VALIDATORS validators", async function() {
-            const termWaiter = setTermTestTimeout(this, {
-                terms: 2
-            });
-
-            const checkingNode = nodes[0];
-
-            await checkValidators(
-                checkingNode.sdk,
-                1,
-                allDynValidators
-                    .slice(0, 8)
-                    .map(val => val.platformAddress.toString())
-            );
-
-            const param1 = {
-                ...initialParams,
-                maxNumOfValidators: 5
-            };
-            const decreaseHash = await changeParams(checkingNode, 1, param1);
-            await checkingNode.waitForTx(decreaseHash);
-            await termWaiter.waitNodeUntilTerm(checkingNode, {
-                target: 2,
-                termPeriods: 1
-            });
-            await checkValidators(
-                checkingNode.sdk,
-                2,
-                allDynValidators
-                    .slice(0, 5)
-                    .map(val => val.platformAddress.toString())
-            );
-
-            const param2 = {
-                ...param1,
-                maxNumOfValidators: 7
-            };
-            const increaseHash = await changeParams(checkingNode, 2, param2);
-            await checkingNode.waitForTx(increaseHash);
-            await termWaiter.waitNodeUntilTerm(checkingNode, {
-                target: 3,
-                termPeriods: 1
-            });
-            await checkValidators(
-                checkingNode.sdk,
-                3,
-                allDynValidators
-                    .slice(0, 7)
-                    .map(val => val.platformAddress.toString())
-            );
-        });
-    });
     describe("Change the maximum size of candidate metadata", async function() {
         function nominationWithMetadata(size: number) {
             return stake.createSelfNominateTransaction(
