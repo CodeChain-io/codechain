@@ -102,4 +102,8 @@ describe("Nomination", function() {
             );
         });
     });
+
+    afterEach(function() {
+        promiseExpect.checkFulfilled();
+    });
 });

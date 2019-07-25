@@ -413,4 +413,8 @@ describe("Change commonParams", function() {
             }
         });
     });
+
+    afterEach(function() {
+        promiseExpect.checkFulfilled();
+    });
 });
