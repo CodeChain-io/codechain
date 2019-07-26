@@ -19,7 +19,7 @@ import * as RLP from "rlp";
 import { BlockSyncMessage, Emitter, IBodiesq, IHeadersq, MessageType, ResponseMessage } from "./blockSyncMessage";
 import { Header } from "./cHeader";
 import { P2pLayer } from "./p2pLayer";
-import { ConsensusMessage, Emitter as TendermintEmitter, StepState, TendermintMessage } from "./tendermintMessage";
+import { ConsensusMessage, Emitter as TendermintEmitter, Step as TendermintStep, StepState, TendermintMessage } from "./tendermintMessage";
 import { TransactionSyncMessage } from "./transactionSyncMessage";
 
 
@@ -379,7 +379,7 @@ export class Mock {
         return header;
     }
 
-    public startDoubleVote(priv: string) {
+    public startDoubleVote(priv: string, step: TendermintStep) {
         const pub = getPublicFromPrivate(priv);
         TendermintEmitter.on("consensusmessage", (message: ConsensusMessage) => {
             const digest = (on: ConsensusMessage["messages"][number]["on"]) =>
@@ -400,7 +400,8 @@ export class Mock {
                     r: m.signature.slice(0, 64),
                     s: m.signature.slice(64),
                 };
-                return recoverSchnorr(digest(m.on), signature) === pub;
+                const recovered = recoverSchnorr(digest(m.on), signature);
+                return recovered === pub && m.on.step.step === step;
             });
             if (original != null) {
                 const newOn: ConsensusMessage["messages"][number]["on"] = {
@@ -420,12 +421,21 @@ export class Mock {
             }
         });
         TendermintEmitter.on("stepstate", (message: StepState) => {
-            this.sendTendermintMessage(new TendermintMessage({
-                type: "requestmessage",
-                voteStep: message.voteStep,
-                requestedVotes: Buffer.alloc(100, 0xff),
-            }));
+            if (message.voteStep.step === step) {
+                setTimeout(() => {
+                    this.sendTendermintMessage(new TendermintMessage({
+                        type: "requestmessage",
+                        voteStep: message.voteStep,
+                        requestedVotes: Buffer.alloc(100, 0xff),
+                    }));
+                }, 200)
+            }
         });
+    }
+
+    public stopDoubleVote() {
+        TendermintEmitter.removeAllListeners("consensusmessage");
+        TendermintEmitter.removeAllListeners("stepstate");
     }
 
     private async waitForBlockSyncMessage(type: MessageType): Promise<{}> {

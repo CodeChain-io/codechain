@@ -21,6 +21,7 @@ import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
 import { Mock } from "../helper/mock";
+import { Step as TendermintStep } from "../helper/mock/tendermintMessage";
 import { validators } from "../../tendermint.dynval/constants";
 import { PromiseExpect } from "../helper/promise";
 import { setTermTestTimeout, withNodes } from "./setup";
@@ -40,7 +41,6 @@ describe("Double vote detection", function() {
             { signer: charlie, delegation: 5000, deposit: 10_000_000 - 2 }
         ],
         overrideParams: {
-            termSeconds: 20,
             minNumOfValidators: 3
         }
     });
@@ -52,19 +52,47 @@ describe("Double vote detection", function() {
         mock = new Mock("0.0.0.0", aliceNode.port, aliceNode.sdk.networkId);
     });
 
-    it("Should create ReportDoubleVote transaction if double vote is detected", async function() {
+    it("Should report if double vote for prevote is detected", async function() {
         const termWaiter = setTermTestTimeout(this, { terms: 1 });
 
         const aliceNode = nodes[0];
+
+        // Start sending double votes for all the votes
         await mock.establishWithoutSync();
-        mock.startDoubleVote(alice.privateKey);
+        mock.startDoubleVote(betty.privateKey, TendermintStep.Prevote);
+        await termWaiter.waitForTermPeriods(0.5, 0);
+
+        // Stop double voting and check if alice is banned
+        mock.stopDoubleVote();
         await termWaiter.waitNodeUntilTerm(aliceNode, {
             target: 2,
             termPeriods: 1
         });
         const banned = await stake.getBanned(aliceNode.sdk);
         expect(banned.map(b => b.toString())).to.include(
-            alice.platformAddress.toString()
+            betty.platformAddress.toString()
+        );
+    });
+
+    it("Should report if double vote for precommit is detected", async function() {
+        const termWaiter = setTermTestTimeout(this, { terms: 1 });
+
+        const aliceNode = nodes[0];
+
+        // Start sending double votes for all the votes
+        await mock.establishWithoutSync();
+        mock.startDoubleVote(betty.privateKey, TendermintStep.Precommit);
+        await termWaiter.waitForTermPeriods(0.5, 0);
+
+        // Stop double voting and check if alice is banned
+        mock.stopDoubleVote();
+        await termWaiter.waitNodeUntilTerm(aliceNode, {
+            target: 2,
+            termPeriods: 1
+        });
+        const banned = await stake.getBanned(aliceNode.sdk);
+        expect(banned.map(b => b.toString())).to.include(
+            betty.platformAddress.toString()
         );
     });
 

@@ -41,6 +41,7 @@ export class P2pLayer {
 
     constructor(ip: string, port: number, networkId: string) {
         this.socket = new Socket();
+        this.socket.setMaxListeners(0);
         this.ip = ip;
         this.port = port;
         this.arrivedExtensionMessage = [];
