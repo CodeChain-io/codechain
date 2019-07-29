@@ -79,11 +79,14 @@ describe("Dynamic Validator N -> N+1", function() {
     describe("Nominate a new candidate and delegate", async function() {
         const nodes = withNodes(this, {
             promiseExpect,
-            validators: otherDynValidators.map((signer, index) => ({
-                signer,
-                delegation: 5_000,
-                deposit: 10_000_000 - index // tie-breaker
-            }))
+            validators: [
+                ...otherDynValidators.map((signer, index) => ({
+                    signer,
+                    delegation: 5_000,
+                    deposit: 10_000_000 - index // tie-breaker
+                })),
+                { signer: betty }
+            ]
         });
 
         it("betty should be included in validators", async function() {
@@ -92,37 +95,21 @@ describe("Dynamic Validator N -> N+1", function() {
 
             const checkingNode = nodes[0];
             await beforeInsertionCheck(checkingNode.sdk);
-            const faucetSeq = await checkingNode.sdk.rpc.chain.getSeq(
-                faucetAddress
-            );
-            const payTx = checkingNode.sdk.core
-                .createPayTransaction({
-                    recipient: betty.platformAddress,
-                    quantity: 100_000_000
-                })
-                .sign({
-                    secret: faucetSecret,
-                    seq: faucetSeq,
-                    fee: 10
-                });
-            const payTxHash = checkingNode.sdk.rpc.chain.sendSignedTransaction(
-                payTx
-            );
-            await checkingNode.waitForTx(payTxHash);
+            const bettyNode = nodes[nodes.length - 1];
             const nominateTx = stake
                 .createSelfNominateTransaction(
-                    checkingNode.sdk,
+                    bettyNode.sdk,
                     10_000_000 - otherDynValidators.length,
                     ""
                 )
                 .sign({
                     secret: betty.privateKey,
-                    seq: await checkingNode.sdk.rpc.chain.getSeq(
+                    seq: await bettyNode.sdk.rpc.chain.getSeq(
                         betty.platformAddress
                     ),
                     fee: 10
                 });
-            const nominateTxHash = checkingNode.sdk.rpc.chain.sendSignedTransaction(
+            const nominateTxHash = bettyNode.sdk.rpc.chain.sendSignedTransaction(
                 nominateTx
             );
             const delegateTx = stake
@@ -133,7 +120,7 @@ describe("Dynamic Validator N -> N+1", function() {
                 )
                 .sign({
                     secret: faucetSecret,
-                    seq: faucetSeq + 1,
+                    seq: await checkingNode.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
             const delegateTxHash = checkingNode.sdk.rpc.chain.sendSignedTransaction(
