@@ -1629,7 +1629,25 @@ impl Worker {
                 );
             }
 
-            self.votes.vote(message);
+            let proposer_idx = message.signer_index();
+            let prev_block_hash = c
+                .block_header(&(message.height() - 1).into())
+                .expect("self.height - 1 == the best block number")
+                .hash();
+            let proposer_public = self.validators.get(&prev_block_hash, proposer_idx);
+
+            if let Some(double) = self.votes.vote(message.clone()) {
+                let height = message.height();
+                cerror!(ENGINE, "Double Vote found {:?}", double);
+                self.report_double_vote(&double);
+                self.validators.report_malicious(
+                    &public_to_address(&proposer_public),
+                    height,
+                    height,
+                    ::rlp::encode(&double).into_vec(),
+                );
+                return None
+            }
         }
 
         Some(c)
