@@ -21,18 +21,18 @@ import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
-import { validators as originalValidators } from "../../tendermint.dynval/constants";
+import { validators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import { setTermTestTimeout, withNodes } from "./setup";
+import { findNode, setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
-const allDynValidators = originalValidators.slice(0, 8);
-const [betty, ...otherDynValidators] = allDynValidators;
-
 describe("Dynamic Validator N -> N+1", function() {
     const promiseExpect = new PromiseExpect();
+
+    const initialValidators = validators.slice(0, 3);
+    const betty = validators[3];
 
     async function beforeInsertionCheck(sdk: SDK) {
         const blockNumber = await sdk.rpc.chain.getBestBlockNumber();
@@ -45,15 +45,13 @@ describe("Dynamic Validator N -> N+1", function() {
         ))!.map(platformAddr => platformAddr.toString());
 
         expect(termMedata!.currentTermId).to.be.equals(1);
-        expect(validatorsBefore.length).to.be.equals(otherDynValidators.length);
-        expect(validatorsBefore).not.to.includes(
-            betty.platformAddress.toString()
-        );
-        expect(validatorsBefore).contains.all.members(
-            otherDynValidators.map(validator =>
-                validator.platformAddress.toString()
-            )
-        );
+        expect(validatorsBefore)
+            .to.have.lengthOf(initialValidators.length)
+            .and.contains.all.members(
+                initialValidators.map(validator =>
+                    validator.platformAddress.toString()
+                )
+            );
     }
 
     async function bettyInsertionCheck(sdk: SDK) {
@@ -67,18 +65,20 @@ describe("Dynamic Validator N -> N+1", function() {
         ))!.map(platformAddr => platformAddr.toString());
 
         expect(termMedata!.currentTermId).to.be.equals(2);
-        expect(validatorsAfter).contains.all.members(
-            allDynValidators.map(validator =>
-                validator.platformAddress.toString()
-            )
-        );
+        expect(validatorsAfter)
+            .to.have.lengthOf(initialValidators.length + 1)
+            .and.contains.all.members(
+                [...initialValidators, betty].map(validator =>
+                    validator.platformAddress.toString()
+                )
+            );
     }
 
     describe("Nominate a new candidate and delegate", async function() {
         const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
-                ...otherDynValidators.map((signer, index) => ({
+                ...initialValidators.map((signer, index) => ({
                     signer,
                     delegation: 5_000,
                     deposit: 10_000_000 - index // tie-breaker
@@ -94,13 +94,9 @@ describe("Dynamic Validator N -> N+1", function() {
 
             const checkingNode = nodes[0];
             await beforeInsertionCheck(checkingNode.sdk);
-            const bettyNode = nodes[nodes.length - 1];
+            const bettyNode = findNode(nodes, betty);
             const nominateTx = stake
-                .createSelfNominateTransaction(
-                    bettyNode.sdk,
-                    10_000_000 - otherDynValidators.length,
-                    ""
-                )
+                .createSelfNominateTransaction(bettyNode.sdk, 11_000_000, "")
                 .sign({
                     secret: betty.privateKey,
                     seq: await bettyNode.sdk.rpc.chain.getSeq(
@@ -138,19 +134,14 @@ describe("Dynamic Validator N -> N+1", function() {
     describe("Increase one candidate's deposit which is less than the minimum deposit", async function() {
         const { nodes } = withNodes(this, {
             promiseExpect,
-            validators: otherDynValidators
-                .map((signer, index) => ({
+            validators: [
+                ...initialValidators.map((signer, index) => ({
                     signer,
                     delegation: 5_000,
                     deposit: 10_000_000 - index // tie-breaker
-                }))
-                .concat([
-                    {
-                        signer: betty,
-                        delegation: 5_000,
-                        deposit: 9999
-                    }
-                ])
+                })),
+                { signer: betty, delegation: 5_000, deposit: 9999 }
+            ]
         });
 
         it("betty should be included in validators", async function() {
@@ -185,19 +176,14 @@ describe("Dynamic Validator N -> N+1", function() {
     describe("Delegate more stake to whose stake is less than the minimum delegation", async function() {
         const { nodes } = withNodes(this, {
             promiseExpect,
-            validators: otherDynValidators
-                .map((signer, index) => ({
+            validators: [
+                ...initialValidators.map((signer, index) => ({
                     signer,
                     delegation: 5_000,
                     deposit: 10_000_000 - index // tie-breaker
-                }))
-                .concat([
-                    {
-                        signer: betty,
-                        delegation: 999,
-                        deposit: 10_000_000
-                    }
-                ])
+                })),
+                { signer: betty, delegation: 999, deposit: 10_000_000 }
+            ]
         });
 
         it("betty should be included in validators", async function() {

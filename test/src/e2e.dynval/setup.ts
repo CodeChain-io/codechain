@@ -62,6 +62,7 @@ export function withNodes(
         }
         await Promise.all(nodes.map(node => node.clean()));
     });
+
     return {
         nodes,
         initialParams
@@ -344,8 +345,8 @@ export const defaultParams = {
     nominationExpiration: 10,
     custodyPeriod: 10,
     releasePeriod: 30,
-    maxNumOfValidators: 8,
-    minNumOfValidators: 4,
+    maxNumOfValidators: 5,
+    minNumOfValidators: 3,
     delegationThreshold: 1000,
     minDeposit: 10000,
     maxCandidateMetadataSize: 128

@@ -21,25 +21,22 @@ import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
-import { validators as originalValidators } from "../../tendermint.dynval/constants";
+import { validators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import { changeParams, setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
-const [, , ...otherDynValidators] = originalValidators;
-const allDynValidators = [...otherDynValidators];
-
 describe("Change commonParams that affects validator set", function() {
     const promiseExpect = new PromiseExpect();
     const { nodes, initialParams } = withNodes(this, {
         promiseExpect,
         overrideParams: {
-            minNumOfValidators: 4,
-            maxNumOfValidators: 8
+            minNumOfValidators: 3,
+            maxNumOfValidators: 5
         },
-        validators: allDynValidators.map((signer, index) => ({
+        validators: validators.slice(0, 5).map((signer, index) => ({
             signer,
             delegation: 5_000,
             deposit: 10_000_000 - index // tie-breaker
@@ -57,23 +54,22 @@ describe("Change commonParams that affects validator set", function() {
         ))!.map(platformAddr => platformAddr.toString());
 
         expect(termMetadata.currentTermId).to.be.equals(term);
-        expect(validatorsAfter.length).to.be.equals(target.length);
+        expect(validatorsAfter).to.have.lengthOf(target.length);
         expect(validatorsAfter).contains.all.members(target);
     }
 
     describe("Change the minimum number of validators", async function() {
         it("Some nodes who have deposit less than delegation threshold should remain as validators", async function() {
-            // revoke delegations of alice, betty, charlie and dorothy but we increased minNumOfValidators to 6,
+            // revoke delegations of alice, betty and charlie but we increased minNumOfValidators to 4,
             // Because alice and betty have more nomination deposit compared to the others, they should remain as validators.
             const termWaiter = setTermTestTimeout(this, {
                 terms: 1
             });
 
-            const [alice, betty, charlie, dorothy, ...left] = allDynValidators;
             const checkingNode = nodes[0];
             const changeTxHash = await changeParams(checkingNode, 1, {
                 ...initialParams,
-                minNumOfValidators: 6
+                minNumOfValidators: 4
             });
 
             await checkingNode.waitForTx(changeTxHash);
@@ -81,11 +77,14 @@ describe("Change commonParams that affects validator set", function() {
             const faucetSeq = await checkingNode.sdk.rpc.chain.getSeq(
                 faucetAddress
             );
-            const revokeTxs = [alice, betty, charlie, dorothy].map((val, idx) =>
+
+            const revoked = validators.slice(0, 3);
+            const untouched = validators.slice(3, 5);
+            const revokeTxs = revoked.map((signer, idx) =>
                 stake
                     .createRevokeTransaction(
                         checkingNode.sdk,
-                        val.platformAddress,
+                        signer.platformAddress,
                         4_999
                     )
                     .sign({
@@ -106,9 +105,10 @@ describe("Change commonParams that affects validator set", function() {
                 termPeriods: 1
             });
 
-            const expectedValidators = [alice, betty, ...left].map(val =>
-                val.platformAddress.toString()
-            );
+            const expectedValidators = [
+                ...revoked.slice(0, 2),
+                ...untouched
+            ].map(signer => signer.platformAddress.toString());
             await checkValidators(checkingNode.sdk, 2, expectedValidators);
         });
     });
@@ -124,14 +124,14 @@ describe("Change commonParams that affects validator set", function() {
             await checkValidators(
                 checkingNode.sdk,
                 1,
-                allDynValidators
-                    .slice(0, 8)
+                validators
+                    .slice(0, 5)
                     .map(val => val.platformAddress.toString())
             );
 
             const param1 = {
                 ...initialParams,
-                maxNumOfValidators: 5
+                maxNumOfValidators: 3
             };
             const decreaseHash = await changeParams(checkingNode, 1, param1);
             await checkingNode.waitForTx(decreaseHash);
@@ -142,14 +142,14 @@ describe("Change commonParams that affects validator set", function() {
             await checkValidators(
                 checkingNode.sdk,
                 2,
-                allDynValidators
-                    .slice(0, 5)
+                validators
+                    .slice(0, 3)
                     .map(val => val.platformAddress.toString())
             );
 
             const param2 = {
                 ...param1,
-                maxNumOfValidators: 7
+                maxNumOfValidators: 4
             };
             const increaseHash = await changeParams(checkingNode, 2, param2);
             await checkingNode.waitForTx(increaseHash);
@@ -160,8 +160,8 @@ describe("Change commonParams that affects validator set", function() {
             await checkValidators(
                 checkingNode.sdk,
                 3,
-                allDynValidators
-                    .slice(0, 7)
+                validators
+                    .slice(0, 4)
                     .map(val => val.platformAddress.toString())
             );
         });
@@ -181,7 +181,7 @@ describe("Change commonParams that doesn't affects validator set", function() {
             minPayCost: 10,
             maxCandidateMetadataSize: 128
         },
-        validators: allDynValidators.map((signer, index) => ({
+        validators: validators.slice(0, 3).map((signer, index) => ({
             signer,
             delegation: 5_000,
             deposit: 10_000_000 - index // tie-breaker
@@ -259,7 +259,7 @@ describe("Change commonParams that doesn't affects validator set", function() {
 
             const tx = checkingNode.sdk.core
                 .createPayTransaction({
-                    recipient: allDynValidators[0].platformAddress,
+                    recipient: validators[0].platformAddress,
                     quantity: 100
                 })
                 .sign({
@@ -288,7 +288,7 @@ describe("Change commonParams that doesn't affects validator set", function() {
             this.slow(6_000);
             this.timeout(9_000);
 
-            const [alice] = allDynValidators;
+            const alice = validators[0];
             const checkingNode = nodes[0];
             const changeTxHash = await changeParams(checkingNode, 1, {
                 ...initialParams,
@@ -329,7 +329,7 @@ describe("Change commonParams that doesn't affects validator set", function() {
             this.slow(6_000);
             this.timeout(9_000);
 
-            const [alice] = allDynValidators;
+            const alice = validators[0];
             const checkingNode = nodes[0];
             const changeTxHash = await changeParams(checkingNode, 1, {
                 ...initialParams,
