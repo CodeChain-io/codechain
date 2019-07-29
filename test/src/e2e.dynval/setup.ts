@@ -19,17 +19,12 @@ import {
     validator3Address
 } from "../helper/constants";
 import { PromiseExpect, wait } from "../helper/promise";
-import CodeChain from "../helper/spawn";
+import CodeChain, { Signer } from "../helper/spawn";
 
 const RLP = require("rlp");
 
 interface ValidatorConfig {
-    signer: {
-        privateKey: string;
-        publicKey: string;
-        accountId: string;
-        platformAddress: PlatformAddress;
-    };
+    signer: Signer;
     deposit?: U64Value;
     delegation?: U64Value;
 }
@@ -71,6 +66,20 @@ export function withNodes(
         nodes,
         initialParams
     };
+}
+
+export function findNode(nodes: CodeChain[], signer: Signer) {
+    for (const node of nodes) {
+        if (
+            node.signer.platformAddress.toString() ===
+            signer.platformAddress.toString()
+        ) {
+            return node;
+        }
+    }
+    throw new Error(
+        `Cannot find a node of signer ${signer.platformAddress.toString()}`
+    );
 }
 
 async function createNodes(options: {
@@ -117,6 +126,7 @@ async function createNodes(options: {
             ],
             additionalKeysPath: `tendermint.dynval/${validator.platformAddress.value}/keys`
         });
+        nodes[i].setSigner(validator);
     }
     let bootstrapFailed = false;
     try {

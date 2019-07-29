@@ -70,6 +70,12 @@ export class ProcessStateError extends Error {
         );
     }
 }
+export interface Signer {
+    privateKey: string;
+    publicKey: string;
+    accountId: string;
+    platformAddress: PlatformAddress;
+}
 export default class CodeChain {
     private static idCounter = 0;
     private readonly _id: number;
@@ -88,6 +94,7 @@ export default class CodeChain {
     private restarts: number;
     private _keepLogs: boolean;
     private readonly keyFileMovePromise?: Promise<{}>;
+    private _signer?: Signer;
 
     public get id(): number {
         return this._id;
@@ -131,6 +138,12 @@ export default class CodeChain {
     }
     public get isRunning(): boolean {
         return this.process.state === "running";
+    }
+    public get signer(): Signer {
+        if (!this._signer) {
+            throw new Error("Signer for a node is not set");
+        }
+        return this._signer;
     }
 
     constructor(
@@ -330,6 +343,10 @@ export default class CodeChain {
                 .on("exit", onExit);
             readline.on("line", onLine);
         });
+    }
+
+    public setSigner(signer: Signer) {
+        this._signer = signer;
     }
 
     public keepLogs() {
