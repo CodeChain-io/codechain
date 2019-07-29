@@ -32,7 +32,7 @@ describe("Jail state transition test", function() {
     const alice = validators[1];
     const { nodes } = withNodes(this, {
         promiseExpect,
-        validators: validators.map((signer, index) => ({
+        validators: validators.slice(0, 5).map((signer, index) => ({
             signer,
             delegation: 5000,
             deposit: 10_000_000 - index // tie-breaker

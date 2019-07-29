@@ -17,23 +17,43 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
 import { validators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import { setTermTestTimeout, withNodes } from "./setup";
+import { findNode, setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
 describe("Dynamic Validator N -> N", function() {
     const promiseExpect = new PromiseExpect();
 
+    async function expectPossibleAuthors(
+        sdk: SDK,
+        expectedValidators: typeof validators,
+        blockNumber?: number
+    ) {
+        const possibleAuthors = (await stake.getPossibleAuthors(
+            sdk,
+            blockNumber
+        ))!;
+        expect(possibleAuthors).to.have.lengthOf(expectedValidators.length);
+        expect(possibleAuthors.map(x => x.value)).contains.all.members(
+            expectedValidators.map(x => x.platformAddress.value)
+        );
+    }
+
     describe("1. No delegation, nominate, revoke, jail", async function() {
+        const initialValidators = validators.slice(0, 3);
         const { nodes } = withNodes(this, {
             promiseExpect,
-            validators: validators.map((signer, index) => ({
+            overrideParams: {
+                maxNumOfValidators: 3
+            },
+            validators: initialValidators.map((signer, index) => ({
                 signer,
                 delegation: 5000,
                 deposit: 10_000_000 - index // tie-breaker
@@ -41,13 +61,7 @@ describe("Dynamic Validator N -> N", function() {
         });
 
         beforeEach(async function() {
-            const possibleAuthors = (await stake.getPossibleAuthors(
-                nodes[0].sdk
-            ))!;
-            expect(possibleAuthors.length).is.equals(8);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 8).map(x => x.platformAddress.value)
-            );
+            await expectPossibleAuthors(nodes[0].sdk, initialValidators);
         });
 
         it("should keep possible authors after a term change", async function() {
@@ -69,13 +83,11 @@ describe("Dynamic Validator N -> N", function() {
             expect(termMetadata!.lastTermFinishedBlockNumber).to.be.lte(
                 blockNumber
             );
-            const possibleAuthors = (await stake.getPossibleAuthors(
+
+            await expectPossibleAuthors(
                 nodes[0].sdk,
+                initialValidators,
                 blockNumber
-            ))!;
-            expect(possibleAuthors.length).is.equals(8);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 8).map(x => x.platformAddress.value)
             );
         });
     });
@@ -84,7 +96,7 @@ describe("Dynamic Validator N -> N", function() {
         const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                maxNumOfValidators: 8,
+                maxNumOfValidators: 3,
                 delegationThreshold: 1000
             },
             validators: [
@@ -92,25 +104,15 @@ describe("Dynamic Validator N -> N", function() {
                 { signer: validators[0], delegation: 5000, deposit: 100000 },
                 { signer: validators[1], delegation: 4900, deposit: 100000 },
                 { signer: validators[2], delegation: 4800, deposit: 100000 },
-                { signer: validators[3], delegation: 4700, deposit: 100000 },
-                { signer: validators[4], delegation: 4600, deposit: 100000 },
-                { signer: validators[5], delegation: 4500, deposit: 100000 },
-                { signer: validators[6], delegation: 4400, deposit: 100000 },
-                { signer: validators[7], delegation: 4300, deposit: 100000 },
                 // Candidates
-                { signer: validators[8], delegation: 4200, deposit: 100000 },
-                { signer: validators[9], delegation: 4100, deposit: 100000 }
+                { signer: validators[3], delegation: 4700, deposit: 100000 } // alice
             ]
         });
+        const initialValidators = validators.slice(0, 3);
+        const alice = validators[3];
 
         beforeEach(async function() {
-            const possibleAuthors = (await stake.getPossibleAuthors(
-                nodes[0].sdk
-            ))!;
-            expect(possibleAuthors.length).is.equals(8);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 8).map(x => x.platformAddress.value)
-            );
+            await expectPossibleAuthors(nodes[0].sdk, initialValidators);
         });
 
         it("should keep possible authors after a term change", async function() {
@@ -122,7 +124,7 @@ describe("Dynamic Validator N -> N", function() {
                 stake
                     .createDelegateCCSTransaction(
                         nodes[0].sdk,
-                        validators[8].platformAddress,
+                        alice.platformAddress,
                         50
                     )
                     .sign({
@@ -147,13 +149,10 @@ describe("Dynamic Validator N -> N", function() {
             expect(termMetadata!.lastTermFinishedBlockNumber).to.be.lte(
                 blockNumber
             );
-            const possibleAuthors = (await stake.getPossibleAuthors(
+            await expectPossibleAuthors(
                 nodes[0].sdk,
+                initialValidators,
                 blockNumber
-            ))!;
-            expect(possibleAuthors.length).is.equals(8);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 8).map(x => x.platformAddress.value)
             );
         });
     });
@@ -162,7 +161,7 @@ describe("Dynamic Validator N -> N", function() {
         const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                maxNumOfValidators: 8,
+                maxNumOfValidators: 4,
                 delegationThreshold: 1000
             },
             validators: [
@@ -170,25 +169,15 @@ describe("Dynamic Validator N -> N", function() {
                 { signer: validators[0], delegation: 5000, deposit: 100000 },
                 { signer: validators[1], delegation: 4900, deposit: 100000 },
                 { signer: validators[2], delegation: 4800, deposit: 100000 },
-                { signer: validators[3], delegation: 4700, deposit: 100000 },
-                { signer: validators[4], delegation: 4600, deposit: 100000 },
-                { signer: validators[5], delegation: 4500, deposit: 100000 },
                 // Remain as candidates (Below delegationThreshold)
-                { signer: validators[6], delegation: 900, deposit: 100000 },
-                { signer: validators[7], delegation: 800, deposit: 100000 },
-                { signer: validators[8], delegation: 700, deposit: 100000 },
-                { signer: validators[9], delegation: 600, deposit: 100000 }
+                { signer: validators[3], delegation: 900, deposit: 100000 } // alice
             ]
         });
+        const initialValidators = validators.slice(0, 3);
+        const alice = validators[3];
 
         beforeEach(async function() {
-            const possibleAuthors = (await stake.getPossibleAuthors(
-                nodes[0].sdk
-            ))!;
-            expect(possibleAuthors.length).is.equals(6);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 6).map(x => x.platformAddress.value)
-            );
+            await expectPossibleAuthors(nodes[0].sdk, initialValidators);
         });
 
         it("should keep possible authors after a term change", async function() {
@@ -200,7 +189,7 @@ describe("Dynamic Validator N -> N", function() {
                 stake
                     .createDelegateCCSTransaction(
                         nodes[0].sdk,
-                        validators[6].platformAddress,
+                        alice.platformAddress,
                         50
                     )
                     .sign({
@@ -225,13 +214,10 @@ describe("Dynamic Validator N -> N", function() {
             expect(termMetadata!.lastTermFinishedBlockNumber).to.be.lte(
                 blockNumber
             );
-            const possibleAuthors = (await stake.getPossibleAuthors(
+            await expectPossibleAuthors(
                 nodes[0].sdk,
+                initialValidators,
                 blockNumber
-            ))!;
-            expect(possibleAuthors.length).is.equals(6);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 6).map(x => x.platformAddress.value)
             );
         });
     });
@@ -240,33 +226,23 @@ describe("Dynamic Validator N -> N", function() {
         const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                maxNumOfValidators: 8,
+                maxNumOfValidators: 3,
                 delegationThreshold: 1000
             },
             validators: [
                 // Validators
                 { signer: validators[0], delegation: 5000, deposit: 100000 },
                 { signer: validators[1], delegation: 4900, deposit: 100000 },
-                { signer: validators[2], delegation: 4800, deposit: 100000 },
-                { signer: validators[3], delegation: 4700, deposit: 100000 },
-                { signer: validators[4], delegation: 4600, deposit: 100000 },
-                { signer: validators[5], delegation: 4500, deposit: 100000 },
-                { signer: validators[6], delegation: 4400, deposit: 100000 },
-                { signer: validators[7], delegation: 4300, deposit: 100000 },
+                { signer: validators[2], delegation: 4800, deposit: 100000 }, // Alice
                 // Candidates
-                { signer: validators[8], delegation: 4200, deposit: 100000 },
-                { signer: validators[9], delegation: 4100, deposit: 100000 }
+                { signer: validators[3], delegation: 4700, deposit: 100000 }
             ]
         });
+        const initialValidators = validators.slice(0, 3);
+        const alice = validators[2];
 
         beforeEach(async function() {
-            const possibleAuthors = (await stake.getPossibleAuthors(
-                nodes[0].sdk
-            ))!;
-            expect(possibleAuthors.length).is.equals(8);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 8).map(x => x.platformAddress.value)
-            );
+            await expectPossibleAuthors(nodes[0].sdk, initialValidators);
         });
 
         it("should keep possible authors after a term change", async function() {
@@ -278,7 +254,7 @@ describe("Dynamic Validator N -> N", function() {
                 stake
                     .createRevokeTransaction(
                         nodes[0].sdk,
-                        validators[7].platformAddress,
+                        alice.platformAddress,
                         50
                     )
                     .sign({
@@ -303,13 +279,10 @@ describe("Dynamic Validator N -> N", function() {
             expect(termMetadata!.lastTermFinishedBlockNumber).to.be.lte(
                 blockNumber
             );
-            const possibleAuthors = (await stake.getPossibleAuthors(
+            await expectPossibleAuthors(
                 nodes[0].sdk,
+                initialValidators,
                 blockNumber
-            ))!;
-            expect(possibleAuthors.length).is.equals(8);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 8).map(x => x.platformAddress.value)
             );
         });
     });
@@ -318,33 +291,23 @@ describe("Dynamic Validator N -> N", function() {
         const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                maxNumOfValidators: 8,
+                maxNumOfValidators: 4,
                 delegationThreshold: 1000
             },
             validators: [
                 // Validators
                 { signer: validators[0], delegation: 5000, deposit: 100000 },
                 { signer: validators[1], delegation: 4900, deposit: 100000 },
-                { signer: validators[2], delegation: 4800, deposit: 100000 },
-                { signer: validators[3], delegation: 4700, deposit: 100000 },
-                { signer: validators[4], delegation: 4600, deposit: 100000 },
-                { signer: validators[5], delegation: 4500, deposit: 100000 },
+                { signer: validators[2], delegation: 4800, deposit: 100000 }, // Alice
                 // Remain as candidates (Below delegationThreshold)
-                { signer: validators[6], delegation: 900, deposit: 100000 },
-                { signer: validators[7], delegation: 800, deposit: 100000 },
-                { signer: validators[8], delegation: 700, deposit: 100000 },
-                { signer: validators[9], delegation: 600, deposit: 100000 }
+                { signer: validators[3], delegation: 900, deposit: 100000 }
             ]
         });
+        const initialValidators = validators.slice(0, 3);
+        const alice = validators[2];
 
         beforeEach(async function() {
-            const possibleAuthors = (await stake.getPossibleAuthors(
-                nodes[0].sdk
-            ))!;
-            expect(possibleAuthors.length).is.equals(6);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 6).map(x => x.platformAddress.value)
-            );
+            await expectPossibleAuthors(nodes[0].sdk, initialValidators);
         });
 
         it("should keep possible authors after a term change", async function() {
@@ -354,9 +317,9 @@ describe("Dynamic Validator N -> N", function() {
 
             const insufficientDelegationTx = await nodes[0].sdk.rpc.chain.sendSignedTransaction(
                 stake
-                    .createDelegateCCSTransaction(
+                    .createRevokeTransaction(
                         nodes[0].sdk,
-                        validators[5].platformAddress,
+                        alice.platformAddress,
                         50
                     )
                     .sign({
@@ -381,23 +344,19 @@ describe("Dynamic Validator N -> N", function() {
             expect(termMetadata!.lastTermFinishedBlockNumber).to.be.lte(
                 blockNumber
             );
-            const possibleAuthors = (await stake.getPossibleAuthors(
+            await expectPossibleAuthors(
                 nodes[0].sdk,
+                initialValidators,
                 blockNumber
-            ))!;
-            expect(possibleAuthors.length).is.equals(6);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 6).map(x => x.platformAddress.value)
             );
         });
     });
 
     describe("4. Nominate new candidate", async function() {
-        const aliceIndex = 4;
         const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                maxNumOfValidators: 8,
+                maxNumOfValidators: 5,
                 delegationThreshold: 1000,
                 minDeposit: 10000
             },
@@ -406,20 +365,15 @@ describe("Dynamic Validator N -> N", function() {
                 { signer: validators[0], delegation: 5000, deposit: 100000 },
                 { signer: validators[1], delegation: 4900, deposit: 100000 },
                 { signer: validators[2], delegation: 4800, deposit: 100000 },
-                { signer: validators[3], delegation: 4700, deposit: 100000 },
                 // Eligibles
-                ...validators.slice(aliceIndex).map(signer => ({ signer }))
+                { signer: validators[3] } // Alice
             ]
         });
+        const initialValidators = validators.slice(0, 3);
+        const alice = validators[3];
 
         beforeEach(async function() {
-            const possibleAuthors = (await stake.getPossibleAuthors(
-                nodes[0].sdk
-            ))!;
-            expect(possibleAuthors.length).is.equals(4);
-            expect(possibleAuthors.map(x => x.value)).contains.all.members(
-                validators.slice(0, 4).map(x => x.platformAddress.value)
-            );
+            await expectPossibleAuthors(nodes[0].sdk, initialValidators);
         });
 
         [
@@ -451,18 +405,18 @@ describe("Dynamic Validator N -> N", function() {
                     const termWaiter = setTermTestTimeout(this, {
                         terms: 1
                     });
-
-                    const nominationTx = await nodes[4].sdk.rpc.chain.sendSignedTransaction(
+                    const aliceNode = findNode(nodes, alice);
+                    const nominationTx = await aliceNode.sdk.rpc.chain.sendSignedTransaction(
                         stake
                             .createSelfNominateTransaction(
-                                nodes[4].sdk,
+                                aliceNode.sdk,
                                 deposit,
                                 ""
                             )
                             .sign({
-                                secret: validators[4].privateKey,
-                                seq: await nodes[4].sdk.rpc.chain.getSeq(
-                                    validators[4].platformAddress
+                                secret: alice.privateKey,
+                                seq: await aliceNode.sdk.rpc.chain.getSeq(
+                                    alice.platformAddress
                                 ),
                                 fee: 10
                             })
@@ -474,7 +428,7 @@ describe("Dynamic Validator N -> N", function() {
                             stake
                                 .createDelegateCCSTransaction(
                                     nodes[0].sdk,
-                                    validators[4].platformAddress,
+                                    alice.platformAddress,
                                     delegation
                                 )
                                 .sign({
@@ -502,15 +456,10 @@ describe("Dynamic Validator N -> N", function() {
                     expect(termMetadata!.lastTermFinishedBlockNumber).to.be.lte(
                         blockNumber
                     );
-                    const possibleAuthors = (await stake.getPossibleAuthors(
+                    await expectPossibleAuthors(
                         nodes[0].sdk,
+                        initialValidators,
                         blockNumber
-                    ))!;
-                    expect(possibleAuthors.length).is.equals(4);
-                    expect(
-                        possibleAuthors.map(x => x.value)
-                    ).contains.all.members(
-                        validators.slice(0, 4).map(x => x.platformAddress.value)
                     );
                 });
             });

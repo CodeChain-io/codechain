@@ -48,9 +48,9 @@ describe("Shutdown test", function() {
             node: n[0],
             signer: validators[0]
         });
-        const getAlphas = (n = nodes) => filterNodes(n, 1, 5);
-        const getBetas = (n = nodes) => filterNodes(n, 5, 9);
-        const getAlphaBetas = (n = nodes) => filterNodes(n, 1, 9);
+        const getAlphas = (n = nodes) => filterNodes(n, 1, 4);
+        const getBetas = (n = nodes) => filterNodes(n, 4, 7);
+        const getAlphaBetas = (n = nodes) => filterNodes(n, 1, 7);
         const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
@@ -65,12 +65,10 @@ describe("Shutdown test", function() {
                 { signer: validators[1], delegation: 1000, deposit: 100000 },
                 { signer: validators[2], delegation: 1000, deposit: 100000 },
                 { signer: validators[3], delegation: 1000, deposit: 100000 },
-                { signer: validators[4], delegation: 1000, deposit: 100000 },
                 // Betas
+                { signer: validators[4], delegation: 1, deposit: 100000 },
                 { signer: validators[5], delegation: 1, deposit: 100000 },
-                { signer: validators[6], delegation: 1, deposit: 100000 },
-                { signer: validators[7], delegation: 1, deposit: 100000 },
-                { signer: validators[8], delegation: 1, deposit: 100000 }
+                { signer: validators[6], delegation: 1, deposit: 100000 }
             ],
             async onBeforeEnable(allNodes) {
                 for (const node of getBetas(allNodes).nodes) {
@@ -201,19 +199,19 @@ describe("Shutdown test", function() {
             node: n[0],
             signer: validators[0]
         });
-        const getValidators = (n = nodes) => filterNodes(n, 1, 1 + 8);
+        const getValidators = (n = nodes) => filterNodes(n, 1, 1 + 3);
         const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                minNumOfValidators: 4,
-                maxNumOfValidators: 8,
+                minNumOfValidators: 3,
+                maxNumOfValidators: 3,
                 delegationThreshold: 1
             },
             validators: [
                 // Observer: no self-nomination, no deposit
                 { signer: validators[0] },
                 // Validators
-                ...validators.slice(1, 1 + 8).map((signer, i) => ({
+                ...validators.slice(1, 1 + 3).map((signer, i) => ({
                     signer,
                     delegation: 1000,
                     deposit: 100000 - i // tie-breaker

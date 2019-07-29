@@ -28,7 +28,7 @@ import { setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
-const allDynValidators = originalValidators.slice(0, 8);
+const allDynValidators = originalValidators.slice(0, 4);
 const [alice, ...otherDynValidators] = allDynValidators;
 
 describe("Dynamic Validator N -> N-1", function() {

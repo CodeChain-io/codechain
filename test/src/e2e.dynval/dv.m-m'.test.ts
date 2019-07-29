@@ -31,7 +31,7 @@ chai.use(chaiAsPromised);
 describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum number)", function() {
     const promiseExpect = new PromiseExpect();
 
-    const maxNumOfValidators = 6;
+    const maxNumOfValidators = 3;
     const alice = maxNumOfValidators - 1; // will be replaced
     const bob = maxNumOfValidators; // will be elected by doing nothing
     const charlie = maxNumOfValidators + 1; // will be elected by delegating enough
@@ -46,24 +46,20 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
         },
         validators: [
             // Validators
-            { signer: validators[0], delegation: 5000, deposit: 100000 },
-            { signer: validators[1], delegation: 4900, deposit: 100000 },
-            { signer: validators[2], delegation: 4800, deposit: 100000 },
-            { signer: validators[3], delegation: 4700, deposit: 100000 },
-            { signer: validators[4], delegation: 4600, deposit: 100000 },
-            { signer: validators[5], delegation: 4000, deposit: 100000 }, // Alice
+            { signer: validators[0], delegation: 4200, deposit: 100000 },
+            { signer: validators[1], delegation: 4100, deposit: 100000 },
+            { signer: validators[2], delegation: 4000, deposit: 100000 }, // Alice
             // Candidates
-            { signer: validators[6], delegation: 3000, deposit: 100000 }, // Bob
-            { signer: validators[7], delegation: 100, deposit: 100000 }, // Charlie
-            { signer: validators[8], delegation: 4100, deposit: 100 }, // Dave
-            { signer: validators[9], delegation: 100, deposit: 100 }
+            { signer: validators[3], delegation: 3000, deposit: 100000 }, // Bob
+            { signer: validators[4], delegation: 100, deposit: 100000 }, // Charlie
+            { signer: validators[5], delegation: 4100, deposit: 100 } // Dave
         ]
     };
-    const enoughDelegationToCatchBob = 3000;
-    const enoughDepositToCatchBob = 100000;
+    const charlieDelegationToCatchBob = 3000;
+    const daveDepositToCatchBob = 100000;
     const aliceRevokeToBeLowerThanBob = 2000;
-    const enoughDelegationToCatchAlice = 4000;
-    const enoughDepositToCatchAlice = 100000;
+    const charlieDelegationToCatchAlice = 4000;
+    const daveDepositToCatchAlice = 100000;
 
     async function expectAllValidatorsArePossibleAuthors(sdk: SDK) {
         const possibleAuthors = (await stake.getPossibleAuthors(sdk))!;
@@ -142,7 +138,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
                     .createDelegateCCSTransaction(
                         nodes[0].sdk,
                         validators[charlie].platformAddress,
-                        enoughDelegationToCatchBob
+                        charlieDelegationToCatchBob
                     )
                     .sign({
                         secret: faucetSecret,
@@ -178,7 +174,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
                 stake
                     .createSelfNominateTransaction(
                         nodes[dave].sdk,
-                        enoughDepositToCatchBob,
+                        daveDepositToCatchBob,
                         ""
                     )
                     .sign({
@@ -254,7 +250,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
                     .createDelegateCCSTransaction(
                         nodes[0].sdk,
                         validators[charlie].platformAddress,
-                        enoughDelegationToCatchBob
+                        charlieDelegationToCatchBob
                     )
                     .sign({
                         secret: faucetSecret,
@@ -282,7 +278,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
                 stake
                     .createSelfNominateTransaction(
                         nodes[dave].sdk,
-                        enoughDepositToCatchBob,
+                        daveDepositToCatchBob,
                         ""
                     )
                     .sign({
@@ -320,7 +316,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
                     .createDelegateCCSTransaction(
                         nodes[0].sdk,
                         validators[charlie].platformAddress,
-                        enoughDelegationToCatchAlice
+                        charlieDelegationToCatchAlice
                     )
                     .sign({
                         secret: faucetSecret,
@@ -348,7 +344,7 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
                 stake
                     .createSelfNominateTransaction(
                         nodes[dave].sdk,
-                        enoughDepositToCatchAlice,
+                        daveDepositToCatchAlice,
                         ""
                     )
                     .sign({

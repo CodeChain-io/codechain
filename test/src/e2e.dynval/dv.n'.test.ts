@@ -17,43 +17,55 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
-import { validators as originalDynValidators } from "../../tendermint.dynval/constants";
+import { validators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import { setTermTestTimeout, withNodes } from "./setup";
+import { findNode, setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
-const alice = originalDynValidators[0];
-const betty = originalDynValidators[1];
-const otherDynValidators = originalDynValidators.slice(2, 2 + 6);
-
 describe("Dynamic Validator N -> N'", function() {
     const promiseExpect = new PromiseExpect();
+
+    async function expectPossibleAuthors(
+        sdk: SDK,
+        expected: typeof validators,
+        blockNumber?: number
+    ) {
+        const authors = (await stake.getPossibleAuthors(sdk))!.map(
+            author => author.toString(),
+            blockNumber
+        );
+        expect(authors)
+            .to.have.lengthOf(expected.length)
+            .and.to.include.members(
+                expected.map(x => x.platformAddress.toString())
+            );
+    }
 
     describe("1. Jail one of the validator + increase the delegation of a candidate who doesn’t have enough delegation", async function() {
         // alice : Elected as a validator, but does not send precommits and does not propose.
         //   Alice should be jailed.
         // betty : Not elected as validator because of small delegation. She acquire more delegation in the first term.
         //   betty should be a validator in the second term.
+        const alice = validators[3];
+        const betty = validators[4];
         const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
+                { signer: validators[0], delegation: 4200, deposit: 100000 },
+                { signer: validators[1], delegation: 4100, deposit: 100000 },
+                { signer: validators[2], delegation: 4000, deposit: 100000 },
                 { signer: alice, delegation: 5000, deposit: 100000 },
-                { signer: betty, delegation: 2, deposit: 100000 },
-                ...otherDynValidators.map((validator, index) => ({
-                    signer: validator,
-                    delegation: 5000 - index,
-                    deposit: 100000
-                }))
+                { signer: betty, delegation: 2, deposit: 100000 }
             ],
             onBeforeEnable: async nodes => {
-                const aliceNode = nodes[0];
                 // Kill the alice node first to make alice not to participate in the term 1.
-                await aliceNode.clean();
+                await findNode(nodes, alice).clean();
             }
         });
 
@@ -62,16 +74,11 @@ describe("Dynamic Validator N -> N'", function() {
                 terms: 1
             });
 
-            const [_aliceNode, _bettyNode, ...otherDynNodes] = nodes;
-            const rpcNode = otherDynNodes[0];
-            const beforeAuthors = (await stake.getPossibleAuthors(
-                rpcNode.sdk
-            ))!.map(author => author.toString());
-            expect(beforeAuthors).to.includes(alice.platformAddress.toString());
-            expect(beforeAuthors).not.to.includes(
-                betty.platformAddress.toString()
-            );
-            expect(beforeAuthors.length).to.be.equals(7);
+            const rpcNode = nodes[0];
+            await expectPossibleAuthors(rpcNode.sdk, [
+                ...validators.slice(0, 3),
+                alice
+            ]);
 
             const tx = stake
                 .createDelegateCCSTransaction(
@@ -93,14 +100,10 @@ describe("Dynamic Validator N -> N'", function() {
                 termPeriods: 1
             });
 
-            const afterAuthors = (await stake.getPossibleAuthors(
-                rpcNode.sdk
-            ))!.map(author => author.toString());
-            expect(afterAuthors).not.to.includes(
-                alice.platformAddress.toString()
-            );
-            expect(afterAuthors).to.includes(betty.platformAddress.toString());
-            expect(afterAuthors.length).to.be.equals(7);
+            await expectPossibleAuthors(rpcNode.sdk, [
+                ...validators.slice(0, 3),
+                betty
+            ]);
         });
     });
 
@@ -109,21 +112,20 @@ describe("Dynamic Validator N -> N'", function() {
         //   Alice should be jailed.
         // betty : Not elected as validator because of small deposit. She deposits more CCC in the first term.
         //   betty should be a validator in the second term.
+        const alice = validators[3];
+        const betty = validators[4];
         const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
+                { signer: validators[0], delegation: 4200, deposit: 100000 },
+                { signer: validators[1], delegation: 4100, deposit: 100000 },
+                { signer: validators[2], delegation: 4000, deposit: 100000 },
                 { signer: alice, delegation: 5000, deposit: 100000 },
-                { signer: betty, delegation: 5000, deposit: 100 },
-                ...otherDynValidators.map((validator, index) => ({
-                    signer: validator,
-                    delegation: 5000 - index,
-                    deposit: 100000
-                }))
+                { signer: betty, delegation: 5000, deposit: 100 }
             ],
             onBeforeEnable: async nodes => {
-                const aliceNode = nodes[0];
                 // Kill the alice node first to make alice not to participate in the term 1.
-                await aliceNode.clean();
+                await findNode(nodes, alice).clean();
             }
         });
 
@@ -131,18 +133,14 @@ describe("Dynamic Validator N -> N'", function() {
             const termWaiter = setTermTestTimeout(this, {
                 terms: 1
             });
-            const [_aliceNode, bettyNode, ...otherDynNodes] = nodes;
-            const rpcNode = otherDynNodes[0];
+            const rpcNode = nodes[0];
 
-            const beforeAuthors = (await stake.getPossibleAuthors(
-                rpcNode.sdk
-            ))!.map(author => author.toString());
-            expect(beforeAuthors).to.includes(alice.platformAddress.toString());
-            expect(beforeAuthors).not.to.includes(
-                betty.platformAddress.toString()
-            );
-            expect(beforeAuthors.length).to.be.equals(7);
+            await expectPossibleAuthors(rpcNode.sdk, [
+                ...validators.slice(0, 3),
+                alice
+            ]);
 
+            const bettyNode = findNode(nodes, betty);
             const tx = stake
                 .createSelfNominateTransaction(bettyNode.sdk, 100000, "")
                 .sign({
@@ -162,14 +160,10 @@ describe("Dynamic Validator N -> N'", function() {
                 termPeriods: 1
             });
 
-            const afterAuthors = (await stake.getPossibleAuthors(
-                rpcNode.sdk
-            ))!.map(author => author.toString());
-            expect(afterAuthors).not.to.includes(
-                alice.platformAddress.toString()
-            );
-            expect(afterAuthors).to.includes(betty.platformAddress.toString());
-            expect(afterAuthors.length).to.be.equals(7);
+            await expectPossibleAuthors(rpcNode.sdk, [
+                ...validators.slice(0, 3),
+                betty
+            ]);
         });
     });
 
@@ -178,16 +172,16 @@ describe("Dynamic Validator N -> N'", function() {
         //   Alice must be kicked out of the validator group.
         // betty : Not elected as validator because of small delegation. She acquire more delegation in the first term.
         //   betty should be a validator in the second term.
+        const alice = validators[3];
+        const betty = validators[4];
         const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
+                { signer: validators[0], delegation: 4200, deposit: 100000 },
+                { signer: validators[1], delegation: 4100, deposit: 100000 },
+                { signer: validators[2], delegation: 4000, deposit: 100000 },
                 { signer: alice, delegation: 5000, deposit: 100000 },
-                { signer: betty, delegation: 50, deposit: 100000 },
-                ...otherDynValidators.map((validator, index) => ({
-                    signer: validator,
-                    delegation: 5000 - index,
-                    deposit: 100000
-                }))
+                { signer: betty, delegation: 50, deposit: 100000 }
             ]
         });
 
@@ -195,17 +189,12 @@ describe("Dynamic Validator N -> N'", function() {
             const termWaiter = setTermTestTimeout(this, {
                 terms: 1
             });
-            const [, , ...otherDynNodes] = nodes;
-            const rpcNode = otherDynNodes[0];
+            const rpcNode = nodes[0];
 
-            const beforeAuthors = (await stake.getPossibleAuthors(
-                rpcNode.sdk
-            ))!.map(author => author.toString());
-            expect(beforeAuthors).to.includes(alice.platformAddress.toString());
-            expect(beforeAuthors).not.to.includes(
-                betty.platformAddress.toString()
-            );
-            expect(beforeAuthors.length).to.be.equals(7);
+            await expectPossibleAuthors(rpcNode.sdk, [
+                ...validators.slice(0, 3),
+                alice
+            ]);
 
             const seq = await rpcNode.sdk.rpc.chain.getSeq(faucetAddress);
             const tx = stake
@@ -240,14 +229,10 @@ describe("Dynamic Validator N -> N'", function() {
                 termPeriods: 1
             });
 
-            const afterAuthors = (await stake.getPossibleAuthors(
-                rpcNode.sdk
-            ))!.map(author => author.toString());
-            expect(afterAuthors).not.to.includes(
-                alice.platformAddress.toString()
-            );
-            expect(afterAuthors).to.includes(betty.platformAddress.toString());
-            expect(afterAuthors.length).to.be.equals(7);
+            await expectPossibleAuthors(rpcNode.sdk, [
+                ...validators.slice(0, 3),
+                betty
+            ]);
         });
     });
 
@@ -256,16 +241,16 @@ describe("Dynamic Validator N -> N'", function() {
         //   Alice must be kicked out of the validator group.
         // betty : Not elected as validator because of small deposit. She deposits more CCC in the first term.
         //   betty should be a validator in the second term.
+        const alice = validators[3];
+        const betty = validators[4];
         const { nodes } = withNodes(this, {
             promiseExpect,
             validators: [
+                { signer: validators[0], delegation: 4200, deposit: 100000 },
+                { signer: validators[1], delegation: 4100, deposit: 100000 },
+                { signer: validators[2], delegation: 4000, deposit: 100000 },
                 { signer: alice, delegation: 5000, deposit: 100000 },
-                { signer: betty, delegation: 5000, deposit: 10 },
-                ...otherDynValidators.map((validator, index) => ({
-                    signer: validator,
-                    delegation: 5000 - index,
-                    deposit: 100000
-                }))
+                { signer: betty, delegation: 5000, deposit: 10 }
             ]
         });
 
@@ -273,18 +258,14 @@ describe("Dynamic Validator N -> N'", function() {
             const termWaiter = setTermTestTimeout(this, {
                 terms: 1
             });
-            const [, bettyNode, ...otherDynNodes] = nodes;
-            const rpcNode = otherDynNodes[0];
+            const rpcNode = nodes[0];
 
-            const beforeAuthors = (await stake.getPossibleAuthors(
-                rpcNode.sdk
-            ))!.map(author => author.toString());
-            expect(beforeAuthors).to.includes(alice.platformAddress.toString());
-            expect(beforeAuthors).not.to.includes(
-                betty.platformAddress.toString()
-            );
-            expect(beforeAuthors.length).to.be.equals(7);
+            await expectPossibleAuthors(rpcNode.sdk, [
+                ...validators.slice(0, 3),
+                alice
+            ]);
 
+            const bettyNode = findNode(nodes, betty);
             const tx = stake
                 .createSelfNominateTransaction(bettyNode.sdk, 100000, "")
                 .sign({
@@ -320,14 +301,10 @@ describe("Dynamic Validator N -> N'", function() {
                 termPeriods: 1
             });
 
-            const afterAuthors = (await stake.getPossibleAuthors(
-                rpcNode.sdk
-            ))!.map(author => author.toString());
-            expect(afterAuthors).not.to.includes(
-                alice.platformAddress.toString()
-            );
-            expect(afterAuthors).to.includes(betty.platformAddress.toString());
-            expect(afterAuthors.length).to.be.equals(7);
+            await expectPossibleAuthors(rpcNode.sdk, [
+                ...validators.slice(0, 3),
+                betty
+            ]);
         });
     });
 
