@@ -42,9 +42,11 @@ use crate::client::{Client, ConsensusClient};
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::tendermint::params::TimeGapParams;
 use crate::consensus::{EngineType, ValidatorSet};
+use crate::encoded;
 use crate::error::Error;
 use crate::views::HeaderView;
 use crate::BlockId;
+use rlp::Encodable;
 
 impl ConsensusEngine for Tendermint {
     fn name(&self) -> &str {
@@ -73,13 +75,12 @@ impl ConsensusEngine for Tendermint {
     ///
     /// This operation is synchronous and may (quite reasonably) not be available, in which case
     /// `Seal::None` will be returned.
-    fn generate_seal(&self, block: &ExecutedBlock, parent: &Header) -> Seal {
+    fn generate_seal(&self, _block: Option<&ExecutedBlock>, parent: &Header) -> Seal {
         let (result, receiver) = crossbeam::bounded(1);
-        let block_number = block.header().number();
         let parent_hash = parent.hash();
         self.inner
             .send(worker::Event::GenerateSeal {
-                block_number,
+                block_number: parent.number() + 1,
                 parent_hash,
                 result,
             })
@@ -214,11 +215,18 @@ impl ConsensusEngine for Tendermint {
             };
 
             let banned = stake::Banned::load_from_state(block.state())?;
+            let start_of_the_current_term_header = if block.header().number() == start_of_the_current_term {
+                encoded::Header::new(block.header().clone().rlp_bytes().to_vec())
+            } else {
+                client.block_header(&start_of_the_current_term.into()).unwrap()
+            };
+
             let pending_rewards = calculate_pending_rewards_of_the_previous_term(
                 &*client,
                 &*self.validators,
                 rewards,
                 start_of_the_current_term,
+                start_of_the_current_term_header,
                 start_of_the_previous_term,
                 &banned,
             )?;
@@ -376,6 +384,7 @@ fn calculate_pending_rewards_of_the_previous_term(
     validators: &ValidatorSet,
     rewards: BTreeMap<Address, u64>,
     start_of_the_current_term: u64,
+    start_of_the_current_term_header: encoded::Header,
     start_of_the_previous_term: u64,
     banned: &stake::Banned,
 ) -> Result<HashMap<Address, u64>, Error> {
@@ -386,7 +395,7 @@ fn calculate_pending_rewards_of_the_previous_term(
     let mut missed_signatures = HashMap::<Address, (usize, usize)>::with_capacity(MAX_NUM_OF_VALIDATORS);
     let mut signed_blocks = HashMap::<Address, usize>::with_capacity(MAX_NUM_OF_VALIDATORS);
 
-    let mut header = chain.block_header(&start_of_the_current_term.into()).unwrap();
+    let mut header = start_of_the_current_term_header;
     let mut parent_validators = {
         let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
         validators.addresses(&grand_parent_header.parent_hash())

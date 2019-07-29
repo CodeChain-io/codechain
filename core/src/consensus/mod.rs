@@ -131,6 +131,15 @@ impl EngineType {
             EngineType::PoW => false,
         }
     }
+
+    pub fn is_seal_first(&self) -> bool {
+        match self {
+            EngineType::PoA => false,
+            EngineType::PBFT => true,
+            EngineType::Solo => true,
+            EngineType::PoW => false,
+        }
+    }
 }
 
 /// A consensus mechanism for the chain.
@@ -165,7 +174,7 @@ pub trait ConsensusEngine: Sync + Send {
     ///
     /// It is fine to require access to state or a full client for this function, since
     /// light clients do not generate seals.
-    fn generate_seal(&self, _block: &ExecutedBlock, _parent: &Header) -> Seal {
+    fn generate_seal(&self, _block: Option<&ExecutedBlock>, _parent: &Header) -> Seal {
         Seal::None
     }
 

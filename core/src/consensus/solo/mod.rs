@@ -120,7 +120,7 @@ impl ConsensusEngine for Solo {
         EngineType::Solo
     }
 
-    fn generate_seal(&self, _block: &ExecutedBlock, _parent: &Header) -> Seal {
+    fn generate_seal(&self, _block: Option<&ExecutedBlock>, _parent: &Header) -> Seal {
         Seal::Solo
     }
 
@@ -212,7 +212,7 @@ mod tests {
         let parent_common_params = CommonParams::default_for_test();
         let term_common_params = CommonParams::default_for_test();
         let b = b.close_and_lock(&genesis_header, &parent_common_params, Some(&term_common_params)).unwrap();
-        if let Some(seal) = engine.generate_seal(b.block(), &genesis_header).seal_fields() {
+        if let Some(seal) = engine.generate_seal(Some(b.block()), &genesis_header).seal_fields() {
             assert!(b.try_seal(engine, seal).is_ok());
         }
     }

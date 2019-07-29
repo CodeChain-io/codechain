@@ -306,6 +306,21 @@ impl<'x> OpenBlock<'x> {
     pub fn set_timestamp(&mut self, timestamp: u64) {
         self.block.header.set_timestamp(timestamp);
     }
+
+    /// Provide a valid seal
+    ///
+    /// NOTE: This does not check the validity of `seal` with the engine.
+    pub fn seal(&mut self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<(), BlockError> {
+        let expected_seal_fields = engine.seal_fields(self.header());
+        if seal.len() != expected_seal_fields {
+            return Err(BlockError::InvalidSealArity(Mismatch {
+                expected: expected_seal_fields,
+                found: seal.len(),
+            }))
+        }
+        self.block.header.set_seal(seal);
+        Ok(())
+    }
 }
 
 /// Just like `OpenBlock`, except that we've applied `Engine::on_close_block`, finished up the non-seal header fields.
@@ -377,6 +392,12 @@ impl LockedBlock {
             _ => Ok(SealedBlock {
                 block: self.block,
             }),
+        }
+    }
+
+    pub fn already_sealed(self) -> SealedBlock {
+        SealedBlock {
+            block: self.block,
         }
     }
 }

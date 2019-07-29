@@ -1,0 +1,51 @@
+// Copyright 2019 Kodebox, Inc.
+// This file is part of CodeChain.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
+import "mocha";
+import { validators as originalDynValidators } from "../../tendermint.dynval/constants";
+import { PromiseExpect } from "../helper/promise";
+import { withNodes } from "./setup";
+
+chai.use(chaiAsPromised);
+
+const alice = originalDynValidators[0];
+
+describe("one block one term test", function() {
+    const promiseExpect = new PromiseExpect();
+    const TERM_SECONDS = 1;
+    const margin = 1.2;
+
+    const nodes = withNodes(this, {
+        promiseExpect,
+        overrideParams: {
+            termSeconds: TERM_SECONDS
+        },
+        validators: [{ signer: alice, delegation: 5000, deposit: 100000 }]
+    });
+
+    it("Alice should success creating terms", async function() {
+        const aliceNode = nodes[0];
+        this.slow(TERM_SECONDS * 2 * margin * 1000 + 5_000);
+        this.timeout(TERM_SECONDS * 3 * 1000 + 10_000);
+        await aliceNode.waitForTermChange(3, TERM_SECONDS * 2 * margin + 5_000);
+    });
+
+    afterEach(async function() {
+        await promiseExpect.checkFulfilled();
+    });
+});
