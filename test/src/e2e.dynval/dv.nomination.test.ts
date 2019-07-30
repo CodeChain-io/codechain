@@ -17,49 +17,45 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
-import { H160, H512 } from "codechain-primitives/lib";
+import { H512 } from "codechain-primitives/lib";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
-import { validators as originalDynValidators } from "../../tendermint.dynval/constants";
+
+import { validators } from "../../tendermint.dynval/constants";
 import { PromiseExpect } from "../helper/promise";
-import { selfNominate, withNodes } from "./setup";
+import { findNode, selfNominate, setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
-
-const [alice, ...otherDynValidators] = originalDynValidators;
 
 describe("Nomination", function() {
     const promiseExpect = new PromiseExpect();
     const NOMINATION_EXPIRATION = 2;
-    const TERM_SECONDS = 20;
-    const margin = 1.2;
 
     describe("Alice doesn't self nominate in NOMINATION_EXPIRATION", async function() {
-        // alice : Elected as a validator, but does not send precommits and does not propose.
-        //   Alice should be jailed.
-        // betty : Not elected as validator because of small delegation. She acquire more delegation in the first term.
-        //   betty should be a validator in the second term.
-        const allDynNodes = withNodes(this, {
+        // alice : Self-nominated, but not elected as a validator. doesn't re-self-nominate.
+        const initialValidators = validators.slice(0, 3);
+        const alice = validators[3];
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                nominationExpiration: NOMINATION_EXPIRATION,
-                termSeconds: TERM_SECONDS
+                nominationExpiration: NOMINATION_EXPIRATION
             },
             validators: [
-                { signer: alice },
-                ...otherDynValidators.map((validator, index) => ({
+                ...initialValidators.map((validator, index) => ({
                     signer: validator,
                     delegation: 5000 - index,
                     deposit: 100000
-                }))
+                })),
+                { signer: alice }
             ]
         });
 
         it("Alice be eligible after 2 terms", async function() {
-            this.slow(TERM_SECONDS * 3 * margin * 1000);
-            this.timeout(TERM_SECONDS * 4 * 1000);
-            const [aliceNode, ...otherDynNodes] = allDynNodes;
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 3
+            });
 
+            const aliceNode = findNode(nodes, alice);
             const selfNominationHash = await selfNominate(
                 aliceNode.sdk,
                 alice,
@@ -67,38 +63,45 @@ describe("Nomination", function() {
             );
             await aliceNode.waitForTx(selfNominationHash);
 
-            const beforeCandidates = await stake.getCandidates(
-                otherDynNodes[0].sdk
-            );
+            const beforeCandidates = await stake.getCandidates(nodes[0].sdk);
 
             expect(
                 beforeCandidates.map(candidate => candidate.pubkey.toString())
             ).to.includes(H512.ensure(alice.publicKey).toString());
 
-            await otherDynNodes[0].waitForTermChange(
-                4,
-                TERM_SECONDS * margin * 3
-            );
+            await termWaiter.waitNodeUntilTerm(nodes[0], {
+                target: 4,
+                termPeriods: 3
+            });
 
-            const [validators, banned, candidates, jailed] = await Promise.all([
-                stake.getValidators(otherDynNodes[0].sdk),
-                stake.getBanned(otherDynNodes[0].sdk),
-                stake.getCandidates(otherDynNodes[0].sdk),
-                stake.getJailed(otherDynNodes[0].sdk)
+            const [
+                currentValidators,
+                banned,
+                candidates,
+                jailed
+            ] = await Promise.all([
+                stake.getValidators(nodes[0].sdk),
+                stake.getBanned(nodes[0].sdk),
+                stake.getCandidates(nodes[0].sdk),
+                stake.getJailed(nodes[0].sdk)
             ]);
 
             expect(
-                validators.map(validator => validator.pubkey.toString())
+                currentValidators.map(validator => validator.pubkey.toString())
             ).not.to.includes(alice.publicKey);
             expect(
                 banned.map(ban => ban.getAccountId().toString())
             ).not.to.includes(alice.accountId);
             expect(
-                candidates.map(canidate => canidate.pubkey.toString())
+                candidates.map(candidate => candidate.pubkey.toString())
             ).not.to.includes(alice.publicKey);
             expect(jailed.map(jail => jail.address)).not.to.includes(
                 alice.platformAddress.toString()
             );
         });
+    });
+
+    afterEach(function() {
+        promiseExpect.checkFulfilled();
     });
 });

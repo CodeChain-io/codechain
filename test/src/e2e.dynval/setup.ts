@@ -6,7 +6,7 @@ import {
 } from "codechain-primitives/lib";
 import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
-import { Suite } from "mocha";
+import { Context, Suite } from "mocha";
 import {
     aliceSecret,
     bobSecret,
@@ -15,21 +15,15 @@ import {
     stakeActionHandlerId,
     validator0Address,
     validator1Address,
-    validator2Address,
-    validator3Address
+    validator2Address
 } from "../helper/constants";
-import { PromiseExpect } from "../helper/promise";
-import CodeChain from "../helper/spawn";
+import { PromiseExpect, wait } from "../helper/promise";
+import CodeChain, { Signer } from "../helper/spawn";
 
 const RLP = require("rlp");
 
 interface ValidatorConfig {
-    signer: {
-        privateKey: string;
-        publicKey: string;
-        accountId: string;
-        platformAddress: PlatformAddress;
-    };
+    signer: Signer;
     deposit?: U64Value;
     delegation?: U64Value;
 }
@@ -42,45 +36,66 @@ export function withNodes(
         overrideParams?: Partial<typeof defaultParams>;
         onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
     }
-): CodeChain[] {
-    const result: CodeChain[] = [];
+) {
+    const nodes: CodeChain[] = [];
+    const { overrideParams = {} } = options;
+    const initialParams = {
+        ...defaultParams,
+        ...overrideParams
+    };
     suite.beforeEach(async function() {
-        const termSeconds =
-            (options &&
-                options.overrideParams &&
-                options.overrideParams.termSeconds) ||
-            defaultParams.termSeconds;
+        const termSeconds = initialParams.termSeconds;
         const secsPerBlock = 5;
         this.slow((secsPerBlock * 3 + termSeconds) * 1000); // createNodes will wait for 3 blocks + at most 1 terms
         this.timeout((secsPerBlock * 3 + termSeconds) * 2 * 1000);
-        result.length = 0;
-        const nodes = await createNodes(options);
-        result.push(...nodes);
+        nodes.length = 0;
+        const newNodes = await createNodes({
+            ...options,
+            initialParams
+        });
+        nodes.push(...newNodes);
     });
     suite.afterEach(async function() {
         if (this.currentTest!.state === "failed") {
-            result.map(node => node.keepLogs());
+            nodes.map(node => node.keepLogs());
         }
-        await Promise.all(result.map(node => node.clean()));
+        await Promise.all(nodes.map(node => node.clean()));
     });
-    return result;
+
+    return {
+        nodes,
+        initialParams
+    };
 }
 
-export async function createNodes(options: {
+export function findNode(nodes: CodeChain[], signer: Signer) {
+    for (const node of nodes) {
+        if (
+            node.signer.platformAddress.toString() ===
+            signer.platformAddress.toString()
+        ) {
+            return node;
+        }
+    }
+    throw new Error(
+        `Cannot find a node of signer ${signer.platformAddress.toString()}`
+    );
+}
+
+async function createNodes(options: {
     promiseExpect: PromiseExpect;
     validators: ValidatorConfig[];
-    overrideParams?: Partial<typeof defaultParams>;
+    initialParams: typeof defaultParams;
     onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
 }): Promise<CodeChain[]> {
     const chain = `${__dirname}/../scheme/tendermint-dynval.json`;
-    const { promiseExpect, validators, overrideParams = {} } = options;
+    const { promiseExpect, validators, initialParams } = options;
 
     const initialNodes: CodeChain[] = [];
     const initialValidators = [
         validator0Address,
         validator1Address,
-        validator2Address,
-        validator3Address
+        validator2Address
     ];
     for (let i = 0; i < initialValidators.length; i++) {
         initialNodes[i] = new CodeChain({
@@ -110,6 +125,7 @@ export async function createNodes(options: {
             ],
             additionalKeysPath: `tendermint.dynval/${validator.platformAddress.value}/keys`
         });
+        nodes[i].setSigner(validator);
     }
     let bootstrapFailed = false;
     try {
@@ -220,10 +236,7 @@ export async function createNodes(options: {
         }
 
         // enable!
-        const changeTx = await changeParams(initialNodes[0], 0, {
-            ...defaultParams,
-            ...overrideParams
-        });
+        const changeTx = await changeParams(initialNodes[0], 0, initialParams);
 
         for (const node of runningNodes) {
             // nodes can be cleaned in `onBeforeEnable`
@@ -326,12 +339,12 @@ export const defaultParams = {
     maxBodySize: 4194304,
     snapshotPeriod: 16384,
 
-    termSeconds: 20,
+    termSeconds: 15,
     nominationExpiration: 10,
     custodyPeriod: 10,
     releasePeriod: 30,
-    maxNumOfValidators: 8,
-    minNumOfValidators: 4,
+    maxNumOfValidators: 5,
+    minNumOfValidators: 3,
     delegationThreshold: 1000,
     minDeposit: 10000,
     maxCandidateMetadataSize: 128
@@ -401,4 +414,53 @@ export async function changeParams(
                 fee: 10
             })
     );
+}
+
+interface TermWaiter {
+    termSeconds: number;
+    waitForTermPeriods(termPeriods: number, margin: number): Promise<void>;
+    waitNodeUntilTerm(
+        node: CodeChain,
+        params: {
+            target: number;
+            termPeriods: number;
+        }
+    ): Promise<void>;
+}
+
+export function setTermTestTimeout(
+    context: Context | Suite,
+    options: {
+        terms: number;
+        params?: {
+            termSeconds: number;
+        };
+    }
+): TermWaiter {
+    const { terms, params: { termSeconds } = defaultParams } = options;
+    const slowMargin = 0.5;
+    const timeoutMargin = 2.0;
+    context.slow(termSeconds * (terms + slowMargin) * 1000);
+    context.timeout(termSeconds * (terms + timeoutMargin) * 1000);
+    function termPeriodsToTime(termPeriods: number, margin: number): number {
+        return (termPeriods + margin) * termSeconds;
+    }
+    return {
+        termSeconds,
+        async waitForTermPeriods(termPeriods: number, margin: number) {
+            await wait(termPeriodsToTime(termPeriods, margin) * 1000);
+        },
+        async waitNodeUntilTerm(
+            node: CodeChain,
+            waiterParams: {
+                target: number;
+                termPeriods: number;
+            }
+        ) {
+            await node.waitForTermChange(
+                waiterParams.target,
+                termPeriodsToTime(waiterParams.termPeriods, 0.5)
+            );
+        }
+    };
 }

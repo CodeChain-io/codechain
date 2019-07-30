@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import { PlatformAddress } from "codechain-primitives/lib";
 import { SDK } from "codechain-sdk";
+import { Signer } from "../src/helper/spawn";
 
 const privateKeys = [
   "aa42ea65225bbd39dd0fdb80b855c936d256f33cfcf3ead9146e43c476334cd5", // tccqy0mn5x8y3shes2ncmsjna94nuffrt9msqz27ez6
@@ -30,12 +30,7 @@ const privateKeys = [
   "01153af55ce89f8ee107d5a0e103f73f6354810142e33ea60753288d57833b4a" // tccq8en43nfkkpjxn534gccpqejzhmx75lx2sxkyj6u
 ];
 
-export const validators: {
-  privateKey: string;
-  publicKey: string;
-  accountId: string;
-  platformAddress: PlatformAddress;
-}[] = privateKeys.map(privateKey => {
+export const validators: Signer[] = privateKeys.map(privateKey => {
   const publicKey = SDK.util.getPublicFromPrivate(privateKey);
   const accountId = SDK.util.getAccountIdFromPrivate(privateKey);
   const platformAddress = SDK.Core.classes.PlatformAddress.fromPublic(

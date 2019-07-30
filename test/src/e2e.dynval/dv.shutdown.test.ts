@@ -21,16 +21,14 @@ import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
 import { validators } from "../../tendermint.dynval/constants";
-import { PromiseExpect, wait } from "../helper/promise";
+import { PromiseExpect } from "../helper/promise";
 import CodeChain from "../helper/spawn";
-import { fullyConnect, withNodes } from "./setup";
+import { fullyConnect, setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
 describe("Shutdown test", function() {
     const promiseExpect = new PromiseExpect();
-    const termSeconds = 20;
-    const margin = 1.2;
 
     function filterNodes(nodes: CodeChain[], from: number, to: number) {
         const selected = nodes
@@ -50,13 +48,12 @@ describe("Shutdown test", function() {
             node: n[0],
             signer: validators[0]
         });
-        const getAlphas = (n = nodes) => filterNodes(n, 1, 5);
-        const getBetas = (n = nodes) => filterNodes(n, 5, 9);
-        const getAlphaBetas = (n = nodes) => filterNodes(n, 1, 9);
-        const nodes = withNodes(this, {
+        const getAlphas = (n = nodes) => filterNodes(n, 1, 4);
+        const getBetas = (n = nodes) => filterNodes(n, 4, 7);
+        const getAlphaBetas = (n = nodes) => filterNodes(n, 1, 7);
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                termSeconds,
                 minNumOfValidators: 4,
                 maxNumOfValidators: 8,
                 delegationThreshold: 1
@@ -68,12 +65,10 @@ describe("Shutdown test", function() {
                 { signer: validators[1], delegation: 1000, deposit: 100000 },
                 { signer: validators[2], delegation: 1000, deposit: 100000 },
                 { signer: validators[3], delegation: 1000, deposit: 100000 },
-                { signer: validators[4], delegation: 1000, deposit: 100000 },
                 // Betas
+                { signer: validators[4], delegation: 1, deposit: 100000 },
                 { signer: validators[5], delegation: 1, deposit: 100000 },
-                { signer: validators[6], delegation: 1, deposit: 100000 },
-                { signer: validators[7], delegation: 1, deposit: 100000 },
-                { signer: validators[8], delegation: 1, deposit: 100000 }
+                { signer: validators[6], delegation: 1, deposit: 100000 }
             ],
             async onBeforeEnable(allNodes) {
                 for (const node of getBetas(allNodes).nodes) {
@@ -95,7 +90,8 @@ describe("Shutdown test", function() {
         });
 
         async function waitUntilTermAlmostFinish(
-            stopBefore: number
+            stopBefore: number,
+            termSeconds: number
         ): Promise<void> {
             const node = getObserver().node;
             const sdk = node.sdk;
@@ -128,11 +124,12 @@ describe("Shutdown test", function() {
         }
 
         it("Alphas should be next validators after a complete shutdown", async function() {
-            this.slow(2 * termSeconds * 1000 * 1.5);
-            this.timeout(2 * termSeconds * 1000 * 2);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 2
+            });
 
             // Only Alphas will validate.
-            await waitUntilTermAlmostFinish(5);
+            await waitUntilTermAlmostFinish(5, termWaiter.termSeconds);
             // Shutdown all validators ASAP before term is closed.
             await Promise.all(getAlphaBetas().nodes.map(node => node.clean()));
 
@@ -161,9 +158,7 @@ describe("Shutdown test", function() {
                     .and.to.include.members(getAlphaBetas().addrs);
             }
 
-            // We can't rely on the block time since there are no working validators
-            // so just wait for an enough time to pass a term period.
-            await wait(termSeconds * 1000 * margin);
+            await termWaiter.waitForTermPeriods(1, 0.5);
             // Revival
             await Promise.all(getAlphaBetas().nodes.map(node => node.start()));
             await fullyConnect(nodes, promiseExpect);
@@ -204,20 +199,19 @@ describe("Shutdown test", function() {
             node: n[0],
             signer: validators[0]
         });
-        const getValidators = (n = nodes) => filterNodes(n, 1, 1 + 8);
-        const nodes = withNodes(this, {
+        const getValidators = (n = nodes) => filterNodes(n, 1, 1 + 3);
+        const { nodes } = withNodes(this, {
             promiseExpect,
             overrideParams: {
-                termSeconds,
-                minNumOfValidators: 4,
-                maxNumOfValidators: 8,
+                minNumOfValidators: 3,
+                maxNumOfValidators: 3,
                 delegationThreshold: 1
             },
             validators: [
                 // Observer: no self-nomination, no deposit
                 { signer: validators[0] },
                 // Validators
-                ...validators.slice(1, 1 + 8).map((signer, i) => ({
+                ...validators.slice(1, 1 + 3).map((signer, i) => ({
                     signer,
                     delegation: 1000,
                     deposit: 100000 - i // tie-breaker
@@ -231,8 +225,9 @@ describe("Shutdown test", function() {
         });
 
         it("only a term closer should be a validator after a complete shutdown", async function() {
-            this.slow(2 * termSeconds * 1000 * 1.5);
-            this.timeout(2 * termSeconds * 1000 * 2);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 2
+            });
 
             // Shutdown all validators ASAP before any block is created.
             await Promise.all(getValidators().nodes.map(node => node.clean()));
@@ -258,9 +253,7 @@ describe("Shutdown test", function() {
                     .and.to.include.members(getValidators().addrs);
             }
 
-            // We can't rely on the block time since there are no working validators
-            // so just wait for an enough time to pass two term period.
-            await wait(2 * termSeconds * 1000 * margin);
+            await termWaiter.waitForTermPeriods(2, 0.5);
             // Revival
             await Promise.all(getValidators().nodes.map(node => node.start()));
             await fullyConnect(nodes, promiseExpect);
@@ -305,5 +298,9 @@ describe("Shutdown test", function() {
                 );
             }
         });
+    });
+
+    afterEach(function() {
+        promiseExpect.checkFulfilled();
     });
 });

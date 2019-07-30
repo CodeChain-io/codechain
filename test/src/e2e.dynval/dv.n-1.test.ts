@@ -17,24 +17,22 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
-import * as stake from "codechain-stakeholder-sdk";
 import { SDK } from "codechain-sdk";
+import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
 import { validators as originalValidators } from "../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
-import { withNodes } from "./setup";
+import { setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
-const allDynValidators = originalValidators.slice(0, 8);
+const allDynValidators = originalValidators.slice(0, 4);
 const [alice, ...otherDynValidators] = allDynValidators;
 
 describe("Dynamic Validator N -> N-1", function() {
     const promiseExpect = new PromiseExpect();
-    const termSeconds = 20;
-    const margin = 1.3;
 
     async function aliceContainedCheck(sdk: SDK) {
         const blockNumber = await sdk.rpc.chain.getBestBlockNumber();
@@ -75,7 +73,7 @@ describe("Dynamic Validator N -> N-1", function() {
     }
 
     describe("A node is imprisoned to jail", async function() {
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: allDynValidators.map((signer, index) => ({
                 signer,
@@ -90,23 +88,24 @@ describe("Dynamic Validator N -> N-1", function() {
         });
 
         it("alice should be dropped out from validator list", async function() {
-            this.slow(termSeconds * 1000);
-            this.timeout(termSeconds * 2 * 1000);
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1
+            });
 
             const checkingNode = nodes[1];
             await aliceContainedCheck(checkingNode.sdk);
 
-            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
 
             await aliceDropOutCheck(checkingNode.sdk);
         });
     });
 
     describe("A node dropped out of validator list by revoke action", async function() {
-        this.slow(termSeconds * 1000);
-        this.timeout(termSeconds * 2 * 1000);
-
-        const nodes = withNodes(this, {
+        const { nodes } = withNodes(this, {
             promiseExpect,
             validators: allDynValidators.map((signer, index) => ({
                 signer,
@@ -116,6 +115,9 @@ describe("Dynamic Validator N -> N-1", function() {
         });
 
         it("Revoke all delegation deposits from Alice", async function() {
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1
+            });
             const checkingNode = nodes[1];
             await aliceContainedCheck(checkingNode.sdk);
 
@@ -139,11 +141,17 @@ describe("Dynamic Validator N -> N-1", function() {
             );
             await checkingNode.waitForTx(revokeTx);
 
-            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
             await aliceDropOutCheck(checkingNode.sdk);
         });
 
         it("Revoke delegation deposits to make it be under threshold", async function() {
+            const termWaiter = setTermTestTimeout(this, {
+                terms: 1
+            });
             const checkingNode = nodes[1];
             await aliceContainedCheck(checkingNode.sdk);
 
@@ -167,7 +175,10 @@ describe("Dynamic Validator N -> N-1", function() {
             );
             await checkingNode.waitForTx(revokeTx);
 
-            await checkingNode.waitForTermChange(2, termSeconds * margin);
+            await termWaiter.waitNodeUntilTerm(checkingNode, {
+                target: 2,
+                termPeriods: 1
+            });
             await aliceDropOutCheck(checkingNode.sdk);
         });
     });

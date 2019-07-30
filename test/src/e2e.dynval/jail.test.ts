@@ -22,25 +22,22 @@ import "mocha";
 
 import { validators } from "../../tendermint.dynval/constants";
 import { PromiseExpect } from "../helper/promise";
-import { withNodes } from "./setup";
+import { setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
 describe("Jail state transition test", function() {
     const promiseExpect = new PromiseExpect();
-    const termSeconds = 20;
-    const margin = 1.2;
 
     const alice = validators[1];
-    const nodes = withNodes(this, {
+    const { nodes } = withNodes(this, {
         promiseExpect,
-        validators: validators.map((signer, index) => ({
+        validators: validators.slice(0, 5).map((signer, index) => ({
             signer,
             delegation: 5000,
             deposit: 10_000_000 - index // tie-breaker
         })),
         overrideParams: {
-            termSeconds,
             custodyPeriod: 2,
             releasePeriod: 3
         },
@@ -93,33 +90,36 @@ describe("Jail state transition test", function() {
     }
 
     beforeEach(async function() {
-        this.slow(termSeconds * (2 + 1) * 1000);
-        this.timeout(termSeconds * (2 + 2) * 1000);
+        const termWaiter = setTermTestTimeout(this, {
+            terms: 1
+        });
 
         // Wait until alice is sent to jail
         const node = nodes[0];
-        await node.waitForTermChange(2, termSeconds * margin);
+        await termWaiter.waitNodeUntilTerm(node, { target: 2, termPeriods: 1 });
         expect(await isPrisoner(alice), "Alice should be in prison").to.be.true;
     });
 
     it("Should be released if RELEASE_PERIOD have passed", async function() {
-        this.slow(termSeconds * (3 + 1) * 1000);
-        this.timeout(termSeconds * (3 + 2) * 1000);
+        const termWaiter = setTermTestTimeout(this, {
+            terms: 3
+        });
 
         const node = nodes[0];
-        await node.waitForTermChange(5, termSeconds * margin * 3);
+        await termWaiter.waitNodeUntilTerm(node, { target: 5, termPeriods: 3 });
 
         expect(await isEligible(alice), "Alice should have been released").to.be
             .true;
     });
 
     it("Should become a candiate if a self-nomination was sent after CUSTODY_PERIOD", async function() {
-        this.slow(termSeconds * (3 + 1) * 1000);
-        this.timeout(termSeconds * (3 + 2) * 1000);
+        const termWaiter = setTermTestTimeout(this, {
+            terms: 3
+        });
 
         const node = nodes[0];
 
-        await node.waitForTermChange(4, termSeconds * margin * 2);
+        await termWaiter.waitNodeUntilTerm(node, { target: 4, termPeriods: 2 });
 
         const nomination = await stake.createSelfNominateTransaction(
             node.sdk,
@@ -135,13 +135,14 @@ describe("Jail state transition test", function() {
         );
         await node.waitForTx(hash);
 
-        await node.waitForTermChange(5, termSeconds * margin);
+        await termWaiter.waitNodeUntilTerm(node, { target: 5, termPeriods: 1 });
         expect(await isCandidate(alice)).to.be.true;
     });
 
     it("Should stay in jail if a self-nomination was sent to early", async function() {
-        this.slow(termSeconds * (1 + 1) * 1000);
-        this.timeout(termSeconds * (1 + 2) * 1000);
+        const termWaiter = setTermTestTimeout(this, {
+            terms: 1
+        });
 
         const node = nodes[0];
         const nomination = await stake.createSelfNominateTransaction(
@@ -162,7 +163,7 @@ describe("Jail state transition test", function() {
         } catch (e) {
             expect(e.message).to.contain("Account is still in custody");
         }
-        await node.waitForTermChange(3, termSeconds * margin);
+        await termWaiter.waitNodeUntilTerm(node, { target: 3, termPeriods: 1 });
         expect(await isPrisoner(alice)).to.be.true;
     });
 
