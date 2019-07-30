@@ -21,7 +21,7 @@ mod distribute;
 use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use std::sync::{Arc, Weak};
+use std::sync::Weak;
 
 use crate::client::ConsensusClient;
 use ccrypto::Blake;
@@ -150,9 +150,10 @@ impl<M: Message> ActionHandler for Stake<M> {
     fn verify(&self, bytes: &[u8], current_params: &CommonParams) -> Result<(), SyntaxError> {
         let action = Action::<M>::decode(&UntrustedRlp::new(bytes))
             .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
-        let client: Option<Arc<ConsensusClient>> = self.client.read().as_ref().and_then(Weak::upgrade);
-        let validators: Option<Arc<ValidatorSet>> = self.validators.read().as_ref().and_then(Weak::upgrade);
-        action.verify(current_params, client, validators)
+        let client = self.client.read().as_ref().and_then(Weak::upgrade).expect("Client should be initialized");
+        let validators =
+            self.validators.read().as_ref().and_then(Weak::upgrade).expect("ValidatorSet should be initialized");
+        action.verify(current_params, client.as_ref(), validators.as_ref())
     }
 
     fn on_close_block(

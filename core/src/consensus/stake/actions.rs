@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
 use ccrypto::Blake;
 use ckey::{recover, Address, Signature};
 use client::ConsensusClient;
@@ -66,8 +64,8 @@ impl<M: Message> Action<M> {
     pub fn verify(
         &self,
         current_params: &CommonParams,
-        client: Option<Arc<ConsensusClient>>,
-        validators: Option<Arc<ValidatorSet>>,
+        client: &ConsensusClient,
+        validators: &ValidatorSet,
     ) -> Result<(), SyntaxError> {
         match self {
             Action::TransferCCS {
@@ -146,10 +144,6 @@ impl<M: Message> Action<M> {
                     "Heights of both messages must be same because message1.round() == message2.round()"
                 );
                 let signed_block_height = message1.height();
-                let (client, validators) = (
-                    client.expect("Client should be initialized"),
-                    validators.expect("ValidatorSet should be initialized"),
-                );
                 if signed_block_height == 0 {
                     return Err(SyntaxError::InvalidCustomAction(String::from(
                         "Double vote on the genesis block does not make sense",
@@ -319,6 +313,8 @@ impl<M: Message> Decodable for Action<M> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use ccrypto::blake256;
     use ckey::sign_schnorr;
@@ -420,7 +416,7 @@ mod tests {
         };
         let arced_client: Arc<ConsensusClient> = Arc::new(test_client);
         validator_set.register_client(Arc::downgrade(&arced_client));
-        action.verify(&CommonParams::default_for_test(), Some(Arc::clone(&arced_client)), Some(Arc::new(validator_set)))
+        action.verify(&CommonParams::default_for_test(), arced_client.as_ref(), &validator_set)
     }
 
     #[test]
