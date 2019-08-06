@@ -17,8 +17,7 @@
 use std::sync::Weak;
 
 use ckey::{Address, Public};
-use ctypes::BlockNumber;
-use primitives::{Bytes, H256};
+use primitives::H256;
 
 use self::validator_list::RoundRobinValidator;
 use super::BitSet;
@@ -55,10 +54,6 @@ pub trait ValidatorSet: Send + Sync {
 
     fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError>;
 
-    /// Notifies about malicious behaviour.
-    fn report_malicious(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber, _proof: Bytes) {}
-    /// Notifies about benign misbehaviour.
-    fn report_benign(&self, _validator: &Address, _set_block: BlockNumber, _block: BlockNumber) {}
     /// Allows blockchain state access.
     fn register_client(&self, _client: Weak<ConsensusClient>) {}
 

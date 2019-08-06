@@ -1188,14 +1188,6 @@ impl Worker {
         let next_step = match self.step {
             TendermintState::Propose => {
                 cinfo!(ENGINE, "Propose timeout.");
-                if self.proposal.is_none() {
-                    // Report the proposer if no proposal was received.
-                    let height = self.height;
-                    let current_proposer = self
-                        .view_proposer(&self.prev_block_hash(), self.view)
-                        .expect("Height is increased when previous block is imported");
-                    self.validators.report_benign(&current_proposer, height as BlockNumber, height as BlockNumber);
-                }
                 Step::Prevote
             }
             TendermintState::ProposeWaitBlockGeneration {
@@ -1323,10 +1315,8 @@ impl Worker {
             }
 
             if let Some(double) = self.votes.vote(message.clone()) {
-                let height = message.on.step.height as BlockNumber;
                 cerror!(ENGINE, "Double vote found {:?}", double);
                 self.report_double_vote(&double);
-                self.validators.report_malicious(&sender, height, height, ::rlp::encode(&double).into_vec());
                 return Err(EngineError::DoubleVote(sender))
             }
             ctrace!(ENGINE, "Handling a valid {:?} from {}.", message, sender);
@@ -1629,23 +1619,9 @@ impl Worker {
                 );
             }
 
-            let proposer_idx = message.signer_index();
-            let prev_block_hash = c
-                .block_header(&(message.height() - 1).into())
-                .expect("self.height - 1 == the best block number")
-                .hash();
-            let proposer_public = self.validators.get(&prev_block_hash, proposer_idx);
-
             if let Some(double) = self.votes.vote(message.clone()) {
-                let height = message.height();
                 cerror!(ENGINE, "Double Vote found {:?}", double);
                 self.report_double_vote(&double);
-                self.validators.report_malicious(
-                    &public_to_address(&proposer_public),
-                    height,
-                    height,
-                    ::rlp::encode(&double).into_vec(),
-                );
                 return None
             }
         }
