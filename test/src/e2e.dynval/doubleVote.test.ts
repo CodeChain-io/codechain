@@ -66,7 +66,7 @@ describe("Double vote detection", function() {
         mock.stopDoubleProposal();
         await termWaiter.waitNodeUntilTerm(aliceNode, {
             target: 2,
-            termPeriods: 1
+            termPeriods: 0.5
         });
         const banned = await stake.getBanned(aliceNode.sdk);
         expect(banned.map(b => b.toString())).to.include(
@@ -88,7 +88,7 @@ describe("Double vote detection", function() {
         mock.stopDoubleVote();
         await termWaiter.waitNodeUntilTerm(aliceNode, {
             target: 2,
-            termPeriods: 1
+            termPeriods: 0.5
         });
         const banned = await stake.getBanned(aliceNode.sdk);
         expect(banned.map(b => b.toString())).to.include(
@@ -110,7 +110,7 @@ describe("Double vote detection", function() {
         mock.stopDoubleVote();
         await termWaiter.waitNodeUntilTerm(aliceNode, {
             target: 2,
-            termPeriods: 1
+            termPeriods: 0.5
         });
         const banned = await stake.getBanned(aliceNode.sdk);
         expect(banned.map(b => b.toString())).to.include(
