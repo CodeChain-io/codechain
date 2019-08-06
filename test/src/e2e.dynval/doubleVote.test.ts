@@ -52,6 +52,28 @@ describe("Double vote detection", function() {
         mock = new Mock("0.0.0.0", aliceNode.port, aliceNode.sdk.networkId);
     });
 
+    it("Should report if double proposal is detected", async function() {
+        const termWaiter = setTermTestTimeout(this, { terms: 1 });
+
+        const aliceNode = nodes[0];
+
+        // Start sending double votes for all the votes
+        await mock.establishWithoutSync();
+        mock.startDoubleProposal(betty.privateKey);
+        await termWaiter.waitForTermPeriods(0.5, 0);
+
+        // Stop double voting and check if alice is banned
+        mock.stopDoubleProposal();
+        await termWaiter.waitNodeUntilTerm(aliceNode, {
+            target: 2,
+            termPeriods: 1
+        });
+        const banned = await stake.getBanned(aliceNode.sdk);
+        expect(banned.map(b => b.toString())).to.include(
+            betty.platformAddress.toString()
+        );
+    });
+
     it("Should report if double vote for prevote is detected", async function() {
         const termWaiter = setTermTestTimeout(this, { terms: 1 });
 

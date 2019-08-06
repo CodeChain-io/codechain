@@ -17,6 +17,8 @@ import { H256, U64 } from "codechain-primitives";
 import { EventEmitter } from "events";
 import { compressSync, uncompressSync } from "snappy";
 
+import { readOptionalRlp, readUIntRLP } from "../rlp";
+
 const RLP = require("rlp");
 
 export const Emitter = new EventEmitter();
@@ -82,22 +84,6 @@ export interface RequestProposal {
 }
 
 type MessageBody = ConsensusMessage | ProposalBlock | StepState | RequestMessage | RequestProposal;
-
-function readOptionalRlp<T>(bytes: [] | [Buffer], decoder: (b: Buffer) => T) {
-    if (bytes.length === 0) {
-        return null;
-    } else {
-        return decoder(bytes[0]);
-    }
-}
-
-function readUIntRLP(bytes: Buffer) {
-    if (bytes.length === 0) {
-        return 0;
-    } else {
-        return bytes.readUIntBE(0, bytes.length);
-    }
-}
 
 export class TendermintMessage {
 
