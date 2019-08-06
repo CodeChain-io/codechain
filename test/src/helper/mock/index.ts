@@ -16,10 +16,18 @@
 import { blake256, getPublicFromPrivate, H160, H256, recoverSchnorr, SchnorrSignature, signSchnorr, U256, U64 } from "codechain-primitives";
 import { SignedTransaction } from "codechain-sdk/lib/core/SignedTransaction";
 import * as RLP from "rlp";
+import { readUIntRLP } from "../rlp";
 import { BlockSyncMessage, Emitter, IBodiesq, IHeadersq, MessageType, ResponseMessage } from "./blockSyncMessage";
 import { Header } from "./cHeader";
 import { P2pLayer } from "./p2pLayer";
-import { ConsensusMessage, Emitter as TendermintEmitter, Step as TendermintStep, StepState, TendermintMessage } from "./tendermintMessage";
+import {
+    ConsensusMessage,
+    Emitter as TendermintEmitter,
+    ProposalBlock,
+    Step as TendermintStep,
+    StepState,
+    TendermintMessage
+} from "./tendermintMessage";
 import { TransactionSyncMessage } from "./transactionSyncMessage";
 
 
@@ -435,6 +443,74 @@ export class Mock {
 
     public stopDoubleVote() {
         TendermintEmitter.removeAllListeners("consensusmessage");
+        TendermintEmitter.removeAllListeners("stepstate");
+    }
+
+    public startDoubleProposal(priv: string) {
+        const pub = getPublicFromPrivate(priv);
+        TendermintEmitter.on("proposalblock", (message: ProposalBlock) => {
+            const digest = (on: ConsensusMessage["messages"][number]["on"]) =>
+                blake256(
+                    RLP.encode([
+                        [
+                            new U64(on.step.height).toEncodeObject(),
+                            new U64(on.step.view).toEncodeObject(),
+                            new U64(on.step.step).toEncodeObject(),
+                        ],
+                        on.blockHash == null ? [] : [on.blockHash.toEncodeObject()],
+                    ])
+                );
+
+            const signature: SchnorrSignature = {
+                r: message.signature.slice(0, 64),
+                s: message.signature.slice(64),
+            };
+
+            const block: any = RLP.decode(message.message);
+            const oldOn: Parameters<typeof digest>[0] = {
+                step: {
+                    height: readUIntRLP(block[0][5]),
+                    view: message.view,
+                    step: TendermintStep.Propose,
+                },
+                blockHash: new H256(blake256(RLP.encode(block[0]))),
+            };
+            const recovered = recoverSchnorr(digest(oldOn), signature);
+            if (recovered === pub) {
+                const newHeader = [
+                    ...block[0].slice(0, 6),
+                    new U64(readUIntRLP(block[0][6]) + 1).toEncodeObject(), // timestamp
+                    ...block[0].slice(7),
+                ];
+                const newDigest = digest({
+                    ...oldOn,
+                    blockHash: new H256(blake256(RLP.encode(newHeader))),
+                });
+                const newSignature = signSchnorr(newDigest, priv);
+
+                this.sendTendermintMessage(new TendermintMessage({
+                    type: "proposalblock",
+                    view: message.view,
+                    message: RLP.encode([newHeader, block[1]]),
+                    signature: newSignature.r + newSignature.s,
+                }));
+            }
+        });
+        TendermintEmitter.on("stepstate", (message: StepState) => {
+            if (message.voteStep.step === TendermintStep.Propose) {
+                setTimeout(() => {
+                    this.sendTendermintMessage(new TendermintMessage({
+                        type: "requestproposal",
+                        height: message.voteStep.height,
+                        view: message.voteStep.view,
+                    }));
+                }, 200)
+            }
+        });
+    }
+
+    public stopDoubleProposal() {
+        TendermintEmitter.removeAllListeners("proposalblock");
         TendermintEmitter.removeAllListeners("stepstate");
     }
 
