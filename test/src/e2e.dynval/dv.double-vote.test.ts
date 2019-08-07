@@ -24,6 +24,7 @@ import {
     U64,
     H256,
     signSchnorr,
+    recoverSchnorr,
     blake256,
     H512,
     PlatformAddress
@@ -77,12 +78,19 @@ function encodableMessage(data: MessageData): RLP.Input {
 
     const rlpVoteOn = RLP.encode(encodableVoteOn);
     const messageForSchnorr = blake256(rlpVoteOn);
+    console.log(messageForSchnorr);
     const schnorrSignature = signSchnorr(messageForSchnorr, privKey);
     // pad because signSchnorr function does not guarantee the length of r and s to be 64.
     const encodableSchnorrSignature = new H512(
         schnorrSignature.r.padStart(64, "0") +
             schnorrSignature.s.padStart(64, "0")
     ).toEncodeObject();
+    console.log(schnorrSignature.r, schnorrSignature.s, encodableSchnorrSignature);
+    const recovered = recoverSchnorr(messageForSchnorr, {
+        r: encodableSchnorrSignature.slice(2, 66),
+        s: encodableSchnorrSignature.slice(66)
+    })
+    console.log(recovered);
 
     return [
         encodableVoteOn,
@@ -152,9 +160,11 @@ describe("Report Double Vote", function() {
         sdk: SDK,
         blockNumber: number
     ): Promise<number> {
-        return (await stake.getPossibleAuthors(sdk, blockNumber))!
+        const a =  (await stake.getPossibleAuthors(sdk, blockNumber))!
             .map(platfromAddr => platfromAddr.toString())
             .indexOf(alice.platformAddress.toString());
+        console.log(a);
+        return a;
     }
 
     async function waitUntilAliceGetBanned(
@@ -315,6 +325,8 @@ describe("Report Double Vote", function() {
                     "9900a2c6f1166026013f76fd7c366846265fa15edcfe06c88fc1a87b79e9b787"
                 )
             );
+
+            console.log(alice.publicKey);
 
             const reportTx = createReportDoubleVoteTransaction(
                 checkingNode.sdk,

@@ -165,6 +165,7 @@ impl<M: Message> Action<M> {
                     })?
                     .hash();
                 let signer = validators.get(&parent_hash, signer_idx1);
+                cinfo!(ENGINE, "signer is {}, {:?}", signer_idx1, signer);
                 if message1.verify(&signer) != Ok(true) || message2.verify(&signer) != Ok(true) {
                     return Err(SyntaxError::InvalidCustomAction(String::from("Schnorr signature verification fails")))
                 }

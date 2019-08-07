@@ -325,6 +325,7 @@ impl Message for ConsensusMessage {
 
     fn verify(&self, signer_public: &Public) -> Result<bool, KeyError> {
         let vote_info = message_info_rlp(self.on.step, self.on.block_hash);
+        cinfo!(ENGINE, "digest {:x}", &blake256(vote_info.clone()));
         verify_schnorr(signer_public, &self.signature, &blake256(vote_info))
     }
 }
