@@ -57,10 +57,10 @@ interface IResponse {
 }
 
 export class BlockSyncMessage {
-
     public static fromBytes(bytes: Buffer): BlockSyncMessage {
         const decodedmsg = RLP.decode(bytes);
-        const msgId = decodedmsg[0].length === 0 ? 0 : decodedmsg[0].readUIntBE(0, 1);
+        const msgId =
+            decodedmsg[0].length === 0 ? 0 : decodedmsg[0].readUIntBE(0, 1);
         if (msgId === MessageType.MESSAGE_ID_STATUS) {
             Emitter.emit("status");
             const msg = decodedmsg[1];
@@ -74,7 +74,10 @@ export class BlockSyncMessage {
                 genesisHash
             });
         } else {
-            const id = decodedmsg[1].length === 0 ? new U256(0) : new U256(parseInt(decodedmsg[1].toString("hex"), 16));
+            const id =
+                decodedmsg[1].length === 0
+                    ? new U256(0)
+                    : new U256(parseInt(decodedmsg[1].toString("hex"), 16));
             const msg = decodedmsg[2];
             switch (msgId) {
                 case MessageType.MESSAGE_ID_GET_HEADERS:
@@ -173,14 +176,23 @@ interface IStateChunkq {
 }
 
 export class RequestMessage {
-    public static decode(protocol: MessageType, bytes: Array<any>): RequestMessage {
+    public static decode(
+        protocol: MessageType,
+        bytes: Array<any>
+    ): RequestMessage {
         switch (protocol) {
             case MessageType.MESSAGE_ID_GET_HEADERS: {
                 Emitter.emit("headerrequest");
                 return new RequestMessage({
                     type: "headers",
-                    startNumber: bytes[0].length === 0 ? new U256(0) : new U256(parseInt(bytes[0].toString("hex"), 16)),
-                    maxCount: bytes[1].length === 0 ? new U256(0) : new U256(parseInt(bytes[1].toString("hex"), 16))
+                    startNumber:
+                        bytes[0].length === 0
+                            ? new U256(0)
+                            : new U256(parseInt(bytes[0].toString("hex"), 16)),
+                    maxCount:
+                        bytes[1].length === 0
+                            ? new U256(0)
+                            : new U256(parseInt(bytes[1].toString("hex"), 16))
                 });
             }
             case MessageType.MESSAGE_ID_GET_BODIES: {
@@ -233,7 +245,10 @@ export class RequestMessage {
     public toEncodeObject(): Array<any> {
         switch (this.body.type) {
             case "headers": {
-                return [this.body.startNumber.toEncodeObject(), this.body.maxCount.toEncodeObject()];
+                return [
+                    this.body.startNumber.toEncodeObject(),
+                    this.body.maxCount.toEncodeObject()
+                ];
             }
             case "bodies": {
                 return this.body.data.map(hash => hash.toEncodeObject());
@@ -277,8 +292,10 @@ interface IStateChunks {
 }
 
 export class ResponseMessage {
-
-    public static decode(protocol: MessageType, bytes: Array<any>): ResponseMessage {
+    public static decode(
+        protocol: MessageType,
+        bytes: Array<any>
+    ): ResponseMessage {
         switch (protocol) {
             case MessageType.MESSAGE_ID_HEADERS: {
                 Emitter.emit("headerresponse");

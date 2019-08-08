@@ -370,7 +370,12 @@ describe("Check P2P Message RLP encoding", function() {
     });
 
     it("RequestMessage RLP encoding test", function() {
-        const msg = new Message.NegotiationRequest("extension name", [1, 2, 3, 4]);
+        const msg = new Message.NegotiationRequest("extension name", [
+            1,
+            2,
+            3,
+            4
+        ]);
         expect([...msg.rlpBytes()]).deep.equal([
             213,
             5,
@@ -532,7 +537,10 @@ describe("Check P2P Message RLP encoding", function() {
             ),
             Buffer.of(0xd, 0xe, 0xa, 0xd, 0xb, 0xe, 0xe, 0xf)
         );
-        const signed = new Message.SignedMessage(msg, new U128("0x00000000000000000000000000000000"));
+        const signed = new Message.SignedMessage(
+            msg,
+            new U128("0x00000000000000000000000000000000")
+        );
         expect([...signed.rlpBytes()]).deep.equal([
             248,
             113,

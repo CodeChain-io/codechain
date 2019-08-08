@@ -30,15 +30,26 @@ export enum MessageType {
     UNENCRYPTED_ID = 0x08
 }
 
-export type Message = Sync1 | Sync2 | Ack | Nack | NegotiationRequest | NegotiationResponse | Encrypted | Unencrypted;
+export type Message =
+    | Sync1
+    | Sync2
+    | Ack
+    | Nack
+    | NegotiationRequest
+    | NegotiationResponse
+    | Encrypted
+    | Unencrypted;
 
 export class Sync1 {
-
     public static fromBytes(bytes: Buffer): Sync1 {
         const decoded = RLP.decode(bytes);
         const protocolId = parseInt(decoded[0].toString("hex"), 16);
         if (protocolId !== MessageType.SYNC1_ID) {
-            throw Error(`0x${decoded[0].toString("hex")} is not an expected protocol id for Sync1`);
+            throw Error(
+                `0x${decoded[0].toString(
+                    "hex"
+                )} is not an expected protocol id for Sync1`
+            );
         }
 
         const initiatorPubKey = new H512(decoded[1].toString("hex"));
@@ -51,7 +62,11 @@ export class Sync1 {
     private readonly initiatorPubKey: H512;
     private readonly networkId: string;
 
-    constructor(initiatorPubKey: H512, networkId: string, initiatorPort: number) {
+    constructor(
+        initiatorPubKey: H512,
+        networkId: string,
+        initiatorPort: number
+    ) {
         this.initiatorPubKey = initiatorPubKey;
         this.networkId = networkId;
         this.initiatorPort = initiatorPort;
@@ -63,7 +78,12 @@ export class Sync1 {
 
     public toEncodeObject(): Array<any> {
         const { initiatorPubKey, networkId, initiatorPort } = this;
-        return [this.protocolId(), initiatorPubKey.toEncodeObject(), networkId, initiatorPort];
+        return [
+            this.protocolId(),
+            initiatorPubKey.toEncodeObject(),
+            networkId,
+            initiatorPort
+        ];
     }
 
     public rlpBytes(): Buffer {
@@ -72,12 +92,15 @@ export class Sync1 {
 }
 
 export class Sync2 {
-
     public static fromBytes(bytes: Buffer): Sync2 {
         const decoded = RLP.decode(bytes);
         const protocolId = parseInt(decoded[0].toString("hex"), 16);
         if (protocolId !== MessageType.SYNC2_ID) {
-            throw Error(`0x${decoded[0].toString("hex")} is not an expected protocol id for Sync2`);
+            throw Error(
+                `0x${decoded[0].toString(
+                    "hex"
+                )} is not an expected protocol id for Sync2`
+            );
         }
 
         const initiatorPubKey = new H512(decoded[1].toString("hex"));
@@ -85,14 +108,24 @@ export class Sync2 {
         const networkId = decoded[3].toString();
         const initiatorPort = decoded[4].readUIntBE(0, 2);
 
-        return new Sync2(initiatorPubKey, recipientPubKey, networkId, initiatorPort);
+        return new Sync2(
+            initiatorPubKey,
+            recipientPubKey,
+            networkId,
+            initiatorPort
+        );
     }
     private readonly initiatorPort: number;
     private readonly initiatorPubKey: H512;
     private readonly networkId: string;
     private readonly recipientPubKey: H512;
 
-    constructor(initiatorPubKey: H512, recipientPubKey: H512, networkId: string, initiatorPort: number) {
+    constructor(
+        initiatorPubKey: H512,
+        recipientPubKey: H512,
+        networkId: string,
+        initiatorPort: number
+    ) {
         this.initiatorPubKey = initiatorPubKey;
         this.recipientPubKey = recipientPubKey;
         this.networkId = networkId;
@@ -104,7 +137,12 @@ export class Sync2 {
     }
 
     public toEncodeObject(): Array<any> {
-        const { initiatorPubKey, recipientPubKey, networkId, initiatorPort } = this;
+        const {
+            initiatorPubKey,
+            recipientPubKey,
+            networkId,
+            initiatorPort
+        } = this;
         return [
             this.protocolId(),
             initiatorPubKey.toEncodeObject(),
@@ -120,12 +158,15 @@ export class Sync2 {
 }
 
 export class Ack {
-
     public static fromBytes(bytes: Buffer): Ack {
         const decoded = RLP.decode(bytes);
         const protocolId = parseInt(decoded[0].toString("hex"), 16);
         if (protocolId !== MessageType.ACK_ID) {
-            throw Error(`0x${decoded[0].toString("hex")} is not an expected protocol id for Ack`);
+            throw Error(
+                `0x${decoded[0].toString(
+                    "hex"
+                )} is not an expected protocol id for Ack`
+            );
         }
 
         const recipientPubKey = new H512(decoded[1].toString("hex"));
@@ -147,7 +188,11 @@ export class Ack {
 
     public toEncodeObject(): Array<any> {
         const { recipientPubKey, encryptedNonce } = this;
-        return [this.protocolId(), recipientPubKey.toEncodeObject(), encryptedNonce];
+        return [
+            this.protocolId(),
+            recipientPubKey.toEncodeObject(),
+            encryptedNonce
+        ];
     }
 
     public rlpBytes(): Buffer {
@@ -160,7 +205,11 @@ export class Nack {
         const decoded = RLP.decode(bytes);
         const protocolId = parseInt(decoded[0].toString("hex"), 16);
         if (protocolId !== MessageType.NACK_ID) {
-            throw Error(`0x${decoded[0].toString("hex")} is not an expected protocol id for Ack`);
+            throw Error(
+                `0x${decoded[0].toString(
+                    "hex"
+                )} is not an expected protocol id for Ack`
+            );
         }
 
         return new Nack();
@@ -180,12 +229,15 @@ export class Nack {
 }
 
 export class NegotiationRequest {
-
     public static fromBytes(bytes: Buffer): NegotiationRequest {
         const decoded = RLP.decode(bytes);
         const protocolId = parseInt(decoded[0].toString("hex"), 16);
         if (protocolId !== MessageType.REQUEST_ID) {
-            throw Error(`0x${decoded[0].toString("hex")} is not an expected protocol id for NegotiationRequest`);
+            throw Error(
+                `0x${decoded[0].toString(
+                    "hex"
+                )} is not an expected protocol id for NegotiationRequest`
+            );
         }
 
         const extensionName = decoded[1].toString();
@@ -216,12 +268,15 @@ export class NegotiationRequest {
 }
 
 export class NegotiationResponse {
-
     public static fromBytes(bytes: Buffer): NegotiationResponse {
         const decoded = RLP.decode(bytes);
         const protocolId = parseInt(decoded[0].toString("hex"), 16);
         if (protocolId !== MessageType.RESPONSE_ID) {
-            throw Error(`0x${decoded[0].toString("hex")} is not an expected protocol id for NegotiationResponse`);
+            throw Error(
+                `0x${decoded[0].toString(
+                    "hex"
+                )} is not an expected protocol id for NegotiationResponse`
+            );
         }
 
         const extensionName = decoded[1].toString();
@@ -252,12 +307,15 @@ export class NegotiationResponse {
 }
 
 export class Encrypted {
-
     public static fromBytes(bytes: Buffer): Encrypted {
         const decoded = RLP.decode(bytes);
         const protocolId = parseInt(decoded[0].toString("hex"), 16);
         if (protocolId !== MessageType.ENCRYPTED_ID) {
-            throw Error(`0x${decoded[0].toString("hex")} is not an expected protocol id for Encrypted message`);
+            throw Error(
+                `0x${decoded[0].toString(
+                    "hex"
+                )} is not an expected protocol id for Encrypted message`
+            );
         }
 
         const extensionName = decoded[1].toString();
@@ -288,12 +346,15 @@ export class Encrypted {
 }
 
 export class Unencrypted {
-
     public static fromBytes(bytes: Buffer): Unencrypted {
         const decoded = RLP.decode(bytes);
         const protocolId = parseInt(decoded[0].toString("hex"), 16);
         if (protocolId !== MessageType.UNENCRYPTED_ID) {
-            throw Error(`0x${decoded[0].toString("hex")} is not an expected protocol id for Unencrypted message`);
+            throw Error(
+                `0x${decoded[0].toString(
+                    "hex"
+                )} is not an expected protocol id for Unencrypted message`
+            );
         }
 
         const extensionName = decoded[1].toString();
@@ -354,19 +415,24 @@ export function fromBytes(bytes: Buffer): Message {
             return Unencrypted.fromBytes(bytes);
         }
         default: {
-            throw Error(`0x${message[0].toString("hex")} is not a valid protocol id`);
+            throw Error(
+                `0x${message[0].toString("hex")} is not a valid protocol id`
+            );
         }
     }
 }
 
 export class SignedMessage {
-
     public static fromBytes(bytes: Buffer, nonce: U128): SignedMessage {
         const decoded = RLP.decode(bytes);
         const message = fromBytes(decoded[0]);
         const signed = new SignedMessage(message, nonce);
-        if (!signed.signature().isEqualTo(new H256(decoded[1].toString("hex")))) {
-            throw Error(`${nonce} is not a valid nonce for this signed message`);
+        if (
+            !signed.signature().isEqualTo(new H256(decoded[1].toString("hex")))
+        ) {
+            throw Error(
+                `${nonce} is not a valid nonce for this signed message`
+            );
         }
         return signed;
     }
@@ -376,7 +442,9 @@ export class SignedMessage {
     constructor(message: Message, nonce: U128) {
         this.message = message;
         const bytes = this.message.rlpBytes();
-        const key = new Uint8Array([...Buffer.from(nonce.toString(16).padStart(32, "0"), "hex")]);
+        const key = new Uint8Array([
+            ...Buffer.from(nonce.toString(16).padStart(32, "0"), "hex")
+        ]);
         this._signature = new H256(blake256WithKey(bytes, key));
     }
 
@@ -385,7 +453,10 @@ export class SignedMessage {
     }
 
     public toEncodeObject(): Array<any> {
-        return [`0x${this.message.rlpBytes().toString("hex")}`, this._signature.toEncodeObject()];
+        return [
+            `0x${this.message.rlpBytes().toString("hex")}`,
+            this._signature.toEncodeObject()
+        ];
     }
 
     public rlpBytes(): Buffer {

@@ -18,7 +18,15 @@ import { createDecipheriv } from "crypto";
 import { ec } from "elliptic";
 import { Socket } from "net";
 import { BlockSyncMessage } from "./blockSyncMessage";
-import { Ack, fromBytes, MessageType, NegotiationRequest, SignedMessage, Sync1, Unencrypted } from "./message";
+import {
+    Ack,
+    fromBytes,
+    MessageType,
+    NegotiationRequest,
+    SignedMessage,
+    Sync1,
+    Unencrypted
+} from "./message";
 import { TendermintMessage } from "./tendermintMessage";
 import { TransactionSyncMessage } from "./transactionSyncMessage";
 
@@ -28,7 +36,10 @@ export class P2pLayer {
     private readonly ip: string;
     private readonly port: number;
     private readonly socket: Socket;
-    private readonly arrivedExtensionMessage: (BlockSyncMessage | TransactionSyncMessage | TendermintMessage)[];
+    private readonly arrivedExtensionMessage: (
+        | BlockSyncMessage
+        | TransactionSyncMessage
+        | TendermintMessage)[];
     private tcpBuffer: Buffer;
     private genesisHash: H256;
     private recentHeaderNonce: U256;
@@ -46,7 +57,9 @@ export class P2pLayer {
         this.port = port;
         this.arrivedExtensionMessage = [];
         this.tcpBuffer = Buffer.alloc(0);
-        this.genesisHash = new H256("0000000000000000000000000000000000000000000000000000000000000000");
+        this.genesisHash = new H256(
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        );
         this.recentHeaderNonce = new U256(0);
         this.recentBodyNonce = new U256(0);
         this.log = false;
@@ -62,7 +75,10 @@ export class P2pLayer {
         return this.genesisHash;
     }
 
-    public getArrivedExtensionMessage(): (BlockSyncMessage | TransactionSyncMessage | TendermintMessage)[] {
+    public getArrivedExtensionMessage(): (
+        | BlockSyncMessage
+        | TransactionSyncMessage
+        | TendermintMessage)[] {
         return this.arrivedExtensionMessage;
     }
 
@@ -79,8 +95,16 @@ export class P2pLayer {
             this.socket.connect({ port: this.port, host: this.ip }, () => {
                 if (this.log) {
                     console.log("Start TCP connection");
-                    console.log("   local = %s:%s", this.socket.localAddress, this.socket.localPort);
-                    console.log("   remote = %s:%s", this.socket.remoteAddress, this.socket.remotePort);
+                    console.log(
+                        "   local = %s:%s",
+                        this.socket.localAddress,
+                        this.socket.localPort
+                    );
+                    console.log(
+                        "   remote = %s:%s",
+                        this.socket.remoteAddress,
+                        this.socket.remotePort
+                    );
                 }
                 this.sendP2pMessage(MessageType.SYNC1_ID);
 
@@ -91,9 +115,17 @@ export class P2pLayer {
                             const len = this.tcpBuffer.readUIntBE(0, 1);
                             if (len >= 0xf8) {
                                 const lenOfLen = len - 0xf7;
-                                const dataLen = this.tcpBuffer.slice(1, 1 + lenOfLen).readUIntBE(0, lenOfLen);
-                                if (this.tcpBuffer.length >= dataLen + lenOfLen + 1) {
-                                    const rlpPacket = this.tcpBuffer.slice(0, dataLen + lenOfLen + 1);
+                                const dataLen = this.tcpBuffer
+                                    .slice(1, 1 + lenOfLen)
+                                    .readUIntBE(0, lenOfLen);
+                                if (
+                                    this.tcpBuffer.length >=
+                                    dataLen + lenOfLen + 1
+                                ) {
+                                    const rlpPacket = this.tcpBuffer.slice(
+                                        0,
+                                        dataLen + lenOfLen + 1
+                                    );
                                     this.tcpBuffer = this.tcpBuffer.slice(
                                         dataLen + lenOfLen + 1,
                                         this.tcpBuffer.length
@@ -105,13 +137,21 @@ export class P2pLayer {
                                     }
                                     resolve();
                                 } else {
-                                    throw Error("The rlp data has not arrived yet");
+                                    throw Error(
+                                        "The rlp data has not arrived yet"
+                                    );
                                 }
                             } else if (len >= 0xc0) {
                                 const dataLen = len - 0xc0;
                                 if (this.tcpBuffer.length >= dataLen + 1) {
-                                    const rlpPacket = this.tcpBuffer.slice(0, dataLen + 1);
-                                    this.tcpBuffer = this.tcpBuffer.slice(dataLen + 1, this.tcpBuffer.length);
+                                    const rlpPacket = this.tcpBuffer.slice(
+                                        0,
+                                        dataLen + 1
+                                    );
+                                    this.tcpBuffer = this.tcpBuffer.slice(
+                                        dataLen + 1,
+                                        this.tcpBuffer.length
+                                    );
                                     if (this.nonce == null) {
                                         this.onHandshakeMessage(rlpPacket);
                                     } else {
@@ -119,7 +159,9 @@ export class P2pLayer {
                                     }
                                     resolve();
                                 } else {
-                                    throw Error("The rlp data has not arrived yet");
+                                    throw Error(
+                                        "The rlp data has not arrived yet"
+                                    );
                                 }
                             } else {
                                 throw Error("Invalid RLP data");
@@ -148,7 +190,11 @@ export class P2pLayer {
         });
     }
 
-    public async sendExtensionMessage(extensionName: string, data: Buffer, needEncryption: boolean) {
+    public async sendExtensionMessage(
+        extensionName: string,
+        data: Buffer,
+        needEncryption: boolean
+    ) {
         let msg;
         if (this.nonce == null) {
             throw Error("Nonce is not set yet");
@@ -187,7 +233,9 @@ export class P2pLayer {
                     }
                     const ack = msg as Ack;
                     const recipientPubKey = EC.keyFromPublic(
-                        "04".concat(ack.recipientPubKey.toEncodeObject().slice(2)),
+                        "04".concat(
+                            ack.recipientPubKey.toEncodeObject().slice(2)
+                        ),
                         "hex"
                     ).getPublic();
                     this.sharedSecret = this.localKey
@@ -196,18 +244,30 @@ export class P2pLayer {
                         .padStart(64, "0");
 
                     const ALGORITHM = "AES-256-CBC";
-                    const key = Buffer.from(new H256(this.sharedSecret!).toEncodeObject().slice(2), "hex");
-                    const ivd = Buffer.from("00000000000000000000000000000000", "hex");
+                    const key = Buffer.from(
+                        new H256(this.sharedSecret!).toEncodeObject().slice(2),
+                        "hex"
+                    );
+                    const ivd = Buffer.from(
+                        "00000000000000000000000000000000",
+                        "hex"
+                    );
                     const decryptor = createDecipheriv(ALGORITHM, key, ivd);
                     decryptor.write(ack.encryptedNonce);
                     decryptor.end();
-                    this.nonce = new U128(`0x${decryptor.read().toString("hex")}`);
+                    this.nonce = new U128(
+                        `0x${decryptor.read().toString("hex")}`
+                    );
 
                     this.sendP2pMessage(MessageType.REQUEST_ID);
                     break;
                 }
                 default:
-                    throw Error(`${MessageType[msg.protocolId()]} is not one of the handshake message`);
+                    throw Error(
+                        `${
+                            MessageType[msg.protocolId()]
+                        } is not one of the handshake message`
+                    );
             }
         } catch (err) {
             console.error(err);
@@ -245,11 +305,16 @@ export class P2pLayer {
                     console.log("Got UNENCRYPTED_ID message");
                 }
                 const unencrypted = msg.message as Unencrypted;
-                this.onExtensionMessage(unencrypted.extensionName, unencrypted.data);
+                this.onExtensionMessage(
+                    unencrypted.extensionName,
+                    unencrypted.data
+                );
                 break;
             }
             default:
-                throw Error(`${msg.protocolId()} is not a valid protocol id for signed messaged`);
+                throw Error(
+                    `${msg.protocolId()} is not a valid protocol id for signed messaged`
+                );
         }
     }
 
@@ -320,16 +385,30 @@ export class P2pLayer {
                 break;
             }
             case MessageType.REQUEST_ID: {
-                if (this.log) { console.log("Send REQUEST_ID Message"); }
-                const extensions = ["block-propagation", "transaction-propagation", "tendermint"];
-                const messages = extensions.map(extensionName => new NegotiationRequest(extensionName, [0]));
-                const signedMessages = messages.map(msg => new SignedMessage(msg, this.nonce!));
-                const sends = signedMessages.map(msg => this.writeData(msg.rlpBytes()));
+                if (this.log) {
+                    console.log("Send REQUEST_ID Message");
+                }
+                const extensions = [
+                    "block-propagation",
+                    "transaction-propagation",
+                    "tendermint"
+                ];
+                const messages = extensions.map(
+                    extensionName => new NegotiationRequest(extensionName, [0])
+                );
+                const signedMessages = messages.map(
+                    msg => new SignedMessage(msg, this.nonce!)
+                );
+                const sends = signedMessages.map(msg =>
+                    this.writeData(msg.rlpBytes())
+                );
                 await Promise.all(sends);
                 break;
             }
             default:
-                throw Error(`Sending ${MessageType[messageType]} is not implemented`);
+                throw Error(
+                    `Sending ${MessageType[messageType]} is not implemented`
+                );
         }
     }
 

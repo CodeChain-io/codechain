@@ -25,7 +25,6 @@ interface ITransactions {
 }
 
 export class TransactionSyncMessage {
-
     public static fromBytes(bytes: Buffer): TransactionSyncMessage {
         const compressed = RLP.decode(bytes) as any;
         const uncompressed = uncompressSync(compressed);
