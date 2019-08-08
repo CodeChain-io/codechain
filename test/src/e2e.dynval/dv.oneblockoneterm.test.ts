@@ -23,7 +23,9 @@ import { withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 
-const alice = originalDynValidators[0];
+// Verifying external blocks take different code path with internal blocks.
+// We need both a proposer and a verifier to test them.
+const [alice, bob] = originalDynValidators;
 
 describe("one block one term test", function() {
     const promiseExpect = new PromiseExpect();
@@ -34,7 +36,10 @@ describe("one block one term test", function() {
         overrideParams: {
             termSeconds: 1
         },
-        validators: [{ signer: alice, delegation: 5000, deposit: 100000 }]
+        validators: [
+            { signer: alice, delegation: 5000, deposit: 100000 },
+            { signer: bob }
+        ]
     });
 
     it("Alice should success creating terms", async function() {
