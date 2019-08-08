@@ -17,10 +17,11 @@ import { H160, H256, U256 } from "codechain-primitives";
 import { blake256 } from "codechain-sdk/lib/utils";
 
 const RLP = require("rlp");
-const BLAKE_NULL_RLP: H256 = new H256("45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0");
+const BLAKE_NULL_RLP: H256 = new H256(
+    "45b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0"
+);
 
 export class Header {
-
     public static fromBytes(bytes: Buffer): Header {
         const decodedmsg = RLP.decode(bytes);
         const parentHash = new H256(decodedmsg[0].toString("hex"));
@@ -138,14 +139,18 @@ export class Header {
 
     public default(): Header {
         return new Header(
-            new H256("0000000000000000000000000000000000000000000000000000000000000000"),
+            new H256(
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            ),
             new U256(0),
             new U256(0),
             new H160("0000000000000000000000000000000000000000"),
             Buffer.alloc(0),
             BLAKE_NULL_RLP,
             BLAKE_NULL_RLP,
-            new U256("0000000000000000000000000000000000000000000000000000000000000000"),
+            new U256(
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            ),
             []
         );
     }
