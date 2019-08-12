@@ -21,10 +21,10 @@ import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
-import { validators as originalValidators } from "../../tendermint.dynval/constants";
-import { faucetAddress, faucetSecret } from "../helper/constants";
-import { PromiseExpect } from "../helper/promise";
-import { setTermTestTimeout, withNodes } from "./setup";
+import { validators as originalValidators } from "../../../tendermint.dynval/constants";
+import { faucetAddress, faucetSecret } from "../../helper/constants";
+import { PromiseExpect } from "../../helper/promise";
+import { setTermTestTimeout, withNodes } from "../setup";
 
 chai.use(chaiAsPromised);
 

@@ -51,7 +51,7 @@ jobs:
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - os: linux
-      name: dynamic-validator
+      name: dynamic-validator-1
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
@@ -64,7 +64,24 @@ jobs:
         - cargo build --verbose
       script:
         - cd test && yarn || exit 1
-        - yarn start-dyn-val
+        - yarn start-dyn-val-1
+      after_failure:
+        - test $INT_TEST_FLAG && ./upload_logs.sh
+    - os: linux
+      name: dynamic-validator-2
+      before_install:
+        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
+        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then RUN_UNIT_TEST=1; fi
+      install:
+        - nvm install 10
+        - nvm use 10
+        - npm install -g yarn
+      before_script:
+        - cargo build --verbose
+      script:
+        - cd test && yarn || exit 1
+        - yarn start-dyn-val-2
       after_failure:
         - test $INT_TEST_FLAG && ./upload_logs.sh
     - os: linux

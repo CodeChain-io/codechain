@@ -17,9 +17,9 @@
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 import "mocha";
-import { validators as originalDynValidators } from "../../tendermint.dynval/constants";
-import { PromiseExpect } from "../helper/promise";
-import { withNodes } from "./setup";
+import { validators as originalDynValidators } from "../../../tendermint.dynval/constants";
+import { PromiseExpect } from "../../helper/promise";
+import { withNodes } from "../setup";
 
 chai.use(chaiAsPromised);
 

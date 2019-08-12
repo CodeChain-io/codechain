@@ -20,10 +20,10 @@ import * as chaiAsPromised from "chai-as-promised";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
-import { validators } from "../../tendermint.dynval/constants";
-import { PromiseExpect } from "../helper/promise";
-import CodeChain from "../helper/spawn";
-import { fullyConnect, setTermTestTimeout, withNodes } from "./setup";
+import { validators } from "../../../tendermint.dynval/constants";
+import { PromiseExpect } from "../../helper/promise";
+import CodeChain from "../../helper/spawn";
+import { fullyConnect, setTermTestTimeout, withNodes } from "../setup";
 
 chai.use(chaiAsPromised);
 
