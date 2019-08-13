@@ -56,6 +56,8 @@ export function withNodes(
         nodes.push(...newNodes);
     });
     suite.afterEach(async function() {
+        this.timeout(2000);
+        this.slow(1000);
         if (this.currentTest!.state === "failed") {
             nodes.map(node => node.keepLogs());
         }
