@@ -24,7 +24,11 @@ import "mocha";
 import { validators } from "../../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../../helper/constants";
 import { PromiseExpect } from "../../helper/promise";
-import { setTermTestTimeout, withNodes } from "../setup";
+import {
+    setTermTestTimeout,
+    withNodes,
+    termThatIncludeTransaction
+} from "../setup";
 
 chai.use(chaiAsPromised);
 
@@ -147,6 +151,9 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
                     })
             );
             await nodes[0].waitForTx(delegateToCharlie);
+            await expect(
+                termThatIncludeTransaction(nodes[0].sdk, delegateToCharlie)
+            ).eventually.equal(1);
             await termWaiter.waitNodeUntilTerm(nodes[0], {
                 target: 2,
                 termPeriods: 1
