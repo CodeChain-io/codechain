@@ -466,3 +466,22 @@ export function setTermTestTimeout(
         }
     };
 }
+
+export async function termThatIncludeTransaction(
+    sdk: SDK,
+    txHash: H256
+): Promise<number> {
+    const transaction = await sdk.rpc.chain.getTransaction(txHash);
+    const minedBlock = transaction!.blockNumber!;
+    const termMetadata = await stake.getTermMetadata(sdk, minedBlock);
+
+    if (minedBlock > termMetadata!.lastTermFinishedBlockNumber) {
+        return termMetadata!.currentTermId;
+    } else if (minedBlock === termMetadata!.lastTermFinishedBlockNumber) {
+        return termMetadata!.currentTermId - 1;
+    } else {
+        throw new Error(
+            "Invalid state. minedBlock should be the same or greater than lastTermFinishedBlockNumber"
+        );
+    }
+}
