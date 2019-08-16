@@ -31,6 +31,7 @@ const ACTION_TAG_DELEGATE_CCS: u8 = 2;
 const ACTION_TAG_REVOKE: u8 = 3;
 const ACTION_TAG_SELF_NOMINATE: u8 = 4;
 const ACTION_TAG_REPORT_DOUBLE_VOTE: u8 = 5;
+const ACTION_TAG_REDELEGATE: u8 = 6;
 const ACTION_TAG_CHANGE_PARAMS: u8 = 0xFF;
 
 #[derive(Debug, PartialEq)]
@@ -45,6 +46,11 @@ pub enum Action<M: Message> {
     },
     Revoke {
         address: Address,
+        quantity: u64,
+    },
+    Redelegate {
+        prev_delegatee: Address,
+        next_delegatee: Address,
         quantity: u64,
     },
     SelfNominate {
@@ -77,6 +83,9 @@ impl<M: Message> Action<M> {
                 ..
             } => {}
             Action::Revoke {
+                ..
+            } => {}
+            Action::Redelegate {
                 ..
             } => {}
             Action::SelfNominate {
@@ -195,6 +204,17 @@ impl<M: Message> Encodable for Action<M> {
             } => {
                 s.begin_list(3).append(&ACTION_TAG_REVOKE).append(address).append(quantity);
             }
+            Action::Redelegate {
+                prev_delegatee,
+                next_delegatee,
+                quantity,
+            } => {
+                s.begin_list(4)
+                    .append(&ACTION_TAG_REDELEGATE)
+                    .append(prev_delegatee)
+                    .append(next_delegatee)
+                    .append(quantity);
+            }
             Action::SelfNominate {
                 deposit,
                 metadata,
@@ -265,6 +285,20 @@ impl<M: Message> Decodable for Action<M> {
                 Ok(Action::Revoke {
                     address: rlp.val_at(1)?,
                     quantity: rlp.val_at(2)?,
+                })
+            }
+            ACTION_TAG_REDELEGATE => {
+                let item_count = rlp.item_count()?;
+                if item_count != 4 {
+                    return Err(DecoderError::RlpInvalidLength {
+                        expected: 4,
+                        got: item_count,
+                    })
+                }
+                Ok(Action::Redelegate {
+                    prev_delegatee: rlp.val_at(1)?,
+                    next_delegatee: rlp.val_at(2)?,
+                    quantity: rlp.val_at(3)?,
                 })
             }
             ACTION_TAG_SELF_NOMINATE => {

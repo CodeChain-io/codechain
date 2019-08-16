@@ -118,7 +118,7 @@ state = {
     - A `delegatee` is an `AccountId`.
     - `quantity` is a `u64` amount of CCS to delegate to `delegatee`.
 
-    A `delegatee` must be one of the current validators.
+    A `delegatee` must be one of the current candidates.
     The amount of undelegated CCS of the sender will be decreased by `quantity`. However, instead of increasing the amount of undelegated CCS of the `delegatee`, [`delegatee`, `quantity`] will be inserted to the transaction sender's delegation list.
     A sender cannot delegate more than the amount of undelegated CCS it has.
 
@@ -310,6 +310,48 @@ state = {
     "0xAB..CD": [ ["0x01..23", 50], ["0x23..45", 110] ]
   }
 }
+```
+
+
+## RedelegateCCS
+
+### Action
+
+  * Format: `[6, prev_delegatee, next_delegatee, quantity]`
+    - A `prev_delegatee` is an `AccountId`.
+    - A `next_delegatee` is an `AccountId`.
+    - `quantity` is a `u64` amount of CCS to redelegate to `next_delegatee` from `prev_delegatee`.
+
+   Executing this action is the same as executing the revoke action and the delegate action. The `quantity` should be less than the delegated quantity of `prev_delegatee` from the sender.
+
+### Example
+
+```
+
+    state = {
+      stakeholders: [ "0x23..45", "0xAB..CD" ],
+      balance: {
+        "0x23..45": 500,
+        "0xAB..CD": 900,
+      },
+      delegation: {
+        "0xAB..CD": [ ["0x23..45", 100] ]
+      }
+    }
+
+    > "0xAB..CD" sends staking action [ 6, "0x23..45", "0x67..89", 10 ]
+
+    state = {
+      stakeholders: [ "0x23..45", "0xAB..CD" ],
+      balance: {
+        "0x23..45": 500,
+        "0xAB..CD": 900,
+      },
+      delegation: {
+        "0xAB..CD": [ ["0x23..45", 90], ["0x67..89", 10] ]
+      }
+    }
+
 ```
 
 # Fee distribution

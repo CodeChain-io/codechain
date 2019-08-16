@@ -109,6 +109,11 @@ impl<M: Message> ActionHandler for Stake<M> {
                 address,
                 quantity,
             } => revoke(state, fee_payer, &address, quantity),
+            Action::Redelegate {
+                prev_delegatee,
+                next_delegatee,
+                quantity,
+            } => redelegate(state, fee_payer, &prev_delegatee, &next_delegatee, quantity),
             Action::SelfNominate {
                 deposit,
                 metadata,
@@ -223,6 +228,43 @@ fn revoke(state: &mut TopLevelState, fee_payer: &Address, delegatee: &Address, q
     delegator.save_to_state(state)?;
 
     ctrace!(ENGINE, "Revoked CCS. delegator: {}, delegatee: {}, quantity: {}", fee_payer, delegatee, quantity);
+    Ok(())
+}
+
+fn redelegate(
+    state: &mut TopLevelState,
+    fee_payer: &Address,
+    prev_delegatee: &Address,
+    next_delegatee: &Address,
+    quantity: u64,
+) -> StateResult<()> {
+    let candidates = Candidates::load_from_state(state)?;
+    if candidates.get_candidate(next_delegatee).is_none() {
+        return Err(RuntimeError::FailedToHandleCustomAction("Can delegate to who is a candidate".into()).into())
+    }
+
+    let banned = Banned::load_from_state(state)?;
+    let jailed = Jail::load_from_state(state)?;
+    assert!(!banned.is_banned(&next_delegatee), "A candidate must not be banned");
+    assert_eq!(None, jailed.get_prisoner(next_delegatee), "A candidate must not be jailed");
+
+    let delegator = StakeAccount::load_from_state(state, fee_payer)?;
+    let mut delegation = Delegation::load_from_state(state, &fee_payer)?;
+
+    delegation.subtract_quantity(*prev_delegatee, quantity)?;
+    delegation.add_quantity(*next_delegatee, quantity)?;
+
+    delegation.save_to_state(state)?;
+    delegator.save_to_state(state)?;
+
+    ctrace!(
+        ENGINE,
+        "Redelegated CCS. delegator: {}, prev_delegatee: {}, next_delegatee: {}, quantity: {}",
+        fee_payer,
+        prev_delegatee,
+        next_delegatee,
+        quantity
+    );
     Ok(())
 }
 
@@ -914,6 +956,269 @@ mod tests {
         let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
         assert_eq!(delegator_account.balance, 100);
         assert_eq!(state.action_data(&get_delegation_key(&delegator)).unwrap(), None);
+    }
+
+    #[test]
+    fn can_redelegate_tokens() {
+        let prev_delegatee_pubkey = Public::random();
+        let prev_delegatee = public_to_address(&prev_delegatee_pubkey);
+        let next_delegatee_pubkey = Public::random();
+        let next_delegatee = public_to_address(&next_delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
+
+        let mut state = helpers::get_temp_state();
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegator, 100);
+            Stake::<SoloMessage>::new(genesis_stakes)
+        };
+        stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &prev_delegatee, &prev_delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+        self_nominate(&mut state, &next_delegatee, &next_delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+
+        let action = Action::<SoloMessage>::DelegateCCS {
+            address: prev_delegatee,
+            quantity: 50,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert!(result.is_ok());
+
+        let action = Action::<SoloMessage>::Redelegate {
+            prev_delegatee,
+            next_delegatee,
+            quantity: 20,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert_eq!(Ok(()), result);
+
+        let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegator_account.balance, 100 - 50);
+        assert_eq!(delegation.iter().count(), 2);
+        assert_eq!(delegation.get_quantity(&prev_delegatee), 50 - 20);
+        assert_eq!(delegation.get_quantity(&next_delegatee), 20);
+    }
+
+    #[test]
+    fn cannot_redelegate_more_than_delegated_tokens() {
+        let prev_delegatee_pubkey = Public::random();
+        let prev_delegatee = public_to_address(&prev_delegatee_pubkey);
+        let next_delegatee_pubkey = Public::random();
+        let next_delegatee = public_to_address(&next_delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
+
+        let mut state = helpers::get_temp_state();
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegator, 100);
+            Stake::<SoloMessage>::new(genesis_stakes)
+        };
+        stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &prev_delegatee, &prev_delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+        self_nominate(&mut state, &next_delegatee, &next_delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+
+        let action = Action::<SoloMessage>::DelegateCCS {
+            address: prev_delegatee,
+            quantity: 50,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert!(result.is_ok());
+
+        let action = Action::<SoloMessage>::Redelegate {
+            prev_delegatee,
+            next_delegatee,
+            quantity: 70,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert!(result.is_err());
+
+        let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegator_account.balance, 100 - 50);
+        assert_eq!(delegation.iter().count(), 1);
+        assert_eq!(delegation.get_quantity(&prev_delegatee), 50);
+        assert_eq!(delegation.get_quantity(&next_delegatee), 0);
+    }
+
+    #[test]
+    fn redelegate_all_should_clear_state() {
+        let prev_delegatee_pubkey = Public::random();
+        let prev_delegatee = public_to_address(&prev_delegatee_pubkey);
+        let next_delegatee_pubkey = Public::random();
+        let next_delegatee = public_to_address(&next_delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
+
+        let mut state = helpers::get_temp_state();
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegator, 100);
+            Stake::<SoloMessage>::new(genesis_stakes)
+        };
+        stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &prev_delegatee, &prev_delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+        self_nominate(&mut state, &next_delegatee, &next_delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+
+        let action = Action::<SoloMessage>::DelegateCCS {
+            address: prev_delegatee,
+            quantity: 50,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert!(result.is_ok());
+
+        let action = Action::<SoloMessage>::Redelegate {
+            prev_delegatee,
+            next_delegatee,
+            quantity: 50,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert_eq!(Ok(()), result);
+
+        let delegator_account = StakeAccount::load_from_state(&state, &delegator).unwrap();
+        let delegation = Delegation::load_from_state(&state, &delegator).unwrap();
+        assert_eq!(delegator_account.balance, 50);
+        assert_eq!(delegation.iter().count(), 1);
+        assert_eq!(delegation.get_quantity(&prev_delegatee), 0);
+        assert_eq!(delegation.get_quantity(&next_delegatee), 50);
+    }
+
+    #[test]
+    fn redelegate_only_to_candidate() {
+        let prev_delegatee_pubkey = Public::random();
+        let prev_delegatee = public_to_address(&prev_delegatee_pubkey);
+        let next_delegatee_pubkey = Public::random();
+        let next_delegatee = public_to_address(&next_delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
+
+        let mut state = helpers::get_temp_state();
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegator, 100);
+            Stake::<SoloMessage>::new(genesis_stakes)
+        };
+        stake.init(&mut state).unwrap();
+
+        self_nominate(&mut state, &prev_delegatee, &prev_delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+
+        let action = Action::<SoloMessage>::DelegateCCS {
+            address: prev_delegatee,
+            quantity: 40,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert!(result.is_ok());
+
+        let action = Action::<SoloMessage>::Redelegate {
+            prev_delegatee,
+            next_delegatee,
+            quantity: 50,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cannot_redelegate_to_banned_account() {
+        let informant_pubkey = Public::random();
+        let criminal_pubkey = Public::random();
+        let delegator_pubkey = Public::random();
+        let criminal = public_to_address(&criminal_pubkey);
+        let delegator = public_to_address(&delegator_pubkey);
+        let prev_delegatee_pubkey = Public::random();
+        let prev_delegatee = public_to_address(&prev_delegatee_pubkey);
+
+        let mut state = helpers::get_temp_state();
+        state.add_balance(&criminal, 1000).unwrap();
+
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegator, 100);
+            Stake::<SoloMessage>::new(genesis_stakes)
+        };
+        stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &prev_delegatee, &prev_delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+        self_nominate(&mut state, &criminal, &criminal_pubkey, 100, 0, 10, b"".to_vec()).unwrap();
+
+        let action = Action::<SoloMessage>::DelegateCCS {
+            address: criminal,
+            quantity: 40,
+        };
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
+        let action = Action::<SoloMessage>::DelegateCCS {
+            address: prev_delegatee,
+            quantity: 40,
+        };
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
+
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(candidates.len(), 2);
+
+        assert_eq!(Ok(()), ban(&mut state, &informant_pubkey, criminal));
+
+        let banned = Banned::load_from_state(&state).unwrap();
+        assert!(banned.is_banned(&criminal));
+
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(candidates.len(), 1);
+
+        let action = Action::<SoloMessage>::Redelegate {
+            prev_delegatee,
+            next_delegatee: criminal,
+            quantity: 40,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn cannot_redelegate_to_jailed_account() {
+        let jail_pubkey = Public::random();
+        let jail_address = public_to_address(&jail_pubkey);
+        let prev_delegatee_pubkey = Public::random();
+        let prev_delegatee = public_to_address(&prev_delegatee_pubkey);
+        let delegator_pubkey = Public::random();
+        let delegator = public_to_address(&delegator_pubkey);
+
+        let mut state = helpers::get_temp_state();
+        state.add_balance(&jail_address, 1000).unwrap();
+
+        let stake = {
+            let mut genesis_stakes = HashMap::new();
+            genesis_stakes.insert(delegator, 100);
+            Stake::<SoloMessage>::new(genesis_stakes)
+        };
+        stake.init(&mut state).unwrap();
+        self_nominate(&mut state, &prev_delegatee, &prev_delegatee_pubkey, 0, 0, 10, b"".to_vec()).unwrap();
+
+        let deposit = 200;
+        self_nominate(&mut state, &jail_address, &jail_pubkey, deposit, 0, 5, b"".to_vec()).unwrap();
+
+        let action = Action::<SoloMessage>::DelegateCCS {
+            address: prev_delegatee,
+            quantity: 40,
+        };
+        stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey).unwrap();
+
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(candidates.len(), 2);
+
+        let custody_until = 10;
+        let released_at = 20;
+        let result = jail(&mut state, &[jail_address], custody_until, released_at);
+        assert!(result.is_ok());
+
+        let candidates = Candidates::load_from_state(&state).unwrap();
+        assert_eq!(candidates.len(), 1);
+
+        let action = Action::<SoloMessage>::Redelegate {
+            prev_delegatee,
+            next_delegatee: jail_address,
+            quantity: 40,
+        };
+        let result = stake.execute(&action.rlp_bytes(), &mut state, &delegator, &delegator_pubkey);
+        assert!(result.is_err());
     }
 
     #[test]
