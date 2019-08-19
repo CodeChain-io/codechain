@@ -96,20 +96,9 @@ impl TryFrom<Order> for OrderType {
 #[serde(rename_all = "camelCase")]
 pub struct OrderOnTransfer {
     pub order: Order,
-    /// Spent quantity of asset_type_from
     pub spent_quantity: Uint,
-    // Indices of asset_type_from
-    pub input_from_indices: Vec<usize>,
-    // Indices of asset_type_fee
-    pub input_fee_indices: Vec<usize>,
-    // Indices of remain asset_type_from
-    pub output_from_indices: Vec<usize>,
-    // Indices of asset_type_to
-    pub output_to_indices: Vec<usize>,
-    // Indices of ramain asset_type_fee
-    pub output_owned_fee_indices: Vec<usize>,
-    // Indices of paid asset_type_fee
-    pub output_transferred_fee_indices: Vec<usize>,
+    pub input_indices: Vec<usize>,
+    pub output_indices: Vec<usize>,
 }
 
 impl From<OrderOnTransferType> for OrderOnTransfer {
@@ -117,12 +106,8 @@ impl From<OrderOnTransferType> for OrderOnTransfer {
         OrderOnTransfer {
             order: from.order.into(),
             spent_quantity: from.spent_quantity.into(),
-            input_from_indices: from.input_from_indices,
-            input_fee_indices: from.input_fee_indices,
-            output_from_indices: from.output_from_indices,
-            output_to_indices: from.output_to_indices,
-            output_owned_fee_indices: from.output_owned_fee_indices,
-            output_transferred_fee_indices: from.output_transferred_fee_indices,
+            input_indices: from.input_indices,
+            output_indices: from.output_indices,
         }
     }
 }
@@ -133,12 +118,8 @@ impl TryFrom<OrderOnTransfer> for OrderOnTransferType {
         Ok(OrderOnTransferType {
             order: from.order.try_into()?,
             spent_quantity: from.spent_quantity.into(),
-            input_from_indices: from.input_from_indices,
-            input_fee_indices: from.input_fee_indices,
-            output_from_indices: from.output_from_indices,
-            output_to_indices: from.output_to_indices,
-            output_owned_fee_indices: from.output_owned_fee_indices,
-            output_transferred_fee_indices: from.output_transferred_fee_indices,
+            input_indices: from.input_indices,
+            output_indices: from.output_indices,
         })
     }
 }

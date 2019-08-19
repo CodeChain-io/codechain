@@ -308,18 +308,12 @@ macro_rules! order {
 }
 
 macro_rules! order_on_transfer {
-    ($order:expr, $spent_quantity:expr, input_from_indices: [$($input_from:expr),*], input_fee_indices: [$($input_fee:expr),*],
-    output_from_indices: [$($output_from:expr),*], output_to_indices: [$($output_to:expr),*], output_owned_fee_indices: [$($output_owned:expr),*],
-    output_transferred_fee_indices: [$($output_transferred:expr),*]) => {
+    ($order:expr, $spent_quantity:expr, input_indices: [$($input:expr),*], output_indices: [$($output:expr),*]) => {
         $crate::ctypes::transaction::OrderOnTransfer {
             order: $order,
             spent_quantity: $spent_quantity,
-            input_from_indices: vec![$($input_from,)*],
-            input_fee_indices: vec![$($input_fee,)*],
-            output_from_indices: vec![$($output_from,)*],
-            output_to_indices: vec![$($output_to,)*],
-            output_owned_fee_indices: vec![$($output_owned,)*],
-            output_transferred_fee_indices: vec![$($output_transferred,)*]
+            input_indices: vec![$($input,)*],
+            output_indices: vec![$($output,)*],
         }
     }
 }

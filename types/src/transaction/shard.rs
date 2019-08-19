@@ -1101,12 +1101,8 @@ mod tests {
                     parameters_fee: vec![vec![1]],
                 },
                 spent_quantity: 10,
-                input_from_indices: vec![0],
-                input_fee_indices: vec![],
-                output_from_indices: vec![],
-                output_to_indices: vec![0],
-                output_owned_fee_indices: vec![],
-                output_transferred_fee_indices: vec![],
+                input_indices: vec![0],
+                output_indices: vec![0],
             }],
         };
         rlp_encode_and_decode_test!(tx);

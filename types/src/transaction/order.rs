@@ -68,8 +68,9 @@ impl Order {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::nonminimal_bool))]
     pub fn verify(&self) -> Result<(), SyntaxError> {
         // If asset_quantity_fee is zero, it means there's no fee to pay.
-        // asset_type_from and asset_type_to can be the same with asset_type_fee.
-        if self.asset_type_from == self.asset_type_to && self.shard_id_from == self.shard_id_to {
+        // asset_type_from and asset_type_to can be same with asset_type_fee.
+        if self.asset_type_from == self.asset_type_to && self.shard_id_from == self.shard_id_to
+        {
             return Err(SyntaxError::InvalidOrderAssetTypes)
         }
         // Invalid asset exchange transaction. The case is naive transfer transaction if either of asset_quantity_from or asset_quantity_to is zero
@@ -90,7 +91,7 @@ impl Order {
                 fee: self.asset_quantity_fee,
             })
         }
-        // fee recipient should not be the same with the one provided asset_type_from
+        // fee recipient should not be same with the one provided asset_type_from
         if self.asset_quantity_fee != 0
             && self.lock_script_hash_fee == self.lock_script_hash_from
             && self.parameters_fee == self.parameters_from
@@ -429,6 +430,32 @@ mod tests {
             asset_type_from: asset_type,
             asset_type_to: asset_type,
             asset_type_fee,
+            shard_id_from: 0,
+            shard_id_to: 0,
+            shard_id_fee: 0,
+            asset_quantity_from: 3,
+            asset_quantity_to: 2,
+            asset_quantity_fee: 3,
+            origin_outputs: vec![AssetOutPoint {
+                tracker: H256::random(),
+                index: 0,
+                asset_type,
+                shard_id: 0,
+                quantity: 10,
+            }],
+            expiration: 10,
+            lock_script_hash_from: H160::random(),
+            parameters_from: vec![vec![1]],
+            lock_script_hash_fee: H160::random(),
+            parameters_fee: vec![vec![1]],
+        };
+        assert_eq!(order.verify(), Err(SyntaxError::InvalidOrderAssetTypes));
+
+        let asset_type = H160::random();
+        let order = Order {
+            asset_type_from: asset_type,
+            asset_type_to,
+            asset_type_fee: asset_type,
             shard_id_from: 0,
             shard_id_to: 0,
             shard_id_fee: 0,
