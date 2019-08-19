@@ -48,18 +48,10 @@ pub struct OrderOnTransfer {
     pub order: Order,
     /// Spent quantity of asset_type_from
     pub spent_quantity: u64,
-    // Indices of asset_type_from
-    pub input_from_indices: Vec<usize>,
-    // Indices of asset_type_fee
-    pub input_fee_indices: Vec<usize>,
-    // Indices of remain asset_type_from
-    pub output_from_indices: Vec<usize>,
-    // Indices of asset_type_to
-    pub output_to_indices: Vec<usize>,
-    // Indices of ramain asset_type_fee
-    pub output_owned_fee_indices: Vec<usize>,
-    // Indices of paid asset_type_fee
-    pub output_transferred_fee_indices: Vec<usize>,
+    /// Indices of transfer inputs which are moved as order
+    pub input_indices: Vec<usize>,
+    /// Indices of transfer outputs which are moved as order
+    pub output_indices: Vec<usize>,
 }
 
 impl Order {
@@ -68,8 +60,11 @@ impl Order {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::nonminimal_bool))]
     pub fn verify(&self) -> Result<(), SyntaxError> {
         // If asset_quantity_fee is zero, it means there's no fee to pay.
-        // asset_type_from and asset_type_to can be same with asset_type_fee.
-        if self.asset_type_from == self.asset_type_to && self.shard_id_from == self.shard_id_to
+        // asset_type_from and asset_type_to should not be same with asset_type_fee if asset_quantity_fee is not zero.
+        if (self.asset_type_from == self.asset_type_to && self.shard_id_from == self.shard_id_to)
+            || self.asset_quantity_fee != 0
+                && ((self.asset_type_from == self.asset_type_fee && self.shard_id_from == self.shard_id_fee)
+                    || (self.asset_type_to == self.asset_type_fee && self.shard_id_to == self.shard_id_fee))
         {
             return Err(SyntaxError::InvalidOrderAssetTypes)
         }
@@ -91,7 +86,7 @@ impl Order {
                 fee: self.asset_quantity_fee,
             })
         }
-        // fee recipient should not be same with the one provided asset_type_from
+        // fee recipient is same with the one provided asset_type_from
         if self.asset_quantity_fee != 0
             && self.lock_script_hash_fee == self.lock_script_hash_from
             && self.parameters_fee == self.parameters_from
