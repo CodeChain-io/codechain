@@ -60,7 +60,6 @@ impl Order {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy::nonminimal_bool))]
     pub fn verify(&self) -> Result<(), SyntaxError> {
         // If asset_quantity_fee is zero, it means there's no fee to pay.
-        // asset_type_from and asset_type_to should not be same with asset_type_fee if asset_quantity_fee is not zero.
         if (self.asset_type_from == self.asset_type_to && self.shard_id_from == self.shard_id_to)
             || self.asset_quantity_fee != 0
                 && ((self.asset_type_from == self.asset_type_fee && self.shard_id_from == self.shard_id_fee)
@@ -68,7 +67,6 @@ impl Order {
         {
             return Err(SyntaxError::InvalidOrderAssetTypes)
         }
-        // Invalid asset exchange transaction. The case is naive transfer transaction if either of asset_quantity_from or asset_quantity_to is zero
         if (self.asset_quantity_from == 0) ^ (self.asset_quantity_to == 0) {
             return Err(SyntaxError::InvalidOrderAssetQuantities {
                 from: self.asset_quantity_from,
@@ -76,7 +74,6 @@ impl Order {
                 fee: self.asset_quantity_fee,
             })
         }
-        // asset_quantity_fee should be mutiples of asset_quantity_from
         if self.asset_quantity_from == 0 && self.asset_quantity_fee != 0
             || self.asset_quantity_from != 0 && self.asset_quantity_fee % self.asset_quantity_from != 0
         {
@@ -86,7 +83,6 @@ impl Order {
                 fee: self.asset_quantity_fee,
             })
         }
-        // fee recipient is same with the one provided asset_type_from
         if self.asset_quantity_fee != 0
             && self.lock_script_hash_fee == self.lock_script_hash_from
             && self.parameters_fee == self.parameters_from
@@ -96,7 +92,6 @@ impl Order {
         if self.origin_outputs.is_empty() {
             return Err(SyntaxError::InvalidOriginOutputs(self.hash()))
         }
-        // Check if the origin_outputs include other types of asset except asset_type_from and asset_type_fee
         for origin_output in self.origin_outputs.iter() {
             if (origin_output.asset_type != self.asset_type_from || origin_output.shard_id != self.shard_id_from)
                 && (origin_output.asset_type != self.asset_type_fee || origin_output.shard_id != self.shard_id_fee)
@@ -107,7 +102,6 @@ impl Order {
         Ok(())
     }
 
-    // Check if an arbitrary output is involved in this order
     pub fn check_transfer_output(&self, output: &AssetTransferOutput) -> Result<bool, SyntaxError> {
         if self.asset_quantity_fee != 0
             && self.asset_type_fee == output.asset_type
