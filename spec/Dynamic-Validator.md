@@ -48,7 +48,7 @@ The block that has a different generation hour from the parent block's is the la
 CodeChain elects a new validator set after all rewards of the block is given.
 
 ## Nomination
-Any account that is not banned or not in **CUSTODY_PERIOD** can nominate itself.
+Any account that is neither banned nor in **CUSTODY_PERIOD** can nominate itself.
 The nomination expires after **NOMINATION_EXPIRATION**; the account that wants to remain a candidate must nominate itself before the previous nomination expires.
 The deposit reverts to the account when it becomes an eligible account.
 
@@ -61,6 +61,8 @@ The stakeholders have the right to choose validators in proportion to their shar
 This is called delegation, and the stakeholders who have delegated are called delegators.
 The delegation is valid only when the delegatee is neither in the eligible nor banned state.
 The delegated stakes are returned when the account becomes an eligible account or a banned account.
+The delegator can revoke or redelegate delegations from a delegatee.
+When redelegating, the same restrictions apply to the new delegatee.
 
 ## Election
 The election is a process that elects validators of a term according to the following rule:
@@ -76,7 +78,7 @@ The election is a process that elects validators of a term according to the foll
 
 This process guarantees these things:
 
-* Candidates who are deposited less than **MIN_DEPOSIT** cannot be validators. This prevents the *nothing-at-stake* problem.
+* Candidates who deposited less than **MIN_DEPOSIT** cannot be validators. This prevents the *nothing-at-stake* problem.
 * There are at least **MIN_NUM_OF_VALIDATORS** validators only if the number of candidates is larger than **MIN_NUM_OF_VALIDATORS**.
 * The candidates that are not in **MIN_NUM_OF_VALIDATORS** and not receiving delegation of more than **DELEGATION_THRESHOLD** will not be validators.
 
@@ -211,6 +213,14 @@ The stakeholders can revoke delegations at any time without delay.
 The revoke occurs immediately, but the validator cannot be ousted before its term is over.
 
 The transaction fails when the delegator revokes more than it delegates.
+
+
+### REDELEGATE
+* previous_delegatee
+* next_delegatee
+* quantity
+
+This is an atomic version of `REVOKE (previous_delegatee, quantity)` + `DELEGATE (next_delegatee, quantity)`. It works as if two transactions are applied in a sequence, but the effect is atomic. The restrictions of the transaction are the same with both `REVOKE` and `DELGATE`.
 
 ### REPORT_DOUBLE_VOTE
 * message1
