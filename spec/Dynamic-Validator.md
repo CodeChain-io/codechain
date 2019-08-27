@@ -74,7 +74,9 @@ The election is a process that elects validators of a term according to the foll
 4. Select the top **MIN_NUM_OF_VALIDATORS** accounts; they become validators.
 5. Among the rest of them, drop the accounts that received less than **DELEGATION_THRESHOLD**; the remaining accounts become validators.
 
-This process guarantees two things:
+This process guarantees these things:
+
+* Candidates who are deposited less than **MIN_DEPOSIT** cannot be validators. This prevents the *nothing-at-stake* problem.
 * There are at least **MIN_NUM_OF_VALIDATORS** validators only if the number of candidates is larger than **MIN_NUM_OF_VALIDATORS**.
 * The candidates that are not in **MIN_NUM_OF_VALIDATORS** and not receiving delegation of more than **DELEGATION_THRESHOLD** will not be validators.
 
