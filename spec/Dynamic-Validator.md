@@ -48,7 +48,7 @@ The block that has a different generation hour from the parent block's is the la
 CodeChain elects a new validator set after all rewards of the block is given.
 
 ## Nomination
-Any account that is not banned can nominate itself.
+Any account that is not banned or not in **CUSTODY_PERIOD** can nominate itself.
 The nomination expires after **NOMINATION_EXPIRATION**; the account that wants to remain a candidate must nominate itself before the previous nomination expires.
 The deposit reverts to the account when it becomes an eligible account.
 
