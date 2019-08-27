@@ -43,7 +43,7 @@
 9. No *SELF_NOMINATE* during **RELEASE_PERIOD**
 
 ## Term
-The term is a period when one elected validator set works, and lasts for almost an hour
+The term is a period when one elected validator set works, and lasts for almost an hour.
 The block that has a different generation hour from the parent block's is the last block of a term.
 CodeChain elects a new validator set after all rewards of the block is given.
 
