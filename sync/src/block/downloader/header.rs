@@ -179,6 +179,7 @@ impl HeaderDownloader {
     pub fn mark_as_imported(&mut self, hashes: Vec<H256>) {
         for hash in hashes {
             self.queued.remove(&hash);
+            self.downloaded.remove(&hash);
 
             if self.best_hash == hash {
                 self.pivot = Pivot {
@@ -188,6 +189,7 @@ impl HeaderDownloader {
             }
         }
         self.queued.shrink_to_fit();
+        self.downloaded.shrink_to_fit();
     }
 
     pub fn mark_as_queued(&mut self, hashes: Vec<H256>) {
