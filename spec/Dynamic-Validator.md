@@ -43,7 +43,7 @@
 9. No *SELF_NOMINATE* during **RELEASE_PERIOD**
 
 ## Term
-The term is a period when one elected validator set works, and lasts for almost an hour.
+A term is a period when one elected validator set works, and lasts for almost an hour.
 The block that has a different generation hour from the parent block's is the last block of a term.
 CodeChain elects a new validator set after all rewards of the block is given.
 
@@ -219,7 +219,7 @@ The transaction fails when the delegator revokes more than it delegates.
 * next_delegatee
 * quantity
 
-This is an atomic version of `REVOKE (previous_delegatee, quantity)` + `DELEGATE (next_delegatee, quantity)`. It works as if two transactions are applied in a sequence, but the effect is atomic. The restrictions of the transaction are the same with both `REVOKE` and `DELGATE`.
+This is an atomic version of `REVOKE (previous_delegatee, quantity)` + `DELEGATE (next_delegatee, quantity)`. It works as if two transactions are applied in a sequence, but the effect is atomic. The restrictions of the transaction are the same with both `REVOKE` and `DELEGATE`.
 
 ### REPORT_DOUBLE_VOTE
 * message1
