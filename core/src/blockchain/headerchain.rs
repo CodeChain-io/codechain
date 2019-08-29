@@ -21,6 +21,7 @@ use std::sync::Arc;
 use ctypes::header::{Header, Seal};
 use ctypes::BlockNumber;
 use kvdb::{DBTransaction, KeyValueDB};
+use lru_cache::LruCache;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 use rlp_compress::{blocks_swapper, compress, decompress};
@@ -35,6 +36,7 @@ use crate::views::HeaderView;
 
 const BEST_HEADER_KEY: &[u8] = b"best-header";
 const BEST_PROPOSAL_HEADER_KEY: &[u8] = b"best-proposal-header";
+const HEADER_CACHE_SIZE: usize = 1000;
 
 /// Structure providing fast access to blockchain data.
 ///
@@ -47,7 +49,7 @@ pub struct HeaderChain {
     best_proposal_header_hash: RwLock<H256>,
 
     // cache
-    header_cache: RwLock<HashMap<H256, Bytes>>,
+    header_cache: Mutex<LruCache<H256, Bytes>>,
     detail_cache: RwLock<HashMap<H256, BlockDetails>>,
     hash_cache: Mutex<HashMap<BlockNumber, H256>>,
 
@@ -99,7 +101,7 @@ impl HeaderChain {
             best_header_hash: RwLock::new(best_header_hash),
             best_proposal_header_hash: RwLock::new(best_proposal_header_hash),
 
-            header_cache: RwLock::new(HashMap::new()),
+            header_cache: Mutex::new(LruCache::new(HEADER_CACHE_SIZE)),
             detail_cache: Default::default(),
             hash_cache: Default::default(),
 
@@ -401,11 +403,11 @@ impl HeaderProvider for HeaderChain {
 }
 
 /// Get block header data
-fn block_header_data(hash: &H256, header_cache: &RwLock<HashMap<H256, Bytes>>, db: &KeyValueDB) -> Option<Vec<u8>> {
+fn block_header_data(hash: &H256, header_cache: &Mutex<LruCache<H256, Bytes>>, db: &KeyValueDB) -> Option<Vec<u8>> {
     // Check cache first
     {
-        let read = header_cache.read();
-        if let Some(v) = read.get(hash) {
+        let mut lock = header_cache.lock();
+        if let Some(v) = lock.get_mut(hash) {
             return Some(v.clone())
         }
     }
@@ -414,13 +416,13 @@ fn block_header_data(hash: &H256, header_cache: &RwLock<HashMap<H256, Bytes>>, d
 
     let bytes = decompress(&b, blocks_swapper()).into_vec();
 
-    let mut write = header_cache.write();
-    if let Some(v) = write.get(hash) {
+    let mut lock = header_cache.lock();
+    if let Some(v) = lock.get_mut(hash) {
         assert_eq!(&bytes, v);
         return Some(v.clone())
     }
 
-    write.insert(*hash, bytes.clone());
+    lock.insert(*hash, bytes.clone());
 
     Some(bytes)
 }

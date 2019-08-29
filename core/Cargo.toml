@@ -24,6 +24,7 @@ hyper = { git = "https://github.com/paritytech/hyper", default-features = false 
 journaldb = { path = "../util/journaldb" }
 linked-hash-map = "0.5"
 log = "0.4.6"
+lru-cache = "0.1.2"
 kvdb = { path = "../util/kvdb" }
 kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
