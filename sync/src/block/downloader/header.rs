@@ -25,6 +25,7 @@ use primitives::{H256, U256};
 use super::super::message::RequestMessage;
 
 const MAX_HEADER_REQUEST_LENGTH: u64 = 128;
+const MAX_HEADER_QUEUE_LENGTH: usize = 1024;
 const MAX_RETRY: usize = 3;
 const MAX_WAIT: u64 = 15;
 
@@ -126,6 +127,9 @@ impl HeaderDownloader {
 
     pub fn create_request(&mut self) -> Option<RequestMessage> {
         if !self.is_idle() {
+            return None
+        }
+        if self.queued.len() + self.downloaded.len() > MAX_HEADER_QUEUE_LENGTH {
             return None
         }
 
