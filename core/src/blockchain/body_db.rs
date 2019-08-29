@@ -19,6 +19,7 @@ use std::mem;
 use std::sync::Arc;
 
 use kvdb::{DBTransaction, KeyValueDB};
+use lru_cache::LruCache;
 use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 use rlp::RlpStream;
@@ -30,9 +31,11 @@ use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 use crate::views::BlockView;
 use crate::{encoded, UnverifiedTransaction};
 
+const BODY_CACHE_SIZE: usize = 1000;
+
 pub struct BodyDB {
     // block cache
-    body_cache: RwLock<HashMap<H256, Bytes>>,
+    body_cache: Mutex<LruCache<H256, Bytes>>,
     parcel_address_cache: RwLock<HashMap<H256, TransactionAddress>>,
     pending_parcel_addresses: RwLock<HashMap<H256, Option<TransactionAddress>>>,
 
@@ -48,7 +51,7 @@ impl BodyDB {
     /// Create new instance of blockchain from given Genesis.
     pub fn new(genesis: &BlockView, db: Arc<KeyValueDB>) -> Self {
         let bdb = Self {
-            body_cache: RwLock::new(HashMap::new()),
+            body_cache: Mutex::new(LruCache::new(BODY_CACHE_SIZE)),
             parcel_address_cache: RwLock::new(HashMap::new()),
             pending_parcel_addresses: RwLock::new(HashMap::new()),
 
@@ -308,8 +311,8 @@ impl BodyProvider for BodyDB {
     fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
         // Check cache first
         {
-            let read = self.body_cache.read();
-            if let Some(v) = read.get(hash) {
+            let mut lock = self.body_cache.lock();
+            if let Some(v) = lock.get_mut(hash) {
                 return Some(encoded::Body::new(v.clone()))
             }
         }
@@ -319,8 +322,8 @@ impl BodyProvider for BodyDB {
             self.db.get(db::COL_BODIES, hash).expect("Low level database error. Some issue with disk?")?;
 
         let raw_body = decompress(&compressed_body, blocks_swapper()).into_vec();
-        let mut write = self.body_cache.write();
-        write.insert(*hash, raw_body.clone());
+        let mut lock = self.body_cache.lock();
+        lock.insert(*hash, raw_body.clone());
 
         Some(encoded::Body::new(raw_body))
     }

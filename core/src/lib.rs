@@ -38,6 +38,7 @@ extern crate kvdb;
 extern crate kvdb_memorydb;
 extern crate kvdb_rocksdb;
 extern crate linked_hash_map;
+extern crate lru_cache;
 extern crate memorydb;
 extern crate num_rational;
 extern crate primitives;
