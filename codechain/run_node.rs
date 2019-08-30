@@ -126,34 +126,34 @@ fn new_miner(
 ) -> Result<Arc<Miner>, String> {
     let miner = Miner::new(config.miner_options()?, scheme, Some(ap), db);
 
-    if !config.mining.disable.unwrap() {
-        match miner.engine_type() {
-            EngineType::PoW => match &config.mining.author {
-                Some(ref author) => {
-                    miner.set_author((*author).into_address()).expect("set_author never fails when PoW is used")
+    match miner.engine_type() {
+        EngineType::PoW => match &config.mining.author {
+            Some(ref author) => {
+                miner.set_author((*author).into_address()).expect("set_author never fails when PoW is used")
+            }
+            None if config.mining.engine_signer.is_some() => return Err("PoW type engine needs not an engine-signer but an author for mining. Specify the author using --author option.".to_string()),
+            None => (),
+        },
+        EngineType::PBFT | EngineType::PoA => match &config.mining.engine_signer {
+            Some(ref engine_signer) => match miner.set_author((*engine_signer).into_address()) {
+                Err(AccountProviderError::NotUnlocked) => {
+                    return Err(
+                        "The account is not unlocked. Specify the password path using --password-path option."
+                            .to_string(),
+                    )
                 }
-                None => return Err("The author is missing. Specify the author using --author option.".to_string()),
+                Err(e) => return Err(format!("{}", e)),
+                _ => (),
             },
-            EngineType::PBFT | EngineType::PoA => match &config.mining.engine_signer {
-                Some(ref engine_signer) => match miner.set_author((*engine_signer).into_address()) {
-                    Err(AccountProviderError::NotUnlocked) => {
-                        return Err(
-                            "The account is not unlocked. Specify the password path using --password-path option."
-                                .to_string(),
-                        )
-                    }
-                    Err(e) => return Err(format!("{}", e)),
-                    _ => (),
-                },
-                None => {
-                    return Err("The engine signer is missing. Specify the engine signer using --engine-signer option."
-                        .to_string())
-                }
-            },
-            EngineType::Solo => miner
-                .set_author(config.mining.author.map_or(Address::default(), PlatformAddress::into_address))
-                .expect("set_author never fails when Solo is used"),
-        }
+            None if config.mining.author.is_some() => {
+                return Err("PBFT or PoA type engine needs not an author but an engine signer for mining. Specify the engine signer using --engine-signer option."
+                    .to_string())
+            }
+            None => (),
+        },
+        EngineType::Solo => miner
+            .set_author(config.mining.author.map_or(Address::default(), PlatformAddress::into_address))
+            .expect("set_author never fails when Solo is used"),
     }
 
     Ok(miner)

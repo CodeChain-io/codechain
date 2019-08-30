@@ -169,7 +169,8 @@ See [Validator Reward](#Validator-Reward) for more information.
 
 ### Double Vote
 CodeChain bans the account who double voted.
-The deposit and the reward the criminal earns is slashed and is given to the informant reporting the double vote.
+The nomination deposit of the criminal is directly given to the informant reporting the double vote.
+Furthermore, the reward that the criminal earns as express fee is slashed and used as an additional reward for diligent validators.
 
 ## Transactions
 ### SELF_NOMIATION
