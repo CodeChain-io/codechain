@@ -142,7 +142,10 @@ impl HeaderDownloader {
     /// Imports headers and mark success
     /// Expects importing headers matches requested header
     pub fn import_headers(&mut self, headers: &[Header]) {
-        let first_header_hash = headers.first().expect("First header must exist").hash();
+        let first_header = headers.first().expect("First header must exist");
+        let first_header_hash = first_header.hash();
+        let first_header_number = first_header.number();
+        let pivot_header = self.pivot_header();
 
         // This happens when best_hash is imported by other peer.
         if self.best_hash == self.pivot.hash {
@@ -158,14 +161,26 @@ impl HeaderDownloader {
                 hash: headers.last().expect("Last downloaded header must exist").hash(),
                 total_score: self.pivot.total_score + new_scores,
             }
-        } else {
-            let pivot_header = self.pivot_header();
+        } else if first_header_number < pivot_header.number() {
+            ctrace!(
+                SYNC,
+                "Ignore received headers, pivot is already updated since headers are imported by other peers"
+            );
+        } else if first_header_number == pivot_header.number() {
             if pivot_header.number() != 0 {
                 self.pivot = Pivot {
                     hash: pivot_header.parent_hash(),
                     total_score: self.pivot.total_score - pivot_header.score(),
                 }
             }
+        } else {
+            cerror!(
+                SYNC,
+                "Invalid header update state. best_hash: {}, self.pivot.hash: {}, first_header_hash: {}",
+                self.best_hash,
+                self.pivot.hash,
+                first_header_hash
+            );
         }
 
         self.request_time = None;
@@ -179,6 +194,7 @@ impl HeaderDownloader {
     pub fn mark_as_imported(&mut self, hashes: Vec<H256>) {
         for hash in hashes {
             self.queued.remove(&hash);
+            self.downloaded.remove(&hash);
 
             if self.best_hash == hash {
                 self.pivot = Pivot {
@@ -188,6 +204,7 @@ impl HeaderDownloader {
             }
         }
         self.queued.shrink_to_fit();
+        self.downloaded.shrink_to_fit();
     }
 
     pub fn mark_as_queued(&mut self, hashes: Vec<H256>) {
