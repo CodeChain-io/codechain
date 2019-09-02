@@ -58,6 +58,9 @@ vergen = "2"
 path = "codechain/main.rs"
 name = "codechain"
 
+[profile.release]
+lto = true
+
 [workspace]
 members = [
     "core",
