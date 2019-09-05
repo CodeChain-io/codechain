@@ -318,6 +318,7 @@ impl Importer {
         _importer_lock: &MutexGuard<()>,
     ) -> usize {
         let prev_best_proposal_header_hash = client.block_chain().best_proposal_header().hash();
+        let prev_best_block_hash = client.block_chain().best_block_hash();
 
         let mut bad = HashSet::new();
         let mut imported = Vec::new();
@@ -350,7 +351,8 @@ impl Importer {
         self.header_queue.mark_as_bad(&bad.drain().collect::<Vec<_>>());
         let (enacted, retracted) = self.calculate_enacted_retracted(&routes);
 
-        let new_best_proposal_header_hash = client.block_chain().best_proposal_header().hash();
+        let new_best_proposal_header = client.block_chain().best_proposal_header();
+        let new_best_proposal_header_hash = new_best_proposal_header.hash();
         let best_proposal_header_changed = if prev_best_proposal_header_hash != new_best_proposal_header_hash {
             Some(new_best_proposal_header_hash)
         } else {
@@ -366,6 +368,14 @@ impl Importer {
             0,
             best_proposal_header_changed,
         );
+
+        let maybe_new_best_block_hash = new_best_proposal_header.parent_hash();
+        if best_proposal_header_changed.is_some()
+            && prev_best_block_hash != maybe_new_best_block_hash
+            && client.block(&BlockId::Hash(maybe_new_best_block_hash)).is_some()
+        {
+            client.update_best_as_committed(maybe_new_best_block_hash);
+        }
 
         client.db().flush().expect("DB flush failed.");
 
