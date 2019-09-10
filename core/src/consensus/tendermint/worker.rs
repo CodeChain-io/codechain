@@ -593,6 +593,7 @@ impl Worker {
     }
 
     fn move_to_step(&mut self, state: TendermintState, is_restoring: bool) {
+        ctrace!(ENGINE, "Transition to {:?} triggered.", state);
         let prev_step = mem::replace(&mut self.step, state.clone());
         if !is_restoring {
             self.backup();
@@ -846,7 +847,6 @@ impl Worker {
             };
 
             if let Some(step) = next_step {
-                ctrace!(ENGINE, "Transition to {:?} triggered.", step);
                 self.move_to_step(step, is_restoring);
                 return
             }
