@@ -102,17 +102,6 @@ impl fmt::Debug for TendermintState {
     }
 }
 
-impl From<Step> for TendermintState {
-    fn from(s: Step) -> Self {
-        match s {
-            Step::Propose => TendermintState::Propose,
-            Step::Prevote => TendermintState::Prevote,
-            Step::Precommit => TendermintState::Precommit,
-            Step::Commit => TendermintState::Commit,
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Step {
     Propose,

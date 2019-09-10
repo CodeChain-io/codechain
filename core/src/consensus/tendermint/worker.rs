@@ -592,8 +592,8 @@ impl Worker {
         self.votes_received = BitSet::new();
     }
 
-    fn move_to_step(&mut self, step: Step, is_restoring: bool) {
-        let prev_step = mem::replace(&mut self.step, step.into());
+    fn move_to_step(&mut self, state: TendermintState, is_restoring: bool) {
+        let prev_step = mem::replace(&mut self.step, state.clone());
         if !is_restoring {
             self.backup();
         }
@@ -602,18 +602,18 @@ impl Worker {
         self.timeout_token_nonce += 1;
         self.extension
             .send(network::Event::SetTimerStep {
-                step,
+                step: state.to_step(),
                 view: self.view,
                 expired_token_nonce,
             })
             .unwrap();
-        let vote_step = VoteStep::new(self.height, self.view, step);
+        let vote_step = VoteStep::new(self.height, self.view, state.to_step());
 
         // If there are not enough pre-votes or pre-commits,
         // move_to_step can be called with the same step
         // Also, when moving to the commit step,
         // keep `votes_received` for gossiping.
-        if prev_step.to_step() != step && step != Step::Commit {
+        if prev_step.to_step() != state.to_step() && !state.is_commit() {
             self.votes_received = BitSet::new();
         }
 
@@ -624,13 +624,13 @@ impl Worker {
             self.last_two_thirds_majority.view(),
             self.votes_received,
         );
-        match step {
+        match state.to_step() {
             Step::Propose => {
                 cinfo!(ENGINE, "move_to_step: Propose.");
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
                     if self.client().block(&BlockId::Hash(*hash)).is_some() {
                         self.proposal = Proposal::new_imported(*hash);
-                        self.move_to_step(Step::Prevote, is_restoring);
+                        self.move_to_step(TendermintState::Prevote, is_restoring);
                     } else {
                         cwarn!(ENGINE, "Proposal is received but not imported");
                         // Proposal is received but is not verified yet.
@@ -822,7 +822,7 @@ impl Worker {
             let next_step = match self.step {
                 TendermintState::Precommit if message.on.block_hash.is_none() && has_enough_aligned_votes => {
                     self.increment_view(1);
-                    Some(Step::Propose)
+                    Some(TendermintState::Propose)
                 }
                 TendermintState::Precommit if has_enough_aligned_votes => {
                     let bh = message.on.block_hash.expect("previous guard ensures is_some; qed");
@@ -832,16 +832,16 @@ impl Worker {
 
                         // Update the best block hash as the hash of the committed block
                         self.client().update_best_as_committed(bh);
-                        Some(Step::Commit)
+                        Some(TendermintState::Commit)
                     } else {
                         cwarn!(ENGINE, "Cannot find a proposal which committed");
                         self.increment_view(1);
-                        Some(Step::Propose)
+                        Some(TendermintState::Propose)
                     }
                 }
                 // Avoid counting votes twice.
-                TendermintState::Prevote if lock_change => Some(Step::Precommit),
-                TendermintState::Prevote if has_enough_aligned_votes => Some(Step::Precommit),
+                TendermintState::Prevote if lock_change => Some(TendermintState::Precommit),
+                TendermintState::Prevote if has_enough_aligned_votes => Some(TendermintState::Precommit),
                 _ => None,
             };
 
@@ -856,7 +856,7 @@ impl Worker {
         {
             let height = self.height;
             self.move_to_height(height + 1);
-            self.move_to_step(Step::Propose, is_restoring);
+            self.move_to_step(TendermintState::Propose, is_restoring);
             return
         }
 
@@ -904,7 +904,7 @@ impl Worker {
             let current_step = self.step.clone();
             match current_step {
                 TendermintState::Propose => {
-                    self.move_to_step(Step::Prevote, false);
+                    self.move_to_step(TendermintState::Prevote, false);
                 }
                 TendermintState::ProposeWaitImported {
                     block,
@@ -944,13 +944,13 @@ impl Worker {
             if proposal_at_view_0 == Some(proposal.hash()) {
                 self.proposal = Proposal::new_imported(proposal.hash())
             }
-            self.move_to_step(Step::Prevote, false);
+            self.move_to_step(TendermintState::Prevote, false);
         }
     }
 
     fn submit_proposal_block(&mut self, sealed_block: &SealedBlock) {
         cinfo!(ENGINE, "Submitting proposal block {}", sealed_block.header().hash());
-        self.move_to_step(Step::Prevote, false);
+        self.move_to_step(TendermintState::Prevote, false);
         self.broadcast_proposal_block(self.view, encoded::Block::new(sealed_block.rlp_bytes()));
     }
 
@@ -968,14 +968,16 @@ impl Worker {
         let client = self.client();
         let backup = restore(client.get_kvdb().as_ref());
         if let Some(backup) = backup {
-            let backup_step = if backup.step == Step::Commit {
+            let backup_step = match backup.step {
+                Step::Propose => TendermintState::Propose,
+                Step::Prevote => TendermintState::Prevote,
+                Step::Precommit => TendermintState::Precommit,
                 // If the backuped step is `Commit`, we should start at `Precommit` to update the
                 // chain's best block safely.
-                Step::Precommit
-            } else {
-                backup.step
+                Step::Commit => TendermintState::Precommit,
             };
-            self.step = backup_step.into();
+
+            self.step = backup_step;
             self.height = backup.height;
             self.view = backup.view;
             self.last_confirmed_view = backup.last_confirmed_view;
@@ -1188,7 +1190,7 @@ impl Worker {
         let next_step = match self.step {
             TendermintState::Propose => {
                 cinfo!(ENGINE, "Propose timeout.");
-                Step::Prevote
+                TendermintState::Prevote
             }
             TendermintState::ProposeWaitBlockGeneration {
                 ..
@@ -1210,20 +1212,20 @@ impl Worker {
             }
             TendermintState::Prevote if self.has_enough_any_votes() => {
                 cinfo!(ENGINE, "Prevote timeout.");
-                Step::Precommit
+                TendermintState::Precommit
             }
             TendermintState::Prevote => {
                 cinfo!(ENGINE, "Prevote timeout without enough votes.");
-                Step::Prevote
+                TendermintState::Prevote
             }
             TendermintState::Precommit if self.has_enough_any_votes() => {
                 cinfo!(ENGINE, "Precommit timeout.");
                 self.increment_view(1);
-                Step::Propose
+                TendermintState::Propose
             }
             TendermintState::Precommit => {
                 cinfo!(ENGINE, "Precommit timeout without enough votes.");
-                Step::Precommit
+                TendermintState::Precommit
             }
             TendermintState::Commit => {
                 cinfo!(ENGINE, "Commit timeout.");
@@ -1234,7 +1236,7 @@ impl Worker {
                 }
                 let height = self.height;
                 self.move_to_height(height + 1);
-                Step::Propose
+                TendermintState::Propose
             }
             TendermintState::CommitTimedout => unreachable!(),
         };
@@ -1457,14 +1459,14 @@ impl Worker {
                 }
             }
             if height_changed {
-                self.move_to_step(Step::Propose, false);
+                self.move_to_step(TendermintState::Propose, false);
                 return
             }
         }
         if !enacted.is_empty() && self.can_move_from_commit_to_propose() {
             let new_height = self.height + 1;
             self.move_to_height(new_height);
-            self.move_to_step(Step::Propose, false)
+            self.move_to_step(TendermintState::Propose, false)
         }
     }
 
