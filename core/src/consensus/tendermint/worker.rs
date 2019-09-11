@@ -1516,17 +1516,24 @@ impl Worker {
             }
         }
 
-        if !imported.is_empty() {
-            let mut height_changed = false;
-            for hash in imported {
-                // New Commit received, skip to next height.
-                let header = c.block_header(&hash.into()).expect("ChainNotify is called after the block is imported");
-
+        if let Some((last, rest)) = imported.split_last() {
+            let (imported, last_proposal_header) = {
+                let header =
+                    c.block_header(&last.clone().into()).expect("ChainNotify is called after the block is imported");
                 let full_header = header.decode();
                 if self.is_proposal(full_header.number(), full_header.hash()) {
-                    self.on_imported_proposal(&full_header);
-                } else if self.height < header.number() {
-                    height_changed = true;
+                    (rest, Some(full_header))
+                } else {
+                    (imported.as_slice(), None)
+                }
+            };
+            let height_at_begin = self.height;
+            for hash in imported {
+                // New Commit received, skip to next height.
+                let header =
+                    c.block_header(&hash.clone().into()).expect("ChainNotify is called after the block is imported");
+                let full_header = header.decode();
+                if self.height < header.number() {
                     cinfo!(ENGINE, "Received a commit: {:?}.", header.number());
                     let prev_block_view = TendermintSealView::new(full_header.seal())
                         .previous_block_view()
@@ -1535,9 +1542,11 @@ impl Worker {
                     self.save_last_confirmed_view(prev_block_view);
                 }
             }
-            if height_changed {
+            if height_at_begin != self.height {
                 self.move_to_step(TendermintState::Propose, false);
-                return
+            }
+            if let Some(last_proposal_header) = last_proposal_header {
+                self.on_imported_proposal(&last_proposal_header);
             }
         }
     }
