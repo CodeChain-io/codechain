@@ -635,7 +635,7 @@ impl Worker {
 
     #[allow(clippy::cognitive_complexity)]
     fn move_to_step(&mut self, state: TendermintState, is_restoring: bool) {
-        ctrace!(ENGINE, "Transition to {:?} triggered.", state);
+        ctrace!(ENGINE, "Transition to {:?} triggered from {:?}.", state, self.step);
         let prev_step = mem::replace(&mut self.step, state.clone());
         if !is_restoring {
             self.backup();
