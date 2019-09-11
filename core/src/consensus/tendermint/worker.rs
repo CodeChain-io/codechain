@@ -492,7 +492,7 @@ impl Worker {
     }
 
     pub fn need_proposal(&self) -> bool {
-        self.proposal.is_none()
+        self.proposal.is_none() && !self.step.is_commit()
     }
 
     pub fn get_all_votes_and_authors(
