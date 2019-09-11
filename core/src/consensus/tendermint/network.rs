@@ -352,6 +352,43 @@ impl NetworkExtension<Event> for TendermintExtension {
                     self.send_votes(token, votes);
                 }
             }
+            Ok(TendermintMessage::RequestCommit {
+                height,
+            }) => {
+                ctrace!(ENGINE, "Received RequestCommit for {} from {:?}", height, token);
+                let (result, receiver) = crossbeam::bounded(1);
+                self.inner
+                    .send(worker::Event::RequestCommit {
+                        height,
+                        result,
+                    })
+                    .unwrap();
+
+                if let Ok(message) = receiver.recv() {
+                    ctrace!(ENGINE, "Send commit for {} to {:?}", height, token);
+                    self.api.send(token, Arc::new(message));
+                }
+            }
+            Ok(TendermintMessage::Commit {
+                block,
+                votes,
+            }) => {
+                ctrace!(ENGINE, "Received Commit from {:?}", token);
+                let (result, receiver) = crossbeam::bounded(1);
+                self.inner
+                    .send(worker::Event::GetCommit {
+                        block: block.clone(),
+                        votes,
+                        result,
+                    })
+                    .unwrap();
+
+                if let Some(c) = receiver.recv().unwrap() {
+                    if let Err(e) = c.import_block(block) {
+                        cinfo!(ENGINE, "Failed to import committed block {:?}", e);
+                    }
+                }
+            }
             _ => cinfo!(ENGINE, "Invalid message from peer {}", token),
         }
     }
