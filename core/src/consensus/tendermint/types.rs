@@ -23,6 +23,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use super::super::BitSet;
 use super::message::VoteStep;
 use crate::block::{IsBlock, SealedBlock};
+use consensus::tendermint::BlockHash;
 
 pub type Height = u64;
 pub type View = u64;
@@ -41,8 +42,14 @@ pub enum TendermintState {
     },
     Prevote,
     Precommit,
-    Commit,
-    CommitTimedout,
+    Commit {
+        view: View,
+        block_hash: H256,
+    },
+    CommitTimedout {
+        view: View,
+        block_hash: H256,
+    },
 }
 
 impl TendermintState {
@@ -60,23 +67,58 @@ impl TendermintState {
             } => Step::Propose,
             TendermintState::Prevote => Step::Prevote,
             TendermintState::Precommit => Step::Precommit,
-            TendermintState::Commit => Step::Commit,
-            TendermintState::CommitTimedout => Step::Commit,
+            TendermintState::Commit {
+                ..
+            } => Step::Commit,
+            TendermintState::CommitTimedout {
+                ..
+            } => Step::Commit,
         }
     }
 
     pub fn is_commit(&self) -> bool {
         match self {
-            TendermintState::Commit => true,
-            TendermintState::CommitTimedout => true,
+            TendermintState::Commit {
+                ..
+            } => true,
+            TendermintState::CommitTimedout {
+                ..
+            } => true,
             _ => false,
         }
     }
 
     pub fn is_commit_timedout(&self) -> bool {
         match self {
-            TendermintState::CommitTimedout => true,
+            TendermintState::CommitTimedout {
+                ..
+            } => true,
             _ => false,
+        }
+    }
+
+    pub fn committed(&self) -> Option<(View, BlockHash)> {
+        match self {
+            TendermintState::Commit {
+                block_hash,
+                view,
+            } => Some((*view, *block_hash)),
+            TendermintState::CommitTimedout {
+                block_hash,
+                view,
+            } => Some((*view, *block_hash)),
+            TendermintState::Propose => None,
+            TendermintState::ProposeWaitBlockGeneration {
+                ..
+            } => None,
+            TendermintState::ProposeWaitImported {
+                ..
+            } => None,
+            TendermintState::ProposeWaitEmptyBlockTimer {
+                ..
+            } => None,
+            TendermintState::Prevote => None,
+            TendermintState::Precommit => None,
         }
     }
 }
@@ -96,8 +138,14 @@ impl fmt::Debug for TendermintState {
             } => write!(f, "TendermintState::ProposeWaitEmptyBlockTimer({})", block.header().hash()),
             TendermintState::Prevote => write!(f, "TendermintState::Prevote"),
             TendermintState::Precommit => write!(f, "TendermintState::Precommit"),
-            TendermintState::Commit => write!(f, "TendermintState::Commit"),
-            TendermintState::CommitTimedout => write!(f, "TendermintState::CommitTimedout"),
+            TendermintState::Commit {
+                block_hash,
+                view,
+            } => write!(f, "TendermintState::Commit({}, {})", block_hash, view),
+            TendermintState::CommitTimedout {
+                block_hash,
+                view,
+            } => write!(f, "TendermintState::CommitTimedout({}, {})", block_hash, view),
         }
     }
 }
