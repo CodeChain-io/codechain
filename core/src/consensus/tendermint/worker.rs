@@ -405,6 +405,10 @@ impl Worker {
 
     /// Check Tendermint can move from the commit step to the propose step
     fn can_move_from_commit_to_propose(&self) -> bool {
+        if !self.step.is_commit() {
+            return false
+        }
+
         let vote_step = VoteStep::new(self.height, self.last_confirmed_view, Step::Precommit);
         if self.step.is_commit_timedout() && self.check_current_block_exists() {
             cinfo!(ENGINE, "Transition to Propose because best block is changed after commit timeout");
@@ -440,6 +444,20 @@ impl Worker {
         let block_hash = proposal.on.block_hash.expect("Proposal message always include block hash");
         let bytes = self.client().block(&BlockId::Hash(block_hash))?.into_inner();
         Some((proposal.signature, proposal.signer_index, bytes))
+    }
+
+    fn is_proposal_received(&self, height: Height, view: View, block_hash: BlockHash) -> bool {
+        let all_votes = self.votes.get_all_votes_in_round(&VoteStep {
+            height,
+            view,
+            step: Step::Propose,
+        });
+
+        if let Some(proposal) = all_votes.first() {
+            proposal.on.block_hash.expect("Proposal message always include block hash") == block_hash
+        } else {
+            false
+        }
     }
 
     pub fn vote_step(&self) -> VoteStep {
@@ -592,6 +610,7 @@ impl Worker {
         self.votes_received = BitSet::new();
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn move_to_step(&mut self, state: TendermintState, is_restoring: bool) {
         ctrace!(ENGINE, "Transition to {:?} triggered.", state);
         let prev_step = mem::replace(&mut self.step, state.clone());
@@ -707,6 +726,34 @@ impl Worker {
             }
             Step::Commit => {
                 cinfo!(ENGINE, "move_to_step: Commit.");
+                let (view, block_hash) = state.committed().expect("commit always has committed_view");
+                self.save_last_confirmed_view(view);
+
+                let proposal_received = self.is_proposal_received(self.height, view, block_hash);
+                let proposal_imported = self.client().block(&block_hash.into()).is_some();
+                let best_block_header = self.client().best_block_header();
+                if best_block_header.number() >= self.height {
+                    cwarn!(
+                        ENGINE,
+                        "best_block_header.number() >= self.height ({} >= {}) in Commit state",
+                        best_block_header.number(),
+                        self.height
+                    );
+                    return
+                }
+
+                let should_update_best_block = best_block_header.hash() != block_hash;
+
+                cdebug!(
+                    ENGINE,
+                    "commited, proposal_received: {}, proposal_imported: {}, should_update_best_block: {}",
+                    proposal_received,
+                    proposal_imported,
+                    should_update_best_block
+                );
+                if proposal_imported && should_update_best_block {
+                    self.client().update_best_as_committed(block_hash);
+                }
             }
         }
     }
@@ -818,27 +865,38 @@ impl Worker {
             self.last_two_thirds_majority =
                 TwoThirdsMajority::from_message(message.on.step.view, message.on.block_hash);
         }
+
+        if vote_step.step == Step::Precommit
+            && self.height == vote_step.height
+            && message.on.block_hash.is_some()
+            && has_enough_aligned_votes
+        {
+            if self.can_move_from_commit_to_propose() {
+                let height = self.height;
+                self.move_to_height(height + 1);
+                self.move_to_step(TendermintState::Propose, is_restoring);
+                return
+            }
+
+            let block_hash = message.on.block_hash.expect("Upper if already checked block hash");
+            if !self.step.is_commit() {
+                self.move_to_step(
+                    TendermintState::Commit {
+                        block_hash,
+                        view: vote_step.view,
+                    },
+                    is_restoring,
+                );
+                return
+            }
+        }
+
         // Check if it can affect the step transition.
         if self.is_step(message) {
             let next_step = match self.step {
                 TendermintState::Precommit if message.on.block_hash.is_none() && has_enough_aligned_votes => {
                     self.increment_view(1);
                     Some(TendermintState::Propose)
-                }
-                TendermintState::Precommit if has_enough_aligned_votes => {
-                    let bh = message.on.block_hash.expect("previous guard ensures is_some; qed");
-                    if self.client().block(&BlockId::Hash(bh)).is_some() {
-                        // Commit the block, and update the last confirmed view
-                        self.save_last_confirmed_view(message.on.step.view);
-
-                        // Update the best block hash as the hash of the committed block
-                        self.client().update_best_as_committed(bh);
-                        Some(TendermintState::Commit)
-                    } else {
-                        cwarn!(ENGINE, "Cannot find a proposal which committed");
-                        self.increment_view(1);
-                        Some(TendermintState::Propose)
-                    }
                 }
                 // Avoid counting votes twice.
                 TendermintState::Prevote if lock_change => Some(TendermintState::Precommit),
@@ -850,14 +908,6 @@ impl Worker {
                 self.move_to_step(step, is_restoring);
                 return
             }
-        } else if vote_step.step == Step::Precommit
-            && self.height == vote_step.height
-            && self.can_move_from_commit_to_propose()
-        {
-            let height = self.height;
-            self.move_to_height(height + 1);
-            self.move_to_step(TendermintState::Propose, is_restoring);
-            return
         }
 
         // self.move_to_step() calls self.broadcast_state()
@@ -1227,18 +1277,27 @@ impl Worker {
                 cinfo!(ENGINE, "Precommit timeout without enough votes.");
                 TendermintState::Precommit
             }
-            TendermintState::Commit => {
+            TendermintState::Commit {
+                block_hash,
+                view,
+            } => {
                 cinfo!(ENGINE, "Commit timeout.");
-                if !self.check_current_block_exists() {
+                if self.client().block(&block_hash.into()).is_none() {
                     cwarn!(ENGINE, "Best chain is not updated yet, wait until imported");
-                    self.step = TendermintState::CommitTimedout;
+                    self.step = TendermintState::CommitTimedout {
+                        block_hash,
+                        view,
+                    };
                     return
                 }
+
                 let height = self.height;
                 self.move_to_height(height + 1);
                 TendermintState::Propose
             }
-            TendermintState::CommitTimedout => unreachable!(),
+            TendermintState::CommitTimedout {
+                ..
+            } => unreachable!(),
         };
 
         self.move_to_step(next_step, false);
@@ -1439,6 +1498,24 @@ impl Worker {
             }
         };
 
+        if self.step.is_commit() && (imported.len() + enacted.len() == 1) {
+            let (_, committed_block_hash) = self.step.committed().expect("Commit state always has block_hash");
+            if imported.first() == Some(&committed_block_hash) {
+                cdebug!(ENGINE, "Committed block {} is committed_block_hash", committed_block_hash);
+                self.client().update_best_as_committed(committed_block_hash);
+                return
+            }
+            if enacted.first() == Some(&committed_block_hash) {
+                cdebug!(ENGINE, "Committed block {} is now the best block", committed_block_hash);
+                if self.can_move_from_commit_to_propose() {
+                    let new_height = self.height + 1;
+                    self.move_to_height(new_height);
+                    self.move_to_step(TendermintState::Propose, false);
+                    return
+                }
+            }
+        }
+
         if !imported.is_empty() {
             let mut height_changed = false;
             for hash in imported {
@@ -1462,11 +1539,6 @@ impl Worker {
                 self.move_to_step(TendermintState::Propose, false);
                 return
             }
-        }
-        if !enacted.is_empty() && self.can_move_from_commit_to_propose() {
-            let new_height = self.height + 1;
-            self.move_to_height(new_height);
-            self.move_to_step(TendermintState::Propose, false)
         }
     }
 
