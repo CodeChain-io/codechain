@@ -79,6 +79,8 @@ const MESSAGE_ID_PROPOSAL_BLOCK: u8 = 0x02;
 const MESSAGE_ID_STEP_STATE: u8 = 0x03;
 const MESSAGE_ID_REQUEST_MESSAGE: u8 = 0x04;
 const MESSAGE_ID_REQUEST_PROPOSAL: u8 = 0x05;
+const MESSAGE_ID_REQUEST_COMMIT: u8 = 0x06;
+const MESSAGE_ID_COMMIT: u8 = 0x07;
 
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
@@ -101,6 +103,13 @@ pub enum TendermintMessage {
     RequestProposal {
         height: Height,
         view: View,
+    },
+    RequestCommit {
+        height: Height,
+    },
+    Commit {
+        block: Bytes,
+        votes: Vec<ConsensusMessage>,
     },
 }
 
@@ -159,6 +168,22 @@ impl Encodable for TendermintMessage {
                 s.append(&MESSAGE_ID_REQUEST_PROPOSAL);
                 s.append(height);
                 s.append(view);
+            }
+            TendermintMessage::RequestCommit {
+                height,
+            } => {
+                s.begin_list(2);
+                s.append(&MESSAGE_ID_REQUEST_COMMIT);
+                s.append(height);
+            }
+            TendermintMessage::Commit {
+                block,
+                votes,
+            } => {
+                s.begin_list(3);
+                s.append(&MESSAGE_ID_COMMIT);
+                s.append(block);
+                s.append_list(votes);
             }
         }
     }
@@ -251,6 +276,34 @@ impl Decodable for TendermintMessage {
                 TendermintMessage::RequestProposal {
                     height,
                     view,
+                }
+            }
+            MESSAGE_ID_REQUEST_COMMIT => {
+                let item_count = rlp.item_count()?;
+                if item_count != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 2,
+                    })
+                }
+                let height = rlp.at(1)?.as_val()?;
+                TendermintMessage::RequestCommit {
+                    height,
+                }
+            }
+            MESSAGE_ID_COMMIT => {
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
+                }
+                let block = rlp.at(1)?.as_val()?;
+                let votes = rlp.at(2)?.as_list()?;
+                TendermintMessage::Commit {
+                    block,
+                    votes,
                 }
             }
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
@@ -405,6 +458,42 @@ mod tests {
         rlp_encode_and_decode_test!(TendermintMessage::RequestProposal {
             height: 10,
             view: 123,
+        });
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_6() {
+        rlp_encode_and_decode_test!(TendermintMessage::RequestCommit {
+            height: 3,
+        });
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_7() {
+        rlp_encode_and_decode_test!(TendermintMessage::Commit {
+            block: vec![1u8, 2u8],
+            votes: vec![
+                ConsensusMessage {
+                    signature: SchnorrSignature::random(),
+                    signer_index: 0x1234,
+                    on: VoteOn {
+                        step: VoteStep::new(2, 3, Step::Commit),
+                        block_hash: Some(H256::from(
+                            "07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"
+                        )),
+                    },
+                },
+                ConsensusMessage {
+                    signature: SchnorrSignature::random(),
+                    signer_index: 0x1235,
+                    on: VoteOn {
+                        step: VoteStep::new(2, 3, Step::Commit),
+                        block_hash: Some(H256::from(
+                            "07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"
+                        )),
+                    },
+                }
+            ]
         });
     }
 
