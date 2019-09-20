@@ -44,7 +44,6 @@ fn valid_pay_to_public_key() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -66,7 +65,6 @@ fn valid_pay_to_public_key() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -89,7 +87,6 @@ fn invalid_pay_to_public_key() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let input = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -111,7 +108,6 @@ fn invalid_pay_to_public_key() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -180,7 +176,6 @@ fn sign_all_input_all_output() {
         burns: Vec::new(),
         inputs: vec![input0.clone(), input1.clone()],
         outputs: vec![output0.clone(), output1.clone()],
-        orders: Vec::new(),
     };
 
     // Execute sciprt in input0
@@ -192,7 +187,6 @@ fn sign_all_input_all_output() {
             burns: Vec::new(),
             inputs: vec![input0.clone(), input1],
             outputs: vec![output0, output1],
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -260,7 +254,6 @@ fn sign_single_input_all_output() {
         burns: Vec::new(),
         inputs: vec![input0.clone(), input1.clone()],
         outputs: vec![output0.clone(), output1.clone()],
-        orders: Vec::new(),
     };
 
     // Execute sciprt in input0
@@ -272,7 +265,6 @@ fn sign_single_input_all_output() {
             burns: Vec::new(),
             inputs: vec![input0.clone()],
             outputs: vec![output0, output1],
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b10 as u8]),
@@ -339,7 +331,6 @@ fn sign_all_input_partial_output() {
         burns: Vec::new(),
         inputs: vec![input0.clone(), input1.clone()],
         outputs: vec![output0.clone(), output1.clone()],
-        orders: Vec::new(),
     };
 
     // Execute sciprt in input0
@@ -351,7 +342,6 @@ fn sign_all_input_partial_output() {
             burns: Vec::new(),
             inputs: vec![input0.clone(), input1],
             outputs: vec![output0],
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b1, 0b0000_0101 as u8]),
@@ -418,7 +408,6 @@ fn sign_single_input_partial_output() {
         burns: Vec::new(),
         inputs: vec![input0.clone(), input1.clone()],
         outputs: vec![output0.clone(), output1.clone()],
-        orders: Vec::new(),
     };
 
     // Execute sciprt in input0
@@ -430,7 +419,6 @@ fn sign_single_input_partial_output() {
             burns: Vec::new(),
             inputs: vec![input0.clone()],
             outputs: vec![output0],
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b1, 0b0000_0100 as u8]),
@@ -475,7 +463,6 @@ fn distinguish_sign_single_input_with_sign_all() {
         burns: Vec::new(),
         inputs: vec![input0.clone()],
         outputs: vec![output0.clone()],
-        orders: Vec::new(),
     };
 
     // Execute sciprt in input0
@@ -487,7 +474,6 @@ fn distinguish_sign_single_input_with_sign_all() {
             burns: Vec::new(),
             inputs: vec![input0.clone()],
             outputs: vec![output0],
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -533,7 +519,6 @@ fn distinguish_sign_single_output_with_sign_all() {
         burns: Vec::new(),
         inputs: vec![input0.clone()],
         outputs: vec![output0.clone()],
-        orders: Vec::new(),
     };
 
     // Execute sciprt in input0
@@ -545,7 +530,6 @@ fn distinguish_sign_single_output_with_sign_all() {
             burns: Vec::new(),
             inputs: vec![input0.clone()],
             outputs: vec![output0],
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),

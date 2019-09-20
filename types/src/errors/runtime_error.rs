@@ -79,8 +79,6 @@ pub enum Error {
         index: usize,
         mismatch: Mismatch<H160>,
     },
-    /// Errors on orders: origin_outputs of order is not satisfied.
-    InvalidOriginOutputs(H256),
     /// Failed to decode script.
     InvalidScript,
     /// Returned when transaction seq does not match state seq
@@ -138,7 +136,6 @@ const ERROR_ID_SCRIPT_NOT_ALLOWED: u8 = 22;
 const ERROR_ID_TEXT_NOT_EXIST: u8 = 23;
 const ERROR_ID_TEXT_VERIFICATION_FAIL: u8 = 24;
 const ERROR_ID_CANNOT_USE_MASTER_KEY: u8 = 25;
-const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 26;
 const ERROR_ID_INVALID_SCRIPT: u8 = 27;
 const ERROR_ID_INVALID_SEQ: u8 = 28;
 const ERROR_ID_ASSET_SUPPLY_OVERFLOW: u8 = 29;
@@ -166,7 +163,6 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_INSUFFICIENT_PERMISSION => 1,
             ERROR_ID_INVALID_ASSET_QUANTITY => 6,
             ERROR_ID_UNEXPECTED_ASSET_TYPE => 3,
-            ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
             ERROR_ID_INVALID_SCRIPT => 1,
             ERROR_ID_INVALID_SEQ => 2,
             ERROR_ID_INVALID_SHARD_ID => 2,
@@ -255,9 +251,6 @@ impl Encodable for Error {
                 index,
                 mismatch,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_UNEXPECTED_ASSET_TYPE).append(index).append(mismatch),
-            Error::InvalidOriginOutputs(addr) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORIGIN_OUTPUTS).append(addr)
-            }
             Error::InvalidScript => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SCRIPT),
             Error::InvalidSeq(mismatch) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SEQ).append(mismatch),
             Error::InvalidShardId(shard_id) => {
@@ -347,7 +340,6 @@ impl Decodable for Error {
                 index: rlp.val_at(1)?,
                 mismatch: rlp.val_at(2)?,
             },
-            ERROR_ID_INVALID_ORIGIN_OUTPUTS => Error::InvalidOriginOutputs(rlp.val_at(1)?),
             ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
             ERROR_ID_INVALID_SEQ => Error::InvalidSeq(rlp.val_at(1)?),
             ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
@@ -423,7 +415,6 @@ impl Display for Error {
                 shard_id, tracker, index, expected, got
             ),
             Error::UnexpectedAssetType{index, mismatch} => write!(f, "{}th input has an unexpected asset type: {}", index, mismatch),
-            Error::InvalidOriginOutputs(addr) => write!(f, "origin_outputs of order({}) is not satisfied", addr),
             Error::InvalidScript => write!(f, "Failed to decode script"),
             Error::InvalidSeq(mismatch) => write!(f, "Invalid transaction seq {}", mismatch),
             Error::InvalidShardId(shard_id) => write!(f, "{} is an invalid shard id", shard_id),

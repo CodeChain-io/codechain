@@ -174,7 +174,6 @@ where
                         burns: vec![],
                         inputs: $inputs,
                         outputs: $outputs,
-                        orders: vec![],
                         metadata: "".to_string(),
                         approvals: vec![],
                         expiration: None,

@@ -18,7 +18,7 @@ use std::ops::Deref;
 
 use cjson::uint::Uint;
 use cstate::{Asset as AssetType, OwnedAsset as OwnedAssetType};
-use primitives::{H160, H256};
+use primitives::H160;
 use rustc_serialize::hex::ToHex;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -35,7 +35,6 @@ pub struct OwnedAsset {
     asset: Asset,
     lock_script_hash: H160,
     parameters: Vec<String>,
-    order_hash: Option<H256>,
 }
 
 impl From<AssetType> for Asset {
@@ -55,7 +54,6 @@ impl From<OwnedAssetType> for OwnedAsset {
                 quantity: asset.quantity().into(),
             },
             lock_script_hash: *asset.lock_script_hash(),
-            order_hash: *asset.order_hash(),
             parameters: asset.parameters().iter().map(Deref::deref).map(<[u8]>::to_hex).collect(),
         }
     }

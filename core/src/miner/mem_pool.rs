@@ -1273,7 +1273,6 @@ pub mod test {
                 burns: vec![],
                 inputs: vec![],
                 outputs: vec![],
-                orders: vec![],
                 metadata: "".into(),
                 approvals: vec![],
                 expiration: None,

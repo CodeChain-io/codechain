@@ -109,55 +109,10 @@ export const ERROR = {
         data: $containsWord("Syntax(DuplicatedPreviousOutput"),
         message: $anything
     },
-    ORDER_IS_NOT_EMPTY: {
-        code: -32099,
-        message: $anything,
-        data: $containsWord("OrderIsNotEmpty")
-    },
-    INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS: {
-        code: -32099,
-        message: $anything,
-        data: $containsWord("InconsistentTransactionInOutWithOrders")
-    },
     INVALID_ORIGIN_OUTPUTS: {
         code: -32099,
         message: $anything,
         data: $containsWord("InvalidOriginOutputs")
-    },
-    INVALID_ORDER_ASSET_QUANTITIES: {
-        code: -32099,
-        message: $anything,
-        data: $containsWord("InvalidOrderAssetQuantities")
-    },
-    INVALID_ORDER_ASSET_TYPES: {
-        code: -32099,
-        message: $anything,
-        data: $containsWord("InvalidOrderAssetTypes")
-    },
-    INVALID_ORDER_LOCK_SCRIPT_HASH: {
-        code: -32099,
-        message: $anything,
-        data: $containsWord("InvalidOrderLockScriptHash")
-    },
-    INVALID_ORDER_PARAMETERS: {
-        code: -32099,
-        message: $anything,
-        data: $containsWord("InvalidOrderParameters")
-    },
-    INVALID_OUTPUT_WITH_ORDER: {
-        code: -32099,
-        message: $anything,
-        data: $containsWord("InvalidOutputWithOrder")
-    },
-    INVALID_SPENT_QUANTITY: {
-        code: -32099,
-        message: $anything,
-        data: $containsWord("InvalidSpentQuantity")
-    },
-    ORDER_EXPIRED: {
-        code: -32099,
-        message: $anything,
-        data: $containsWord("OrderExpired")
     },
     DISABLED_TRANSACTION: {
         code: -32099,

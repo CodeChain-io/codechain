@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::NetworkId;
-use primitives::{Bytes, H160, H256};
+use primitives::{H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::TaggedRlp;
@@ -35,8 +34,6 @@ pub enum Error {
     EmptyShardOwners(ShardId),
     /// Returned when the sum of the transaction's inputs is different from the sum of outputs.
     InconsistentTransactionInOut,
-    /// the input and output of tx is not consistent with its orders
-    InconsistentTransactionInOutWithOrders,
     /// Transaction's fee is below currently set minimal fee requirement.
     InsufficientFee {
         /// Minimal expected fee
@@ -49,37 +46,9 @@ pub enum Error {
     InvalidCustomAction(String),
     /// Invalid network ID given.
     InvalidNetworkId(NetworkId),
-    /// invalid asset_quantity_from, asset_quantity_to because of ratio
-    InvalidOrderAssetQuantities {
-        from: u64,
-        to: u64,
-        fee: u64,
-    },
-    /// asset_type_from and asset_type_to are equal.
-    InvalidOrderAssetTypes,
-    /// The input/output indices of the order on transfer indicate assets of different type from the order.
-    InvalidAssetTypesWithOrder {
-        asset_type: String,
-        idx: usize,
-    },
-    /// Owner of the assets indicated by the input/output indices of the order on transfer is not valid
-    InvalidAssetOwnerWithOrder {
-        asset_type: String,
-        idx: usize,
-    },
-    /// The input/output indices of the order on transfer is not valid.
-    InvalidOrderInOutIndices,
-    /// the lock script hash of the order is different from the output
-    InvalidOrderLockScriptHash(H160),
-    /// the parameters of the order is different from the output
-    InvalidOrderParameters(Vec<Bytes>),
-    /// Errors on orders
-    /// origin_outputs of order is not satisfied.
-    InvalidOriginOutputs(H256),
     InvalidApproval(String),
     /// Max metadata size is exceeded.
     MetadataTooBig,
-    OrderRecipientsAreSame,
     TextContentTooBig,
     TooManyOutputs(usize),
     TransactionIsTooBig,
@@ -88,10 +57,6 @@ pub enum Error {
     CannotChangeWcccAssetScheme,
     DisabledTransaction,
     InvalidSignerOfWrapCCC,
-    InvalidSpentQuantity {
-        asset_quantity_from: u64,
-        spent_quantity: u64,
-    },
 }
 
 const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 1;
@@ -100,24 +65,14 @@ const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 1;
 //const ERROR_ID_EMPTY_OUTPUT: u8 = 3;
 const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 4;
 const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT: u8 = 5;
-const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS: u8 = 6;
 const ERROR_ID_INSUFFICIENT_FEE: u8 = 7;
 const ERROR_ID_INVALID_ASSET_TYPE: u8 = 8;
 /// Deprecated
 //const ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT: u8 = 9;
 //const ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT: u8 = 10;
 const ERROR_ID_INVALID_NETWORK_ID: u8 = 11;
-const ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES: u8 = 12;
-const ERROR_ID_INVALID_ORDER_ASSET_TYPES: u8 = 13;
-const ERROR_ID_INVALID_ASSET_TYPES_WITH_ORDER: u8 = 14;
-const ERROR_ID_INVALID_ASSET_OWNER_WITH_ORDER: u8 = 15;
-const ERROR_ID_INVALID_ORDER_IN_OUT_INDICES: u8 = 16;
-const ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH: u8 = 17;
-const ERROR_ID_INVALID_ORDER_PARAMETERS: u8 = 18;
-const ERROR_ID_INVALID_ORIGIN_OUTPUTS: u8 = 19;
 const ERROR_ID_INVALID_APPROVAL: u8 = 21;
 const ERROR_ID_METADATA_TOO_BIG: u8 = 22;
-const ERROR_ID_ORDER_RECIPIENTS_ARE_SAME: u8 = 23;
 const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 24;
 const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 26;
 const ERROR_ID_TX_IS_TOO_BIG: u8 = 27;
@@ -126,7 +81,6 @@ const ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME: u8 = 29;
 const ERROR_ID_DISABLED_TRANSACTION: u8 = 30;
 const ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC: u8 = 31;
 const ERROR_ID_INVALID_CUSTOM_ACTION: u8 = 32;
-const ERROR_ID_INVALID_SPENT_QUANTITY: u8 = 33;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -137,22 +91,12 @@ impl TaggedRlp for RlpHelper {
             ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => 3,
             ERROR_ID_EMPTY_SHARD_OWNERS => 2,
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => 1,
-            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => 1,
             ERROR_ID_INSUFFICIENT_FEE => 3,
             ERROR_ID_INVALID_ASSET_TYPE => 2,
             ERROR_ID_INVALID_CUSTOM_ACTION => 2,
             ERROR_ID_INVALID_NETWORK_ID => 2,
-            ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => 4,
-            ERROR_ID_INVALID_ORDER_ASSET_TYPES => 1,
-            ERROR_ID_INVALID_ASSET_TYPES_WITH_ORDER => 3,
-            ERROR_ID_INVALID_ASSET_OWNER_WITH_ORDER => 3,
-            ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => 1,
-            ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => 2,
-            ERROR_ID_INVALID_ORDER_PARAMETERS => 2,
-            ERROR_ID_INVALID_ORIGIN_OUTPUTS => 2,
             ERROR_ID_INVALID_APPROVAL => 2,
             ERROR_ID_METADATA_TOO_BIG => 1,
-            ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => 1,
             ERROR_ID_TEXT_CONTENT_TOO_BIG => 1,
             ERROR_ID_TOO_MANY_OUTPUTS => 2,
             ERROR_ID_TX_IS_TOO_BIG => 1,
@@ -160,7 +104,6 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => 1,
             ERROR_ID_DISABLED_TRANSACTION => 1,
             ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => 1,
-            ERROR_ID_INVALID_SPENT_QUANTITY => 3,
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         })
     }
@@ -179,9 +122,6 @@ impl Encodable for Error {
             Error::InconsistentTransactionInOut => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT)
             }
-            Error::InconsistentTransactionInOutWithOrders => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS)
-            }
             Error::InsufficientFee {
                 minimal,
                 got,
@@ -193,36 +133,8 @@ impl Encodable for Error {
             Error::InvalidNetworkId(network_id) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_NETWORK_ID).append(network_id)
             }
-            Error::InvalidOrderAssetQuantities {
-                from,
-                to,
-                fee,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES)
-                .append(from)
-                .append(to)
-                .append(fee),
-            Error::InvalidOrderAssetTypes => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORDER_ASSET_TYPES),
-            Error::InvalidAssetTypesWithOrder {
-                asset_type,
-                idx,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_TYPES_WITH_ORDER).append(asset_type).append(idx),
-            Error::InvalidAssetOwnerWithOrder {
-                asset_type,
-                idx,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_OWNER_WITH_ORDER).append(asset_type).append(idx),
-            Error::InvalidOrderInOutIndices => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORDER_IN_OUT_INDICES),
-            Error::InvalidOrderLockScriptHash(lock_script_hash) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH).append(lock_script_hash)
-            }
-            Error::InvalidOrderParameters(parameters) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORDER_PARAMETERS).append(parameters)
-            }
-            Error::InvalidOriginOutputs(order_hash) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ORIGIN_OUTPUTS).append(order_hash)
-            }
             Error::InvalidApproval(err) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_APPROVAL).append(err),
             Error::MetadataTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_METADATA_TOO_BIG),
-            Error::OrderRecipientsAreSame => RlpHelper::new_tagged_list(s, ERROR_ID_ORDER_RECIPIENTS_ARE_SAME),
             Error::TextContentTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_TEXT_CONTENT_TOO_BIG),
             Error::TooManyOutputs(num) => RlpHelper::new_tagged_list(s, ERROR_ID_TOO_MANY_OUTPUTS).append(num),
             Error::TransactionIsTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_TX_IS_TOO_BIG),
@@ -232,12 +144,6 @@ impl Encodable for Error {
             }
             Error::DisabledTransaction => RlpHelper::new_tagged_list(s, ERROR_ID_DISABLED_TRANSACTION),
             Error::InvalidSignerOfWrapCCC => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC),
-            Error::InvalidSpentQuantity {
-                asset_quantity_from,
-                spent_quantity,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SPENT_QUANTITY)
-                .append(asset_quantity_from)
-                .append(spent_quantity),
         };
     }
 }
@@ -252,7 +158,6 @@ impl Decodable for Error {
             },
             ERROR_ID_EMPTY_SHARD_OWNERS => Error::EmptyShardOwners(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => Error::InconsistentTransactionInOut,
-            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => Error::InconsistentTransactionInOutWithOrders,
             ERROR_ID_INSUFFICIENT_FEE => Error::InsufficientFee {
                 minimal: rlp.val_at(1)?,
                 got: rlp.val_at(2)?,
@@ -260,27 +165,8 @@ impl Decodable for Error {
             ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
             ERROR_ID_INVALID_CUSTOM_ACTION => Error::InvalidCustomAction(rlp.val_at(1)?),
             ERROR_ID_INVALID_NETWORK_ID => Error::InvalidNetworkId(rlp.val_at(1)?),
-            ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => Error::InvalidOrderAssetQuantities {
-                from: rlp.val_at(1)?,
-                to: rlp.val_at(2)?,
-                fee: rlp.val_at(3)?,
-            },
-            ERROR_ID_INVALID_ORDER_ASSET_TYPES => Error::InvalidOrderAssetTypes,
-            ERROR_ID_INVALID_ASSET_TYPES_WITH_ORDER => Error::InvalidAssetTypesWithOrder {
-                asset_type: rlp.val_at(1)?,
-                idx: rlp.val_at(2)?,
-            },
-            ERROR_ID_INVALID_ASSET_OWNER_WITH_ORDER => Error::InvalidAssetOwnerWithOrder {
-                asset_type: rlp.val_at(1)?,
-                idx: rlp.val_at(2)?,
-            },
-            ERROR_ID_INVALID_ORDER_IN_OUT_INDICES => Error::InvalidOrderInOutIndices,
-            ERROR_ID_INVALID_ORDER_LOCK_SCRIPT_HASH => Error::InvalidOrderLockScriptHash(rlp.val_at(1)?),
-            ERROR_ID_INVALID_ORDER_PARAMETERS => Error::InvalidOrderParameters(rlp.val_at(1)?),
-            ERROR_ID_INVALID_ORIGIN_OUTPUTS => Error::InvalidOriginOutputs(rlp.val_at(1)?),
             ERROR_ID_INVALID_APPROVAL => Error::InvalidApproval(rlp.val_at(1)?),
             ERROR_ID_METADATA_TOO_BIG => Error::MetadataTooBig,
-            ERROR_ID_ORDER_RECIPIENTS_ARE_SAME => Error::OrderRecipientsAreSame,
             ERROR_ID_TEXT_CONTENT_TOO_BIG => Error::TextContentTooBig,
             ERROR_ID_TOO_MANY_OUTPUTS => Error::TooManyOutputs(rlp.val_at(1)?),
             ERROR_ID_TX_IS_TOO_BIG => Error::TransactionIsTooBig,
@@ -288,17 +174,12 @@ impl Decodable for Error {
             ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => Error::CannotChangeWcccAssetScheme,
             ERROR_ID_DISABLED_TRANSACTION => Error::DisabledTransaction,
             ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => Error::InvalidSignerOfWrapCCC,
-            ERROR_ID_INVALID_SPENT_QUANTITY => Error::InvalidSpentQuantity {
-                asset_quantity_from: rlp.val_at(1)?,
-                spent_quantity: rlp.val_at(2)?,
-            },
             _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
         };
         RlpHelper::check_size(rlp, tag)?;
         Ok(error)
     }
 }
-
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
@@ -307,50 +188,26 @@ impl Display for Error {
                 tracker,
                 index,
             } => write!(f, "The previous output of inputs/burns are duplicated: ({}, {})", tracker, index),
-            Error::EmptyShardOwners (shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
-            Error::InconsistentTransactionInOut  => write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs"),
-            Error::InconsistentTransactionInOutWithOrders  => write!(f, "The transaction's input and output do not follow its orders"),
+            Error::EmptyShardOwners(shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
+            Error::InconsistentTransactionInOut => {
+                write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs")
+            }
             Error::InsufficientFee {
                 minimal,
                 got,
             } => write!(f, "Insufficient fee. Min={}, Given={}", minimal, got),
-            Error::InvalidAssetType (addr) => write!(f, "Asset type is invalid: {}", addr),
+            Error::InvalidAssetType(addr) => write!(f, "Asset type is invalid: {}", addr),
             Error::InvalidCustomAction(err) => write!(f, "Invalid custom action: {}", err),
-            Error::InvalidNetworkId (network_id) => write!(f, "{} is an invalid network id", network_id),
-            Error::InvalidOrderAssetQuantities {
-                from,
-                to,
-                fee,
-            } => write!(f, "The asset exchange ratio of the order is invalid: from:to:fee = {}:{}:{}", from, to, fee),
-            Error::InvalidOrderAssetTypes => write!(f, "There are same shard asset types in the order"),
-            Error::InvalidAssetTypesWithOrder {
-                asset_type,
-                idx
-            } => write!(f, "{}th {} asset has a different type from the order", idx, asset_type),
-            Error::InvalidAssetOwnerWithOrder {
-                asset_type,
-                idx
-            } => write!(f, "Owner of the {}th {} assets is not valid", idx, asset_type),
-            Error::InvalidOrderInOutIndices  => write!(f, "The order on transfer is invalid because its input/output indices are wrong or overlapped with other orders"),
-            Error::InvalidOrderLockScriptHash (lock_script_hash) => write!(f, "The lock script hash of the order is different from the output: {}", lock_script_hash),
-            Error::InvalidOrderParameters (parameters) => write!(f, "The parameters of the order is different from the output: {:?}", parameters),
-            Error::InvalidOriginOutputs (order_hash) => write!(f, "The order({}) is invalid because its origin outputs are wrong", order_hash),
+            Error::InvalidNetworkId(network_id) => write!(f, "{} is an invalid network id", network_id),
             Error::InvalidApproval(err) => write!(f, "Transaction has an invalid approval :{}", err),
-            Error::MetadataTooBig  => write!(f, "Metadata size is too big."),
-            Error::OrderRecipientsAreSame  => write!(f, "Both the lock script hash and parameters should not be same between maker and relayer"),
-            Error::TextContentTooBig  => write!(f, "The content of the text is too big"),
-            Error::TooManyOutputs (num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
-            Error::TransactionIsTooBig  => write!(f, "Transaction size exceeded the body size limit"),
-            Error::ZeroQuantity  => write!(f, "A quantity cannot be 0"),
+            Error::MetadataTooBig => write!(f, "Metadata size is too big."),
+            Error::TextContentTooBig => write!(f, "The content of the text is too big"),
+            Error::TooManyOutputs(num) => write!(f, "The number of outputs is {}. It should be 126 or less.", num),
+            Error::TransactionIsTooBig => write!(f, "Transaction size exceeded the body size limit"),
+            Error::ZeroQuantity => write!(f, "A quantity cannot be 0"),
             Error::CannotChangeWcccAssetScheme => write!(f, "Cannot change the asset scheme of WCCC"),
             Error::DisabledTransaction => write!(f, "Used the disabled transaction"),
             Error::InvalidSignerOfWrapCCC => write!(f, "The signer of WrapCCC must be matched"),
-            Error::InvalidSpentQuantity {
-                asset_quantity_from,
-                spent_quantity,
-            } => {
-                write!(f, "The spentQuantity value {} in an OrderOnTransfer cannot exceed the assetQuantityFrom value {}", spent_quantity, asset_quantity_from)
-            }
         }
     }
 }

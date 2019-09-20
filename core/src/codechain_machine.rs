@@ -18,7 +18,7 @@
 use ckey::Address;
 use cstate::{StateError, TopState, TopStateView};
 use ctypes::errors::{HistoryError, SyntaxError};
-use ctypes::transaction::{Action, AssetTransferInput, OrderOnTransfer, Timelock};
+use ctypes::transaction::{Action, AssetTransferInput, Timelock};
 use ctypes::{CommonParams, Header};
 
 use crate::block::{ExecutedBlock, IsBlock};
@@ -28,14 +28,12 @@ use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
 pub struct CodeChainMachine {
     params: CommonParams,
-    is_order_disabled: bool,
 }
 
 impl CodeChainMachine {
     pub fn new(params: CommonParams) -> Self {
         CodeChainMachine {
             params,
-            is_order_disabled: is_order_disabled(),
         }
     }
 
@@ -58,7 +56,7 @@ impl CodeChainMachine {
             }
             .into())
         }
-        tx.verify_with_params(common_params, self.is_order_disabled)?;
+        tx.verify_with_params(common_params)?;
 
         Ok(())
     }
@@ -79,7 +77,6 @@ impl CodeChainMachine {
     ) -> Result<(), Error> {
         if let Action::TransferAsset {
             inputs,
-            orders,
             expiration,
             ..
         } = &tx.action
@@ -88,7 +85,6 @@ impl CodeChainMachine {
             if verify_timelock {
                 Self::verify_transfer_timelock(inputs, header, client)?;
             }
-            Self::verify_transfer_order_expired(orders, header)?;
         }
         // FIXME: Filter transactions.
         Ok(())
@@ -176,19 +172,6 @@ impl CodeChainMachine {
         Ok(())
     }
 
-    fn verify_transfer_order_expired(orders: &[OrderOnTransfer], header: &Header) -> Result<(), Error> {
-        for order_tx in orders {
-            if order_tx.order.expiration < header.timestamp() {
-                return Err(HistoryError::OrderExpired {
-                    expiration: order_tx.order.expiration,
-                    timestamp: header.timestamp(),
-                }
-                .into())
-            }
-        }
-        Ok(())
-    }
-
     pub fn min_cost(params: &CommonParams, action: &Action) -> u64 {
         match action {
             Action::MintAsset {
@@ -248,18 +231,5 @@ impl CodeChainMachine {
     pub fn increase_term_id(&self, live: &mut ExecutedBlock, last_term_finished_block_num: u64) -> Result<(), Error> {
         live.state_mut().increase_term_id(last_term_finished_block_num)?;
         Ok(())
-    }
-}
-
-fn is_order_disabled() -> bool {
-    #[cfg(test)]
-    const DEFAULT_ORDER_DISABLED: bool = false;
-    #[cfg(not(test))]
-    const DEFAULT_ORDER_DISABLED: bool = true;
-    let var = std::env::var("ENABLE_ORDER");
-    match var.as_ref().map(|x| x.trim()) {
-        Ok(value) => !value.parse::<bool>().unwrap(),
-        Err(std::env::VarError::NotPresent) => DEFAULT_ORDER_DISABLED,
-        Err(err) => unreachable!("{:?}", err),
     }
 }

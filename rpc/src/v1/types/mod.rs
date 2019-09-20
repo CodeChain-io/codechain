@@ -20,7 +20,6 @@ mod asset_input;
 mod asset_output;
 mod asset_scheme;
 mod block;
-mod order;
 mod text;
 mod transaction;
 mod unsigned_transaction;
@@ -29,9 +28,8 @@ mod work;
 use primitives::H256;
 
 use self::asset::Asset;
-use self::asset_input::{AssetOutPoint, AssetTransferInput};
+use self::asset_input::AssetTransferInput;
 use self::asset_output::{AssetMintOutput, AssetTransferOutput};
-use self::order::OrderOnTransfer;
 
 pub use self::action::{Action, ActionWithTracker};
 pub use self::asset::OwnedAsset;

@@ -751,13 +751,12 @@ impl TopLevelState {
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         amount: u64,
-        order_hash: Option<H256>,
     ) -> TrieResult<bool> {
         match self.shard_root(shard_id)? {
             Some(shard_root) => {
                 let mut shard_cache = self.shard_caches.entry(shard_id).or_default();
                 let state = ShardLevelState::from_existing(shard_id, &mut self.db, shard_root, &mut shard_cache)?;
-                state.create_asset(tx_hash, index, asset_type, lock_script_hash, parameters, amount, order_hash)?;
+                state.create_asset(tx_hash, index, asset_type, lock_script_hash, parameters, amount)?;
                 Ok(true)
             }
             None => Ok(false),
