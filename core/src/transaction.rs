@@ -137,7 +137,7 @@ impl UnverifiedTransaction {
     }
 
     /// Verify transactiosn with the common params. Does not attempt signer recovery.
-    pub fn verify_with_params(&self, params: &CommonParams, is_order_disabled: bool) -> Result<(), SyntaxError> {
+    pub fn verify_with_params(&self, params: &CommonParams) -> Result<(), SyntaxError> {
         if self.network_id != params.network_id() {
             return Err(SyntaxError::InvalidNetworkId(self.network_id))
         }
@@ -145,7 +145,7 @@ impl UnverifiedTransaction {
         if byte_size >= params.max_body_size() {
             return Err(SyntaxError::TransactionIsTooBig)
         }
-        self.action.verify_with_params(params, is_order_disabled)
+        self.action.verify_with_params(params)
     }
 }
 

@@ -19,12 +19,9 @@ use ckey::{Address, NetworkId};
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
-use super::{
-    AssetMintOutput, AssetTransferInput, AssetTransferOutput, HashingError, Order, OrderOnTransfer, PartialHashing,
-};
+use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, HashingError, PartialHashing};
 use crate::util::tag::Tag;
 use crate::ShardId;
-
 
 /// Shard Transaction type.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,7 +40,6 @@ pub enum ShardTransaction {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
-        orders: Vec<OrderOnTransfer>,
     },
     ChangeAssetScheme {
         network_id: NetworkId,
@@ -281,12 +277,7 @@ impl PartialHashing for ShardTransaction {
                 burns,
                 inputs,
                 outputs,
-                orders,
             } => {
-                if !orders.is_empty() && (!tag.sign_all_inputs || !tag.sign_all_outputs) {
-                    return Err(HashingError::InvalidFilter)
-                }
-
                 let new_burns = apply_input_scheme(burns, tag.sign_all_inputs, is_burn, cur);
                 let new_inputs = apply_input_scheme(inputs, tag.sign_all_inputs, !is_burn, cur);
 
@@ -302,7 +293,6 @@ impl PartialHashing for ShardTransaction {
                         burns: new_burns,
                         inputs: new_inputs,
                         outputs: new_outputs,
-                        orders: orders.to_vec(),
                     }
                     .rlp_bytes(),
                     &blake128(tag.get_tag()),
@@ -334,21 +324,6 @@ impl PartialHashing for ShardTransaction {
             }
             _ => unreachable!(),
         }
-    }
-}
-
-impl Order {
-    pub fn hash(&self) -> H256 {
-        blake256(&self.rlp_bytes())
-    }
-}
-
-impl PartialHashing for Order {
-    fn hash_partially(&self, tag: Tag, _cur: &AssetTransferInput, is_burn: bool) -> Result<H256, HashingError> {
-        assert!(tag.sign_all_inputs);
-        assert!(tag.sign_all_outputs);
-        assert!(!is_burn);
-        Ok(self.hash())
     }
 }
 
@@ -396,12 +371,15 @@ impl Decodable for ShardTransaction {
                         expected: 6,
                     })
                 }
+                let orders = d.list_at::<AssetTransferOutput>(5)?;
+                if !orders.is_empty() {
+                    return Err(DecoderError::Custom("orders must be an empty list"))
+                }
                 Ok(ShardTransaction::TransferAsset {
                     network_id: d.val_at(1)?,
                     burns: d.list_at(2)?,
                     inputs: d.list_at(3)?,
                     outputs: d.list_at(4)?,
-                    orders: d.list_at(5)?,
                 })
             }
             ASSET_SCHEME_CHANGE_ID => {
@@ -496,15 +474,16 @@ impl Encodable for ShardTransaction {
                 burns,
                 inputs,
                 outputs,
-                orders,
             } => {
+                let empty: Vec<AssetTransferOutput> = vec![];
                 s.begin_list(6)
                     .append(&ASSET_TRANSFER_ID)
                     .append(network_id)
                     .append_list(burns)
                     .append_list(inputs)
                     .append_list(outputs)
-                    .append_list(orders);
+                    // NOTE: The orders field removed.
+                    .append_list(&empty);
             }
             ShardTransaction::ChangeAssetScheme {
                 network_id,
@@ -863,38 +842,6 @@ mod tests {
                 shard_id: 0,
                 quantity: 30,
             }],
-            orders: vec![OrderOnTransfer {
-                order: Order {
-                    asset_type_from: H160::random(),
-                    asset_type_to: H160::random(),
-                    asset_type_fee: H160::random(),
-                    shard_id_from: 0,
-                    shard_id_to: 0,
-                    shard_id_fee: 0,
-                    asset_quantity_from: 10,
-                    asset_quantity_to: 10,
-                    asset_quantity_fee: 0,
-                    origin_outputs: vec![AssetOutPoint {
-                        tracker: H256::random(),
-                        index: 0,
-                        asset_type: H160::random(),
-                        shard_id: 0,
-                        quantity: 30,
-                    }],
-                    expiration: 10,
-                    lock_script_hash_from: H160::random(),
-                    parameters_from: vec![vec![1]],
-                    lock_script_hash_fee: H160::random(),
-                    parameters_fee: vec![vec![1]],
-                },
-                spent_quantity: 10,
-                input_from_indices: vec![0],
-                input_fee_indices: vec![],
-                output_from_indices: vec![],
-                output_to_indices: vec![0],
-                output_owned_fee_indices: vec![],
-                output_transferred_fee_indices: vec![],
-            }],
         };
         rlp_encode_and_decode_test!(tx);
     }
@@ -942,7 +889,6 @@ mod tests {
             burns: Vec::new(),
             inputs: inputs.clone(),
             outputs: outputs.clone(),
-            orders: vec![],
         };
         let mut tag: Vec<u8> = vec![0b0000_1111 as u8];
         for _i in 0..12 {
@@ -961,7 +907,6 @@ mod tests {
             burns: Vec::new(),
             inputs: inputs.clone(),
             outputs: outputs.clone(),
-            orders: vec![],
         };
         tag = vec![0b0000_0111 as u8];
         for _i in 0..12 {
@@ -980,7 +925,6 @@ mod tests {
             burns: Vec::new(),
             inputs,
             outputs,
-            orders: vec![],
         };
         tag = vec![0b0000_0011 as u8];
         for _i in 0..12 {

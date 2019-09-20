@@ -211,7 +211,6 @@ macro_rules! transfer_asset {
             burns: Vec::new(),
             inputs: $inputs,
             outputs: $outputs,
-            orders: Vec::new(),
             metadata: "".into(),
             approvals: vec![],
             expiration: None,
@@ -223,19 +222,17 @@ macro_rules! transfer_asset {
             burns: Vec::new(),
             inputs: $inputs,
             outputs: $outputs,
-            orders: Vec::new(),
             metadata: "".into(),
             approvals: $approvals,
             expiration: None,
         }
     };
-    (inputs: $inputs:expr, $outputs:expr, $orders:expr) => {
+    (inputs: $inputs:expr, $outputs:expr) => {
         $crate::ctypes::transaction::Action::TransferAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             burns: Vec::new(),
             inputs: $inputs,
             outputs: $outputs,
-            orders: $orders,
             metadata: "".into(),
             approvals: vec![],
             expiration: None,
@@ -247,7 +244,6 @@ macro_rules! transfer_asset {
             burns: $burns,
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
             metadata: "".into(),
             approvals: vec![],
             expiration: None,
@@ -262,16 +258,14 @@ macro_rules! asset_transfer {
             burns: Vec::new(),
             inputs: $inputs,
             outputs: $outputs,
-            orders: Vec::new(),
         }
     };
-    (inputs: $inputs:expr, $outputs:expr, $orders:expr) => {
+    (inputs: $inputs:expr, $outputs:expr) => {
         $crate::ctypes::transaction::ShardTransaction::TransferAsset {
             network_id: $crate::impls::test_helper::NETWORK_ID.into(),
             burns: Vec::new(),
             inputs: $inputs,
             outputs: $outputs,
-            orders: $orders,
         }
     };
     (burns: $burns:expr) => {
@@ -280,48 +274,8 @@ macro_rules! asset_transfer {
             burns: $burns,
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
     };
-}
-
-macro_rules! order {
-    (from: ($from:expr, $from_quantity:expr), to: ($to:expr, $to_quantity:expr), fee: ($fee:expr, $fee_quantity:expr), [$($output:expr),*], $expiration:expr, $lock_script_hash:expr) => {
-        $crate::ctypes::transaction::Order {
-            asset_type_from: $from,
-            asset_type_to: $to,
-            asset_type_fee: $fee,
-            shard_id_from: $crate::impls::test_helper::SHARD_ID,
-            shard_id_to: $crate::impls::test_helper::SHARD_ID,
-            shard_id_fee: $crate::impls::test_helper::SHARD_ID,
-            asset_quantity_from: $from_quantity,
-            asset_quantity_to: $to_quantity,
-            asset_quantity_fee: $fee_quantity,
-            origin_outputs: vec![$($output,)*],
-            expiration: $expiration,
-            lock_script_hash_from: $lock_script_hash,
-            parameters_from: Vec::new(),
-            lock_script_hash_fee: $lock_script_hash,
-            parameters_fee: vec![vec![0x1]],
-        }
-    }
-}
-
-macro_rules! order_on_transfer {
-    ($order:expr, $spent_quantity:expr, input_from_indices: [$($input_from:expr),*], input_fee_indices: [$($input_fee:expr),*],
-    output_from_indices: [$($output_from:expr),*], output_to_indices: [$($output_to:expr),*], output_owned_fee_indices: [$($output_owned:expr),*],
-    output_transferred_fee_indices: [$($output_transferred:expr),*]) => {
-        $crate::ctypes::transaction::OrderOnTransfer {
-            order: $order,
-            spent_quantity: $spent_quantity,
-            input_from_indices: vec![$($input_from,)*],
-            input_fee_indices: vec![$($input_fee,)*],
-            output_from_indices: vec![$($output_from,)*],
-            output_to_indices: vec![$($output_to,)*],
-            output_owned_fee_indices: vec![$($output_owned,)*],
-            output_transferred_fee_indices: vec![$($output_transferred,)*]
-        }
-    }
 }
 
 macro_rules! asset_wrap_ccc_output {
@@ -499,7 +453,7 @@ macro_rules! set_top_level_state {
         set_top_level_state!($state, [$($x),*]);
     };
     ($state:expr, [(asset: ($shard:expr, $tx_hash:expr, $index:expr) => { asset_type: $asset_type: expr, quantity: $quantity:expr, lock_script_hash: $lock_script_hash:expr }) $(,$x:tt)*]) => {
-        assert_eq!(Ok((true)), $state.create_asset($shard, $tx_hash, $index, $asset_type, $lock_script_hash, Vec::new(), $quantity, None));
+        assert_eq!(Ok((true)), $state.create_asset($shard, $tx_hash, $index, $asset_type, $lock_script_hash, Vec::new(), $quantity));
 
         set_top_level_state!($state, [$($x),*]);
     };
@@ -696,23 +650,21 @@ macro_rules! check_shard_level_state {
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, order: $order:expr }) $(,$x:tt)*]) => {
+    ($state:expr, [(asset: ($tx_hash:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
         let asset = $state.asset($tx_hash, $index)
             .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tx_hash, $index))
             .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tx_hash, $index));
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
-        assert_eq!(Some(&$order), asset.order_hash().as_ref());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, order }) $(,$x:tt)*]) => {
+    ($state:expr, [(asset: ($tx_hash:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
         let asset = $state.asset($tx_hash, $index)
             .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tx_hash, $index))
             .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tx_hash, $index));
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
-        assert_eq!(&None, asset.order_hash());
 
         check_shard_level_state!($state, [$($x),*]);
     };

@@ -79,7 +79,6 @@ A string that starts with "(NetworkID)c", and Bech32 string follows. For example
  - burns: `AssetTransferInput[]`
  - inputs: `AssetTransferInput[]`
  - outputs: `AssetTransferOutput[]`
- - orders: `OrderOnTransfer[]`
  - metadata: `string`
  - approvals: `Signature[]`
  - expiration: `Expiration time` | `null`
@@ -214,29 +213,6 @@ When `Transaction` is included in any response, there will be an additional fiel
  - assetType: `H160`
  - shardId: `number`
  - quantity: `U64`
-
-### Order
-
- - assetTypeFrom: `H160`
- - assetTypeTo: `H160`
- - assetTypeFee: `H160`
- - shardIdFrom: `number`
- - shardIdTo: `number`
- - shardIdFee: `number`
- - assetQuantityFrom: `U64`
- - assetQuantityTo: `U64`
- - assetQuantityFee: `U64`
- - originOutputs: `AssetOutPoint[]`
- - expiration: `number`
- - lockScriptHash: `H160`
- - parameters: `string[]`
-
-### OrderOnTransfer
-
- - order: `Order`
- - spentQuantity: `U64`
- - inputIndices: `number[]`
- - outputIndices: `number[]`
 
 ## Signature
 `H520` for ECDSA signature | `H512` for Schnorr signature
@@ -1578,7 +1554,7 @@ Errors: `Transfer Only`
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_executeVM", "params": [{"type":"assetTransfer","data":{"networkId":"tc","burns":[],"inputs":[{"prevOut":{"transactionHash":"0x56774a7e53abd17d70789af6d6f89b4ac23048c07430d1fbe7a8fe0688ecd250","index":0,"assetType":"0x53000000ec7f404207fc5f6bfaad91ed3bf4532b94f508fbea86223409eb189c","quantity":"0x64"},"timelock":null,"lockScript":[53,1,148,17,34,255,128],"unlockScript":[50,65,57,113,98,163,242,125,128,229,140,240,213,154,218,70,232,138,150,84,215,67,109,128,156,81,100,57,53,194,83,70,149,63,53,138,140,11,7,42,34,206,32,244,60,3,191,57,24,132,44,10,175,13,218,20,62,152,175,40,8,240,76,185,246,37,0,50,1,3,50,64,179,217,97,169,96,174,90,169,141,98,170,45,70,139,251,168,8,238,200,83,24,49,115,158,81,199,69,29,229,191,88,173,232,249,178,39,56,223,68,148,75,92,15,236,37,56,88,197,38,111,93,69,232,65,2,247,239,134,191,115,159,238,196,201]}],"outputs":[{"lockScriptHash":"0x5f5960a7bca6ceeeb0c97bc717562914e7a1de04","parameters":[[170,45,255,58,152,57,253,189,84,170,233,14,217,172,65,78,188,106,99,109]],"assetType":"0x53000000ec7f404207fc5f6bfaad91ed3bf4532b94f508fbea86223409eb189c","quantity":"0x64"}],"orders":[]}}, [[[123,110,101,117,85,125,64,83,80,25,37,104,84,81,160,50,198,212,89,125]]], [0]], "id": null}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_executeVM", "params": [{"type":"assetTransfer","data":{"networkId":"tc","burns":[],"inputs":[{"prevOut":{"transactionHash":"0x56774a7e53abd17d70789af6d6f89b4ac23048c07430d1fbe7a8fe0688ecd250","index":0,"assetType":"0x53000000ec7f404207fc5f6bfaad91ed3bf4532b94f508fbea86223409eb189c","quantity":"0x64"},"timelock":null,"lockScript":[53,1,148,17,34,255,128],"unlockScript":[50,65,57,113,98,163,242,125,128,229,140,240,213,154,218,70,232,138,150,84,215,67,109,128,156,81,100,57,53,194,83,70,149,63,53,138,140,11,7,42,34,206,32,244,60,3,191,57,24,132,44,10,175,13,218,20,62,152,175,40,8,240,76,185,246,37,0,50,1,3,50,64,179,217,97,169,96,174,90,169,141,98,170,45,70,139,251,168,8,238,200,83,24,49,115,158,81,199,69,29,229,191,88,173,232,249,178,39,56,223,68,148,75,92,15,236,37,56,88,197,38,111,93,69,232,65,2,247,239,134,191,115,159,238,196,201]}],"outputs":[{"lockScriptHash":"0x5f5960a7bca6ceeeb0c97bc717562914e7a1de04","parameters":[[170,45,255,58,152,57,253,189,84,170,233,14,217,172,65,78,188,106,99,109]],"assetType":"0x53000000ec7f404207fc5f6bfaad91ed3bf4532b94f508fbea86223409eb189c","quantity":"0x64"}]}}, [[[123,110,101,117,85,125,64,83,80,25,37,104,84,81,160,50,198,212,89,125]]], [0]], "id": null}' \
     localhost:8080
 ```
 

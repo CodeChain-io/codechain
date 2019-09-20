@@ -48,17 +48,10 @@ pub struct OwnedAsset {
     asset: Asset,
     lock_script_hash: H160,
     parameters: Vec<Bytes>,
-    order_hash: Option<H256>,
 }
 
 impl OwnedAsset {
-    pub fn new(
-        asset_type: H160,
-        lock_script_hash: H160,
-        parameters: Vec<Bytes>,
-        quantity: u64,
-        order_hash: Option<H256>,
-    ) -> Self {
+    pub fn new(asset_type: H160, lock_script_hash: H160, parameters: Vec<Bytes>, quantity: u64) -> Self {
         Self {
             asset: Asset {
                 asset_type,
@@ -66,7 +59,6 @@ impl OwnedAsset {
             },
             lock_script_hash,
             parameters,
-            order_hash,
         }
     }
 
@@ -85,10 +77,6 @@ impl OwnedAsset {
     pub fn quantity(&self) -> u64 {
         self.asset.quantity()
     }
-
-    pub fn order_hash(&self) -> &Option<H256> {
-        &self.order_hash
-    }
 }
 
 impl Default for OwnedAsset {
@@ -100,7 +88,6 @@ impl Default for OwnedAsset {
             },
             lock_script_hash: H160::zero(),
             parameters: vec![],
-            order_hash: None,
         }
     }
 }
@@ -123,7 +110,8 @@ impl Encodable for OwnedAsset {
             .append(&self.asset.quantity())
             .append(&self.lock_script_hash)
             .append(&self.parameters)
-            .append(&self.order_hash);
+            // NOTE: The order_hash field removed.
+            .append(&Option::<H256>::None);
     }
 }
 
@@ -142,6 +130,11 @@ impl Decodable for OwnedAsset {
             cdebug!(STATE, "{} is not an expected prefix for asset", prefix);
             return Err(DecoderError::Custom("Unexpected prefix"))
         }
+        let order_hash = rlp.val_at::<Option<H256>>(5)?;
+        if let Some(h) = order_hash {
+            cdebug!(STATE, "order_hash must be None but Some({}) is given", h);
+            return Err(DecoderError::Custom("order_hash must be None"))
+        }
         Ok(Self {
             asset: Asset {
                 asset_type: rlp.val_at(1)?,
@@ -149,7 +142,6 @@ impl Decodable for OwnedAsset {
             },
             lock_script_hash: rlp.val_at(3)?,
             parameters: rlp.val_at(4)?,
-            order_hash: rlp.val_at(5)?,
         })
     }
 }
