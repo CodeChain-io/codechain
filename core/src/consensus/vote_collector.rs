@@ -15,58 +15,39 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::Debug;
-use std::hash::Hash;
 use std::iter::Iterator;
 
-use ckey::{Error as KeyError, Public, SchnorrSignature};
+use ckey::SchnorrSignature;
 use parking_lot::RwLock;
 use primitives::H256;
-use rlp::{Decodable, Encodable, RlpStream};
+use rlp::{Encodable, RlpStream};
 
 use super::stake::Action;
 use super::BitSet;
-
-pub trait Message: Clone + PartialEq + Eq + Hash + Encodable + Decodable + Debug + Sync + Send {
-    type Round: Clone + Copy + PartialEq + Eq + Hash + Default + Debug + Ord;
-
-    fn height(&self) -> u64;
-
-    fn signature(&self) -> SchnorrSignature;
-
-    fn signer_index(&self) -> usize;
-
-    fn block_hash(&self) -> Option<H256>;
-
-    fn round(&self) -> &Self::Round;
-
-    fn is_broadcastable(&self) -> bool;
-
-    fn verify(&self, signer_public: &Public) -> Result<bool, KeyError>;
-}
+use super::{ConsensusMessage, VoteStep};
 
 /// Storing all Proposals, Prevotes and Precommits.
 #[derive(Debug)]
-pub struct VoteCollector<M: Message> {
-    votes: RwLock<BTreeMap<M::Round, StepCollector<M>>>,
+pub struct VoteCollector {
+    votes: RwLock<BTreeMap<VoteStep, StepCollector>>,
 }
 
 #[derive(Debug, Default)]
-struct StepCollector<M: Message> {
-    voted: HashMap<usize, M>,
+struct StepCollector {
+    voted: HashMap<usize, ConsensusMessage>,
     block_votes: HashMap<Option<H256>, BTreeMap<usize, SchnorrSignature>>,
-    messages: HashSet<M>,
+    messages: HashSet<ConsensusMessage>,
 }
 
 #[derive(Debug)]
-pub struct DoubleVote<M: Message> {
+pub struct DoubleVote {
     author_index: usize,
-    vote_one: M,
-    vote_two: M,
+    vote_one: ConsensusMessage,
+    vote_two: ConsensusMessage,
 }
 
-impl<M: Message> DoubleVote<M> {
-    pub fn to_action(&self) -> Action<M> {
+impl DoubleVote {
+    pub fn to_action(&self) -> Action {
         Action::ReportDoubleVote {
             message1: self.vote_one.clone(),
             message2: self.vote_two.clone(),
@@ -74,15 +55,15 @@ impl<M: Message> DoubleVote<M> {
     }
 }
 
-impl<M: Message> Encodable for DoubleVote<M> {
+impl Encodable for DoubleVote {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(2).append(&self.vote_one).append(&self.vote_two);
     }
 }
 
-impl<M: Message> StepCollector<M> {
+impl StepCollector {
     /// Returns Some(&Address) when validator is double voting.
-    fn insert(&mut self, message: M) -> Option<DoubleVote<M>> {
+    fn insert(&mut self, message: ConsensusMessage) -> Option<DoubleVote> {
         // Do nothing when message was seen.
         if self.messages.insert(message.clone()) {
             if let Some(previous) = self.voted.insert(message.signer_index(), message.clone()) {
@@ -126,7 +107,7 @@ impl<M: Message> StepCollector<M> {
     }
 }
 
-impl<M: Message + Default> Default for VoteCollector<M> {
+impl Default for VoteCollector {
     fn default() -> Self {
         let mut collector = BTreeMap::new();
         // Insert dummy entry to fulfill invariant: "only messages newer than the oldest are inserted".
@@ -137,14 +118,14 @@ impl<M: Message + Default> Default for VoteCollector<M> {
     }
 }
 
-impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
+impl VoteCollector {
     /// Insert vote if it is newer than the oldest one.
-    pub fn vote(&self, message: M) -> Option<DoubleVote<M>> {
+    pub fn vote(&self, message: ConsensusMessage) -> Option<DoubleVote> {
         self.votes.write().entry(*message.round()).or_insert_with(Default::default).insert(message)
     }
 
     /// Checks if the message should be ignored.
-    pub fn is_old_or_known(&self, message: &M) -> bool {
+    pub fn is_old_or_known(&self, message: &ConsensusMessage) -> bool {
         let read_guard = self.votes.read();
 
         let is_known = read_guard.get(&message.round()).map_or(false, |c| c.messages.contains(message));
@@ -164,7 +145,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     }
 
     /// Throws out messages older than message, leaves message as marker for the oldest.
-    pub fn throw_out_old(&self, vote_round: &M::Round) {
+    pub fn throw_out_old(&self, vote_round: &VoteStep) {
         let mut guard = self.votes.write();
         let new_collector = guard.split_off(vote_round);
         assert!(!new_collector.is_empty());
@@ -175,7 +156,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     /// Returning indices is in ascending order, and signature and indices are matched with another.
     pub fn round_signatures_and_indices(
         &self,
-        round: &M::Round,
+        round: &VoteStep,
         block_hash: &H256,
     ) -> (Vec<SchnorrSignature>, Vec<usize>) {
         let guard = self.votes.read();
@@ -191,7 +172,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
 
 
     /// Returns the first signature and the index of its signer for a given round and hash if exists.
-    pub fn round_signature(&self, round: &M::Round, block_hash: &H256) -> Option<SchnorrSignature> {
+    pub fn round_signature(&self, round: &VoteStep, block_hash: &H256) -> Option<SchnorrSignature> {
         let guard = self.votes.read();
         guard
             .get(round)
@@ -200,7 +181,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     }
 
     /// Count votes which agree with the given message.
-    pub fn aligned_votes(&self, message: &M) -> BitSet {
+    pub fn aligned_votes(&self, message: &ConsensusMessage) -> BitSet {
         if let Some(votes) = self.votes.read().get(&message.round()) {
             votes.count_block(&message.block_hash())
         } else {
@@ -208,7 +189,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
         }
     }
 
-    pub fn block_round_votes(&self, round: &M::Round, block_hash: &Option<H256>) -> BitSet {
+    pub fn block_round_votes(&self, round: &VoteStep, block_hash: &Option<H256>) -> BitSet {
         if let Some(votes) = self.votes.read().get(round) {
             votes.count_block(block_hash)
         } else {
@@ -217,7 +198,7 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
     }
 
     /// Count all votes collected for a given round.
-    pub fn round_votes(&self, vote_round: &M::Round) -> BitSet {
+    pub fn round_votes(&self, vote_round: &VoteStep) -> BitSet {
         if let Some(votes) = self.votes.read().get(vote_round) {
             votes.count()
         } else {
@@ -225,22 +206,22 @@ impl<M: Message + Default + Encodable + Debug> VoteCollector<M> {
         }
     }
 
-    pub fn get_block_hashes(&self, round: &M::Round) -> Vec<H256> {
+    pub fn get_block_hashes(&self, round: &VoteStep) -> Vec<H256> {
         let guard = self.votes.read();
         guard.get(round).map(|c| c.block_votes.keys().cloned().filter_map(|x| x).collect()).unwrap_or_else(Vec::new)
     }
 
-    pub fn get_all(&self) -> Vec<M> {
+    pub fn get_all(&self) -> Vec<ConsensusMessage> {
         self.votes.read().iter().flat_map(|(_round, collector)| collector.messages.iter()).cloned().collect()
     }
 
-    pub fn get_all_votes_in_round(&self, round: &M::Round) -> Vec<M> {
+    pub fn get_all_votes_in_round(&self, round: &VoteStep) -> Vec<ConsensusMessage> {
         let guard = self.votes.read();
         let c = guard.get(round);
         c.map(|c| c.messages.iter().cloned().collect()).unwrap_or_default()
     }
 
-    pub fn get_all_votes_and_indices_in_round(&self, round: &M::Round) -> Vec<(usize, M)> {
+    pub fn get_all_votes_and_indices_in_round(&self, round: &VoteStep) -> Vec<(usize, ConsensusMessage)> {
         let guard = self.votes.read();
         guard.get(round).map(|c| c.voted.iter().map(|(k, v)| (*k, v.clone())).collect()).unwrap_or_default()
     }
