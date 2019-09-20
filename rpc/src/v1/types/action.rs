@@ -24,7 +24,7 @@ use primitives::{Bytes, H160, H256};
 use rustc_serialize::hex::{FromHex, ToHex};
 
 use super::super::errors::ConversionError;
-use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, OrderOnTransfer};
+use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput};
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
@@ -48,7 +48,6 @@ pub enum Action {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
-        orders: Vec<OrderOnTransfer>,
 
         metadata: String,
         approvals: Vec<Signature>,
@@ -151,7 +150,9 @@ pub enum ActionWithTracker {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
-        orders: Vec<OrderOnTransfer>,
+        // NOTE: The orders field is removed in the core but it remains to
+        // support the old version of the SDK
+        orders: Vec<()>,
 
         metadata: String,
         approvals: Vec<Signature>,
@@ -269,7 +270,6 @@ impl ActionWithTracker {
                 burns,
                 inputs,
                 outputs,
-                orders,
                 metadata,
                 approvals,
                 expiration,
@@ -278,7 +278,7 @@ impl ActionWithTracker {
                 burns: burns.into_iter().map(From::from).collect(),
                 inputs: inputs.into_iter().map(From::from).collect(),
                 outputs: outputs.into_iter().map(From::from).collect(),
-                orders: orders.into_iter().map(From::from).collect(),
+                orders: vec![],
                 metadata,
                 approvals,
                 expiration: expiration.map(From::from),
@@ -449,20 +449,17 @@ impl TryFrom<Action> for ActionType {
                 burns,
                 inputs,
                 outputs,
-                orders,
 
                 metadata,
                 approvals,
                 expiration,
             } => {
                 let outputs = outputs.into_iter().map(TryFrom::try_from).collect::<Result<_, _>>()?;
-                let orders = orders.into_iter().map(TryFrom::try_from).collect::<Result<_, _>>()?;
                 ActionType::TransferAsset {
                     network_id,
                     burns: burns.into_iter().map(From::from).collect(),
                     inputs: inputs.into_iter().map(From::from).collect(),
                     outputs,
-                    orders,
                     metadata,
                     approvals,
                     expiration: expiration.map(From::from),

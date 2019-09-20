@@ -29,10 +29,6 @@ pub enum Error {
     LimitReached,
     /// Transaction is not valid anymore (state already has higher seq)
     Old,
-    OrderExpired {
-        expiration: u64,
-        timestamp: u64,
-    },
     Timelocked {
         timelock: Timelock,
         remaining_time: u64,
@@ -50,7 +46,6 @@ pub enum Error {
 
 const ERROR_ID_LIMIT_REACHED: u8 = 2;
 const ERROR_ID_OLD: u8 = 3;
-const ERROR_ID_ORDER_EXPIRED: u8 = 4;
 const ERROR_ID_TIMELOCKED: u8 = 5;
 const ERROR_ID_TOO_CHEAP_TO_REPLACE: u8 = 6;
 const ERROR_ID_TX_ALREADY_IMPORTED: u8 = 7;
@@ -64,7 +59,6 @@ impl TaggedRlp for RlpHelper {
         Ok(match tag {
             ERROR_ID_LIMIT_REACHED => 1,
             ERROR_ID_OLD => 1,
-            ERROR_ID_ORDER_EXPIRED => 3,
             ERROR_ID_TIMELOCKED => 3,
             ERROR_ID_TOO_CHEAP_TO_REPLACE => 1,
             ERROR_ID_TX_ALREADY_IMPORTED => 1,
@@ -79,10 +73,6 @@ impl Encodable for Error {
         match self {
             Error::LimitReached => RlpHelper::new_tagged_list(s, ERROR_ID_LIMIT_REACHED),
             Error::Old => RlpHelper::new_tagged_list(s, ERROR_ID_OLD),
-            Error::OrderExpired {
-                expiration,
-                timestamp,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_ORDER_EXPIRED).append(expiration).append(timestamp),
             Error::Timelocked {
                 timelock,
                 remaining_time,
@@ -103,10 +93,6 @@ impl Decodable for Error {
         let error = match tag {
             ERROR_ID_LIMIT_REACHED => Error::LimitReached,
             ERROR_ID_OLD => Error::Old,
-            ERROR_ID_ORDER_EXPIRED => Error::OrderExpired {
-                expiration: rlp.val_at(1)?,
-                timestamp: rlp.val_at(2)?,
-            },
             ERROR_ID_TIMELOCKED => Error::Timelocked {
                 timelock: rlp.val_at(1)?,
                 remaining_time: rlp.val_at(2)?,
@@ -129,10 +115,6 @@ impl Display for Error {
         match self {
             Error::LimitReached => write!(f, "Transaction limit reached"),
             Error::Old => write!(f, "No longer valid"),
-            Error::OrderExpired {
-                expiration,
-                timestamp,
-            } => write!(f, "The order is expired. Expiration: {}, Block timestamp: {}", expiration, timestamp),
             Error::Timelocked {
                 timelock,
                 remaining_time,

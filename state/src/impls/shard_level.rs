@@ -23,8 +23,8 @@ use ckey::Address;
 use cmerkle::{self, TrieError, TrieFactory};
 use ctypes::errors::{RuntimeError, UnlockFailureReason};
 use ctypes::transaction::{
-    AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, Order,
-    OrderOnTransfer, PartialHashing, ShardTransaction,
+    AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, PartialHashing,
+    ShardTransaction,
 };
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockNumber, ShardId};
@@ -137,7 +137,6 @@ impl<'db> ShardLevelState<'db> {
                 burns,
                 inputs,
                 outputs,
-                orders,
                 ..
             } => {
                 debug_assert!(outputs.len() <= 512);
@@ -148,7 +147,6 @@ impl<'db> ShardLevelState<'db> {
                     burns,
                     inputs,
                     outputs,
-                    orders,
                     client,
                     parent_block_number,
                     parent_block_timestamp,
@@ -261,7 +259,6 @@ impl<'db> ShardLevelState<'db> {
             output.lock_script_hash,
             output.parameters.clone(),
             output.supply,
-            None,
         )?;
         ctrace!(TX, "Created asset on {}:{}:{}", self.shard_id, transaction_tracker, 0);
         Ok(())
@@ -277,24 +274,14 @@ impl<'db> ShardLevelState<'db> {
         burns: &[AssetTransferInput],
         inputs: &[AssetTransferInput],
         outputs: &[AssetTransferOutput],
-        orders: &[OrderOnTransfer],
         client: &C,
         parent_block_number: BlockNumber,
         parent_block_timestamp: u64,
     ) -> StateResult<()> {
-        let mut values_to_hash = vec![None; inputs.len()];
-        for order_tx in orders {
-            let order = &order_tx.order;
-            for input_idx in order_tx.input_from_indices.iter().chain(order_tx.input_fee_indices.iter()) {
-                values_to_hash[*input_idx] = Some(order);
-            }
-        }
-
-        for (input, transaction, order, burn) in inputs
+        for (input, transaction, burn) in inputs
             .iter()
-            .enumerate()
-            .map(|(index, input)| (input, transaction, values_to_hash[index], false))
-            .chain(burns.iter().map(|input| (input, transaction, None, true)))
+            .map(|input| (input, transaction, false))
+            .chain(burns.iter().map(|input| (input, transaction, true)))
         {
             if input.prev_out.shard_id != self.shard_id {
                 continue
@@ -302,7 +289,6 @@ impl<'db> ShardLevelState<'db> {
             self.check_and_run_input_script(
                 input,
                 transaction,
-                order,
                 burn,
                 sender,
                 approvers,
@@ -310,21 +296,6 @@ impl<'db> ShardLevelState<'db> {
                 parent_block_number,
                 parent_block_timestamp,
             )?;
-        }
-
-        self.check_orders(orders, inputs)?;
-        let mut output_order_hashes = vec![None; outputs.len()];
-        for order_tx in orders {
-            let order = &order_tx.order;
-            for output_idx in order_tx
-                .output_from_indices
-                .iter()
-                .chain(order_tx.output_to_indices.iter())
-                .chain(order_tx.output_owned_fee_indices.iter())
-                .chain(order_tx.output_transferred_fee_indices.iter())
-            {
-                output_order_hashes[*output_idx] = Some(order.consume(order_tx.spent_quantity).hash());
-            }
         }
 
         let mut deleted_asset = Vec::with_capacity(inputs.len() + burns.len());
@@ -348,7 +319,6 @@ impl<'db> ShardLevelState<'db> {
                 output.lock_script_hash,
                 output.parameters.clone(),
                 output.quantity,
-                output_order_hashes[index],
             )?;
         }
         let mut reduced_supplies = Vec::with_capacity(burns.len());
@@ -370,41 +340,6 @@ impl<'db> ShardLevelState<'db> {
         ctrace!(TX, "Deleted assets on {} {:?}", self.shard_id, deleted_asset);
         ctrace!(TX, "Created assets {}:{}:(0..{})", self.shard_id, transaction_tracker, outputs.len());
         ctrace!(TX, "Reduced asset supplies {:?}", reduced_supplies);
-        Ok(())
-    }
-
-    fn check_orders(&self, orders: &[OrderOnTransfer], inputs: &[AssetTransferInput]) -> StateResult<()> {
-        for order_tx in orders {
-            let order = &order_tx.order;
-            let mut counter: usize = 0;
-            for input_idx in order_tx.input_from_indices.iter().chain(order_tx.input_fee_indices.iter()) {
-                let input = &inputs[*input_idx];
-                let tracker = input.prev_out.tracker;
-                let index = input.prev_out.index;
-                if input.prev_out.shard_id != self.shard_id {
-                    continue
-                }
-                let asset = self.asset(tracker, index)?.ok_or_else(|| RuntimeError::AssetNotFound {
-                    shard_id: self.shard_id,
-                    tracker,
-                    index,
-                })?;
-
-                match &asset.order_hash() {
-                    Some(order_hash) if *order_hash == order.hash() => {}
-                    _ => {
-                        if order.origin_outputs.contains(&input.prev_out) {
-                            counter += 1;
-                        } else {
-                            return Err(RuntimeError::InvalidOriginOutputs(order.hash()).into())
-                        }
-                    }
-                }
-            }
-            if counter > 0 && counter != order.origin_outputs.len() {
-                return Err(RuntimeError::InvalidOriginOutputs(order.hash()).into())
-            }
-        }
         Ok(())
     }
 
@@ -493,7 +428,6 @@ impl<'db> ShardLevelState<'db> {
             output.lock_script_hash,
             output.parameters.clone(),
             output.supply,
-            None,
         )?;
         ctrace!(TX, "Increased asset supply {:?} {:?} => {:?}", asset_type, previous_supply, output.supply);
         ctrace!(TX, "Created asset on {}:{}", self.shard_id, transaction_tracker);
@@ -588,7 +522,6 @@ impl<'db> ShardLevelState<'db> {
         &self,
         input: &AssetTransferInput,
         transaction: &PartialHashing,
-        order: Option<&Order>,
         burn: bool,
         sender: &Address,
         approvers: &[Address],
@@ -596,25 +529,12 @@ impl<'db> ShardLevelState<'db> {
         parent_block_number: BlockNumber,
         parent_block_timestamp: u64,
     ) -> StateResult<()> {
-        debug_assert!(!burn || order.is_none());
-
         let (asset, from_regulator) = self.check_input_asset(input, sender, approvers)?;
         if from_regulator {
             return Ok(()) // Don't execute scripts when regulator sends the transaction.
         }
 
-        let to_hash: &PartialHashing = if let Some(order) = order {
-            if let Some(order_hash) = &asset.order_hash() {
-                if *order_hash == order.hash() {
-                    // If an order on an input and an order on the corresponding prev_out(asset) is same,
-                    // then skip checking lock script and running VM.
-                    return Ok(())
-                }
-            }
-            order
-        } else {
-            transaction
-        };
+        let to_hash: &PartialHashing = transaction;
 
         if *asset.lock_script_hash() != Blake::blake(&input.lock_script) {
             return Err(RuntimeError::ScriptHashMismatch(Mismatch {
@@ -685,7 +605,7 @@ impl<'db> ShardLevelState<'db> {
         let mut asset_scheme = self.get_asset_scheme_mut(self.shard_id, asset_type)?;
         asset_scheme.increase_supply(quantity)?;
 
-        self.create_asset(*tx_hash, 0, asset_type, *lock_script_hash, parameters.to_vec(), quantity, None)?;
+        self.create_asset(*tx_hash, 0, asset_type, *lock_script_hash, parameters.to_vec(), quantity)?;
         ctrace!(TX, "Created Wrapped CCC on {}:{}:{}", self.shard_id, tx_hash, 0);
         Ok(())
     }
@@ -704,7 +624,6 @@ impl<'db> ShardLevelState<'db> {
         self.check_and_run_input_script(
             burn,
             transaction,
-            None,
             true,
             sender,
             &approvers,
@@ -762,10 +681,9 @@ impl<'db> ShardLevelState<'db> {
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         quantity: u64,
-        order_hash: Option<H256>,
     ) -> cmerkle::Result<OwnedAsset> {
         self.cache.create_asset(&OwnedAssetAddress::new(tracker, index, self.shard_id), || {
-            OwnedAsset::new(asset_type, lock_script_hash, parameters, quantity, order_hash)
+            OwnedAsset::new(asset_type, lock_script_hash, parameters, quantity)
         })
     }
 
@@ -874,8 +792,6 @@ impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
 
 #[cfg(test)]
 mod tests {
-    use ctypes::transaction::AssetOutPoint;
-
     use super::super::super::StateError;
     use super::super::test_helper::SHARD_ID;
     use super::*;
@@ -1090,7 +1006,6 @@ mod tests {
 
         assert_eq!(Ok(()), state.apply(&mint, &sender, &[sender], &[], &get_test_client(), 0, 0));
 
-
         check_shard_level_state!(state, [
             (scheme: (asset_type) => { metadata: metadata, supply: amount, allowed_script_hashes: allowed_script_hashes}),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
@@ -1138,6 +1053,7 @@ mod tests {
         let asset_type = Blake::blake(mint_tracker);
 
         assert_eq!(Ok(()), state.apply(&mint, &sender, &[sender], &[], &get_test_client(), 0, 0));
+
 
         check_shard_level_state!(state, [
             (scheme: (asset_type) => { metadata: metadata, supply: amount, allowed_script_hashes: allowed_script_hashes}),
@@ -1450,91 +1366,6 @@ mod tests {
             (asset: (mint_tracker1, 0) => { asset_type: asset_type1, quantity: amount }),
             (asset: (mint_tracker2, 0) => { asset_type: asset_type2, quantity: amount }),
             (asset: (transfer_tracker, 0))
-        ]);
-    }
-
-    fn mint_for_transfer(state: &mut ShardLevelState, sender: Address, metadata: String, amount: u64) -> AssetOutPoint {
-        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let mint = asset_mint!(asset_mint_output!(lock_script_hash, supply: amount), metadata.clone());
-        let mint_tracker = mint.tracker();
-        let asset_type = Blake::blake(mint_tracker);
-        assert_eq!(Ok(()), state.apply(&mint, &sender, &[sender], &[], &get_test_client(), 0, 0));
-
-        check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: amount }),
-            (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
-        ]);
-
-        asset_out_point!(mint_tracker, 0, asset_type, amount)
-    }
-
-    #[test]
-    #[allow(clippy::cognitive_complexity)]
-    fn mint_three_times_and_transfer_with_order() {
-        let sender = address();
-        let mut state_db = RefCell::new(get_temp_state_db());
-        let mut shard_cache = ShardCache::default();
-        let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
-
-        let mint_output_1 = mint_for_transfer(&mut state, sender, "metadata1".to_string(), 30);
-        let mint_output_2 = mint_for_transfer(&mut state, sender, "metadata2".to_string(), 30);
-        let mint_output_3 = mint_for_transfer(&mut state, sender, "metadata3".to_string(), 30);
-        let asset_type_1 = mint_output_1.asset_type;
-        let asset_type_2 = mint_output_2.asset_type;
-        let asset_type_3 = mint_output_3.asset_type;
-
-        let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let order = order!(from: (asset_type_1, 20), to: (asset_type_2, 10), fee: (asset_type_3, 20),
-            [mint_output_1.clone(), mint_output_3.clone()],
-            10,
-            lock_script_hash
-        );
-        let order_consumed = order.consume(20);
-        let order_consumed_hash = order_consumed.hash();
-
-        let transfer = asset_transfer!(
-            inputs:
-                asset_transfer_inputs![
-                    (mint_output_1.clone(), vec![0x30, 0x01]),
-                    (mint_output_2.clone(), vec![0x30, 0x01]),
-                    (mint_output_3.clone(), vec![0x30, 0x01]),
-                ],
-            asset_transfer_outputs![
-                (lock_script_hash, asset_type_1, 10),
-                (lock_script_hash, asset_type_2, 10),
-                (lock_script_hash, asset_type_3, 10),
-                (lock_script_hash, asset_type_1, 20),
-                (lock_script_hash, asset_type_2, 20),
-                (lock_script_hash, vec![vec![0x1]], asset_type_3, 20),
-            ],
-            vec![order_on_transfer! (
-                order,
-                20,
-                input_from_indices: [0],
-                input_fee_indices: [2],
-                output_from_indices: [0],
-                output_to_indices: [1],
-                output_owned_fee_indices: [2],
-                output_transferred_fee_indices: [5]
-            )]
-        );
-        let transfer_tracker = transfer.tracker();
-
-        assert_eq!(Ok(()), state.apply(&transfer, &sender, &[sender], &[], &get_test_client(), 0, 0));
-
-        check_shard_level_state!(state, [
-            (scheme: (asset_type_1) => { metadata: "metadata1".to_string(), supply: 30 }),
-            (scheme: (asset_type_2) => { metadata: "metadata2".to_string(), supply: 30 }),
-            (scheme: (asset_type_3) => { metadata: "metadata3".to_string(), supply: 30 }),
-            (asset: (mint_output_1.tracker, 0)),
-            (asset: (mint_output_2.tracker, 0)),
-            (asset: (mint_output_3.tracker, 0)),
-            (asset: (transfer_tracker, 0) => { asset_type: asset_type_1, quantity: 10, order: order_consumed_hash }),
-            (asset: (transfer_tracker, 1) => { asset_type: asset_type_2, quantity: 10, order: order_consumed_hash }),
-            (asset: (transfer_tracker, 2) => { asset_type: asset_type_3, quantity: 10, order: order_consumed_hash }),
-            (asset: (transfer_tracker, 3) => { asset_type: asset_type_1, quantity: 20, order }),
-            (asset: (transfer_tracker, 4) => { asset_type: asset_type_2, quantity: 20, order }),
-            (asset: (transfer_tracker, 5) => { asset_type: asset_type_3, quantity: 20, order: order_consumed_hash })
         ]);
     }
 

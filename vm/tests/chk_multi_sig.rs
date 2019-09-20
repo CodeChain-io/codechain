@@ -44,7 +44,6 @@ fn valid_multi_sig_0_of_2() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -86,7 +85,6 @@ fn valid_multi_sig_1_of_2() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -110,7 +108,6 @@ fn valid_multi_sig_1_of_2() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -140,7 +137,6 @@ fn valid_multi_sig_2_of_2() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -164,7 +160,6 @@ fn valid_multi_sig_2_of_2() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -196,7 +191,6 @@ fn nvalid_multi_sig_2_of_2_duplicated() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -220,7 +214,6 @@ fn nvalid_multi_sig_2_of_2_duplicated() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -254,7 +247,6 @@ fn valid_multi_sig_2_of_3_110() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -280,7 +272,6 @@ fn valid_multi_sig_2_of_3_110() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -313,7 +304,6 @@ fn valid_multi_sig_2_of_3_101() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -339,7 +329,6 @@ fn valid_multi_sig_2_of_3_101() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -372,7 +361,6 @@ fn valid_multi_sig_2_of_3_011() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -398,7 +386,6 @@ fn valid_multi_sig_2_of_3_011() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -431,7 +418,6 @@ fn invalid_multi_sig_1_of_2() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -455,7 +441,6 @@ fn invalid_multi_sig_1_of_2() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -486,7 +471,6 @@ fn invalid_multi_sig_2_of_2() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -510,7 +494,6 @@ fn invalid_multi_sig_2_of_2() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -542,7 +525,6 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -566,7 +548,6 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -577,7 +558,6 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -602,62 +582,6 @@ fn invalid_multi_sig_2_of_2_with_1_invalid_sig() {
 }
 
 #[test]
-fn invalid_multi_sig_2_of_2_with_changed_order_sig() {
-    let client = TestClient::default();
-    let transaction = ShardTransaction::TransferAsset {
-        network_id: NetworkId::default(),
-        burns: Vec::new(),
-        inputs: Vec::new(),
-        outputs: Vec::new(),
-        orders: Vec::new(),
-    };
-    let outpoint = AssetTransferInput {
-        prev_out: AssetOutPoint {
-            tracker: Default::default(),
-            index: 0,
-            asset_type: H160::default(),
-            shard_id: 0,
-            quantity: 0,
-        },
-        timelock: None,
-        lock_script: Vec::new(),
-        unlock_script: Vec::new(),
-    };
-    let keypair1 = KeyPair::from_private(Private::from(ONE_KEY)).unwrap();
-    let keypair2 = KeyPair::from_private(Private::from(MINUS_ONE_KEY)).unwrap();
-    let pubkey1 = <&[u8]>::from(keypair1.public()).to_vec();
-    let pubkey2 = <&[u8]>::from(keypair2.public()).to_vec();
-    let message = blake256_with_key(
-        &ShardTransaction::TransferAsset {
-            network_id: NetworkId::default(),
-            burns: Vec::new(),
-            inputs: Vec::new(),
-            outputs: Vec::new(),
-            orders: Vec::new(),
-        }
-        .rlp_bytes(),
-        &blake128(&[0b11 as u8]),
-    );
-    let signature1 = sign(keypair1.private(), &message).unwrap().to_vec();
-    let signature2 = sign(keypair2.private(), &message).unwrap().to_vec();
-
-    let unlock_script =
-        vec![Instruction::PushB(vec![0b11 as u8]), Instruction::PushB(signature2), Instruction::PushB(signature1)];
-    let lock_script = vec![
-        Instruction::PushB(vec![2]),
-        Instruction::PushB(pubkey1),
-        Instruction::PushB(pubkey2),
-        Instruction::PushB(vec![2]),
-        Instruction::ChkMultiSig,
-    ];
-
-    assert_eq!(
-        execute(&unlock_script, &[], &lock_script, &transaction, VMConfig::default(), &outpoint, false, &client, 0, 0),
-        Ok(ScriptResult::Fail)
-    );
-}
-
-#[test]
 fn invalid_multi_sig_with_less_sig_than_m() {
     let client = TestClient::default();
     let transaction = ShardTransaction::TransferAsset {
@@ -665,7 +589,6 @@ fn invalid_multi_sig_with_less_sig_than_m() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -689,7 +612,6 @@ fn invalid_multi_sig_with_less_sig_than_m() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -719,7 +641,6 @@ fn invalid_multi_sig_with_more_sig_than_m() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -743,7 +664,6 @@ fn invalid_multi_sig_with_more_sig_than_m() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),
@@ -775,7 +695,6 @@ fn invalid_multi_sig_with_too_many_arg() {
         burns: Vec::new(),
         inputs: Vec::new(),
         outputs: Vec::new(),
-        orders: Vec::new(),
     };
     let outpoint = AssetTransferInput {
         prev_out: AssetOutPoint {
@@ -797,7 +716,6 @@ fn invalid_multi_sig_with_too_many_arg() {
             burns: Vec::new(),
             inputs: Vec::new(),
             outputs: Vec::new(),
-            orders: Vec::new(),
         }
         .rlp_bytes(),
         &blake128(&[0b11 as u8]),

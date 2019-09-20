@@ -80,7 +80,6 @@ TransferAsset {
     burns: Vec<AssetTransferInput>,
     inputs: Vec<AssetTransferInput>,
     outputs: Vec<AssetTransferOutput>,
-    orders: Vec<OrderOnTransfer>,
 
     metadata: String,
     approvals: Vec<Signature>,
@@ -128,11 +127,6 @@ enum Timelock {
     TimeAge(u64),
 }
 ```
-
-### Order
-
-Order is used for the DEX.
-Please see [this page](./Asset-Exchange-Protocol.md) for more information.
 
 ## ChangeAssetScheme
 

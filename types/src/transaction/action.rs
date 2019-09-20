@@ -22,7 +22,7 @@ use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::errors::SyntaxError;
-use crate::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, OrderOnTransfer, ShardTransaction};
+use crate::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, ShardTransaction};
 use crate::{CommonParams, ShardId};
 
 const PAY: u8 = 0x02;
@@ -62,7 +62,6 @@ pub enum Action {
         burns: Vec<AssetTransferInput>,
         inputs: Vec<AssetTransferInput>,
         outputs: Vec<AssetTransferOutput>,
-        orders: Vec<OrderOnTransfer>,
         metadata: String,
         approvals: Vec<Signature>,
         expiration: Option<u64>,
@@ -177,7 +176,6 @@ impl Action {
                 burns,
                 inputs,
                 outputs,
-                orders,
                 ..
             } => {
                 if outputs.len() > 512 {
@@ -197,11 +195,6 @@ impl Action {
                 if outputs.iter().any(|output| output.quantity == 0) {
                     return Err(SyntaxError::ZeroQuantity)
                 }
-                for order in orders {
-                    order.order.verify()?;
-                }
-                verify_order_indices(orders, inputs.len(), outputs.len())?;
-                verify_input_and_output_consistent_with_order(orders, inputs, outputs)?;
             }
             Action::ChangeAssetScheme {
                 asset_type,
@@ -250,7 +243,7 @@ impl Action {
         Ok(())
     }
 
-    pub fn verify_with_params(&self, common_params: &CommonParams, is_order_disabled: bool) -> Result<(), SyntaxError> {
+    pub fn verify_with_params(&self, common_params: &CommonParams) -> Result<(), SyntaxError> {
         if let Some(network_id) = self.network_id() {
             let system_network_id = common_params.network_id();
             if network_id != system_network_id {
@@ -269,17 +262,12 @@ impl Action {
                 }
             }
             Action::TransferAsset {
-                orders,
                 metadata,
                 ..
             } => {
                 let max_transfer_metadata_size = common_params.max_transfer_metadata_size();
                 if metadata.len() > max_transfer_metadata_size {
                     return Err(SyntaxError::MetadataTooBig)
-                }
-
-                if is_order_disabled && !orders.is_empty() {
-                    return Err(SyntaxError::DisabledTransaction)
                 }
             }
             Action::ChangeAssetScheme {
@@ -409,14 +397,12 @@ impl From<Action> for Option<ShardTransaction> {
                 burns,
                 inputs,
                 outputs,
-                orders,
                 ..
             } => Some(ShardTransaction::TransferAsset {
                 network_id,
                 burns,
                 inputs,
                 outputs,
-                orders,
             }),
             Action::ChangeAssetScheme {
                 network_id,
@@ -497,18 +483,19 @@ impl Encodable for Action {
                 burns,
                 inputs,
                 outputs,
-                orders,
                 metadata,
                 approvals,
                 expiration,
             } => {
+                let empty: Vec<AssetTransferOutput> = vec![];
                 s.begin_list(9)
                     .append(&TRANSFER_ASSET)
                     .append(network_id)
                     .append_list(burns)
                     .append_list(inputs)
                     .append_list(outputs)
-                    .append_list(orders)
+                    // NOTE: The orders field removed.
+                    .append_list(&empty)
                     .append(metadata)
                     .append_list(approvals)
                     .append(expiration);
@@ -690,7 +677,6 @@ impl Decodable for Action {
                     burns: rlp.list_at(2)?,
                     inputs: rlp.list_at(3)?,
                     outputs: rlp.list_at(4)?,
-                    orders: rlp.list_at(5)?,
                     metadata: rlp.val_at(6)?,
                     approvals: rlp.list_at(7)?,
                     expiration: rlp.val_at(8)?,
@@ -918,205 +904,12 @@ fn check_duplication_in_prev_out(
     Ok(())
 }
 
-fn verify_order_indices(orders: &[OrderOnTransfer], input_len: usize, output_len: usize) -> Result<(), SyntaxError> {
-    let mut input_check = vec![false; input_len];
-    let mut output_check = vec![false; output_len];
-
-    for order_info in orders {
-        for input_idx in order_info.input_from_indices.iter().chain(order_info.input_fee_indices.iter()) {
-            if *input_idx >= input_len || input_check[*input_idx] {
-                return Err(SyntaxError::InvalidOrderInOutIndices)
-            }
-            input_check[*input_idx] = true;
-        }
-
-        for output_idx in order_info
-            .output_from_indices
-            .iter()
-            .chain(order_info.output_to_indices.iter())
-            .chain(order_info.output_owned_fee_indices.iter())
-            .chain(order_info.output_transferred_fee_indices.iter())
-        {
-            if *output_idx >= output_len || output_check[*output_idx] {
-                return Err(SyntaxError::InvalidOrderInOutIndices)
-            }
-            output_check[*output_idx] = true;
-        }
-    }
-    Ok(())
-}
-
-fn verify_input_and_output_consistent_with_order(
-    orders: &[OrderOnTransfer],
-    inputs: &[AssetTransferInput],
-    outputs: &[AssetTransferOutput],
-) -> Result<(), SyntaxError> {
-    for order_tx in orders {
-        let mut input_quantity_from: u64 = 0;
-        let mut input_quantity_fee: u64 = 0;
-        let mut output_quantity_from: u64 = 0;
-        let mut output_quantity_to: u64 = 0;
-        let mut output_quantity_fee_remaining: u64 = 0;
-        let mut output_quantity_fee_given: u64 = 0;
-
-        let order = &order_tx.order;
-
-        // Check if a valid amount is spent
-        if order_tx.spent_quantity > order.asset_quantity_from {
-            return Err(SyntaxError::InvalidSpentQuantity {
-                asset_quantity_from: order.asset_quantity_from,
-                spent_quantity: order_tx.spent_quantity,
-            })
-        }
-
-        // Check input indices and calculate input_quantity_from and input_quantity_fee
-        for idx in order_tx.input_from_indices.iter() {
-            let prev_out = &inputs[*idx].prev_out;
-            if prev_out.asset_type == order.asset_type_from && prev_out.shard_id == order.shard_id_from {
-                input_quantity_from += prev_out.quantity
-            } else {
-                return Err(SyntaxError::InvalidAssetTypesWithOrder {
-                    asset_type: "INPUT FROM".to_string(),
-                    idx: *idx,
-                })
-            }
-        }
-
-        for idx in order_tx.input_fee_indices.iter() {
-            let prev_out = &inputs[*idx].prev_out;
-            if prev_out.asset_type == order.asset_type_fee && prev_out.shard_id == order.shard_id_fee {
-                input_quantity_fee += prev_out.quantity
-            } else {
-                return Err(SyntaxError::InvalidAssetTypesWithOrder {
-                    asset_type: "INPUT FEE".to_string(),
-                    idx: *idx,
-                })
-            }
-        }
-
-        // Check output indices and calculate output_quantity_from, output_quantity_to, output_quantity_fee_remaining and output_quantity_fee_given
-        for idx in order_tx.output_from_indices.iter() {
-            let output = &outputs[*idx];
-            let owned_by_maker = order.check_transfer_output(output)?;
-            if !owned_by_maker {
-                return Err(SyntaxError::InvalidAssetOwnerWithOrder {
-                    asset_type: "OUTPUT FROM".to_string(),
-                    idx: *idx,
-                })
-            }
-            if output.asset_type == order.asset_type_from && output.shard_id == order.shard_id_from {
-                output_quantity_from += output.quantity
-            } else {
-                return Err(SyntaxError::InvalidAssetTypesWithOrder {
-                    asset_type: "OUTPUT FROM".to_string(),
-                    idx: *idx,
-                })
-            }
-        }
-
-        for idx in order_tx.output_to_indices.iter() {
-            let output = &outputs[*idx];
-            let owned_by_maker = order.check_transfer_output(output)?;
-            if !owned_by_maker {
-                return Err(SyntaxError::InvalidAssetOwnerWithOrder {
-                    asset_type: "OUTPUT TO".to_string(),
-                    idx: *idx,
-                })
-            }
-            if output.asset_type == order.asset_type_to && output.shard_id == order.shard_id_to {
-                output_quantity_to += output.quantity
-            } else {
-                return Err(SyntaxError::InvalidAssetTypesWithOrder {
-                    asset_type: "OUTPUT TO".to_string(),
-                    idx: *idx,
-                })
-            }
-        }
-
-        for idx in order_tx.output_owned_fee_indices.iter() {
-            let output = &outputs[*idx];
-            let owned_by_maker = order.check_transfer_output(output)?;
-            if !owned_by_maker {
-                return Err(SyntaxError::InvalidAssetOwnerWithOrder {
-                    asset_type: "OUTPUT OWNED FEE".to_string(),
-                    idx: *idx,
-                })
-            }
-            if output.asset_type == order.asset_type_fee && output.shard_id == order.shard_id_fee {
-                output_quantity_fee_remaining += output.quantity
-            } else {
-                return Err(SyntaxError::InvalidAssetTypesWithOrder {
-                    asset_type: "OUTPUT OWNED FEE".to_string(),
-                    idx: *idx,
-                })
-            }
-        }
-
-        for idx in order_tx.output_transferred_fee_indices.iter() {
-            let output = &outputs[*idx];
-            let owned_by_maker = order.check_transfer_output(output)?;
-            if owned_by_maker {
-                return Err(SyntaxError::InvalidAssetOwnerWithOrder {
-                    asset_type: "OUTPUT TRANSFERRED FEE".to_string(),
-                    idx: *idx,
-                })
-            }
-            if output.asset_type == order.asset_type_fee && output.shard_id == order.shard_id_fee {
-                output_quantity_fee_given += output.quantity
-            } else {
-                return Err(SyntaxError::InvalidAssetTypesWithOrder {
-                    asset_type: "OUTPUT TRANSFERRED FEE".to_string(),
-                    idx: *idx,
-                })
-            }
-        }
-
-        // NOTE: If input_quantity_from == output_quantity_from, it means the asset is not spent as the order.
-        // If it's allowed, everyone can move the asset from one to another without permission.
-        if input_quantity_from <= output_quantity_from
-            || input_quantity_from - output_quantity_from != order_tx.spent_quantity
-        {
-            return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
-        }
-        if !is_ratio_greater_or_equal(
-            order.asset_quantity_from,
-            order.asset_quantity_to,
-            order_tx.spent_quantity,
-            output_quantity_to,
-        ) {
-            return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
-        }
-        if input_quantity_fee < output_quantity_fee_remaining
-            || input_quantity_fee - output_quantity_fee_remaining != output_quantity_fee_given
-            || !is_ratio_equal(
-                order.asset_quantity_from,
-                order.asset_quantity_fee,
-                order_tx.spent_quantity,
-                output_quantity_fee_given,
-            )
-        {
-            return Err(SyntaxError::InconsistentTransactionInOutWithOrders)
-        }
-    }
-    Ok(())
-}
-
-fn is_ratio_equal(from: u64, fee: u64, spent: u64, fee_given: u64) -> bool {
-    // from:fee = spent:fee_given
-    u128::from(from) * u128::from(fee_given) == u128::from(fee) * u128::from(spent)
-}
-
-fn is_ratio_greater_or_equal(from: u64, to: u64, spent: u64, output: u64) -> bool {
-    // from:to <= spent:output
-    u128::from(from) * u128::from(output) >= u128::from(to) * u128::from(spent)
-}
-
 #[cfg(test)]
 mod tests {
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
-    use crate::transaction::{AssetOutPoint, Order};
+    use crate::transaction::AssetOutPoint;
 
     #[test]
     fn encode_and_decode_mint_asset() {
@@ -1195,7 +988,6 @@ mod tests {
         let burns = vec![];
         let inputs = vec![];
         let outputs = vec![];
-        let orders = vec![];
         let network_id = "tc".into();
         let metadata = "".into();
         rlp_encode_and_decode_test!(Action::TransferAsset {
@@ -1203,7 +995,6 @@ mod tests {
             burns,
             inputs,
             outputs,
-            orders,
             metadata,
             approvals: vec![Signature::random(), Signature::random()],
             expiration: Some(10),
@@ -1264,760 +1055,6 @@ mod tests {
             allowed_script_hashes: vec![H160::random(), H160::random(), H160::random()],
             approvals: vec![],
         });
-    }
-
-    #[test]
-    fn verify_transfer_transaction_with_order() {
-        let asset_type_a = H160::random();
-        let asset_type_b = H160::random();
-        let lock_script_hash = H160::random();
-        let parameters = vec![vec![1]];
-        let origin_output = AssetOutPoint {
-            tracker: H256::random(),
-            index: 0,
-            asset_type: asset_type_a,
-            shard_id: 0,
-            quantity: 30,
-        };
-        let order = Order {
-            asset_type_from: asset_type_a,
-            asset_type_to: asset_type_b,
-            asset_type_fee: H160::zero(),
-            shard_id_from: 0,
-            shard_id_to: 0,
-            shard_id_fee: 0,
-            asset_quantity_from: 30,
-            asset_quantity_to: 10,
-            asset_quantity_fee: 0,
-            origin_outputs: vec![origin_output.clone()],
-            expiration: 10,
-            lock_script_hash_from: lock_script_hash,
-            parameters_from: parameters.clone(),
-            lock_script_hash_fee: lock_script_hash,
-            parameters_fee: parameters.clone(),
-        };
-
-        let action = Action::TransferAsset {
-            network_id: NetworkId::default(),
-            burns: vec![],
-            inputs: vec![
-                AssetTransferInput {
-                    prev_out: origin_output,
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: AssetOutPoint {
-                        tracker: H256::random(),
-                        index: 0,
-                        asset_type: asset_type_b,
-                        shard_id: 0,
-                        quantity: 10,
-                    },
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-            ],
-            outputs: vec![
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_b,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: vec![],
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 30,
-                },
-            ],
-            orders: vec![OrderOnTransfer {
-                order,
-                spent_quantity: 30,
-                input_from_indices: vec![0],
-                input_fee_indices: vec![],
-                output_from_indices: vec![],
-                output_to_indices: vec![0],
-                output_owned_fee_indices: vec![],
-                output_transferred_fee_indices: vec![],
-            }],
-            metadata: "".into(),
-            approvals: vec![],
-            expiration: None,
-        };
-        assert_eq!(action.verify(), Ok(()));
-        let mut common_params = CommonParams::default_for_test();
-        common_params.set_max_asset_scheme_metadata_size(1000);
-        common_params.set_max_transfer_metadata_size(1000);
-        common_params.set_max_text_content_size(1000);
-        assert_eq!(action.verify_with_params(&common_params, false), Ok(()));
-    }
-
-    #[test]
-    fn verify_partial_fill_transfer_transaction_with_order() {
-        let asset_type_a = H160::random();
-        let asset_type_b = H160::random();
-        let asset_type_c = H160::random();
-        let lock_script_hash = H160::random();
-        let parameters1 = vec![vec![1]];
-        let parameters2 = vec![vec![2]];
-
-        let origin_output_1 = AssetOutPoint {
-            tracker: H256::random(),
-            index: 0,
-            asset_type: asset_type_a,
-            shard_id: 0,
-            quantity: 40,
-        };
-        let origin_output_2 = AssetOutPoint {
-            tracker: H256::random(),
-            index: 0,
-            asset_type: asset_type_c,
-            shard_id: 0,
-            quantity: 30,
-        };
-
-        let order = Order {
-            asset_type_from: asset_type_a,
-            asset_type_to: asset_type_b,
-            asset_type_fee: asset_type_c,
-            shard_id_from: 0,
-            shard_id_to: 0,
-            shard_id_fee: 0,
-            asset_quantity_from: 30,
-            asset_quantity_to: 20,
-            asset_quantity_fee: 30,
-            origin_outputs: vec![origin_output_1.clone(), origin_output_2.clone()],
-            expiration: 10,
-            lock_script_hash_from: lock_script_hash,
-            parameters_from: parameters1.clone(),
-            lock_script_hash_fee: lock_script_hash,
-            parameters_fee: parameters2.clone(),
-        };
-
-        let action = Action::TransferAsset {
-            network_id: NetworkId::default(),
-            burns: vec![],
-            inputs: vec![
-                AssetTransferInput {
-                    prev_out: origin_output_1,
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: origin_output_2,
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: AssetOutPoint {
-                        tracker: H256::random(),
-                        index: 0,
-                        asset_type: asset_type_b,
-                        shard_id: 0,
-                        quantity: 10,
-                    },
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-            ],
-            outputs: vec![
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters1.clone(),
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 25,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters1.clone(),
-                    asset_type: asset_type_b,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters1.clone(),
-                    asset_type: asset_type_c,
-                    shard_id: 0,
-                    quantity: 15,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: vec![],
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 15,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters2.clone(),
-                    asset_type: asset_type_c,
-                    shard_id: 0,
-                    quantity: 15,
-                },
-            ],
-            orders: vec![OrderOnTransfer {
-                order,
-                spent_quantity: 15,
-                input_from_indices: vec![0],
-                input_fee_indices: vec![1],
-                output_from_indices: vec![0],
-                output_to_indices: vec![1],
-                output_owned_fee_indices: vec![2],
-                output_transferred_fee_indices: vec![4],
-            }],
-            metadata: "".into(),
-            approvals: vec![],
-            expiration: None,
-        };
-
-        assert_eq!(action.verify(), Ok(()));
-        let mut common_params = CommonParams::default_for_test();
-        common_params.set_max_asset_scheme_metadata_size(1000);
-        common_params.set_max_transfer_metadata_size(1000);
-        common_params.set_max_text_content_size(1000);
-        assert_eq!(action.verify_with_params(&common_params, false), Ok(()));
-    }
-
-    #[test]
-    fn verify_inconsistent_transfer_transaction_with_order() {
-        let asset_type_a = H160::random();
-        let asset_type_b = H160::random();
-        let asset_type_c = H160::random();
-        let lock_script_hash = H160::random();
-        let parameters = vec![vec![1]];
-        let parameters_fee = vec![vec![2]];
-
-        // Case 1: ratio is wrong
-        let origin_output = AssetOutPoint {
-            tracker: H256::random(),
-            index: 0,
-            asset_type: asset_type_a,
-            shard_id: 0,
-            quantity: 30,
-        };
-        let order = Order {
-            asset_type_from: asset_type_a,
-            asset_type_to: asset_type_b,
-            asset_type_fee: H160::zero(),
-            shard_id_from: 0,
-            shard_id_to: 0,
-            shard_id_fee: 0,
-            asset_quantity_from: 25,
-            asset_quantity_to: 10,
-            asset_quantity_fee: 0,
-            origin_outputs: vec![origin_output.clone()],
-            expiration: 10,
-            lock_script_hash_from: lock_script_hash,
-            parameters_from: parameters.clone(),
-            lock_script_hash_fee: lock_script_hash,
-            parameters_fee: parameters_fee.clone(),
-        };
-
-        let action = Action::TransferAsset {
-            network_id: NetworkId::default(),
-            burns: vec![],
-            inputs: vec![
-                AssetTransferInput {
-                    prev_out: origin_output,
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: AssetOutPoint {
-                        tracker: H256::random(),
-                        index: 0,
-                        asset_type: asset_type_b,
-                        shard_id: 0,
-                        quantity: 10,
-                    },
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-            ],
-            outputs: vec![
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_b,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: vec![],
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 30,
-                },
-            ],
-            orders: vec![OrderOnTransfer {
-                order,
-                spent_quantity: 25,
-                input_from_indices: vec![0],
-                input_fee_indices: vec![],
-                output_from_indices: vec![],
-                output_to_indices: vec![0],
-                output_owned_fee_indices: vec![],
-                output_transferred_fee_indices: vec![],
-            }],
-            metadata: "".into(),
-            approvals: vec![],
-            expiration: None,
-        };
-        assert_eq!(action.verify(), Err(SyntaxError::InconsistentTransactionInOutWithOrders));
-
-        // Case 2: multiple outputs with same order and asset_type
-        let origin_output_1 = AssetOutPoint {
-            tracker: H256::random(),
-            index: 0,
-            asset_type: asset_type_a,
-            shard_id: 0,
-            quantity: 40,
-        };
-        let origin_output_2 = AssetOutPoint {
-            tracker: H256::random(),
-            index: 0,
-            asset_type: asset_type_c,
-            shard_id: 0,
-            quantity: 40,
-        };
-        let order = Order {
-            asset_type_from: asset_type_a,
-            asset_type_to: asset_type_b,
-            asset_type_fee: asset_type_c,
-            shard_id_from: 0,
-            shard_id_to: 0,
-            shard_id_fee: 0,
-            asset_quantity_from: 30,
-            asset_quantity_to: 10,
-            asset_quantity_fee: 30,
-            origin_outputs: vec![origin_output_1.clone(), origin_output_2.clone()],
-            expiration: 10,
-            lock_script_hash_from: lock_script_hash,
-            parameters_from: parameters.clone(),
-            lock_script_hash_fee: lock_script_hash,
-            parameters_fee: parameters_fee.clone(),
-        };
-
-        // Case 2-1: asset_type_from
-        let action = Action::TransferAsset {
-            network_id: NetworkId::default(),
-            burns: vec![],
-            inputs: vec![
-                AssetTransferInput {
-                    prev_out: origin_output_1.clone(),
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: origin_output_2.clone(),
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: AssetOutPoint {
-                        tracker: H256::random(),
-                        index: 0,
-                        asset_type: asset_type_b,
-                        shard_id: 0,
-                        quantity: 10,
-                    },
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-            ],
-            outputs: vec![
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 5,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 6,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_b,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_c,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: vec![],
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 29,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters_fee.clone(),
-                    asset_type: asset_type_c,
-                    shard_id: 0,
-                    quantity: 30,
-                },
-            ],
-            orders: vec![OrderOnTransfer {
-                order: order.clone(),
-                spent_quantity: 30,
-                input_from_indices: vec![0],
-                input_fee_indices: vec![1],
-                output_from_indices: vec![0, 1],
-                output_to_indices: vec![2],
-                output_owned_fee_indices: vec![3],
-                output_transferred_fee_indices: vec![5],
-            }],
-            metadata: "".into(),
-            approvals: vec![],
-            expiration: None,
-        };
-        assert_eq!(action.verify(), Err(SyntaxError::InconsistentTransactionInOutWithOrders));
-
-        // Case 2-2: asset_type_to
-        let action = Action::TransferAsset {
-            network_id: NetworkId::default(),
-            burns: vec![],
-            inputs: vec![
-                AssetTransferInput {
-                    prev_out: origin_output_1.clone(),
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: origin_output_2.clone(),
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: AssetOutPoint {
-                        tracker: H256::random(),
-                        index: 0,
-                        asset_type: asset_type_b,
-                        shard_id: 0,
-                        quantity: 10,
-                    },
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-            ],
-            outputs: vec![
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_b,
-                    shard_id: 0,
-                    quantity: 5,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_b,
-                    shard_id: 0,
-                    quantity: 4,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_c,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: vec![],
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 30,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters_fee.clone(),
-                    asset_type: asset_type_c,
-                    shard_id: 0,
-                    quantity: 30,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: vec![],
-                    asset_type: asset_type_b,
-                    shard_id: 0,
-                    quantity: 1,
-                },
-            ],
-            orders: vec![OrderOnTransfer {
-                order: order.clone(),
-                spent_quantity: 30,
-                input_from_indices: vec![0],
-                input_fee_indices: vec![1],
-                output_from_indices: vec![0],
-                output_to_indices: vec![1, 2],
-                output_owned_fee_indices: vec![3],
-                output_transferred_fee_indices: vec![5],
-            }],
-            metadata: "".into(),
-            approvals: vec![],
-            expiration: None,
-        };
-        assert_eq!(action.verify(), Err(SyntaxError::InconsistentTransactionInOutWithOrders));
-
-        // Case 2-3: asset_type_fee
-        let action = Action::TransferAsset {
-            network_id: NetworkId::default(),
-            burns: vec![],
-            inputs: vec![
-                AssetTransferInput {
-                    prev_out: origin_output_1.clone(),
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: origin_output_2.clone(),
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: AssetOutPoint {
-                        tracker: H256::random(),
-                        index: 0,
-                        asset_type: asset_type_b,
-                        shard_id: 0,
-                        quantity: 10,
-                    },
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-            ],
-            outputs: vec![
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_b,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_c,
-                    shard_id: 0,
-                    quantity: 6,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_c,
-                    shard_id: 0,
-                    quantity: 5,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: vec![],
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 30,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters_fee.clone(),
-                    asset_type: asset_type_c,
-                    shard_id: 0,
-                    quantity: 29,
-                },
-            ],
-            orders: vec![OrderOnTransfer {
-                order: order.clone(),
-                spent_quantity: 30,
-                input_from_indices: vec![0],
-                input_fee_indices: vec![1],
-                output_from_indices: vec![0],
-                output_to_indices: vec![1],
-                output_owned_fee_indices: vec![2, 3],
-                output_transferred_fee_indices: vec![5],
-            }],
-            metadata: "".into(),
-            approvals: vec![],
-            expiration: None,
-        };
-        assert_eq!(action.verify(), Err(SyntaxError::InconsistentTransactionInOutWithOrders));
-    }
-
-    #[test]
-    fn verify_transfer_transaction_with_two_orders() {
-        let asset_type_a = H160::random();
-        let asset_type_b = H160::random();
-        let lock_script_hash = H160::random();
-        let parameters = vec![vec![1]];
-        let origin_output_1 = AssetOutPoint {
-            tracker: H256::random(),
-            index: 0,
-            asset_type: asset_type_a,
-            shard_id: 0,
-            quantity: 30,
-        };
-        let origin_output_2 = AssetOutPoint {
-            tracker: H256::random(),
-            index: 0,
-            asset_type: asset_type_b,
-            shard_id: 0,
-            quantity: 10,
-        };
-
-        let order_1 = Order {
-            asset_type_from: asset_type_a,
-            asset_type_to: asset_type_b,
-            asset_type_fee: H160::zero(),
-            shard_id_from: 0,
-            shard_id_to: 0,
-            shard_id_fee: 0,
-            asset_quantity_from: 30,
-            asset_quantity_to: 10,
-            asset_quantity_fee: 0,
-            origin_outputs: vec![origin_output_1.clone()],
-            expiration: 10,
-            lock_script_hash_from: lock_script_hash,
-            parameters_from: parameters.clone(),
-            lock_script_hash_fee: lock_script_hash,
-            parameters_fee: parameters.clone(),
-        };
-        let order_2 = Order {
-            asset_type_from: asset_type_b,
-            asset_type_to: asset_type_a,
-            asset_type_fee: H160::zero(),
-            shard_id_from: 0,
-            shard_id_to: 0,
-            shard_id_fee: 0,
-            asset_quantity_from: 10,
-            asset_quantity_to: 20,
-            asset_quantity_fee: 0,
-            origin_outputs: vec![origin_output_2.clone()],
-            expiration: 10,
-            lock_script_hash_from: lock_script_hash,
-            parameters_from: parameters.clone(),
-            lock_script_hash_fee: lock_script_hash,
-            parameters_fee: parameters.clone(),
-        };
-
-        let action = Action::TransferAsset {
-            network_id: NetworkId::default(),
-            burns: vec![],
-            inputs: vec![
-                AssetTransferInput {
-                    prev_out: origin_output_1,
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-                AssetTransferInput {
-                    prev_out: origin_output_2,
-                    timelock: None,
-                    lock_script: vec![0x30, 0x01],
-                    unlock_script: vec![],
-                },
-            ],
-            outputs: vec![
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_b,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: parameters.clone(),
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 20,
-                },
-                AssetTransferOutput {
-                    lock_script_hash,
-                    parameters: vec![],
-                    asset_type: asset_type_a,
-                    shard_id: 0,
-                    quantity: 10,
-                },
-            ],
-            orders: vec![
-                OrderOnTransfer {
-                    order: order_1,
-                    spent_quantity: 30,
-                    input_from_indices: vec![0],
-                    input_fee_indices: vec![],
-                    output_from_indices: vec![],
-                    output_to_indices: vec![0],
-                    output_owned_fee_indices: vec![],
-                    output_transferred_fee_indices: vec![],
-                },
-                OrderOnTransfer {
-                    order: order_2,
-                    spent_quantity: 10,
-                    input_from_indices: vec![1],
-                    input_fee_indices: vec![],
-                    output_from_indices: vec![],
-                    output_to_indices: vec![1],
-                    output_owned_fee_indices: vec![],
-                    output_transferred_fee_indices: vec![],
-                },
-            ],
-            metadata: "".into(),
-            approvals: vec![],
-            expiration: None,
-        };
-        assert_eq!(action.verify(), Ok(()));
-        let mut common_params = CommonParams::default_for_test();
-        common_params.set_max_asset_scheme_metadata_size(1000);
-        common_params.set_max_transfer_metadata_size(1000);
-        common_params.set_max_text_content_size(1000);
-        assert_eq!(action.verify_with_params(&common_params, false), Ok(()));
     }
 
     #[test]
