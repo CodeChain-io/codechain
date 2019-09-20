@@ -21,6 +21,7 @@ mod message;
 mod network;
 mod params;
 pub mod types;
+pub mod vote_collector;
 mod worker;
 
 use std::sync::atomic::AtomicBool;

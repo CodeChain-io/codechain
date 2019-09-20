@@ -23,8 +23,8 @@ use primitives::H256;
 use rlp::{Encodable, RlpStream};
 
 use super::stake::Action;
-use super::BitSet;
 use super::{ConsensusMessage, VoteStep};
+use crate::consensus::BitSet;
 
 /// Storing all Proposals, Prevotes and Precommits.
 #[derive(Debug)]
