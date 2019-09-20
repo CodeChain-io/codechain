@@ -37,6 +37,7 @@ use super::network;
 use super::params::TimeGapParams;
 use super::stake::CUSTOM_ACTION_HANDLER_ID;
 use super::types::{Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
+use super::vote_collector::{DoubleVote, VoteCollector};
 use super::{
     BlockHash, ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
     SEAL_FIELDS,
@@ -46,7 +47,6 @@ use crate::block::*;
 use crate::client::ConsensusClient;
 use crate::consensus::signer::EngineSigner;
 use crate::consensus::validator_set::{DynamicValidator, ValidatorSet};
-use crate::consensus::vote_collector::{DoubleVote, VoteCollector};
 use crate::consensus::{EngineError, Seal};
 use crate::encoded;
 use crate::error::{BlockError, Error};
