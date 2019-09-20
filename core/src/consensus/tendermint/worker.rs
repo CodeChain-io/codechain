@@ -571,7 +571,8 @@ impl Worker {
         self.validators.check_enough_votes(&self.prev_block_hash(), &votes).is_ok()
     }
 
-    fn broadcast_message(&self, message: Bytes) {
+    fn broadcast_message(&self, message: ConsensusMessage) {
+        let message = message.rlp_bytes().to_vec();
         self.extension
             .send(network::Event::BroadcastMessage {
                 message,
@@ -831,7 +832,7 @@ impl Worker {
         }
     }
 
-    fn generate_message(&mut self, block_hash: Option<BlockHash>, is_restoring: bool) -> Option<Bytes> {
+    fn generate_message(&mut self, block_hash: Option<BlockHash>, is_restoring: bool) -> Option<ConsensusMessage> {
         let height = self.height;
         let r = self.view;
         let on = VoteOn {
@@ -860,7 +861,7 @@ impl Worker {
         cinfo!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
         self.handle_valid_message(&message, is_restoring);
 
-        Some(message.rlp_bytes().into_vec())
+        Some(message)
     }
 
     fn handle_valid_message(&mut self, message: &ConsensusMessage, is_restoring: bool) {
