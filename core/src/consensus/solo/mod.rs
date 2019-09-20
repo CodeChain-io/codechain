@@ -18,18 +18,16 @@ mod params;
 
 use std::sync::Arc;
 
-use ckey::{Address, Error as KeyError, Public, SchnorrSignature};
+use ckey::Address;
 use cstate::{ActionHandler, HitHandler};
 use ctypes::{CommonParams, Header};
-use primitives::H256;
-use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use self::params::SoloParams;
 use super::stake;
 use super::{ConsensusEngine, Seal};
 use crate::block::{ExecutedBlock, IsBlock};
 use crate::codechain_machine::CodeChainMachine;
-use crate::consensus::{EngineError, EngineType, Message};
+use crate::consensus::{EngineError, EngineType};
 use crate::error::Error;
 
 /// A consensus engine which does not provide any consensus mechanism.
@@ -39,53 +37,6 @@ pub struct Solo {
     action_handlers: Vec<Arc<ActionHandler>>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Default)]
-pub struct SoloMessage {}
-
-impl Encodable for SoloMessage {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        s.append_empty_data();
-    }
-}
-
-impl Decodable for SoloMessage {
-    fn decode(_rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
-        Ok(SoloMessage {})
-    }
-}
-
-impl Message for SoloMessage {
-    type Round = bool;
-
-    fn signature(&self) -> SchnorrSignature {
-        SchnorrSignature::random()
-    }
-
-    fn signer_index(&self) -> usize {
-        Default::default()
-    }
-
-    fn block_hash(&self) -> Option<H256> {
-        None
-    }
-
-    fn round(&self) -> &bool {
-        &false
-    }
-
-    fn height(&self) -> u64 {
-        0
-    }
-
-    fn is_broadcastable(&self) -> bool {
-        false
-    }
-
-    fn verify(&self, _signer_public: &Public) -> Result<bool, KeyError> {
-        Ok(true)
-    }
-}
-
 impl Solo {
     /// Returns new instance of Solo over the given state machine.
     pub fn new(params: SoloParams, machine: CodeChainMachine) -> Self {
@@ -93,7 +44,7 @@ impl Solo {
         if params.enable_hit_handler {
             action_handlers.push(Arc::new(HitHandler::new()));
         }
-        action_handlers.push(Arc::new(stake::Stake::<SoloMessage>::new(params.genesis_stakes.clone())));
+        action_handlers.push(Arc::new(stake::Stake::new(params.genesis_stakes.clone())));
 
         Solo {
             params,

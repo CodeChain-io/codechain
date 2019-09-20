@@ -71,7 +71,7 @@ pub struct Tendermint {
     /// Action handlers for this consensus method
     action_handlers: Vec<Arc<ActionHandler>>,
     /// stake object to register client data later
-    stake: Arc<stake::Stake<ConsensusMessage>>,
+    stake: Arc<stake::Stake>,
     /// Chain notify
     chain_notify: Arc<TendermintChainNotify>,
     has_signer: AtomicBool,
@@ -90,7 +90,7 @@ impl Tendermint {
     /// Create a new instance of Tendermint engine
     pub fn new(our_params: TendermintParams, machine: CodeChainMachine) -> Arc<Self> {
         let validators = Arc::clone(&our_params.validators);
-        let stake = Arc::new(stake::Stake::<ConsensusMessage>::new(our_params.genesis_stakes));
+        let stake = Arc::new(stake::Stake::new(our_params.genesis_stakes));
         let timeouts = our_params.timeouts;
         let machine = Arc::new(machine);
 

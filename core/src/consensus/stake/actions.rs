@@ -19,12 +19,12 @@ use std::sync::Arc;
 use ccrypto::Blake;
 use ckey::{recover, Address, Signature};
 use client::ConsensusClient;
-use consensus::vote_collector::Message;
-use consensus::ValidatorSet;
 use ctypes::errors::SyntaxError;
 use ctypes::CommonParams;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
+
+use crate::consensus::{ConsensusMessage, ValidatorSet};
 
 const ACTION_TAG_TRANSFER_CCS: u8 = 1;
 const ACTION_TAG_DELEGATE_CCS: u8 = 2;
@@ -35,7 +35,7 @@ const ACTION_TAG_REDELEGATE: u8 = 6;
 const ACTION_TAG_CHANGE_PARAMS: u8 = 0xFF;
 
 #[derive(Debug, PartialEq)]
-pub enum Action<M: Message> {
+pub enum Action {
     TransferCCS {
         address: Address,
         quantity: u64,
@@ -62,13 +62,14 @@ pub enum Action<M: Message> {
         params: Box<CommonParams>,
         signatures: Vec<Signature>,
     },
+    // TODO: ConsensusMessage is tied to the Tendermint
     ReportDoubleVote {
-        message1: M,
-        message2: M,
+        message1: ConsensusMessage,
+        message2: ConsensusMessage,
     },
 }
 
-impl<M: Message> Action<M> {
+impl Action {
     pub fn verify(
         &self,
         current_params: &CommonParams,
@@ -113,7 +114,7 @@ impl<M: Message> Action<M> {
                     )))
                 }
                 params.verify().map_err(SyntaxError::InvalidCustomAction)?;
-                let action = Action::<M>::ChangeParams {
+                let action = Action::ChangeParams {
                     metadata_seq: *metadata_seq,
                     params: params.clone(),
                     signatures: vec![],
@@ -183,7 +184,7 @@ impl<M: Message> Action<M> {
     }
 }
 
-impl<M: Message> Encodable for Action<M> {
+impl Encodable for Action {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             Action::TransferCCS {
@@ -244,7 +245,7 @@ impl<M: Message> Encodable for Action<M> {
     }
 }
 
-impl<M: Message> Decodable for Action<M> {
+impl Decodable for Action {
     fn decode(rlp: &UntrustedRlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at(0)?;
         match tag {
@@ -357,13 +358,12 @@ mod tests {
     use ccrypto::blake256;
     use ckey::sign_schnorr;
     use client::TestBlockChainClient;
-    use consensus::solo::SoloMessage;
     use consensus::{message_info_rlp, ConsensusMessage, DynamicValidator, Step, VoteOn, VoteStep};
     use rlp::rlp_encode_and_decode_test;
 
     #[test]
     fn decode_fail_if_change_params_have_no_signatures() {
-        let action = Action::<SoloMessage>::ChangeParams {
+        let action = Action::ChangeParams {
             metadata_seq: 3,
             params: CommonParams::default_for_test().into(),
             signatures: vec![],
@@ -373,13 +373,13 @@ mod tests {
                 expected: 4,
                 got: 3,
             }),
-            UntrustedRlp::new(&rlp::encode(&action)).as_val::<Action<SoloMessage>>()
+            UntrustedRlp::new(&rlp::encode(&action)).as_val::<Action>()
         );
     }
 
     #[test]
     fn rlp_of_change_params() {
-        rlp_encode_and_decode_test!(Action::<SoloMessage>::ChangeParams {
+        rlp_encode_and_decode_test!(Action::ChangeParams {
             metadata_seq: 3,
             params: CommonParams::default_for_test().into(),
             signatures: vec![Signature::random(), Signature::random()],
@@ -448,7 +448,7 @@ mod tests {
             create_consensus_message(message_info1, &test_client, vote_step_twister, block_hash_twister);
         let consensus_message2 =
             create_consensus_message(message_info2, &test_client, vote_step_twister, block_hash_twister);
-        let action = Action::<ConsensusMessage>::ReportDoubleVote {
+        let action = Action::ReportDoubleVote {
             message1: consensus_message1,
             message2: consensus_message2,
         };

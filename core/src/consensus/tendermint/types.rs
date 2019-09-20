@@ -159,13 +159,6 @@ pub enum Step {
 }
 
 impl Step {
-    pub fn is_pre(self) -> bool {
-        match self {
-            Step::Prevote | Step::Precommit => true,
-            _ => false,
-        }
-    }
-
     pub fn number(self) -> u8 {
         match self {
             Step::Propose => 0,

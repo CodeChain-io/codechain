@@ -30,7 +30,6 @@ use ctypes::{BlockNumber, Header};
 use primitives::{u256_from_u128, Bytes, H256, U256};
 use rlp::{Encodable, UntrustedRlp};
 
-use super::super::vote_collector::DoubleVote;
 use super::super::BitSet;
 use super::backup::{backup, restore, BackupView};
 use super::message::*;
@@ -47,7 +46,7 @@ use crate::block::*;
 use crate::client::ConsensusClient;
 use crate::consensus::signer::EngineSigner;
 use crate::consensus::validator_set::{DynamicValidator, ValidatorSet};
-use crate::consensus::vote_collector::{Message, VoteCollector};
+use crate::consensus::vote_collector::{DoubleVote, VoteCollector};
 use crate::consensus::{EngineError, Seal};
 use crate::encoded;
 use crate::error::{BlockError, Error};
@@ -80,7 +79,7 @@ struct Worker {
     /// The votes_received field is changed after last state broadcast.
     votes_received_changed: bool,
     /// Vote accumulator.
-    votes: VoteCollector<ConsensusMessage>,
+    votes: VoteCollector,
     /// Used to sign messages and proposals.
     signer: EngineSigner,
     /// Last majority
@@ -1409,7 +1408,7 @@ impl Worker {
         Ok(())
     }
 
-    fn report_double_vote(&self, double: &DoubleVote<ConsensusMessage>) {
+    fn report_double_vote(&self, double: &DoubleVote) {
         let network_id = self.client().common_params(BlockId::Latest).unwrap().network_id();
         let seq = match self.signer.address() {
             Some(address) => self.client().latest_seq(address),

@@ -24,7 +24,6 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use snap;
 
 use super::super::validator_set::DynamicValidator;
-use super::super::vote_collector::Message;
 use super::super::BitSet;
 use super::{BlockHash, Height, Step, View};
 
@@ -347,36 +346,28 @@ impl ConsensusMessage {
             },
         })
     }
-}
 
-impl Message for ConsensusMessage {
-    type Round = VoteStep;
-
-    fn signature(&self) -> SchnorrSignature {
+    pub fn signature(&self) -> SchnorrSignature {
         self.signature
     }
 
-    fn signer_index(&self) -> usize {
+    pub fn signer_index(&self) -> usize {
         self.signer_index
     }
 
-    fn block_hash(&self) -> Option<H256> {
+    pub fn block_hash(&self) -> Option<H256> {
         self.on.block_hash
     }
 
-    fn round(&self) -> &VoteStep {
+    pub fn round(&self) -> &VoteStep {
         &self.on.step
     }
 
-    fn height(&self) -> u64 {
+    pub fn height(&self) -> u64 {
         self.on.step.height
     }
 
-    fn is_broadcastable(&self) -> bool {
-        self.on.step.step.is_pre()
-    }
-
-    fn verify(&self, signer_public: &Public) -> Result<bool, KeyError> {
+    pub fn verify(&self, signer_public: &Public) -> Result<bool, KeyError> {
         let vote_info = message_info_rlp(self.on.step, self.on.block_hash);
         verify_schnorr(signer_public, &self.signature, &blake256(vote_info))
     }
