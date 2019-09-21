@@ -35,7 +35,7 @@ use parking_lot::RwLock;
 use primitives::H256;
 
 use self::chain_notify::TendermintChainNotify;
-pub use self::message::{message_info_rlp, ConsensusMessage, VoteOn, VoteStep};
+pub use self::message::{ConsensusMessage, VoteOn, VoteStep};
 pub use self::params::{TendermintParams, TimeGapParams, TimeoutParams};
 pub use self::types::{Height, Step, View};
 use super::{stake, ValidatorSet};
@@ -129,7 +129,7 @@ mod tests {
     use primitives::Bytes;
 
     use super::super::BitSet;
-    use super::message::{message_info_rlp, VoteStep};
+    use super::message::VoteStep;
     use crate::account_provider::AccountProvider;
     use crate::block::{ClosedBlock, OpenBlock};
     use crate::client::TestBlockChainClient;
@@ -231,8 +231,11 @@ mod tests {
         header.set_author(proposer);
         header.set_parent_hash(Default::default());
 
-        let vote_info = message_info_rlp(VoteStep::new(3, 0, Step::Precommit), Some(*header.parent_hash()));
-        let signature2 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let vote_on = VoteOn {
+            step: VoteStep::new(3, 0, Step::Precommit),
+            block_hash: Some(*header.parent_hash()),
+        };
+        let signature2 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&vote_on.hash()).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
@@ -267,8 +270,11 @@ mod tests {
         header.set_author(proposer);
         header.set_parent_hash(block1_hash);
 
-        let vote_info = message_info_rlp(VoteStep::new(1, 0, Step::Precommit), Some(*header.parent_hash()));
-        let signature2 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let vote_info = VoteOn {
+            step: VoteStep::new(1, 0, Step::Precommit),
+            block_hash: Some(*header.parent_hash()),
+        };
+        let signature2 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&vote_info.hash()).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
@@ -287,9 +293,9 @@ mod tests {
         }
 
         let voter = validator3;
-        let signature3 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let signature3 = tap.get_account(&voter, None).unwrap().sign_schnorr(&vote_info.hash()).unwrap();
         let voter = validator0;
-        let signature0 = tap.get_account(&voter, None).unwrap().sign_schnorr(&blake256(&vote_info)).unwrap();
+        let signature0 = tap.get_account(&voter, None).unwrap().sign_schnorr(&vote_info.hash()).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
@@ -304,7 +310,7 @@ mod tests {
         assert!(engine.verify_block_external(&header).is_ok());
 
         let bad_voter = insert_and_unlock(&tap, "101");
-        let bad_signature = tap.get_account(&bad_voter, None).unwrap().sign_schnorr(&blake256(vote_info)).unwrap();
+        let bad_signature = tap.get_account(&bad_voter, None).unwrap().sign_schnorr(&vote_info.hash()).unwrap();
 
         let seal = Seal::Tendermint {
             prev_view: 0,
