@@ -20,7 +20,6 @@ use std::sync::{Arc, Weak};
 use std::thread::{Builder, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use ccrypto::blake256;
 use ckey::{public_to_address, verify_schnorr, Address, SchnorrSignature};
 use cnetwork::{EventSender, NodeId};
 use crossbeam_channel as crossbeam;
@@ -837,13 +836,12 @@ impl Worker {
             step: VoteStep::new(height, r, self.step.to_step()),
             block_hash,
         };
-        let vote_info = on.rlp_bytes();
         let signer_index = self.signer_index().or_else(|| {
             ctrace!(ENGINE, "No message, since there is no engine signer.");
             None
         })?;
         let signature = self
-            .sign(blake256(&vote_info))
+            .sign(&on)
             .map_err(|error| {
                 ctrace!(ENGINE, "{}th validator could not sign the message {}", signer_index, error);
                 error
@@ -1124,7 +1122,7 @@ impl Worker {
             step: VoteStep::new(header.number() as Height, self.view, Step::Propose),
             block_hash: Some(hash),
         };
-        let signature = self.sign(vote_on.hash()).expect("I am proposer");
+        let signature = self.sign(&vote_on).expect("I am proposer");
         self.votes.vote(
             ConsensusMessage::new_proposal(signature, &*self.validators, header, self.view, prev_proposer_idx)
                 .expect("I am proposer"),
@@ -1484,7 +1482,7 @@ impl Worker {
         };
         let parent_hash = header.parent_hash();
         let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
-        let signature = self.sign(vote_on.hash()).expect("I am proposer");
+        let signature = self.sign(&vote_on).expect("I am proposer");
         self.votes.vote(
             ConsensusMessage::new_proposal(signature, &*self.validators, &header, self.view, prev_proposer_idx)
                 .expect("I am proposer"),
@@ -1517,8 +1515,8 @@ impl Worker {
         self.signer.set_to_keep_decrypted_account(ap, address);
     }
 
-    fn sign(&self, hash: H256) -> Result<SchnorrSignature, Error> {
-        self.signer.sign(hash).map_err(Into::into)
+    fn sign(&self, vote_on: &VoteOn) -> Result<SchnorrSignature, Error> {
+        self.signer.sign(vote_on.hash()).map_err(Into::into)
     }
 
     fn signer_index(&self) -> Option<usize> {
