@@ -1122,9 +1122,11 @@ impl Worker {
 
         debug_assert_eq!(Ok(self.view), TendermintSealView::new(header.seal()).consensus_view());
 
-        let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
-        let vote_info = message_info_rlp(vote_step, Some(hash));
-        let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
+        let vote_on = VoteOn {
+            step: VoteStep::new(header.number() as Height, self.view, Step::Propose),
+            block_hash: Some(hash),
+        };
+        let signature = self.sign(vote_on.hash()).expect("I am proposer");
         self.votes.vote(
             ConsensusMessage::new_proposal(signature, &*self.validators, header, self.view, prev_proposer_idx)
                 .expect("I am proposer"),
@@ -1193,8 +1195,10 @@ impl Worker {
         }
 
         let previous_block_view = TendermintSealView::new(header.seal()).previous_block_view()?;
-        let step = VoteStep::new(header.number() - 1, previous_block_view, Step::Precommit);
-        let precommit_hash = message_hash(step, *header.parent_hash());
+        let precommit_vote_on = VoteOn {
+            step: VoteStep::new(header.number() - 1, previous_block_view, Step::Precommit),
+            block_hash: Some(*header.parent_hash()),
+        };
 
         let mut voted_validators = BitSet::new();
         let grand_parent_hash = self
@@ -1204,7 +1208,7 @@ impl Worker {
             .parent_hash();
         for (bitset_index, signature) in seal_view.signatures()? {
             let public = self.validators.get(&grand_parent_hash, bitset_index);
-            if !verify_schnorr(&public, &signature, &precommit_hash)? {
+            if !verify_schnorr(&public, &signature, &precommit_vote_on.hash())? {
                 let address = public_to_address(&public);
                 return Err(EngineError::BlockNotAuthorized(address.to_owned()).into())
             }
@@ -1476,11 +1480,13 @@ impl Worker {
 
     fn repropose_block(&mut self, block: encoded::Block) {
         let header = block.decode_header();
-        let vote_step = VoteStep::new(header.number() as Height, self.view, Step::Propose);
-        let vote_info = message_info_rlp(vote_step, Some(header.hash()));
+        let vote_on = VoteOn {
+            step: VoteStep::new(header.number() as Height, self.view, Step::Propose),
+            block_hash: Some(header.hash()),
+        };
         let parent_hash = header.parent_hash();
         let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
-        let signature = self.sign(blake256(&vote_info)).expect("I am proposer");
+        let signature = self.sign(vote_on.hash()).expect("I am proposer");
         self.votes.vote(
             ConsensusMessage::new_proposal(signature, &*self.validators, &header, self.view, prev_proposer_idx)
                 .expect("I am proposer"),

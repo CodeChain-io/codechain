@@ -31,8 +31,7 @@ pub use self::null_engine::NullEngine;
 pub use self::simple_poa::SimplePoA;
 pub use self::solo::Solo;
 pub use self::tendermint::{
-    message_info_rlp, ConsensusMessage, Height, Step, Tendermint, TendermintParams, TimeGapParams, View, VoteOn,
-    VoteStep,
+    ConsensusMessage, Height, Step, Tendermint, TendermintParams, TimeGapParams, View, VoteOn, VoteStep,
 };
 pub use self::validator_set::validator_list::RoundRobinValidator;
 pub use self::validator_set::{DynamicValidator, ValidatorSet};
