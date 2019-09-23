@@ -728,6 +728,9 @@ impl Extension {
                     Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {
                         cwarn!(SYNC, "Downloaded already existing block({})", hash)
                     }
+                    Err(BlockImportError::Import(ImportError::AlreadyQueued)) => {
+                        cwarn!(SYNC, "Downloaded already queued in the verification queue({})", hash)
+                    }
                     Err(err) => {
                         // FIXME: handle import errors
                         cwarn!(SYNC, "Cannot import block({}): {:?}", hash, err);
