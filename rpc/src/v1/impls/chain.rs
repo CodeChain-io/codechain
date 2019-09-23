@@ -288,8 +288,6 @@ where
                 "store" => Some(common_parameters.min_store_transaction_cost()),
                 "remove" => Some(common_parameters.min_remove_transaction_cost()),
                 "custom" => Some(common_parameters.min_custom_transaction_cost()),
-                "composeAsset" => Some(common_parameters.min_asset_compose_cost()),
-                "decomposeAsset" => Some(common_parameters.min_asset_decompose_cost()),
 
                 _ => None,
             })

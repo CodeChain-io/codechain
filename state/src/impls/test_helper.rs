@@ -324,31 +324,6 @@ macro_rules! order_on_transfer {
     }
 }
 
-macro_rules! asset_compose {
-    ($metadata:expr, $inputs:expr, $outputs:expr) => {
-        $crate::ctypes::transaction::ShardTransaction::ComposeAsset {
-            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
-            shard_id: $crate::impls::test_helper::SHARD_ID,
-            metadata: $metadata,
-            approver: None,
-            registrar: None,
-            allowed_script_hashes: vec![],
-            inputs: $inputs,
-            output: $outputs,
-        }
-    };
-}
-
-macro_rules! asset_decompose {
-    ($input:expr, $outputs:expr) => {
-        $crate::ctypes::transaction::ShardTransaction::DecomposeAsset {
-            network_id: $crate::impls::test_helper::NETWORK_ID.into(),
-            input: $input,
-            outputs: $outputs,
-        }
-    };
-}
-
 macro_rules! asset_wrap_ccc_output {
     ($lock_script_hash:expr, $quantity:expr) => {
         $crate::ctypes::transaction::AssetWrapCCCOutput {

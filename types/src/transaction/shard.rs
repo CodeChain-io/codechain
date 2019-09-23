@@ -62,21 +62,6 @@ pub enum ShardTransaction {
         seq: usize,
         output: AssetMintOutput,
     },
-    ComposeAsset {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        metadata: String,
-        approver: Option<Address>,
-        registrar: Option<Address>,
-        allowed_script_hashes: Vec<H160>,
-        inputs: Vec<AssetTransferInput>,
-        output: AssetMintOutput,
-    },
-    DecomposeAsset {
-        network_id: NetworkId,
-        input: AssetTransferInput,
-        outputs: Vec<AssetTransferOutput>,
-    },
     UnwrapCCC {
         network_id: NetworkId,
         burn: AssetTransferInput,
@@ -123,15 +108,7 @@ impl ShardTransaction {
                 network_id,
                 ..
             }
-            | ShardTransaction::ComposeAsset {
-                network_id,
-                ..
-            }
             | ShardTransaction::ChangeAssetScheme {
-                network_id,
-                ..
-            }
-            | ShardTransaction::DecomposeAsset {
                 network_id,
                 ..
             }
@@ -174,26 +151,6 @@ impl ShardTransaction {
                 shard_id,
                 ..
             } => vec![*shard_id],
-            ShardTransaction::ComposeAsset {
-                inputs,
-                shard_id,
-                ..
-            } => {
-                let mut shards: Vec<ShardId> = inputs.iter().map(|v| v.prev_out.shard_id).collect();
-                shards.push(*shard_id);
-                shards.sort_unstable();
-                shards.dedup();
-                shards
-            }
-            ShardTransaction::DecomposeAsset {
-                outputs,
-                ..
-            } => {
-                let mut shards: Vec<ShardId> = outputs.iter().map(|v| v.shard_id).collect();
-                shards.sort_unstable();
-                shards.dedup();
-                shards
-            }
             ShardTransaction::UnwrapCCC {
                 burn,
                 ..
@@ -220,13 +177,6 @@ impl ShardTransaction {
             ShardTransaction::ChangeAssetScheme {
                 ..
             } => false,
-            ShardTransaction::ComposeAsset {
-                ..
-            } => index == 0,
-            ShardTransaction::DecomposeAsset {
-                outputs,
-                ..
-            } => index < outputs.len(),
             ShardTransaction::UnwrapCCC {
                 ..
             } => false,
@@ -256,14 +206,6 @@ impl ShardTransaction {
             ShardTransaction::ChangeAssetScheme {
                 ..
             } => unreachable!("AssetSchemeChange doesn't have a valid index"),
-            ShardTransaction::ComposeAsset {
-                shard_id,
-                ..
-            } => &id == shard_id,
-            ShardTransaction::DecomposeAsset {
-                outputs,
-                ..
-            } => id == outputs[index].shard_id,
             ShardTransaction::UnwrapCCC {
                 ..
             } => unreachable!("UnwrapCCC doesn't have a valid index"),
@@ -366,69 +308,6 @@ impl PartialHashing for ShardTransaction {
                     &blake128(tag.get_tag()),
                 ))
             }
-            ShardTransaction::ComposeAsset {
-                network_id,
-                shard_id,
-                metadata,
-                approver,
-                registrar,
-                allowed_script_hashes,
-                inputs,
-                output,
-            } => {
-                if tag.filter_len != 0 {
-                    return Err(HashingError::InvalidFilter)
-                }
-
-                let new_inputs = apply_input_scheme(inputs, tag.sign_all_inputs, !is_burn, cur);
-
-                let new_output = if tag.sign_all_outputs {
-                    output.clone()
-                } else {
-                    AssetMintOutput::default()
-                };
-
-                Ok(blake256_with_key(
-                    &ShardTransaction::ComposeAsset {
-                        network_id: *network_id,
-                        shard_id: *shard_id,
-                        metadata: metadata.to_string(),
-                        approver: *approver,
-                        registrar: *registrar,
-                        allowed_script_hashes: allowed_script_hashes.to_vec(),
-                        inputs: new_inputs,
-                        output: new_output,
-                    }
-                    .rlp_bytes(),
-                    &blake128(tag.get_tag()),
-                ))
-            }
-            ShardTransaction::DecomposeAsset {
-                network_id,
-                input,
-                outputs,
-            } => {
-                let new_outputs = if tag.sign_all_outputs {
-                    outputs.clone()
-                } else {
-                    apply_bitmask_to_output(tag.filter.clone(), &outputs, Vec::new())?
-                };
-
-                Ok(blake256_with_key(
-                    &ShardTransaction::DecomposeAsset {
-                        network_id: *network_id,
-                        input: AssetTransferInput {
-                            prev_out: input.prev_out.clone(),
-                            timelock: input.timelock,
-                            lock_script: Vec::new(),
-                            unlock_script: Vec::new(),
-                        },
-                        outputs: new_outputs,
-                    }
-                    .rlp_bytes(),
-                    &blake128(tag.get_tag()),
-                ))
-            }
             ShardTransaction::UnwrapCCC {
                 network_id,
                 burn,
@@ -478,8 +357,10 @@ const ASSET_UNWRAP_CCC_ID: TransactionId = 0x11;
 const ASSET_MINT_ID: TransactionId = 0x13;
 const ASSET_TRANSFER_ID: TransactionId = 0x14;
 const ASSET_SCHEME_CHANGE_ID: TransactionId = 0x15;
-const ASSET_COMPOSE_ID: TransactionId = 0x16;
-const ASSET_DECOMPOSE_ID: TransactionId = 0x17;
+/// Deprecated
+//const ASSET_COMPOSE_ID: TransactionId = 0x16;
+/// Deprecated
+//const ASSET_DECOMPOSE_ID: TransactionId = 0x17;
 const ASSET_INCREASE_SUPPLY_ID: TransactionId = 0x18;
 
 impl Decodable for ShardTransaction {
@@ -560,43 +441,6 @@ impl Decodable for ShardTransaction {
                         parameters: d.val_at(6)?,
                         supply: d.val_at(7)?,
                     },
-                })
-            }
-            ASSET_COMPOSE_ID => {
-                let item_count = d.item_count()?;
-                if item_count != 11 {
-                    return Err(DecoderError::RlpIncorrectListLen {
-                        got: item_count,
-                        expected: 11,
-                    })
-                }
-                Ok(ShardTransaction::ComposeAsset {
-                    network_id: d.val_at(1)?,
-                    shard_id: d.val_at(2)?,
-                    metadata: d.val_at(3)?,
-                    approver: d.val_at(4)?,
-                    registrar: d.val_at(5)?,
-                    allowed_script_hashes: d.list_at(6)?,
-                    inputs: d.list_at(7)?,
-                    output: AssetMintOutput {
-                        lock_script_hash: d.val_at(8)?,
-                        parameters: d.val_at(9)?,
-                        supply: d.val_at(10)?,
-                    },
-                })
-            }
-            ASSET_DECOMPOSE_ID => {
-                let item_count = d.item_count()?;
-                if item_count != 4 {
-                    return Err(DecoderError::RlpIncorrectListLen {
-                        got: item_count,
-                        expected: 4,
-                    })
-                }
-                Ok(ShardTransaction::DecomposeAsset {
-                    network_id: d.val_at(1)?,
-                    input: d.val_at(2)?,
-                    outputs: d.list_at(3)?,
                 })
             }
             ASSET_UNWRAP_CCC_ID => {
@@ -704,41 +548,6 @@ impl Encodable for ShardTransaction {
                     .append(lock_script_hash)
                     .append(parameters)
                     .append(supply);
-            }
-            ShardTransaction::ComposeAsset {
-                network_id,
-                shard_id,
-                metadata,
-                approver,
-                registrar,
-                allowed_script_hashes,
-                inputs,
-                output:
-                    AssetMintOutput {
-                        lock_script_hash,
-                        parameters,
-                        supply,
-                    },
-            } => {
-                s.begin_list(11)
-                    .append(&ASSET_COMPOSE_ID)
-                    .append(network_id)
-                    .append(shard_id)
-                    .append(metadata)
-                    .append(approver)
-                    .append(registrar)
-                    .append_list(allowed_script_hashes)
-                    .append_list(inputs)
-                    .append(lock_script_hash)
-                    .append(parameters)
-                    .append(supply);
-            }
-            ShardTransaction::DecomposeAsset {
-                network_id,
-                input,
-                outputs,
-            } => {
-                s.begin_list(4).append(&ASSET_DECOMPOSE_ID).append(network_id).append(input).append_list(outputs);
             }
             ShardTransaction::UnwrapCCC {
                 network_id,
@@ -1007,28 +816,6 @@ mod tests {
                 quantity: output_quantity,
             }]
         ));
-    }
-
-
-    #[test]
-    fn encode_and_decode_decompose_transaction() {
-        let tx = ShardTransaction::DecomposeAsset {
-            network_id: NetworkId::default(),
-            input: AssetTransferInput {
-                prev_out: AssetOutPoint {
-                    tracker: Default::default(),
-                    index: 0,
-                    asset_type: H160::default(),
-                    shard_id: 0,
-                    quantity: 30,
-                },
-                timelock: None,
-                lock_script: vec![0x30, 0x01],
-                unlock_script: vec![],
-            },
-            outputs: Vec::new(),
-        };
-        rlp_encode_and_decode_test!(tx);
     }
 
     #[test]

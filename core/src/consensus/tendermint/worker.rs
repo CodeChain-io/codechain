@@ -1312,7 +1312,11 @@ impl Worker {
                 view,
             } => {
                 cinfo!(ENGINE, "Commit timeout.");
-                if self.client().block(&block_hash.into()).is_none() {
+
+                let proposal_imported = self.client().block(&block_hash.into()).is_some();
+                let best_block_header = self.client().best_block_header();
+
+                if !proposal_imported || best_block_header.hash() != block_hash {
                     cwarn!(ENGINE, "Best chain is not updated yet, wait until imported");
                     self.step = TendermintState::CommitTimedout {
                         block_hash,
