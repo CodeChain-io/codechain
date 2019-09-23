@@ -37,8 +37,10 @@ const UNWRAP_CCC: u8 = 0x11;
 const MINT_ASSET: u8 = 0x13;
 const TRANSFER_ASSET: u8 = 0x14;
 const CHANGE_ASSET_SCHEME: u8 = 0x15;
-const COMPOSE_ASSET: u8 = 0x16;
-const DECOMPOSE_ASSET: u8 = 0x17;
+// Derepcated
+//const COMPOSE_ASSET: u8 = 0x16;
+// Derepcated
+//const DECOMPOSE_ASSET: u8 = 0x17;
 const INCREASE_ASSET_SUPPLY: u8 = 0x18;
 
 const CUSTOM: u8 = 0xFF;
@@ -82,23 +84,6 @@ pub enum Action {
         asset_type: H160,
         seq: usize,
         output: Box<AssetMintOutput>,
-        approvals: Vec<Signature>,
-    },
-    ComposeAsset {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        metadata: String,
-        approver: Option<Address>,
-        registrar: Option<Address>,
-        allowed_script_hashes: Vec<H160>,
-        inputs: Vec<AssetTransferInput>,
-        output: Box<AssetMintOutput>,
-        approvals: Vec<Signature>,
-    },
-    DecomposeAsset {
-        network_id: NetworkId,
-        input: AssetTransferInput,
-        outputs: Vec<AssetTransferOutput>,
         approvals: Vec<Signature>,
     },
     UnwrapCCC {
@@ -165,12 +150,6 @@ impl Action {
                 ..
             }
             | Action::IncreaseAssetSupply {
-                ..
-            }
-            | Action::ComposeAsset {
-                ..
-            }
-            | Action::DecomposeAsset {
                 ..
             }
             | Action::UnwrapCCC {
@@ -244,51 +223,6 @@ impl Action {
                     return Err(SyntaxError::CannotChangeWcccAssetScheme)
                 }
             }
-            Action::ComposeAsset {
-                inputs,
-                output,
-                ..
-            } => {
-                let disable_compose_asset = true;
-                if disable_compose_asset {
-                    return Err(SyntaxError::DisabledTransaction)
-                }
-                if inputs.is_empty() {
-                    return Err(SyntaxError::EmptyInput)
-                }
-                if inputs.iter().any(|input| input.prev_out.quantity == 0) {
-                    return Err(SyntaxError::ZeroQuantity)
-                }
-                check_duplication_in_prev_out(&[], inputs)?;
-                if output.supply != 1 {
-                    return Err(SyntaxError::InvalidComposedOutputAmount {
-                        got: output.supply,
-                    })
-                }
-            }
-            Action::DecomposeAsset {
-                input,
-                outputs,
-                ..
-            } => {
-                let disable_decompose_asset = true;
-                if disable_decompose_asset {
-                    return Err(SyntaxError::DisabledTransaction)
-                }
-                if input.prev_out.quantity != 1 {
-                    return Err(SyntaxError::InvalidDecomposedInputAmount {
-                        asset_type: input.prev_out.asset_type,
-                        shard_id: input.prev_out.shard_id,
-                        got: input.prev_out.quantity,
-                    })
-                }
-                if outputs.is_empty() {
-                    return Err(SyntaxError::EmptyOutput)
-                }
-                if outputs.iter().any(|output| output.quantity == 0) {
-                    return Err(SyntaxError::ZeroQuantity)
-                }
-            }
             Action::UnwrapCCC {
                 burn,
                 ..
@@ -360,18 +294,6 @@ impl Action {
             Action::IncreaseAssetSupply {
                 ..
             } => {}
-            Action::ComposeAsset {
-                metadata,
-                ..
-            } => {
-                let max_asset_scheme_metadata_size = common_params.max_asset_scheme_metadata_size();
-                if metadata.len() > max_asset_scheme_metadata_size {
-                    return Err(SyntaxError::MetadataTooBig)
-                }
-            }
-            Action::DecomposeAsset {
-                ..
-            } => {}
             Action::UnwrapCCC {
                 ..
             } => {}
@@ -429,14 +351,6 @@ impl Action {
             | Action::IncreaseAssetSupply {
                 approvals,
                 ..
-            }
-            | Action::ComposeAsset {
-                approvals,
-                ..
-            }
-            | Action::DecomposeAsset {
-                approvals,
-                ..
             } => Some(approvals),
             _ => None,
         }
@@ -457,14 +371,6 @@ impl Action {
                 ..
             }
             | Action::IncreaseAssetSupply {
-                network_id,
-                ..
-            }
-            | Action::ComposeAsset {
-                network_id,
-                ..
-            }
-            | Action::DecomposeAsset {
                 network_id,
                 ..
             }
@@ -545,36 +451,6 @@ impl From<Action> for Option<ShardTransaction> {
                 asset_type,
                 seq,
                 output: *output,
-            }),
-            Action::ComposeAsset {
-                network_id,
-                shard_id,
-                metadata,
-                approver,
-                registrar,
-                allowed_script_hashes,
-                inputs,
-                output,
-                ..
-            } => Some(ShardTransaction::ComposeAsset {
-                network_id,
-                shard_id,
-                metadata,
-                approver,
-                registrar,
-                allowed_script_hashes,
-                inputs,
-                output: *output,
-            }),
-            Action::DecomposeAsset {
-                network_id,
-                input,
-                outputs,
-                ..
-            } => Some(ShardTransaction::DecomposeAsset {
-                network_id,
-                input,
-                outputs,
             }),
             Action::UnwrapCCC {
                 network_id,
@@ -677,44 +553,6 @@ impl Encodable for Action {
                     .append(&output.lock_script_hash)
                     .append(&output.parameters)
                     .append(&output.supply)
-                    .append_list(approvals);
-            }
-            Action::ComposeAsset {
-                network_id,
-                shard_id,
-                metadata,
-                approver,
-                registrar,
-                allowed_script_hashes,
-                inputs,
-                output,
-                approvals,
-            } => {
-                s.begin_list(12)
-                    .append(&COMPOSE_ASSET)
-                    .append(network_id)
-                    .append(shard_id)
-                    .append(metadata)
-                    .append(approver)
-                    .append(registrar)
-                    .append_list(allowed_script_hashes)
-                    .append_list(inputs)
-                    .append(&output.lock_script_hash)
-                    .append(&output.parameters)
-                    .append(&output.supply)
-                    .append_list(approvals);
-            }
-            Action::DecomposeAsset {
-                network_id,
-                input,
-                outputs,
-                approvals,
-            } => {
-                s.begin_list(5)
-                    .append(&DECOMPOSE_ASSET)
-                    .append(network_id)
-                    .append(input)
-                    .append_list(outputs)
                     .append_list(approvals);
             }
             Action::UnwrapCCC {
@@ -897,45 +735,6 @@ impl Decodable for Action {
                         supply: rlp.val_at(7)?,
                     }),
                     approvals: rlp.list_at(8)?,
-                })
-            }
-            COMPOSE_ASSET => {
-                let item_count = rlp.item_count()?;
-                if item_count != 12 {
-                    return Err(DecoderError::RlpIncorrectListLen {
-                        got: item_count,
-                        expected: 12,
-                    })
-                }
-                Ok(Action::ComposeAsset {
-                    network_id: rlp.val_at(1)?,
-                    shard_id: rlp.val_at(2)?,
-                    metadata: rlp.val_at(3)?,
-                    approver: rlp.val_at(4)?,
-                    registrar: rlp.val_at(5)?,
-                    allowed_script_hashes: rlp.list_at(6)?,
-                    inputs: rlp.list_at(7)?,
-                    output: Box::new(AssetMintOutput {
-                        lock_script_hash: rlp.val_at(8)?,
-                        parameters: rlp.list_at(9)?,
-                        supply: rlp.val_at(10)?,
-                    }),
-                    approvals: rlp.list_at(11)?,
-                })
-            }
-            DECOMPOSE_ASSET => {
-                let item_count = rlp.item_count()?;
-                if item_count != 5 {
-                    return Err(DecoderError::RlpIncorrectListLen {
-                        got: item_count,
-                        expected: 5,
-                    })
-                }
-                Ok(Action::DecomposeAsset {
-                    network_id: rlp.val_at(1)?,
-                    input: rlp.val_at(2)?,
-                    outputs: rlp.list_at(3)?,
-                    approvals: rlp.list_at(4)?,
                 })
             }
             UNWRAP_CCC => {
