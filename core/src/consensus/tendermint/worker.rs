@@ -1233,8 +1233,15 @@ impl Worker {
                 TendermintState::ProposeWaitEmptyBlockTimer {
                     block,
                 } => {
-                    cdebug!(ENGINE, "Empty proposal timer is finished, go to the prevote step and broadcast the block");
-                    self.submit_proposal_block(block.as_ref());
+                    if self.height == block.header().number() {
+                        cdebug!(
+                            ENGINE,
+                            "Empty proposal timer is finished, go to the prevote step and broadcast the block"
+                        );
+                        self.submit_proposal_block(block.as_ref());
+                    } else {
+                        cwarn!(ENGINE, "Empty proposal timer was for previous height.");
+                    }
                 }
                 _ => {
                     cwarn!(ENGINE, "Empty proposal timer was not cleared.");
