@@ -144,7 +144,10 @@ impl Importer {
         };
 
         {
-            if !imported_blocks.is_empty() && is_empty {
+            if !imported_blocks.is_empty() {
+                if !is_empty {
+                    ctrace!(CLIENT, "Call new_blocks even though block verification queue is not empty");
+                }
                 let (enacted, retracted) = self.calculate_enacted_retracted(&import_results);
                 self.miner.chain_new_blocks(client, &imported_blocks, &invalid_blocks, &enacted, &retracted);
                 client.new_blocks(&imported_blocks, &invalid_blocks, &enacted, &retracted, &[], duration);
