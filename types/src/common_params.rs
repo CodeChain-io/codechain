@@ -45,7 +45,9 @@ pub struct CommonParams {
     min_asset_transfer_cost: u64,
     min_asset_scheme_change_cost: u64,
     min_asset_supply_increase_cost: u64,
+    /// Deprecated
     min_asset_compose_cost: u64,
+    /// Deprecated
     min_asset_decompose_cost: u64,
     min_asset_unwrap_ccc_cost: u64,
     /// Maximum size of block body.
@@ -122,9 +124,11 @@ impl CommonParams {
     pub fn min_asset_supply_increase_cost(&self) -> u64 {
         self.min_asset_supply_increase_cost
     }
+    #[deprecated]
     pub fn min_asset_compose_cost(&self) -> u64 {
         self.min_asset_compose_cost
     }
+    #[deprecated]
     pub fn min_asset_decompose_cost(&self) -> u64 {
         self.min_asset_decompose_cost
     }
@@ -261,7 +265,8 @@ impl From<Params> for CommonParams {
 
 impl From<CommonParams> for Params {
     fn from(p: CommonParams) -> Params {
-        let mut result = Params {
+        #[allow(deprecated)]
+        let mut result: Params = Params {
             max_extra_data_size: p.max_extra_data_size().into(),
             max_asset_scheme_metadata_size: p.max_asset_scheme_metadata_size().into(),
             max_transfer_metadata_size: p.max_transfer_metadata_size().into(),

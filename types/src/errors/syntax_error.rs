@@ -32,9 +32,6 @@ pub enum Error {
         tracker: H256,
         index: usize,
     },
-    /// AssetCompose requires at least 1 input.
-    EmptyInput,
-    EmptyOutput,
     EmptyShardOwners(ShardId),
     /// Returned when the sum of the transaction's inputs is different from the sum of outputs.
     InconsistentTransactionInOut,
@@ -49,15 +46,7 @@ pub enum Error {
     },
     /// AssetType format error
     InvalidAssetType(H160),
-    InvalidComposedOutputAmount {
-        got: u64,
-    },
     InvalidCustomAction(String),
-    InvalidDecomposedInputAmount {
-        asset_type: H160,
-        shard_id: ShardId,
-        got: u64,
-    },
     /// Invalid network ID given.
     InvalidNetworkId(NetworkId),
     /// invalid asset_quantity_from, asset_quantity_to because of ratio
@@ -106,15 +95,17 @@ pub enum Error {
 }
 
 const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 1;
-const ERROR_ID_EMPTY_INPUT: u8 = 2;
-const ERROR_ID_EMPTY_OUTPUT: u8 = 3;
+/// Deprecated
+//const ERROR_ID_EMPTY_INPUT: u8 = 2;
+//const ERROR_ID_EMPTY_OUTPUT: u8 = 3;
 const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 4;
 const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT: u8 = 5;
 const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS: u8 = 6;
 const ERROR_ID_INSUFFICIENT_FEE: u8 = 7;
 const ERROR_ID_INVALID_ASSET_TYPE: u8 = 8;
-const ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT: u8 = 9;
-const ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT: u8 = 10;
+/// Deprecated
+//const ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT: u8 = 9;
+//const ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT: u8 = 10;
 const ERROR_ID_INVALID_NETWORK_ID: u8 = 11;
 const ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES: u8 = 12;
 const ERROR_ID_INVALID_ORDER_ASSET_TYPES: u8 = 13;
@@ -144,16 +135,12 @@ impl TaggedRlp for RlpHelper {
     fn length_of(tag: u8) -> Result<usize, DecoderError> {
         Ok(match tag {
             ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => 3,
-            ERROR_ID_EMPTY_INPUT => 1,
-            ERROR_ID_EMPTY_OUTPUT => 1,
             ERROR_ID_EMPTY_SHARD_OWNERS => 2,
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => 1,
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => 1,
             ERROR_ID_INSUFFICIENT_FEE => 3,
             ERROR_ID_INVALID_ASSET_TYPE => 2,
-            ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT => 2,
             ERROR_ID_INVALID_CUSTOM_ACTION => 2,
-            ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT => 4,
             ERROR_ID_INVALID_NETWORK_ID => 2,
             ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => 4,
             ERROR_ID_INVALID_ORDER_ASSET_TYPES => 1,
@@ -186,8 +173,6 @@ impl Encodable for Error {
                 tracker,
                 index,
             } => RlpHelper::new_tagged_list(s, ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT).append(tracker).append(index),
-            Error::EmptyInput => RlpHelper::new_tagged_list(s, ERROR_ID_EMPTY_INPUT),
-            Error::EmptyOutput => RlpHelper::new_tagged_list(s, ERROR_ID_EMPTY_OUTPUT),
             Error::EmptyShardOwners(shard_id) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id)
             }
@@ -202,20 +187,9 @@ impl Encodable for Error {
                 got,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_INSUFFICIENT_FEE).append(minimal).append(got),
             Error::InvalidAssetType(addr) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_TYPE).append(addr),
-            Error::InvalidComposedOutputAmount {
-                got,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT).append(got),
             Error::InvalidCustomAction(err) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_CUSTOM_ACTION).append(err)
             }
-            Error::InvalidDecomposedInputAmount {
-                asset_type,
-                shard_id,
-                got,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT)
-                .append(asset_type)
-                .append(shard_id)
-                .append(got),
             Error::InvalidNetworkId(network_id) => {
                 RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_NETWORK_ID).append(network_id)
             }
@@ -276,8 +250,6 @@ impl Decodable for Error {
                 tracker: rlp.val_at(1)?,
                 index: rlp.val_at(2)?,
             },
-            ERROR_ID_EMPTY_INPUT => Error::EmptyInput,
-            ERROR_ID_EMPTY_OUTPUT => Error::EmptyOutput,
             ERROR_ID_EMPTY_SHARD_OWNERS => Error::EmptyShardOwners(rlp.val_at(1)?),
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => Error::InconsistentTransactionInOut,
             ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT_WITH_ORDERS => Error::InconsistentTransactionInOutWithOrders,
@@ -286,15 +258,7 @@ impl Decodable for Error {
                 got: rlp.val_at(2)?,
             },
             ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
-            ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT => Error::InvalidComposedOutputAmount {
-                got: rlp.val_at(1)?,
-            },
             ERROR_ID_INVALID_CUSTOM_ACTION => Error::InvalidCustomAction(rlp.val_at(1)?),
-            ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT => Error::InvalidDecomposedInputAmount {
-                asset_type: rlp.val_at(1)?,
-                shard_id: rlp.val_at(2)?,
-                got: rlp.val_at(3)?,
-            },
             ERROR_ID_INVALID_NETWORK_ID => Error::InvalidNetworkId(rlp.val_at(1)?),
             ERROR_ID_INVALID_ORDER_ASSET_QUANTITIES => Error::InvalidOrderAssetQuantities {
                 from: rlp.val_at(1)?,
@@ -343,8 +307,6 @@ impl Display for Error {
                 tracker,
                 index,
             } => write!(f, "The previous output of inputs/burns are duplicated: ({}, {})", tracker, index),
-            Error::EmptyInput  => write!(f, "The input is empty"),
-            Error::EmptyOutput  => writeln!(f, "The output is empty"),
             Error::EmptyShardOwners (shard_id) => write!(f, "Shard({}) must have at least one owner", shard_id),
             Error::InconsistentTransactionInOut  => write!(f, "The sum of the transaction's inputs is different from the sum of the transaction's outputs"),
             Error::InconsistentTransactionInOutWithOrders  => write!(f, "The transaction's input and output do not follow its orders"),
@@ -353,15 +315,7 @@ impl Display for Error {
                 got,
             } => write!(f, "Insufficient fee. Min={}, Given={}", minimal, got),
             Error::InvalidAssetType (addr) => write!(f, "Asset type is invalid: {}", addr),
-            Error::InvalidComposedOutputAmount {
-                got,
-            } => write!(f, "The composed output is note valid. The supply must be 1, but {}.", got),
             Error::InvalidCustomAction(err) => write!(f, "Invalid custom action: {}", err),
-            Error::InvalidDecomposedInputAmount {
-                asset_type,
-                shard_id,
-                got,
-            } => write!(f, "The inputs are not valid. The quantity of asset({}, shard #{}) input must be 1, but {}.", asset_type, shard_id, got),
             Error::InvalidNetworkId (network_id) => write!(f, "{} is an invalid network id", network_id),
             Error::InvalidOrderAssetQuantities {
                 from,
