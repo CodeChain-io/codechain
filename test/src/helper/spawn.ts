@@ -21,8 +21,6 @@ import {
     Asset,
     AssetAddress,
     AssetTransferInput,
-    ComposeAsset,
-    DecomposeAsset,
     H256,
     PlatformAddress,
     SignedTransaction,
@@ -612,10 +610,7 @@ export default class CodeChain {
         return tx.getMintedAsset();
     }
 
-    public async signTransactionInput(
-        tx: TransferAsset | ComposeAsset | DecomposeAsset,
-        index: number
-    ) {
+    public async signTransactionInput(tx: TransferAsset, index: number) {
         const keyStore = await this.sdk.key.createLocalKeyStore(
             this.localKeyStorePath
         );

@@ -203,12 +203,6 @@ impl CodeChainMachine {
             Action::IncreaseAssetSupply {
                 ..
             } => params.min_asset_supply_increase_cost(),
-            Action::ComposeAsset {
-                ..
-            } => params.min_asset_compose_cost(),
-            Action::DecomposeAsset {
-                ..
-            } => params.min_asset_decompose_cost(),
             Action::UnwrapCCC {
                 ..
             } => params.min_asset_unwrap_ccc_cost(),

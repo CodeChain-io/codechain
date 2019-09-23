@@ -78,27 +78,6 @@ pub enum Action {
         approvals: Vec<Signature>,
     },
     #[serde(rename_all = "camelCase")]
-    ComposeAsset {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        metadata: String,
-        approver: Option<PlatformAddress>,
-        registrar: Option<PlatformAddress>,
-        allowed_script_hashes: Vec<H160>,
-        inputs: Vec<AssetTransferInput>,
-        output: Box<AssetMintOutput>,
-
-        approvals: Vec<Signature>,
-    },
-    #[serde(rename_all = "camelCase")]
-    DecomposeAsset {
-        network_id: NetworkId,
-        input: Box<AssetTransferInput>,
-        outputs: Vec<AssetTransferOutput>,
-
-        approvals: Vec<Signature>,
-    },
-    #[serde(rename_all = "camelCase")]
     UnwrapCCC {
         network_id: NetworkId,
         burn: AssetTransferInput,
@@ -207,31 +186,7 @@ pub enum ActionWithTracker {
 
         tracker: H256,
     },
-    #[serde(rename_all = "camelCase")]
-    ComposeAsset {
-        network_id: NetworkId,
-        shard_id: ShardId,
-        metadata: String,
-        approver: Option<PlatformAddress>,
-        registrar: Option<PlatformAddress>,
-        allowed_script_hashes: Vec<H160>,
-        inputs: Vec<AssetTransferInput>,
-        output: Box<AssetMintOutput>,
 
-        approvals: Vec<Signature>,
-
-        tracker: H256,
-    },
-    #[serde(rename_all = "camelCase")]
-    DecomposeAsset {
-        network_id: NetworkId,
-        input: Box<AssetTransferInput>,
-        outputs: Vec<AssetTransferOutput>,
-
-        approvals: Vec<Signature>,
-
-        tracker: H256,
-    },
     #[serde(rename_all = "camelCase")]
     UnwrapCCC {
         network_id: NetworkId,
@@ -364,40 +319,6 @@ impl ActionWithTracker {
                 asset_type,
                 seq: seq as u64,
                 output: Box::new((*output).into()),
-                approvals,
-                tracker: tracker.unwrap(),
-            },
-            ActionType::ComposeAsset {
-                network_id,
-                shard_id,
-                metadata,
-                approver,
-                registrar,
-                allowed_script_hashes,
-                inputs,
-                output,
-                approvals,
-            } => ActionWithTracker::ComposeAsset {
-                network_id,
-                shard_id,
-                metadata,
-                approver: approver.map(|approver| PlatformAddress::new_v1(network_id, approver)),
-                registrar: registrar.map(|registrar| PlatformAddress::new_v1(network_id, registrar)),
-                allowed_script_hashes,
-                inputs: inputs.into_iter().map(From::from).collect(),
-                output: Box::new((*output).into()),
-                approvals,
-                tracker: tracker.unwrap(),
-            },
-            ActionType::DecomposeAsset {
-                network_id,
-                input,
-                outputs,
-                approvals,
-            } => ActionWithTracker::DecomposeAsset {
-                network_id,
-                input: Box::new(input.into()),
-                outputs: outputs.into_iter().map(From::from).collect(),
                 approvals,
                 tracker: tracker.unwrap(),
             },
@@ -594,54 +515,6 @@ impl TryFrom<Action> for ActionType {
                     seq: seq as usize,
                     asset_type,
                     output: Box::new(output_content),
-                    approvals,
-                }
-            }
-            Action::ComposeAsset {
-                network_id,
-                shard_id,
-                metadata,
-                approver,
-                registrar,
-                allowed_script_hashes,
-                inputs,
-                output,
-
-                approvals,
-            } => {
-                let approver = match approver {
-                    Some(approver) => Some(approver.try_into_address()?),
-                    None => None,
-                };
-                let registrar = match registrar {
-                    Some(registrar) => Some(registrar.try_into_address()?),
-                    None => None,
-                };
-                let output_content = AssetMintOutputType::try_from(*output)?;
-                ActionType::ComposeAsset {
-                    network_id,
-                    shard_id,
-                    metadata,
-                    approver,
-                    registrar,
-                    allowed_script_hashes,
-                    inputs: inputs.into_iter().map(From::from).collect(),
-                    output: Box::new(output_content),
-                    approvals,
-                }
-            }
-            Action::DecomposeAsset {
-                network_id,
-                input,
-                outputs,
-
-                approvals,
-            } => {
-                let outputs = outputs.into_iter().map(TryFrom::try_from).collect::<Result<_, _>>()?;
-                ActionType::DecomposeAsset {
-                    network_id,
-                    input: (*input).into(),
-                    outputs,
                     approvals,
                 }
             }
