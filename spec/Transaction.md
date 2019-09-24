@@ -22,6 +22,7 @@ enum Action {
     MintAsset { ..., },
     TransferAsset { ..., },
     ChangeAssetScheme { ..., },
+    IncreaseAssetSupply { ..., },
     Pay { ..., },
     SetRegularKey { ..., },
     WrapCCC { ..., },
@@ -43,6 +44,10 @@ This kind of asset needs permission to be transferred.
 A regulated asset is an asset that has an registrar.
 The registrar can change the asset scheme and transfer the asset arbitrarily.
 
+If the `allowed_script_hashes` is specified, this asset can be only locked with
+the lock script hashes in the list. If the list is empty, any lock script hashes
+can be used.
+
 ```rust
 MintAsset {
     network_id: NetworkId,
@@ -50,6 +55,7 @@ MintAsset {
     metadata: String,
     approver: Option<PlatformAddress>,
     registrar: Option<PlatformAddress>,
+    allowed_script_hashes: Vec<H160>,
 
     output: AssetMintOutput,
 
@@ -130,23 +136,42 @@ Only the registrar of the asset can use it.
 ```rust
 ChangeAssetScheme {
     network_id: NetworkId,
-    asset_type: H256,
+    shard_id: ShardId,
+    asset_type: H160,
+    seq: usize,
     metadata: String,
     approver: Option<PlatformAddress>,
     registrar: Option<PlatformAddress>,
+    allowed_script_hashes: Vec<H160>,
 
+    approvals: Vec<Signature>,
+}
+```
+
+## IncreaseAssetSupply
+
+It increases the total supply of the asset.
+Only the registrar of the asset can use it.
+
+```rust
+IncreaseAssetSupply {
+    network_id: NetworkId,
+    shard_id: ShardId,
+    asset_type: H160,
+    seq: usize,
+    output: AssetMintOutput,
     approvals: Vec<Signature>,
 }
 ```
 
 ## Pay
 
-`Pay` sends `value` amount of CCC to the `receiver`.
+`Pay` sends `quantity` amount of CCC to the `receiver`.
 
 ```rust
 Pay {
     receiver: Address,
-    amount: u64,
+    quantity: u64,
 }
 ```
 
@@ -170,7 +195,8 @@ WrapCCC {
     shard_id: ShardId,
     lock_script_hash: H160,
     parameters: Vec<Parameters>,
-    amount: u64,
+    quantity: u64,
+    payer: Address,
 }
 ```
 
@@ -184,13 +210,6 @@ UnwrapCCC {
     network_id: NetworkId,
     burn: AssetTransferInput,
     receiver: PlatformAddress,
-}
-```
-
-```rust
-Custom {
-    handler_id: u64,
-    bytes: Bytes,
 }
 ```
 
@@ -221,3 +240,10 @@ Remove {
 
 `Custom` is a special transaction.
 The types of transactions that may exist depends on the consensus engine.
+
+```rust
+Custom {
+    handler_id: u64,
+    bytes: Bytes,
+}
+```
