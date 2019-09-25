@@ -30,7 +30,6 @@ use super::{BlockChainTrait, Client, ClientConfig};
 use crate::block::{enact, IsBlock, LockedBlock};
 use crate::blockchain::{BodyProvider, HeaderProvider, ImportRoute};
 use crate::consensus::CodeChainEngine;
-use crate::encoded;
 use crate::error::Error;
 use crate::miner::{Miner, MinerService};
 use crate::service::ClientIoMessage;
@@ -117,10 +116,6 @@ impl Importer {
                     continue
                 }
                 if let Ok(closed_block) = self.check_and_close_block(&block, client) {
-                    if self.engine.is_proposal(&block.header) {
-                        self.engine.on_verified_proposal(encoded::Block::new(block.bytes.clone()))
-                    }
-
                     imported_blocks.push(header.hash());
                     let route = self.commit_block(&closed_block, &header, &block.bytes, client);
                     import_results.push(route);
