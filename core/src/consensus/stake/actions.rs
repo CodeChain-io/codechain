@@ -64,8 +64,8 @@ pub enum Action {
     },
     // TODO: ConsensusMessage is tied to the Tendermint
     ReportDoubleVote {
-        message1: ConsensusMessage,
-        message2: ConsensusMessage,
+        message1: Box<ConsensusMessage>,
+        message2: Box<ConsensusMessage>,
     },
 }
 
@@ -239,7 +239,10 @@ impl Encodable for Action {
                 message1,
                 message2,
             } => {
-                s.begin_list(3).append(&ACTION_TAG_REPORT_DOUBLE_VOTE).append(message1).append(message2);
+                s.begin_list(3)
+                    .append(&ACTION_TAG_REPORT_DOUBLE_VOTE)
+                    .append(message1.as_ref())
+                    .append(message2.as_ref());
             }
         };
     }
@@ -340,8 +343,8 @@ impl Decodable for Action {
                         got: item_count,
                     })
                 }
-                let message1 = rlp.val_at(1)?;
-                let message2 = rlp.val_at(2)?;
+                let message1 = Box::new(rlp.val_at(1)?);
+                let message2 = Box::new(rlp.val_at(2)?);
                 Ok(Action::ReportDoubleVote {
                     message1,
                     message2,
@@ -449,8 +452,8 @@ mod tests {
         let consensus_message2 =
             create_consensus_message(message_info2, &test_client, vote_step_twister, block_hash_twister);
         let action = Action::ReportDoubleVote {
-            message1: consensus_message1,
-            message2: consensus_message2,
+            message1: Box::new(consensus_message1),
+            message2: Box::new(consensus_message2),
         };
         let arced_client: Arc<ConsensusClient> = Arc::new(test_client);
         validator_set.register_client(Arc::downgrade(&arced_client));
