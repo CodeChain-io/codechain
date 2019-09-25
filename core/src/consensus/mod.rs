@@ -53,7 +53,6 @@ use crate::account_provider::AccountProvider;
 use crate::block::{ExecutedBlock, SealedBlock};
 use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
-use crate::encoded;
 use crate::error::Error;
 use crate::transaction::UnverifiedTransaction;
 use crate::views::HeaderView;
@@ -241,10 +240,6 @@ pub trait ConsensusEngine: Sync + Send {
     fn is_proposal(&self, _verified_header: &Header) -> bool {
         false
     }
-
-    /// Called when proposal block is verified.
-    /// Consensus many hold the verified proposal block until it should be imported.
-    fn on_verified_proposal(&self, _verified_block_data: encoded::Block) {}
 
     /// Register an account which signs consensus messages.
     fn set_signer(&self, _ap: Arc<AccountProvider>, _address: Address) {}
