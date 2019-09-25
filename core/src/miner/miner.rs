@@ -451,7 +451,7 @@ impl Miner {
         &self,
         parent_block_id: BlockId,
         chain: &C,
-    ) -> Result<(ClosedBlock, Option<H256>), Error> {
+    ) -> Result<Option<(ClosedBlock, Option<H256>)>, Error> {
         let (transactions, mut open_block, original_work_hash, block_number) = {
             let sealing_work = self.sealing_work.lock();
 
@@ -491,7 +491,7 @@ impl Miner {
             if let Some(seal_bytes) = seal.seal_fields() {
                 open_block.seal(self.engine.borrow(), seal_bytes).expect("Sealing always success");
             } else {
-                panic!("Seal should not be none")
+                return Ok(None)
             }
         }
 
@@ -576,7 +576,7 @@ impl Miner {
                 chain.chain_info().best_block_timestamp,
             );
         }
-        Ok((block, original_work_hash))
+        Ok(Some((block, original_work_hash)))
     }
 
     /// Attempts to perform internal sealing (one that does not require work) and handles the result depending on the type of Seal.
@@ -798,8 +798,11 @@ impl MinerService for Miner {
             // | Make sure to release the locks before calling that method.             |
             // --------------------------------------------------------------------------
             match self.prepare_block(BlockId::Latest, client) {
-                Ok((block, original_work_hash)) => {
+                Ok(Some((block, original_work_hash))) => {
                     self.prepare_work(block, original_work_hash);
+                }
+                Ok(None) => {
+                    ctrace!(MINER, "prepare_work_sealing: cannot prepare block");
                 }
                 Err(err) => {
                     ctrace!(MINER, "prepare_work_sealing: cannot prepare block: {:?}", err);
@@ -837,12 +840,16 @@ impl MinerService for Miner {
         let parent_block_number = chain.block_header(&parent_block).expect("Parent is always exist").number();
         if self.requires_reseal(parent_block_number) {
             let (block, original_work_hash) = match self.prepare_block(parent_block, chain) {
-                Ok((block, original_work_hash)) => {
+                Ok(Some((block, original_work_hash))) => {
                     if !allow_empty_block && block.block().transactions().is_empty() {
                         ctrace!(MINER, "update_sealing: block is empty, and allow_empty_block is false");
                         return
                     }
                     (block, original_work_hash)
+                }
+                Ok(None) => {
+                    ctrace!(MINER, "update_sealing: cannot prepare block");
+                    return
                 }
                 Err(err) => {
                     ctrace!(MINER, "update_sealing: cannot prepare block: {:?}", err);
