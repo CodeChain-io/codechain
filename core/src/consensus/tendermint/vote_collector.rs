@@ -49,8 +49,8 @@ pub struct DoubleVote {
 impl DoubleVote {
     pub fn to_action(&self) -> Action {
         Action::ReportDoubleVote {
-            message1: self.vote_one.clone(),
-            message2: self.vote_two.clone(),
+            message1: Box::new(self.vote_one.clone()),
+            message2: Box::new(self.vote_two.clone()),
         }
     }
 }
