@@ -921,7 +921,9 @@ impl Worker {
                 on: on.clone(),
             };
             if !self.votes.is_old_or_known(&message) {
-                self.votes.collect(message);
+                if let Err(double_vote) = self.votes.collect(message) {
+                    cerror!(ENGINE, "Double vote found on_commit_message: {:?}", double_vote);
+                }
             }
         }
 
@@ -1387,7 +1389,7 @@ impl Worker {
                 self.votes_received.set(vote_index);
             }
 
-            if let Some(double) = self.votes.collect(message.clone()) {
+            if let Err(double) = self.votes.collect(message.clone()) {
                 cerror!(ENGINE, "Double vote found {:?}", double);
                 self.report_double_vote(&double);
                 return Err(EngineError::DoubleVote(sender))
@@ -1505,7 +1507,7 @@ impl Worker {
         };
 
         self.votes_received.set(vote.signer_index);
-        self.votes.collect(vote.clone());
+        self.votes.collect(vote.clone()).expect("Must not attempt double vote");
         cinfo!(ENGINE, "Voted {:?} as {}th validator.", vote, signer_index);
         Ok(Some(vote))
     }
@@ -1531,7 +1533,7 @@ impl Worker {
             on,
         };
 
-        self.votes.collect(vote.clone());
+        self.votes.collect(vote.clone()).expect("Must not attempt double vote on proposal");;
         cinfo!(ENGINE, "Voted {:?} as {}th proposer.", vote, signer_index);
         Ok(vote)
     }
@@ -1783,7 +1785,7 @@ impl Worker {
                 );
             }
 
-            if let Some(double) = self.votes.collect(message.clone()) {
+            if let Err(double) = self.votes.collect(message.clone()) {
                 cerror!(ENGINE, "Double Vote found {:?}", double);
                 self.report_double_vote(&double);
                 return None
@@ -2117,7 +2119,9 @@ impl Worker {
         cdebug!(ENGINE, "Commit message-{} is verified", commit_height);
         for vote in votes {
             if !self.votes.is_old_or_known(&vote) {
-                self.votes.collect(vote);
+                if let Err(double_vote) = self.votes.collect(vote) {
+                    cerror!(ENGINE, "Double vote found on_commit_message: {:?}", double_vote);
+                }
             }
         }
 
