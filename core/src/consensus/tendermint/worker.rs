@@ -453,7 +453,7 @@ impl Worker {
         self.validators.next_block_proposer(prev_block_hash, view)
     }
 
-    pub fn proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {
+    pub fn first_proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {
         let vote_step = VoteStep {
             height,
             view,
@@ -475,11 +475,9 @@ impl Worker {
             step: Step::Propose,
         });
 
-        if let Some(proposal) = all_votes.first() {
-            proposal.on.block_hash.expect("Proposal message always include block hash") == block_hash
-        } else {
-            false
-        }
+        all_votes
+            .into_iter()
+            .any(|proposal| proposal.on.block_hash.expect("Proposal message always include block hash") == block_hash)
     }
 
     pub fn vote_step(&self) -> VoteStep {
@@ -670,6 +668,7 @@ impl Worker {
         match state.to_step() {
             Step::Propose => {
                 cinfo!(ENGINE, "move_to_step: Propose.");
+                // If there are multiple proposals, use the first proposal.
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
                     if self.client().block(&BlockId::Hash(*hash)).is_some() {
                         self.proposal = Proposal::new_imported(*hash);
@@ -683,9 +682,9 @@ impl Worker {
                 } else {
                     let parent_block_hash = self.prev_block_hash();
                     if self.is_signer_proposer(&parent_block_hash) {
-                        if let TwoThirdsMajority::Lock(lock_view, _) = self.last_two_thirds_majority {
+                        if let TwoThirdsMajority::Lock(lock_view, locked_block_hash) = self.last_two_thirds_majority {
                             cinfo!(ENGINE, "I am a proposer, I'll re-propose a locked block");
-                            match self.locked_proposal_block(lock_view) {
+                            match self.locked_proposal_block(lock_view, locked_block_hash) {
                                 Ok(block) => self.repropose_block(block),
                                 Err(error_msg) => cwarn!(ENGINE, "{}", error_msg),
                             }
@@ -796,14 +795,14 @@ impl Worker {
         }
     }
 
-    fn locked_proposal_block(&self, locked_view: View) -> Result<encoded::Block, String> {
+    fn locked_proposal_block(&self, locked_view: View, locked_proposal_hash: H256) -> Result<encoded::Block, String> {
         let vote_step = VoteStep::new(self.height, locked_view, Step::Propose);
-        let locked_proposal_hash = self.votes.get_block_hashes(&vote_step).first().cloned();
+        let received_locked_block = self.votes.has_votes_for(&vote_step, locked_proposal_hash);
 
-        let locked_proposal_hash = locked_proposal_hash.ok_or_else(|| {
+        if !received_locked_block {
             self.request_proposal_to_any(self.height, locked_view);
-            format!("Have a lock on {}-{}, but do not received a locked proposal", self.height, locked_view)
-        })?;
+            return Err(format!("Have a lock on {}-{}, but do not received a locked proposal", self.height, locked_view))
+        }
 
         let locked_proposal_block = self.client().block(&BlockId::Hash(locked_proposal_hash)).ok_or_else(|| {
             format!(
@@ -970,9 +969,9 @@ impl Worker {
         });
 
         let current_height = self.height;
-        let vote_step = VoteStep::new(self.height, self.view, self.step.to_step());
-        let proposal_at_current_view = self.votes.get_block_hashes(&vote_step).first().cloned();
-        if proposal_at_current_view == Some(proposal.hash()) {
+        let current_vote_step = VoteStep::new(self.height, self.view, self.step.to_step());
+        let proposal_is_for_current = self.votes.has_votes_for(&current_vote_step, proposal.hash());
+        if proposal_is_for_current {
             self.proposal = Proposal::new_imported(proposal.hash());
             let current_step = self.step.clone();
             match current_step {
@@ -1005,16 +1004,15 @@ impl Worker {
             self.move_to_height(height);
             let prev_block_view = TendermintSealView::new(proposal.seal()).previous_block_view().unwrap();
             self.save_last_confirmed_view(prev_block_view);
-            let proposal_at_view_0 = self
-                .votes
-                .get_block_hashes(&VoteStep {
+            let proposal_is_for_view0 = self.votes.has_votes_for(
+                &VoteStep {
                     height,
                     view: 0,
                     step: Step::Propose,
-                })
-                .first()
-                .cloned();
-            if proposal_at_view_0 == Some(proposal.hash()) {
+                },
+                proposal.hash(),
+            );
+            if proposal_is_for_view0 {
                 self.proposal = Proposal::new_imported(proposal.hash())
             }
             self.move_to_step(TendermintState::Prevote, false);
@@ -1896,7 +1894,7 @@ impl Worker {
             return
         }
 
-        if let Some((signature, _signer_index, block)) = self.proposal_at(request_height, request_view) {
+        if let Some((signature, _signer_index, block)) = self.first_proposal_at(request_height, request_view) {
             ctrace!(ENGINE, "Send proposal {}-{} to {:?}", request_height, request_view, token);
             self.send_proposal_block(signature, request_view, block, result);
             return
