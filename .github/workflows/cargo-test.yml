@@ -1,0 +1,47 @@
+on: [push, pull_request]
+
+name: Actions - cargo
+
+jobs:
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly-2019-05-17
+            override: true
+      - run: rustup component add clippy
+      - run: cargo fetch --verbose
+      - run: cargo clippy --all --all-targets -- -D warnings
+
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly-2019-05-17
+            override: true
+      - run: rustup component add rustfmt
+      - run: cargo fmt -- --check
+
+  build:
+    name: unit test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macOS-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.37.0
+          override: true
+      - run: cargo fetch --verbose
+      - run: cargo build
+      - run: cargo test --verbose --all
+        env:
+          RUST_BACKTRACE: 1
