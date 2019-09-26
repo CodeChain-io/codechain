@@ -1102,6 +1102,24 @@ impl Worker {
     }
 
     fn proposal_generated(&mut self, sealed_block: &SealedBlock) {
+        let proposal_height = sealed_block.header().number();
+        let proposal_seal = sealed_block.header().seal();
+        let proposal_view = TendermintSealView::new(proposal_seal)
+            .consensus_view()
+            .expect("Generated proposal should have a valid seal");
+        assert!(proposal_height <= self.height, "A proposal cannot be generated on the future height");
+        if proposal_height < self.height || (proposal_height == self.height && proposal_view != self.view) {
+            ctrace!(
+                ENGINE,
+                "Proposal is generated on the height {} and view {}. Current height is {} and view is {}",
+                proposal_height,
+                proposal_view,
+                self.height,
+                self.view,
+            );
+            return
+        }
+
         let header = sealed_block.header();
         let hash = header.hash();
         let parent_hash = header.parent_hash();
@@ -1116,7 +1134,12 @@ impl Worker {
                 parent_hash, expected_parent_hash
             );
         } else {
-            panic!("Block is generated at unexpected step {:?}", self.step);
+            ctrace!(
+                ENGINE,
+                "Proposal is generated after step is changed. Expected step is ProposeWaitBlockGeneration but current step is {:?}",
+                self.step,
+            );
+            return
         }
         let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
 
