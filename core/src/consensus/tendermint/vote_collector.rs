@@ -120,7 +120,7 @@ impl Default for VoteCollector {
 
 impl VoteCollector {
     /// Insert vote if it is newer than the oldest one.
-    pub fn vote(&mut self, message: ConsensusMessage) -> Option<DoubleVote> {
+    pub fn collect(&mut self, message: ConsensusMessage) -> Option<DoubleVote> {
         self.votes.entry(*message.round()).or_insert_with(Default::default).insert(message)
     }
 
