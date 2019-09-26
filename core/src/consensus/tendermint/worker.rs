@@ -53,6 +53,7 @@ use crate::error::{BlockError, Error};
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::BlockView;
 use crate::BlockId;
+use std::cell::Cell;
 
 type SpawnResult = (
     JoinHandle<()>,
@@ -75,9 +76,7 @@ struct Worker {
     /// Consensus step.
     step: TendermintState,
     /// Record current round's received votes as bit set
-    votes_received: BitSet,
-    /// The votes_received field is changed after last state broadcast.
-    votes_received_changed: bool,
+    votes_received: MutTrigger<BitSet>,
     /// Vote accumulator.
     votes: VoteCollector,
     /// Used to sign messages and proposals.
@@ -193,8 +192,7 @@ impl Worker {
             last_confirmed_view: 0,
             validators,
             extension,
-            votes_received: BitSet::new(),
-            votes_received_changed: false,
+            votes_received: MutTrigger::new(BitSet::new()),
             time_gap_params,
             timeout_token_nonce: ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
         }
@@ -577,13 +575,13 @@ impl Worker {
             .unwrap();
     }
 
-    fn broadcast_state(&self, vote_step: VoteStep, proposal: Option<H256>, lock_view: Option<View>, votes: BitSet) {
+    fn broadcast_state(&self, vote_step: VoteStep, proposal: Option<H256>, lock_view: Option<View>, votes: &BitSet) {
         self.extension
             .send(network::Event::BroadcastState {
                 vote_step,
                 proposal,
                 lock_view,
-                votes,
+                votes: *votes,
             })
             .unwrap();
     }
@@ -618,7 +616,7 @@ impl Worker {
         cinfo!(ENGINE, "increment_view: New view.");
         self.view += n;
         self.proposal = Proposal::None;
-        self.votes_received = BitSet::new();
+        self.votes_received = MutTrigger::new(BitSet::new());
     }
 
     fn move_to_height(&mut self, height: Height) {
@@ -628,7 +626,7 @@ impl Worker {
         self.height = height;
         self.view = 0;
         self.proposal = Proposal::None;
-        self.votes_received = BitSet::new();
+        self.votes_received = MutTrigger::new(BitSet::new());
     }
 
     #[allow(clippy::cognitive_complexity)]
@@ -655,7 +653,7 @@ impl Worker {
         // Also, when moving to the commit step,
         // keep `votes_received` for gossiping.
         if prev_step.to_step() != state.to_step() && !state.is_commit() {
-            self.votes_received = BitSet::new();
+            self.votes_received = MutTrigger::new(BitSet::new());
         }
 
         // need to reset vote
@@ -663,7 +661,7 @@ impl Worker {
             vote_step,
             self.proposal.block_hash(),
             self.last_two_thirds_majority.view(),
-            self.votes_received,
+            self.votes_received.borrow_anyway(),
         );
         match state.to_step() {
             Step::Propose => {
@@ -931,10 +929,6 @@ impl Worker {
                 return
             }
         }
-
-        // self.move_to_step() calls self.broadcast_state()
-        // If self.move_to_step() is not called, call self.broadcast_state() in here.
-        self.votes_received_changed = true;
     }
 
     pub fn on_imported_proposal(&mut self, proposal: &Header) {
@@ -1248,13 +1242,12 @@ impl Worker {
         }
 
         if token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE {
-            if self.votes_received_changed {
-                self.votes_received_changed = false;
+            if let Some(votes_received) = self.votes_received.borrow_if_mutated() {
                 self.broadcast_state(
                     self.vote_step(),
                     self.proposal.block_hash(),
                     self.last_two_thirds_majority.view(),
-                    self.votes_received,
+                    votes_received,
                 );
             }
             return
@@ -1749,7 +1742,7 @@ impl Worker {
                     VoteStep::new(self.height, self.view, self.step.to_step()),
                     self.proposal.block_hash(),
                     self.last_two_thirds_majority.view(),
-                    self.votes_received,
+                    self.votes_received.borrow_anyway(),
                 );
             }
 
@@ -1824,8 +1817,7 @@ impl Worker {
                 BitSet::new()
             };
 
-            let current_votes = self.votes_received;
-            let difference = &peer_known_votes - &current_votes;
+            let difference = &peer_known_votes - &self.votes_received;
             if !difference.is_empty() {
                 self.send_request_messages(token, current_vote_step, difference, &result);
             }
@@ -2095,7 +2087,7 @@ impl Worker {
         // Since we don't have proposal vote, set proposal = None
         self.proposal = Proposal::None;
         self.view = commit_view;
-        self.votes_received = vote_bitset;
+        self.votes_received = MutTrigger::new(vote_bitset);
         self.last_two_thirds_majority = TwoThirdsMajority::Empty;
 
         self.move_to_step(
@@ -2120,4 +2112,52 @@ impl Worker {
 fn calculate_score(height: Height, view: View) -> U256 {
     let height = U256::from(height);
     u256_from_u128(std::u128::MAX) * height - view
+}
+
+/// Sets internal trigger on deref_mut (taking mutable reference to internal value)
+/// trigger is reset on borrowing
+struct MutTrigger<T> {
+    target: T,
+    deref_mut_triggered: Cell<bool>,
+}
+
+impl<T> MutTrigger<T> {
+    fn new(target: T) -> Self {
+        Self {
+            target,
+            deref_mut_triggered: Cell::new(true),
+        }
+    }
+
+    /// Get the reference if triggered (mutable reference is taken after last borrowing)
+    /// When it is not triggered, returns None
+    fn borrow_if_mutated(&self) -> Option<&T> {
+        if self.deref_mut_triggered.get() {
+            self.deref_mut_triggered.set(false);
+            Some(&self.target)
+        } else {
+            None
+        }
+    }
+
+    /// Reset the trigger and take a reference
+    fn borrow_anyway(&self) -> &T {
+        self.deref_mut_triggered.set(false);
+        &self.target
+    }
+}
+
+impl<T> std::ops::Deref for MutTrigger<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.target
+    }
+}
+
+impl<T> std::ops::DerefMut for MutTrigger<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.deref_mut_triggered.set(true);
+        &mut self.target
+    }
 }
