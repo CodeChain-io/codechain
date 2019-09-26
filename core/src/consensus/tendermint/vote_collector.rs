@@ -61,26 +61,29 @@ impl Encodable for DoubleVote {
 }
 
 impl StepCollector {
-    /// Returns Some(&Address) when validator is double voting.
-    fn insert(&mut self, message: ConsensusMessage) -> Option<DoubleVote> {
+    /// Some(true): a message is new
+    /// Some(false): a message is duplicated
+    /// Err(DoubleVote): a double vote
+    fn insert(&mut self, message: ConsensusMessage) -> Result<bool, DoubleVote> {
         // Do nothing when message was seen.
-        if !self.messages.contains(&message) {
-            self.messages.push(message.clone());
-            if let Some(previous) = self.voted.insert(message.signer_index(), message.clone()) {
-                // Bad validator sent a different message.
-                return Some(DoubleVote {
-                    author_index: message.signer_index(),
-                    vote_one: previous,
-                    vote_two: message,
-                })
-            } else {
-                self.block_votes
-                    .entry(message.block_hash())
-                    .or_default()
-                    .insert(message.signer_index(), message.signature());
-            }
+        if self.messages.contains(&message) {
+            return Ok(false)
         }
-        None
+        self.messages.push(message.clone());
+        if let Some(previous) = self.voted.insert(message.signer_index(), message.clone()) {
+            // Bad validator sent a different message.
+            Err(DoubleVote {
+                author_index: message.signer_index(),
+                vote_one: previous,
+                vote_two: message,
+            })
+        } else {
+            self.block_votes
+                .entry(message.block_hash())
+                .or_default()
+                .insert(message.signer_index(), message.signature());
+            Ok(true)
+        }
     }
 
     /// Count all votes for the given block hash at this round.
@@ -120,7 +123,7 @@ impl Default for VoteCollector {
 
 impl VoteCollector {
     /// Insert vote if it is newer than the oldest one.
-    pub fn collect(&mut self, message: ConsensusMessage) -> Option<DoubleVote> {
+    pub fn collect(&mut self, message: ConsensusMessage) -> Result<bool, DoubleVote> {
         self.votes.entry(*message.round()).or_insert_with(Default::default).insert(message)
     }
 
