@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::iter::Iterator;
 
 use ckey::SchnorrSignature;
@@ -35,7 +35,7 @@ pub struct VoteCollector {
 struct StepCollector {
     voted: HashMap<usize, ConsensusMessage>,
     block_votes: HashMap<Option<H256>, BTreeMap<usize, SchnorrSignature>>,
-    messages: HashSet<ConsensusMessage>,
+    messages: Vec<ConsensusMessage>,
 }
 
 #[derive(Debug)]
@@ -64,7 +64,8 @@ impl StepCollector {
     /// Returns Some(&Address) when validator is double voting.
     fn insert(&mut self, message: ConsensusMessage) -> Option<DoubleVote> {
         // Do nothing when message was seen.
-        if self.messages.insert(message.clone()) {
+        if !self.messages.contains(&message) {
+            self.messages.push(message.clone());
             if let Some(previous) = self.voted.insert(message.signer_index(), message.clone()) {
                 // Bad validator sent a different message.
                 return Some(DoubleVote {
@@ -217,11 +218,11 @@ impl VoteCollector {
     }
 
     pub fn get_all(&self) -> Vec<ConsensusMessage> {
-        self.votes.iter().flat_map(|(_round, collector)| collector.messages.iter()).cloned().collect()
+        self.votes.iter().flat_map(|(_round, collector)| collector.messages.clone()).collect()
     }
 
     pub fn get_all_votes_in_round(&self, round: &VoteStep) -> Vec<ConsensusMessage> {
-        self.votes.get(round).map(|c| c.messages.iter().cloned().collect()).unwrap_or_default()
+        self.votes.get(round).map(|c| c.messages.clone()).unwrap_or_default()
     }
 
     pub fn get_all_votes_and_indices_in_round(&self, round: &VoteStep) -> Vec<(usize, ConsensusMessage)> {
