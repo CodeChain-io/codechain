@@ -37,6 +37,7 @@ use super::params::TimeGapParams;
 use super::stake::CUSTOM_ACTION_HANDLER_ID;
 use super::types::{Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::vote_collector::{DoubleVote, VoteCollector};
+use super::vote_regression_checker::VoteRegressionChecker;
 use super::{
     BlockHash, ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
     SEAL_FIELDS,
@@ -93,6 +94,7 @@ struct Worker {
     extension: EventSender<network::Event>,
     time_gap_params: TimeGapParams,
     timeout_token_nonce: usize,
+    vote_regression_checker: VoteRegressionChecker,
 }
 
 pub enum Event {
@@ -196,6 +198,7 @@ impl Worker {
             votes_received_changed: false,
             time_gap_params,
             timeout_token_nonce: ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
+            vote_regression_checker: VoteRegressionChecker::new(),
         }
     }
 
@@ -1087,12 +1090,12 @@ impl Worker {
         }
 
         let header = sealed_block.header();
-        let parent_hash = header.parent_hash();
 
         if let TendermintState::ProposeWaitBlockGeneration {
             parent_hash: expected_parent_hash,
         } = self.step
         {
+            let parent_hash = header.parent_hash();
             assert_eq!(
                 *parent_hash, expected_parent_hash,
                 "Generated hash({:?}) is different from expected({:?})",
@@ -1498,6 +1501,8 @@ impl Worker {
             step: VoteStep::new(self.height, self.view, self.step.to_step()),
             block_hash,
         };
+        assert!(self.vote_regression_checker.check(&on), "Vote should not regress");
+
         let signature = self.signer.sign(on.hash())?;
 
         let vote = ConsensusMessage {
@@ -1523,6 +1528,8 @@ impl Worker {
             step: VoteStep::new(self.height, self.view, Step::Propose),
             block_hash: Some(header.hash()),
         };
+        assert!(self.vote_regression_checker.check(&on), "Vote should not regress");
+
         let signature = self.signer.sign(on.hash())?;
 
         let vote = ConsensusMessage {
