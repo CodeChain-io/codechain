@@ -15,96 +15,69 @@ jobs:
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '(^spec/|\.md$)'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then RUN_UNIT_TEST=1; fi
       install:
         - nvm install 10
         - nvm use 10
         - npm install -g yarn
       before_script:
         - cargo fetch --verbose
+        - cargo build
+        - cd test && yarn
       script:
-        - if [[ $RUN_UNIT_TEST ]]; then RUST_BACKTRACE=1 cargo test --verbose --all; fi
-        - cargo build || exit 1
-        - cd test && yarn || exit 1
-        - INT_TEST_FLAG=true && yarn start-short
+        - yarn start-short
         - yarn start-long
       after_failure:
-        - test $INT_TEST_FLAG && ./upload_logs.sh
+        - ./upload_logs.sh
     - os: linux
       name: linux
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then RUN_UNIT_TEST=1; fi
       install:
         - nvm install 10
         - nvm use 10
         - npm install -g yarn
       before_script:
         - cargo fetch --verbose
+        - cargo build
+        - cd test && yarn
       script:
-        - if [[ $RUN_UNIT_TEST ]]; then RUST_BACKTRACE=1 cargo test --verbose --all; fi
-        - cargo build || exit 1
-        - cd test && yarn || exit 1
-        - INT_TEST_FLAG=true && yarn start-short
+        - yarn start-short
         - yarn start-long
       after_failure:
-        - test $INT_TEST_FLAG && ./upload_logs.sh
+        - ./upload_logs.sh
     - os: linux
       name: dynamic-validator-1
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then RUN_UNIT_TEST=1; fi
       install:
         - nvm install 10
         - nvm use 10
         - npm install -g yarn
       before_script:
         - cargo build --verbose
+        - cd test && yarn
       script:
-        - cd test && yarn || exit 1
         - yarn start-dyn-val-1
       after_failure:
-        - test $INT_TEST_FLAG && ./upload_logs.sh
+        - ./upload_logs.sh
     - os: linux
       name: dynamic-validator-2
       before_install:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then RUN_UNIT_TEST=1; fi
       install:
         - nvm install 10
         - nvm use 10
         - npm install -g yarn
       before_script:
         - cargo build --verbose
+        - cd test && yarn
       script:
-        - cd test && yarn || exit 1
         - yarn start-dyn-val-2
       after_failure:
-        - test $INT_TEST_FLAG && ./upload_logs.sh
-    - os: linux
-      name: static
-      before_install:
-        - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
-        - SKIP=`.travis/check-change '^test/'` && if [[ "$SKIP" = "noskip" ]]; then CHECK_RUST=1; fi
-      install:
-        - if [[ $CHECK_RUST ]]; then
-            rustup toolchain install nightly-2019-05-17 || exit 1;
-            rustup component add rustfmt --toolchain nightly-2019-05-17 || exit 1;
-            rustup component add clippy --toolchain nightly-2019-05-17 || exit 1;
-          fi
-        - nvm install 10
-        - nvm use 10
-        - npm install -g yarn
-      script:
-        - if [[ $CHECK_RUST ]]; then
-            cargo +nightly-2019-05-17 fmt -- --check || FAILED=1;
-            cargo +nightly-2019-05-17 clippy --all --all-targets -- -D warnings || FAILED=1;
-          fi; test ! $FAILED
-        - cd test && yarn && yarn lint
+        - ./upload_logs.sh
     - stage: deploy
       name: deploy
       script: skip
