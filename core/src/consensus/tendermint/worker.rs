@@ -819,43 +819,13 @@ impl Worker {
     }
 
     fn generate_and_broadcast_message(&mut self, block_hash: Option<BlockHash>, is_restoring: bool) {
-        if let Some(message) = self.generate_message(block_hash, is_restoring) {
+        if let Some(message) = self.vote_on_block_hash(block_hash).expect("Error while vote") {
+            self.handle_valid_message(&message, is_restoring);
             if !is_restoring {
                 self.backup();
             }
             self.broadcast_message(message);
         }
-    }
-
-    fn generate_message(&mut self, block_hash: Option<BlockHash>, is_restoring: bool) -> Option<ConsensusMessage> {
-        let height = self.height;
-        let r = self.view;
-        let on = VoteOn {
-            step: VoteStep::new(height, r, self.step.to_step()),
-            block_hash,
-        };
-        let signer_index = self.signer_index().or_else(|| {
-            ctrace!(ENGINE, "No message, since there is no engine signer.");
-            None
-        })?;
-        let signature = self
-            .sign(&on)
-            .map_err(|error| {
-                ctrace!(ENGINE, "{}th validator could not sign the message {}", signer_index, error);
-                error
-            })
-            .ok()?;
-        let message = ConsensusMessage {
-            signature,
-            signer_index,
-            on,
-        };
-        self.votes_received.set(signer_index);
-        self.votes.vote(message.clone());
-        cinfo!(ENGINE, "Generated {:?} as {}th validator.", message, signer_index);
-        self.handle_valid_message(&message, is_restoring);
-
-        Some(message)
     }
 
     fn handle_valid_message(&mut self, message: &ConsensusMessage, is_restoring: bool) {
@@ -1111,7 +1081,6 @@ impl Worker {
         }
 
         let header = sealed_block.header();
-        let hash = header.hash();
         let parent_hash = header.parent_hash();
 
         if let TendermintState::ProposeWaitBlockGeneration {
@@ -1131,19 +1100,9 @@ impl Worker {
             );
             return
         }
-        let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
-
         debug_assert_eq!(Ok(self.view), TendermintSealView::new(header.seal()).consensus_view());
 
-        let vote_on = VoteOn {
-            step: VoteStep::new(header.number() as Height, self.view, Step::Propose),
-            block_hash: Some(hash),
-        };
-        let signature = self.sign(&vote_on).expect("I am proposer");
-        self.votes.vote(
-            ConsensusMessage::new_proposal(signature, &*self.validators, header, self.view, prev_proposer_idx)
-                .expect("I am proposer"),
-        );
+        self.vote_on_header_for_proposal(&header).expect("I'm a proposer");
 
         self.step = TendermintState::ProposeWaitImported {
             block: Box::new(sealed_block.clone()),
@@ -1492,18 +1451,7 @@ impl Worker {
 
     fn repropose_block(&mut self, block: encoded::Block) {
         let header = block.decode_header();
-        let vote_on = VoteOn {
-            step: VoteStep::new(header.number() as Height, self.view, Step::Propose),
-            block_hash: Some(header.hash()),
-        };
-        let parent_hash = header.parent_hash();
-        let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
-        let signature = self.sign(&vote_on).expect("I am proposer");
-        self.votes.vote(
-            ConsensusMessage::new_proposal(signature, &*self.validators, &header, self.view, prev_proposer_idx)
-                .expect("I am proposer"),
-        );
-
+        self.vote_on_header_for_proposal(&header).expect("I am proposer");
         self.proposal = Proposal::new_imported(header.hash());
         self.broadcast_proposal_block(self.view, block);
     }
@@ -1531,8 +1479,76 @@ impl Worker {
         self.signer.set_to_keep_decrypted_account(ap, address);
     }
 
-    fn sign(&self, vote_on: &VoteOn) -> Result<SchnorrSignature, Error> {
-        self.signer.sign(vote_on.hash()).map_err(Into::into)
+    fn vote_on_block_hash(&mut self, block_hash: Option<BlockHash>) -> Result<Option<ConsensusMessage>, Error> {
+        let signer_index = if let Some(signer_index) = self.signer_index() {
+            signer_index
+        } else {
+            ctrace!(ENGINE, "No message, since there is no engine signer.");
+            return Ok(None)
+        };
+
+        let on = VoteOn {
+            step: VoteStep::new(self.height, self.view, self.step.to_step()),
+            block_hash,
+        };
+        let signature = self.signer.sign(on.hash())?;
+
+        let vote = ConsensusMessage {
+            signature,
+            signer_index,
+            on,
+        };
+
+        self.votes_received.set(vote.signer_index);
+        self.votes.vote(vote.clone());
+        cinfo!(ENGINE, "Voted {:?} as {}th validator.", vote, signer_index);
+        Ok(Some(vote))
+    }
+
+    fn vote_on_header_for_proposal(&mut self, header: &Header) -> Result<ConsensusMessage, Error> {
+        assert!(header.number() == self.height);
+
+        let parent_hash = header.parent_hash();
+        let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
+        let signer_index = self.validators.proposer_index(*parent_hash, prev_proposer_idx, self.view as usize);
+
+        let on = VoteOn {
+            step: VoteStep::new(self.height, self.view, Step::Propose),
+            block_hash: Some(header.hash()),
+        };
+        let signature = self.signer.sign(on.hash())?;
+
+        let vote = ConsensusMessage {
+            signature,
+            signer_index,
+            on,
+        };
+
+        self.votes.vote(vote.clone());
+        cinfo!(ENGINE, "Voted {:?} as {}th proposer.", vote, signer_index);
+        Ok(vote)
+    }
+
+    fn recover_proposal_vote(
+        &self,
+        header: &Header,
+        proposed_view: View,
+        signature: SchnorrSignature,
+    ) -> Option<ConsensusMessage> {
+        let prev_proposer_idx = self.block_proposer_idx(*header.parent_hash())?;
+        let signer_index =
+            self.validators.proposer_index(*header.parent_hash(), prev_proposer_idx, proposed_view as usize);
+
+        let on = VoteOn {
+            step: VoteStep::new(header.number(), proposed_view, Step::Propose),
+            block_hash: Some(header.hash()),
+        };
+
+        Some(ConsensusMessage {
+            signature,
+            signer_index,
+            on,
+        })
     }
 
     fn signer_index(&self) -> Option<usize> {
@@ -1696,26 +1712,13 @@ impl Worker {
                     return None
                 }
             }
-
-            let prev_proposer_idx = match self.block_proposer_idx(*parent_hash) {
-                Some(idx) => idx,
+            let message = match self.recover_proposal_vote(&header_view, proposed_view, signature) {
+                Some(vote) => vote,
                 None => {
                     cwarn!(ENGINE, "Prev block proposer does not exist for height {}", number);
                     return None
                 }
             };
-
-            let message = ConsensusMessage::new_proposal(
-                signature,
-                &*self.validators,
-                &header_view,
-                proposed_view,
-                prev_proposer_idx,
-            )
-            .map_err(|err| {
-                cwarn!(ENGINE, "Invalid proposal received: {:?}", err);
-            })
-            .ok()?;
 
             // If the proposal's height is current height + 1 and the proposal has valid precommits,
             // we should import it and increase height
