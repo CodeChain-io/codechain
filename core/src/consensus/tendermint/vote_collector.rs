@@ -207,6 +207,15 @@ impl VoteCollector {
             .unwrap_or_else(Vec::new)
     }
 
+    pub fn has_votes_for(&self, round: &VoteStep, block_hash: H256) -> bool {
+        let votes = self
+            .votes
+            .get(round)
+            .map(|c| c.block_votes.keys().cloned().filter_map(|x| x).collect())
+            .unwrap_or_else(Vec::new);
+        votes.into_iter().any(|vote_block_hash| vote_block_hash == block_hash)
+    }
+
     pub fn get_all(&self) -> Vec<ConsensusMessage> {
         self.votes.iter().flat_map(|(_round, collector)| collector.messages.iter()).cloned().collect()
     }
