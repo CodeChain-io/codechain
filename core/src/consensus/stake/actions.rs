@@ -358,10 +358,9 @@ impl Decodable for Action {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ccrypto::blake256;
     use ckey::sign_schnorr;
     use client::TestBlockChainClient;
-    use consensus::{message_info_rlp, ConsensusMessage, DynamicValidator, Step, VoteOn, VoteStep};
+    use consensus::{ConsensusMessage, DynamicValidator, Step, VoteOn, VoteStep};
     use rlp::rlp_encode_and_decode_test;
 
     #[test]
@@ -418,12 +417,14 @@ mod tests {
             step: vote_step,
             block_hash,
         };
-        let message_for_signature =
-            blake256(message_info_rlp(vote_step_twister(vote_step), block_hash_twister(block_hash)));
+        let twisted = VoteOn {
+            step: vote_step_twister(vote_step),
+            block_hash: block_hash_twister(block_hash),
+        };
         let reversed_idx = client.get_validators().len() - 1 - signer_index;
         let pubkey = *client.get_validators().get(reversed_idx).unwrap().pubkey();
         let privkey = *client.validator_keys.read().get(&pubkey).unwrap();
-        let signature = sign_schnorr(&privkey, &message_for_signature).unwrap();
+        let signature = sign_schnorr(&privkey, &twisted.hash()).unwrap();
 
         ConsensusMessage {
             signature,
