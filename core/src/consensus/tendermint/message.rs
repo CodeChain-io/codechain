@@ -316,6 +316,12 @@ pub struct VoteOn {
     pub block_hash: Option<BlockHash>,
 }
 
+impl VoteOn {
+    pub fn hash(&self) -> H256 {
+        blake256(&self.rlp_bytes())
+    }
+}
+
 /// Message transmitted between consensus participants.
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Default, RlpDecodable, RlpEncodable)]
 pub struct ConsensusMessage {
@@ -368,25 +374,8 @@ impl ConsensusMessage {
     }
 
     pub fn verify(&self, signer_public: &Public) -> Result<bool, KeyError> {
-        let vote_info = message_info_rlp(self.on.step, self.on.block_hash);
-        verify_schnorr(signer_public, &self.signature, &blake256(vote_info))
+        verify_schnorr(signer_public, &self.signature, &self.on.hash())
     }
-}
-
-pub fn message_info_rlp(step: VoteStep, block_hash: Option<BlockHash>) -> Bytes {
-    let vote_on = VoteOn {
-        step,
-        block_hash,
-    };
-    vote_on.rlp_bytes().into_vec()
-}
-
-pub fn message_hash(step: VoteStep, block_hash: H256) -> H256 {
-    let vote_on = VoteOn {
-        step,
-        block_hash: Some(block_hash),
-    };
-    blake256(&vote_on.rlp_bytes())
 }
 
 #[cfg(test)]

@@ -193,8 +193,13 @@ fn load_password_file(path: &Option<String>) -> Result<PasswordFile, String> {
 fn unlock_accounts(ap: &AccountProvider, pf: &PasswordFile) -> Result<(), String> {
     for entry in pf.entries() {
         let entry_address = entry.address.into_address();
-        ap.unlock_account_permanently(entry_address, entry.password.clone())
-            .map_err(|e| format!("Failed to unlock account {}: {}", entry_address, e))?;
+        let has_account = ap
+            .has_account(&entry_address)
+            .map_err(|e| format!("Unexpected error while querying account {}: {}", entry_address, e))?;
+        if has_account {
+            ap.unlock_account_permanently(entry_address, entry.password.clone())
+                .map_err(|e| format!("Failed to unlock account {}: {}", entry_address, e))?;
+        }
     }
     Ok(())
 }
