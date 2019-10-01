@@ -128,6 +128,7 @@ pub struct Miner {
     accounts: Option<Arc<AccountProvider>>,
     notifiers: RwLock<Vec<Box<dyn NotifyWork>>>,
     malicious_users: RwLock<HashSet<Address>>,
+    immune_users: RwLock<HashSet<Address>>,
 }
 
 impl Miner {
@@ -186,6 +187,7 @@ impl Miner {
             accounts,
             notifiers: RwLock::new(notifiers),
             malicious_users: RwLock::new(HashSet::new()),
+            immune_users: RwLock::new(HashSet::new()),
         }
     }
 
@@ -274,6 +276,10 @@ impl Miner {
                 // FIXME: Refactoring is needed. recover_public is calling in verify_transaction_unordered.
                 let signer_public = tx.recover_public()?;
                 let signer_address = public_to_address(&signer_public);
+                if default_origin.is_local() {
+                    self.immune_users.write().insert(signer_address);
+                }
+
                 let origin = self
                     .accounts
                     .as_ref()
@@ -295,6 +301,7 @@ impl Miner {
                 if !self.is_allowed_transaction(&tx.action) {
                     cdebug!(MINER, "Rejected transaction {:?}: {:?} is not allowed transaction", hash, tx.action);
                 }
+                let immune_users = self.immune_users.read();
                 let tx = tx
                     .verify_basic()
                     .map_err(From::from)
@@ -305,7 +312,7 @@ impl Miner {
                     .and_then(|_| CodeChainMachine::verify_transaction_seal(tx, &fake_header))
                     .map_err(|e| {
                         match e {
-                            Error::Syntax(_) if !origin.is_local() => {
+                            Error::Syntax(_) if !origin.is_local() && !immune_users.contains(&signer_address) => {
                                 self.malicious_users.write().insert(signer_address);
                             }
                             _ => {}
@@ -317,7 +324,7 @@ impl Miner {
                 // This check goes here because verify_transaction takes SignedTransaction parameter
                 self.engine.machine().verify_transaction(&tx, &fake_header, client, false).map_err(|e| {
                     match e {
-                        Error::Syntax(_) if !origin.is_local() => {
+                        Error::Syntax(_) if !origin.is_local() && !immune_users.contains(&signer_address) => {
                             self.malicious_users.write().insert(signer_address);
                         }
                         _ => {}
@@ -520,6 +527,8 @@ impl Miner {
         let mut tx_count: usize = 0;
         let tx_total = transactions.len();
         let mut invalid_tx_users = HashSet::new();
+
+        let immune_users = self.immune_users.read();
         for tx in transactions {
             let signer_public = tx.signer_public();
             let signer_address = public_to_address(&signer_public);
@@ -557,6 +566,7 @@ impl Miner {
                                 .read()
                                 .is_local_transaction(hash)
                                 .expect("The tx is clearly fetched from the mempool")
+                                && !immune_users.contains(&signer_address)
                             {
                                 self.malicious_users.write().insert(signer_address);
                             }
