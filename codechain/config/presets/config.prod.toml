@@ -40,7 +40,7 @@ interface = "127.0.0.1"
 port = 8080
 
 [ipc]
-disable = true
+disable = false
 path = "/tmp/jsonrpc.ipc"
 
 [ws]
