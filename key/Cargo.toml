@@ -9,7 +9,7 @@ rustc-hex = "1.0"
 rustc-serialize = "0.3"
 lazy_static = "1.2"
 bech32 = "0.2.2"
-codechain-crypto = { path = "../crypto" }
+codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
 never-type = "0.1.0"
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

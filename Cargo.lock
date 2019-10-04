@@ -232,6 +232,7 @@ dependencies = [
  "cidr 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.31.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-core 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-discovery 0.1.0",
  "codechain-key 0.1.0",
  "codechain-keystore 0.1.0",
@@ -271,7 +272,7 @@ dependencies = [
 name = "codechain-core"
 version = "0.1.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-io 1.9.0",
  "codechain-json 0.1.0",
  "codechain-key 0.1.0",
@@ -312,10 +313,10 @@ dependencies = [
 [[package]]
 name = "codechain-crypto"
 version = "0.1.0"
+source = "git+https://github.com/CodeChain-io/rust-codechain-crypto.git#2857470de2f5480b7d61ff57fb652f9d9fc5585b"
 dependencies = [
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
  "quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ring 0.14.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -324,7 +325,7 @@ dependencies = [
 name = "codechain-discovery"
 version = "0.1.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-network 0.1.0",
@@ -367,7 +368,7 @@ name = "codechain-key"
 version = "0.1.0"
 dependencies = [
  "bech32 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "never-type 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -387,7 +388,7 @@ dependencies = [
 name = "codechain-keystore"
 version = "0.1.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-json 0.1.0",
  "codechain-key 0.1.0",
  "codechain-types 0.1.0",
@@ -427,7 +428,7 @@ dependencies = [
 name = "codechain-merkle"
 version = "0.1.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "elastic-array 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hashdb 0.1.1",
  "memorydb 0.1.1",
@@ -442,7 +443,7 @@ name = "codechain-network"
 version = "0.1.0"
 dependencies = [
  "cidr 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-io 1.9.0",
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
@@ -469,7 +470,7 @@ version = "0.1.0"
 dependencies = [
  "cidr 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "codechain-core 0.1.0",
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-json 0.1.0",
  "codechain-key 0.1.0",
  "codechain-keystore 0.1.0",
@@ -505,7 +506,7 @@ dependencies = [
 name = "codechain-state"
 version = "0.1.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-key 0.1.0",
  "codechain-logger 0.1.0",
  "codechain-merkle 0.1.0",
@@ -529,7 +530,7 @@ dependencies = [
 name = "codechain-stratum"
 version = "1.11.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-json 0.1.0",
  "codechain-logger 0.1.0",
  "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -586,7 +587,7 @@ dependencies = [
 name = "codechain-types"
 version = "0.1.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-json 0.1.0",
  "codechain-key 0.1.0",
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
@@ -601,7 +602,7 @@ dependencies = [
 name = "codechain-vm"
 version = "0.1.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "codechain-key 0.1.0",
  "codechain-types 0.1.0",
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
@@ -1227,7 +1228,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "journaldb"
 version = "0.1.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "hashdb 0.1.1",
  "kvdb 0.1.0",
  "kvdb-memorydb 0.1.0",
@@ -1501,7 +1502,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "memorydb"
 version = "0.1.1"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "elastic-array 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hashdb 0.1.1",
  "plain_hasher 0.1.0",
@@ -2814,7 +2815,7 @@ dependencies = [
 name = "trie-standardmap"
 version = "0.1.0"
 dependencies = [
- "codechain-crypto 0.1.0",
+ "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
  "rlp 0.2.1",
 ]
@@ -3097,6 +3098,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum clippy 0.0.198 (registry+https://github.com/rust-lang/crates.io-index)" = "da3a62431bbcebe5250a1235e022cc61bcc2f32405d8dc08da4011d223c6a4ba"
 "checksum clippy_lints 0.0.198 (registry+https://github.com/rust-lang/crates.io-index)" = "9517a4eee5daa6eaf318a5bd7a4db0bcd5d92e8d8f22c3e341e60cf1746c73a4"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
+"checksum codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)" = "<none>"
 "checksum colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b0aa3473e85a3161b59845d6096b289bb577874cafeaf75ea1b1beaa6572c7fc"
 "checksum cookie 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d53b80dde876f47f03cda35303e368a79b91c70b0d65ecba5fd5280944a08591"
 "checksum core-foundation 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)" = "25b9e03f145fd4f2bf705e07b900cd41fc636598fe5dc452fd0db1441c3f496d"
