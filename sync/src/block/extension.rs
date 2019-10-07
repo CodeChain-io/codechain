@@ -311,7 +311,7 @@ impl NetworkExtension<Event> for Extension {
                     }
                 }
             }
-            SYNC_EXPIRE_TOKEN_BEGIN...SYNC_EXPIRE_TOKEN_END => {
+            SYNC_EXPIRE_TOKEN_BEGIN..=SYNC_EXPIRE_TOKEN_END => {
                 self.check_sync_variable();
                 let (id, request_id) = {
                     let token_info = match self.tokens_info.get_mut(&token) {
