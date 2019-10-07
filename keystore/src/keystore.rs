@@ -36,12 +36,12 @@ pub struct KeyStore {
 
 impl KeyStore {
     /// Open a new accounts store with given key directory backend.
-    pub fn open(directory: Box<KeyDirectory>) -> Result<Self, Error> {
+    pub fn open(directory: Box<dyn KeyDirectory>) -> Result<Self, Error> {
         Self::open_with_iterations(directory, KEY_ITERATIONS as u32)
     }
 
     /// Open a new account store with given key directory backend and custom number of iterations.
-    pub fn open_with_iterations(directory: Box<KeyDirectory>, iterations: u32) -> Result<Self, Error> {
+    pub fn open_with_iterations(directory: Box<dyn KeyDirectory>, iterations: u32) -> Result<Self, Error> {
         Ok(KeyStore {
             store: KeyMultiStore::open_with_iterations(directory, iterations)?,
         })
@@ -123,7 +123,7 @@ impl SecretStore for KeyStore {
 
     fn copy_account(
         &self,
-        new_store: &SimpleSecretStore,
+        new_store: &dyn SimpleSecretStore,
         account: &Address,
         password: &Password,
         new_password: &Password,
@@ -159,7 +159,7 @@ impl SecretStore for KeyStore {
 
 /// Similar to `KeyStore` but may store many accounts (with different passwords) for the same `Address`
 pub struct KeyMultiStore {
-    dir: Box<KeyDirectory>,
+    dir: Box<dyn KeyDirectory>,
     iterations: u32,
     // order lock: cache
     cache: RwLock<BTreeMap<Address, Vec<SafeAccount>>>,
@@ -174,12 +174,12 @@ struct Timestamp {
 
 impl KeyMultiStore {
     /// Open new multi-accounts store with given key directory backend.
-    pub fn open(directory: Box<KeyDirectory>) -> Result<Self, Error> {
+    pub fn open(directory: Box<dyn KeyDirectory>) -> Result<Self, Error> {
         Self::open_with_iterations(directory, KEY_ITERATIONS as u32)
     }
 
     /// Open new multi-accounts store with given key directory backend and custom number of iterations for new keys.
-    pub fn open_with_iterations(directory: Box<KeyDirectory>, iterations: u32) -> Result<Self, Error> {
+    pub fn open_with_iterations(directory: Box<dyn KeyDirectory>, iterations: u32) -> Result<Self, Error> {
         let store = KeyMultiStore {
             dir: directory,
             iterations,

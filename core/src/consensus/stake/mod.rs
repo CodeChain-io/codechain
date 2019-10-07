@@ -43,8 +43,8 @@ pub const CUSTOM_ACTION_HANDLER_ID: u64 = 2;
 
 pub struct Stake {
     genesis_stakes: HashMap<Address, u64>,
-    client: RwLock<Option<Weak<ConsensusClient>>>,
-    validators: RwLock<Option<Weak<ValidatorSet>>>,
+    client: RwLock<Option<Weak<dyn ConsensusClient>>>,
+    validators: RwLock<Option<Weak<dyn ValidatorSet>>>,
 }
 
 impl Stake {
@@ -55,7 +55,7 @@ impl Stake {
             validators: Default::default(),
         }
     }
-    pub fn register_resources(&self, client: Weak<ConsensusClient>, validators: Weak<ValidatorSet>) {
+    pub fn register_resources(&self, client: Weak<dyn ConsensusClient>, validators: Weak<dyn ValidatorSet>) {
         *self.client.write() = Some(Weak::clone(&client));
         *self.validators.write() = Some(Weak::clone(&validators));
     }
@@ -151,8 +151,8 @@ impl ActionHandler for Stake {
     fn verify(&self, bytes: &[u8], current_params: &CommonParams) -> Result<(), SyntaxError> {
         let action = Action::decode(&UntrustedRlp::new(bytes))
             .map_err(|err| SyntaxError::InvalidCustomAction(err.to_string()))?;
-        let client: Option<Arc<ConsensusClient>> = self.client.read().as_ref().and_then(Weak::upgrade);
-        let validators: Option<Arc<ValidatorSet>> = self.validators.read().as_ref().and_then(Weak::upgrade);
+        let client: Option<Arc<dyn ConsensusClient>> = self.client.read().as_ref().and_then(Weak::upgrade);
+        let validators: Option<Arc<dyn ValidatorSet>> = self.validators.read().as_ref().and_then(Weak::upgrade);
         action.verify(current_params, client, validators)
     }
 

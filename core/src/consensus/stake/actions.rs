@@ -73,8 +73,8 @@ impl Action {
     pub fn verify(
         &self,
         current_params: &CommonParams,
-        client: Option<Arc<ConsensusClient>>,
-        validators: Option<Arc<ValidatorSet>>,
+        client: Option<Arc<dyn ConsensusClient>>,
+        validators: Option<Arc<dyn ValidatorSet>>,
     ) -> Result<(), SyntaxError> {
         match self {
             Action::TransferCCS {
@@ -456,7 +456,7 @@ mod tests {
             message1: Box::new(consensus_message1),
             message2: Box::new(consensus_message2),
         };
-        let arced_client: Arc<ConsensusClient> = Arc::new(test_client);
+        let arced_client: Arc<dyn ConsensusClient> = Arc::new(test_client);
         validator_set.register_client(Arc::downgrade(&arced_client));
         action.verify(&CommonParams::default_for_test(), Some(Arc::clone(&arced_client)), Some(Arc::new(validator_set)))
     }

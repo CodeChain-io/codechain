@@ -35,7 +35,7 @@ pub struct Service {
     client: Arc<Client>,
     routing_table: Arc<RoutingTable>,
     p2p_handler: Arc<p2p::Handler>,
-    filters_control: Arc<FiltersControl>,
+    filters_control: Arc<dyn FiltersControl>,
 }
 
 impl Service {
@@ -46,7 +46,7 @@ impl Service {
         bootstrap_addresses: Vec<SocketAddr>,
         min_peers: usize,
         max_peers: usize,
-        filters_control: Arc<FiltersControl>,
+        filters_control: Arc<dyn FiltersControl>,
         routing_table: Arc<RoutingTable>,
     ) -> Result<Arc<Self>, Error> {
         let p2p = IoService::start("P2P")?;
@@ -79,7 +79,7 @@ impl Service {
     where
         T: 'static + Sized + NetworkExtension<E>,
         E: 'static + Sized + Send,
-        F: 'static + FnOnce(Box<Api>) -> T + Send, {
+        F: 'static + FnOnce(Box<dyn Api>) -> T + Send, {
         self.client.register_extension(factory)
     }
 

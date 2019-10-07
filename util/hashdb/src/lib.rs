@@ -56,26 +56,26 @@ pub trait HashDB: AsHashDB + Send + Sync {
 /// Upcast trait.
 pub trait AsHashDB {
     /// Perform upcast to HashDB for anything that derives from HashDB.
-    fn as_hashdb(&self) -> &HashDB;
+    fn as_hashdb(&self) -> &dyn HashDB;
     /// Perform mutable upcast to HashDB for anything that derives from HashDB.
-    fn as_hashdb_mut(&mut self) -> &mut HashDB;
+    fn as_hashdb_mut(&mut self) -> &mut dyn HashDB;
 }
 
 impl<T: HashDB> AsHashDB for T {
-    fn as_hashdb(&self) -> &HashDB {
+    fn as_hashdb(&self) -> &dyn HashDB {
         self
     }
-    fn as_hashdb_mut(&mut self) -> &mut HashDB {
+    fn as_hashdb_mut(&mut self) -> &mut dyn HashDB {
         self
     }
 }
 
-impl<'a> AsHashDB for &'a mut HashDB {
-    fn as_hashdb(&self) -> &HashDB {
+impl<'a> AsHashDB for &'a mut dyn HashDB {
+    fn as_hashdb(&self) -> &dyn HashDB {
         &**self
     }
 
-    fn as_hashdb_mut(&mut self) -> &mut HashDB {
+    fn as_hashdb_mut(&mut self) -> &mut dyn HashDB {
         &mut **self
     }
 }

@@ -38,7 +38,7 @@ impl ClientService {
     pub fn start(
         config: &ClientConfig,
         scheme: &Scheme,
-        db: Arc<KeyValueDB>,
+        db: Arc<dyn KeyValueDB>,
         miner: Arc<Miner>,
         reseal_timer: TimerApi,
     ) -> Result<ClientService, Error> {

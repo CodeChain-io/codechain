@@ -521,7 +521,7 @@ impl<'db> ShardLevelState<'db> {
     fn check_and_run_input_script<C: ChainTimeInfo>(
         &self,
         input: &AssetTransferInput,
-        transaction: &PartialHashing,
+        transaction: &dyn PartialHashing,
         burn: bool,
         sender: &Address,
         approvers: &[Address],
@@ -534,7 +534,7 @@ impl<'db> ShardLevelState<'db> {
             return Ok(()) // Don't execute scripts when regulator sends the transaction.
         }
 
-        let to_hash: &PartialHashing = transaction;
+        let to_hash: &dyn PartialHashing = transaction;
 
         if *asset.lock_script_hash() != Blake::blake(&input.lock_script) {
             return Err(RuntimeError::ScriptHashMismatch(Mismatch {

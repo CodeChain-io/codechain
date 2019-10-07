@@ -71,7 +71,7 @@ pub struct TreeRoute {
 ///
 /// If the tree route verges into pruned or unknown blocks,
 /// `None` is returned.
-pub fn tree_route(db: &HeaderProvider, from: H256, to: H256) -> Option<TreeRoute> {
+pub fn tree_route(db: &dyn HeaderProvider, from: H256, to: H256) -> Option<TreeRoute> {
     let mut retracted = vec![];
     let mut enacted = vec![];
 

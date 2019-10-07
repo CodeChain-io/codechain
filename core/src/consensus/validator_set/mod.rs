@@ -55,7 +55,7 @@ pub trait ValidatorSet: Send + Sync {
     fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError>;
 
     /// Allows blockchain state access.
-    fn register_client(&self, _client: Weak<ConsensusClient>) {}
+    fn register_client(&self, _client: Weak<dyn ConsensusClient>) {}
 
     fn addresses(&self, _parent: &H256) -> Vec<Address>;
 }

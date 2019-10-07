@@ -37,14 +37,14 @@ use traits::JournalDB;
 /// that the states of any block the node has ever processed will be accessible.
 pub struct ArchiveDB {
     overlay: MemoryDB,
-    backing: Arc<KeyValueDB>,
+    backing: Arc<dyn KeyValueDB>,
     latest_era: Option<u64>,
     column: Option<u32>,
 }
 
 impl ArchiveDB {
     /// Create a new instance from a key-value db.
-    pub fn new(backing: Arc<KeyValueDB>, col: Option<u32>) -> ArchiveDB {
+    pub fn new(backing: Arc<dyn KeyValueDB>, col: Option<u32>) -> ArchiveDB {
         let latest_era =
             backing.get(col, &LATEST_ERA_KEY).expect("Low-level database error.").map(|val| decode::<u64>(&val));
         ArchiveDB {
@@ -109,7 +109,7 @@ impl HashDB for ArchiveDB {
 }
 
 impl JournalDB for ArchiveDB {
-    fn boxed_clone(&self) -> Box<JournalDB> {
+    fn boxed_clone(&self) -> Box<dyn JournalDB> {
         Box::new(ArchiveDB {
             overlay: self.overlay.clone(),
             backing: self.backing.clone(),
@@ -189,7 +189,7 @@ impl JournalDB for ArchiveDB {
         false
     }
 
-    fn backing(&self) -> &Arc<KeyValueDB> {
+    fn backing(&self) -> &Arc<dyn KeyValueDB> {
         &self.backing
     }
 

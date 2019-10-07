@@ -34,13 +34,13 @@ use crate::error::Error;
 pub struct Solo {
     params: SoloParams,
     machine: CodeChainMachine,
-    action_handlers: Vec<Arc<ActionHandler>>,
+    action_handlers: Vec<Arc<dyn ActionHandler>>,
 }
 
 impl Solo {
     /// Returns new instance of Solo over the given state machine.
     pub fn new(params: SoloParams, machine: CodeChainMachine) -> Self {
-        let mut action_handlers: Vec<Arc<ActionHandler>> = Vec::new();
+        let mut action_handlers: Vec<Arc<dyn ActionHandler>> = Vec::new();
         if params.enable_hit_handler {
             action_handlers.push(Arc::new(HitHandler::new()));
         }
@@ -135,7 +135,7 @@ impl ConsensusEngine for Solo {
         1
     }
 
-    fn action_handlers(&self) -> &[Arc<ActionHandler>] {
+    fn action_handlers(&self) -> &[Arc<dyn ActionHandler>] {
         &self.action_handlers
     }
 

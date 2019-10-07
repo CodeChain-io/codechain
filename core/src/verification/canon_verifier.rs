@@ -31,7 +31,7 @@ impl<C: BlockChainTrait> Verifier<C> for CanonVerifier {
         block: &[u8],
         header: &Header,
         parent: &Header,
-        engine: &CodeChainEngine,
+        engine: &dyn CodeChainEngine,
         do_full: Option<verification::FullFamilyParams<C>>,
         common_params: &CommonParams,
     ) -> Result<(), Error> {
@@ -42,7 +42,7 @@ impl<C: BlockChainTrait> Verifier<C> for CanonVerifier {
         verification::verify_block_final(expected, got)
     }
 
-    fn verify_block_external(&self, header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
+    fn verify_block_external(&self, header: &Header, engine: &dyn CodeChainEngine) -> Result<(), Error> {
         engine.verify_block_external(header)
     }
 }

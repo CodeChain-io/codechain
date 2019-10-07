@@ -31,14 +31,14 @@ fn empty_children() -> [Option<H256>; 16] {
 }
 
 pub struct TrieDBMut<'a> {
-    db: &'a mut HashDB,
+    db: &'a mut dyn HashDB,
     // When Trie is empty, root has None.
     root: &'a mut H256,
 }
 
 impl<'a> TrieDBMut<'a> {
     /// Create a new trie with backing database `db` and empty `root`.
-    pub fn new(db: &'a mut HashDB, root: &'a mut H256) -> Self {
+    pub fn new(db: &'a mut dyn HashDB, root: &'a mut H256) -> Self {
         *root = BLAKE_NULL_RLP;
 
         TrieDBMut {
@@ -49,7 +49,7 @@ impl<'a> TrieDBMut<'a> {
 
     /// Create a new trie with the backing database `db` and `root.
     /// Returns an error if `root` does not exist.
-    pub fn from_existing(db: &'a mut HashDB, root: &'a mut H256) -> crate::Result<Self> {
+    pub fn from_existing(db: &'a mut dyn HashDB, root: &'a mut H256) -> crate::Result<Self> {
         if !db.contains(root) {
             return Err(TrieError::InvalidStateRoot(*root))
         }
@@ -348,7 +348,7 @@ mod tests {
 
     use super::*;
 
-    fn populate_trie<'db>(db: &'db mut HashDB, root: &'db mut H256, v: &[(Vec<u8>, Vec<u8>)]) -> TrieDBMut<'db> {
+    fn populate_trie<'db>(db: &'db mut dyn HashDB, root: &'db mut H256, v: &[(Vec<u8>, Vec<u8>)]) -> TrieDBMut<'db> {
         let mut t = TrieDBMut::new(db, root);
         for (key, val) in v {
             t.insert(key, val).unwrap();

@@ -28,11 +28,11 @@ use super::super::traits::Net;
 use super::super::types::FilterStatus;
 
 pub struct NetClient {
-    network_control: Arc<NetworkControl>,
+    network_control: Arc<dyn NetworkControl>,
 }
 
 impl NetClient {
-    pub fn new(network_control: Arc<NetworkControl>) -> Self {
+    pub fn new(network_control: Arc<dyn NetworkControl>) -> Self {
         Self {
             network_control,
         }

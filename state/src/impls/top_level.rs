@@ -127,7 +127,7 @@ impl TopStateView for TopLevelState {
         self.top_cache.shard(&shard_address, &trie)
     }
 
-    fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>> {
+    fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<dyn ShardStateView + 'db>>> {
         match self.shard_root(shard_id)? {
             // FIXME: Find a way to use stored cache.
             Some(shard_root) => {
@@ -999,7 +999,7 @@ impl TopState for TopLevelState {
     }
 }
 
-fn is_active_account(state: &TopStateView, address: &Address) -> TrieResult<bool> {
+fn is_active_account(state: &dyn TopStateView, address: &Address) -> TrieResult<bool> {
     match &state.account(address)? {
         Some(account) if account.is_active() => Ok(true),
         _ => Ok(false),

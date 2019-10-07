@@ -110,12 +110,12 @@ pub struct MemPool {
     /// Next id that should be assigned to a transaction imported to the pool
     next_transaction_id: u64,
     /// Arc of KeyValueDB in which the backup information is stored.
-    db: Arc<KeyValueDB>,
+    db: Arc<dyn KeyValueDB>,
 }
 
 impl MemPool {
     /// Create new instance of this Queue with specified limits
-    pub fn with_limits(limit: usize, memory_limit: usize, fee_bump_shift: usize, db: Arc<KeyValueDB>) -> Self {
+    pub fn with_limits(limit: usize, memory_limit: usize, fee_bump_shift: usize, db: Arc<dyn KeyValueDB>) -> Self {
         MemPool {
             minimal_fee: 0,
             fee_bump_shift,

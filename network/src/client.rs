@@ -112,7 +112,7 @@ impl Client {
     where
         T: 'static + Sized + NetworkExtension<E>,
         E: 'static + Sized + Send,
-        F: 'static + FnOnce(Box<Api>) -> T + Send, {
+        F: 'static + FnOnce(Box<dyn Api>) -> T + Send, {
         let mut extensions = self.extensions.write();
         let name = T::name();
         let timer = self.timer_loop.new_timer_with_name(name);

@@ -111,7 +111,7 @@ pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     /// Used in Tendermint, when going to the commit step.
     fn update_best_as_committed(&self, block_hash: H256);
 
-    fn get_kvdb(&self) -> Arc<KeyValueDB>;
+    fn get_kvdb(&self) -> Arc<dyn KeyValueDB>;
 }
 
 pub trait ConsensusClient: BlockChainClient + EngineClient + EngineInfo + TermInfo + StateInfo {}
@@ -164,14 +164,14 @@ pub trait AccountData {
 /// State information to be used during client query
 pub enum StateOrBlock {
     /// State to be used, may be pending
-    State(Box<TopStateView>),
+    State(Box<dyn TopStateView>),
 
     /// Id of an existing block from a chain to get state from
     Block(BlockId),
 }
 
-impl From<Box<TopStateView>> for StateOrBlock {
-    fn from(info: Box<TopStateView>) -> StateOrBlock {
+impl From<Box<dyn TopStateView>> for StateOrBlock {
+    fn from(info: Box<dyn TopStateView>) -> StateOrBlock {
         StateOrBlock::State(info)
     }
 }
@@ -275,7 +275,7 @@ pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + FindActionH
 
 /// Provides methods to access database.
 pub trait DatabaseClient {
-    fn database(&self) -> Arc<KeyValueDB>;
+    fn database(&self) -> Arc<dyn KeyValueDB>;
 }
 
 /// Provides methods to access asset
@@ -303,7 +303,7 @@ pub trait ExecuteClient: ChainTimeInfo {
 
     fn execute_vm(
         &self,
-        tx: &PartialHashing,
+        tx: &dyn PartialHashing,
         inputs: &[AssetTransferInput],
         params: &[Vec<Bytes>],
         indices: &[usize],

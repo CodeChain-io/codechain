@@ -48,14 +48,14 @@ use crate::{Query, Trie, TrieError};
 /// }
 /// ```
 pub struct TrieDB<'db> {
-    db: &'db HashDB,
+    db: &'db dyn HashDB,
     root: &'db H256,
 }
 
 impl<'db> TrieDB<'db> {
     /// Create a new trie with the backing database `db` and `root`
     /// Returns an error if `root` does not exist
-    pub fn try_new(db: &'db HashDB, root: &'db H256) -> crate::Result<Self> {
+    pub fn try_new(db: &'db dyn HashDB, root: &'db H256) -> crate::Result<Self> {
         if !db.contains(root) {
             Err(TrieError::InvalidStateRoot(*root))
         } else {
@@ -67,7 +67,7 @@ impl<'db> TrieDB<'db> {
     }
 
     /// Get the backing database.
-    pub fn db(&self) -> &HashDB {
+    pub fn db(&self) -> &dyn HashDB {
         self.db
     }
 

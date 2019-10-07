@@ -30,7 +30,7 @@ impl<C: BlockChainTrait> Verifier<C> for NoopVerifier {
         _block: &[u8],
         _: &Header,
         _t: &Header,
-        _: &CodeChainEngine,
+        _: &dyn CodeChainEngine,
         _: Option<verification::FullFamilyParams<C>>,
         _common_params: &CommonParams,
     ) -> Result<(), Error> {
@@ -41,7 +41,7 @@ impl<C: BlockChainTrait> Verifier<C> for NoopVerifier {
         Ok(())
     }
 
-    fn verify_block_external(&self, _header: &Header, _engine: &CodeChainEngine) -> Result<(), Error> {
+    fn verify_block_external(&self, _header: &Header, _engine: &dyn CodeChainEngine) -> Result<(), Error> {
         Ok(())
     }
 }
