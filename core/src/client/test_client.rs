@@ -136,7 +136,7 @@ impl TestBlockChainClient {
     }
 
     /// Create test client with custom scheme and extra data.
-    pub fn new_with_scheme_and_extra(scheme: Scheme, extra_data: Bytes, db: Arc<KeyValueDB>) -> Self {
+    pub fn new_with_scheme_and_extra(scheme: Scheme, extra_data: Bytes, db: Arc<dyn KeyValueDB>) -> Self {
         let genesis_block = scheme.genesis_block();
         let genesis_header = scheme.genesis_header();
         let genesis_hash = genesis_header.hash();
@@ -614,7 +614,7 @@ impl super::EngineClient for TestBlockChainClient {
 
     fn update_best_as_committed(&self, _block_hash: H256) {}
 
-    fn get_kvdb(&self) -> Arc<KeyValueDB> {
+    fn get_kvdb(&self) -> Arc<dyn KeyValueDB> {
         let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
         Arc::new(db)
     }

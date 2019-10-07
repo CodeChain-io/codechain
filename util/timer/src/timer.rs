@@ -106,7 +106,7 @@ type TimerId = usize;
 pub struct TimerApi {
     timer_id: TimerId,
     timer_name: Arc<RwLock<Option<TimerName>>>,
-    handler: Arc<RwLock<Option<Weak<TimeoutHandler>>>>,
+    handler: Arc<RwLock<Option<Weak<dyn TimeoutHandler>>>>,
     scheduler: Weak<Scheduler>,
 }
 
@@ -533,7 +533,7 @@ struct Schedule {
     schedule_id: ScheduleId,
     repeat: Option<Duration>,
     state_control: Arc<ScheduleStateControl>,
-    handler: Weak<TimeoutHandler>,
+    handler: Weak<dyn TimeoutHandler>,
     timer_name: TimerName,
 }
 
@@ -569,7 +569,7 @@ struct Callback {
     schedule_id: ScheduleId,
     from_oneshot_schedule: bool,
     state_control: Arc<ScheduleStateControl>,
-    handler: Arc<TimeoutHandler>,
+    handler: Arc<dyn TimeoutHandler>,
     timer_name: TimerName,
 }
 

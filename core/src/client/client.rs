@@ -58,19 +58,19 @@ use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as
 const MAX_MEM_POOL_SIZE: usize = 4096;
 
 pub struct Client {
-    engine: Arc<CodeChainEngine>,
+    engine: Arc<dyn CodeChainEngine>,
 
     io_channel: Mutex<IoChannel<ClientIoMessage>>,
 
     chain: RwLock<BlockChain>,
 
     /// Client uses this to store blocks, traces, etc.
-    db: Arc<KeyValueDB>,
+    db: Arc<dyn KeyValueDB>,
 
     state_db: RwLock<StateDB>,
 
     /// List of actors to be notified on certain chain events
-    notify: RwLock<Vec<Weak<ChainNotify>>>,
+    notify: RwLock<Vec<Weak<dyn ChainNotify>>>,
 
     /// Count of pending transactions in the queue
     queue_transactions: AtomicUsize,
@@ -87,7 +87,7 @@ impl Client {
     pub fn try_new(
         config: &ClientConfig,
         scheme: &Scheme,
-        db: Arc<KeyValueDB>,
+        db: Arc<dyn KeyValueDB>,
         miner: Arc<Miner>,
         message_channel: IoChannel<ClientIoMessage>,
         reseal_timer: TimerApi,
@@ -133,12 +133,12 @@ impl Client {
     }
 
     /// Returns engine reference.
-    pub fn engine(&self) -> &CodeChainEngine {
+    pub fn engine(&self) -> &dyn CodeChainEngine {
         &*self.engine
     }
 
     /// Adds an actor to be notified on certain events
-    pub fn add_notify(&self, target: Weak<ChainNotify>) {
+    pub fn add_notify(&self, target: Weak<dyn ChainNotify>) {
         self.notify.write().push(target);
     }
 
@@ -194,7 +194,7 @@ impl Client {
 
     fn notify<F>(&self, f: F)
     where
-        F: Fn(&ChainNotify), {
+        F: Fn(&dyn ChainNotify), {
         for np in self.notify.read().iter() {
             if let Some(n) = np.upgrade() {
                 f(&*n);
@@ -305,7 +305,7 @@ impl Client {
         }
     }
 
-    fn state_info(&self, state: StateOrBlock) -> Option<Box<TopStateView>> {
+    fn state_info(&self, state: StateOrBlock) -> Option<Box<dyn TopStateView>> {
         Some(match state {
             StateOrBlock::State(state) => state,
             StateOrBlock::Block(id) => Box::new(self.state_at(id)?),
@@ -320,7 +320,7 @@ impl Client {
         self.chain.read()
     }
 
-    pub fn db(&self) -> &Arc<KeyValueDB> {
+    pub fn db(&self) -> &Arc<dyn KeyValueDB> {
         &self.db
     }
 }
@@ -352,7 +352,7 @@ impl TimeoutHandler for Client {
 }
 
 impl DatabaseClient for Client {
-    fn database(&self) -> Arc<KeyValueDB> {
+    fn database(&self) -> Arc<dyn KeyValueDB> {
         Arc::clone(&self.db())
     }
 }
@@ -440,7 +440,7 @@ impl ExecuteClient for Client {
 
     fn execute_vm(
         &self,
-        tx: &PartialHashing,
+        tx: &dyn PartialHashing,
         inputs: &[AssetTransferInput],
         params: &[Vec<Bytes>],
         indices: &[usize],
@@ -581,7 +581,7 @@ impl EngineClient for Client {
         }
     }
 
-    fn get_kvdb(&self) -> Arc<KeyValueDB> {
+    fn get_kvdb(&self) -> Arc<dyn KeyValueDB> {
         self.db.clone()
     }
 }
@@ -905,7 +905,7 @@ impl ChainTimeInfo for Client {
 }
 
 impl FindActionHandler for Client {
-    fn find_action_handler_for(&self, id: u64) -> Option<&ActionHandler> {
+    fn find_action_handler_for(&self, id: u64) -> Option<&dyn ActionHandler> {
         self.engine.find_action_handler_for(id)
     }
 }

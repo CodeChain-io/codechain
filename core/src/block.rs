@@ -121,13 +121,13 @@ impl ExecutedBlock {
 /// Block that is ready for transactions to be added.
 pub struct OpenBlock<'x> {
     block: ExecutedBlock,
-    engine: &'x CodeChainEngine,
+    engine: &'x dyn CodeChainEngine,
 }
 
 impl<'x> OpenBlock<'x> {
     /// Create a new `OpenBlock` ready for transaction pushing.
     pub fn try_new(
-        engine: &'x CodeChainEngine,
+        engine: &'x dyn CodeChainEngine,
         db: StateDB,
         parent: &Header,
         author: Address,
@@ -311,7 +311,7 @@ impl<'x> OpenBlock<'x> {
     /// Provide a valid seal
     ///
     /// NOTE: This does not check the validity of `seal` with the engine.
-    pub fn seal(&mut self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<(), BlockError> {
+    pub fn seal(&mut self, engine: &dyn CodeChainEngine, seal: Vec<Bytes>) -> Result<(), BlockError> {
         let expected_seal_fields = engine.seal_fields(self.header());
         if seal.len() != expected_seal_fields {
             return Err(BlockError::InvalidSealArity(Mismatch {
@@ -347,7 +347,7 @@ impl ClosedBlock {
     }
 
     /// Given an engine reference, reopen the `ClosedBlock` into an `OpenBlock`.
-    pub fn reopen(self, engine: &CodeChainEngine) -> OpenBlock {
+    pub fn reopen(self, engine: &dyn CodeChainEngine) -> OpenBlock {
         // revert rewards (i.e. set state back at last transaction's state).
         let mut block = self.block;
         block.state = self.unclosed_state;
@@ -367,7 +367,7 @@ impl LockedBlock {
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
     ///
     /// NOTE: This does not check the validity of `seal` with the engine.
-    pub fn seal(mut self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, BlockError> {
+    pub fn seal(mut self, engine: &dyn CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, BlockError> {
         let expected_seal_fields = engine.seal_fields(self.header());
         if seal.len() != expected_seal_fields {
             return Err(BlockError::InvalidSealArity(Mismatch {
@@ -384,7 +384,11 @@ impl LockedBlock {
     /// Provide a valid seal in order to turn this into a `SealedBlock`.
     /// This does check the validity of `seal` with the engine.
     /// Returns the `ClosedBlock` back again if the seal is no good.
-    pub fn try_seal(mut self, engine: &CodeChainEngine, seal: Vec<Bytes>) -> Result<SealedBlock, (Error, LockedBlock)> {
+    pub fn try_seal(
+        mut self,
+        engine: &dyn CodeChainEngine,
+        seal: Vec<Bytes>,
+    ) -> Result<SealedBlock, (Error, LockedBlock)> {
         self.block.header.set_seal(seal);
 
         // TODO: passing state context to avoid engines owning it?
@@ -489,7 +493,7 @@ impl IsBlock for SealedBlock {
 pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo>(
     header: &Header,
     transactions: &[SignedTransaction],
-    engine: &CodeChainEngine,
+    engine: &dyn CodeChainEngine,
     client: &C,
     db: StateDB,
     parent: &Header,

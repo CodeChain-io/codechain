@@ -47,7 +47,7 @@ use super::super::types::{TPSTestOption, TPSTestSetting};
 
 pub struct DevelClient<C, M> {
     client: Arc<C>,
-    db: Arc<KeyValueDB>,
+    db: Arc<dyn KeyValueDB>,
     miner: Arc<M>,
     block_sync: Option<EventSender<BlockSyncEvent>>,
 }

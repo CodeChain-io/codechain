@@ -71,7 +71,7 @@ impl Snapshot {
         Ok(())
     }
 
-    fn read_chunk(&self, backing: Arc<KeyValueDB>, root: &H256) -> Result<Chunk, Error> {
+    fn read_chunk(&self, backing: Arc<dyn KeyValueDB>, root: &H256) -> Result<Chunk, Error> {
         let file = File::open(self.file_for(root))?;
         let mut buf = Vec::new();
         let mut snappy = snap::Reader::new(file);
@@ -123,7 +123,7 @@ impl Snapshot {
 }
 
 struct Chunk {
-    journal: Box<JournalDB>,
+    journal: Box<dyn JournalDB>,
     never_referenced_keys: Vec<H256>,
 }
 
@@ -185,15 +185,15 @@ impl Chunk {
 }
 
 pub trait WriteSnapshot {
-    fn write_snapshot(&self, db: &KeyValueDB, root: &H256) -> Result<(), Error>;
+    fn write_snapshot(&self, db: &dyn KeyValueDB, root: &H256) -> Result<(), Error>;
 }
 
 pub trait ReadSnapshot {
-    fn read_snapshot(&self, db: Arc<KeyValueDB>, root: &H256) -> Result<(), Error>;
+    fn read_snapshot(&self, db: Arc<dyn KeyValueDB>, root: &H256) -> Result<(), Error>;
 }
 
 impl WriteSnapshot for Snapshot {
-    fn write_snapshot(&self, db: &KeyValueDB, root: &H256) -> Result<(), Error> {
+    fn write_snapshot(&self, db: &dyn KeyValueDB, root: &H256) -> Result<(), Error> {
         let root_val = match db.get(COL_STATE, root) {
             Ok(Some(value)) => value.to_vec(),
             Ok(None) => return Err(Error::SyncError("Invalid state root, or the database is empty".to_string())),
@@ -217,7 +217,7 @@ impl WriteSnapshot for Snapshot {
 }
 
 impl ReadSnapshot for Snapshot {
-    fn read_snapshot(&self, db: Arc<KeyValueDB>, root: &H256) -> Result<(), Error> {
+    fn read_snapshot(&self, db: Arc<dyn KeyValueDB>, root: &H256) -> Result<(), Error> {
         let head = {
             let mut head = self.read_chunk(db.clone(), root)?;
             if head.purge() {
@@ -253,7 +253,7 @@ impl ReadSnapshot for Snapshot {
     }
 }
 
-fn get_node(db: &KeyValueDB, key: &H256) -> Result<Vec<u8>, Error> {
+fn get_node(db: &dyn KeyValueDB, key: &H256) -> Result<Vec<u8>, Error> {
     match db.get(COL_STATE, key) {
         Ok(Some(value)) => Ok(value.to_vec()),
         Ok(None) => Err(Error::NodeNotFound(*key)),
@@ -261,7 +261,7 @@ fn get_node(db: &KeyValueDB, key: &H256) -> Result<Vec<u8>, Error> {
     }
 }
 
-fn children_of(db: &KeyValueDB, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>, Error> {
+fn children_of(db: &dyn KeyValueDB, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>, Error> {
     let keys = match Node::decoded(node) {
         None => Vec::new(),
         Some(Node::Leaf(..)) => Vec::new(),
@@ -275,7 +275,7 @@ fn children_of(db: &KeyValueDB, node: &[u8]) -> Result<Vec<(H256, Vec<u8>)>, Err
     Ok(result)
 }
 
-fn enumerate_subtree(db: &KeyValueDB, root: &H256) -> Result<Vec<(H256, Vec<u8>)>, Error> {
+fn enumerate_subtree(db: &dyn KeyValueDB, root: &H256) -> Result<Vec<(H256, Vec<u8>)>, Error> {
     let node = get_node(db, root)?;
     let children = match Node::decoded(&node) {
         None => Vec::new(),

@@ -53,7 +53,7 @@ pub struct HeaderChain {
     detail_cache: RwLock<HashMap<H256, BlockDetails>>,
     hash_cache: Mutex<HashMap<BlockNumber, H256>>,
 
-    db: Arc<KeyValueDB>,
+    db: Arc<dyn KeyValueDB>,
 
     pending_best_header_hash: RwLock<Option<H256>>,
     pending_best_proposal_block_hash: RwLock<Option<H256>>,
@@ -63,7 +63,7 @@ pub struct HeaderChain {
 
 impl HeaderChain {
     /// Create new instance of blockchain from given Genesis.
-    pub fn new(genesis: &HeaderView, db: Arc<KeyValueDB>) -> Self {
+    pub fn new(genesis: &HeaderView, db: Arc<dyn KeyValueDB>) -> Self {
         // load best header
         let best_header_hash = match db.get(db::COL_EXTRA, BEST_HEADER_KEY).unwrap() {
             Some(hash) => H256::from_slice(&hash),
@@ -122,7 +122,7 @@ impl HeaderChain {
         &self,
         batch: &mut DBTransaction,
         header: &HeaderView,
-        engine: &CodeChainEngine,
+        engine: &dyn CodeChainEngine,
     ) -> Option<BestHeaderChanged> {
         let hash = header.hash();
 
@@ -239,7 +239,7 @@ impl HeaderChain {
     }
 
     /// Calculate how best block is changed
-    fn best_header_changed(&self, new_header: &HeaderView, engine: &CodeChainEngine) -> BestHeaderChanged {
+    fn best_header_changed(&self, new_header: &HeaderView, engine: &dyn CodeChainEngine) -> BestHeaderChanged {
         let parent_hash_of_new_header = new_header.parent_hash();
         let parent_details_of_new_header = self.block_details(&parent_hash_of_new_header).expect("Invalid parent hash");
         let is_new_best = parent_details_of_new_header.total_score + new_header.score()
@@ -403,7 +403,7 @@ impl HeaderProvider for HeaderChain {
 }
 
 /// Get block header data
-fn block_header_data(hash: &H256, header_cache: &Mutex<LruCache<H256, Bytes>>, db: &KeyValueDB) -> Option<Vec<u8>> {
+fn block_header_data(hash: &H256, header_cache: &Mutex<LruCache<H256, Bytes>>, db: &dyn KeyValueDB) -> Option<Vec<u8>> {
     // Check cache first
     {
         let mut lock = header_cache.lock();

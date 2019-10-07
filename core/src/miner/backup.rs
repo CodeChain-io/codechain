@@ -42,7 +42,7 @@ pub fn remove_item(batch: &mut DBTransaction, key: &H256) {
     batch.delete(dblib::COL_MEMPOOL, db_key.as_ref());
 }
 
-pub fn recover_to_data(db: &KeyValueDB) -> HashMap<H256, MemPoolItem> {
+pub fn recover_to_data(db: &dyn KeyValueDB) -> HashMap<H256, MemPoolItem> {
     let mut by_hash = HashMap::new();
 
     for (key, value) in db.iter(dblib::COL_MEMPOOL) {

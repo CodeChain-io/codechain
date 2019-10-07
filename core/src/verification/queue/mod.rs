@@ -63,7 +63,7 @@ impl Default for Config {
 }
 
 pub struct VerificationQueue<K: Kind> {
-    engine: Arc<CodeChainEngine>,
+    engine: Arc<dyn CodeChainEngine>,
     verification: Arc<Verification<K>>,
     processing: RwLock<HashMap<H256, U256>>, // hash to score
     deleting: Arc<AtomicBool>,
@@ -121,7 +121,7 @@ impl QueueSignal {
 impl<K: Kind> VerificationQueue<K> {
     pub fn new(
         config: &Config,
-        engine: Arc<CodeChainEngine>,
+        engine: Arc<dyn CodeChainEngine>,
         message_channel: IoChannel<ClientIoMessage>,
         check_seal: bool,
     ) -> Self {
@@ -193,7 +193,7 @@ impl<K: Kind> VerificationQueue<K> {
 
     fn verify(
         verification: &Verification<K>,
-        engine: &CodeChainEngine,
+        engine: &dyn CodeChainEngine,
         ready_signal: &QueueSignal,
         empty: &SCondvar,
         more_to_verify: &SCondvar,

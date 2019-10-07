@@ -164,7 +164,7 @@ pub fn execute<C>(
     unlock: &[Instruction],
     params: &[Vec<u8>],
     lock: &[Instruction],
-    tx: &PartialHashing,
+    tx: &dyn PartialHashing,
     config: Config,
     cur: &AssetTransferInput,
     burn: bool,

@@ -32,13 +32,13 @@ use super::Config;
 pub struct Extension {
     config: Config,
     routing_table: Arc<RoutingTable>,
-    api: Box<Api>,
+    api: Box<dyn Api>,
     nodes: HashSet<NodeId>, // FIXME: Find the optimized data structure for it
     use_kademlia: bool,
 }
 
 impl Extension {
-    pub fn new(routing_table: Arc<RoutingTable>, config: Config, api: Box<Api>, use_kademlia: bool) -> Self {
+    pub fn new(routing_table: Arc<RoutingTable>, config: Config, api: Box<dyn Api>, use_kademlia: bool) -> Self {
         if use_kademlia {
             cinfo!(DISCOVERY, "Discovery starts with kademlia option");
         } else {

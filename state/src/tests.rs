@@ -44,7 +44,7 @@ pub mod helpers {
 
     impl FindActionHandler for TestClient {}
 
-    pub fn get_memory_db() -> Arc<KeyValueDB> {
+    pub fn get_memory_db() -> Arc<dyn KeyValueDB> {
         Arc::new(kvdb_memorydb::create(1))
     }
 

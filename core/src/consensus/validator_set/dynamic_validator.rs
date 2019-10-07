@@ -30,7 +30,7 @@ use crate::consensus::EngineError;
 /// Validator set containing a known set of public keys.
 pub struct DynamicValidator {
     initial_list: RoundRobinValidator,
-    client: RwLock<Option<Weak<ConsensusClient>>>,
+    client: RwLock<Option<Weak<dyn ConsensusClient>>>,
 }
 
 impl DynamicValidator {
@@ -42,7 +42,7 @@ impl DynamicValidator {
     }
 
     fn validators(&self, parent: H256) -> Option<Vec<Validator>> {
-        let client: Arc<ConsensusClient> =
+        let client: Arc<dyn ConsensusClient> =
             self.client.read().as_ref().and_then(Weak::upgrade).expect("Client is not initialized");
         let block_id = parent.into();
         let term_id = client.current_term_id(block_id).expect(
@@ -174,7 +174,7 @@ impl ValidatorSet for DynamicValidator {
     }
 
     /// Allows blockchain state access.
-    fn register_client(&self, client: Weak<ConsensusClient>) {
+    fn register_client(&self, client: Weak<dyn ConsensusClient>) {
         self.initial_list.register_client(Weak::clone(&client));
         let mut client_lock = self.client.write();
         assert!(client_lock.is_none());
@@ -207,7 +207,7 @@ mod tests {
         let a1 = Public::from_str("34959b60d54703e9dfe36afb1e9950a4abe34d666cbb64c92969013bc9cc74063f9e4680d9d48c4597ee623bd4b507a1b2f43a9c5766a06463f85b73a94c51d1").unwrap();
         let a2 = Public::from_str("8c5a25bfafceea03073e2775cfb233a46648a088c12a1ca18a5865534887ccf60e1670be65b5f8e29643f463fdf84b1cbadd6027e71d8d04496570cb6b04885d").unwrap();
         let set = DynamicValidator::new(vec![a1, a2]);
-        let test_client: Arc<ConsensusClient> = Arc::new({
+        let test_client: Arc<dyn ConsensusClient> = Arc::new({
             let mut client = TestBlockChainClient::new();
             client.term_id = Some(1);
             client

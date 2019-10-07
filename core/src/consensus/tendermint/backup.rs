@@ -40,7 +40,7 @@ pub struct BackupData {
     pub last_confirmed_view: View,
 }
 
-pub fn backup(db: &KeyValueDB, backup_data: BackupView) {
+pub fn backup(db: &dyn KeyValueDB, backup_data: BackupView) {
     let BackupView {
         height,
         view,
@@ -58,7 +58,7 @@ pub fn backup(db: &KeyValueDB, backup_data: BackupView) {
     db.write(batch).expect("Low level database error. Some issue with disk?");
 }
 
-pub fn restore(db: &KeyValueDB) -> Option<BackupData> {
+pub fn restore(db: &dyn KeyValueDB) -> Option<BackupData> {
     let value = db.get(db::COL_EXTRA, BACKUP_KEY).expect("Low level database error. Some issue with disk?");
     let (height, view, step, votes, last_confirmed_view) = value.map(|bytes| {
         let bytes = bytes.into_vec();

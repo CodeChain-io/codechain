@@ -38,7 +38,7 @@ struct Pivot {
 #[derive(Clone)]
 pub struct HeaderDownloader {
     // NOTE: Use this member as minimum as possible.
-    client: Arc<BlockChainClient>,
+    client: Arc<dyn BlockChainClient>,
 
     total_score: U256,
     best_hash: H256,
@@ -55,7 +55,7 @@ impl HeaderDownloader {
         self.total_score
     }
 
-    pub fn new(client: Arc<BlockChainClient>, total_score: U256, best_hash: H256) -> Self {
+    pub fn new(client: Arc<dyn BlockChainClient>, total_score: U256, best_hash: H256) -> Self {
         let best_header_hash = client.best_block_header().hash();
         let best_score = client.block_total_score(&BlockId::Latest).expect("Best block always exist");
 

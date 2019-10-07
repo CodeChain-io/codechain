@@ -32,7 +32,7 @@ use crate::types::BlockId;
 pub struct RoundRobinValidator {
     validators: Vec<Public>,
     addresses: HashSet<Address>,
-    client: RwLock<Option<Weak<ConsensusClient>>>,
+    client: RwLock<Option<Weak<dyn ConsensusClient>>>,
 }
 
 impl RoundRobinValidator {
@@ -70,7 +70,7 @@ impl ValidatorSet for RoundRobinValidator {
     }
 
     fn next_block_proposer(&self, parent: &H256, view: u64) -> Option<Address> {
-        let client: Arc<ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
+        let client: Arc<dyn ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
         client.block_header(&BlockId::from(*parent)).map(|header| {
             let proposer = header.author();
             let grand_parent = header.parent_hash();
@@ -101,7 +101,7 @@ impl ValidatorSet for RoundRobinValidator {
         }
     }
 
-    fn register_client(&self, client: Weak<ConsensusClient>) {
+    fn register_client(&self, client: Weak<dyn ConsensusClient>) {
         *self.client.write() = Some(client);
     }
 

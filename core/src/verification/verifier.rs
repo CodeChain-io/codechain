@@ -31,7 +31,7 @@ where
         block: &[u8],
         header: &Header,
         parent: &Header,
-        engine: &CodeChainEngine,
+        engine: &dyn CodeChainEngine,
         do_full: Option<verification::FullFamilyParams<C>>,
         common_params: &CommonParams,
     ) -> Result<(), Error>;
@@ -39,5 +39,5 @@ where
     /// Do a final verification check for an enacted header vs its expected counterpart.
     fn verify_block_final(&self, expected: &Header, got: &Header) -> Result<(), Error>;
     /// Verify a block, inspecing external state.
-    fn verify_block_external(&self, header: &Header, engine: &CodeChainEngine) -> Result<(), Error>;
+    fn verify_block_external(&self, header: &Header, engine: &dyn CodeChainEngine) -> Result<(), Error>;
 }

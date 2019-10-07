@@ -47,14 +47,14 @@ use crate::impls::TopLevelState;
 /// State database abstraction.
 pub struct StateDB {
     /// Backing database.
-    db: Box<JournalDB>,
+    db: Box<dyn JournalDB>,
     cache: GlobalCache,
     current_hash: Option<H256>,
 }
 
 impl StateDB {
     /// Create a new instance wrapping `JournalDB`
-    pub fn new(db: Box<JournalDB>) -> StateDB {
+    pub fn new(db: Box<dyn JournalDB>) -> StateDB {
         StateDB {
             db,
             cache: Default::default(),
@@ -130,12 +130,12 @@ impl StateDB {
 
 impl AsHashDB for StateDB {
     /// Conversion method to interpret self as `HashDB` reference
-    fn as_hashdb(&self) -> &HashDB {
+    fn as_hashdb(&self) -> &dyn HashDB {
         self.db.as_hashdb()
     }
 
     /// Conversion method to interpret self as mutable `HashDB` reference
-    fn as_hashdb_mut(&mut self) -> &mut HashDB {
+    fn as_hashdb_mut(&mut self) -> &mut dyn HashDB {
         self.db.as_hashdb_mut()
     }
 }

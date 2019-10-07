@@ -58,7 +58,7 @@ use std::cell::Cell;
 type SpawnResult = (
     JoinHandle<()>,
     crossbeam::Sender<TimeGapParams>,
-    crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<ConsensusClient>)>,
+    crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<dyn ConsensusClient>)>,
     crossbeam::Sender<Event>,
     crossbeam::Sender<()>,
 );
@@ -68,7 +68,7 @@ pub fn spawn(validators: Arc<DynamicValidator>) -> SpawnResult {
 }
 
 struct Worker {
-    client: Weak<ConsensusClient>,
+    client: Weak<dyn ConsensusClient>,
     /// Blockchain height.
     height: Height,
     /// Consensus view.
@@ -141,7 +141,7 @@ pub enum Event {
         signature: SchnorrSignature,
         view: View,
         message: Bytes,
-        result: crossbeam::Sender<Option<Arc<ConsensusClient>>>,
+        result: crossbeam::Sender<Option<Arc<dyn ConsensusClient>>>,
     },
     StepState {
         token: NodeId,
@@ -169,7 +169,7 @@ pub enum Event {
     GetCommit {
         block: Bytes,
         votes: Vec<ConsensusMessage>,
-        result: crossbeam::Sender<Option<Arc<ConsensusClient>>>,
+        result: crossbeam::Sender<Option<Arc<dyn ConsensusClient>>>,
     },
 }
 
@@ -178,7 +178,7 @@ impl Worker {
     fn new(
         validators: Arc<DynamicValidator>,
         extension: EventSender<network::Event>,
-        client: Weak<ConsensusClient>,
+        client: Weak<dyn ConsensusClient>,
         time_gap_params: TimeGapParams,
     ) -> Self {
         Worker {
@@ -387,7 +387,7 @@ impl Worker {
     }
 
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
-    fn client(&self) -> Arc<ConsensusClient> {
+    fn client(&self) -> Arc<dyn ConsensusClient> {
         self.client.upgrade().expect("Client lives longer than consensus")
     }
 
@@ -1697,7 +1697,7 @@ impl Worker {
         signature: SchnorrSignature,
         proposed_view: View,
         bytes: Bytes,
-    ) -> Option<Arc<ConsensusClient>> {
+    ) -> Option<Arc<dyn ConsensusClient>> {
         let c = self.client.upgrade()?;
 
         // This block borrows bytes
@@ -1986,7 +1986,7 @@ impl Worker {
     }
 
     #[allow(clippy::cognitive_complexity)]
-    fn on_commit_message(&mut self, block: Bytes, votes: Vec<ConsensusMessage>) -> Option<Arc<ConsensusClient>> {
+    fn on_commit_message(&mut self, block: Bytes, votes: Vec<ConsensusMessage>) -> Option<Arc<dyn ConsensusClient>> {
         if self.step.is_commit() {
             return None
         }
