@@ -17,6 +17,7 @@ exclude = [
 app_dirs = "^1.2.1"
 clap = { version = "2", features = ["yaml"] }
 codechain-core = { path = "core" }
+codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
 codechain-discovery = { path = "discovery" }
 codechain-logger = { path = "util/logger" }
 codechain-key = { path = "key" }
@@ -64,7 +65,6 @@ lto = true
 [workspace]
 members = [
     "core",
-    "crypto",
     "discovery",
     "json",
     "key",
