@@ -1208,25 +1208,27 @@ impl Worker {
     fn on_timeout(&mut self, token: usize) {
         // Timeout from empty block generation
         if token == ENGINE_TIMEOUT_EMPTY_PROPOSAL {
-            let prev_step = mem::replace(&mut self.step, TendermintState::Propose);
-            match prev_step {
-                TendermintState::ProposeWaitEmptyBlockTimer {
-                    block,
-                } => {
-                    if self.height == block.header().number() {
-                        cdebug!(
-                            ENGINE,
-                            "Empty proposal timer is finished, go to the prevote step and broadcast the block"
-                        );
-                        self.submit_proposal_block(block.as_ref());
-                    } else {
-                        cwarn!(ENGINE, "Empty proposal timer was for previous height.");
-                    }
+            let block = if self.step.is_propose_wait_empty_block_timer() {
+                let previous = mem::replace(&mut self.step, TendermintState::Propose);
+                match previous {
+                    TendermintState::ProposeWaitEmptyBlockTimer {
+                        block,
+                    } => block,
+                    _ => unreachable!(),
                 }
-                _ => {
-                    cwarn!(ENGINE, "Empty proposal timer was not cleared.");
-                }
+            } else {
+                cwarn!(ENGINE, "Empty proposal timer was not cleared.");
+                return
+            };
+
+            if self.height == block.header().number() {
+                cdebug!(ENGINE, "Empty proposal timer is finished, go to the prevote step and broadcast the block");
+                self.submit_proposal_block(block.as_ref());
+            } else {
+                self.move_to_step(TendermintState::Prevote, false);
+                cwarn!(ENGINE, "Empty proposal timer was for previous height.");
             }
+
             return
         }
 
