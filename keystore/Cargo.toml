@@ -16,7 +16,7 @@ serde_derive = "1.0"
 rustc-hex = "1.0"
 time = "0.1.34"
 parking_lot = "0.6.0"
-codechain-crypto = { path = "../crypto" }
+codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
 smallvec = "0.4"
 tempdir = "0.3"
 
