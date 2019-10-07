@@ -76,6 +76,15 @@ impl TendermintState {
         }
     }
 
+    pub fn is_propose_wait_empty_block_timer(&self) -> bool {
+        match self {
+            TendermintState::ProposeWaitEmptyBlockTimer {
+                ..
+            } => true,
+            _ => false,
+        }
+    }
+
     pub fn is_commit(&self) -> bool {
         match self {
             TendermintState::Commit {
