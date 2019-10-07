@@ -52,7 +52,7 @@ pub fn verify_block_basic(header: &Header, bytes: &[u8]) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn verify_header_with_engine(header: &Header, engine: &CodeChainEngine) -> Result<(), Error> {
+pub fn verify_header_with_engine(header: &Header, engine: &dyn CodeChainEngine) -> Result<(), Error> {
     engine.verify_header_basic(&header)?;
 
     let expected_seal_fields = engine.seal_fields(header);
@@ -68,7 +68,7 @@ pub fn verify_header_with_engine(header: &Header, engine: &CodeChainEngine) -> R
 pub fn verify_block_with_params(
     header: &Header,
     bytes: &[u8],
-    engine: &CodeChainEngine,
+    engine: &dyn CodeChainEngine,
     common_params: &CommonParams,
 ) -> Result<(), Error> {
     verify_header_with_params(&header, common_params)?;
@@ -157,7 +157,7 @@ fn verify_transactions_root(
 pub fn verify_block_seal(
     header: Header,
     bytes: Bytes,
-    engine: &CodeChainEngine,
+    engine: &dyn CodeChainEngine,
     check_seal: bool,
 ) -> Result<PreverifiedBlock, Error> {
     if check_seal {
@@ -188,7 +188,7 @@ pub struct FullFamilyParams<'a, C: BlockChainTrait + 'a> {
     pub transactions: &'a [SignedTransaction],
 
     /// Block provider to use during verification
-    pub block_provider: &'a BlockProvider,
+    pub block_provider: &'a dyn BlockProvider,
 
     /// Engine client to use during verification
     pub client: &'a C,
@@ -199,7 +199,7 @@ pub fn verify_block_family<C: BlockChainTrait>(
     block: &[u8],
     header: &Header,
     parent: &Header,
-    engine: &CodeChainEngine,
+    engine: &dyn CodeChainEngine,
     do_full: Option<FullFamilyParams<C>>,
     common_params: &CommonParams,
 ) -> Result<(), Error> {

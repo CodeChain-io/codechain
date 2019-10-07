@@ -34,12 +34,12 @@ pub struct InvoiceDB {
     // transaction hash -> error hint
     hash_cache: RwLock<HashMap<H256, Option<String>>>,
 
-    db: Arc<KeyValueDB>,
+    db: Arc<dyn KeyValueDB>,
 }
 
 impl InvoiceDB {
     /// Create new instance of blockchain from given Genesis.
-    pub fn new(db: Arc<KeyValueDB>) -> Self {
+    pub fn new(db: Arc<dyn KeyValueDB>) -> Self {
         Self {
             tracker_cache: Default::default(),
             hash_cache: Default::default(),

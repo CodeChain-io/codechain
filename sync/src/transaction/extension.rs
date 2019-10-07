@@ -55,12 +55,12 @@ impl KnownTxs {
 pub struct Extension {
     known_txs: KnownTxs,
     peers: HashMap<NodeId, KnownTxs>,
-    client: Arc<BlockChainClient>,
-    api: Box<Api>,
+    client: Arc<dyn BlockChainClient>,
+    api: Box<dyn Api>,
 }
 
 impl Extension {
-    pub fn new(client: Arc<BlockChainClient>, api: Box<Api>) -> Self {
+    pub fn new(client: Arc<dyn BlockChainClient>, api: Box<dyn Api>) -> Self {
         api.set_timer(BROADCAST_TIMER_TOKEN, Duration::from_millis(BROADCAST_TIMER_INTERVAL))
             .expect("Timer set succeeds");
         Extension {

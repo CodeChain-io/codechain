@@ -44,7 +44,7 @@ pub struct Importer {
     pub import_lock: Mutex<()>, // FIXME Maybe wrap the whole `Importer` instead?
 
     /// Used to verify blocks
-    pub verifier: Box<Verifier<Client>>,
+    pub verifier: Box<dyn Verifier<Client>>,
 
     /// Queue containing pending blocks
     pub block_queue: BlockQueue,
@@ -56,13 +56,13 @@ pub struct Importer {
     pub miner: Arc<Miner>,
 
     /// CodeChain engine to be used during import
-    pub engine: Arc<CodeChainEngine>,
+    pub engine: Arc<dyn CodeChainEngine>,
 }
 
 impl Importer {
     pub fn try_new(
         config: &ClientConfig,
-        engine: Arc<CodeChainEngine>,
+        engine: Arc<dyn CodeChainEngine>,
         message_channel: IoChannel<ClientIoMessage>,
         miner: Arc<Miner>,
     ) -> Result<Importer, Error> {

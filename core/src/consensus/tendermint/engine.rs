@@ -248,7 +248,7 @@ impl ConsensusEngine for Tendermint {
         Ok(())
     }
 
-    fn register_client(&self, client: Weak<ConsensusClient>) {
+    fn register_client(&self, client: Weak<dyn ConsensusClient>) {
         *self.client.write() = Some(Weak::clone(&client));
         self.stake.register_resources(client, Arc::downgrade(&self.validators));
     }
@@ -301,7 +301,7 @@ impl ConsensusEngine for Tendermint {
     }
 
     fn register_chain_notify(&self, client: &Client) {
-        client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<ChainNotify>);
+        client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<dyn ChainNotify>);
     }
 
     fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> H256 {
@@ -319,7 +319,7 @@ impl ConsensusEngine for Tendermint {
         header.number() >= allowed_height
     }
 
-    fn action_handlers(&self) -> &[Arc<ActionHandler>] {
+    fn action_handlers(&self) -> &[Arc<dyn ActionHandler>] {
         &self.action_handlers
     }
 
@@ -363,7 +363,7 @@ fn block_number_if_term_changed(
 }
 
 fn inactive_validators(
-    client: &ConsensusClient,
+    client: &dyn ConsensusClient,
     start_of_the_current_term: u64,
     current_block: &Header,
     mut validators: HashSet<Address>,
@@ -380,8 +380,8 @@ fn inactive_validators(
 }
 
 fn calculate_pending_rewards_of_the_previous_term(
-    chain: &ConsensusClient,
-    validators: &ValidatorSet,
+    chain: &dyn ConsensusClient,
+    validators: &dyn ValidatorSet,
     rewards: BTreeMap<Address, u64>,
     start_of_the_current_term: u64,
     start_of_the_current_term_header: encoded::Header,

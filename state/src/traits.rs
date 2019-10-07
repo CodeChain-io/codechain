@@ -93,7 +93,7 @@ pub trait TopStateView {
     }
 
     fn shard(&self, shard_id: ShardId) -> TrieResult<Option<Shard>>;
-    fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<ShardStateView + 'db>>>;
+    fn shard_state<'db>(&'db self, shard_id: ShardId) -> TrieResult<Option<Box<dyn ShardStateView + 'db>>>;
 
     fn shard_root(&self, shard_id: ShardId) -> TrieResult<Option<H256>> {
         Ok(self.shard(shard_id)?.map(|shard| *shard.root()))

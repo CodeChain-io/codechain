@@ -44,7 +44,7 @@ pub struct Scheme {
     /// User friendly scheme name
     pub name: String,
     /// What engine are we using for this?
-    pub engine: Arc<CodeChainEngine>,
+    pub engine: Arc<dyn CodeChainEngine>,
     /// Name of the subdir inside the main data dir to use for chain data and settings.
     pub data_dir: String,
 
@@ -97,7 +97,7 @@ impl Scheme {
 
     /// Convert engine scheme into a arc'd Engine of the right underlying type.
     /// TODO avoid this hard-coded nastiness - use dynamic-linked plugin framework instead.
-    fn engine(engine_scheme: cjson::scheme::Engine, params: CommonParams) -> Arc<CodeChainEngine> {
+    fn engine(engine_scheme: cjson::scheme::Engine, params: CommonParams) -> Arc<dyn CodeChainEngine> {
         let machine = Self::machine(&engine_scheme, params);
 
         match engine_scheme {
@@ -182,7 +182,7 @@ impl Scheme {
         Ok(top_level.commit_and_into_db()?)
     }
 
-    pub fn check_genesis_root(&self, db: &HashDB) -> bool {
+    pub fn check_genesis_root(&self, db: &dyn HashDB) -> bool {
         if db.is_empty() {
             return true
         }

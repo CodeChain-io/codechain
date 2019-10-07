@@ -176,7 +176,7 @@ struct UserTimer {
     once: bool,
 }
 
-type HandlerType<M> = RwLock<Option<Arc<IoHandler<M>>>>;
+type HandlerType<M> = RwLock<Option<Arc<dyn IoHandler<M>>>>;
 
 /// Root IO handler. Manages user handler, messages and IO timers.
 pub struct IoManager<Message>
@@ -479,7 +479,7 @@ where
     }
 
     /// Register an IO handler with the event loop.
-    pub fn register_handler(&self, handler: Arc<IoHandler<Message> + Send>) -> Result<(), IoError> {
+    pub fn register_handler(&self, handler: Arc<dyn IoHandler<Message> + Send>) -> Result<(), IoError> {
         let h = Arc::clone(&handler);
         assert!(self.handler.read().is_none());
         *self.handler.write() = Some(handler);
