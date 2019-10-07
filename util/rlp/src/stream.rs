@@ -352,7 +352,7 @@ impl<'a> BasicEncoder<'a> {
     fn insert_list_payload(&mut self, len: usize, pos: usize) {
         // 1 byte was already reserved for payload earlier
         match len {
-            0...55 => {
+            0..=55 => {
                 self.buffer[pos - 1] = 0xc0u8 + len as u8;
             }
             _ => {
@@ -370,7 +370,7 @@ impl<'a> BasicEncoder<'a> {
             // byte is its own encoding if < 0x80
             1 if value[0] < 0x80 => self.buffer.push(value[0]),
             // (prefix + length), followed by the string
-            len @ 1...55 => {
+            len @ 1..=55 => {
                 self.buffer.push(0x80u8 + len as u8);
                 self.buffer.append_slice(value);
             }
