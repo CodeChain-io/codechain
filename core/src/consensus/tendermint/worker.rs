@@ -949,7 +949,9 @@ impl Worker {
                     block,
                 } => {
                     if !block.transactions().is_empty() {
-                        self.submit_proposal_block(&block);
+                        cinfo!(ENGINE, "Submitting proposal block {}", block.header().hash());
+                        self.move_to_step(TendermintState::Prevote, false);
+                        self.broadcast_proposal_block(self.view, encoded::Block::new(block.rlp_bytes()));
                     } else {
                         ctrace!(ENGINE, "Empty proposal is generated, set timer");
                         self.step = TendermintState::ProposeWaitEmptyBlockTimer {
@@ -984,12 +986,6 @@ impl Worker {
             }
             self.move_to_step(TendermintState::Prevote, false);
         }
-    }
-
-    fn submit_proposal_block(&mut self, sealed_block: &SealedBlock) {
-        cinfo!(ENGINE, "Submitting proposal block {}", sealed_block.header().hash());
-        self.move_to_step(TendermintState::Prevote, false);
-        self.broadcast_proposal_block(self.view, encoded::Block::new(sealed_block.rlp_bytes()));
     }
 
     fn backup(&self) {
@@ -1221,11 +1217,14 @@ impl Worker {
                 return
             };
 
+            // When self.height != block.header().number() && "propose timeout" is already called,
+            // the state is stuck and can't move to Prevote. We should change the step to Prevote.
+            self.move_to_step(TendermintState::Prevote, false);
             if self.height == block.header().number() {
                 cdebug!(ENGINE, "Empty proposal timer is finished, go to the prevote step and broadcast the block");
-                self.submit_proposal_block(block.as_ref());
+                cinfo!(ENGINE, "Submitting proposal block {}", block.header().hash());
+                self.broadcast_proposal_block(self.view, encoded::Block::new(block.rlp_bytes()));
             } else {
-                self.move_to_step(TendermintState::Prevote, false);
                 cwarn!(ENGINE, "Empty proposal timer was for previous height.");
             }
 
