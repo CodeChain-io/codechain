@@ -6,7 +6,7 @@ license = "GPL-3.0"
 authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <hi@codechain.io>"]
 
 [dependencies]
-codechain-crypto = { path = "../crypto" }
+codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
 codechain-logger = { path = "../util/logger" }
 codechain-json = { path = "../json" }
 jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }

@@ -7,7 +7,7 @@ license = "GPL-3.0"
 
 [dependencies]
 elastic-array = "0.10"
-codechain-crypto = { version = "0.1.0", path = "../../crypto" }
+codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
 hashdb = { version = "0.1.1", path = "../hashdb" }
 plain_hasher = { path = "../plain_hasher" }
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
