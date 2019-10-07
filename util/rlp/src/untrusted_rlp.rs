@@ -89,14 +89,14 @@ impl PayloadInfo {
                 expected: 1,
                 got: 0,
             }),
-            Some(0...0x7f) => Ok(PayloadInfo::new(0, 1)),
-            Some(l @ 0x80...0xb7) => Ok(PayloadInfo::new(1, l as usize - 0x80)),
-            Some(l @ 0xb8...0xbf) => {
+            Some(0..=0x7f) => Ok(PayloadInfo::new(0, 1)),
+            Some(l @ 0x80..=0xb7) => Ok(PayloadInfo::new(1, l as usize - 0x80)),
+            Some(l @ 0xb8..=0xbf) => {
                 let len_of_len = l as usize - 0xb7;
                 calculate_payload_info(header_bytes, len_of_len)
             }
-            Some(l @ 0xc0...0xf7) => Ok(PayloadInfo::new(1, l as usize - 0xc0)),
-            Some(l @ 0xf8...0xff) => {
+            Some(l @ 0xc0..=0xf7) => Ok(PayloadInfo::new(1, l as usize - 0xc0)),
+            Some(l @ 0xf8..=0xff) => {
                 let len_of_len = l as usize - 0xf7;
                 calculate_payload_info(header_bytes, len_of_len)
             }
@@ -263,9 +263,9 @@ where
         }
 
         match self.bytes[0] {
-            0...0x80 => true,
-            0x81...0xb7 => self.bytes[1] != 0,
-            b @ 0xb8...0xbf => self.bytes[1 + b as usize - 0xb7] != 0,
+            0..=0x80 => true,
+            0x81..=0xb7 => self.bytes[1] != 0,
+            b @ 0xb8..=0xbf => self.bytes[1 + b as usize - 0xb7] != 0,
             _ => false,
         }
     }
@@ -402,9 +402,9 @@ impl<'a> BasicDecoder<'a> {
                 got: 0,
             }),
             // Single byte value.
-            Some(l @ 0...0x7f) => Ok(f(&[l])?),
+            Some(l @ 0..=0x7f) => Ok(f(&[l])?),
             // 0-55 bytes
-            Some(l @ 0x80...0xb7) => {
+            Some(l @ 0x80..=0xb7) => {
                 let last_index_of = 1 + l as usize - 0x80;
                 if bytes.len() < last_index_of {
                     return Err(DecoderError::RlpInconsistentLengthAndData {
@@ -419,7 +419,7 @@ impl<'a> BasicDecoder<'a> {
                 Ok(f(d)?)
             }
             // Longer than 55 bytes.
-            Some(l @ 0xb8...0xbf) => {
+            Some(l @ 0xb8..=0xbf) => {
                 let len_of_len = l as usize - 0xb7;
                 let begin_of_value = 1 as usize + len_of_len;
                 if bytes.len() < begin_of_value {

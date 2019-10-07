@@ -363,15 +363,15 @@ impl IoHandler<Message> for Handler {
                 const CHECK_BOOTSTRAP_INTERVAL: Duration = Duration::from_secs(15);
                 io.register_timer_once(CONNECT_TO_BOOTSTRAP, CHECK_BOOTSTRAP_INTERVAL);
             }
-            FIRST_WAIT_SYNC...LAST_WAIT_SYNC => {
+            FIRST_WAIT_SYNC..=LAST_WAIT_SYNC => {
                 cwarn!(NETWORK, "No sync message from {}", timer);
                 io.deregister_stream(wait_sync_stream(timer));
             }
-            FIRST_WAIT_ACK...LAST_WAIT_ACK => {
+            FIRST_WAIT_ACK..=LAST_WAIT_ACK => {
                 cwarn!(NETWORK, "No ack message from {}", timer);
                 io.deregister_stream(wait_ack_stream(timer));
             }
-            FIRST_TRY_SYNC...LAST_TRY_SYNC => {
+            FIRST_TRY_SYNC..=LAST_TRY_SYNC => {
                 let stream = retry_sync_stream(timer);
                 let mut outgoing_connections = self.outgoing_connections.write();
                 if let Some(con) = outgoing_connections.get_mut(&stream) {
@@ -430,7 +430,7 @@ impl IoHandler<Message> for Handler {
                 let stream =
                     *self.remote_node_ids_reverse.read().get(&node_id).ok_or_else(|| Error::InvalidNode(node_id))?;
                 let (network_message_size, peer_addr) = match stream {
-                    FIRST_OUTBOUND...LAST_OUTBOUND => {
+                    FIRST_OUTBOUND..=LAST_OUTBOUND => {
                         let mut outbound_connections = self.outbound_connections.write();
                         if let Some(con) = outbound_connections.get_mut(&stream) {
                             let _f = finally(|| {
@@ -445,7 +445,7 @@ impl IoHandler<Message> for Handler {
                             return Err(format!("{} is an invalid stream", stream).into())
                         }
                     }
-                    FIRST_INBOUND...LAST_INBOUND => {
+                    FIRST_INBOUND..=LAST_INBOUND => {
                         let mut inbound_connections = self.inbound_connections.write();
                         if let Some(con) = inbound_connections.get_mut(&stream) {
                             let _f = finally(|| {
@@ -577,19 +577,19 @@ impl IoHandler<Message> for Handler {
 
     fn stream_hup(&self, io: &IoContext<Message>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
-            FIRST_INBOUND...LAST_INBOUND => {
+            FIRST_INBOUND..=LAST_INBOUND => {
                 cinfo!(NETWORK, "Hang-up inbound stream({})", stream);
                 io.deregister_stream(stream);
             }
-            FIRST_OUTBOUND...LAST_OUTBOUND => {
+            FIRST_OUTBOUND..=LAST_OUTBOUND => {
                 cinfo!(NETWORK, "Hang-up outbound stream({})", stream);
                 io.deregister_stream(stream);
             }
-            FIRST_INCOMING...LAST_INCOMING => {
+            FIRST_INCOMING..=LAST_INCOMING => {
                 cinfo!(NETWORK, "Hang-up incoming stream({})", stream);
                 io.deregister_stream(stream);
             }
-            FIRST_OUTGOING...LAST_OUTGOING => {
+            FIRST_OUTGOING..=LAST_OUTGOING => {
                 cinfo!(NETWORK, "Hang-up outgoing stream({})", stream);
                 io.deregister_stream(stream);
             }
@@ -647,7 +647,7 @@ impl IoHandler<Message> for Handler {
                     io.register_timer_once(wait_sync_timer(token), WAIT_SYNC);
                 }
             }
-            FIRST_INBOUND...LAST_INBOUND => {
+            FIRST_INBOUND..=LAST_INBOUND => {
                 let mut inbound_connections = self.inbound_connections.write();
                 if let Some(con) = inbound_connections.get_mut(&stream_token) {
                     let should_update = AtomicBool::new(true);
@@ -716,7 +716,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid inbound token({}) on read", stream_token);
                 }
             }
-            FIRST_OUTBOUND...LAST_OUTBOUND => {
+            FIRST_OUTBOUND..=LAST_OUTBOUND => {
                 let mut outbound_connections = self.outbound_connections.write();
                 if let Some(con) = outbound_connections.get_mut(&stream_token) {
                     let should_update = AtomicBool::new(true);
@@ -761,7 +761,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid outbound token({}) on read", stream_token);
                 }
             }
-            FIRST_INCOMING...LAST_INCOMING => {
+            FIRST_INCOMING..=LAST_INCOMING => {
                 let mut incoming_connections = self.incoming_connections.write();
                 if let Some(con) = incoming_connections.get_mut(&stream_token) {
                     let should_update = AtomicBool::new(true);
@@ -855,7 +855,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid incoming token({}) on read", stream_token);
                 }
             }
-            FIRST_OUTGOING...LAST_OUTGOING => {
+            FIRST_OUTGOING..=LAST_OUTGOING => {
                 let mut outgoing_connections = self.outgoing_connections.write();
                 if let Some(con) = outgoing_connections.get_mut(&stream_token) {
                     let should_update = AtomicBool::new(true);
@@ -904,28 +904,28 @@ impl IoHandler<Message> for Handler {
 
     fn stream_writable(&self, _io: &IoContext<Message>, stream: StreamToken) -> IoHandlerResult<()> {
         match stream {
-            FIRST_INBOUND...LAST_INBOUND => {
+            FIRST_INBOUND..=LAST_INBOUND => {
                 if let Some(con) = self.inbound_connections.write().get_mut(&stream) {
                     con.flush()?;
                 } else {
                     cdebug!(NETWORK, "Invalid inbound token({}) on write", stream);
                 }
             }
-            FIRST_OUTBOUND...LAST_OUTBOUND => {
+            FIRST_OUTBOUND..=LAST_OUTBOUND => {
                 if let Some(con) = self.outbound_connections.write().get_mut(&stream) {
                     con.flush()?;
                 } else {
                     cdebug!(NETWORK, "Invalid outbound token({}) on write", stream);
                 }
             }
-            FIRST_INCOMING...LAST_INCOMING => {
+            FIRST_INCOMING..=LAST_INCOMING => {
                 if let Some(con) = self.incoming_connections.write().get_mut(&stream) {
                     con.flush()?;
                 } else {
                     cdebug!(NETWORK, "Invalid incoming token({}) on write", stream);
                 }
             }
-            FIRST_OUTGOING...LAST_OUTGOING => {
+            FIRST_OUTGOING..=LAST_OUTGOING => {
                 if let Some(con) = self.outgoing_connections.write().get_mut(&stream) {
                     con.flush()?;
                 } else {
@@ -948,7 +948,7 @@ impl IoHandler<Message> for Handler {
                 event_loop.register(&self.listener, reg, Ready::readable(), PollOpt::edge())?;
                 ctrace!(NETWORK, "TCP connection starts for {}", self.socket_address);
             }
-            FIRST_INBOUND...LAST_INBOUND => {
+            FIRST_INBOUND..=LAST_INBOUND => {
                 if let Some(con) = self.inbound_connections.read().get(&stream) {
                     con.register(reg, event_loop)?;
                     ctrace!(NETWORK, "Inbound connect({}) registered", stream);
@@ -956,7 +956,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid inbound token({}) on register", stream);
                 }
             }
-            FIRST_OUTBOUND...LAST_OUTBOUND => {
+            FIRST_OUTBOUND..=LAST_OUTBOUND => {
                 if let Some(con) = self.outbound_connections.read().get(&stream) {
                     con.register(reg, event_loop)?;
                     ctrace!(NETWORK, "Outbound connect({}) registered", stream);
@@ -964,7 +964,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid outbound token({}) on register", stream);
                 }
             }
-            FIRST_INCOMING...LAST_INCOMING => {
+            FIRST_INCOMING..=LAST_INCOMING => {
                 if let Some(con) = self.incoming_connections.read().get(&stream) {
                     con.register(reg, event_loop)?;
                     ctrace!(NETWORK, "Incoming connect({}) registered", stream);
@@ -972,7 +972,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid incoming token({}) on register", stream);
                 }
             }
-            FIRST_OUTGOING...LAST_OUTGOING => {
+            FIRST_OUTGOING..=LAST_OUTGOING => {
                 if let Some(con) = self.outgoing_connections.read().get(&stream) {
                     con.register(reg, event_loop)?;
                     ctrace!(NETWORK, "Outgoing connect({}) registered", stream);
@@ -1000,7 +1000,7 @@ impl IoHandler<Message> for Handler {
             ACCEPT => {
                 event_loop.reregister(&self.listener, reg, Ready::readable(), PollOpt::edge())?;
             }
-            FIRST_INBOUND...LAST_INBOUND => {
+            FIRST_INBOUND..=LAST_INBOUND => {
                 if let Some(con) = self.inbound_connections.read().get(&stream) {
                     con.reregister(reg, event_loop)?;
                     ctrace!(NETWORK, "Inbound connect({}) updated", stream);
@@ -1008,7 +1008,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid inbound token({}) on update", stream);
                 }
             }
-            FIRST_OUTBOUND...LAST_OUTBOUND => {
+            FIRST_OUTBOUND..=LAST_OUTBOUND => {
                 if let Some(con) = self.outbound_connections.read().get(&stream) {
                     con.reregister(reg, event_loop)?;
                     ctrace!(NETWORK, "Outbound connect({}) updated", stream);
@@ -1016,7 +1016,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid outbound token({}) on update", stream);
                 }
             }
-            FIRST_INCOMING...LAST_INCOMING => {
+            FIRST_INCOMING..=LAST_INCOMING => {
                 if let Some(con) = self.incoming_connections.read().get(&stream) {
                     con.reregister(reg, event_loop)?;
                     ctrace!(NETWORK, "Incoming connect({}) updated", stream);
@@ -1024,7 +1024,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid incoming token({}) on update", stream);
                 }
             }
-            FIRST_OUTGOING...LAST_OUTGOING => {
+            FIRST_OUTGOING..=LAST_OUTGOING => {
                 if let Some(con) = self.outgoing_connections.read().get(&stream) {
                     con.reregister(reg, event_loop)?;
                     ctrace!(NETWORK, "Outgoing connect({}) updated", stream);
@@ -1044,7 +1044,7 @@ impl IoHandler<Message> for Handler {
     ) -> IoHandlerResult<()> {
         self.channel.send(Message::StartConnect)?;
         match stream {
-            FIRST_INBOUND...LAST_INBOUND => {
+            FIRST_INBOUND..=LAST_INBOUND => {
                 let mut inbound_connections = self.inbound_connections.write();
                 if let Some(con) = inbound_connections.remove(&stream) {
                     if let Some(node_id) = self.remote_node_ids.write().remove(&stream) {
@@ -1061,7 +1061,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid inbound token({}) on deregister", stream);
                 }
             }
-            FIRST_OUTBOUND...LAST_OUTBOUND => {
+            FIRST_OUTBOUND..=LAST_OUTBOUND => {
                 let mut outbound_connections = self.outbound_connections.write();
                 if let Some(con) = outbound_connections.remove(&stream) {
                     if let Some(node_id) = self.remote_node_ids.write().remove(&stream) {
@@ -1078,7 +1078,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid outbound token({}) on deregister", stream);
                 }
             }
-            FIRST_INCOMING...LAST_INCOMING => {
+            FIRST_INCOMING..=LAST_INCOMING => {
                 let mut incoming_connections = self.incoming_connections.write();
                 if let Some(con) = incoming_connections.remove(&stream) {
                     con.deregister(event_loop)?;
@@ -1107,7 +1107,7 @@ impl IoHandler<Message> for Handler {
                     cdebug!(NETWORK, "Invalid incoming token({}) on deregister", stream);
                 }
             }
-            FIRST_OUTGOING...LAST_OUTGOING => {
+            FIRST_OUTGOING..=LAST_OUTGOING => {
                 let mut outgoing_connections = self.outgoing_connections.write();
                 if let Some(con) = outgoing_connections.remove(&stream) {
                     con.deregister(event_loop)?;
