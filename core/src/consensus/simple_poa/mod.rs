@@ -37,7 +37,7 @@ use crate::error::{BlockError, Error};
 pub struct SimplePoA {
     machine: CodeChainMachine,
     signer: RwLock<EngineSigner>,
-    validators: Box<ValidatorSet>,
+    validators: Box<dyn ValidatorSet>,
     /// Reward per block, in base units.
     block_reward: u64,
 }
@@ -55,7 +55,7 @@ impl SimplePoA {
     }
 }
 
-fn verify_external(header: &Header, validators: &ValidatorSet) -> Result<(), Error> {
+fn verify_external(header: &Header, validators: &dyn ValidatorSet) -> Result<(), Error> {
     use rlp::UntrustedRlp;
 
     // Check if the signature belongs to a validator, can depend on parent state.
@@ -130,7 +130,7 @@ impl ConsensusEngine for SimplePoA {
         self.machine.add_balance(block, &author, total_reward)
     }
 
-    fn register_client(&self, client: Weak<ConsensusClient>) {
+    fn register_client(&self, client: Weak<dyn ConsensusClient>) {
         self.validators.register_client(client);
     }
 

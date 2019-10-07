@@ -102,7 +102,7 @@ pub struct Handler {
     establishing_outgoing_session: Mutex<HashMap<StreamToken, Session>>,
 
     routing_table: Arc<RoutingTable>,
-    filters: Arc<FiltersControl>,
+    filters: Arc<dyn FiltersControl>,
 
     remote_node_ids: RwLock<HashMap<StreamToken, NodeId>>,
     remote_node_ids_reverse: RwLock<HashMap<NodeId, StreamToken>>,
@@ -126,7 +126,7 @@ impl Handler {
         socket_address: SocketAddr,
         client: Arc<Client>,
         routing_table: Arc<RoutingTable>,
-        filters: Arc<FiltersControl>,
+        filters: Arc<dyn FiltersControl>,
         bootstrap_addresses: Vec<SocketAddr>,
         min_peers: usize,
         max_peers: usize,

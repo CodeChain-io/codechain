@@ -140,17 +140,17 @@ pub enum TrieFactory {}
 
 impl TrieFactory {
     /// Create new immutable instance of Trie.
-    pub fn readonly<'db>(db: &'db HashDB, root: &'db H256) -> Result<TrieDB<'db>> {
+    pub fn readonly<'db>(db: &'db dyn HashDB, root: &'db H256) -> Result<TrieDB<'db>> {
         Ok(TrieDB::try_new(db, root)?)
     }
 
     /// Create new mutable instance of Trie.
-    pub fn create<'db>(db: &'db mut HashDB, root: &'db mut H256) -> Box<TrieMut + 'db> {
+    pub fn create<'db>(db: &'db mut dyn HashDB, root: &'db mut H256) -> Box<dyn TrieMut + 'db> {
         Box::new(TrieDBMut::new(db, root))
     }
 
     /// Create new mutable instance of trie and check for errors.
-    pub fn from_existing<'db>(db: &'db mut HashDB, root: &'db mut H256) -> Result<Box<TrieMut + 'db>> {
+    pub fn from_existing<'db>(db: &'db mut dyn HashDB, root: &'db mut H256) -> Result<Box<dyn TrieMut + 'db>> {
         Ok(Box::new(TrieDBMut::from_existing(db, root)?))
     }
 }

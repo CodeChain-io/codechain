@@ -44,7 +44,7 @@ use super::{
 pub struct TendermintExtension {
     inner: crossbeam::Sender<worker::Event>,
     peers: HashMap<NodeId, PeerState>,
-    api: Box<Api>,
+    api: Box<dyn Api>,
     timeouts: TimeoutParams,
 }
 
@@ -52,7 +52,7 @@ const MIN_PEERS_PROPAGATION: usize = 4;
 const MAX_PEERS_PROPAGATION: usize = 128;
 
 impl TendermintExtension {
-    pub fn new(inner: crossbeam::Sender<worker::Event>, timeouts: TimeoutParams, api: Box<Api>) -> Self {
+    pub fn new(inner: crossbeam::Sender<worker::Event>, timeouts: TimeoutParams, api: Box<dyn Api>) -> Self {
         let initial = timeouts.initial();
         ctrace!(ENGINE, "Setting the initial timeout to {:?}.", initial);
         api.set_timer_once(ENGINE_TIMEOUT_TOKEN_NONCE_BASE, initial).expect("Timer set succeeds");

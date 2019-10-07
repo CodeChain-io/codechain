@@ -233,7 +233,7 @@ pub trait ConsensusEngine: Sync + Send {
     }
 
     /// Add Client which can be used for sealing, potentially querying the state and sending messages.
-    fn register_client(&self, _client: Weak<ConsensusClient>) {}
+    fn register_client(&self, _client: Weak<dyn ConsensusClient>) {}
 
     /// Find out if the block is a proposal block and should not be inserted into the DB.
     /// Takes a header of a fully verified block.
@@ -254,7 +254,7 @@ pub trait ConsensusEngine: Sync + Send {
 
     fn block_reward(&self, block_number: u64) -> u64;
 
-    fn block_fee(&self, transactions: Box<Iterator<Item = UnverifiedTransaction>>) -> u64 {
+    fn block_fee(&self, transactions: Box<dyn Iterator<Item = UnverifiedTransaction>>) -> u64 {
         transactions.map(|tx| tx.fee).sum()
     }
 
@@ -270,11 +270,11 @@ pub trait ConsensusEngine: Sync + Send {
         true
     }
 
-    fn action_handlers(&self) -> &[Arc<ActionHandler>] {
+    fn action_handlers(&self) -> &[Arc<dyn ActionHandler>] {
         &[]
     }
 
-    fn find_action_handler_for(&self, id: u64) -> Option<&ActionHandler> {
+    fn find_action_handler_for(&self, id: u64) -> Option<&dyn ActionHandler> {
         self.action_handlers().iter().find(|handler| handler.handler_id() == id).map(AsRef::as_ref)
     }
 

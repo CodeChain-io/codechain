@@ -58,7 +58,7 @@ pub struct BlockChain {
 
 impl BlockChain {
     /// Create new instance of blockchain from given Genesis.
-    pub fn new(genesis: &[u8], db: Arc<KeyValueDB>) -> Self {
+    pub fn new(genesis: &[u8], db: Arc<dyn KeyValueDB>) -> Self {
         let genesis_block = BlockView::new(genesis);
 
         // load best block
@@ -102,7 +102,7 @@ impl BlockChain {
         &self,
         batch: &mut DBTransaction,
         header: &HeaderView,
-        engine: &CodeChainEngine,
+        engine: &dyn CodeChainEngine,
     ) -> ImportRoute {
         match self.headerchain.insert_header(batch, header, engine) {
             Some(c) => ImportRoute::new_from_best_header_changed(header.hash(), &c),
@@ -118,7 +118,7 @@ impl BlockChain {
         batch: &mut DBTransaction,
         bytes: &[u8],
         invoices: Vec<Invoice>,
-        engine: &CodeChainEngine,
+        engine: &dyn CodeChainEngine,
     ) -> ImportRoute {
         // create views onto rlp
         let new_block = BlockView::new(bytes);
@@ -180,7 +180,7 @@ impl BlockChain {
     }
 
     /// Calculate how best block is changed
-    fn best_block_changed(&self, new_block: &BlockView, engine: &CodeChainEngine) -> BestBlockChanged {
+    fn best_block_changed(&self, new_block: &BlockView, engine: &dyn CodeChainEngine) -> BestBlockChanged {
         let new_header = new_block.header_view();
         let parent_hash_of_new_block = new_header.parent_hash();
         let parent_details_of_new_block = self.block_details(&parent_hash_of_new_block).expect("Invalid parent hash");

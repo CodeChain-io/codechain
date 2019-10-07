@@ -58,20 +58,20 @@ pub type BlockHash = H256;
 
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {
-    client: RwLock<Option<Weak<ConsensusClient>>>,
+    client: RwLock<Option<Weak<dyn ConsensusClient>>>,
     external_params_initializer: crossbeam::Sender<TimeGapParams>,
-    extension_initializer: crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<ConsensusClient>)>,
+    extension_initializer: crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<dyn ConsensusClient>)>,
     timeouts: TimeoutParams,
     join: Option<JoinHandle<()>>,
     quit_tendermint: crossbeam::Sender<()>,
     inner: crossbeam::Sender<worker::Event>,
-    validators: Arc<ValidatorSet>,
+    validators: Arc<dyn ValidatorSet>,
     /// Reward per block, in base units.
     block_reward: u64,
     /// codechain machine descriptor
     machine: Arc<CodeChainMachine>,
     /// Action handlers for this consensus method
-    action_handlers: Vec<Arc<ActionHandler>>,
+    action_handlers: Vec<Arc<dyn ActionHandler>>,
     /// stake object to register client data later
     stake: Arc<stake::Stake>,
     /// Chain notify
@@ -98,7 +98,7 @@ impl Tendermint {
 
         let (join, external_params_initializer, extension_initializer, inner, quit_tendermint) =
             worker::spawn(our_params.validators);
-        let action_handlers: Vec<Arc<ActionHandler>> = vec![stake.clone()];
+        let action_handlers: Vec<Arc<dyn ActionHandler>> = vec![stake.clone()];
         let chain_notify = Arc::new(TendermintChainNotify::new(inner.clone()));
 
         Arc::new(Tendermint {
@@ -149,7 +149,7 @@ mod tests {
         let test = TestBlockChainClient::new_with_scheme(Scheme::new_test_tendermint());
 
         let test_client: Arc<TestBlockChainClient> = Arc::new(test);
-        let consensus_client = Arc::clone(&test_client) as Arc<ConsensusClient>;
+        let consensus_client = Arc::clone(&test_client) as Arc<dyn ConsensusClient>;
         scheme.engine.register_client(Arc::downgrade(&consensus_client));
         (scheme, tap, test_client)
     }
@@ -172,7 +172,7 @@ mod tests {
         addr
     }
 
-    fn insert_and_register(tap: &Arc<AccountProvider>, engine: &CodeChainEngine, acc: &str) -> Address {
+    fn insert_and_register(tap: &Arc<AccountProvider>, engine: &dyn CodeChainEngine, acc: &str) -> Address {
         let addr = insert_and_unlock(tap, acc);
         engine.set_signer(tap.clone(), addr);
         addr

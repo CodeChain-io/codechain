@@ -183,4 +183,4 @@ pub trait KeyValueDB: Sync + Send {
     fn restore(&self, new_db: &str) -> Result<()>;
 }
 
-pub type KeyValueDBIterator<'a> = Box<Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>;
+pub type KeyValueDBIterator<'a> = Box<dyn Iterator<Item = (Box<[u8]>, Box<[u8]>)> + 'a>;

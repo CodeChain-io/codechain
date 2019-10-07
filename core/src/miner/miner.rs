@@ -110,7 +110,7 @@ struct SealingWork {
     enabled: bool,
 }
 
-type TransactionListener = Box<Fn(&[H256]) + Send + Sync>;
+type TransactionListener = Box<dyn Fn(&[H256]) + Send + Sync>;
 
 pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
@@ -120,18 +120,18 @@ pub struct Miner {
     sealing_block_last_request: Mutex<u64>,
     sealing_work: Mutex<SealingWork>,
     params: RwLock<AuthoringParams>,
-    engine: Arc<CodeChainEngine>,
+    engine: Arc<dyn CodeChainEngine>,
     options: MinerOptions,
 
     sealing_enabled: AtomicBool,
 
     accounts: Option<Arc<AccountProvider>>,
-    notifiers: RwLock<Vec<Box<NotifyWork>>>,
+    notifiers: RwLock<Vec<Box<dyn NotifyWork>>>,
 }
 
 impl Miner {
     /// Push listener that will handle new jobs
-    pub fn add_work_listener(&self, notifier: Box<NotifyWork>) {
+    pub fn add_work_listener(&self, notifier: Box<dyn NotifyWork>) {
         self.notifiers.write().push(notifier);
     }
 
@@ -139,12 +139,12 @@ impl Miner {
         options: MinerOptions,
         scheme: &Scheme,
         accounts: Option<Arc<AccountProvider>>,
-        db: Arc<KeyValueDB>,
+        db: Arc<dyn KeyValueDB>,
     ) -> Arc<Self> {
         Arc::new(Self::new_raw(options, scheme, accounts, db))
     }
 
-    pub fn with_scheme(scheme: &Scheme, db: Arc<KeyValueDB>) -> Self {
+    pub fn with_scheme(scheme: &Scheme, db: Arc<dyn KeyValueDB>) -> Self {
         Self::new_raw(Default::default(), scheme, None, db)
     }
 
@@ -152,7 +152,7 @@ impl Miner {
         options: MinerOptions,
         scheme: &Scheme,
         accounts: Option<Arc<AccountProvider>>,
-        db: Arc<KeyValueDB>,
+        db: Arc<dyn KeyValueDB>,
     ) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
         let mem_pool = Arc::new(RwLock::new(MemPool::with_limits(
@@ -162,7 +162,7 @@ impl Miner {
             db,
         )));
 
-        let notifiers: Vec<Box<NotifyWork>> = if options.new_work_notify.is_empty() {
+        let notifiers: Vec<Box<dyn NotifyWork>> = if options.new_work_notify.is_empty() {
             Vec::new()
         } else {
             vec![Box::new(WorkPoster::new(&options.new_work_notify))]
@@ -192,7 +192,7 @@ impl Miner {
     }
 
     /// Set a callback to be notified about imported transactions' hashes.
-    pub fn add_transactions_listener(&self, f: Box<Fn(&[H256]) + Send + Sync>) {
+    pub fn add_transactions_listener(&self, f: Box<dyn Fn(&[H256]) + Send + Sync>) {
         self.transaction_listener.write().push(f);
     }
 
@@ -1143,7 +1143,7 @@ pub mod test {
         miner.add_transactions_to_pool(client.as_ref(), transactions, TxOrigin::Local, &mut mem_pool);
     }
 
-    fn generate_test_client(db: Arc<KeyValueDB>, miner: Arc<Miner>, scheme: &Scheme) -> Result<Arc<Client>, Error> {
+    fn generate_test_client(db: Arc<dyn KeyValueDB>, miner: Arc<Miner>, scheme: &Scheme) -> Result<Arc<Client>, Error> {
         let timer_loop = TimerLoop::new(2);
 
         let client_config: ClientConfig = Default::default();

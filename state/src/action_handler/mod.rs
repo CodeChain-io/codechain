@@ -57,7 +57,7 @@ pub trait ActionHandler: Send + Sync {
 }
 
 pub trait FindActionHandler {
-    fn find_action_handler_for(&self, _id: u64) -> Option<&ActionHandler> {
+    fn find_action_handler_for(&self, _id: u64) -> Option<&dyn ActionHandler> {
         None
     }
 }

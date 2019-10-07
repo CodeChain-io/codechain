@@ -42,14 +42,14 @@ pub struct BodyDB {
     transaction_address_cache: Mutex<HashMap<H256, TransactionAddresses>>,
     pending_transaction_addresses: Mutex<HashMap<H256, Option<TransactionAddresses>>>,
 
-    db: Arc<KeyValueDB>,
+    db: Arc<dyn KeyValueDB>,
 }
 
 type TransactionHashAndAddress = (H256, TransactionAddresses);
 
 impl BodyDB {
     /// Create new instance of blockchain from given Genesis.
-    pub fn new(genesis: &BlockView, db: Arc<KeyValueDB>) -> Self {
+    pub fn new(genesis: &BlockView, db: Arc<dyn KeyValueDB>) -> Self {
         let bdb = Self {
             body_cache: Mutex::new(LruCache::new(BODY_CACHE_SIZE)),
             parcel_address_cache: RwLock::new(HashMap::new()),
@@ -196,8 +196,8 @@ impl BodyDB {
         };
 
         let (removed, added): (
-            Box<Iterator<Item = TransactionHashAndAddress>>,
-            Box<Iterator<Item = TransactionHashAndAddress>>,
+            Box<dyn Iterator<Item = TransactionHashAndAddress>>,
+            Box<dyn Iterator<Item = TransactionHashAndAddress>>,
         ) = match best_block_changed {
             BestBlockChanged::CanonChainAppended {
                 ..

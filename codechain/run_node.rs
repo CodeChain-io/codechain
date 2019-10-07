@@ -91,7 +91,7 @@ fn discovery_start(
 fn client_start(
     client_config: &ClientConfig,
     timer_loop: &TimerLoop,
-    db: Arc<KeyValueDB>,
+    db: Arc<dyn KeyValueDB>,
     scheme: &Scheme,
     miner: Arc<Miner>,
 ) -> Result<ClientService, String> {
@@ -122,7 +122,7 @@ fn new_miner(
     config: &config::Config,
     scheme: &Scheme,
     ap: Arc<AccountProvider>,
-    db: Arc<KeyValueDB>,
+    db: Arc<dyn KeyValueDB>,
 ) -> Result<Arc<Miner>, String> {
     let miner = Miner::new(config.miner_options()?, scheme, Some(ap), db);
 
@@ -204,7 +204,7 @@ fn unlock_accounts(ap: &AccountProvider, pf: &PasswordFile) -> Result<(), String
     Ok(())
 }
 
-pub fn open_db(cfg: &config::Operating, client_config: &ClientConfig) -> Result<Arc<KeyValueDB>, String> {
+pub fn open_db(cfg: &config::Operating, client_config: &ClientConfig) -> Result<Arc<dyn KeyValueDB>, String> {
     let base_path = cfg.base_path.as_ref().unwrap().clone();
     let db_path = cfg.db_path.as_ref().map(String::clone).unwrap_or_else(|| base_path + "/" + DEFAULT_DB_PATH);
     let client_path = Path::new(&db_path);
@@ -282,7 +282,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
     scheme.engine.register_chain_notify(client.client().as_ref());
 
-    let network_service: Arc<NetworkControl> = {
+    let network_service: Arc<dyn NetworkControl> = {
         if !config.network.disable.unwrap() {
             let network_config = config.network_config()?;
             // XXX: What should we do if the network id has been changed.
@@ -303,7 +303,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
                     service.register_extension(move |api| BlockSyncExtension::new(client, api))
                 };
                 let sync = Arc::new(BlockSyncSender::from(sync_sender.clone()));
-                client.client().add_notify(Arc::downgrade(&sync) as Weak<ChainNotify>);
+                client.client().add_notify(Arc::downgrade(&sync) as Weak<dyn ChainNotify>);
                 _maybe_sync = Some(sync); // Hold sync to ensure it not to be destroyed.
                 maybe_sync_sender = Some(sync_sender);
             }
@@ -362,7 +362,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             let client = client.client();
             let snapshot_period = client.common_params(BlockId::Latest).unwrap().snapshot_period();
             let service = SnapshotService::new(Arc::clone(&client), config.snapshot.path.unwrap(), snapshot_period);
-            client.add_notify(Arc::downgrade(&service) as Weak<ChainNotify>);
+            client.add_notify(Arc::downgrade(&service) as Weak<dyn ChainNotify>);
             Some(service)
         } else {
             None

@@ -25,7 +25,7 @@ use csync::BlockSyncEvent;
 pub struct ApiDependencies {
     pub client: Arc<Client>,
     pub miner: Arc<Miner>,
-    pub network_control: Arc<NetworkControl>,
+    pub network_control: Arc<dyn NetworkControl>,
     pub account_provider: Arc<AccountProvider>,
     pub block_sync: Option<EventSender<BlockSyncEvent>>,
 }

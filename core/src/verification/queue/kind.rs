@@ -70,12 +70,12 @@ pub trait Kind: 'static + Sized + Send + Sync {
     fn name() -> &'static str;
 
     /// Attempt to create the `Unverified` item from the input.
-    fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error>;
+    fn create(input: Self::Input, engine: &dyn CodeChainEngine) -> Result<Self::Unverified, Error>;
 
     /// Attempt to verify the `Unverified` item using the given engine.
     fn verify(
         unverified: Self::Unverified,
-        engine: &CodeChainEngine,
+        engine: &dyn CodeChainEngine,
         check_seal: bool,
     ) -> Result<Self::Verified, Error>;
 
@@ -120,14 +120,18 @@ pub mod headers {
             "Headers"
         }
 
-        fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
+        fn create(input: Self::Input, engine: &dyn CodeChainEngine) -> Result<Self::Unverified, Error> {
             // FIXME: this doesn't seem to match with full block verification
             verify_header_basic(&input)?;
             verify_header_with_engine(&input, engine)?;
             Ok(input)
         }
 
-        fn verify(un: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error> {
+        fn verify(
+            un: Self::Unverified,
+            engine: &dyn CodeChainEngine,
+            check_seal: bool,
+        ) -> Result<Self::Verified, Error> {
             if check_seal {
                 engine.verify_block_seal(&un).map(|_| un)
             } else {
@@ -166,7 +170,7 @@ pub mod blocks {
             "Blocks"
         }
 
-        fn create(input: Self::Input, engine: &CodeChainEngine) -> Result<Self::Unverified, Error> {
+        fn create(input: Self::Input, engine: &dyn CodeChainEngine) -> Result<Self::Unverified, Error> {
             match verify_block_basic(&input.header, &input.bytes)
                 .and_then(|_| verify_header_with_engine(&input.header, engine))
             {
@@ -178,7 +182,11 @@ pub mod blocks {
             }
         }
 
-        fn verify(un: Self::Unverified, engine: &CodeChainEngine, check_seal: bool) -> Result<Self::Verified, Error> {
+        fn verify(
+            un: Self::Unverified,
+            engine: &dyn CodeChainEngine,
+            check_seal: bool,
+        ) -> Result<Self::Verified, Error> {
             let hash = un.hash();
             match verify_block_seal(un.header, un.bytes, engine, check_seal) {
                 Ok(verified) => Ok(verified),
