@@ -1040,7 +1040,13 @@ impl Worker {
             return Seal::None
         }
 
-        assert!(self.is_signer_proposer(&parent_hash));
+        // We don't know at which view the node starts generating a block.
+        // If this node's signer is not proposer at the current view, return none.
+        if !self.is_signer_proposer(&parent_hash) {
+            cwarn!(ENGINE, "Seal request for an old view");
+            return Seal::None
+        }
+
         assert_eq!(Proposal::None, self.proposal);
         assert_eq!(height, self.height);
 
