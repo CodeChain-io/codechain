@@ -20,34 +20,38 @@ use primitives::H256;
 
 use super::super::types::{SendTransactionResult, UnsignedTransaction};
 
-build_rpc_trait! {
-    pub trait Account {
-        /// Gets a list of accounts
-        # [rpc(name = "account_getList")]
-        fn get_account_list(&self) -> Result<Vec<PlatformAddress>>;
+#[rpc(server)]
+pub trait Account {
+    /// Gets a list of accounts
+    #[rpc(name = "account_getList")]
+    fn get_account_list(&self) -> Result<Vec<PlatformAddress>>;
 
-        /// Creates a new account
-        # [rpc(name = "account_create")]
-        fn create_account(&self, Option<Password>) -> Result<PlatformAddress>;
+    /// Creates a new account
+    #[rpc(name = "account_create")]
+    fn create_account(&self, passphrase: Option<Password>) -> Result<PlatformAddress>;
 
-        /// Imports a private key
-        # [rpc(name = "account_importRaw")]
-        fn create_account_from_secret(&self, H256, Option<Password>) -> Result<PlatformAddress>;
+    /// Imports a private key
+    #[rpc(name = "account_importRaw")]
+    fn create_account_from_secret(&self, secret: H256, passphrase: Option<Password>) -> Result<PlatformAddress>;
 
-        /// Unlocks the specified account for use.
-        # [rpc(name = "account_unlock")]
-        fn unlock(&self, PlatformAddress, Password, Option<u64>) -> Result<()>;
+    /// Unlocks the specified account for use.
+    #[rpc(name = "account_unlock")]
+    fn unlock(&self, address: PlatformAddress, password: Password, duration: Option<u64>) -> Result<()>;
 
-        /// Calculates the account's signature for a given message
-        # [rpc(name = "account_sign")]
-        fn sign(&self, H256, PlatformAddress, Option<Password>) -> Result<Signature>;
+    /// Calculates the account's signature for a given message
+    #[rpc(name = "account_sign")]
+    fn sign(&self, message_digest: H256, address: PlatformAddress, passphrase: Option<Password>) -> Result<Signature>;
 
-        /// Sends a transaction with a signature of the account
-        # [rpc(name = "account_sendTransaction")]
-        fn send_transaction(&self, UnsignedTransaction, PlatformAddress, Option<Password>) -> Result<SendTransactionResult>;
+    /// Sends a transaction with a signature of the account
+    #[rpc(name = "account_sendTransaction")]
+    fn send_transaction(
+        &self,
+        tx: UnsignedTransaction,
+        platform_address: PlatformAddress,
+        passphrase: Option<Password>,
+    ) -> Result<SendTransactionResult>;
 
-        /// Changes the account's password
-        # [rpc(name = "account_changePassword")]
-        fn change_password(&self, PlatformAddress, Password, Password) -> Result<()>;
-    }
+    /// Changes the account's password
+    #[rpc(name = "account_changePassword")]
+    fn change_password(&self, address: PlatformAddress, old_password: Password, new_password: Password) -> Result<()>;
 }

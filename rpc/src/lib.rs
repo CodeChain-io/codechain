@@ -51,7 +51,7 @@ extern crate time;
 extern crate tokio_core;
 
 #[macro_use]
-extern crate jsonrpc_macros;
+extern crate jsonrpc_derive;
 
 pub mod rpc_server;
 pub mod v1;
@@ -59,7 +59,6 @@ pub mod v1;
 pub use rustc_serialize::hex;
 
 pub use jsonrpc_core::{Compatibility, Error, MetaIoHandler, Middleware, Params, Value};
-pub use jsonrpc_http_server::tokio_core::reactor::Remote;
 
 pub use jsonrpc_http_server::Server as HttpServer;
 pub use rpc_server::start_http;
@@ -67,5 +66,5 @@ pub use rpc_server::start_http;
 pub use jsonrpc_ipc_server::Server as IpcServer;
 pub use rpc_server::start_ipc;
 
-pub use jsonrpc_ws_server::{Error as WsError, ErrorKind as WsErrorKind, Server as WsServer};
+pub use jsonrpc_ws_server::{Error as WsError, Server as WsServer};
 pub use rpc_server::start_ws;
