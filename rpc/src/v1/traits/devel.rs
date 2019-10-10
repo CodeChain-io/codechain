@@ -22,24 +22,23 @@ use primitives::H256;
 
 use super::super::types::TPSTestSetting;
 
-build_rpc_trait! {
-    pub trait Devel {
-        # [rpc(name = "devel_getStateTrieKeys")]
-        fn get_state_trie_keys(&self, usize, usize) -> Result<Vec<H256>>;
+#[rpc(server)]
+pub trait Devel {
+    #[rpc(name = "devel_getStateTrieKeys")]
+    fn get_state_trie_keys(&self, offset: usize, limit: usize) -> Result<Vec<H256>>;
 
-        # [rpc(name = "devel_getStateTrieValue")]
-        fn get_state_trie_value(&self, H256) -> Result<Vec<Bytes>>;
+    #[rpc(name = "devel_getStateTrieValue")]
+    fn get_state_trie_value(&self, key: H256) -> Result<Vec<Bytes>>;
 
-        # [rpc(name = "devel_startSealing")]
-        fn start_sealing(&self) -> Result<()>;
+    #[rpc(name = "devel_startSealing")]
+    fn start_sealing(&self) -> Result<()>;
 
-        # [rpc(name = "devel_stopSealing")]
-        fn stop_sealing(&self) -> Result<()>;
+    #[rpc(name = "devel_stopSealing")]
+    fn stop_sealing(&self) -> Result<()>;
 
-        # [rpc(name = "devel_getBlockSyncPeers")]
-        fn get_block_sync_peers(&self) -> Result<Vec<SocketAddr>>;
+    #[rpc(name = "devel_getBlockSyncPeers")]
+    fn get_block_sync_peers(&self) -> Result<Vec<SocketAddr>>;
 
-        # [rpc(name = "devel_testTPS")]
-        fn test_tps(&self, TPSTestSetting) -> Result<f64>;
-    }
+    #[rpc(name = "devel_testTPS")]
+    fn test_tps(&self, setting: TPSTestSetting) -> Result<f64>;
 }
