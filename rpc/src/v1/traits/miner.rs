@@ -20,12 +20,11 @@ use primitives::H256;
 
 use super::super::types::Work;
 
-build_rpc_trait! {
-    pub trait Miner {
-        # [rpc(name = "miner_getWork")]
-        fn get_work(&self) -> Result<Work>;
+#[rpc(server)]
+pub trait Miner {
+    #[rpc(name = "miner_getWork")]
+    fn get_work(&self) -> Result<Work>;
 
-        # [rpc(name = "miner_submitWork")]
-        fn submit_work(&self, H256, Vec<Bytes>) -> Result<bool>;
-    }
+    #[rpc(name = "miner_submitWork")]
+    fn submit_work(&self, pow_hash: H256, seal: Vec<Bytes>) -> Result<bool>;
 }

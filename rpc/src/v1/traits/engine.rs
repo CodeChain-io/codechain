@@ -19,22 +19,26 @@ use ckey::PlatformAddress;
 
 use jsonrpc_core::Result;
 
-build_rpc_trait! {
-    pub trait Engine {
-        /// Gets the reward of the given block number
-        # [rpc(name = "engine_getBlockReward")]
-        fn get_block_reward(&self, u64) -> Result<u64>;
+#[rpc(server)]
+pub trait Engine {
+    /// Gets the reward of the given block number
+    #[rpc(name = "engine_getBlockReward")]
+    fn get_block_reward(&self, block_number: u64) -> Result<u64>;
 
-        /// Gets coinbase's account id
-        # [rpc(name = "engine_getCoinbase")]
-        fn get_coinbase(&self) -> Result<Option<PlatformAddress>>;
+    /// Gets coinbase's account id
+    #[rpc(name = "engine_getCoinbase")]
+    fn get_coinbase(&self) -> Result<Option<PlatformAddress>>;
 
-        /// Gets the recommended minimum confirmations
-        # [rpc(name = "engine_getRecommendedConfirmation")]
-        fn get_recommended_confirmation(&self) -> Result<u32>;
+    /// Gets the recommended minimum confirmations
+    #[rpc(name = "engine_getRecommendedConfirmation")]
+    fn get_recommended_confirmation(&self) -> Result<u32>;
 
-        /// Gets custom action data for given custom action handler id and rlp encoded key.
-        # [rpc(name = "engine_getCustomActionData")]
-        fn get_custom_action_data(&self, u64, Bytes, Option<u64>) -> Result<Option<WithoutPrefix<Bytes>>>;
-    }
+    /// Gets custom action data for given custom action handler id and rlp encoded key.
+    #[rpc(name = "engine_getCustomActionData")]
+    fn get_custom_action_data(
+        &self,
+        handler_id: u64,
+        key_fragment: Bytes,
+        block_number: Option<u64>,
+    ) -> Result<Option<WithoutPrefix<Bytes>>>;
 }

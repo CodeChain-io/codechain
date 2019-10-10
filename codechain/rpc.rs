@@ -19,9 +19,9 @@ use std::net::SocketAddr;
 
 use crate::rpc_apis;
 use crpc::{
-    jsonrpc_core, start_http, start_ipc, start_ws, HttpServer, IpcServer, MetaIoHandler, Middleware, WsError,
-    WsErrorKind, WsServer,
+    jsonrpc_core, start_http, start_ipc, start_ws, HttpServer, IpcServer, MetaIoHandler, Middleware, WsError, WsServer,
 };
+use futures::future::Either;
 use serde_json;
 
 #[derive(Debug, PartialEq)]
@@ -109,7 +109,7 @@ pub fn rpc_ws_start(
     let addr = url.parse().map_err(|_| format!("Invalid WebSockets listen host/port given: {}", url))?;
     let start_result = start_ws(&addr, server, cfg.max_connections);
     match start_result {
-        Err(WsError(WsErrorKind::Io(ref err), _)) if err.kind() == io::ErrorKind::AddrInUse => {
+        Err(WsError::Io(ref err)) if err.kind() == io::ErrorKind::AddrInUse => {
             Err(format!("WebSockets address {} is already in use, make sure that another instance of a Codechain node is not running or change the address using the --ws-port options.", addr))
         },
         Err(e) => Err(format!("WebSockets error: {:?}", e)),
@@ -133,8 +133,9 @@ struct LogMiddleware {}
 
 impl<M: jsonrpc_core::Metadata> jsonrpc_core::Middleware<M> for LogMiddleware {
     type Future = jsonrpc_core::FutureResponse;
+    type CallFuture = jsonrpc_core::FutureOutput;
 
-    fn on_request<F, X>(&self, request: jsonrpc_core::Request, meta: M, next: F) -> Self::Future
+    fn on_request<F, X>(&self, request: jsonrpc_core::Request, meta: M, next: F) -> Either<Self::Future, X>
     where
         F: FnOnce(jsonrpc_core::Request, M) -> X + Send,
         X: futures::Future<Item = Option<jsonrpc_core::Response>, Error = ()> + Send + 'static, {
@@ -146,7 +147,15 @@ impl<M: jsonrpc_core::Metadata> jsonrpc_core::Middleware<M> for LogMiddleware {
                 }
             }
         }
-        Box::new(next(request, meta))
+        Either::B(next(request, meta))
+    }
+
+    fn on_call<F, X>(&self, call: jsonrpc_core::Call, meta: M, next: F) -> Either<Self::CallFuture, X>
+    where
+        F: FnOnce(jsonrpc_core::Call, M) -> X + Send,
+        X: futures::Future<Item = Option<jsonrpc_core::Output>, Error = ()> + Send + 'static, {
+        Self::print_call(&call);
+        Either::B(next(call, meta))
     }
 }
 
@@ -166,7 +175,9 @@ impl LogMiddleware {
                 );
             }
             jsonrpc_core::Call::Notification(_) => {}
-            jsonrpc_core::Call::Invalid(_) => {}
+            jsonrpc_core::Call::Invalid {
+                ..
+            } => {}
         }
     }
 }
