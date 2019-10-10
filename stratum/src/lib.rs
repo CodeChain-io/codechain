@@ -21,7 +21,7 @@ extern crate codechain_crypto as ccrypto;
 extern crate codechain_logger as clogger;
 extern crate codechain_json as cjson;
 extern crate jsonrpc_core;
-extern crate jsonrpc_macros;
+extern crate jsonrpc_derive;
 extern crate jsonrpc_tcp_server;
 extern crate parking_lot;
 extern crate primitives;
@@ -44,8 +44,7 @@ use std::sync::Arc;
 
 use ccrypto::blake256;
 use cjson::bytes::Bytes;
-use jsonrpc_core::{to_value, Compatibility, MetaIoHandler, Metadata, Params};
-use jsonrpc_macros::IoDelegate;
+use jsonrpc_core::{to_value, Compatibility, IoDelegate, MetaIoHandler, Metadata, Params};
 use jsonrpc_tcp_server::{
     Dispatcher, MetaExtractor, PushMessageError, RequestContext, Server as JsonRpcServer,
     ServerBuilder as JsonRpcServerBuilder,

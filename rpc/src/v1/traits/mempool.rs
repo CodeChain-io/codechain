@@ -22,41 +22,40 @@ use jsonrpc_core::Result;
 
 use super::super::types::PendingTransactions;
 
-build_rpc_trait! {
-    pub trait Mempool {
-        /// Sends signed transaction, returning its hash.
-        # [rpc(name = "mempool_sendSignedTransaction")]
-        fn send_signed_transaction(&self, Bytes) -> Result<H256>;
+#[rpc(server)]
+pub trait Mempool {
+    /// Sends signed transaction, returning its hash.
+    #[rpc(name = "mempool_sendSignedTransaction")]
+    fn send_signed_transaction(&self, raw: Bytes) -> Result<H256>;
 
-        /// Gets transaction results with given transaction tracker.
-        # [rpc(name = "mempool_getTransactionResultsByTracker")]
-        fn get_transaction_results_by_tracker(&self, H256) -> Result<Vec<bool>>;
+    /// Gets transaction results with given transaction tracker.
+    #[rpc(name = "mempool_getTransactionResultsByTracker")]
+    fn get_transaction_results_by_tracker(&self, tracker: H256) -> Result<Vec<bool>>;
 
-        /// Gets a hint to find out why the transaction failed.
-        # [rpc(name = "mempool_getErrorHint")]
-        fn get_error_hint(&self, H256) -> Result<Option<String>>;
+    /// Gets a hint to find out why the transaction failed.
+    #[rpc(name = "mempool_getErrorHint")]
+    fn get_error_hint(&self, transaction_hash: H256) -> Result<Option<String>>;
 
-        /// Gets transactions in the current mem pool.
-        # [rpc(name = "mempool_getPendingTransactions")]
-        fn get_pending_transactions(&self, Option<u64>, Option<u64>) -> Result<PendingTransactions>;
+    /// Gets transactions in the current mem pool.
+    #[rpc(name = "mempool_getPendingTransactions")]
+    fn get_pending_transactions(&self, from: Option<u64>, to: Option<u64>) -> Result<PendingTransactions>;
 
-       /// Gets the count of transactions in the current mem pool.
-        # [rpc(name = "mempool_getPendingTransactionsCount")]
-        fn get_pending_transactions_count(&self, Option<u64>, Option<u64>) -> Result<usize>;
+    /// Gets the count of transactions in the current mem pool.
+    #[rpc(name = "mempool_getPendingTransactionsCount")]
+    fn get_pending_transactions_count(&self, from: Option<u64>, to: Option<u64>) -> Result<usize>;
 
-        #[rpc(name = "mempool_getBannedAccounts")]
-        fn get_banned_accounts(&self) -> Result<Vec<PlatformAddress>>;
+    #[rpc(name = "mempool_getBannedAccounts")]
+    fn get_banned_accounts(&self) -> Result<Vec<PlatformAddress>>;
 
-        #[rpc(name = "mempool_unbanAccounts")]
-        fn unban_accounts(&self, Vec<PlatformAddress>) -> Result<()>;
+    #[rpc(name = "mempool_unbanAccounts")]
+    fn unban_accounts(&self, prisoner_list: Vec<PlatformAddress>) -> Result<()>;
 
-        #[rpc(name = "mempool_banAccounts")]
-        fn ban_accounts(&self, Vec<PlatformAddress>) -> Result<()>;
+    #[rpc(name = "mempool_banAccounts")]
+    fn ban_accounts(&self, prisoner_list: Vec<PlatformAddress>) -> Result<()>;
 
-        #[rpc(name = "mempool_getImmuneAccounts")]
-        fn get_immune_accounts(&self) -> Result<Vec<PlatformAddress>>;
+    #[rpc(name = "mempool_getImmuneAccounts")]
+    fn get_immune_accounts(&self) -> Result<Vec<PlatformAddress>>;
 
-        #[rpc(name = "mempool_registerImmuneAccounts")]
-        fn register_immune_accounts(&self, Vec<PlatformAddress>) -> Result<()>;
-    }
+    #[rpc(name = "mempool_registerImmuneAccounts")]
+    fn register_immune_accounts(&self, immune_user_list: Vec<PlatformAddress>) -> Result<()>;
 }

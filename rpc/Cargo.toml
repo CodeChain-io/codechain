@@ -33,8 +33,8 @@ rustc-hex = "1.0"
 rustc-serialize = "0.3"
 time = "0.1"
 tokio-core = "0.1.17"
-jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-jsonrpc-macros = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-jsonrpc-http-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-jsonrpc-ipc-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-jsonrpc-ws-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
+jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14.0.0" }
+jsonrpc-derive = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14.0.0" }
+jsonrpc-http-server = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14.0.0" }
+jsonrpc-ipc-server = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14.0.0" }
+jsonrpc-ws-server = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14.0.0" }
