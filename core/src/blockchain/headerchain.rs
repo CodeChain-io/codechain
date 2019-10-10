@@ -242,9 +242,11 @@ impl HeaderChain {
     fn best_header_changed(&self, new_header: &HeaderView, engine: &dyn CodeChainEngine) -> BestHeaderChanged {
         let parent_hash_of_new_header = new_header.parent_hash();
         let parent_details_of_new_header = self.block_details(&parent_hash_of_new_header).expect("Invalid parent hash");
+        let prev_best_proposal_hash = self.best_proposal_header_hash();
+        let prev_best_hash = self.best_header_hash();
         let is_new_best = parent_details_of_new_header.total_score + new_header.score()
             > self.best_proposal_header_detail().total_score
-            && engine.can_change_canon_chain(&new_header);
+            && engine.can_change_canon_chain(&new_header, prev_best_hash, prev_best_proposal_hash);
 
         if is_new_best {
             ctrace!(
@@ -256,7 +258,6 @@ impl HeaderChain {
             // on new best block we need to make sure that all ancestors
             // are moved to "canon chain"
             // find the route between old best block and the new one
-            let prev_best_hash = self.best_header_hash();
             let route = tree_route(self, prev_best_hash, parent_hash_of_new_header)
                 .expect("blocks being imported always within recent history; qed");
 

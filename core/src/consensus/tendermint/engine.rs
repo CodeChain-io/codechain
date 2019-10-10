@@ -308,15 +308,14 @@ impl ConsensusEngine for Tendermint {
         header.parent_hash()
     }
 
-    fn can_change_canon_chain(&self, header: &HeaderView) -> bool {
-        let (result, receiver) = crossbeam::bounded(1);
-        self.inner
-            .send(worker::Event::AllowedHeight {
-                result,
-            })
-            .unwrap();
-        let allowed_height = receiver.recv().unwrap();
-        header.number() >= allowed_height
+
+    fn can_change_canon_chain(
+        &self,
+        new_header: &HeaderView,
+        prev_best_hash: H256,
+        prev_best_proposal_hash: H256,
+    ) -> bool {
+        new_header.parent_hash() == prev_best_hash || new_header.parent_hash() == prev_best_proposal_hash
     }
 
     fn action_handlers(&self) -> &[Arc<dyn ActionHandler>] {

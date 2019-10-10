@@ -133,9 +133,6 @@ pub enum Event {
         ap: Arc<AccountProvider>,
         address: Address,
     },
-    AllowedHeight {
-        result: crossbeam::Sender<Height>,
-    },
     Restore(crossbeam::Sender<()>),
     ProposalBlock {
         signature: SchnorrSignature,
@@ -306,16 +303,6 @@ impl Worker {
                                 address,
                             }) => {
                                 inner.set_signer(ap, address);
-                            }
-                            Ok(Event::AllowedHeight {
-                                result,
-                            }) => {
-                                let allowed_height = if inner.step.is_commit() {
-                                    inner.height + 1
-                                } else {
-                                    inner.height
-                                };
-                                result.send(allowed_height).unwrap();
                             }
                             Ok(Event::Restore(result)) => {
                                 inner.restore();
