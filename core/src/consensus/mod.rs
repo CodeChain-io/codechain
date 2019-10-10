@@ -266,10 +266,15 @@ pub trait ConsensusEngine: Sync + Send {
         header.hash()
     }
 
-    /// In PoW consensus, the higher scored block became the best block.
+    /// In PoW consensus, the higher scored block becomes the best block.
     /// In Tendermint consensus, the highest scored block may not be the best block.
-    /// Only the child of the current best block could be the next best block in Tendermint consensus.
-    fn can_change_canon_chain(&self, _header: &HeaderView) -> bool {
+    /// Only the descendant of the current best block could be the next best block in Tendermint consensus.
+    fn can_change_canon_chain(
+        &self,
+        _new_header: &HeaderView,
+        _previous_best_hash: H256,
+        _previous_best_proposal_hash: H256,
+    ) -> bool {
         true
     }
 

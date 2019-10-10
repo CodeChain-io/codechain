@@ -184,9 +184,11 @@ impl BlockChain {
         let new_header = new_block.header_view();
         let parent_hash_of_new_block = new_header.parent_hash();
         let parent_details_of_new_block = self.block_details(&parent_hash_of_new_block).expect("Invalid parent hash");
+        let prev_best_proposal_hash = self.best_proposal_block_hash();
+        let prev_best_hash = self.best_block_hash();
 
         if parent_details_of_new_block.total_score + new_header.score() > self.best_proposal_block_detail().total_score
-            && engine.can_change_canon_chain(&new_header)
+            && engine.can_change_canon_chain(&new_header, prev_best_hash, prev_best_proposal_hash)
         {
             cinfo!(
                 BLOCKCHAIN,
@@ -194,7 +196,7 @@ impl BlockChain {
                 new_header.number(),
                 new_header.hash()
             );
-            let prev_best_hash = self.best_block_hash();
+
             let route = tree_route(self, prev_best_hash, parent_hash_of_new_block)
                 .expect("blocks being imported always within recent history; qed");
 
