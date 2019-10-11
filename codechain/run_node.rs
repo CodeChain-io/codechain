@@ -328,7 +328,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         block_sync: maybe_sync_sender,
     });
 
-    let _rpc_server = {
+    let rpc_server = {
         if !config.rpc.disable.unwrap() {
             Some(rpc_http_start(config.rpc_http_config(), config.rpc.enable_devel_api, &*rpc_apis_deps)?)
         } else {
@@ -336,7 +336,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         }
     };
 
-    let _ipc_server = {
+    let ipc_server = {
         if !config.ipc.disable.unwrap() {
             Some(rpc_ipc_start(&config.rpc_ipc_config(), config.rpc.enable_devel_api, &*rpc_apis_deps)?)
         } else {
@@ -344,7 +344,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         }
     };
 
-    let _ws_server = {
+    let ws_server = {
         if !config.ws.disable.unwrap() {
             Some(rpc_ws_start(&config.rpc_ws_config(), config.rpc.enable_devel_api, &*rpc_apis_deps)?)
         } else {
@@ -375,6 +375,19 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     cinfo!(TEST_SCRIPT, "Initialization complete");
 
     wait_for_exit();
+
+    if let Some(server) = rpc_server {
+        server.close_handle().close();
+        server.wait();
+    }
+    if let Some(server) = ipc_server {
+        server.close_handle().close();
+        server.wait();
+    }
+    if let Some(server) = ws_server {
+        server.close_handle().close();
+        server.wait().map_err(|err| format!("Error while closing jsonrpc ws server: {}", err))?;
+    }
 
     Ok(())
 }
