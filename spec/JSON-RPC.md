@@ -1494,7 +1494,7 @@ It returns null if the block number parameter is larger than the current best bl
 ```
   curl \
     -H 'Content-Type: application/json' \
-    -d '{"jsonrpc": "2.0", "method": "chain_getMeatadataSeq", "params": [53], "id": 7}' \
+    -d '{"jsonrpc": "2.0", "method": "chain_getMetadataSeq", "params": [53], "id": 7}' \
     localhost:8080
 ```
 
