@@ -271,9 +271,10 @@ pub trait ConsensusEngine: Sync + Send {
     /// Only the descendant of the current best block could be the next best block in Tendermint consensus.
     fn can_change_canon_chain(
         &self,
-        _new_header: &HeaderView,
+        _new_block_hash: H256,
+        _parent_hash_of_new_header: H256,
+        _grandparent_hash_of_new_header: H256,
         _previous_best_hash: H256,
-        _previous_best_proposal_hash: H256,
     ) -> bool {
         true
     }
