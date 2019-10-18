@@ -928,9 +928,9 @@ impl Worker {
 
         let height = proposal.number() as Height;
         let seal_view = TendermintSealView::new(proposal.seal());
-        let prev_block_view = seal_view.previous_block_view().expect("The proposal is verified");
+        let parent_block_finalized_view = seal_view.parent_block_finalized_view().expect("The proposal is verified");
         let on = VoteOn {
-            step: VoteStep::new(height - 1, prev_block_view, Step::Precommit),
+            step: VoteStep::new(height - 1, parent_block_finalized_view, Step::Precommit),
             block_hash: Some(*proposal.parent_hash()),
         };
         for (index, signature) in seal_view.signatures().expect("The proposal is verified") {
@@ -990,7 +990,7 @@ impl Worker {
             };
         } else if current_height < height {
             let finalized_view_of_previous_height =
-                TendermintSealView::new(proposal.seal()).previous_block_view().unwrap();
+                TendermintSealView::new(proposal.seal()).parent_block_finalized_view().unwrap();
 
             self.jump_to_height(height, finalized_view_of_previous_height);
 
@@ -1095,16 +1095,15 @@ impl Worker {
     fn proposal_generated(&mut self, sealed_block: &SealedBlock) {
         let proposal_height = sealed_block.header().number();
         let proposal_seal = sealed_block.header().seal();
-        let proposal_view = TendermintSealView::new(proposal_seal)
-            .consensus_view()
-            .expect("Generated proposal should have a valid seal");
+        let proposal_author_view =
+            TendermintSealView::new(proposal_seal).author_view().expect("Generated proposal should have a valid seal");
         assert!(proposal_height <= self.height, "A proposal cannot be generated on the future height");
-        if proposal_height < self.height || (proposal_height == self.height && proposal_view != self.view) {
+        if proposal_height < self.height || (proposal_height == self.height && proposal_author_view != self.view) {
             ctrace!(
                 ENGINE,
                 "Proposal is generated on the height {} and view {}. Current height is {} and view is {}",
                 proposal_height,
-                proposal_view,
+                proposal_author_view,
                 self.height,
                 self.view,
             );
@@ -1131,7 +1130,7 @@ impl Worker {
             );
             return
         }
-        debug_assert_eq!(Ok(self.view), TendermintSealView::new(header.seal()).consensus_view());
+        debug_assert_eq!(Ok(self.view), TendermintSealView::new(header.seal()).author_view());
 
         self.vote_on_header_for_proposal(&header).expect("I'm a proposer");
 
@@ -1152,8 +1151,8 @@ impl Worker {
         }
 
         let height = header.number();
-        let view = TendermintSealView::new(header.seal()).consensus_view().unwrap();
-        let score = calculate_score(height, view);
+        let author_view = TendermintSealView::new(header.seal()).author_view().unwrap();
+        let score = calculate_score(height, author_view);
 
         if *header.score() != score {
             return Err(BlockError::InvalidScore(Mismatch {
@@ -1168,13 +1167,13 @@ impl Worker {
 
     fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
         let height = header.number() as usize;
-        let view = TendermintSealView::new(header.seal()).consensus_view()?;
-        ctrace!(ENGINE, "Verify external at {}-{}, {:?}", height, view, header);
+        let author_view = TendermintSealView::new(header.seal()).author_view()?;
+        ctrace!(ENGINE, "Verify external at {}-{}, {:?}", height, author_view, header);
         let proposer = header.author();
         if !self.is_authority(header.parent_hash(), proposer) {
             return Err(EngineError::BlockNotAuthorized(*proposer).into())
         }
-        self.check_view_proposer(header.parent_hash(), header.number(), view, &proposer)?;
+        self.check_view_proposer(header.parent_hash(), header.number(), author_view, &proposer)?;
         let seal_view = TendermintSealView::new(header.seal());
         let bitset_count = seal_view.bitset()?.count();
         let precommits_count = seal_view.precommits().item_count()?;
@@ -1197,9 +1196,9 @@ impl Worker {
             return Err(BlockError::InvalidSeal.into())
         }
 
-        let previous_block_view = TendermintSealView::new(header.seal()).previous_block_view()?;
+        let parent_block_finalized_view = TendermintSealView::new(header.seal()).parent_block_finalized_view()?;
         let precommit_vote_on = VoteOn {
-            step: VoteStep::new(header.number() - 1, previous_block_view, Step::Precommit),
+            step: VoteStep::new(header.number() - 1, parent_block_finalized_view, Step::Precommit),
             block_hash: Some(*header.parent_hash()),
         };
 
@@ -1642,7 +1641,7 @@ impl Worker {
                 if self.height < header.number() {
                     cinfo!(ENGINE, "Received a commit: {:?}.", header.number());
                     let finalized_view_of_previous_height = TendermintSealView::new(full_header.seal())
-                        .previous_block_view()
+                        .parent_block_finalized_view()
                         .expect("Imported block already checked");
                     self.jump_to_height(header.number(), finalized_view_of_previous_height);
                 }
@@ -1791,15 +1790,14 @@ impl Worker {
                 // The proposer re-proposed its locked proposal.
                 // If we already imported the proposal, we should set `proposal` here.
                 if c.block(&BlockId::Hash(header_view.hash())).is_some() {
-                    let generated_view = TendermintSealView::new(header_view.seal())
-                        .consensus_view()
-                        .expect("Imported block is verified");
+                    let author_view =
+                        TendermintSealView::new(header_view.seal()).author_view().expect("Imported block is verified");
                     cdebug!(
                         ENGINE,
                         "Received a proposal({}) by a locked proposer. current view: {}, original proposal's view: {}",
                         header_view.hash(),
                         proposed_view,
-                        generated_view
+                        author_view
                     );
                     self.proposal = Proposal::new_imported(header_view.hash());
                 } else {
@@ -1975,13 +1973,14 @@ impl Worker {
             let block = self.client().block(&height.into()).expect("Parent block should exist");
             let block_hash = block.hash();
             let seal = block.seal();
-            let view = TendermintSealView::new(&seal).consensus_view().expect("Block is already verified and imported");
+            let author_view =
+                TendermintSealView::new(&seal).author_view().expect("Block is already verified and imported");
 
             let votes = self
                 .votes
                 .get_all_votes_in_round(&VoteStep {
                     height,
-                    view,
+                    view: author_view,
                     step: Step::Precommit,
                 })
                 .into_iter()
@@ -1994,9 +1993,10 @@ impl Worker {
             let child_block = self.client().block(&(height + 1).into()).expect("Parent block should exist");
             let child_block_header_seal = child_block.header().seal();
             let child_block_seal_view = TendermintSealView::new(&child_block_header_seal);
-            let view = child_block_seal_view.previous_block_view().expect("Verified block");
+            let parent_block_finalized_view =
+                child_block_seal_view.parent_block_finalized_view().expect("Verified block");
             let on = VoteOn {
-                step: VoteStep::new(height, view, Step::Precommit),
+                step: VoteStep::new(height, parent_block_finalized_view, Step::Precommit),
                 block_hash: Some(block.hash()),
             };
             let mut votes = Vec::new();
