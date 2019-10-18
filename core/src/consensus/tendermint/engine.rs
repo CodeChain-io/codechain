@@ -311,11 +311,12 @@ impl ConsensusEngine for Tendermint {
 
     fn can_change_canon_chain(
         &self,
-        new_header: &HeaderView,
+        _new_header_hash: H256,
+        parent_hash_of_new_header: H256,
+        grandparent_hash_of_new_header: H256,
         prev_best_hash: H256,
-        prev_best_proposal_hash: H256,
     ) -> bool {
-        new_header.parent_hash() == prev_best_hash || new_header.parent_hash() == prev_best_proposal_hash
+        parent_hash_of_new_header == prev_best_hash || grandparent_hash_of_new_header == prev_best_hash
     }
 
     fn action_handlers(&self) -> &[Arc<dyn ActionHandler>] {
