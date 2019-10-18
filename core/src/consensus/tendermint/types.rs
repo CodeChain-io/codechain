@@ -224,13 +224,17 @@ impl<'a> TendermintSealView<'a> {
         }
     }
 
-    pub fn previous_block_view(&self) -> Result<u64, DecoderError> {
+    /// The parent block is finalized at this view.
+    /// Signatures in the seal field is signed for this view.
+    pub fn parent_block_finalized_view(&self) -> Result<u64, DecoderError> {
         let view_rlp =
             self.seal.get(0).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
         UntrustedRlp::new(view_rlp.as_slice()).as_val()
     }
 
-    pub fn consensus_view(&self) -> Result<u64, DecoderError> {
+    /// Block is created at auth_view.
+    /// Block verifier use other_view to verify the author
+    pub fn author_view(&self) -> Result<u64, DecoderError> {
         let view_rlp =
             self.seal.get(1).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
         UntrustedRlp::new(view_rlp.as_slice()).as_val()
