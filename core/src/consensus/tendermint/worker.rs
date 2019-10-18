@@ -1972,15 +1972,13 @@ impl Worker {
         if height == self.height - 1 {
             let block = self.client().block(&height.into()).expect("Parent block should exist");
             let block_hash = block.hash();
-            let seal = block.seal();
-            let author_view =
-                TendermintSealView::new(&seal).author_view().expect("Block is already verified and imported");
+            let finalized_view = self.finalized_view_of_previous_block;
 
             let votes = self
                 .votes
                 .get_all_votes_in_round(&VoteStep {
                     height,
-                    view: author_view,
+                    view: finalized_view,
                     step: Step::Precommit,
                 })
                 .into_iter()
