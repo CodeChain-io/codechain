@@ -821,11 +821,8 @@ mod tests {
         let parameters = vec![];
         let amount = 100;
         let approver = Address::random();
-        let transaction = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters.clone(), amount),
-            metadata.clone(),
-            approver: approver
-        );
+        let transaction =
+            asset_mint!(asset_mint_output!(lock_script_hash, parameters, amount), metadata.clone(), approver: approver);
 
         let transaction_tracker = transaction.tracker();
         let asset_type = Blake::blake(transaction_tracker);
@@ -849,7 +846,7 @@ mod tests {
         let parameters = vec![];
         let approver = Address::random();
         let transaction = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
+            asset_mint_output!(lock_script_hash, parameters: parameters),
             metadata.clone(),
             approver: approver
         );
@@ -876,7 +873,7 @@ mod tests {
         let parameters = vec![];
         let approver = Address::random();
         let transaction = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
+            asset_mint_output!(lock_script_hash, parameters: parameters),
             metadata.clone(),
             approver: approver
         );
@@ -1527,7 +1524,7 @@ mod tests {
         assert_eq!(Ok(()), state.apply(&successful_transfer, &sender, &[sender], &[], &get_test_client(), 0, 0));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: amount }),
+            (scheme: (asset_type) => { metadata: metadata, supply: amount }),
             (asset: (mint_tracker, 0)),
             (asset: (failed_transfer_tracker, 0)),
             (asset: (successful_transfer_tracker, 0) => { asset_type: asset_type, quantity: 10 }),
@@ -1548,7 +1545,7 @@ mod tests {
         let parameters = vec![];
         let approver = Address::random();
         let transaction = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
+            asset_mint_output!(lock_script_hash, parameters: parameters),
             metadata.clone(),
             approver: approver
         );
@@ -1558,7 +1555,7 @@ mod tests {
         assert_eq!(Ok(()), state.apply(&transaction, &sender, &[sender], &[], &get_test_client(), 0, 0));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: ::std::u64::MAX }),
+            (scheme: (asset_type) => { metadata: metadata, supply: ::std::u64::MAX }),
             (asset: (transaction_tracker, 0) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
@@ -1577,11 +1574,8 @@ mod tests {
         let lock_script_hash = H160::random();
         let parameters = vec![];
         let approver = Address::random();
-        let transaction = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
-            metadata.clone(),
-            approver: approver
-        );
+        let transaction =
+            asset_mint!(asset_mint_output!(lock_script_hash, parameters: parameters), metadata, approver: approver);
 
         let transaction_tracker = transaction.tracker();
         let asset_type = Blake::blake(transaction_tracker);
@@ -1612,7 +1606,7 @@ mod tests {
         let parameters = vec![];
         let approver = Address::random();
         let transaction = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
+            asset_mint_output!(lock_script_hash, parameters: parameters),
             metadata.clone(),
             approver: approver
         );
@@ -1628,7 +1622,7 @@ mod tests {
         assert_eq!(Ok(()), state.apply(&transaction, &sender, &shard_users, &approvers, &get_test_client(), 0, 0));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: ::std::u64::MAX }),
+            (scheme: (asset_type) => { metadata: metadata, supply: ::std::u64::MAX }),
             (asset: (transaction_tracker, 0) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
@@ -1648,7 +1642,7 @@ mod tests {
         let parameters = vec![];
         let approver = Address::random();
         let transaction = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
+            asset_mint_output!(lock_script_hash, parameters: parameters),
             metadata.clone(),
             approver: approver
         );
@@ -1664,7 +1658,7 @@ mod tests {
         assert_eq!(Ok(()), state.apply(&transaction, &sender, &shard_users, &approvers, &get_test_client(), 0, 0));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: ::std::u64::MAX }),
+            (scheme: (asset_type) => { metadata: metadata, supply: ::std::u64::MAX }),
             (asset: (transaction_tracker, 0) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
@@ -1681,7 +1675,7 @@ mod tests {
         let parameters = vec![];
         let approver = Address::random();
         let transaction = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters: parameters.clone()),
+            asset_mint_output!(lock_script_hash, parameters: parameters),
             metadata.clone(),
             approver: approver
         );
@@ -1692,7 +1686,7 @@ mod tests {
         assert_eq!(Ok(()), state.apply(&transaction, &sender, &[], &[], &get_test_client(), 0, 0));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: ::std::u64::MAX, approver: approver }),
+            (scheme: (asset_type) => { metadata: metadata, supply: ::std::u64::MAX, approver: approver }),
             (asset: (transaction_tracker, 0) => { asset_type: asset_type, quantity: ::std::u64::MAX })
         ]);
     }
@@ -1710,7 +1704,7 @@ mod tests {
         let amount = 100;
         let registrar = Address::random();
         let mint = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters.clone(), amount),
+            asset_mint_output!(lock_script_hash, parameters, amount),
             metadata.clone(),
             registrar: registrar
         );
@@ -1721,7 +1715,7 @@ mod tests {
         assert_eq!(Ok(()), state.apply(&mint, &sender, &[sender], &[], &get_test_client(), 0, 0));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: amount, approver, registrar: registrar }),
+            (scheme: (asset_type) => { metadata: metadata, supply: amount, approver, registrar: registrar }),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
         ]);
 
@@ -1757,7 +1751,7 @@ mod tests {
         let amount = 100;
         let registrar = Address::random();
         let mint = asset_mint!(
-            asset_mint_output!(lock_script_hash, parameters.clone(), amount),
+            asset_mint_output!(lock_script_hash, parameters, amount),
             metadata.clone(),
             registrar: registrar
         );
@@ -1768,7 +1762,7 @@ mod tests {
         assert_eq!(Ok(()), state.apply(&mint, &sender, &[sender], &[], &get_test_client(), 0, 0));
 
         check_shard_level_state!(state, [
-            (scheme: (asset_type) => { metadata: metadata.clone(), supply: amount, approver, registrar: registrar }),
+            (scheme: (asset_type) => { metadata: metadata, supply: amount, approver, registrar: registrar }),
             (asset: (mint_tracker, 0) => { asset_type: asset_type, quantity: amount })
         ]);
 

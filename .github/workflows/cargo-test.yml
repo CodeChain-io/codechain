@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly-2019-05-17
+            toolchain: nightly-2019-10-13
             override: true
       - run: rustup component add clippy
       - run: cargo fetch --verbose
@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly-2019-05-17
+            toolchain: nightly-2019-10-13
             override: true
       - run: rustup component add rustfmt
       - run: cargo fmt -- --check

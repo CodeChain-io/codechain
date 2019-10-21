@@ -329,7 +329,7 @@ mod test {
         directory.insert_with_filename(account.clone(), "foo".to_string(), dedup).unwrap();
         let file1 = directory.insert_with_filename(account.clone(), filename.clone(), dedup).unwrap().filename.unwrap();
         let file2 = directory.insert_with_filename(account.clone(), filename.clone(), dedup).unwrap().filename.unwrap();
-        let file3 = directory.insert_with_filename(account.clone(), filename.clone(), dedup).unwrap().filename.unwrap();
+        let file3 = directory.insert_with_filename(account, filename.clone(), dedup).unwrap().filename.unwrap();
 
         // then
         // the first file should have the original names

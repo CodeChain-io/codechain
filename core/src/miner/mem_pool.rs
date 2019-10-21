@@ -960,7 +960,7 @@ impl MemPool {
 
     /// Returns Some(true) if the given transaction is local and None for not found.
     pub fn is_local_transaction(&self, tx_hash: H256) -> Option<bool> {
-        self.by_hash.get(&tx_hash).and_then(|found_item| Some(found_item.origin.is_local()))
+        self.by_hash.get(&tx_hash).map(|found_item| found_item.origin.is_local())
     }
 
     /// Checks the given timelock with the current time/timestamp.
@@ -1479,7 +1479,7 @@ pub mod test {
         inputs.push(create_mempool_input_with_pay(7u64, keypair, no_timelock));
         mem_pool.add(inputs, inserted_block_number, inserted_timestamp, &fetch_account);
 
-        let mut mem_pool_recovered = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
+        let mut mem_pool_recovered = MemPool::with_limits(8192, usize::max_value(), 3, db);
         mem_pool_recovered.recover_from_db(&test_client);
 
         assert_eq!(mem_pool_recovered.first_seqs, mem_pool.first_seqs);
@@ -1549,7 +1549,7 @@ pub mod test {
         let test_client = TestBlockChainClient::new();
 
         let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
-        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
+        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db);
 
         let fetch_account = |p: &Public| -> AccountDetails {
             let address = public_to_address(p);
