@@ -119,7 +119,7 @@ impl Client {
         let cloned_timer = timer.clone();
         let p2p_channel = self.p2p_channel.clone();
         let (channel, rx) = crossbeam::unbounded();
-        let sender = channel.clone().into();
+        let sender = channel.into();
 
         let (quit_sender, quit_receiver) = crossbeam::bounded(1);
         let (init_sender, init_receiver) = crossbeam::bounded(1);

@@ -73,11 +73,13 @@ impl<'de> Deserialize<'de> for TPSTestOption {
             "transferSingle" => TPSTestOption::TransferSingle,
             "transferMultiple" => TPSTestOption::TransferMultiple,
             "payOrTransfer" => TPSTestOption::PayOrTransfer,
-            v => Err(de::Error::custom(format!(
-                "Invalid params: unknown variant `{}`, expected one of \
-                 `payOnly`, `transferSingle`, `transferMultiple`, `payOrTransfer`.",
-                v
-            )))?,
+            v => {
+                return Err(de::Error::custom(format!(
+                    "Invalid params: unknown variant `{}`, expected one of \
+                     `payOnly`, `transferSingle`, `transferMultiple`, `payOrTransfer`.",
+                    v
+                )))
+            }
         })
     }
 }

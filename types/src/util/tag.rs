@@ -78,7 +78,7 @@ mod tests {
         assert_eq!(tag.sign_all_inputs, true);
         assert_eq!(tag.sign_all_outputs, false);
         assert_eq!(tag.filter_len, 8);
-        assert_eq!(tag.filter.clone(), vec![
+        assert_eq!(tag.filter, vec![
             0b1000_0000,
             0b0100_0000,
             0b0010_0000,

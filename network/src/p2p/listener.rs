@@ -38,7 +38,7 @@ impl Listener {
         Ok(match self.listener.accept() {
             Ok((stream, socket_address)) => Some((From::from(stream), From::from(socket_address))),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
-            Err(e) => Err(e)?,
+            Err(e) => return Err(e),
         })
     }
 }

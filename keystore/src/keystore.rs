@@ -140,7 +140,7 @@ impl SecretStore for KeyStore {
 
     fn meta(&self, account: &Address) -> Result<String, Error> {
         let account = self.store.get_safe_account(account)?;
-        Ok(account.meta.clone())
+        Ok(account.meta)
     }
 
     fn set_meta(&self, account_ref: &Address, meta: String) -> Result<(), Error> {

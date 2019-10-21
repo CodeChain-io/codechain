@@ -1026,7 +1026,7 @@ mod tests_state {
             assert_eq!(Ok(1), state.seq(&a));
             let root = state.commit();
             assert!(root.is_ok(), "{:?}", root);
-            state.clone()
+            state
         };
         assert_eq!(Ok(1), state.seq(&a));
         assert_eq!(Ok(()), state.inc_seq(&a));
@@ -1045,7 +1045,7 @@ mod tests_state {
             assert_eq!(Ok(false), state.account_exists(&a));
             assert_eq!(Ok(()), state.inc_seq(&a));
             assert_eq!(Ok(1), state.seq(&a));
-            state.clone()
+            state
         };
         assert_eq!(Ok(1), state.seq(&a));
         assert_eq!(Ok(()), state.inc_seq(&a));
@@ -1808,7 +1808,7 @@ mod tests_tx {
         let parameters = vec![];
         let amount = 30;
         let transaction = mint_asset!(
-            Box::new(asset_mint_output!(lock_script_hash, parameters.clone(), amount)),
+            Box::new(asset_mint_output!(lock_script_hash, parameters, amount)),
             metadata.clone(),
             approver: approver
         );
@@ -1844,7 +1844,7 @@ mod tests_tx {
         let lock_script_hash = H160::random();
         let parameters = vec![];
         let transaction = mint_asset!(
-            Box::new(asset_mint_output!(lock_script_hash, parameters: parameters.clone())),
+            Box::new(asset_mint_output!(lock_script_hash, parameters: parameters)),
             metadata.clone(),
             approver: approver
         );
@@ -1909,7 +1909,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 120 - 20 - 30)),
-            (scheme: (shard_id, asset_type) => { metadata: metadata.clone(), supply: 30 }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata, supply: 30 }),
             (asset: (mint_tracker, 0, shard_id)),
             (asset: (transfer_tracker, 0, shard_id) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tracker, 1, shard_id) => { asset_type: asset_type, quantity: 5 }),
@@ -1937,8 +1937,8 @@ mod tests_tx {
         let parameters = vec![];
         let amount = 30;
         let transaction = mint_asset!(
-            Box::new(asset_mint_output!(lock_script_hash, parameters.clone(), amount)),
-            metadata.clone(),
+            Box::new(asset_mint_output!(lock_script_hash, parameters, amount)),
+            metadata,
             approver: approver
         );
         let tx = transaction!(fee: 11, transaction.clone());
@@ -2226,7 +2226,7 @@ mod tests_tx {
 
         let signature = sign(Random.generate().unwrap().private(), &content_hash).unwrap();
 
-        let tx = transaction!(seq: 0, fee: 10, store!(content.clone(), sender, signature));
+        let tx = transaction!(seq: 0, fee: 10, store!(content, sender, signature));
 
         assert_eq!(
             Err(RuntimeError::TextVerificationFail("Certifier and signer are different".to_string()).into()),
@@ -2454,8 +2454,8 @@ mod tests_tx {
         let parameters = vec![];
         let amount = 30;
         let transaction = mint_asset!(
-            Box::new(asset_mint_output!(lock_script_hash, parameters.clone(), amount)),
-            metadata.clone(),
+            Box::new(asset_mint_output!(lock_script_hash, parameters, amount)),
+            metadata,
             approver: approver
         );
         let tx = transaction!(fee: 11, transaction);
@@ -2662,8 +2662,7 @@ mod tests_tx {
         let amount = 30;
         let parameters = vec![];
 
-        let mint =
-            mint_asset!(Box::new(asset_mint_output!(lock_script_hash, parameters.clone(), amount)), metadata.clone());
+        let mint = mint_asset!(Box::new(asset_mint_output!(lock_script_hash, parameters, amount)), metadata.clone());
         let mint_tracker = mint.tracker().unwrap();
         let asset_type = Blake::blake(mint_tracker);
 
@@ -2673,7 +2672,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 20)),
-            (scheme: (shard_id, asset_type) => { metadata: metadata.clone(), supply: amount }),
+            (scheme: (shard_id, asset_type) => { metadata: metadata, supply: amount }),
             (asset: (mint_tracker, 0, shard_id) => { asset_type: asset_type, quantity: amount })
         ]);
     }
@@ -2697,7 +2696,7 @@ mod tests_tx {
             (metadata: shards: 1)
         ]);
 
-        let tx = transaction!(fee: 5, set_shard_users!(new_users.clone()));
+        let tx = transaction!(fee: 5, set_shard_users!(new_users));
 
         assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
         check_top_level_state!(state, [
@@ -2727,7 +2726,7 @@ mod tests_tx {
         ]);
 
         let new_users = vec![Address::random(), Address::random(), sender];
-        let tx = transaction!(fee: 5, set_shard_users!(new_users.clone()));
+        let tx = transaction!(fee: 5, set_shard_users!(new_users));
 
         assert_eq!(
             Err(RuntimeError::InsufficientPermission.into()),

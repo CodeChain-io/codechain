@@ -136,7 +136,7 @@ fn sign_all_input_all_output() {
         quantity: 0,
     };
     let input0 = AssetTransferInput {
-        prev_out: out0.clone(),
+        prev_out: out0,
         timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
@@ -214,7 +214,7 @@ fn sign_single_input_all_output() {
         quantity: 0,
     };
     let input0 = AssetTransferInput {
-        prev_out: out0.clone(),
+        prev_out: out0,
         timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
@@ -252,7 +252,7 @@ fn sign_single_input_all_output() {
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
-        inputs: vec![input0.clone(), input1.clone()],
+        inputs: vec![input0.clone(), input1],
         outputs: vec![output0.clone(), output1.clone()],
     };
 
@@ -291,7 +291,7 @@ fn sign_all_input_partial_output() {
         quantity: 0,
     };
     let input0 = AssetTransferInput {
-        prev_out: out0.clone(),
+        prev_out: out0,
         timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
@@ -330,7 +330,7 @@ fn sign_all_input_partial_output() {
         network_id: NetworkId::default(),
         burns: Vec::new(),
         inputs: vec![input0.clone(), input1.clone()],
-        outputs: vec![output0.clone(), output1.clone()],
+        outputs: vec![output0.clone(), output1],
     };
 
     // Execute sciprt in input0
@@ -368,7 +368,7 @@ fn sign_single_input_partial_output() {
         quantity: 0,
     };
     let input0 = AssetTransferInput {
-        prev_out: out0.clone(),
+        prev_out: out0,
         timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
@@ -406,8 +406,8 @@ fn sign_single_input_partial_output() {
     let transaction = ShardTransaction::TransferAsset {
         network_id: NetworkId::default(),
         burns: Vec::new(),
-        inputs: vec![input0.clone(), input1.clone()],
-        outputs: vec![output0.clone(), output1.clone()],
+        inputs: vec![input0.clone(), input1],
+        outputs: vec![output0.clone(), output1],
     };
 
     // Execute sciprt in input0
@@ -445,7 +445,7 @@ fn distinguish_sign_single_input_with_sign_all() {
         quantity: 0,
     };
     let input0 = AssetTransferInput {
-        prev_out: out0.clone(),
+        prev_out: out0,
         timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),
@@ -501,7 +501,7 @@ fn distinguish_sign_single_output_with_sign_all() {
         quantity: 0,
     };
     let input0 = AssetTransferInput {
-        prev_out: out0.clone(),
+        prev_out: out0,
         timelock: None,
         lock_script: Vec::new(),
         unlock_script: Vec::new(),

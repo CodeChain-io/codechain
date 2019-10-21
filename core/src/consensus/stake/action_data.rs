@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::cmp::Ordering;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::{self, BTreeSet};
 use std::collections::{btree_map, HashMap, HashSet};
@@ -203,12 +204,16 @@ impl<'a> Delegation<'a> {
         }
 
         if let Entry::Occupied(mut entry) = self.delegatees.entry(delegatee) {
-            if *entry.get() > quantity {
-                *entry.get_mut() -= quantity;
-                return Ok(())
-            } else if *entry.get() == quantity {
-                entry.remove();
-                return Ok(())
+            match entry.get().cmp(&quantity) {
+                Ordering::Greater => {
+                    *entry.get_mut() -= quantity;
+                    return Ok(())
+                }
+                Ordering::Equal => {
+                    entry.remove();
+                    return Ok(())
+                }
+                Ordering::Less => {}
             }
         }
 

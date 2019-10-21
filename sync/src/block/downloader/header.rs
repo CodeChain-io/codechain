@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -77,21 +78,21 @@ impl HeaderDownloader {
     }
 
     pub fn update(&mut self, total_score: U256, best_hash: H256) -> bool {
-        if self.total_score == total_score {
-            true
-        } else if self.total_score < total_score {
-            self.total_score = total_score;
-            self.best_hash = best_hash;
+        match self.total_score.cmp(&total_score) {
+            Ordering::Equal => true,
+            Ordering::Less => {
+                self.total_score = total_score;
+                self.best_hash = best_hash;
 
-            if self.client.block_header(&BlockId::Hash(best_hash)).is_some() {
-                self.pivot = Pivot {
-                    hash: best_hash,
-                    total_score,
+                if self.client.block_header(&BlockId::Hash(best_hash)).is_some() {
+                    self.pivot = Pivot {
+                        hash: best_hash,
+                        total_score,
+                    }
                 }
+                true
             }
-            true
-        } else {
-            false
+            Ordering::Greater => false,
         }
     }
 

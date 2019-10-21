@@ -38,14 +38,12 @@ use crate::{Query, Trie, TrieError};
 /// use memorydb::*;
 /// use primitives::H256;
 ///
-/// fn main() {
-///   let mut memdb = MemoryDB::new();
-///   let mut root = H256::new();
-///   TrieDBMut::new(&mut memdb, &mut root).insert(b"foo", b"bar").unwrap();
-///   let t = TrieDB::try_new(&memdb, &root).unwrap();
-///   assert!(t.contains(b"foo").unwrap());
-///   assert_eq!(t.get(b"foo").unwrap().unwrap(), DBValue::from_slice(b"bar"));
-/// }
+/// let mut memdb = MemoryDB::new();
+/// let mut root = H256::new();
+/// TrieDBMut::new(&mut memdb, &mut root).insert(b"foo", b"bar").unwrap();
+/// let t = TrieDB::try_new(&memdb, &root).unwrap();
+/// assert!(t.contains(b"foo").unwrap());
+/// assert_eq!(t.get(b"foo").unwrap().unwrap(), DBValue::from_slice(b"bar"));
 /// ```
 pub struct TrieDB<'db> {
     db: &'db dyn HashDB,
