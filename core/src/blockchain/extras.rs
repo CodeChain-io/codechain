@@ -150,7 +150,7 @@ impl Add for TransactionAddresses {
     type Output = Self;
 
     fn add(self, rhs: Self) -> <Self as Add>::Output {
-        let mut s = self.clone();
+        let mut s = self;
         s += rhs;
         s
     }
@@ -168,7 +168,7 @@ impl Sub for TransactionAddresses {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> <Self as Add>::Output {
-        let mut s = self.clone();
+        let mut s = self;
         s -= rhs;
         s
     }

@@ -241,5 +241,4 @@ mod tests {
         a.inc_seq();
         assert!(!a.is_null());
     }
-
 }

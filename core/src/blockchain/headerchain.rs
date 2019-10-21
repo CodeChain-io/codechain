@@ -276,11 +276,11 @@ impl HeaderChain {
             };
             match route.retracted.len() {
                 0 => BestHeaderChanged::CanonChainAppended {
-                    best_header: new_best_header.clone(),
+                    best_header: new_best_header,
                 },
                 _ => BestHeaderChanged::BranchBecomingCanonChain {
                     tree_route: route,
-                    best_header: new_best_header.clone(),
+                    best_header: new_best_header,
                 },
             }
         } else {

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp::PartialEq;
+use std::cmp::{Ordering, PartialEq};
 use std::convert::TryFrom;
 use std::fmt;
 use std::ops::Sub;
@@ -126,20 +126,20 @@ impl Decodable for BitSet {
         rlp.decoder().decode_value(|bytes| {
             let expected = BITSET_SIZE;
             let got = bytes.len();
-            if got > expected {
-                Err(DecoderError::RlpIsTooBig {
+            match got.cmp(&expected) {
+                Ordering::Greater => Err(DecoderError::RlpIsTooBig {
                     expected,
                     got,
-                })
-            } else if got < expected {
-                Err(DecoderError::RlpIsTooShort {
+                }),
+                Ordering::Less => Err(DecoderError::RlpIsTooShort {
                     expected,
                     got,
-                })
-            } else {
-                let mut bit_set = BitSet::new();
-                bit_set.0.copy_from_slice(bytes);
-                Ok(bit_set)
+                }),
+                Ordering::Equal => {
+                    let mut bit_set = BitSet::new();
+                    bit_set.0.copy_from_slice(bytes);
+                    Ok(bit_set)
+                }
             }
         })
     }

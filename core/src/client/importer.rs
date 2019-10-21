@@ -199,7 +199,7 @@ impl Importer {
         let mut batch = DBTransaction::new();
 
         block.state().journal_under(&mut batch, number).expect("DB commit failed");
-        let route = chain.insert_block(&mut batch, block_data, invoices.clone(), self.engine.borrow());
+        let route = chain.insert_block(&mut batch, block_data, invoices, self.engine.borrow());
 
         // Final commit to the DB
         client.db().write_buffered(batch);

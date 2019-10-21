@@ -365,7 +365,7 @@ mod tests {
             let kvdb = Arc::new(kvdb_memorydb::create(1));
             snapshot.read_snapshot(kvdb.clone(), &root).unwrap();
 
-            let mut jdb = journaldb::new(kvdb.clone(), Algorithm::Archive, COL_STATE);
+            let mut jdb = journaldb::new(kvdb, Algorithm::Archive, COL_STATE);
             let t = TrieDB::try_new(jdb.as_hashdb_mut(), &root).unwrap();
             let mut inserted_keys = HashSet::new();
             for &(ref key, ref value) in &x {
