@@ -790,12 +790,12 @@ impl KeyValueDB for Database {
 
     fn iter(&self, col: Option<u32>) -> KeyValueDBIterator {
         let unboxed = Database::iter(self, col);
-        Box::new(unboxed.into_iter().flat_map(|inner| inner))
+        Box::new(unboxed.into_iter().flatten())
     }
 
     fn iter_from_prefix<'a>(&'a self, col: Option<u32>, prefix: &'a [u8]) -> KeyValueDBIterator {
         let unboxed = Database::iter_from_prefix(self, col, prefix);
-        Box::new(unboxed.into_iter().flat_map(|inner| inner))
+        Box::new(unboxed.into_iter().flatten())
     }
 
     fn restore(&self, new_db: &str) -> Result<()> {
@@ -833,7 +833,7 @@ mod tests {
 
         assert_eq!(&*db.get(None, &key1).unwrap().unwrap(), b"cat");
 
-        let contents: Vec<_> = db.iter(None).into_iter().flat_map(|inner| inner).collect();
+        let contents: Vec<_> = db.iter(None).into_iter().flatten().collect();
         assert_eq!(contents.len(), 2);
         assert_eq!(&*contents[0].0, &*key1);
         assert_eq!(&*contents[0].1, b"cat");

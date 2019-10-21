@@ -256,5 +256,4 @@ mod tests {
             quantity: 0,
         });
     }
-
 }

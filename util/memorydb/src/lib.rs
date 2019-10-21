@@ -44,36 +44,35 @@ use std::mem;
 /// extern crate memorydb;
 /// use hashdb::*;
 /// use memorydb::*;
-/// fn main() {
-///   let mut m = MemoryDB::new();
-///   let d = "Hello world!".as_bytes();
 ///
-///   let k = m.insert(d);
-///   assert!(m.contains(&k));
-///   assert_eq!(m.get(&k).unwrap(), d);
+/// let mut m = MemoryDB::new();
+/// let d = "Hello world!".as_bytes();
 ///
-///   m.insert(d);
-///   assert!(m.contains(&k));
+/// let k = m.insert(d);
+/// assert!(m.contains(&k));
+/// assert_eq!(m.get(&k).unwrap(), d);
 ///
-///   m.remove(&k);
-///   assert!(m.contains(&k));
+/// m.insert(d);
+/// assert!(m.contains(&k));
 ///
-///   m.remove(&k);
-///   assert!(!m.contains(&k));
+/// m.remove(&k);
+/// assert!(m.contains(&k));
 ///
-///   m.remove(&k);
-///   assert!(!m.contains(&k));
+/// m.remove(&k);
+/// assert!(!m.contains(&k));
 ///
-///   m.insert(d);
-///   assert!(!m.contains(&k));
+/// m.remove(&k);
+/// assert!(!m.contains(&k));
+///
+/// m.insert(d);
+/// assert!(!m.contains(&k));
 
-///   m.insert(d);
-///   assert!(m.contains(&k));
-///   assert_eq!(m.get(&k).unwrap(), d);
+/// m.insert(d);
+/// assert!(m.contains(&k));
+/// assert_eq!(m.get(&k).unwrap(), d);
 ///
-///   m.remove(&k);
-///   assert!(!m.contains(&k));
-/// }
+/// m.remove(&k);
+/// assert!(!m.contains(&k));
 /// ```
 #[derive(Default, Clone, PartialEq)]
 pub struct MemoryDB {
@@ -96,14 +95,13 @@ impl MemoryDB {
     /// extern crate memorydb;
     /// use hashdb::*;
     /// use memorydb::*;
-    /// fn main() {
-    ///   let mut m = MemoryDB::new();
-    ///   let hello_bytes = "Hello world!".as_bytes();
-    ///   let hash = m.insert(hello_bytes);
-    ///   assert!(m.contains(&hash));
-    ///   m.clear();
-    ///   assert!(!m.contains(&hash));
-    /// }
+    ///
+    /// let mut m = MemoryDB::new();
+    /// let hello_bytes = "Hello world!".as_bytes();
+    /// let hash = m.insert(hello_bytes);
+    /// assert!(m.contains(&hash));
+    /// m.clear();
+    /// assert!(!m.contains(&hash));
     /// ```
     pub fn clear(&mut self) {
         self.data.clear();

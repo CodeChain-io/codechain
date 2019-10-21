@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::cmp::Ordering;
 use std::iter::Iterator;
 use std::mem;
 use std::sync::{Arc, Weak};
@@ -690,34 +691,33 @@ impl Worker {
                 cinfo!(ENGINE, "move_to_step: Propose.");
                 // If there are multiple proposals, use the first proposal.
                 if let Some(hash) = self.votes.get_block_hashes(&vote_step).first() {
-                    if self.client().block(&BlockId::Hash(*hash)).is_some() {
-                        self.proposal = Proposal::new_imported(*hash);
-                        self.move_to_step(TendermintState::Prevote, is_restoring);
-                    } else {
+                    if self.client().block(&BlockId::Hash(*hash)).is_none() {
                         cwarn!(ENGINE, "Proposal is received but not imported");
                         // Proposal is received but is not verified yet.
                         // Wait for verification.
                         return
                     }
-                } else {
-                    let parent_block_hash = self.prev_block_hash();
-                    if self.is_signer_proposer(&parent_block_hash) {
-                        if let TwoThirdsMajority::Lock(lock_view, locked_block_hash) = self.last_two_thirds_majority {
-                            cinfo!(ENGINE, "I am a proposer, I'll re-propose a locked block");
-                            match self.locked_proposal_block(lock_view, locked_block_hash) {
-                                Ok(block) => self.repropose_block(block),
-                                Err(error_msg) => cwarn!(ENGINE, "{}", error_msg),
-                            }
-                        } else {
-                            cinfo!(ENGINE, "I am a proposer, I'll create a block");
-                            self.update_sealing(parent_block_hash);
-                            self.step = TendermintState::ProposeWaitBlockGeneration {
-                                parent_hash: parent_block_hash,
-                            };
-                        }
-                    } else {
-                        self.request_proposal_to_any(vote_step.height, vote_step.view);
+                    self.proposal = Proposal::new_imported(*hash);
+                    self.move_to_step(TendermintState::Prevote, is_restoring);
+                    return
+                }
+                let parent_block_hash = self.prev_block_hash();
+                if !self.is_signer_proposer(&parent_block_hash) {
+                    self.request_proposal_to_any(vote_step.height, vote_step.view);
+                    return
+                }
+                if let TwoThirdsMajority::Lock(lock_view, locked_block_hash) = self.last_two_thirds_majority {
+                    cinfo!(ENGINE, "I am a proposer, I'll re-propose a locked block");
+                    match self.locked_proposal_block(lock_view, locked_block_hash) {
+                        Ok(block) => self.repropose_block(block),
+                        Err(error_msg) => cwarn!(ENGINE, "{}", error_msg),
                     }
+                } else {
+                    cinfo!(ENGINE, "I am a proposer, I'll create a block");
+                    self.update_sealing(parent_block_hash);
+                    self.step = TendermintState::ProposeWaitBlockGeneration {
+                        parent_hash: parent_block_hash,
+                    };
                 }
             }
             Step::Prevote => {
@@ -1562,7 +1562,7 @@ impl Worker {
             on,
         };
 
-        self.votes.collect(vote.clone()).expect("Must not attempt double vote on proposal");;
+        self.votes.collect(vote.clone()).expect("Must not attempt double vote on proposal");
         cinfo!(ENGINE, "Voted {:?} as {}th proposer.", vote, signer_index);
         Ok(vote)
     }
@@ -1811,7 +1811,7 @@ impl Worker {
                 );
             }
 
-            if let Err(double) = self.votes.collect(message.clone()) {
+            if let Err(double) = self.votes.collect(message) {
                 cerror!(ENGINE, "Double Vote found {:?}", double);
                 self.report_double_vote(&double);
                 return None
@@ -1869,17 +1869,15 @@ impl Worker {
 
         let current_step = current_vote_step.step;
         if current_step == Step::Prevote || current_step == Step::Precommit {
-            let peer_known_votes = if current_vote_step == peer_vote_step {
-                peer_known_votes
-            } else if current_vote_step < peer_vote_step {
+            let peer_known_votes = match current_vote_step.cmp(&peer_vote_step) {
+                Ordering::Equal => peer_known_votes,
                 // We don't know which votes peer has.
                 // However the peer knows more than 2/3 of votes.
                 // So request all votes.
-                BitSet::all_set()
-            } else {
+                Ordering::Less => BitSet::all_set(),
                 // If peer's state is less than my state,
                 // the peer does not know any useful votes.
-                BitSet::new()
+                Ordering::Greater => BitSet::new(),
             };
 
             let difference = &peer_known_votes - &self.votes_received;
@@ -1969,45 +1967,47 @@ impl Worker {
             return
         }
 
-        if height == self.height - 1 {
-            let block = self.client().block(&height.into()).expect("Parent block should exist");
-            let block_hash = block.hash();
-            let finalized_view = self.finalized_view_of_previous_block;
+        match height.cmp(&(self.height - 1)) {
+            Ordering::Equal => {
+                let block = self.client().block(&height.into()).expect("Parent block should exist");
+                let block_hash = block.hash();
+                let finalized_view = self.finalized_view_of_previous_block;
 
-            let votes = self
-                .votes
-                .get_all_votes_in_round(&VoteStep {
-                    height,
-                    view: finalized_view,
-                    step: Step::Precommit,
-                })
-                .into_iter()
-                .filter(|vote| vote.on.block_hash == Some(block_hash))
-                .collect();
+                let votes = self
+                    .votes
+                    .get_all_votes_in_round(&VoteStep {
+                        height,
+                        view: finalized_view,
+                        step: Step::Precommit,
+                    })
+                    .into_iter()
+                    .filter(|vote| vote.on.block_hash == Some(block_hash))
+                    .collect();
 
-            self.send_commit(block, votes, &result);
-        } else if height < self.height - 1 {
-            let block = self.client().block(&height.into()).expect("Parent block should exist");
-            let child_block = self.client().block(&(height + 1).into()).expect("Parent block should exist");
-            let child_block_header_seal = child_block.header().seal();
-            let child_block_seal_view = TendermintSealView::new(&child_block_header_seal);
-            let parent_block_finalized_view =
-                child_block_seal_view.parent_block_finalized_view().expect("Verified block");
-            let on = VoteOn {
-                step: VoteStep::new(height, parent_block_finalized_view, Step::Precommit),
-                block_hash: Some(block.hash()),
-            };
-            let mut votes = Vec::new();
-            for (index, signature) in child_block_seal_view.signatures().expect("The block is verified") {
-                let message = ConsensusMessage {
-                    signature,
-                    signer_index: index,
-                    on: on.clone(),
-                };
-                votes.push(message);
+                self.send_commit(block, votes, &result);
             }
-
-            self.send_commit(block, votes, &result);
+            Ordering::Less => {
+                let block = self.client().block(&height.into()).expect("Parent block should exist");
+                let child_block = self.client().block(&(height + 1).into()).expect("Parent block should exist");
+                let child_block_header_seal = child_block.header().seal();
+                let child_block_seal_view = TendermintSealView::new(&child_block_header_seal);
+                let parent_block_finalized_view =
+                    child_block_seal_view.parent_block_finalized_view().expect("Verified block");
+                let on = VoteOn {
+                    step: VoteStep::new(height, parent_block_finalized_view, Step::Precommit),
+                    block_hash: Some(block.hash()),
+                };
+                let mut votes = Vec::new();
+                for (index, signature) in child_block_seal_view.signatures().expect("The block is verified") {
+                    let message = ConsensusMessage {
+                        signature,
+                        signer_index: index,
+                        on: on.clone(),
+                    };
+                    votes.push(message);
+                }
+            }
+            Ordering::Greater => {}
         }
     }
 
@@ -2049,23 +2049,27 @@ impl Worker {
             return None
         }
 
-        if commit_height < self.height {
-            cdebug!(
-                ENGINE,
-                "Received commit message is old. Current height is {} but commit messages is for height {}",
-                self.height,
-                commit_height,
-            );
-            return None
-        } else if commit_height > self.height {
-            cwarn!(
-                ENGINE,
-                "Invalid commit message received: precommit on height {} but current height is {}",
-                commit_height,
-                self.height
-            );
-            return None
-        }
+        match commit_height.cmp(&self.height) {
+            Ordering::Less => {
+                cdebug!(
+                    ENGINE,
+                    "Received commit message is old. Current height is {} but commit messages is for height {}",
+                    self.height,
+                    commit_height,
+                );
+                return None
+            }
+            Ordering::Greater => {
+                cwarn!(
+                    ENGINE,
+                    "Invalid commit message received: precommit on height {} but current height is {}",
+                    commit_height,
+                    self.height
+                );
+                return None
+            }
+            Ordering::Equal => {}
+        };
 
         let prev_block_hash = self
             .client()

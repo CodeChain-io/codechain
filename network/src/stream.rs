@@ -283,7 +283,7 @@ impl Stream {
             Ok(stream) => Some(Self::from(stream)),
             Err(ref e) if e.kind() == io::ErrorKind::NotConnected => None,
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => None,
-            Err(e) => Err(e)?,
+            Err(e) => return Err(e.into()),
         })
     }
 
