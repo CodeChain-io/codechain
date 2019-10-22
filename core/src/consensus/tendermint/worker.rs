@@ -85,8 +85,11 @@ struct Worker {
     last_two_thirds_majority: TwoThirdsMajority,
     /// hash of the proposed block, used for seal submission.
     proposal: Proposal,
-    /// The last confirmed view from the commit step.
-    last_confirmed_view: View,
+    /// The finalized view of the previous height's block.
+    /// The signatures for the previous block is signed for the view below.
+    finalized_view_of_previous_block: View,
+    /// The finalized view of the current height's block.
+    finalized_view_of_current_block: Option<View>,
     /// Set used to determine the current validators.
     validators: Arc<DynamicValidator>,
     /// Channel to the network extension, must be set later.
@@ -187,7 +190,8 @@ impl Worker {
             signer: Default::default(),
             last_two_thirds_majority: TwoThirdsMajority::Empty,
             proposal: Proposal::None,
-            last_confirmed_view: 0,
+            finalized_view_of_previous_block: 0,
+            finalized_view_of_current_block: None,
             validators,
             extension,
             votes_received: MutTrigger::new(BitSet::new()),
@@ -418,7 +422,11 @@ impl Worker {
             return false
         }
 
-        let vote_step = VoteStep::new(self.height, self.last_confirmed_view, Step::Precommit);
+        let vote_step = VoteStep::new(
+            self.height,
+            self.finalized_view_of_current_block.expect("finalized_view_of_current_height is not None in Commit state"),
+            Step::Precommit,
+        );
         if self.step.is_commit_timedout() && self.check_current_block_exists() {
             cinfo!(ENGINE, "Transition to Propose because best block is changed after commit timeout");
             return true
@@ -597,8 +605,10 @@ impl Worker {
         self.client().update_sealing(BlockId::Hash(parent_block_hash), true);
     }
 
-    fn save_last_confirmed_view(&mut self, view: View) {
-        self.last_confirmed_view = view;
+    /// Do we need this function?
+    fn set_finalized_view_in_current_height(&mut self, view: View) {
+        assert_eq!(self.finalized_view_of_current_block, None);
+        self.finalized_view_of_current_block = Some(view);
     }
 
     fn increment_view(&mut self, n: View) {
@@ -608,7 +618,28 @@ impl Worker {
         self.votes_received = MutTrigger::new(BitSet::new());
     }
 
-    fn move_to_height(&mut self, height: Height) {
+    /// Move to the next height.
+    fn move_to_the_next_height(&mut self) {
+        assert!(
+            self.step.is_commit(),
+            "move_to_the_next_height should be called in Commit state, but the current step is {:?}",
+            self.step
+        );
+        cinfo!(ENGINE, "Transitioning to height {}.", self.height + 1);
+        self.last_two_thirds_majority = TwoThirdsMajority::Empty;
+        self.height += 1;
+        self.view = 0;
+        self.proposal = Proposal::None;
+        self.votes_received = MutTrigger::new(BitSet::new());
+        self.finalized_view_of_previous_block =
+            self.finalized_view_of_current_block.expect("self.step == Step::Commit");
+        self.finalized_view_of_current_block = None;
+    }
+
+    /// Jump to the height.
+    /// This function is called when new blocks are received from block sync.
+    /// This function could be called at any state.
+    fn jump_to_height(&mut self, height: Height, finalized_view_of_previous_height: View) {
         assert!(height > self.height, "{} < {}", height, self.height);
         cinfo!(ENGINE, "Transitioning to height {}.", height);
         self.last_two_thirds_majority = TwoThirdsMajority::Empty;
@@ -616,6 +647,8 @@ impl Worker {
         self.view = 0;
         self.proposal = Proposal::None;
         self.votes_received = MutTrigger::new(BitSet::new());
+        self.finalized_view_of_previous_block = finalized_view_of_previous_height;
+        self.finalized_view_of_current_block = None;
     }
 
     #[allow(clippy::cognitive_complexity)]
@@ -736,7 +769,7 @@ impl Worker {
             Step::Commit => {
                 cinfo!(ENGINE, "move_to_step: Commit.");
                 let (view, block_hash) = state.committed().expect("commit always has committed_view");
-                self.save_last_confirmed_view(view);
+                self.set_finalized_view_in_current_height(view);
 
                 let proposal_received = self.is_proposal_received(self.height, view, block_hash);
                 let proposal_imported = self.client().block(&block_hash.into()).is_some();
@@ -850,8 +883,7 @@ impl Worker {
             && has_enough_aligned_votes
         {
             if self.can_move_from_commit_to_propose() {
-                let height = self.height;
-                self.move_to_height(height + 1);
+                self.move_to_the_next_height();
                 self.move_to_step(TendermintState::Propose, is_restoring);
                 return
             }
@@ -957,9 +989,11 @@ impl Worker {
                 _ => {}
             };
         } else if current_height < height {
-            self.move_to_height(height);
-            let prev_block_view = TendermintSealView::new(proposal.seal()).previous_block_view().unwrap();
-            self.save_last_confirmed_view(prev_block_view);
+            let finalized_view_of_previous_height =
+                TendermintSealView::new(proposal.seal()).previous_block_view().unwrap();
+
+            self.jump_to_height(height, finalized_view_of_previous_height);
+
             let proposal_is_for_view0 = self.votes.has_votes_for(
                 &VoteStep {
                     height,
@@ -981,8 +1015,8 @@ impl Worker {
             view: &self.view,
             step: &self.step.to_step(),
             votes: &self.votes.get_all(),
-            finalized_view_of_previous_block: &self.last_confirmed_view,
-            finalized_view_of_current_block: &Some(self.last_confirmed_view),
+            finalized_view_of_previous_block: &self.finalized_view_of_previous_block,
+            finalized_view_of_current_block: &self.finalized_view_of_current_block,
         });
     }
 
@@ -1002,12 +1036,9 @@ impl Worker {
             self.step = backup_step;
             self.height = backup.height;
             self.view = backup.view;
-            if backup.step == Step::Commit {
-                self.last_confirmed_view =
-                    backup.finalized_view_of_current_block.expect("In commit step the finalized view exist")
-            } else {
-                self.last_confirmed_view = backup.finalized_view_of_previous_block;
-            }
+            self.finalized_view_of_previous_block = backup.finalized_view_of_previous_block;
+            self.finalized_view_of_current_block = backup.finalized_view_of_current_block;
+
             if let Some(proposal) = backup.proposal {
                 if client.block(&BlockId::Hash(proposal)).is_some() {
                     self.proposal = Proposal::ProposalImported(proposal);
@@ -1045,7 +1076,7 @@ impl Worker {
 
         let view = self.view;
 
-        let last_block_view = &self.last_confirmed_view;
+        let last_block_view = &self.finalized_view_of_previous_block;
         assert_eq!(self.prev_block_hash(), parent_hash);
 
         let (precommits, precommit_indices) = self
@@ -1305,8 +1336,7 @@ impl Worker {
                     return
                 }
 
-                let height = self.height;
-                self.move_to_height(height + 1);
+                self.move_to_the_next_height();
                 TendermintState::Propose
             }
             TendermintState::CommitTimedout {
@@ -1374,7 +1404,7 @@ impl Worker {
                 // the previous step. So, act as the last precommit step.
                 VoteStep {
                     height: self.height,
-                    view: self.last_confirmed_view,
+                    view: self.finalized_view_of_current_block.expect("self.step == Step::Commit"),
                     step: Step::Precommit,
                 }
             } else {
@@ -1585,8 +1615,7 @@ impl Worker {
             if enacted.first() == Some(&committed_block_hash) {
                 cdebug!(ENGINE, "Committed block {} is now the best block", committed_block_hash);
                 if self.can_move_from_commit_to_propose() {
-                    let new_height = self.height + 1;
-                    self.move_to_height(new_height);
+                    self.move_to_the_next_height();
                     self.move_to_step(TendermintState::Propose, false);
                     return
                 }
@@ -1612,11 +1641,10 @@ impl Worker {
                 let full_header = header.decode();
                 if self.height < header.number() {
                     cinfo!(ENGINE, "Received a commit: {:?}.", header.number());
-                    let prev_block_view = TendermintSealView::new(full_header.seal())
+                    let finalized_view_of_previous_height = TendermintSealView::new(full_header.seal())
                         .previous_block_view()
                         .expect("Imported block already checked");
-                    self.move_to_height(header.number());
-                    self.save_last_confirmed_view(prev_block_view);
+                    self.jump_to_height(header.number(), finalized_view_of_previous_height);
                 }
             }
             if height_at_begin != self.height {
@@ -1809,7 +1837,7 @@ impl Worker {
             // the previous step. So, act as the last precommit step.
             VoteStep {
                 height: self.height,
-                view: self.last_confirmed_view,
+                view: self.finalized_view_of_current_block.expect("self.step == Step::Commit"),
                 step: Step::Precommit,
             }
         } else {
