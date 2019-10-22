@@ -28,8 +28,8 @@ macro_rules! log_target {
     (ENGINE) => {
         "engine"
     };
-    (EXTERNAL_PARCEL) => {
-        "external_parcel"
+    (EXTERNAL_TX) => {
+        "external_tx"
     };
     (HEADERCHAIN) => {
         "headerchain"
@@ -52,8 +52,8 @@ macro_rules! log_target {
     (NETFILTER) => {
         "netfilter"
     };
-    (OWN_PARCEL) => {
-        "own_parcel"
+    (OWN_TX) => {
+        "own_tx"
     };
     (ROUTING_TABLE) => {
         "routing_table"
