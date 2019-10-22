@@ -979,7 +979,7 @@ impl MinerService for Miner {
         client: &C,
         transactions: Vec<UnverifiedTransaction>,
     ) -> Vec<Result<TransactionImportResult, Error>> {
-        ctrace!(EXTERNAL_PARCEL, "Importing external transactions");
+        ctrace!(EXTERNAL_TX, "Importing external transactions");
         let results = {
             let mut mem_pool = self.mem_pool.write();
             self.add_transactions_to_pool(client, transactions, TxOrigin::External, &mut mem_pool)
@@ -1004,7 +1004,7 @@ impl MinerService for Miner {
         chain: &C,
         tx: SignedTransaction,
     ) -> Result<TransactionImportResult, Error> {
-        ctrace!(OWN_PARCEL, "Importing transaction: {:?}", tx);
+        ctrace!(OWN_TX, "Importing transaction: {:?}", tx);
 
         let imported = {
             // Be sure to release the lock before we call prepare_work_sealing
@@ -1017,11 +1017,11 @@ impl MinerService for Miner {
 
             match import {
                 Ok(_) => {
-                    ctrace!(OWN_PARCEL, "Status: {:?}", mem_pool.status());
+                    ctrace!(OWN_TX, "Status: {:?}", mem_pool.status());
                 }
                 Err(ref e) => {
-                    ctrace!(OWN_PARCEL, "Status: {:?}", mem_pool.status());
-                    cwarn!(OWN_PARCEL, "Error importing transaction: {:?}", e);
+                    ctrace!(OWN_TX, "Status: {:?}", mem_pool.status());
+                    cwarn!(OWN_TX, "Error importing transaction: {:?}", e);
                 }
             }
             import
