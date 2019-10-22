@@ -981,7 +981,8 @@ impl Worker {
             view: &self.view,
             step: &self.step.to_step(),
             votes: &self.votes.get_all(),
-            last_confirmed_view: &self.last_confirmed_view,
+            finalized_view_of_previous_block: &self.last_confirmed_view,
+            finalized_view_of_current_block: &Some(self.last_confirmed_view),
         });
     }
 
@@ -1001,7 +1002,12 @@ impl Worker {
             self.step = backup_step;
             self.height = backup.height;
             self.view = backup.view;
-            self.last_confirmed_view = backup.last_confirmed_view;
+            if backup.step == Step::Commit {
+                self.last_confirmed_view =
+                    backup.finalized_view_of_current_block.expect("In commit step the finalized view exist")
+            } else {
+                self.last_confirmed_view = backup.finalized_view_of_previous_block;
+            }
             if let Some(proposal) = backup.proposal {
                 if client.block(&BlockId::Hash(proposal)).is_some() {
                     self.proposal = Proposal::ProposalImported(proposal);
