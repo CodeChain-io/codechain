@@ -12,5 +12,9 @@ primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.
 rlp = {path = "../rlp" }
 
 [dev-dependencies]
+journaldb = { path = "../journaldb" }
+kvdb = { path = "../kvdb" }
+kvdb-rocksdb = { path = "../kvdb-rocksdb" }
+tempfile = "3.1.0"
 trie-standardmap = { path = "../trie-standardmap" }
 memorydb = {path = "../memorydb" }
