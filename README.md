@@ -73,7 +73,7 @@ With the methods above, node organizers can manage their local persistent data u
 ### Building From Source
 
 #### Build Dependencies
-CodeChain requires Rust version 1.34.0 to build. Using [rustup](https://rustup.rs/ "rustup URL") is recommended.
+CodeChain requires Rust version 1.37.0 to build. Using [rustup](https://rustup.rs/ "rustup URL") is recommended.
 
 - For Linux Systems:
   - Ubuntu
@@ -135,32 +135,32 @@ You can create a block by sending a parcel through [JSON-RPC](https://github.com
 Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2018-12-06 version of `rustfmt`.
 
 ```sh
-rustup toolchain install nightly-2019-05-17
-rustup component add rustfmt --toolchain nightly-2019-05-17
+rustup toolchain install nightly-2019-10-13
+rustup component add rustfmt --toolchain nightly-2019-10-13
 ```
 
 To run `rustfmt`,
 
 ```sh
-cargo +nightly-2019-05-17 fmt
+cargo +nightly-2019-10-13 fmt
 ```
 
 ## Linting
 
 You should run `clippy` also. This is a lint tool for rust. It suggests more efficient/readable code.
 You can see [the clippy document](https://rust-lang.github.io/rust-clippy/master/index.html) for more information.
-You need to install the nightly-2019-05-17 version of `clippy`.
+You need to install the nightly-2019-10-13 version of `clippy`.
 
 ### Install
 ```sh
-rustup toolchain install nightly-2019-05-17
-rustup component add clippy --toolchain nightly-2019-05-17
+rustup toolchain install nightly-2019-10-13
+rustup component add clippy --toolchain nightly-2019-10-13
 ```
 
 ### Run
 
 ```sh
-cargo +nightly-2019-05-17 clippy --all --all-targets
+cargo +nightly-2019-10-13 clippy --all --all-targets
 ```
 
 ## Testing
