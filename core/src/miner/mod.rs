@@ -32,6 +32,7 @@ use ctypes::{BlockHash, TxHash};
 use cvm::ChainTimeInfo;
 use primitives::Bytes;
 
+pub use self::mem_pool_types::MemPoolFees;
 pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
@@ -60,12 +61,6 @@ pub trait MinerService: Send + Sync {
 
     /// Set the extra_data that we will seal blocks with.
     fn set_extra_data(&self, extra_data: Bytes);
-
-    /// Get current minimal fee for tranasctions accepted to queue.
-    fn minimal_fee(&self) -> u64;
-
-    /// Set minimal fee of transactions to be accepted for mining.
-    fn set_minimal_fee(&self, min_fee: u64);
 
     /// Get current transactions limit in queue.
     fn transactions_limit(&self) -> usize;

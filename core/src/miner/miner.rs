@@ -755,14 +755,6 @@ impl MinerService for Miner {
         self.params.write().extra_data = extra_data;
     }
 
-    fn minimal_fee(&self) -> u64 {
-        self.mem_pool.read().minimal_fee()
-    }
-
-    fn set_minimal_fee(&self, min_fee: u64) {
-        self.mem_pool.write().set_minimal_fee(min_fee);
-    }
-
     fn transactions_limit(&self) -> usize {
         self.mem_pool.read().limit()
     }
