@@ -27,8 +27,8 @@ use table::Table;
 
 use super::backup;
 use super::mem_pool_types::{
-    AccountDetails, CurrentQueue, FutureQueue, MemPoolInput, MemPoolItem, MemPoolStatus, PoolingInstant, QueueTag,
-    TransactionOrder, TransactionOrderWithTag, TxOrigin, TxTimelock,
+    AccountDetails, CurrentQueue, FutureQueue, MemPoolFees, MemPoolInput, MemPoolItem, MemPoolStatus, PoolingInstant,
+    QueueTag, TransactionOrder, TransactionOrderWithTag, TxOrigin, TxTimelock,
 };
 use super::TransactionImportResult;
 use crate::client::{AccountData, BlockChainTrait};
@@ -73,8 +73,8 @@ impl From<SyntaxError> for Error {
 }
 
 pub struct MemPool {
-    /// Fee threshold for transactions that can be imported to this pool (defaults to 0)
-    minimal_fee: u64,
+    /// Fee threshold for transactions that can be imported to this pool
+    minimum_fees: MemPoolFees,
     /// A value which is used to check whether a new transaciton can replace a transaction in the memory pool with the same signer and seq.
     /// If the fee of the new transaction is `new_fee` and the fee of the transaction in the memory pool is `old_fee`,
     /// then `new_fee > old_fee + old_fee >> mem_pool_fee_bump_shift` should be satisfied to replace.
@@ -116,7 +116,7 @@ impl MemPool {
     /// Create new instance of this Queue with specified limits
     pub fn with_limits(limit: usize, memory_limit: usize, fee_bump_shift: usize, db: Arc<dyn KeyValueDB>) -> Self {
         MemPool {
-            minimal_fee: 0,
+            minimum_fees: Default::default(),
             fee_bump_shift,
             max_block_number_period_in_pool: DEFAULT_POOLING_PERIOD,
             current: CurrentQueue::new(),
@@ -199,17 +199,6 @@ impl MemPool {
     /// Returns current limit of transactions in the pool.
     pub fn limit(&self) -> usize {
         self.queue_count_limit
-    }
-
-    /// Get the minimal fee.
-    pub fn minimal_fee(&self) -> u64 {
-        self.minimal_fee
-    }
-
-    /// Sets new fee threshold for incoming transactions.
-    /// Any transaction already imported to the pool is not affected.
-    pub fn set_minimal_fee(&mut self, min_fee: u64) {
-        self.minimal_fee = min_fee;
     }
 
     /// Get one more than the lowest fee in the pool iff the pool is
@@ -781,17 +770,18 @@ impl MemPool {
         origin: TxOrigin,
         client_account: &AccountDetails,
     ) -> Result<(), Error> {
-        if origin != TxOrigin::Local && tx.fee < self.minimal_fee {
+        let action_min_fee = self.minimum_fees.min_cost(&tx.action);
+        if origin != TxOrigin::Local && tx.fee < action_min_fee {
             ctrace!(
                 MEM_POOL,
-                "Dropping transaction below minimal fee: {:?} (gp: {} < {})",
+                "Dropping transaction below mempool defined minimum fee: {:?} (gp: {} < {})",
                 tx.hash(),
                 tx.fee,
-                self.minimal_fee
+                action_min_fee
             );
 
             return Err(SyntaxError::InsufficientFee {
-                minimal: self.minimal_fee,
+                minimal: action_min_fee,
                 got: tx.fee,
             }
             .into())
