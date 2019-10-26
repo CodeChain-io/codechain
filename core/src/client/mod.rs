@@ -37,7 +37,7 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H160, H256, U256};
@@ -75,13 +75,13 @@ pub trait BlockChainTrait {
     /// Get the hash of block that contains the transaction, if any.
     fn transaction_block(&self, id: &TransactionId) -> Option<BlockHash>;
 
-    fn transaction_header(&self, tracker: &H256) -> Option<::encoded::Header>;
+    fn transaction_header(&self, tracker: &Tracker) -> Option<::encoded::Header>;
 
-    fn transaction_block_number(&self, tracker: &H256) -> Option<BlockNumber> {
+    fn transaction_block_number(&self, tracker: &Tracker) -> Option<BlockNumber> {
         self.transaction_header(tracker).map(|header| header.number())
     }
 
-    fn transaction_block_timestamp(&self, tracker: &H256) -> Option<u64> {
+    fn transaction_block_timestamp(&self, tracker: &Tracker) -> Option<u64> {
         self.transaction_header(tracker).map(|header| header.timestamp())
     }
 }
@@ -253,9 +253,9 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
     fn error_hint(&self, hash: &H256) -> Option<String>;
 
     /// Get the transaction with given tracker.
-    fn transaction_by_tracker(&self, tracker: &H256) -> Option<LocalizedTransaction>;
+    fn transaction_by_tracker(&self, tracker: &Tracker) -> Option<LocalizedTransaction>;
 
-    fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)>;
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(H256, Option<String>)>;
 }
 
 /// Result of import block operation.
@@ -300,11 +300,17 @@ pub trait DatabaseClient {
 pub trait AssetClient {
     fn get_asset_scheme(&self, asset_type: H160, shard_id: ShardId, id: BlockId) -> TrieResult<Option<AssetScheme>>;
 
-    fn get_asset(&self, tracker: H256, index: usize, shard_id: ShardId, id: BlockId) -> TrieResult<Option<OwnedAsset>>;
+    fn get_asset(
+        &self,
+        tracker: Tracker,
+        index: usize,
+        shard_id: ShardId,
+        id: BlockId,
+    ) -> TrieResult<Option<OwnedAsset>>;
 
     fn is_asset_spent(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_id: BlockId,

@@ -17,18 +17,18 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::NetworkId;
-use primitives::{H160, H256};
+use primitives::H160;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::TaggedRlp;
-use crate::ShardId;
+use crate::{ShardId, Tracker};
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]
 pub enum Error {
     /// There are burn/inputs that shares same previous output
     DuplicatedPreviousOutput {
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
     },
     EmptyShardOwners(ShardId),

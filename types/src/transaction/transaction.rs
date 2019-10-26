@@ -21,6 +21,7 @@ use rlp::RlpStream;
 
 use super::Action;
 use super::{AssetWrapCCCOutput, ShardTransaction};
+use crate::Tracker;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
@@ -51,7 +52,7 @@ impl Transaction {
         blake256(stream.as_raw())
     }
 
-    pub fn tracker(&self) -> Option<H256> {
+    pub fn tracker(&self) -> Option<Tracker> {
         let shard_tx = match self.action.clone() {
             Action::WrapCCC {
                 shard_id,

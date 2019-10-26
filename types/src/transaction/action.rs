@@ -23,7 +23,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::errors::SyntaxError;
 use crate::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, ShardTransaction};
-use crate::{CommonParams, ShardId};
+use crate::{CommonParams, ShardId, Tracker};
 
 const PAY: u8 = 0x02;
 const SET_REGULAR_KEY: u8 = 0x03;
@@ -158,7 +158,7 @@ impl Action {
         }
     }
 
-    pub fn tracker(&self) -> Option<H256> {
+    pub fn tracker(&self) -> Option<Tracker> {
         self.asset_transaction().map(|tx| tx.tracker())
     }
 

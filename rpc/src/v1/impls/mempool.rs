@@ -19,6 +19,7 @@ use std::sync::Arc;
 use ccore::{BlockChainClient, MiningBlockChainClient, SignedTransaction};
 use cjson::bytes::Bytes;
 use ckey::{Address, PlatformAddress};
+use ctypes::Tracker;
 use primitives::H256;
 use rlp::UntrustedRlp;
 
@@ -59,7 +60,7 @@ where
             .map(Into::into)
     }
 
-    fn get_transaction_results_by_tracker(&self, tracker: H256) -> Result<Vec<bool>> {
+    fn get_transaction_results_by_tracker(&self, tracker: Tracker) -> Result<Vec<bool>> {
         Ok(self
             .client
             .error_hints_by_tracker(&tracker)

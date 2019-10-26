@@ -18,7 +18,7 @@ pub mod helpers {
     use std::sync::Arc;
 
     use cmerkle::TrieFactory;
-    use ctypes::BlockNumber;
+    use ctypes::{BlockNumber, Tracker};
     use cvm::ChainTimeInfo;
     use hashdb::AsHashDB;
     use kvdb::KeyValueDB;
@@ -33,11 +33,11 @@ pub mod helpers {
     pub struct TestClient {}
 
     impl ChainTimeInfo for TestClient {
-        fn transaction_block_age(&self, _: &H256, _parent_block_number: BlockNumber) -> Option<u64> {
+        fn transaction_block_age(&self, _: &Tracker, _parent_block_number: BlockNumber) -> Option<u64> {
             Some(0)
         }
 
-        fn transaction_time_age(&self, _: &H256, _parent_block_timestamp: u64) -> Option<u64> {
+        fn transaction_time_age(&self, _: &Tracker, _parent_block_timestamp: u64) -> Option<u64> {
             Some(0)
         }
     }
