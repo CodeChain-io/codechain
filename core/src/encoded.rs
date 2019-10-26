@@ -25,7 +25,7 @@
 
 use ccrypto::blake256;
 use ckey::Address;
-use ctypes::{BlockHash, BlockNumber, Header as FullHeader};
+use ctypes::{BlockHash, BlockNumber, Header as FullHeader, TxHash};
 use primitives::{H256, U256};
 use rlp::Rlp;
 
@@ -173,7 +173,7 @@ impl Body {
     }
 
     /// The hash of each transaction in the block.
-    pub fn transaction_hashes(&self) -> Vec<H256> {
+    pub fn transaction_hashes(&self) -> Vec<TxHash> {
         self.view().transaction_hashes()
     }
 }
@@ -298,7 +298,7 @@ impl Block {
     }
 
     /// The hash of each transaction in the block.
-    pub fn transaction_hashes(&self) -> Vec<H256> {
+    pub fn transaction_hashes(&self) -> Vec<TxHash> {
         self.view().transaction_hashes()
     }
 }

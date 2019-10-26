@@ -25,8 +25,6 @@ mod transaction;
 mod unsigned_transaction;
 mod work;
 
-use primitives::H256;
-
 use self::asset::Asset;
 use self::asset_input::AssetTransferInput;
 use self::asset_output::{AssetMintOutput, AssetTransferOutput};
@@ -41,6 +39,7 @@ pub use self::transaction::{PendingTransactions, Transaction};
 pub use self::unsigned_transaction::UnsignedTransaction;
 pub use self::work::Work;
 
+use ctypes::TxHash;
 use serde::de::{self, Deserialize, Deserializer};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -51,7 +50,7 @@ pub struct FilterStatus {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SendTransactionResult {
-    pub hash: H256,
+    pub hash: TxHash,
     pub seq: u64,
 }
 

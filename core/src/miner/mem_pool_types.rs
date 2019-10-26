@@ -19,8 +19,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ckey::Public;
 use ctypes::transaction::Action;
-use ctypes::BlockNumber;
-use primitives::H256;
+use ctypes::{BlockNumber, TxHash};
 use rlp;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -122,7 +121,7 @@ pub struct TransactionOrder {
     /// Currently using the RLP byte length of the transaction as the mem usage.
     pub mem_usage: usize,
     /// Hash to identify associated transaction
-    pub hash: H256,
+    pub hash: TxHash,
     /// Incremental id assigned when transaction is inserted to the pool.
     pub insertion_id: u64,
     /// Origin of the transaction
@@ -238,7 +237,7 @@ impl MemPoolItem {
         }
     }
 
-    pub fn hash(&self) -> H256 {
+    pub fn hash(&self) -> TxHash {
         self.tx.hash()
     }
 

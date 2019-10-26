@@ -18,11 +18,11 @@ use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::sync::Arc;
 
-use ctypes::{BlockHash, Tracker};
+use ctypes::{BlockHash, Tracker, TxHash};
 use kvdb::{DBTransaction, KeyValueDB};
 use lru_cache::LruCache;
 use parking_lot::{Mutex, RwLock};
-use primitives::{Bytes, H256};
+use primitives::Bytes;
 use rlp::RlpStream;
 use rlp_compress::{blocks_swapper, compress, decompress};
 
@@ -37,8 +37,8 @@ const BODY_CACHE_SIZE: usize = 1000;
 pub struct BodyDB {
     // block cache
     body_cache: Mutex<LruCache<BlockHash, Bytes>>,
-    parcel_address_cache: RwLock<HashMap<H256, TransactionAddress>>,
-    pending_parcel_addresses: RwLock<HashMap<H256, Option<TransactionAddress>>>,
+    parcel_address_cache: RwLock<HashMap<TxHash, TransactionAddress>>,
+    pending_parcel_addresses: RwLock<HashMap<TxHash, Option<TransactionAddress>>>,
 
     transaction_address_cache: Mutex<HashMap<Tracker, TransactionAddresses>>,
     pending_transaction_addresses: Mutex<HashMap<Tracker, Option<TransactionAddresses>>>,
@@ -141,7 +141,7 @@ impl BodyDB {
     fn new_parcel_address_entries(
         &self,
         best_block_changed: &BestBlockChanged,
-    ) -> HashMap<H256, Option<TransactionAddress>> {
+    ) -> HashMap<TxHash, Option<TransactionAddress>> {
         let block_hash = if let Some(best_block_hash) = best_block_changed.new_best_hash() {
             best_block_hash
         } else {
@@ -284,7 +284,7 @@ pub trait BodyProvider {
     fn is_known_body(&self, hash: &BlockHash) -> bool;
 
     /// Get the address of parcel with given hash.
-    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress>;
+    fn transaction_address(&self, hash: &TxHash) -> Option<TransactionAddress>;
 
     fn transaction_address_by_tracker(&self, tracker: &Tracker) -> Option<TransactionAddress>;
 
@@ -298,7 +298,7 @@ impl BodyProvider for BodyDB {
     }
 
     /// Get the address of parcel with given hash.
-    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
+    fn transaction_address(&self, hash: &TxHash) -> Option<TransactionAddress> {
         let result = self.db.read_with_cache(db::COL_EXTRA, &mut *self.parcel_address_cache.write(), hash)?;
         Some(result)
     }
@@ -332,11 +332,11 @@ impl BodyProvider for BodyDB {
 
 fn parcel_address_entries(
     block_hash: BlockHash,
-    parcel_hashes: impl IntoIterator<Item = H256>,
-) -> impl Iterator<Item = (H256, Option<TransactionAddress>)> {
-    parcel_hashes.into_iter().enumerate().map(move |(index, parcel_hash)| {
+    tx_hashes: impl IntoIterator<Item = TxHash>,
+) -> impl Iterator<Item = (TxHash, Option<TransactionAddress>)> {
+    tx_hashes.into_iter().enumerate().map(move |(index, tx_hash)| {
         (
-            parcel_hash,
+            tx_hash,
             Some(TransactionAddress {
                 block_hash,
                 index,

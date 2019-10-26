@@ -15,8 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cnetwork::NodeId;
-use ctypes::BlockHash;
-use primitives::H256;
+use ctypes::{BlockHash, TxHash};
 
 /// Represents what has to be handled by actor listening to chain events
 pub trait ChainNotify: Send + Sync {
@@ -48,7 +47,7 @@ pub trait ChainNotify: Send + Sync {
     }
 
     /// fires when new transactions are received from a peer
-    fn transactions_received(&self, _hashes: Vec<H256>, _peer_id: NodeId) {
+    fn transactions_received(&self, _hashes: Vec<TxHash>, _peer_id: NodeId) {
         // does nothing by default
     }
 }

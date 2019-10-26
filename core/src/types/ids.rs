@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{BlockHash, BlockNumber};
-use primitives::H256;
+use ctypes::{BlockHash, BlockNumber, TxHash};
 
 /// Uniquely identifies block.
 #[derive(Debug, PartialEq, Copy, Clone, Hash, Eq)]
@@ -48,14 +47,14 @@ impl From<BlockNumber> for BlockId {
 #[derive(Debug, PartialEq, Clone, Hash, Eq)]
 pub enum TransactionId {
     /// Transaction's blake256.
-    Hash(H256),
+    Hash(TxHash),
     /// Block id and transaction index within this block.
     /// Querying by block position is always faster.
     Location(BlockId, usize),
 }
 
-impl From<H256> for TransactionId {
-    fn from(hash: H256) -> Self {
+impl From<TxHash> for TransactionId {
+    fn from(hash: TxHash) -> Self {
         TransactionId::Hash(hash)
     }
 }

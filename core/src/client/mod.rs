@@ -37,7 +37,7 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H160, H256, U256};
@@ -185,7 +185,7 @@ impl From<BlockId> for StateOrBlock {
 pub trait Shard {
     fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId>;
 
-    fn shard_id_by_hash(&self, create_shard_tx_hash: &H256, state: StateOrBlock) -> Option<ShardId>;
+    fn shard_id_by_hash(&self, create_shard_tx_hash: &TxHash, state: StateOrBlock) -> Option<ShardId>;
     fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256>;
 
     fn shard_owners(&self, shard_id: ShardId, state: StateOrBlock) -> Option<Vec<Address>>;
@@ -250,12 +250,12 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
     fn transaction(&self, id: &TransactionId) -> Option<LocalizedTransaction>;
 
     /// Get invoice with given hash.
-    fn error_hint(&self, hash: &H256) -> Option<String>;
+    fn error_hint(&self, hash: &TxHash) -> Option<String>;
 
     /// Get the transaction with given tracker.
     fn transaction_by_tracker(&self, tracker: &Tracker) -> Option<LocalizedTransaction>;
 
-    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(H256, Option<String>)>;
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(TxHash, Option<String>)>;
 }
 
 /// Result of import block operation.
@@ -319,7 +319,7 @@ pub trait AssetClient {
 
 /// Provides methods to texts
 pub trait TextClient {
-    fn get_text(&self, tx_hash: H256, id: BlockId) -> TrieResult<Option<Text>>;
+    fn get_text(&self, tx_hash: TxHash, id: BlockId) -> TrieResult<Option<Text>>;
 }
 
 pub trait ExecuteClient: ChainTimeInfo {

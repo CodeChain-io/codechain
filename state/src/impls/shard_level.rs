@@ -792,6 +792,8 @@ impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
 
 #[cfg(test)]
 mod tests {
+    use ctypes::TxHash;
+
     use super::super::super::StateError;
     use super::super::test_helper::SHARD_ID;
     use super::*;
@@ -1374,14 +1376,14 @@ mod tests {
         let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
 
         let lock_script_hash = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
-        let tx_hash = H256::random();
+        let tx_hash = TxHash::from(H256::random());
         let amount = 30;
 
         let wrap_ccc = asset_wrap_ccc!(tx_hash, asset_wrap_ccc_output!(lock_script_hash, amount));
         let wrap_ccc_tracker = wrap_ccc.tracker();
         let asset_type = H160::zero();
 
-        assert_eq!(*wrap_ccc_tracker, tx_hash);
+        assert_eq!(*wrap_ccc_tracker, *tx_hash);
         assert_eq!(Ok(()), state.apply(&wrap_ccc, &sender, &[sender], &[], &get_test_client(), 0, 0));
 
         check_shard_level_state!(state, [
@@ -1411,13 +1413,13 @@ mod tests {
         let mut state = get_temp_shard_state(&mut state_db, SHARD_ID, &mut shard_cache);
 
         let lock_script_hash = H160::from("b042ad154a3359d276835c903587ebafefea22af");
-        let tx_hash = H256::random();
+        let tx_hash = TxHash::from(H256::random());
         let amount = 30;
 
         let wrap_ccc = asset_wrap_ccc!(tx_hash, asset_wrap_ccc_output!(lock_script_hash, amount));
         let wrap_ccc_tracker = wrap_ccc.tracker();
 
-        assert_eq!(*wrap_ccc_tracker, tx_hash);
+        assert_eq!(*wrap_ccc_tracker, *tx_hash);
         assert_eq!(Ok(()), state.apply(&wrap_ccc, &sender, &[sender], &[], &get_test_client(), 0, 0));
 
         let asset_type = H160::zero();
