@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::H256;
+use ctypes::BlockHash;
 
 use super::block_info::{BestBlockChanged, BestHeaderChanged};
 use super::headerchain::HeaderProvider;
@@ -23,13 +23,13 @@ use super::headerchain::HeaderProvider;
 #[derive(Clone, Debug, PartialEq)]
 pub struct TreeRoute {
     /// Best common ancestor of these blocks.
-    pub ancestor: H256,
+    pub ancestor: BlockHash,
     /// A vector of enacted block hashes
     /// First item of list must be child of ancestor
-    pub enacted: Vec<H256>,
+    pub enacted: Vec<BlockHash>,
     /// A vector of retracted block hashes
     /// Last item of list must be child of ancestor
-    pub retracted: Vec<H256>,
+    pub retracted: Vec<BlockHash>,
 }
 
 /// Returns a tree route between `from` and `to`, which is a tuple of:
@@ -71,7 +71,7 @@ pub struct TreeRoute {
 ///
 /// If the tree route verges into pruned or unknown blocks,
 /// `None` is returned.
-pub fn tree_route(db: &dyn HeaderProvider, from: H256, to: H256) -> Option<TreeRoute> {
+pub fn tree_route(db: &dyn HeaderProvider, from: BlockHash, to: BlockHash) -> Option<TreeRoute> {
     let mut retracted = vec![];
     let mut enacted = vec![];
 
@@ -112,15 +112,15 @@ pub fn tree_route(db: &dyn HeaderProvider, from: H256, to: H256) -> Option<TreeR
 #[derive(Debug, PartialEq)]
 pub struct ImportRoute {
     /// Blocks that were invalidated by new block.
-    pub retracted: Vec<H256>,
+    pub retracted: Vec<BlockHash>,
     /// Blocks that were validated by new block.
-    pub enacted: Vec<H256>,
+    pub enacted: Vec<BlockHash>,
     /// Blocks which are neither retracted nor enacted.
-    pub omitted: Vec<H256>,
+    pub omitted: Vec<BlockHash>,
 }
 
 impl ImportRoute {
-    pub fn new(new_block_hash: H256, best_block_changed: &BestBlockChanged) -> Self {
+    pub fn new(new_block_hash: BlockHash, best_block_changed: &BestBlockChanged) -> Self {
         let mut omitted = Vec::new();
         if best_block_changed.new_best_hash() != Some(new_block_hash) {
             omitted.push(new_block_hash);
@@ -159,7 +159,7 @@ impl ImportRoute {
         }
     }
 
-    pub fn new_from_best_header_changed(new_block_hash: H256, best_header_changed: &BestHeaderChanged) -> Self {
+    pub fn new_from_best_header_changed(new_block_hash: BlockHash, best_header_changed: &BestHeaderChanged) -> Self {
         let mut omitted = Vec::new();
         if best_header_changed.new_best_hash() != Some(new_block_hash) {
             omitted.push(new_block_hash);

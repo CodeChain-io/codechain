@@ -18,12 +18,13 @@ use std::cmp;
 
 use ccrypto::blake256;
 use ckey::{verify_schnorr, Error as KeyError, Public, SchnorrSignature};
+use ctypes::BlockHash;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 use snap;
 
 use super::super::BitSet;
-use super::{BlockHash, Height, Step, View};
+use super::{Height, Step, View};
 
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RlpDecodable, RlpEncodable)]
@@ -89,7 +90,7 @@ pub enum TendermintMessage {
     },
     StepState {
         vote_step: VoteStep,
-        proposal: Option<H256>,
+        proposal: Option<BlockHash>,
         lock_view: Option<View>,
         known_votes: BitSet,
     },
@@ -337,7 +338,7 @@ impl ConsensusMessage {
         self.signer_index
     }
 
-    pub fn block_hash(&self) -> Option<H256> {
+    pub fn block_hash(&self) -> Option<BlockHash> {
         self.on.block_hash
     }
 
@@ -434,9 +435,9 @@ mod tests {
                     signer_index: 0x1234,
                     on: VoteOn {
                         step: VoteStep::new(2, 3, Step::Commit),
-                        block_hash: Some(H256::from(
-                            "07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"
-                        )),
+                        block_hash: Some(
+                            H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").into()
+                        ),
                     },
                 },
                 ConsensusMessage {
@@ -444,9 +445,9 @@ mod tests {
                     signer_index: 0x1235,
                     on: VoteOn {
                         step: VoteStep::new(2, 3, Step::Commit),
-                        block_hash: Some(H256::from(
-                            "07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"
-                        )),
+                        block_hash: Some(
+                            H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").into()
+                        ),
                     },
                 }
             ]
@@ -466,7 +467,7 @@ mod tests {
             signer_index: 0x1234,
             on: VoteOn {
                 step: VoteStep::new(2, 3, Step::Commit),
-                block_hash: Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050")),
+                block_hash: Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").into()),
             },
         };
         rlp_encode_and_decode_test!(message);
@@ -479,7 +480,7 @@ mod tests {
         let step = Step::Commit;
         let signature = SchnorrSignature::random();
         let signer_index = 0x1234;
-        let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050"));
+        let block_hash = Some(H256::from("07feab4c39250abf60b77d7589a5b61fdf409bd837e936376381d19db1e1f050").into());
         let consensus_message = ConsensusMessage {
             signature,
             signer_index,

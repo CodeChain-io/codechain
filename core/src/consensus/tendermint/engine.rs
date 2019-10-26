@@ -25,9 +25,8 @@ use ckey::{public_to_address, Address};
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::{ActionHandler, TopStateView};
-use ctypes::{BlockNumber, CommonParams, Header};
+use ctypes::{BlockHash, BlockNumber, CommonParams, Header};
 use num_rational::Ratio;
-use primitives::H256;
 
 use super::super::stake;
 use super::super::{ConsensusEngine, EngineError, Seal};
@@ -304,17 +303,17 @@ impl ConsensusEngine for Tendermint {
         client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<dyn ChainNotify>);
     }
 
-    fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> H256 {
+    fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> BlockHash {
         header.parent_hash()
     }
 
 
     fn can_change_canon_chain(
         &self,
-        _new_header_hash: H256,
-        parent_hash_of_new_header: H256,
-        grandparent_hash_of_new_header: H256,
-        prev_best_hash: H256,
+        _new_header_hash: BlockHash,
+        parent_hash_of_new_header: BlockHash,
+        grandparent_hash_of_new_header: BlockHash,
+        prev_best_hash: BlockHash,
     ) -> bool {
         parent_hash_of_new_header == prev_best_hash || grandparent_hash_of_new_header == prev_best_hash
     }

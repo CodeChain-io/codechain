@@ -25,7 +25,7 @@
 
 use ccrypto::blake256;
 use ckey::Address;
-use ctypes::{BlockNumber, Header as FullHeader};
+use ctypes::{BlockHash, BlockNumber, Header as FullHeader};
 use primitives::{H256, U256};
 use rlp::Rlp;
 
@@ -71,12 +71,12 @@ impl Header {
 // forwarders to borrowed view.
 impl Header {
     /// Returns the header hash.
-    pub fn hash(&self) -> H256 {
-        blake256(&self.0)
+    pub fn hash(&self) -> BlockHash {
+        blake256(&self.0).into()
     }
 
     /// Returns the parent hash.
-    pub fn parent_hash(&self) -> H256 {
+    pub fn parent_hash(&self) -> BlockHash {
         self.view().parent_hash()
     }
 
@@ -230,12 +230,12 @@ impl Block {
 // forwarders to borrowed header view.
 impl Block {
     /// Returns the header hash.
-    pub fn hash(&self) -> H256 {
+    pub fn hash(&self) -> BlockHash {
         self.header_view().hash()
     }
 
     /// Returns the parent hash.
-    pub fn parent_hash(&self) -> H256 {
+    pub fn parent_hash(&self) -> BlockHash {
         self.header_view().parent_hash()
     }
 

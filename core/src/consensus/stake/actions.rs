@@ -361,6 +361,7 @@ mod tests {
     use ckey::sign_schnorr;
     use client::TestBlockChainClient;
     use consensus::{ConsensusMessage, DynamicValidator, Step, VoteOn, VoteStep};
+    use ctypes::BlockHash;
     use rlp::rlp_encode_and_decode_test;
 
     #[test]
@@ -392,7 +393,7 @@ mod tests {
         pub height: u64,
         pub view: u64,
         pub step: Step,
-        pub block_hash: Option<H256>,
+        pub block_hash: Option<BlockHash>,
         pub signer_index: usize,
     }
 
@@ -404,7 +405,7 @@ mod tests {
     ) -> ConsensusMessage
     where
         F: Fn(VoteStep) -> VoteStep,
-        G: Fn(Option<H256>) -> Option<H256>, {
+        G: Fn(Option<BlockHash>) -> Option<BlockHash>, {
         let ConsensusMessageInfo {
             height,
             view,
@@ -441,7 +442,7 @@ mod tests {
     ) -> Result<(), SyntaxError>
     where
         F: Fn(VoteStep) -> VoteStep,
-        G: Fn(Option<H256>) -> Option<H256>, {
+        G: Fn(Option<BlockHash>) -> Option<BlockHash>, {
         let mut test_client = TestBlockChainClient::default();
         test_client.add_blocks(10, 1);
         test_client.set_random_validators(10);
@@ -475,7 +476,7 @@ mod tests {
                 height: 2,
                 view: 0,
                 step: Step::Precommit,
-                block_hash: Some(H256::random()),
+                block_hash: Some(H256::random().into()),
                 signer_index: 0,
             },
             &|v| v,
@@ -486,7 +487,7 @@ mod tests {
 
     #[test]
     fn double_vote_verify_same_message() {
-        let block_hash = Some(H256::random());
+        let block_hash = Some(H256::random().into());
         let result = double_vote_verification_result(
             ConsensusMessageInfo {
                 height: 3,
@@ -511,7 +512,7 @@ mod tests {
 
     #[test]
     fn double_vote_verify_different_height() {
-        let block_hash = Some(H256::random());
+        let block_hash = Some(H256::random().into());
         let result = double_vote_verification_result(
             ConsensusMessageInfo {
                 height: 3,
@@ -549,7 +550,7 @@ mod tests {
                 height: 2,
                 view: 0,
                 step: Step::Precommit,
-                block_hash: Some(H256::random()),
+                block_hash: Some(H256::random().into()),
                 signer_index: 0,
             },
             &|v| v,
@@ -564,10 +565,10 @@ mod tests {
 
     #[test]
     fn double_vote_verify_different_message_and_signer() {
-        let hash1 = Some(H256::random());
-        let mut hash2 = Some(H256::random());
+        let hash1 = Some(H256::random().into());
+        let mut hash2 = Some(H256::random().into());
         while hash1 == hash2 {
-            hash2 = Some(H256::random());
+            hash2 = Some(H256::random().into());
         }
         let result = double_vote_verification_result(
             ConsensusMessageInfo {
@@ -613,7 +614,7 @@ mod tests {
                 height: 2,
                 view: 0,
                 step: Step::Precommit,
-                block_hash: Some(H256::random()),
+                block_hash: Some(H256::random().into()),
                 signer_index: 0,
             },
             &vote_step_twister,
@@ -625,13 +626,13 @@ mod tests {
 
     #[test]
     fn double_vote_verify_strange_sig2() {
-        let block_hash_twister = |original: Option<H256>| {
+        let block_hash_twister = |original: Option<BlockHash>| {
             original.map(|hash| {
                 let mut twisted = H256::random();
-                while twisted == hash {
+                while twisted == *hash {
                     twisted = H256::random();
                 }
-                twisted
+                BlockHash::from(twisted)
             })
         };
         let result = double_vote_verification_result(
@@ -646,7 +647,7 @@ mod tests {
                 height: 2,
                 view: 0,
                 step: Step::Precommit,
-                block_hash: Some(H256::random()),
+                block_hash: Some(H256::random().into()),
                 signer_index: 0,
             },
             &|v| v,

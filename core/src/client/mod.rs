@@ -37,7 +37,7 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockNumber, CommonParams, ShardId};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H160, H256, U256};
@@ -73,7 +73,7 @@ pub trait BlockChainTrait {
     fn block(&self, id: &BlockId) -> Option<encoded::Block>;
 
     /// Get the hash of block that contains the transaction, if any.
-    fn transaction_block(&self, id: &TransactionId) -> Option<H256>;
+    fn transaction_block(&self, id: &TransactionId) -> Option<BlockHash>;
 
     fn transaction_header(&self, tracker: &H256) -> Option<::encoded::Header>;
 
@@ -101,7 +101,7 @@ pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     fn update_sealing(&self, parent_block: BlockId, allow_empty_block: bool);
 
     /// Submit a seal for a block in the mining queue.
-    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>);
+    fn submit_seal(&self, block_hash: BlockHash, seal: Vec<Bytes>);
 
     /// Convert PoW difficulty to target.
     fn score_to_target(&self, score: &U256) -> U256;
@@ -109,7 +109,7 @@ pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     /// Update the best block as the given block hash
     ///
     /// Used in Tendermint, when going to the commit step.
-    fn update_best_as_committed(&self, block_hash: H256);
+    fn update_best_as_committed(&self, block_hash: BlockHash);
 
     fn get_kvdb(&self) -> Arc<dyn KeyValueDB>;
 }
@@ -195,10 +195,10 @@ pub trait Shard {
 /// Provides methods to import block into blockchain
 pub trait ImportBlock {
     /// Import a block into the blockchain.
-    fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError>;
+    fn import_block(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError>;
 
     /// Import a header into the blockchain
-    fn import_header(&self, bytes: Bytes) -> Result<H256, BlockImportError>;
+    fn import_header(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError>;
 
     /// Import sealed block. Skips all verifications.
     fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult;
@@ -244,7 +244,7 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
     fn block_total_score(&self, id: &BlockId) -> Option<U256>;
 
     /// Get block hash.
-    fn block_hash(&self, id: &BlockId) -> Option<H256>;
+    fn block_hash(&self, id: &BlockId) -> Option<BlockHash>;
 
     /// Get transaction with given hash.
     fn transaction(&self, id: &TransactionId) -> Option<LocalizedTransaction>;
@@ -259,7 +259,7 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
 }
 
 /// Result of import block operation.
-pub type ImportResult = Result<H256, Error>;
+pub type ImportResult = Result<BlockHash, Error>;
 
 /// Provides methods used for sealing new state
 pub trait BlockProducer {

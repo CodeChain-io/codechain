@@ -33,7 +33,6 @@ use crossbeam_channel as crossbeam;
 use cstate::ActionHandler;
 use ctimer::TimerToken;
 use parking_lot::RwLock;
-use primitives::H256;
 
 use self::chain_notify::TendermintChainNotify;
 pub use self::message::{ConsensusMessage, VoteOn, VoteStep};
@@ -53,8 +52,6 @@ const ENGINE_TIMEOUT_BROADCAST_STEP_STATE: TimerToken = 21;
 
 /// Unit: second
 const ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL: u64 = 1;
-
-pub type BlockHash = H256;
 
 /// ConsensusEngine using `Tendermint` consensus algorithm
 pub struct Tendermint {

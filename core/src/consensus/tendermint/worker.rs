@@ -26,8 +26,8 @@ use cnetwork::{EventSender, NodeId};
 use crossbeam_channel as crossbeam;
 use ctypes::transaction::{Action, Transaction};
 use ctypes::util::unexpected::Mismatch;
-use ctypes::{BlockNumber, Header};
-use primitives::{u256_from_u128, Bytes, H256, U256};
+use ctypes::{BlockHash, BlockNumber, Header};
+use primitives::{u256_from_u128, Bytes, U256};
 use rlp::{Encodable, UntrustedRlp};
 
 use super::super::BitSet;
@@ -40,8 +40,7 @@ use super::types::{Height, Proposal, Step, TendermintSealView, TendermintState, 
 use super::vote_collector::{DoubleVote, VoteCollector};
 use super::vote_regression_checker::VoteRegressionChecker;
 use super::{
-    BlockHash, ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
-    SEAL_FIELDS,
+    ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE, SEAL_FIELDS,
 };
 use crate::account_provider::AccountProvider;
 use crate::block::*;
@@ -102,12 +101,12 @@ struct Worker {
 
 pub enum Event {
     NewBlocks {
-        imported: Vec<H256>,
-        enacted: Vec<H256>,
+        imported: Vec<BlockHash>,
+        enacted: Vec<BlockHash>,
     },
     GenerateSeal {
         block_number: Height,
-        parent_hash: H256,
+        parent_hash: BlockHash,
         result: crossbeam::Sender<Seal>,
     },
     ProposalGenerated(Box<SealedBlock>),
@@ -130,7 +129,7 @@ pub enum Event {
     },
     IsProposal {
         block_number: BlockNumber,
-        block_hash: H256,
+        block_hash: BlockHash,
         result: crossbeam::Sender<bool>,
     },
     SetSigner {
@@ -147,7 +146,7 @@ pub enum Event {
     StepState {
         token: NodeId,
         vote_step: VoteStep,
-        proposal: Option<H256>,
+        proposal: Option<BlockHash>,
         lock_view: Option<View>,
         known_votes: Box<BitSet>,
         result: crossbeam::Sender<Bytes>,
@@ -384,14 +383,14 @@ impl Worker {
     }
 
     /// Get previous block hash to determine validator set
-    fn prev_block_hash(&self) -> H256 {
+    fn prev_block_hash(&self) -> BlockHash {
         self.prev_block_header_of_height(self.height)
             .expect("Height is increased when previous block is imported")
             .hash()
     }
 
     /// Get the index of the proposer of a block to check the new proposer is valid.
-    fn block_proposer_idx(&self, block_hash: H256) -> Option<usize> {
+    fn block_proposer_idx(&self, block_hash: BlockHash) -> Option<usize> {
         self.client().block_header(&BlockId::Hash(block_hash)).map(|header| {
             let proposer = header.author();
             let parent = if header.number() == 0 {
@@ -445,7 +444,7 @@ impl Worker {
     }
 
     /// Find the designated for the given view.
-    fn view_proposer(&self, prev_block_hash: &H256, view: View) -> Option<Address> {
+    fn view_proposer(&self, prev_block_hash: &BlockHash, view: View) -> Option<Address> {
         self.validators.next_block_proposer(prev_block_hash, view)
     }
 
@@ -507,7 +506,7 @@ impl Worker {
     /// Check if address is a proposer for given view.
     fn check_view_proposer(
         &self,
-        parent: &H256,
+        parent: &BlockHash,
         height: Height,
         view: View,
         address: &Address,
@@ -526,7 +525,7 @@ impl Worker {
     }
 
     /// Check if current signer is the current proposer.
-    fn is_signer_proposer(&self, bh: &H256) -> bool {
+    fn is_signer_proposer(&self, bh: &BlockHash) -> bool {
         self.view_proposer(bh, self.view).map_or(false, |proposer| self.signer.is_address(&proposer))
     }
 
@@ -534,7 +533,7 @@ impl Worker {
         message.on.step.is_step(self.height, self.view, self.step.to_step())
     }
 
-    fn is_authority(&self, prev_hash: &H256, address: &Address) -> bool {
+    fn is_authority(&self, prev_hash: &BlockHash, address: &Address) -> bool {
         self.validators.contains_address(&prev_hash, address)
     }
 
@@ -558,7 +557,7 @@ impl Worker {
         self.validators.check_enough_votes(&parent_hash, &aligned_votes).is_ok()
     }
 
-    fn has_enough_precommit_votes(&self, block_hash: H256) -> bool {
+    fn has_enough_precommit_votes(&self, block_hash: BlockHash) -> bool {
         let vote_step = VoteStep::new(self.height, self.view, Step::Precommit);
         let votes = self.votes.block_round_votes(&vote_step, &Some(block_hash));
         self.validators.check_enough_votes(&self.prev_block_hash(), &votes).is_ok()
@@ -573,7 +572,13 @@ impl Worker {
             .unwrap();
     }
 
-    fn broadcast_state(&self, vote_step: VoteStep, proposal: Option<H256>, lock_view: Option<View>, votes: &BitSet) {
+    fn broadcast_state(
+        &self,
+        vote_step: VoteStep,
+        proposal: Option<BlockHash>,
+        lock_view: Option<View>,
+        votes: &BitSet,
+    ) {
         self.extension
             .send(network::Event::BroadcastState {
                 vote_step,
@@ -602,7 +607,7 @@ impl Worker {
             .unwrap();
     }
 
-    fn update_sealing(&self, parent_block_hash: H256) {
+    fn update_sealing(&self, parent_block_hash: BlockHash) {
         self.client().update_sealing(BlockId::Hash(parent_block_hash), true);
     }
 
@@ -815,7 +820,11 @@ impl Worker {
         }
     }
 
-    fn locked_proposal_block(&self, locked_view: View, locked_proposal_hash: H256) -> Result<encoded::Block, String> {
+    fn locked_proposal_block(
+        &self,
+        locked_view: View,
+        locked_proposal_hash: BlockHash,
+    ) -> Result<encoded::Block, String> {
         let vote_step = VoteStep::new(self.height, locked_view, Step::Propose);
         let received_locked_block = self.votes.has_votes_for(&vote_step, locked_proposal_hash);
 
@@ -1058,7 +1067,7 @@ impl Worker {
         SEAL_FIELDS
     }
 
-    fn generate_seal(&self, height: Height, parent_hash: H256) -> Seal {
+    fn generate_seal(&self, height: Height, parent_hash: BlockHash) -> Seal {
         // Block is received from other nodes while creating a block
         if height < self.height {
             return Seal::None
@@ -1466,7 +1475,7 @@ impl Worker {
         }
     }
 
-    fn is_proposal(&self, block_number: BlockNumber, block_hash: H256) -> bool {
+    fn is_proposal(&self, block_number: BlockNumber, block_hash: BlockHash) -> bool {
         if self.height > block_number {
             return false
         }
@@ -1595,7 +1604,7 @@ impl Worker {
         self.signer.public().and_then(|public| self.validators.get_index(&parent, public))
     }
 
-    fn new_blocks(&mut self, imported: Vec<H256>, enacted: Vec<H256>) {
+    fn new_blocks(&mut self, imported: Vec<BlockHash>, enacted: Vec<BlockHash>) {
         let c = match self.client.upgrade() {
             Some(client) => client,
             None => {
@@ -1825,7 +1834,7 @@ impl Worker {
         &self,
         token: &NodeId,
         peer_vote_step: VoteStep,
-        peer_proposal: Option<H256>,
+        peer_proposal: Option<BlockHash>,
         peer_lock_view: Option<View>,
         peer_known_votes: BitSet,
         result: crossbeam::Sender<Bytes>,

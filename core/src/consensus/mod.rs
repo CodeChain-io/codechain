@@ -45,8 +45,8 @@ use cstate::ActionHandler;
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Action;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::{CommonParams, Header};
-use primitives::{Bytes, H256, U256};
+use ctypes::{BlockHash, CommonParams, Header};
+use primitives::{Bytes, U256};
 
 use self::bit_set::BitSet;
 use crate::account_provider::AccountProvider;
@@ -262,7 +262,7 @@ pub trait ConsensusEngine: Sync + Send {
 
     fn register_chain_notify(&self, _: &Client) {}
 
-    fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> H256 {
+    fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> BlockHash {
         header.hash()
     }
 
@@ -271,10 +271,10 @@ pub trait ConsensusEngine: Sync + Send {
     /// Only the descendant of the current best block could be the next best block in Tendermint consensus.
     fn can_change_canon_chain(
         &self,
-        _new_block_hash: H256,
-        _parent_hash_of_new_header: H256,
-        _grandparent_hash_of_new_header: H256,
-        _previous_best_hash: H256,
+        _new_block_hash: BlockHash,
+        _parent_hash_of_new_header: BlockHash,
+        _grandparent_hash_of_new_header: BlockHash,
+        _previous_best_hash: BlockHash,
     ) -> bool {
         true
     }
