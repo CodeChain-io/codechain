@@ -46,6 +46,8 @@ use ctypes::transaction::{
     Action, AssetOutPoint, AssetTransferInput, AssetWrapCCCOutput, ShardTransaction, Transaction,
 };
 use ctypes::util::unexpected::Mismatch;
+#[cfg(test)]
+use ctypes::Tracker;
 use ctypes::{BlockNumber, CommonParams, ShardId};
 use cvm::ChainTimeInfo;
 use hashdb::AsHashDB;
@@ -745,7 +747,7 @@ impl TopLevelState {
     fn create_asset(
         &mut self,
         shard_id: ShardId,
-        tx_hash: H256,
+        tracker: Tracker,
         index: usize,
         asset_type: H160,
         lock_script_hash: H160,
@@ -756,7 +758,7 @@ impl TopLevelState {
             Some(shard_root) => {
                 let mut shard_cache = self.shard_caches.entry(shard_id).or_default();
                 let state = ShardLevelState::from_existing(shard_id, &mut self.db, shard_root, &mut shard_cache)?;
-                state.create_asset(tx_hash, index, asset_type, lock_script_hash, parameters, amount)?;
+                state.create_asset(tracker, index, asset_type, lock_script_hash, parameters, amount)?;
                 Ok(true)
             }
             None => Ok(false),
@@ -1477,7 +1479,7 @@ mod tests_tx {
         let (master_account, master_public, _) = address();
         let (regular_account, regular_public, _) = address();
         let type_of_wccc = H160::zero();
-        let tracker = H256::random();
+        let tracker = H256::random().into();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let shard_id = 0;
         set_top_level_state!(state, [
@@ -1617,13 +1619,13 @@ mod tests_tx {
         let (_, regular_public, _) = address();
 
         let shard_id = 0x0;
-        let mint_tracker = H256::random();
+        let mint_tracker = Tracker::from(H256::random());
         let mut state = get_temp_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let asset_type = Blake::blake(mint_tracker);
+        let asset_type = Blake::blake(*mint_tracker);
 
         set_top_level_state!(state, [
             (account: sender => balance: 25),
@@ -1653,13 +1655,13 @@ mod tests_tx {
         let (_, regular_public, regular_private) = address();
 
         let shard_id = 0x0;
-        let mint_tracker = H256::random();
+        let mint_tracker = Tracker::from(H256::random());
         let mut state = get_temp_state();
 
         let metadata = "metadata".to_string();
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
         let amount = 30;
-        let asset_type = Blake::blake(mint_tracker);
+        let asset_type = Blake::blake(*mint_tracker);
 
         set_top_level_state!(state, [
             (account: sender => balance: 25),
@@ -1813,7 +1815,7 @@ mod tests_tx {
             approver: approver
         );
         let transaction_tracker = transaction.tracker().unwrap();
-        let asset_type = Blake::blake(transaction_tracker);
+        let asset_type = Blake::blake(*transaction_tracker);
         let tx = transaction!(fee: 11, transaction);
 
         assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
@@ -1849,7 +1851,7 @@ mod tests_tx {
             approver: approver
         );
         let transaction_tracker = transaction.tracker().unwrap();
-        let asset_type = Blake::blake(transaction_tracker);
+        let asset_type = Blake::blake(*transaction_tracker);
         let tx = transaction!(fee: 5, transaction);
 
         assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
@@ -1880,7 +1882,7 @@ mod tests_tx {
         let mint = mint_asset!(Box::new(asset_mint_output!(lock_script_hash, supply: amount)), metadata.clone());
         let mint_tracker = mint.tracker().unwrap();
         let mint_tx = transaction!(fee: 20, mint);
-        let asset_type = Blake::blake(mint_tracker);
+        let asset_type = Blake::blake(*mint_tracker);
 
         assert_eq!(Ok(()), state.apply(&mint_tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
 
@@ -1991,11 +1993,13 @@ mod tests_tx {
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
             (account: receiver),
-            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
+            (asset: (Tracker::from(tx_hash), 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
-        let unwrap_ccc_tx =
-            unwrap_ccc!(asset_transfer_input!(asset_out_point!(tx_hash, 0, asset_type, 30), vec![0x01]), receiver);
+        let unwrap_ccc_tx = unwrap_ccc!(
+            asset_transfer_input!(asset_out_point!(Tracker::from(tx_hash), 0, asset_type, 30), vec![0x01]),
+            receiver
+        );
         let tx = transaction!(seq: 1, fee: 11, unwrap_ccc_tx);
 
         assert_eq!(Ok(()), state.apply(&tx, &H256::random(), &sender_public, &get_test_client(), 0, 0, 0));
@@ -2003,7 +2007,7 @@ mod tests_tx {
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 100 - 11 - 30 - 11)),
             (account: receiver => (seq: 0, balance: 30)),
-            (asset: (tx_hash, 0, 0))
+            (asset: (Tracker::from(tx_hash), 0, 0))
         ]);
     }
 
@@ -2033,12 +2037,15 @@ mod tests_tx {
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
             (account: receiver),
-            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
+            (asset: (Tracker::from(tx_hash), 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
         let failed_lock_script = vec![0x02];
         let unwrap_ccc_tx = unwrap_ccc!(
-            asset_transfer_input!(asset_out_point!(tx_hash, 0, asset_type, 30), failed_lock_script.clone()),
+            asset_transfer_input!(
+                asset_out_point!(Tracker::from(tx_hash), 0, asset_type, 30),
+                failed_lock_script.clone()
+            ),
             receiver
         );
         let tx = transaction!(seq: 1, fee: 11, unwrap_ccc_tx);
@@ -2055,7 +2062,7 @@ mod tests_tx {
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 11 - 30)),
             (account: receiver),
-            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
+            (asset: (Tracker::from(tx_hash), 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
     }
 
@@ -2116,13 +2123,13 @@ mod tests_tx {
         let asset_type = H160::zero();
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 100 - 30 - 11)),
-            (asset: (tx_hash, 0, 0) => { asset_type: asset_type, quantity: quantity })
+            (asset: (Tracker::from(tx_hash), 0, 0) => { asset_type: asset_type, quantity: quantity })
         ]);
 
         let lock_script_hash_burn = H160::from("ca5d3fa0a6887285ef6aa85cb12960a2b6706e00");
         let random_lock_script_hash = H160::random();
         let transfer_tx = transfer_asset!(
-            inputs: asset_transfer_inputs![(asset_out_point!(tx_hash, 0, asset_type, 30), vec![0x30, 0x01])],
+            inputs: asset_transfer_inputs![(asset_out_point!(Tracker::from(tx_hash), 0, asset_type, 30), vec![0x30, 0x01])],
             asset_transfer_outputs![
                 (lock_script_hash, vec![vec![1]], asset_type, 10),
                 (lock_script_hash_burn, asset_type, 5),
@@ -2137,7 +2144,7 @@ mod tests_tx {
 
         check_top_level_state!(state, [
             (account: sender => (seq: 2, balance: 100 - 30 - 11 - 11)),
-            (asset: (tx_hash, 0, 0)),
+            (asset: (Tracker::from(tx_hash), 0, 0)),
             (asset: (transfer_tx_tracker, 0, 0) => { asset_type: asset_type, quantity: 10 }),
             (asset: (transfer_tx_tracker, 1, 0) => { asset_type: asset_type, quantity: 5 }),
             (asset: (transfer_tx_tracker, 2, 0) => { asset_type: asset_type, quantity: 15 })
@@ -2279,7 +2286,7 @@ mod tests_tx {
 
         let shard_id = 3;
         check_top_level_state!(state, [
-            (asset: (H256::random(), 0, shard_id))
+            (asset: (Tracker::from(H256::random()), 0, shard_id))
         ]);
     }
 
@@ -2413,7 +2420,7 @@ mod tests_tx {
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: vec![sender], users: vec![]),
-            (asset: (H256::random(), 0, invalid_shard_id))
+            (asset: (Tracker::from(H256::random()), 0, invalid_shard_id))
         ]);
     }
 
@@ -2435,7 +2442,7 @@ mod tests_tx {
         check_top_level_state!(state, [
             (account: sender => (seq: 1, balance: 20 - 5)),
             (shard: 0 => owners: vec![sender], users: users),
-            (asset: (H256::random(), 0, invalid_shard_id))
+            (asset: (Tracker::from(H256::random()), 0, invalid_shard_id))
         ]);
     }
 
@@ -2484,7 +2491,7 @@ mod tests_tx {
         let asset_type = H160::zero();
         let transfer = transfer_asset!(
             inputs:
-                asset_transfer_inputs![(asset_out_point!(H256::random(), 0, asset_type, shard_id, 30), vec![
+                asset_transfer_inputs![(asset_out_point!(Tracker::from(H256::random()), 0, asset_type, shard_id, 30), vec![
                     0x30, 0x01
                 ])],
             asset_transfer_outputs![
@@ -2664,7 +2671,7 @@ mod tests_tx {
 
         let mint = mint_asset!(Box::new(asset_mint_output!(lock_script_hash, parameters, amount)), metadata.clone());
         let mint_tracker = mint.tracker().unwrap();
-        let asset_type = Blake::blake(mint_tracker);
+        let asset_type = Blake::blake(*mint_tracker);
 
         let tx = transaction!(fee: 20, mint);
 
@@ -2742,10 +2749,10 @@ mod tests_tx {
     fn transfer_failed_if_the_input_amount_is_not_valid() {
         let shard_id = 0;
 
-        let mint_tracker1 = H256::random();
-        let mint_tracker2 = H256::random();
-        let asset_type1 = Blake::blake(mint_tracker1);
-        let asset_type2 = Blake::blake(mint_tracker2);
+        let mint_tracker1 = Tracker::from(H256::random());
+        let mint_tracker2 = Tracker::from(H256::random());
+        let asset_type1 = Blake::blake(*mint_tracker1);
+        let asset_type2 = Blake::blake(*mint_tracker2);
 
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
 
@@ -2806,10 +2813,10 @@ mod tests_tx {
         let shard3 = 3;
         let shard4 = 4;
 
-        let mint_tracker3 = H256::random();
-        let mint_tracker4 = H256::random();
-        let asset_type3 = Blake::blake(mint_tracker3);
-        let asset_type4 = Blake::blake(mint_tracker4);
+        let mint_tracker3 = Tracker::from(H256::random());
+        let mint_tracker4 = Tracker::from(H256::random());
+        let asset_type3 = Blake::blake(*mint_tracker3);
+        let asset_type4 = Blake::blake(*mint_tracker4);
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
 
         let (sender, signer_public, _) = address();
@@ -2873,10 +2880,10 @@ mod tests_tx {
         let shard3 = 3;
         let shard4 = 4;
 
-        let mint_tracker3 = H256::random();
-        let mint_tracker4 = H256::random();
-        let asset_type3 = Blake::blake(mint_tracker3);
-        let asset_type4 = Blake::blake(mint_tracker4);
+        let mint_tracker3 = Tracker::from(H256::random());
+        let mint_tracker4 = Tracker::from(H256::random());
+        let asset_type3 = Blake::blake(*mint_tracker3);
+        let asset_type4 = Blake::blake(*mint_tracker4);
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
 
         let (sender, signer_public, _) = address();
@@ -2940,10 +2947,10 @@ mod tests_tx {
         let shard3 = 3;
         let shard4 = 4;
 
-        let mint_tracker3 = H256::random();
-        let mint_tracker4 = H256::random();
-        let asset_type3 = Blake::blake(mint_tracker3);
-        let asset_type4 = Blake::blake(mint_tracker4);
+        let mint_tracker3 = Tracker::from(H256::random());
+        let mint_tracker4 = Tracker::from(H256::random());
+        let asset_type3 = Blake::blake(*mint_tracker3);
+        let asset_type4 = Blake::blake(*mint_tracker4);
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
 
         let (sender, signer_public, _) = address();
@@ -3014,10 +3021,10 @@ mod tests_tx {
         let shard3 = 3;
         let shard4 = 4;
 
-        let mint_tracker3 = H256::random();
-        let mint_tracker4 = H256::random();
-        let asset_type3 = Blake::blake(mint_tracker3);
-        let asset_type4 = Blake::blake(mint_tracker4);
+        let mint_tracker3 = Tracker::from(H256::random());
+        let mint_tracker4 = Tracker::from(H256::random());
+        let asset_type3 = Blake::blake(*mint_tracker3);
+        let asset_type4 = Blake::blake(*mint_tracker4);
         let lock_script_hash = H160::from("0xb042ad154a3359d276835c903587ebafefea22af");
 
         let (sender, signer_public, _) = address();
@@ -3193,7 +3200,7 @@ mod tests_tx {
             approver: regular_account
         );
         let transaction_tracker = transaction.tracker().unwrap();
-        let asset_type = Blake::blake(transaction_tracker);
+        let asset_type = Blake::blake(*transaction_tracker);
         let tx = transaction!(fee: 11, transaction);
 
         assert_eq!(
@@ -3236,7 +3243,7 @@ mod tests_tx {
             registrar: regular_account
         );
         let transaction_tracker = transaction.tracker().unwrap();
-        let asset_type = Blake::blake(transaction_tracker);
+        let asset_type = Blake::blake(*transaction_tracker);
         let tx = transaction!(fee: 11, transaction);
 
         assert_eq!(

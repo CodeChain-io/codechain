@@ -43,7 +43,7 @@ use cstate::tests::helpers::empty_top_state;
 use cstate::{FindActionHandler, StateDB, TopLevelState};
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, Header as BlockHeader};
+use ctypes::{BlockHash, BlockNumber, CommonParams, Header as BlockHeader, Tracker};
 use cvm::ChainTimeInfo;
 use journaldb;
 use kvdb::KeyValueDB;
@@ -459,7 +459,7 @@ impl BlockChainTrait for TestBlockChainClient {
         None // Simple default.
     }
 
-    fn transaction_header(&self, _tracker: &H256) -> Option<::encoded::Header> {
+    fn transaction_header(&self, _tracker: &Tracker) -> Option<::encoded::Header> {
         None
     }
 }
@@ -597,11 +597,11 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn transaction_by_tracker(&self, _: &H256) -> Option<LocalizedTransaction> {
+    fn transaction_by_tracker(&self, _: &Tracker) -> Option<LocalizedTransaction> {
         unimplemented!();
     }
 
-    fn error_hints_by_tracker(&self, _: &H256) -> Vec<(H256, Option<String>)> {
+    fn error_hints_by_tracker(&self, _: &Tracker) -> Vec<(H256, Option<String>)> {
         unimplemented!();
     }
 }
@@ -611,11 +611,11 @@ impl TimeoutHandler for TestBlockChainClient {
 }
 
 impl ChainTimeInfo for TestBlockChainClient {
-    fn transaction_block_age(&self, _: &H256, _parent_block_number: BlockNumber) -> Option<u64> {
+    fn transaction_block_age(&self, _: &Tracker, _parent_block_number: BlockNumber) -> Option<u64> {
         Some(0)
     }
 
-    fn transaction_time_age(&self, _: &H256, _parent_timestamp: u64) -> Option<u64> {
+    fn transaction_time_age(&self, _: &Tracker, _parent_timestamp: u64) -> Option<u64> {
         Some(0)
     }
 }

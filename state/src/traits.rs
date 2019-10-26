@@ -17,7 +17,7 @@
 use ckey::{public_to_address, Address, Public, Signature};
 use cmerkle::Result as TrieResult;
 use ctypes::transaction::ShardTransaction;
-use ctypes::{BlockNumber, CommonParams, ShardId};
+use ctypes::{BlockNumber, CommonParams, ShardId, Tracker};
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H160, H256};
 
@@ -116,7 +116,7 @@ pub trait TopStateView {
     }
 
     /// Get the asset.
-    fn asset(&self, shard_id: ShardId, tracker: H256, index: usize) -> TrieResult<Option<OwnedAsset>> {
+    fn asset(&self, shard_id: ShardId, tracker: Tracker, index: usize) -> TrieResult<Option<OwnedAsset>> {
         match self.shard_state(shard_id)? {
             None => Ok(None),
             Some(state) => state.asset(tracker, index),
@@ -132,7 +132,7 @@ pub trait ShardStateView {
     /// Get the asset scheme.
     fn asset_scheme(&self, asset_type: H160) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
-    fn asset(&self, tracker: H256, index: usize) -> TrieResult<Option<OwnedAsset>>;
+    fn asset(&self, tracker: Tracker, index: usize) -> TrieResult<Option<OwnedAsset>>;
 }
 
 pub trait ShardState {

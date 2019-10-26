@@ -641,45 +641,45 @@ macro_rules! check_shard_level_state {
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
-        let asset = $state.asset($tx_hash, $index)
-            .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tx_hash, $index))
-            .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tx_hash, $index));
+    ($state:expr, [(asset: ($tracker:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
+        let asset = $state.asset($tracker, $index)
+            .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tracker, $index))
+            .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tracker, $index));
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
-        let asset = $state.asset($tx_hash, $index)
-            .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tx_hash, $index))
-            .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tx_hash, $index));
+    ($state:expr, [(asset: ($tracker:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
+        let asset = $state.asset($tracker, $index)
+            .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tracker, $index))
+            .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tracker, $index));
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
-        let asset = $state.asset($tx_hash, $index)
-            .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tx_hash, $index))
-            .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tx_hash, $index));
+    ($state:expr, [(asset: ($tracker:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr }) $(,$x:tt)*]) => {
+        let asset = $state.asset($tracker, $index)
+            .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tracker, $index))
+            .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tracker, $index));
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, lock_script_hash: $lock_script_hash:expr }) $(,$x:tt)*]) => {
-        let asset = $state.asset($tx_hash, $index)
-            .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tx_hash, $index))
-            .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tx_hash, $index));
+    ($state:expr, [(asset: ($tracker:expr, $index:expr) => { asset_type: $asset_type:expr, quantity: $quantity:expr, lock_script_hash: $lock_script_hash:expr }) $(,$x:tt)*]) => {
+        let asset = $state.asset($tracker, $index)
+            .expect(&format!("Cannot read Asset from {}:{}:{}", $state.shard_id(), $tracker, $index))
+            .expect(&format!("Asset for {}:{}:{} not exist", $state.shard_id(), $tracker, $index));
         assert_eq!(&$asset_type, asset.asset_type());
         assert_eq!($quantity, asset.quantity());
         assert_eq!(&$lock_script_hash, asset.lock_script_hash());
 
         check_shard_level_state!($state, [$($x),*]);
     };
-    ($state:expr, [(asset: ($tx_hash:expr, $index:expr)) $(,$x:tt)*]) => {
-        assert_eq!(Ok(None), $state.asset($tx_hash, $index));
+    ($state:expr, [(asset: ($tracker:expr, $index:expr)) $(,$x:tt)*]) => {
+        assert_eq!(Ok(None), $state.asset($tracker, $index));
 
         check_shard_level_state!($state, [$($x),*]);
     };

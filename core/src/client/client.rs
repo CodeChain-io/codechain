@@ -28,7 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use journaldb;
@@ -239,7 +239,7 @@ impl Client {
         }
     }
 
-    fn transaction_addresses(&self, tracker: &H256) -> Option<TransactionAddress> {
+    fn transaction_addresses(&self, tracker: &Tracker) -> Option<TransactionAddress> {
         self.block_chain().transaction_address_by_tracker(tracker)
     }
 
@@ -366,7 +366,13 @@ impl AssetClient for Client {
         }
     }
 
-    fn get_asset(&self, tracker: H256, index: usize, shard_id: ShardId, id: BlockId) -> TrieResult<Option<OwnedAsset>> {
+    fn get_asset(
+        &self,
+        tracker: Tracker,
+        index: usize,
+        shard_id: ShardId,
+        id: BlockId,
+    ) -> TrieResult<Option<OwnedAsset>> {
         if let Some(state) = Client::state_at(&self, id) {
             Ok(state.asset(shard_id, tracker, index)?)
         } else {
@@ -379,7 +385,7 @@ impl AssetClient for Client {
     /// It returns None if such an asset never existed in the shard at the given block.
     fn is_asset_spent(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_id: BlockId,
@@ -629,7 +635,7 @@ impl BlockChainTrait for Client {
         self.transaction_address(id).map(|addr| addr.block_hash)
     }
 
-    fn transaction_header(&self, tracker: &H256) -> Option<::encoded::Header> {
+    fn transaction_header(&self, tracker: &Tracker) -> Option<::encoded::Header> {
         self.transaction_addresses(tracker).map(|addr| addr.block_hash).and_then(|hash| self.block_header(&hash.into()))
     }
 }
@@ -796,13 +802,13 @@ impl BlockChainClient for Client {
         chain.error_hint(hash)
     }
 
-    fn transaction_by_tracker(&self, tracker: &H256) -> Option<LocalizedTransaction> {
+    fn transaction_by_tracker(&self, tracker: &Tracker) -> Option<LocalizedTransaction> {
         let chain = self.block_chain();
         let address = self.transaction_addresses(tracker);
         address.and_then(|address| chain.transaction(&address))
     }
 
-    fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)> {
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(H256, Option<String>)> {
         let chain = self.block_chain();
         chain.error_hints_by_tracker(tracker)
     }
@@ -919,11 +925,11 @@ impl MiningBlockChainClient for Client {
 }
 
 impl ChainTimeInfo for Client {
-    fn transaction_block_age(&self, tracker: &H256, parent_block_number: BlockNumber) -> Option<u64> {
+    fn transaction_block_age(&self, tracker: &Tracker, parent_block_number: BlockNumber) -> Option<u64> {
         self.transaction_block_number(tracker).map(|block_number| parent_block_number - block_number)
     }
 
-    fn transaction_time_age(&self, tracker: &H256, parent_timestamp: u64) -> Option<u64> {
+    fn transaction_time_age(&self, tracker: &Tracker, parent_timestamp: u64) -> Option<u64> {
         self.transaction_block_timestamp(tracker).map(|block_timestamp| parent_timestamp - block_timestamp)
     }
 }

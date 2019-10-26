@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, Tracker};
 use cvm::ChainTimeInfo;
-use primitives::H256;
 
 pub struct TestClient {
     block_age: Option<u64>,
@@ -39,11 +38,11 @@ impl Default for TestClient {
 }
 
 impl ChainTimeInfo for TestClient {
-    fn transaction_block_age(&self, _: &H256, _parent_block_number: BlockNumber) -> Option<u64> {
+    fn transaction_block_age(&self, _: &Tracker, _parent_block_number: BlockNumber) -> Option<u64> {
         self.block_age
     }
 
-    fn transaction_time_age(&self, _: &H256, _parent_timestamp: u64) -> Option<u64> {
+    fn transaction_time_age(&self, _: &Tracker, _parent_timestamp: u64) -> Option<u64> {
         self.time_age
     }
 }
