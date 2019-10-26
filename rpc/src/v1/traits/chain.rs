@@ -17,7 +17,7 @@
 use cjson::scheme::Params;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockHash, BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
@@ -137,7 +137,7 @@ pub trait Chain {
 
     /// Gets the hash of the block with given number.
     #[rpc(name = "chain_getBlockHash")]
-    fn get_block_hash(&self, block_number: u64) -> Result<Option<H256>>;
+    fn get_block_hash(&self, block_number: u64) -> Result<Option<BlockHash>>;
 
     /// Gets block with given number.
     #[rpc(name = "chain_getBlockByNumber")]
@@ -145,11 +145,11 @@ pub trait Chain {
 
     /// Gets block with given hash.
     #[rpc(name = "chain_getBlockByHash")]
-    fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>>;
+    fn get_block_by_hash(&self, block_hash: BlockHash) -> Result<Option<Block>>;
 
     ///Gets the count of transactions in a block with given hash.
     #[rpc(name = "chain_getBlockTransactionCountByHash")]
-    fn get_block_transaction_count_by_hash(&self, block_hash: H256) -> Result<Option<usize>>;
+    fn get_block_transaction_count_by_hash(&self, block_hash: BlockHash) -> Result<Option<usize>>;
 
     ///Gets the minimum transaction fee of the given name.
     #[rpc(name = "chain_getMinTransactionFee")]

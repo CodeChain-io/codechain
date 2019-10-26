@@ -21,9 +21,9 @@ use std::time::Instant;
 
 use cio::IoChannel;
 use ctypes::header::Header;
+use ctypes::BlockHash;
 use kvdb::DBTransaction;
 use parking_lot::{Mutex, MutexGuard};
-use primitives::H256;
 use rlp::Encodable;
 
 use super::{BlockChainTrait, Client, ClientConfig};
@@ -125,7 +125,7 @@ impl Importer {
             }
 
             let imported = imported_blocks.len();
-            let invalid_blocks = invalid_blocks.into_iter().collect::<Vec<H256>>();
+            let invalid_blocks = invalid_blocks.into_iter().collect::<Vec<_>>();
 
             if !invalid_blocks.is_empty() {
                 self.block_queue.mark_as_bad(&invalid_blocks);
@@ -153,8 +153,8 @@ impl Importer {
         imported
     }
 
-    pub fn calculate_enacted_retracted(&self, import_results: &[ImportRoute]) -> (Vec<H256>, Vec<H256>) {
-        fn map_to_vec(map: Vec<(H256, bool)>) -> Vec<H256> {
+    pub fn calculate_enacted_retracted(&self, import_results: &[ImportRoute]) -> (Vec<BlockHash>, Vec<BlockHash>) {
+        fn map_to_vec(map: Vec<(BlockHash, bool)>) -> Vec<BlockHash> {
             map.into_iter().map(|(k, _v)| k).collect()
         }
 
@@ -332,7 +332,7 @@ impl Importer {
             }
 
             let parent_header = client
-                .block_header(&BlockId::Hash(*header.parent_hash()))
+                .block_header(&(*header.parent_hash()).into())
                 .unwrap_or_else(|| panic!("Parent of importing header must exist {:?}", header.parent_hash()))
                 .decode();
             if client.block_header(&BlockId::Hash(hash)).is_some() {

@@ -21,7 +21,8 @@ use std::time::Instant;
 
 use ccore::encoded::Header;
 use ccore::{BlockChainClient, BlockId};
-use primitives::{H256, U256};
+use ctypes::BlockHash;
+use primitives::U256;
 
 use super::super::message::RequestMessage;
 
@@ -32,7 +33,7 @@ const MAX_WAIT: u64 = 15;
 
 #[derive(Clone)]
 struct Pivot {
-    hash: H256,
+    hash: BlockHash,
     total_score: U256,
 }
 
@@ -42,12 +43,12 @@ pub struct HeaderDownloader {
     client: Arc<dyn BlockChainClient>,
 
     total_score: U256,
-    best_hash: H256,
+    best_hash: BlockHash,
 
     pivot: Pivot,
     request_time: Option<Instant>,
-    downloaded: HashMap<H256, Header>,
-    queued: HashMap<H256, Header>,
+    downloaded: HashMap<BlockHash, Header>,
+    queued: HashMap<BlockHash, Header>,
     trial: usize,
 }
 
@@ -56,7 +57,7 @@ impl HeaderDownloader {
         self.total_score
     }
 
-    pub fn new(client: Arc<dyn BlockChainClient>, total_score: U256, best_hash: H256) -> Self {
+    pub fn new(client: Arc<dyn BlockChainClient>, total_score: U256, best_hash: BlockHash) -> Self {
         let best_header_hash = client.best_block_header().hash();
         let best_score = client.block_total_score(&BlockId::Latest).expect("Best block always exist");
 
@@ -77,7 +78,7 @@ impl HeaderDownloader {
         }
     }
 
-    pub fn update(&mut self, total_score: U256, best_hash: H256) -> bool {
+    pub fn update(&mut self, total_score: U256, best_hash: BlockHash) -> bool {
         match self.total_score.cmp(&total_score) {
             Ordering::Equal => true,
             Ordering::Less => {
@@ -196,7 +197,7 @@ impl HeaderDownloader {
         self.downloaded.values().cloned().collect()
     }
 
-    pub fn mark_as_imported(&mut self, hashes: Vec<H256>) {
+    pub fn mark_as_imported(&mut self, hashes: Vec<BlockHash>) {
         for hash in hashes {
             self.queued.remove(&hash);
             self.downloaded.remove(&hash);
@@ -212,7 +213,7 @@ impl HeaderDownloader {
         self.downloaded.shrink_to_fit();
     }
 
-    pub fn mark_as_queued(&mut self, hashes: Vec<H256>) {
+    pub fn mark_as_queued(&mut self, hashes: Vec<BlockHash>) {
         for hash in hashes {
             if let Some(header) = self.downloaded.remove(&hash) {
                 self.queued.insert(hash, header);

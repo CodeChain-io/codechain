@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::BlockNumber;
+use ctypes::{BlockHash, BlockNumber};
 use primitives::H256;
 use rlp::{DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -24,10 +24,10 @@ pub enum RequestMessage {
         start_number: BlockNumber,
         max_count: u64,
     },
-    Bodies(Vec<H256>),
-    StateHead(H256),
+    Bodies(Vec<BlockHash>),
+    StateHead(BlockHash),
     StateChunk {
-        block_hash: H256,
+        block_hash: BlockHash,
         tree_root: H256,
     },
 }
@@ -145,20 +145,20 @@ mod tests {
 
     #[test]
     fn request_bodies_message_rlp() {
-        let message = RequestMessage::Bodies(vec![H256::default()]);
+        let message = RequestMessage::Bodies(vec![H256::default().into()]);
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
     fn request_state_head_message_rlp() {
-        let message = RequestMessage::StateHead(H256::default());
+        let message = RequestMessage::StateHead(H256::default().into());
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
     fn request_state_chunk_message_rlp() {
         let message = RequestMessage::StateChunk {
-            block_hash: H256::default(),
+            block_hash: H256::default().into(),
             tree_root: H256::default(),
         };
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));

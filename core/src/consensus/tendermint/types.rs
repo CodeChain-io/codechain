@@ -17,13 +17,13 @@
 use std::fmt;
 
 use ckey::SchnorrSignature;
-use primitives::{Bytes, H256};
+use ctypes::BlockHash;
+use primitives::Bytes;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::super::BitSet;
 use super::message::VoteStep;
 use crate::block::{IsBlock, SealedBlock};
-use consensus::tendermint::BlockHash;
 
 pub type Height = u64;
 pub type View = u64;
@@ -32,7 +32,7 @@ pub type View = u64;
 pub enum TendermintState {
     Propose,
     ProposeWaitBlockGeneration {
-        parent_hash: H256,
+        parent_hash: BlockHash,
     },
     ProposeWaitImported {
         block: Box<SealedBlock>,
@@ -44,11 +44,11 @@ pub enum TendermintState {
     Precommit,
     Commit {
         view: View,
-        block_hash: H256,
+        block_hash: BlockHash,
     },
     CommitTimedout {
         view: View,
-        block_hash: H256,
+        block_hash: BlockHash,
     },
 }
 
@@ -199,7 +199,7 @@ impl Encodable for Step {
 
 pub struct PeerState {
     pub vote_step: VoteStep,
-    pub proposal: Option<H256>,
+    pub proposal: Option<BlockHash>,
     pub messages: BitSet,
 }
 
@@ -270,12 +270,12 @@ impl<'a> TendermintSealView<'a> {
 #[derive(Copy, Clone)]
 pub enum TwoThirdsMajority {
     Empty,
-    Lock(View, H256),
+    Lock(View, BlockHash),
     Unlock(View),
 }
 
 impl TwoThirdsMajority {
-    pub fn from_message(view: View, block_hash: Option<H256>) -> Self {
+    pub fn from_message(view: View, block_hash: Option<BlockHash>) -> Self {
         match block_hash {
             Some(block_hash) => TwoThirdsMajority::Lock(view, block_hash),
             None => TwoThirdsMajority::Unlock(view),
@@ -290,7 +290,7 @@ impl TwoThirdsMajority {
         }
     }
 
-    pub fn block_hash(&self) -> Option<H256> {
+    pub fn block_hash(&self) -> Option<BlockHash> {
         match self {
             TwoThirdsMajority::Empty => None,
             TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
@@ -301,21 +301,21 @@ impl TwoThirdsMajority {
 
 #[derive(Debug, PartialEq)]
 pub enum Proposal {
-    ProposalReceived(H256, Bytes, SchnorrSignature),
-    ProposalImported(H256),
+    ProposalReceived(BlockHash, Bytes, SchnorrSignature),
+    ProposalImported(BlockHash),
     None,
 }
 
 impl Proposal {
-    pub fn new_received(hash: H256, block: Bytes, signature: SchnorrSignature) -> Self {
+    pub fn new_received(hash: BlockHash, block: Bytes, signature: SchnorrSignature) -> Self {
         Proposal::ProposalReceived(hash, block, signature)
     }
 
-    pub fn new_imported(hash: H256) -> Self {
+    pub fn new_imported(hash: BlockHash) -> Self {
         Proposal::ProposalImported(hash)
     }
 
-    pub fn block_hash(&self) -> Option<H256> {
+    pub fn block_hash(&self) -> Option<BlockHash> {
         match self {
             Proposal::ProposalReceived(hash, ..) => Some(*hash),
             Proposal::ProposalImported(hash) => Some(*hash),
@@ -323,7 +323,7 @@ impl Proposal {
         }
     }
 
-    pub fn imported_block_hash(&self) -> Option<H256> {
+    pub fn imported_block_hash(&self) -> Option<BlockHash> {
         match self {
             Proposal::ProposalReceived(..) => None,
             Proposal::ProposalImported(hash) => Some(*hash),

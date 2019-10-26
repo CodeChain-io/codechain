@@ -19,8 +19,9 @@ use std::sync::Arc;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
 use cnetwork::NodeId;
 use ctimer::TimerApi;
+use ctypes::BlockHash;
 use kvdb::KeyValueDB;
-use primitives::{Bytes, H256};
+use primitives::Bytes;
 
 use crate::client::{Client, ClientConfig};
 use crate::error::Error;
@@ -80,7 +81,7 @@ pub enum ClientIoMessage {
     },
     /// Update the best block by the given hash
     /// Only used in Tendermint
-    UpdateBestAsCommitted(H256),
+    UpdateBestAsCommitted(BlockHash),
 }
 
 /// IO interface for the Client handler

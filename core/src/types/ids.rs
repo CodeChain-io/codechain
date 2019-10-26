@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::BlockNumber;
+use ctypes::{BlockHash, BlockNumber};
 use primitives::H256;
 
 /// Uniquely identifies block.
@@ -22,7 +22,7 @@ use primitives::H256;
 pub enum BlockId {
     /// Block's blake256.
     /// Querying by hash is always faster.
-    Hash(H256),
+    Hash(BlockHash),
     /// Block number within canon blockchain.
     Number(BlockNumber),
     /// Earliest block (genesis).
@@ -33,8 +33,8 @@ pub enum BlockId {
     ParentOfLatest,
 }
 
-impl From<H256> for BlockId {
-    fn from(hash: H256) -> Self {
+impl From<BlockHash> for BlockId {
+    fn from(hash: BlockHash) -> Self {
         BlockId::Hash(hash)
     }
 }

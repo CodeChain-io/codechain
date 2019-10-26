@@ -28,7 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockNumber, CommonParams, ShardId};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use journaldb;
@@ -101,7 +101,7 @@ impl Client {
             // Sets the correct state root.
             state_db = scheme.ensure_genesis_state(state_db)?;
             let mut batch = DBTransaction::new();
-            state_db.journal_under(&mut batch, 0, scheme.genesis_header().hash())?;
+            state_db.journal_under(&mut batch, 0, *scheme.genesis_header().hash())?;
             db.write(batch).map_err(ClientError::Database)?;
         }
 
@@ -150,11 +150,11 @@ impl Client {
 
     pub fn new_blocks(
         &self,
-        imported: &[H256],
-        invalid: &[H256],
-        enacted: &[H256],
-        retracted: &[H256],
-        sealed: &[H256],
+        imported: &[BlockHash],
+        invalid: &[BlockHash],
+        enacted: &[BlockHash],
+        retracted: &[BlockHash],
+        sealed: &[BlockHash],
         duration: u64,
     ) {
         self.notify(|notify| {
@@ -171,13 +171,13 @@ impl Client {
 
     pub fn new_headers(
         &self,
-        imported: &[H256],
-        invalid: &[H256],
-        enacted: &[H256],
-        retracted: &[H256],
-        sealed: &[H256],
+        imported: &[BlockHash],
+        invalid: &[BlockHash],
+        enacted: &[BlockHash],
+        retracted: &[BlockHash],
+        sealed: &[BlockHash],
         duration: u64,
-        new_best_proposal: Option<H256>,
+        new_best_proposal: Option<BlockHash>,
     ) {
         self.notify(|notify| {
             notify.new_headers(
@@ -217,7 +217,7 @@ impl Client {
         self.importer.miner.update_sealing(self, parent_block, allow_empty_block);
     }
 
-    fn block_hash(chain: &BlockChain, id: &BlockId) -> Option<H256> {
+    fn block_hash(chain: &BlockChain, id: &BlockId) -> Option<BlockHash> {
         match id {
             BlockId::Hash(hash) => Some(*hash),
             BlockId::Number(number) => chain.block_hash(*number),
@@ -257,7 +257,7 @@ impl Client {
 
     /// This is triggered by a message coming from the Tendermint engine when a block is committed.
     /// See EngineClient::update_best_as_committed() for details.
-    pub fn update_best_as_committed(&self, block_hash: H256) {
+    pub fn update_best_as_committed(&self, block_hash: BlockHash) {
         ctrace!(CLIENT, "Update the best block to the hash({}), as requested", block_hash);
         let start = Instant::now();
         let route = {
@@ -557,7 +557,7 @@ impl EngineClient for Client {
     }
 
     /// Submit a seal for a block in the mining queue.
-    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
+    fn submit_seal(&self, block_hash: BlockHash, seal: Vec<Bytes>) {
         if self.importer.miner.submit_seal(self, block_hash, seal).is_err() {
             cwarn!(CLIENT, "Wrong internal seal submission!")
         }
@@ -571,7 +571,7 @@ impl EngineClient for Client {
     /// Update the best block as the given block hash.
     ///
     /// Used in Tendermint, when going to the commit step.
-    fn update_best_as_committed(&self, block_hash: H256) {
+    fn update_best_as_committed(&self, block_hash: BlockHash) {
         ctrace!(ENGINE, "Requesting a best block update (block hash: {})", block_hash);
         match self.io_channel.lock().send(ClientIoMessage::UpdateBestAsCommitted(block_hash)) {
             Ok(_) => {}
@@ -625,7 +625,7 @@ impl BlockChainTrait for Client {
         Self::block_hash(&chain, id).and_then(|hash| chain.block(&hash))
     }
 
-    fn transaction_block(&self, id: &TransactionId) -> Option<H256> {
+    fn transaction_block(&self, id: &TransactionId) -> Option<BlockHash> {
         self.transaction_address(id).map(|addr| addr.block_hash)
     }
 
@@ -635,7 +635,7 @@ impl BlockChainTrait for Client {
 }
 
 impl ImportBlock for Client {
-    fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
+    fn import_block(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError> {
         use crate::verification::queue::kind::blocks::Unverified;
         use crate::verification::queue::kind::BlockLike;
 
@@ -648,7 +648,7 @@ impl ImportBlock for Client {
         Ok(self.importer.block_queue.import(unverified)?)
     }
 
-    fn import_header(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
+    fn import_header(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError> {
         let unverified = ::encoded::Header::new(bytes).decode();
         {
             if self.block_chain().is_known_header(&unverified.hash()) {
@@ -781,7 +781,7 @@ impl BlockChainClient for Client {
         Self::block_hash(&chain, id).and_then(|hash| chain.block_details(&hash)).map(|d| d.total_score)
     }
 
-    fn block_hash(&self, id: &BlockId) -> Option<H256> {
+    fn block_hash(&self, id: &BlockId) -> Option<BlockHash> {
         let chain = self.block_chain();
         Self::block_hash(&chain, id)
     }

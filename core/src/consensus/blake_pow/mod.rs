@@ -148,7 +148,7 @@ impl ConsensusEngine for BlakePoW {
         if header.score() != &expected_score {
             return Err(From::from(BlockError::InvalidScore(Mismatch {
                 expected: expected_score,
-                found: U256::from(header.hash()),
+                found: U256::from(*header.hash()),
             })))
         }
 

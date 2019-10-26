@@ -20,7 +20,7 @@ use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Private, Public, Signature};
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Transaction;
-use ctypes::{BlockNumber, CommonParams};
+use ctypes::{BlockHash, BlockNumber, CommonParams};
 use primitives::H256;
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -231,7 +231,7 @@ pub struct LocalizedTransaction {
     /// Block number.
     pub block_number: BlockNumber,
     /// Block hash.
-    pub block_hash: H256,
+    pub block_hash: BlockHash,
     /// Transaction index within block.
     pub transaction_index: usize,
     /// Cached public

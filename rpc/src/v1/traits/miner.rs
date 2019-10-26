@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson::bytes::Bytes;
+use ctypes::BlockHash;
 use jsonrpc_core::Result;
-use primitives::H256;
 
 use super::super::types::Work;
 
@@ -26,5 +26,5 @@ pub trait Miner {
     fn get_work(&self) -> Result<Work>;
 
     #[rpc(name = "miner_submitWork")]
-    fn submit_work(&self, pow_hash: H256, seal: Vec<Bytes>) -> Result<bool>;
+    fn submit_work(&self, pow_hash: BlockHash, seal: Vec<Bytes>) -> Result<bool>;
 }

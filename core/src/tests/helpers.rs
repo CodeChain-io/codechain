@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cstate::StateDB;
-use ctypes::Header;
-use primitives::{Bytes, H256, U256};
+use ctypes::{BlockHash, Header};
+use primitives::{Bytes, U256};
 use rlp::{self, RlpStream};
 
 use crate::scheme::Scheme;
@@ -46,7 +46,7 @@ pub fn get_good_dummy_block() -> Bytes {
     bytes
 }
 
-pub fn get_good_dummy_block_hash() -> (H256, Bytes) {
+pub fn get_good_dummy_block_hash() -> (BlockHash, Bytes) {
     let mut block_header = Header::new();
     let test_scheme = Scheme::new_test();
     block_header.set_score(U256::from(0x20000));
