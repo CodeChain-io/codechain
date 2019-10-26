@@ -28,7 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use journaldb;
@@ -142,7 +142,7 @@ impl Client {
         self.notify.write().push(target);
     }
 
-    pub fn transactions_received(&self, hashes: &[H256], peer_id: NodeId) {
+    pub fn transactions_received(&self, hashes: &[TxHash], peer_id: NodeId) {
         self.notify(|notify| {
             notify.transactions_received(hashes.to_vec(), peer_id);
         });
@@ -422,7 +422,7 @@ impl AssetClient for Client {
 }
 
 impl TextClient for Client {
-    fn get_text(&self, tx_hash: H256, id: BlockId) -> TrieResult<Option<Text>> {
+    fn get_text(&self, tx_hash: TxHash, id: BlockId) -> TrieResult<Option<Text>> {
         if let Some(state) = Client::state_at(&self, id) {
             Ok(state.text(&tx_hash)?)
         } else {
@@ -797,7 +797,7 @@ impl BlockChainClient for Client {
         self.transaction_address(id).and_then(|address| chain.transaction(&address))
     }
 
-    fn error_hint(&self, hash: &H256) -> Option<String> {
+    fn error_hint(&self, hash: &TxHash) -> Option<String> {
         let chain = self.block_chain();
         chain.error_hint(hash)
     }
@@ -808,7 +808,7 @@ impl BlockChainClient for Client {
         address.and_then(|address| chain.transaction(&address))
     }
 
-    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(H256, Option<String>)> {
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(TxHash, Option<String>)> {
         let chain = self.block_chain();
         chain.error_hints_by_tracker(tracker)
     }
@@ -855,7 +855,7 @@ impl Shard for Client {
         state.number_of_shards().ok()
     }
 
-    fn shard_id_by_hash(&self, create_shard_tx_hash: &H256, state: StateOrBlock) -> Option<u16> {
+    fn shard_id_by_hash(&self, create_shard_tx_hash: &TxHash, state: StateOrBlock) -> Option<u16> {
         let state = self.state_info(state)?;
         state.shard_id_by_hash(&create_shard_tx_hash).ok()?
     }

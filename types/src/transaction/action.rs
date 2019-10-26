@@ -23,7 +23,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::errors::SyntaxError;
 use crate::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, ShardTransaction};
-use crate::{CommonParams, ShardId, Tracker};
+use crate::{CommonParams, ShardId, Tracker, TxHash};
 
 const PAY: u8 = 0x02;
 const SET_REGULAR_KEY: u8 = 0x03;
@@ -126,7 +126,7 @@ pub enum Action {
         signature: Signature,
     },
     Remove {
-        hash: H256,
+        hash: TxHash,
         signature: Signature,
     },
 }
@@ -1037,7 +1037,7 @@ mod tests {
     #[test]
     fn encode_and_decode_remove() {
         rlp_encode_and_decode_test!(Action::Remove {
-            hash: H256::random(),
+            hash: H256::random().into(),
             signature: Signature::random(),
         });
     }

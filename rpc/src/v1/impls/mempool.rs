@@ -19,8 +19,7 @@ use std::sync::Arc;
 use ccore::{BlockChainClient, MiningBlockChainClient, SignedTransaction};
 use cjson::bytes::Bytes;
 use ckey::{Address, PlatformAddress};
-use ctypes::Tracker;
-use primitives::H256;
+use ctypes::{Tracker, TxHash};
 use rlp::UntrustedRlp;
 
 use jsonrpc_core::Result;
@@ -45,7 +44,7 @@ impl<C> Mempool for MempoolClient<C>
 where
     C: BlockChainClient + MiningBlockChainClient + 'static,
 {
-    fn send_signed_transaction(&self, raw: Bytes) -> Result<H256> {
+    fn send_signed_transaction(&self, raw: Bytes) -> Result<TxHash> {
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
             .map_err(|e| errors::rlp(&e))
@@ -69,7 +68,7 @@ where
             .collect())
     }
 
-    fn get_error_hint(&self, transaction_hash: H256) -> Result<Option<String>> {
+    fn get_error_hint(&self, transaction_hash: TxHash) -> Result<Option<String>> {
         Ok(self.client.error_hint(&transaction_hash))
     }
 

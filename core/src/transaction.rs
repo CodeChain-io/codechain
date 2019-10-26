@@ -20,8 +20,7 @@ use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Private, Public, Signature};
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Transaction;
-use ctypes::{BlockHash, BlockNumber, CommonParams};
-use primitives::H256;
+use ctypes::{BlockHash, BlockNumber, CommonParams, TxHash};
 use rlp::{self, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use crate::error::Error;
@@ -34,7 +33,7 @@ pub struct UnverifiedTransaction {
     /// Signature.
     sig: Signature,
     /// Hash of the transaction
-    hash: H256,
+    hash: TxHash,
 }
 
 impl Deref for UnverifiedTransaction {
@@ -60,7 +59,7 @@ impl rlp::Decodable for UnverifiedTransaction {
                 got: item_count,
             })
         }
-        let hash = blake256(d.as_raw());
+        let hash = blake256(d.as_raw()).into();
         Ok(UnverifiedTransaction {
             unsigned: Transaction {
                 seq: d.val_at(0)?,
@@ -85,14 +84,14 @@ impl UnverifiedTransaction {
         UnverifiedTransaction {
             unsigned,
             sig,
-            hash: 0.into(),
+            hash: Default::default(),
         }
         .compute_hash()
     }
 
     /// Used to compute hash of created transactions
     fn compute_hash(mut self) -> UnverifiedTransaction {
-        let hash = blake256(&*self.rlp_bytes());
+        let hash = blake256(&*self.rlp_bytes()).into();
         self.hash = hash;
         self
     }
@@ -108,7 +107,7 @@ impl UnverifiedTransaction {
     }
 
     /// Get the hash of this header (blake256 of the RLP).
-    pub fn hash(&self) -> H256 {
+    pub fn hash(&self) -> TxHash {
         self.hash
     }
 
@@ -287,7 +286,7 @@ mod tests {
                 network_id: "tc".into(),
             },
             sig: Signature::default(),
-            hash: H256::default(),
+            hash: H256::default().into(),
         }
         .compute_hash());
     }
@@ -305,7 +304,7 @@ mod tests {
                 },
             },
             sig: Signature::default(),
-            hash: H256::default(),
+            hash: H256::default().into(),
         }
         .compute_hash());
     }
@@ -322,7 +321,7 @@ mod tests {
                 },
             },
             sig: Signature::default(),
-            hash: H256::default(),
+            hash: H256::default().into(),
         }
         .compute_hash());
     }
@@ -339,7 +338,7 @@ mod tests {
                 },
             },
             sig: Signature::default(),
-            hash: H256::default(),
+            hash: H256::default().into(),
         }
         .compute_hash());
     }

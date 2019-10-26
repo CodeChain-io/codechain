@@ -26,7 +26,7 @@ use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
-use ctypes::{BlockHash, BlockNumber, ShardId, Tracker};
+use ctypes::{BlockHash, BlockNumber, ShardId, Tracker, TxHash};
 use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
@@ -65,12 +65,12 @@ where
         + TermInfo
         + 'static,
 {
-    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
+    fn get_transaction(&self, transaction_hash: TxHash) -> Result<Option<Transaction>> {
         let id = transaction_hash.into();
         Ok(self.client.transaction(&id).map(From::from))
     }
 
-    fn get_transaction_signer(&self, transaction_hash: H256) -> Result<Option<PlatformAddress>> {
+    fn get_transaction_signer(&self, transaction_hash: TxHash) -> Result<Option<PlatformAddress>> {
         let id = transaction_hash.into();
         Ok(self.client.transaction(&id).map(|mut tx| {
             let address = public_to_address(&tx.signer());
@@ -78,11 +78,11 @@ where
         }))
     }
 
-    fn contains_transaction(&self, transaction_hash: H256) -> Result<bool> {
+    fn contains_transaction(&self, transaction_hash: TxHash) -> Result<bool> {
         Ok(self.client.transaction_block(&transaction_hash.into()).is_some())
     }
 
-    fn contain_transaction(&self, transaction_hash: H256) -> Result<bool> {
+    fn contain_transaction(&self, transaction_hash: TxHash) -> Result<bool> {
         self.contains_transaction(transaction_hash)
     }
 
@@ -123,7 +123,7 @@ where
         }
     }
 
-    fn get_text(&self, transaction_hash: H256, block_number: Option<u64>) -> Result<Option<Text>> {
+    fn get_text(&self, transaction_hash: TxHash, block_number: Option<u64>) -> Result<Option<Text>> {
         if block_number == Some(0) {
             return Ok(None)
         }
@@ -193,7 +193,7 @@ where
         Ok(self.client.number_of_shards(block_id.into()))
     }
 
-    fn get_shard_id_by_hash(&self, create_shard_tx_hash: H256, block_number: Option<u64>) -> Result<Option<ShardId>> {
+    fn get_shard_id_by_hash(&self, create_shard_tx_hash: TxHash, block_number: Option<u64>) -> Result<Option<ShardId>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.shard_id_by_hash(&create_shard_tx_hash, block_id.into()))
     }

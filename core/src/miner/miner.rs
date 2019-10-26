@@ -26,7 +26,7 @@ use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
 use cstate::{FindActionHandler, TopLevelState};
 use ctypes::errors::{HistoryError, RuntimeError};
 use ctypes::transaction::{Action, IncompleteTransaction, Timelock};
-use ctypes::{BlockHash, BlockNumber, Header};
+use ctypes::{BlockHash, BlockNumber, Header, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
@@ -111,7 +111,7 @@ struct SealingWork {
     enabled: bool,
 }
 
-type TransactionListener = Box<dyn Fn(&[H256]) + Send + Sync>;
+type TransactionListener = Box<dyn Fn(&[TxHash]) + Send + Sync>;
 
 pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
@@ -197,7 +197,7 @@ impl Miner {
     }
 
     /// Set a callback to be notified about imported transactions' hashes.
-    pub fn add_transactions_listener(&self, f: Box<dyn Fn(&[H256]) + Send + Sync>) {
+    pub fn add_transactions_listener(&self, f: Box<dyn Fn(&[TxHash]) + Send + Sync>) {
         self.transaction_listener.write().push(f);
     }
 
@@ -1055,7 +1055,7 @@ impl MinerService for Miner {
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
         seq: Option<u64>,
-    ) -> Result<(H256, u64), Error> {
+    ) -> Result<(TxHash, u64), Error> {
         let address = platform_address.try_into_address()?;
         let seq = match seq {
             Some(seq) => seq,
