@@ -20,9 +20,8 @@ use std::sync::Arc;
 
 use ckey::{public_to_address, Public};
 use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, TxHash};
 use kvdb::{DBTransaction, KeyValueDB};
-use primitives::H256;
 use rlp;
 use table::Table;
 
@@ -96,7 +95,7 @@ pub struct MemPool {
     /// The memory limit of each queue
     queue_memory_limit: usize,
     /// All transactions managed by pool indexed by hash
-    by_hash: HashMap<H256, MemPoolItem>,
+    by_hash: HashMap<TxHash, MemPoolItem>,
     /// Current seq of each public key (fee payer)
     first_seqs: HashMap<Public, u64>,
     /// Next seq of transaction in current (to quickly check next expected transaction)
@@ -279,7 +278,7 @@ impl MemPool {
             let order = TransactionOrder::for_transaction(&item, client_account.seq);
             let order_with_tag = TransactionOrderWithTag::new(order, QueueTag::New);
 
-            backup::backup_item(&mut batch, hash, &item);
+            backup::backup_item(&mut batch, *hash, &item);
             self.by_hash.insert(hash, item);
 
             if let Some(old_order_with_tag) = self.by_signer_public.insert(signer_public, seq, order_with_tag) {
@@ -458,7 +457,7 @@ impl MemPool {
             let order = TransactionOrder::for_transaction(&item, client_account.seq);
             let order_with_tag = TransactionOrderWithTag::new(order, QueueTag::New);
 
-            self.by_hash.insert(*hash, item.clone());
+            self.by_hash.insert((*hash).into(), item.clone());
 
             self.by_signer_public.insert(signer_public, seq, order_with_tag);
             if item.origin == TxOrigin::Local {
@@ -508,7 +507,7 @@ impl MemPool {
     /// If gap is introduced marks subsequent transactions as future
     pub fn remove<F>(
         &mut self,
-        transaction_hashes: &[H256],
+        transaction_hashes: &[TxHash],
         fetch_seq: &F,
         current_block_number: PoolingInstant,
         current_timestamp: u64,
@@ -959,7 +958,7 @@ impl MemPool {
     }
 
     /// Returns Some(true) if the given transaction is local and None for not found.
-    pub fn is_local_transaction(&self, tx_hash: H256) -> Option<bool> {
+    pub fn is_local_transaction(&self, tx_hash: TxHash) -> Option<bool> {
         self.by_hash.get(&tx_hash).map(|found_item| found_item.origin.is_local())
     }
 

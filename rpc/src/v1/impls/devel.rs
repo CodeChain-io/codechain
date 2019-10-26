@@ -33,7 +33,7 @@ use csync::BlockSyncEvent;
 use ctypes::transaction::{
     Action, AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction,
 };
-use ctypes::Tracker;
+use ctypes::{Tracker, TxHash};
 use jsonrpc_core::Result;
 use kvdb::KeyValueDB;
 use primitives::{H160, H256};
@@ -217,7 +217,7 @@ where
             SignedTransaction::new_with_sign(tx, key_pair.private())
         }
 
-        fn send_tx<C>(tx: Transaction, client: &C, key_pair: &KeyPair) -> Result<H256>
+        fn send_tx<C>(tx: Transaction, client: &C, key_pair: &KeyPair) -> Result<TxHash>
         where
             C: MiningBlockChainClient + EngineInfo + TermInfo, {
             let signed = SignedTransaction::new_with_sign(tx, key_pair.private());

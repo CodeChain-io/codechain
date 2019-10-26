@@ -19,8 +19,8 @@ use std::convert::TryFrom;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public, Signature};
 use ctypes::transaction::{Action as ActionType, AssetMintOutput as AssetMintOutputType};
-use ctypes::{ShardId, Tracker};
-use primitives::{Bytes, H160, H256};
+use ctypes::{ShardId, Tracker, TxHash};
+use primitives::{Bytes, H160};
 use rustc_serialize::hex::{FromHex, ToHex};
 
 use super::super::errors::ConversionError;
@@ -116,7 +116,7 @@ pub enum Action {
         signature: Signature,
     },
     Remove {
-        hash: H256,
+        hash: TxHash,
         signature: Signature,
     },
     #[serde(rename_all = "camelCase")]
@@ -230,7 +230,7 @@ pub enum ActionWithTracker {
         signature: Signature,
     },
     Remove {
-        hash: H256,
+        hash: TxHash,
         signature: Signature,
     },
     #[serde(rename_all = "camelCase")]

@@ -23,7 +23,7 @@ use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelSta
 use ctypes::errors::HistoryError;
 use ctypes::header::{Header, Seal};
 use ctypes::util::unexpected::Mismatch;
-use ctypes::{BlockNumber, CommonParams};
+use ctypes::{BlockNumber, CommonParams, TxHash};
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
@@ -90,7 +90,7 @@ pub struct ExecutedBlock {
     state: TopLevelState,
     transactions: Vec<SignedTransaction>,
     invoices: Vec<Invoice>,
-    transactions_set: HashSet<H256>,
+    transactions_set: HashSet<TxHash>,
 }
 
 impl ExecutedBlock {
@@ -153,7 +153,7 @@ impl<'x> OpenBlock<'x> {
     pub fn push_transaction<C: ChainTimeInfo + FindActionHandler>(
         &mut self,
         tx: SignedTransaction,
-        h: Option<H256>,
+        h: Option<TxHash>,
         client: &C,
         parent_block_number: BlockNumber,
         parent_block_timestamp: u64,

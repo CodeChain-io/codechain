@@ -21,7 +21,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, HashingError, PartialHashing};
 use crate::util::tag::Tag;
-use crate::{ShardId, Tracker};
+use crate::{ShardId, Tracker, TxHash};
 
 /// Shard Transaction type.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,7 +66,7 @@ pub enum ShardTransaction {
     WrapCCC {
         network_id: NetworkId,
         shard_id: ShardId,
-        tx_hash: H256,
+        tx_hash: TxHash,
         output: AssetWrapCCCOutput,
     },
 }
@@ -85,7 +85,7 @@ impl ShardTransaction {
             ..
         } = self
         {
-            return (*tx_hash).into()
+            return (**tx_hash).into()
         }
         blake256(&*self.rlp_bytes()).into()
     }
