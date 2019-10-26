@@ -21,6 +21,7 @@ use std::sync::{Arc, Weak};
 use ckey::{public_to_address, recover, Address, Signature};
 use ctypes::{CommonParams, Header};
 use parking_lot::RwLock;
+use primitives::H256;
 
 use self::params::SimplePoAParams;
 use super::signer::EngineSigner;
@@ -149,7 +150,7 @@ impl ConsensusEngine for SimplePoA {
 
     fn possible_authors(&self, _block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError> {
         // TODO: It works because the round robin validator doesn't use the parent hash.
-        let parent = 0.into();
+        let parent = H256::from(0).into();
         Ok(Some(self.validators.addresses(&parent)))
     }
 }

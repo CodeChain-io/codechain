@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::BlockNumber;
-use primitives::{H256, U256};
+use ctypes::{BlockHash, BlockNumber};
+use primitives::U256;
 
 /// Information about the blockchain gathered together.
 #[derive(Clone, Debug)]
@@ -27,11 +27,11 @@ pub struct BlockChainInfo {
     /// Block queue score.
     pub pending_total_score: U256,
     /// Genesis block hash.
-    pub genesis_hash: H256,
+    pub genesis_hash: BlockHash,
     /// Best blockchain block hash.
-    pub best_block_hash: H256,
+    pub best_block_hash: BlockHash,
     /// Best blockchain proposal block hash.
-    pub best_proposal_block_hash: H256,
+    pub best_proposal_block_hash: BlockHash,
     /// Best blockchain block number.
     pub best_block_number: BlockNumber,
     /// Best blockchain block timestamp.

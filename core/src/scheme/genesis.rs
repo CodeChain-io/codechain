@@ -17,6 +17,7 @@
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
 use ckey::{Address, PlatformAddress};
+use ctypes::BlockHash;
 use primitives::{Bytes, H256, U256};
 
 use super::seal::Seal;
@@ -32,7 +33,7 @@ pub struct Genesis {
     /// Timestamp.
     pub timestamp: u64,
     /// Parent hash.
-    pub parent_hash: H256,
+    pub parent_hash: BlockHash,
     /// Transactions root.
     pub transactions_root: H256,
     /// State root.
@@ -48,7 +49,7 @@ impl From<cjson::scheme::Genesis> for Genesis {
             score: g.score.into(),
             author: g.author.map_or_else(Address::default, PlatformAddress::into_address),
             timestamp: g.timestamp.map_or(0, Into::into),
-            parent_hash: g.parent_hash.map_or_else(H256::zero, Into::into),
+            parent_hash: g.parent_hash.map_or_else(H256::zero, Into::into).into(),
             transactions_root: g.transactions_root.map_or_else(|| BLAKE_NULL_RLP, Into::into),
             state_root: g.state_root.map(Into::into),
             extra_data: g.extra_data.map_or_else(Vec::new, Into::into),

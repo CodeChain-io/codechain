@@ -22,7 +22,7 @@ use cmerkle::TrieError;
 use cstate::StateError;
 use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::BlockNumber;
+use ctypes::{BlockHash, BlockNumber};
 use primitives::{H256, U256};
 
 use util_error::UtilError;
@@ -104,7 +104,7 @@ pub enum BlockError {
     TemporarilyInvalid(OutOfBounds<u64>),
     /// Parent hash field of header is invalid; this is an invalid error indicating a logic flaw in the codebase.
     /// TODO: remove and favour an assert!/panic!.
-    InvalidParentHash(Mismatch<H256>),
+    InvalidParentHash(Mismatch<BlockHash>),
     /// Number field of header is invalid.
     InvalidNumber(Mismatch<BlockNumber>),
     /// Block number isn't sensible.
@@ -112,7 +112,7 @@ pub enum BlockError {
     /// Too many transactions from a particular address.
     TooManyTransactions(Address),
     /// Parent given is unknown.
-    UnknownParent(H256),
+    UnknownParent(BlockHash),
     /// Body size limit is exceeded.
     BodySizeIsTooBig,
 }
