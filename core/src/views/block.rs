@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
-use ctypes::Header;
+use ctypes::{BlockHash, Header};
 use primitives::H256;
 use rlp::Rlp;
 
@@ -43,7 +43,7 @@ impl<'a> BlockView<'a> {
     }
 
     /// Block header hash.
-    pub fn hash(&self) -> H256 {
+    pub fn hash(&self) -> BlockHash {
         self.header_view().hash()
     }
 

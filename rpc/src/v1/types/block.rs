@@ -16,7 +16,7 @@
 
 use ccore::{Block as CoreBlock, LocalizedTransaction};
 use ckey::{NetworkId, PlatformAddress};
-use ctypes::BlockNumber;
+use ctypes::{BlockHash, BlockNumber};
 use primitives::{H256, U256};
 
 use super::Transaction;
@@ -24,7 +24,7 @@ use super::Transaction;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Block {
-    parent_hash: H256,
+    parent_hash: BlockHash,
     timestamp: u64,
     number: u64,
     author: PlatformAddress,
@@ -37,7 +37,7 @@ pub struct Block {
     score: U256,
     seal: Vec<Vec<u8>>,
 
-    hash: H256,
+    hash: BlockHash,
     transactions: Vec<Transaction>,
 }
 
@@ -77,5 +77,5 @@ impl Block {
 #[serde(rename_all = "camelCase")]
 pub struct BlockNumberAndHash {
     pub number: BlockNumber,
-    pub hash: H256,
+    pub hash: BlockHash,
 }

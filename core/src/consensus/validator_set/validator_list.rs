@@ -19,8 +19,8 @@ use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, Address, Public};
 use ctypes::util::unexpected::OutOfBounds;
+use ctypes::BlockHash;
 use parking_lot::RwLock;
-use primitives::H256;
 
 use super::super::BitSet;
 use super::ValidatorSet;
@@ -47,29 +47,29 @@ impl RoundRobinValidator {
 }
 
 impl ValidatorSet for RoundRobinValidator {
-    fn contains(&self, _bh: &H256, public: &Public) -> bool {
+    fn contains(&self, _bh: &BlockHash, public: &Public) -> bool {
         self.validators.contains(public)
     }
 
-    fn contains_address(&self, _bh: &H256, address: &Address) -> bool {
+    fn contains_address(&self, _bh: &BlockHash, address: &Address) -> bool {
         self.addresses.contains(address)
     }
 
-    fn get(&self, _bh: &H256, index: usize) -> Public {
+    fn get(&self, _bh: &BlockHash, index: usize) -> Public {
         let validator_n = self.validators.len();
         assert_ne!(0, validator_n, "Cannot operate with an empty validator set.");
         *self.validators.get(index % validator_n).expect("There are validator_n authorities; taking number modulo validator_n gives number in validator_n range; qed")
     }
 
-    fn get_index(&self, _bh: &H256, public: &Public) -> Option<usize> {
+    fn get_index(&self, _bh: &BlockHash, public: &Public) -> Option<usize> {
         self.validators.iter().position(|v| v == public)
     }
 
-    fn get_index_by_address(&self, _bh: &H256, address: &Address) -> Option<usize> {
+    fn get_index_by_address(&self, _bh: &BlockHash, address: &Address) -> Option<usize> {
         self.validators.iter().position(|v| public_to_address(v) == *address)
     }
 
-    fn next_block_proposer(&self, parent: &H256, view: u64) -> Option<Address> {
+    fn next_block_proposer(&self, parent: &BlockHash, view: u64) -> Option<Address> {
         let client: Arc<dyn ConsensusClient> = self.client.read().as_ref().and_then(Weak::upgrade)?;
         client.block_header(&BlockId::from(*parent)).map(|header| {
             let proposer = header.author();
@@ -82,11 +82,11 @@ impl ValidatorSet for RoundRobinValidator {
         })
     }
 
-    fn count(&self, _bh: &H256) -> usize {
+    fn count(&self, _bh: &BlockHash) -> usize {
         self.validators.len()
     }
 
-    fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError> {
+    fn check_enough_votes(&self, parent: &BlockHash, votes: &BitSet) -> Result<(), EngineError> {
         let validator_count = self.count(parent);
         let voted = votes.count();
         if voted * 3 > validator_count * 2 {
@@ -105,7 +105,7 @@ impl ValidatorSet for RoundRobinValidator {
         *self.client.write() = Some(client);
     }
 
-    fn addresses(&self, _parent: &H256) -> Vec<Address> {
+    fn addresses(&self, _parent: &BlockHash) -> Vec<Address> {
         self.validators.iter().map(public_to_address).collect()
     }
 }

@@ -18,7 +18,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::iter::Iterator;
 
 use ckey::SchnorrSignature;
-use primitives::H256;
+use ctypes::BlockHash;
 use rlp::{Encodable, RlpStream};
 
 use super::stake::Action;
@@ -34,7 +34,7 @@ pub struct VoteCollector {
 #[derive(Debug, Default)]
 struct StepCollector {
     voted: HashMap<usize, ConsensusMessage>,
-    block_votes: HashMap<Option<H256>, BTreeMap<usize, SchnorrSignature>>,
+    block_votes: HashMap<Option<BlockHash>, BTreeMap<usize, SchnorrSignature>>,
     messages: Vec<ConsensusMessage>,
 }
 
@@ -87,7 +87,7 @@ impl StepCollector {
     }
 
     /// Count all votes for the given block hash at this round.
-    fn count_block(&self, block_hash: &Option<H256>) -> BitSet {
+    fn count_block(&self, block_hash: &Option<BlockHash>) -> BitSet {
         let mut result = BitSet::new();
         if let Some(votes) = self.block_votes.get(block_hash) {
             for index in votes.keys() {
@@ -157,7 +157,7 @@ impl VoteCollector {
     pub fn round_signatures_and_indices(
         &self,
         round: &VoteStep,
-        block_hash: &H256,
+        block_hash: &BlockHash,
     ) -> (Vec<SchnorrSignature>, Vec<usize>) {
         self.votes
             .get(round)
@@ -171,7 +171,7 @@ impl VoteCollector {
 
 
     /// Returns the first signature and the index of its signer for a given round and hash if exists.
-    pub fn round_signature(&self, round: &VoteStep, block_hash: &H256) -> Option<SchnorrSignature> {
+    pub fn round_signature(&self, round: &VoteStep, block_hash: &BlockHash) -> Option<SchnorrSignature> {
         self.votes
             .get(round)
             .and_then(|c| c.block_votes.get(&Some(*block_hash)))
@@ -187,7 +187,7 @@ impl VoteCollector {
         }
     }
 
-    pub fn block_round_votes(&self, round: &VoteStep, block_hash: &Option<H256>) -> BitSet {
+    pub fn block_round_votes(&self, round: &VoteStep, block_hash: &Option<BlockHash>) -> BitSet {
         if let Some(votes) = self.votes.get(round) {
             votes.count_block(block_hash)
         } else {
@@ -204,14 +204,14 @@ impl VoteCollector {
         }
     }
 
-    pub fn get_block_hashes(&self, round: &VoteStep) -> Vec<H256> {
+    pub fn get_block_hashes(&self, round: &VoteStep) -> Vec<BlockHash> {
         self.votes
             .get(round)
             .map(|c| c.block_votes.keys().cloned().filter_map(|x| x).collect())
             .unwrap_or_else(Vec::new)
     }
 
-    pub fn has_votes_for(&self, round: &VoteStep, block_hash: H256) -> bool {
+    pub fn has_votes_for(&self, round: &VoteStep, block_hash: BlockHash) -> bool {
         let votes = self
             .votes
             .get(round)

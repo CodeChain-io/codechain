@@ -23,7 +23,7 @@ use ckey::Address;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
 
-use crate::BlockNumber;
+use crate::{BlockHash, BlockNumber};
 
 /// Semantic boolean for when a seal/signature is included.
 pub enum Seal {
@@ -37,7 +37,7 @@ pub enum Seal {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Header {
     /// Parent hash.
-    parent_hash: H256,
+    parent_hash: BlockHash,
     /// Block timestamp.
     timestamp: u64,
     /// Block number.
@@ -68,7 +68,7 @@ impl Default for Header {
     /// Create a new, default-valued, header.
     fn default() -> Self {
         Header {
-            parent_hash: H256::default(),
+            parent_hash: H256::default().into(),
             timestamp: 0,
             number: 0,
             author: Default::default(),
@@ -94,7 +94,7 @@ impl Header {
     }
 
     /// Get the parent_hash field of the header.
-    pub fn parent_hash(&self) -> &H256 {
+    pub fn parent_hash(&self) -> &BlockHash {
         &self.parent_hash
     }
     /// Get the timestamp field of the header.
@@ -140,7 +140,7 @@ impl Header {
     }
 
     /// Set the number field of the header.
-    pub fn set_parent_hash(&mut self, a: H256) {
+    pub fn set_parent_hash(&mut self, a: BlockHash) {
         self.parent_hash = a;
         self.note_dirty();
     }
@@ -199,14 +199,14 @@ impl Header {
     }
 
     /// Get the hash of this header (blake of the RLP).
-    pub fn hash(&self) -> H256 {
+    pub fn hash(&self) -> BlockHash {
         let mut hash = self.hash.borrow_mut();
         match &mut *hash {
-            Some(h) => *h,
+            Some(h) => (*h).into(),
             hash @ &mut None => {
                 let h = self.rlp_blake(&Seal::With);
                 *hash = Some(h);
-                h
+                h.into()
             }
         }
     }

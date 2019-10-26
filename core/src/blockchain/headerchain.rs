@@ -19,7 +19,7 @@ use std::mem;
 use std::sync::Arc;
 
 use ctypes::header::{Header, Seal};
-use ctypes::BlockNumber;
+use ctypes::{BlockHash, BlockNumber};
 use kvdb::{DBTransaction, KeyValueDB};
 use lru_cache::LruCache;
 use parking_lot::{Mutex, RwLock};
@@ -44,21 +44,21 @@ const HEADER_CACHE_SIZE: usize = 1000;
 pub struct HeaderChain {
     // All locks must be captured in the order declared here.
     /// The hash of the best block of the canonical chain.
-    best_header_hash: RwLock<H256>,
+    best_header_hash: RwLock<BlockHash>,
     /// The hash of the block which has the best score among the proposal blocks
-    best_proposal_header_hash: RwLock<H256>,
+    best_proposal_header_hash: RwLock<BlockHash>,
 
     // cache
-    header_cache: Mutex<LruCache<H256, Bytes>>,
-    detail_cache: RwLock<HashMap<H256, BlockDetails>>,
-    hash_cache: Mutex<HashMap<BlockNumber, H256>>,
+    header_cache: Mutex<LruCache<BlockHash, Bytes>>,
+    detail_cache: RwLock<HashMap<BlockHash, BlockDetails>>,
+    hash_cache: Mutex<HashMap<BlockNumber, BlockHash>>,
 
     db: Arc<dyn KeyValueDB>,
 
-    pending_best_header_hash: RwLock<Option<H256>>,
-    pending_best_proposal_block_hash: RwLock<Option<H256>>,
-    pending_hashes: RwLock<HashMap<BlockNumber, H256>>,
-    pending_details: RwLock<HashMap<H256, BlockDetails>>,
+    pending_best_header_hash: RwLock<Option<BlockHash>>,
+    pending_best_proposal_block_hash: RwLock<Option<BlockHash>>,
+    pending_hashes: RwLock<HashMap<BlockNumber, BlockHash>>,
+    pending_details: RwLock<HashMap<BlockHash, BlockDetails>>,
 }
 
 impl HeaderChain {
@@ -66,7 +66,7 @@ impl HeaderChain {
     pub fn new(genesis: &HeaderView, db: Arc<dyn KeyValueDB>) -> Self {
         // load best header
         let best_header_hash = match db.get(db::COL_EXTRA, BEST_HEADER_KEY).unwrap() {
-            Some(hash) => H256::from_slice(&hash),
+            Some(hash) => H256::from_slice(&hash).into(),
             None => {
                 // best header does not exist
                 // we need to insert genesis into the cache
@@ -95,7 +95,8 @@ impl HeaderChain {
             &db.get(db::COL_EXTRA, BEST_PROPOSAL_HEADER_KEY)
                 .unwrap()
                 .expect("best proposal header is set by best header"),
-        );
+        )
+        .into();
 
         Self {
             best_header_hash: RwLock::new(best_header_hash),
@@ -189,7 +190,7 @@ impl HeaderChain {
     }
 
     /// This function returns modified block hashes.
-    fn new_hash_entries(&self, best_header_changed: &BestHeaderChanged) -> HashMap<BlockNumber, H256> {
+    fn new_hash_entries(&self, best_header_changed: &BestHeaderChanged) -> HashMap<BlockNumber, BlockHash> {
         let mut hashes = HashMap::new();
 
         match best_header_changed {
@@ -221,7 +222,7 @@ impl HeaderChain {
 
     /// This function returns modified block details.
     /// Uses the given parent details or attempts to load them from the database.
-    fn new_detail_entries(&self, header: &HeaderView) -> HashMap<H256, BlockDetails> {
+    fn new_detail_entries(&self, header: &HeaderView) -> HashMap<BlockHash, BlockDetails> {
         let parent_hash = header.parent_hash();
         let parent_details = self.block_details(&parent_hash).expect("Invalid parent hash");
 
@@ -292,7 +293,7 @@ impl HeaderChain {
     /// in Tendermint.
     ///
     /// Used in BlockChain::update_best_as_committed().
-    pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: H256) {
+    pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: BlockHash) {
         assert!(self.pending_best_header_hash.read().is_none());
 
         let prev_best_header_number = self.best_header().number();
@@ -320,11 +321,11 @@ impl HeaderChain {
     }
 
     /// Get best block hash.
-    pub fn best_header_hash(&self) -> H256 {
+    pub fn best_header_hash(&self) -> BlockHash {
         *self.best_header_hash.read()
     }
 
-    pub fn best_proposal_header_hash(&self) -> H256 {
+    pub fn best_proposal_header_hash(&self) -> BlockHash {
         *self.best_proposal_header_hash.read()
     }
 
@@ -345,29 +346,29 @@ impl HeaderChain {
 pub trait HeaderProvider {
     /// Returns true if the given block is known
     /// (though not necessarily a part of the canon chain).
-    fn is_known_header(&self, hash: &H256) -> bool;
+    fn is_known_header(&self, hash: &BlockHash) -> bool;
 
     /// Get the familial details concerning a block.
-    fn block_details(&self, hash: &H256) -> Option<BlockDetails>;
+    fn block_details(&self, hash: &BlockHash) -> Option<BlockDetails>;
 
     /// Get the hash of given block's number.
-    fn block_hash(&self, index: BlockNumber) -> Option<H256>;
+    fn block_hash(&self, index: BlockNumber) -> Option<BlockHash>;
 
     /// Get the partial-header of a block.
-    fn block_header(&self, hash: &H256) -> Option<Header> {
+    fn block_header(&self, hash: &BlockHash) -> Option<Header> {
         self.block_header_data(hash).map(|header| header.decode())
     }
 
     /// Get the header RLP of a block.
-    fn block_header_data(&self, hash: &H256) -> Option<encoded::Header>;
+    fn block_header_data(&self, hash: &BlockHash) -> Option<encoded::Header>;
 
     /// Get the number of given block's hash.
-    fn block_number(&self, hash: &H256) -> Option<BlockNumber> {
+    fn block_number(&self, hash: &BlockHash) -> Option<BlockNumber> {
         self.block_details(hash).map(|details| details.number)
     }
 
     /// Returns reference to genesis hash.
-    fn genesis_hash(&self) -> H256 {
+    fn genesis_hash(&self) -> BlockHash {
         self.block_hash(0).expect("Genesis hash should always exist")
     }
 
@@ -378,18 +379,18 @@ pub trait HeaderProvider {
 }
 
 impl HeaderProvider for HeaderChain {
-    fn is_known_header(&self, hash: &H256) -> bool {
+    fn is_known_header(&self, hash: &BlockHash) -> bool {
         self.db.exists_with_cache(db::COL_EXTRA, &self.detail_cache, hash)
     }
 
     /// Get the familial details concerning a block.
-    fn block_details(&self, hash: &H256) -> Option<BlockDetails> {
+    fn block_details(&self, hash: &BlockHash) -> Option<BlockDetails> {
         let result = self.db.read_with_cache(db::COL_EXTRA, &mut *self.detail_cache.write(), hash)?;
         Some(result)
     }
 
     /// Get the hash of given block's number.
-    fn block_hash(&self, index: BlockNumber) -> Option<H256> {
+    fn block_hash(&self, index: BlockNumber) -> Option<BlockHash> {
         // Highest block should not be accessed by block number.
         if self.best_header().number() < index {
             return None
@@ -399,7 +400,7 @@ impl HeaderProvider for HeaderChain {
     }
 
     /// Get block header data
-    fn block_header_data(&self, hash: &H256) -> Option<encoded::Header> {
+    fn block_header_data(&self, hash: &BlockHash) -> Option<encoded::Header> {
         let result = block_header_data(hash, &self.header_cache, &*self.db).map(encoded::Header::new);
         if let Some(header) = &result {
             debug_assert_eq!(*hash, header.hash());
@@ -409,7 +410,11 @@ impl HeaderProvider for HeaderChain {
 }
 
 /// Get block header data
-fn block_header_data(hash: &H256, header_cache: &Mutex<LruCache<H256, Bytes>>, db: &dyn KeyValueDB) -> Option<Vec<u8>> {
+fn block_header_data(
+    hash: &BlockHash,
+    header_cache: &Mutex<LruCache<BlockHash, Bytes>>,
+    db: &dyn KeyValueDB,
+) -> Option<Vec<u8>> {
     // Check cache first
     {
         let mut lock = header_cache.lock();

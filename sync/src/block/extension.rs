@@ -29,7 +29,7 @@ use cstate::FindActionHandler;
 use ctimer::TimerToken;
 use ctypes::header::{Header, Seal};
 use ctypes::transaction::Action;
-use ctypes::BlockNumber;
+use ctypes::{BlockHash, BlockNumber};
 use primitives::{H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -374,18 +374,18 @@ impl NetworkExtension<Event> for Extension {
 pub enum Event {
     GetPeers(EventSender<NodeId>),
     NewHeaders {
-        imported: Vec<H256>,
-        enacted: Vec<H256>,
-        retracted: Vec<H256>,
+        imported: Vec<BlockHash>,
+        enacted: Vec<BlockHash>,
+        retracted: Vec<BlockHash>,
     },
     NewBlocks {
-        imported: Vec<H256>,
-        invalid: Vec<H256>,
+        imported: Vec<BlockHash>,
+        invalid: Vec<BlockHash>,
     },
 }
 
 impl Extension {
-    fn new_headers(&mut self, imported: Vec<H256>, enacted: Vec<H256>, retracted: Vec<H256>) {
+    fn new_headers(&mut self, imported: Vec<BlockHash>, enacted: Vec<BlockHash>, retracted: Vec<BlockHash>) {
         let peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
         for id in peer_ids {
             if let Some(peer) = self.header_downloaders.get_mut(&id) {
@@ -415,7 +415,7 @@ impl Extension {
         self.body_downloader.remove_target(&retracted);
     }
 
-    fn new_blocks(&mut self, imported: Vec<H256>, invalid: Vec<H256>) {
+    fn new_blocks(&mut self, imported: Vec<BlockHash>, invalid: Vec<BlockHash>) {
         self.body_downloader.remove_target(&imported);
         self.body_downloader.remove_target(&invalid);
 
@@ -440,7 +440,7 @@ impl Extension {
 }
 
 impl Extension {
-    fn on_peer_status(&mut self, from: &NodeId, total_score: U256, best_hash: H256, genesis_hash: H256) {
+    fn on_peer_status(&mut self, from: &NodeId, total_score: U256, best_hash: BlockHash, genesis_hash: BlockHash) {
         // Validity check
         if genesis_hash != self.client.chain_info().genesis_hash {
             cinfo!(SYNC, "Genesis hash mismatch with peer {}", from);
@@ -543,7 +543,7 @@ impl Extension {
         ResponseMessage::Headers(headers)
     }
 
-    fn create_bodies_response(&self, hashes: Vec<H256>) -> ResponseMessage {
+    fn create_bodies_response(&self, hashes: Vec<BlockHash>) -> ResponseMessage {
         let bodies = hashes
             .into_iter()
             .map(|hash| {
@@ -553,11 +553,11 @@ impl Extension {
         ResponseMessage::Bodies(bodies)
     }
 
-    fn create_state_head_response(&self, _hash: H256) -> ResponseMessage {
+    fn create_state_head_response(&self, _hash: BlockHash) -> ResponseMessage {
         unimplemented!()
     }
 
-    fn create_state_chunk_response(&self, _hash: H256, _tree_root: H256) -> ResponseMessage {
+    fn create_state_chunk_response(&self, _hash: BlockHash, _tree_root: H256) -> ResponseMessage {
         unimplemented!()
     }
 
@@ -708,7 +708,7 @@ impl Extension {
         }
     }
 
-    fn on_body_response(&mut self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedTransaction>>) {
+    fn on_body_response(&mut self, hashes: Vec<BlockHash>, bodies: Vec<Vec<UnverifiedTransaction>>) {
         ctrace!(SYNC, "Received body response with lenth({}) {:?}", hashes.len(), hashes);
         {
             self.body_downloader.import_bodies(hashes, bodies);
@@ -770,13 +770,13 @@ impl From<EventSender<Event>> for BlockSyncSender {
 impl ChainNotify for BlockSyncSender {
     fn new_headers(
         &self,
-        imported: Vec<H256>,
-        _invalid: Vec<H256>,
-        enacted: Vec<H256>,
-        retracted: Vec<H256>,
-        _sealed: Vec<H256>,
+        imported: Vec<BlockHash>,
+        _invalid: Vec<BlockHash>,
+        enacted: Vec<BlockHash>,
+        retracted: Vec<BlockHash>,
+        _sealed: Vec<BlockHash>,
         _duration: u64,
-        _new_best_proposal: Option<H256>,
+        _new_best_proposal: Option<BlockHash>,
     ) {
         self.0
             .send(Event::NewHeaders {
@@ -789,11 +789,11 @@ impl ChainNotify for BlockSyncSender {
 
     fn new_blocks(
         &self,
-        imported: Vec<H256>,
-        invalid: Vec<H256>,
-        _enacted: Vec<H256>,
-        _retracted: Vec<H256>,
-        _sealed: Vec<H256>,
+        imported: Vec<BlockHash>,
+        invalid: Vec<BlockHash>,
+        _enacted: Vec<BlockHash>,
+        _retracted: Vec<BlockHash>,
+        _sealed: Vec<BlockHash>,
         _duration: u64,
     ) {
         self.0

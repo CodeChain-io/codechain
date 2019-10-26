@@ -18,6 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::sync::Arc;
 
+use ctypes::BlockHash;
 use kvdb::{DBTransaction, KeyValueDB};
 use lru_cache::LruCache;
 use parking_lot::{Mutex, RwLock};
@@ -35,7 +36,7 @@ const BODY_CACHE_SIZE: usize = 1000;
 
 pub struct BodyDB {
     // block cache
-    body_cache: Mutex<LruCache<H256, Bytes>>,
+    body_cache: Mutex<LruCache<BlockHash, Bytes>>,
     parcel_address_cache: RwLock<HashMap<H256, TransactionAddress>>,
     pending_parcel_addresses: RwLock<HashMap<H256, Option<TransactionAddress>>>,
 
@@ -280,7 +281,7 @@ impl BodyDB {
 pub trait BodyProvider {
     /// Returns true if the given block is known
     /// (though not necessarily a part of the canon chain).
-    fn is_known_body(&self, hash: &H256) -> bool;
+    fn is_known_body(&self, hash: &BlockHash) -> bool;
 
     /// Get the address of parcel with given hash.
     fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress>;
@@ -288,11 +289,11 @@ pub trait BodyProvider {
     fn transaction_address_by_tracker(&self, tracker: &H256) -> Option<TransactionAddress>;
 
     /// Get the block body (uncles and parcels).
-    fn block_body(&self, hash: &H256) -> Option<encoded::Body>;
+    fn block_body(&self, hash: &BlockHash) -> Option<encoded::Body>;
 }
 
 impl BodyProvider for BodyDB {
-    fn is_known_body(&self, hash: &H256) -> bool {
+    fn is_known_body(&self, hash: &BlockHash) -> bool {
         self.block_body(hash).is_some()
     }
 
@@ -308,7 +309,7 @@ impl BodyProvider for BodyDB {
     }
 
     /// Get block body data
-    fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
+    fn block_body(&self, hash: &BlockHash) -> Option<encoded::Body> {
         // Check cache first
         {
             let mut lock = self.body_cache.lock();
@@ -330,7 +331,7 @@ impl BodyProvider for BodyDB {
 }
 
 fn parcel_address_entries(
-    block_hash: H256,
+    block_hash: BlockHash,
     parcel_hashes: impl IntoIterator<Item = H256>,
 ) -> impl Iterator<Item = (H256, Option<TransactionAddress>)> {
     parcel_hashes.into_iter().enumerate().map(move |(index, parcel_hash)| {
@@ -345,7 +346,7 @@ fn parcel_address_entries(
 }
 
 fn transaction_address_entries(
-    block_hash: H256,
+    block_hash: BlockHash,
     parcel_hashes: impl IntoIterator<Item = UnverifiedTransaction>,
 ) -> impl Iterator<Item = TransactionHashAndAddress> {
     parcel_hashes.into_iter().enumerate().filter_map(move |(parcel_index, parcel)| {

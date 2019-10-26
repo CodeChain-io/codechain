@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
-use ctypes::BlockNumber;
+use ctypes::{BlockHash, BlockNumber};
 use primitives::H256;
 use rlp::Rlp;
 
@@ -53,7 +53,11 @@ impl<'a> BodyView<'a> {
     }
 
     /// Return List of transactions with additional localization info.
-    pub fn localized_transactions(&self, block_hash: &H256, block_number: BlockNumber) -> Vec<LocalizedTransaction> {
+    pub fn localized_transactions(
+        &self,
+        block_hash: &BlockHash,
+        block_number: BlockNumber,
+    ) -> Vec<LocalizedTransaction> {
         self.transactions()
             .into_iter()
             .enumerate()
@@ -90,7 +94,7 @@ impl<'a> BodyView<'a> {
     /// Returns localized transaction at given index.
     pub fn localized_transaction_at(
         &self,
-        block_hash: &H256,
+        block_hash: &BlockHash,
         block_number: BlockNumber,
         transaction_index: usize,
     ) -> Option<LocalizedTransaction> {

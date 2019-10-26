@@ -26,7 +26,7 @@ use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockHash, BlockNumber, ShardId};
 use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
@@ -233,7 +233,7 @@ where
         })
     }
 
-    fn get_block_hash(&self, block_number: u64) -> Result<Option<H256>> {
+    fn get_block_hash(&self, block_number: u64) -> Result<Option<BlockHash>> {
         Ok(self.client.block_hash(&BlockId::Number(block_number)))
     }
 
@@ -249,7 +249,7 @@ where
         }))
     }
 
-    fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
+    fn get_block_by_hash(&self, block_hash: BlockHash) -> Result<Option<Block>> {
         let id = BlockId::Hash(block_hash);
         Ok(self.client.block(&id).map(|block| {
             let block = block.decode();
@@ -262,7 +262,7 @@ where
         }))
     }
 
-    fn get_block_transaction_count_by_hash(&self, block_hash: H256) -> Result<Option<usize>> {
+    fn get_block_transaction_count_by_hash(&self, block_hash: BlockHash) -> Result<Option<usize>> {
         Ok(self.client.block(&BlockId::Hash(block_hash)).map(|block| block.transactions_count()))
     }
 
