@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{CommonParams, ShardId};
+use ctypes::{CommonParams, ShardId, TxHash};
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -30,7 +30,7 @@ struct TermMetadata {
 pub struct Metadata {
     number_of_shards: ShardId,
     number_of_initial_shards: ShardId,
-    hashes: Vec<H256>,
+    hashes: Vec<TxHash>,
     term: TermMetadata,
     seq: u64,
     params: Option<CommonParams>,
@@ -52,7 +52,7 @@ impl Metadata {
         &self.number_of_shards
     }
 
-    pub fn add_shard(&mut self, tx_hash: H256) -> ShardId {
+    pub fn add_shard(&mut self, tx_hash: TxHash) -> ShardId {
         let r = self.number_of_shards;
         self.number_of_shards += 1;
         self.hashes.push(tx_hash);
@@ -67,7 +67,7 @@ impl Metadata {
         self.number_of_initial_shards = number_of_shards;
     }
 
-    pub fn shard_id_by_hash(&self, tx_hash: &H256) -> Option<ShardId> {
+    pub fn shard_id_by_hash(&self, tx_hash: &TxHash) -> Option<ShardId> {
         debug_assert_eq!(::std::mem::size_of::<u16>(), ::std::mem::size_of::<::ctypes::ShardId>());
         assert!(self.hashes.len() < ::std::u16::MAX as usize);
         self.hashes.iter().enumerate().find(|(_index, hash)| tx_hash == *hash).map(|(index, _)| {

@@ -28,9 +28,9 @@ use std::ops::Range;
 use ckey::{Address, Password, PlatformAddress};
 use cstate::{FindActionHandler, TopStateView};
 use ctypes::transaction::IncompleteTransaction;
-use ctypes::BlockHash;
+use ctypes::{BlockHash, TxHash};
 use cvm::ChainTimeInfo;
-use primitives::{Bytes, H256};
+use primitives::Bytes;
 
 pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
@@ -141,7 +141,7 @@ pub trait MinerService: Send + Sync {
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
         seq: Option<u64>,
-    ) -> Result<(H256, u64), Error>;
+    ) -> Result<(TxHash, u64), Error>;
 
     /// Get a list of all pending transactions in the mem pool.
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions;

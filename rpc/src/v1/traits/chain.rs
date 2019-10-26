@@ -17,7 +17,7 @@
 use cjson::scheme::Params;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
-use ctypes::{BlockHash, BlockNumber, ShardId, Tracker};
+use ctypes::{BlockHash, BlockNumber, ShardId, Tracker, TxHash};
 use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
@@ -28,18 +28,18 @@ use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Te
 pub trait Chain {
     /// Gets transaction with given hash.
     #[rpc(name = "chain_getTransaction")]
-    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>>;
+    fn get_transaction(&self, transaction_hash: TxHash) -> Result<Option<Transaction>>;
 
     /// Gets the signer of transaction with given hash.
     #[rpc(name = "chain_getTransactionSigner")]
-    fn get_transaction_signer(&self, transaction_hash: H256) -> Result<Option<PlatformAddress>>;
+    fn get_transaction_signer(&self, transaction_hash: TxHash) -> Result<Option<PlatformAddress>>;
 
     /// Query whether the chain has the transaction with given transaction hash.
     #[rpc(name = "chain_containsTransaction")]
-    fn contains_transaction(&self, transaction_hash: H256) -> Result<bool>;
+    fn contains_transaction(&self, transaction_hash: TxHash) -> Result<bool>;
 
     #[rpc(name = "chain_containTransaction")]
-    fn contain_transaction(&self, transaction_hash: H256) -> Result<bool>;
+    fn contain_transaction(&self, transaction_hash: TxHash) -> Result<bool>;
 
     /// Gets transaction with given transaction tracker.
     #[rpc(name = "chain_getTransactionByTracker")]
@@ -65,7 +65,7 @@ pub trait Chain {
 
     /// Gets text with given transaction hash.
     #[rpc(name = "chain_getText")]
-    fn get_text(&self, transaction_hash: H256, block_number: Option<u64>) -> Result<Option<Text>>;
+    fn get_text(&self, transaction_hash: TxHash, block_number: Option<u64>) -> Result<Option<Text>>;
 
     /// Gets asset with given asset type.
     #[rpc(name = "chain_getAsset")]
@@ -113,7 +113,7 @@ pub trait Chain {
 
     /// Gets shard id
     #[rpc(name = "chain_getShardIdByHash")]
-    fn get_shard_id_by_hash(&self, create_shard_tx_hash: H256, block_number: Option<u64>) -> Result<Option<ShardId>>;
+    fn get_shard_id_by_hash(&self, create_shard_tx_hash: TxHash, block_number: Option<u64>) -> Result<Option<ShardId>>;
 
     /// Gets shard root
     #[rpc(name = "chain_getShardRoot")]

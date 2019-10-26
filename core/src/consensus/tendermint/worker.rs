@@ -1457,7 +1457,7 @@ impl Worker {
                 bytes: double.to_action().rlp_bytes().into_vec(),
             },
         };
-        let signature = match self.signer.sign_ecdsa(tx.hash()) {
+        let signature = match self.signer.sign_ecdsa(*tx.hash()) {
             Ok(signature) => signature,
             Err(e) => {
                 cerror!(ENGINE, "Found double vote, but could not sign the message: {}", e);

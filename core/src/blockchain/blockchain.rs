@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ctypes::{BlockHash, BlockNumber, Tracker};
+use ctypes::{BlockHash, BlockNumber, Tracker, TxHash};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::H256;
@@ -411,7 +411,7 @@ impl BodyProvider for BlockChain {
         self.body_db.is_known_body(hash)
     }
 
-    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
+    fn transaction_address(&self, hash: &TxHash) -> Option<TransactionAddress> {
         self.body_db.transaction_address(hash)
     }
 
@@ -426,15 +426,15 @@ impl BodyProvider for BlockChain {
 
 impl InvoiceProvider for BlockChain {
     /// Returns true if invoices for given hash is known
-    fn is_known_error_hint(&self, hash: &H256) -> bool {
+    fn is_known_error_hint(&self, hash: &TxHash) -> bool {
         self.invoice_db.is_known_error_hint(hash)
     }
 
-    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(H256, Option<String>)> {
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(TxHash, Option<String>)> {
         self.invoice_db.error_hints_by_tracker(tracker)
     }
 
-    fn error_hint(&self, hash: &H256) -> Option<String> {
+    fn error_hint(&self, hash: &TxHash) -> Option<String> {
         self.invoice_db.error_hint(hash)
     }
 }

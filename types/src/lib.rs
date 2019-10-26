@@ -30,6 +30,7 @@ extern crate serde_json;
 mod block_hash;
 mod common_params;
 mod tracker;
+mod tx_hash;
 
 pub mod errors;
 pub mod header;
@@ -43,3 +44,4 @@ pub use block_hash::BlockHash;
 pub use common_params::CommonParams;
 pub use header::Header;
 pub use tracker::Tracker;
+pub use tx_hash::TxHash;

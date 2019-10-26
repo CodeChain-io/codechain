@@ -43,7 +43,7 @@ use cstate::tests::helpers::empty_top_state;
 use cstate::{FindActionHandler, StateDB, TopLevelState};
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, Header as BlockHeader, Tracker};
+use ctypes::{BlockHash, BlockNumber, CommonParams, Header as BlockHeader, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use journaldb;
 use kvdb::KeyValueDB;
@@ -291,7 +291,7 @@ impl TestBlockChainClient {
     }
 
     /// Inserts a transaction to miners mem pool.
-    pub fn insert_transaction_to_pool(&self) -> H256 {
+    pub fn insert_transaction_to_pool(&self) -> TxHash {
         let keypair = Random.generate().unwrap();
         let tx = Transaction {
             seq: 0,
@@ -593,7 +593,7 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn error_hint(&self, _hash: &H256) -> Option<String> {
+    fn error_hint(&self, _hash: &TxHash) -> Option<String> {
         unimplemented!();
     }
 
@@ -601,7 +601,7 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn error_hints_by_tracker(&self, _: &Tracker) -> Vec<(H256, Option<String>)> {
+    fn error_hints_by_tracker(&self, _: &Tracker) -> Vec<(TxHash, Option<String>)> {
         unimplemented!();
     }
 }
