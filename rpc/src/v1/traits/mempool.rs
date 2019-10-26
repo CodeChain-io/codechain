@@ -15,10 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson::bytes::Bytes;
-use primitives::H256;
-
 use ckey::PlatformAddress;
+use ctypes::Tracker;
 use jsonrpc_core::Result;
+use primitives::H256;
 
 use super::super::types::PendingTransactions;
 
@@ -30,7 +30,7 @@ pub trait Mempool {
 
     /// Gets transaction results with given transaction tracker.
     #[rpc(name = "mempool_getTransactionResultsByTracker")]
-    fn get_transaction_results_by_tracker(&self, tracker: H256) -> Result<Vec<bool>>;
+    fn get_transaction_results_by_tracker(&self, tracker: Tracker) -> Result<Vec<bool>>;
 
     /// Gets a hint to find out why the transaction failed.
     #[rpc(name = "mempool_getErrorHint")]

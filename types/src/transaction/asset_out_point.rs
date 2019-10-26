@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{H160, H256};
+use primitives::H160;
 
 use crate::ShardId;
+use crate::Tracker;
 
 #[derive(Debug, Clone, Eq, PartialEq, RlpDecodable, RlpEncodable)]
 pub struct AssetOutPoint {
-    pub tracker: H256,
+    pub tracker: Tracker,
     pub index: usize,
     pub asset_type: H160,
     pub shard_id: ShardId,

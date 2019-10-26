@@ -17,7 +17,7 @@
 use ccrypto::Blake;
 use ckey::Address;
 use ctypes::errors::RuntimeError;
-use ctypes::ShardId;
+use ctypes::{ShardId, Tracker};
 use primitives::{H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -219,8 +219,8 @@ impl AssetSchemeAddress {
         Self::from_hash_with_shard_id(asset_type, index, shard_id)
     }
 
-    pub fn new_from_tracker(tracker: H256, shard_id: ShardId) -> Self {
-        let asset_type = Blake::blake(tracker);
+    pub fn new_from_tracker(tracker: Tracker, shard_id: ShardId) -> Self {
+        let asset_type = Blake::blake(*tracker);
         Self::new(asset_type, shard_id)
     }
 }
