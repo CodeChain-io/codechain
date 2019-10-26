@@ -16,7 +16,7 @@
 
 use std::ops::{Add, AddAssign, Deref, Sub, SubAssign};
 
-use ctypes::{BlockHash, BlockNumber};
+use ctypes::{BlockHash, BlockNumber, Tracker};
 use primitives::{H256, H264, U256};
 
 use crate::db::Key;
@@ -31,8 +31,8 @@ enum ExtrasIndex {
     BlockHash = 1,
     /// Parcel address index
     ParcelAddress = 2,
-    /// Transaction address index
-    TransactionAddress = 3,
+    /// Transaction addresses index
+    TransactionAddresses = 3,
     // (Reserved) = 4,
     // (Reserved) = 5,
 }
@@ -85,11 +85,11 @@ impl Key<TransactionAddress> for H256 {
     }
 }
 
-impl Key<TransactionAddresses> for H256 {
+impl Key<TransactionAddresses> for Tracker {
     type Target = H264;
 
     fn key(&self) -> H264 {
-        with_index(self, ExtrasIndex::TransactionAddress)
+        with_index(self, ExtrasIndex::TransactionAddresses)
     }
 }
 

@@ -21,7 +21,7 @@ use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, HashingError, PartialHashing};
 use crate::util::tag::Tag;
-use crate::ShardId;
+use crate::{ShardId, Tracker};
 
 /// Shard Transaction type.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,15 +79,15 @@ pub struct AssetWrapCCCOutput {
 }
 
 impl ShardTransaction {
-    pub fn tracker(&self) -> H256 {
+    pub fn tracker(&self) -> Tracker {
         if let ShardTransaction::WrapCCC {
             tx_hash,
             ..
         } = self
         {
-            return *tx_hash
+            return (*tx_hash).into()
         }
-        blake256(&*self.rlp_bytes())
+        blake256(&*self.rlp_bytes()).into()
     }
 
     pub fn network_id(&self) -> NetworkId {
@@ -561,7 +561,7 @@ mod tests {
         assert!(is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    tracker: H256::random(),
+                    tracker: H256::random().into(),
                     index: 0,
                     asset_type,
                     shard_id: 0,
@@ -598,7 +598,7 @@ mod tests {
             &[
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        tracker: H256::random(),
+                        tracker: H256::random().into(),
                         index: 0,
                         asset_type: asset_type1,
                         shard_id: 0,
@@ -610,7 +610,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        tracker: H256::random(),
+                        tracker: H256::random().into(),
                         index: 0,
                         asset_type: asset_type2,
                         shard_id: 0,
@@ -657,7 +657,7 @@ mod tests {
             &[
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        tracker: H256::random(),
+                        tracker: H256::random().into(),
                         index: 0,
                         asset_type: asset_type1,
                         shard_id: 0,
@@ -669,7 +669,7 @@ mod tests {
                 },
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        tracker: H256::random(),
+                        tracker: H256::random().into(),
                         index: 0,
                         asset_type: asset_type2,
                         shard_id: 0,
@@ -725,7 +725,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    tracker: H256::random(),
+                    tracker: H256::random().into(),
                     index: 0,
                     asset_type,
                     shard_id: 0,
@@ -748,7 +748,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    tracker: H256::random(),
+                    tracker: H256::random().into(),
                     index: 0,
                     asset_type,
                     shard_id: 0,
@@ -777,7 +777,7 @@ mod tests {
         assert!(!is_input_and_output_consistent(
             &[AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    tracker: H256::random(),
+                    tracker: H256::random().into(),
                     index: 0,
                     asset_type,
                     shard_id: 0,
@@ -825,7 +825,7 @@ mod tests {
             burns: vec![],
             inputs: vec![AssetTransferInput {
                 prev_out: AssetOutPoint {
-                    tracker: H256::random(),
+                    tracker: H256::random().into(),
                     index: 0,
                     asset_type: H160::random(),
                     shard_id: 0,

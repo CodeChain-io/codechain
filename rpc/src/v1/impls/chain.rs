@@ -26,7 +26,7 @@ use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
-use ctypes::{BlockHash, BlockNumber, ShardId};
+use ctypes::{BlockHash, BlockNumber, ShardId, Tracker};
 use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
@@ -86,17 +86,17 @@ where
         self.contains_transaction(transaction_hash)
     }
 
-    fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
+    fn get_transaction_by_tracker(&self, tracker: Tracker) -> Result<Option<Transaction>> {
         Ok(self.client.transaction_by_tracker(&tracker).map(From::from))
     }
 
     fn get_asset_scheme_by_tracker(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<AssetScheme>> {
-        let asset_type = Blake::blake(tracker);
+        let asset_type = Blake::blake(*tracker);
         self.get_asset_scheme_by_type(asset_type, shard_id, block_number)
     }
 
@@ -136,7 +136,7 @@ where
 
     fn get_asset(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_number: Option<u64>,
@@ -148,13 +148,13 @@ where
 
     fn is_asset_spent(
         &self,
-        transaction_hash: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<bool>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::transaction_state)
+        self.client.is_asset_spent(tracker, index, shard_id, block_id).map_err(errors::transaction_state)
     }
 
     fn get_seq(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<u64>> {

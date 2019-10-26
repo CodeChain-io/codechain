@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::ShardId;
+use ctypes::{ShardId, Tracker};
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
@@ -152,11 +152,11 @@ pub struct OwnedAssetAddress(H256);
 impl_address!(SHARD, OwnedAssetAddress, PREFIX);
 
 impl OwnedAssetAddress {
-    pub fn new(transaction_tracker: H256, index: usize, shard_id: ShardId) -> Self {
+    pub fn new(tracker: Tracker, index: usize, shard_id: ShardId) -> Self {
         debug_assert_eq!(::std::mem::size_of::<u64>(), ::std::mem::size_of::<usize>());
         let index = index as u64;
 
-        Self::from_hash_with_shard_id(transaction_tracker, index, shard_id)
+        Self::from_hash_with_shard_id(*tracker, index, shard_id)
     }
 }
 
@@ -168,7 +168,7 @@ mod tests {
 
     #[test]
     fn asset_from_address() {
-        let tx_id = {
+        let tracker = {
             let mut address;
             'address: loop {
                 address = H256::random();
@@ -182,11 +182,11 @@ mod tests {
                 }
                 break
             }
-            address
+            address.into()
         };
         let shard_id = 0xBEEF;
-        let address1 = OwnedAssetAddress::new(tx_id, 0, shard_id);
-        let address2 = OwnedAssetAddress::new(tx_id, 1, shard_id);
+        let address1 = OwnedAssetAddress::new(tracker, 0, shard_id);
+        let address2 = OwnedAssetAddress::new(tracker, 1, shard_id);
         assert_ne!(address1, address2);
         assert_eq!(address1[0..2], [PREFIX, 0]);
         assert_eq!(address1[2..4], [0xBE, 0xEF]); // shard id
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn shard_id() {
-        let origin = H256::random();
+        let origin = H256::random().into();
         let shard_id = 0xCAA;
         let asset_address = OwnedAssetAddress::new(origin, 2, shard_id);
         assert_eq!(shard_id, asset_address.shard_id());

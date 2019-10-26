@@ -19,7 +19,7 @@ use std::convert::TryFrom;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public, Signature};
 use ctypes::transaction::{Action as ActionType, AssetMintOutput as AssetMintOutputType};
-use ctypes::ShardId;
+use ctypes::{ShardId, Tracker};
 use primitives::{Bytes, H160, H256};
 use rustc_serialize::hex::{FromHex, ToHex};
 
@@ -142,7 +142,7 @@ pub enum ActionWithTracker {
 
         approvals: Vec<Signature>,
 
-        tracker: H256,
+        tracker: Tracker,
     },
     #[serde(rename_all = "camelCase")]
     TransferAsset {
@@ -158,7 +158,7 @@ pub enum ActionWithTracker {
         approvals: Vec<Signature>,
         expiration: Option<Uint>,
 
-        tracker: H256,
+        tracker: Tracker,
     },
     #[serde(rename_all = "camelCase")]
     ChangeAssetScheme {
@@ -173,7 +173,7 @@ pub enum ActionWithTracker {
 
         approvals: Vec<Signature>,
 
-        tracker: H256,
+        tracker: Tracker,
     },
     #[serde(rename_all = "camelCase")]
     IncreaseAssetSupply {
@@ -185,7 +185,7 @@ pub enum ActionWithTracker {
 
         approvals: Vec<Signature>,
 
-        tracker: H256,
+        tracker: Tracker,
     },
 
     #[serde(rename_all = "camelCase")]
@@ -194,7 +194,7 @@ pub enum ActionWithTracker {
         burn: Box<AssetTransferInput>,
         receiver: PlatformAddress,
 
-        tracker: H256,
+        tracker: Tracker,
     },
     Pay {
         receiver: PlatformAddress,

@@ -17,7 +17,7 @@
 use cjson::scheme::Params;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
-use ctypes::{BlockHash, BlockNumber, ShardId};
+use ctypes::{BlockHash, BlockNumber, ShardId, Tracker};
 use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
@@ -43,13 +43,13 @@ pub trait Chain {
 
     /// Gets transaction with given transaction tracker.
     #[rpc(name = "chain_getTransactionByTracker")]
-    fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>>;
+    fn get_transaction_by_tracker(&self, tracker: Tracker) -> Result<Option<Transaction>>;
 
     /// Gets asset scheme with given transaction tracker.
     #[rpc(name = "chain_getAssetSchemeByTracker")]
     fn get_asset_scheme_by_tracker(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<AssetScheme>>;
@@ -71,7 +71,7 @@ pub trait Chain {
     #[rpc(name = "chain_getAsset")]
     fn get_asset(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_number: Option<u64>,
@@ -81,7 +81,7 @@ pub trait Chain {
     #[rpc(name = "chain_isAssetSpent")]
     fn is_asset_spent(
         &self,
-        transaction_hash: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_number: Option<u64>,

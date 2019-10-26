@@ -18,7 +18,7 @@ use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
 use ctypes::transaction::{AssetTransferInput, HashingError, PartialHashing};
 use ctypes::util::tag::Tag;
-use ctypes::BlockNumber;
+use ctypes::{BlockNumber, Tracker};
 
 use primitives::{H160, H256};
 
@@ -371,10 +371,10 @@ fn check_multi_sig(tx_hash: &H256, mut pubkey: Vec<Public>, mut signatures: Vec<
 
 pub trait ChainTimeInfo {
     /// Get the block height of the transaction.
-    fn transaction_block_age(&self, tracker: &H256, parent_block_number: BlockNumber) -> Option<u64>;
+    fn transaction_block_age(&self, tracker: &Tracker, parent_block_number: BlockNumber) -> Option<u64>;
 
     /// Get the how many seconds elapsed since transaction is confirmed, according to block timestamp.
-    fn transaction_time_age(&self, tracker: &H256, parent_timestamp: u64) -> Option<u64>;
+    fn transaction_time_age(&self, tracker: &Tracker, parent_timestamp: u64) -> Option<u64>;
 }
 
 #[cfg(test)]

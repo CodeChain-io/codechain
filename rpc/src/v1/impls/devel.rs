@@ -33,6 +33,7 @@ use csync::BlockSyncEvent;
 use ctypes::transaction::{
     Action, AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction,
 };
+use ctypes::Tracker;
 use jsonrpc_core::Result;
 use kvdb::KeyValueDB;
 use primitives::{H160, H256};
@@ -183,10 +184,10 @@ where
         }
 
         macro_rules! transfer_input {
-            ($hash:expr, $index:expr, $asset_type:expr, $quantity:expr) => {
+            ($tracker:expr, $index:expr, $asset_type:expr, $quantity:expr) => {
                 AssetTransferInput {
                     prev_out: AssetOutPoint {
-                        tracker: $hash,
+                        tracker: $tracker,
                         index: $index,
                         asset_type: $asset_type,
                         shard_id: 0,
@@ -226,7 +227,7 @@ where
         }
 
         fn asset_type(tx: &Transaction) -> H160 {
-            Blake::blake(tx.tracker().unwrap())
+            Blake::blake(*tx.tracker().unwrap())
         }
 
         fn tps(count: u64, start_time: PreciseTime, end_time: PreciseTime) -> f64 {
@@ -276,7 +277,7 @@ where
                 send_tx(mint_tx, &*self.client, &genesis_keypair)?;
 
                 fn create_inputs(
-                    transaction_hash: H256,
+                    tracker: Tracker,
                     asset_type: H160,
                     total_amount: u64,
                     count: usize,
@@ -284,7 +285,7 @@ where
                     let mut inputs = Vec::new();
                     let amount = total_amount / (count as u64);
                     for i in 0..(count as usize) {
-                        let input = transfer_input!(transaction_hash, i, asset_type, amount);
+                        let input = transfer_input!(tracker, i, asset_type, amount);
                         inputs.push(input);
                     }
                     inputs
