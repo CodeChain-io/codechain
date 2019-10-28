@@ -1,10 +1,10 @@
 on: [push, pull_request]
 
-name: Actions - cargo
+name: cargo-test
 
 jobs:
   clippy:
-    name: clippy
+    name: Actions - clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -17,7 +17,7 @@ jobs:
       - run: cargo clippy --all --all-targets -- -D warnings
 
   rustfmt:
-    name: rustfmt
+    name: Actions - rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -28,8 +28,8 @@ jobs:
       - run: rustup component add rustfmt
       - run: cargo fmt -- --check
 
-  build:
-    name: unit test
+  unit-test:
+    name: Actions - unit test
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
