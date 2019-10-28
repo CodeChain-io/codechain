@@ -448,7 +448,7 @@ impl Worker {
         self.validators.next_block_proposer(prev_block_hash, view)
     }
 
-    pub fn first_proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {
+    fn first_proposal_at(&self, height: Height, view: View) -> Option<(SchnorrSignature, usize, Bytes)> {
         let vote_step = VoteStep {
             height,
             view,
@@ -475,7 +475,7 @@ impl Worker {
             .any(|proposal| proposal.on.block_hash.expect("Proposal message always include block hash") == block_hash)
     }
 
-    pub fn vote_step(&self) -> VoteStep {
+    fn vote_step(&self) -> VoteStep {
         VoteStep {
             height: self.height,
             view: self.view,
@@ -483,11 +483,11 @@ impl Worker {
         }
     }
 
-    pub fn need_proposal(&self) -> bool {
+    fn need_proposal(&self) -> bool {
         self.proposal.is_none() && !self.step.is_commit()
     }
 
-    pub fn get_all_votes_and_authors(
+    fn get_all_votes_and_authors(
         &self,
         vote_step: &VoteStep,
         requested: &BitSet,
@@ -930,7 +930,7 @@ impl Worker {
         }
     }
 
-    pub fn on_imported_proposal(&mut self, proposal: &Header) {
+    fn on_imported_proposal(&mut self, proposal: &Header) {
         if proposal.number() < 1 {
             return
         }
