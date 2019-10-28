@@ -37,7 +37,7 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockNumber, CommonParams, ShardId};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H160, H256, U256};
@@ -73,15 +73,15 @@ pub trait BlockChainTrait {
     fn block(&self, id: &BlockId) -> Option<encoded::Block>;
 
     /// Get the hash of block that contains the transaction, if any.
-    fn transaction_block(&self, id: &TransactionId) -> Option<H256>;
+    fn transaction_block(&self, id: &TransactionId) -> Option<BlockHash>;
 
-    fn transaction_header(&self, tracker: &H256) -> Option<::encoded::Header>;
+    fn transaction_header(&self, tracker: &Tracker) -> Option<::encoded::Header>;
 
-    fn transaction_block_number(&self, tracker: &H256) -> Option<BlockNumber> {
+    fn transaction_block_number(&self, tracker: &Tracker) -> Option<BlockNumber> {
         self.transaction_header(tracker).map(|header| header.number())
     }
 
-    fn transaction_block_timestamp(&self, tracker: &H256) -> Option<u64> {
+    fn transaction_block_timestamp(&self, tracker: &Tracker) -> Option<u64> {
         self.transaction_header(tracker).map(|header| header.timestamp())
     }
 }
@@ -101,7 +101,7 @@ pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     fn update_sealing(&self, parent_block: BlockId, allow_empty_block: bool);
 
     /// Submit a seal for a block in the mining queue.
-    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>);
+    fn submit_seal(&self, block_hash: BlockHash, seal: Vec<Bytes>);
 
     /// Convert PoW difficulty to target.
     fn score_to_target(&self, score: &U256) -> U256;
@@ -109,7 +109,7 @@ pub trait EngineClient: Sync + Send + BlockChainTrait + ImportBlock {
     /// Update the best block as the given block hash
     ///
     /// Used in Tendermint, when going to the commit step.
-    fn update_best_as_committed(&self, block_hash: H256);
+    fn update_best_as_committed(&self, block_hash: BlockHash);
 
     fn get_kvdb(&self) -> Arc<dyn KeyValueDB>;
 }
@@ -185,7 +185,7 @@ impl From<BlockId> for StateOrBlock {
 pub trait Shard {
     fn number_of_shards(&self, state: StateOrBlock) -> Option<ShardId>;
 
-    fn shard_id_by_hash(&self, create_shard_tx_hash: &H256, state: StateOrBlock) -> Option<ShardId>;
+    fn shard_id_by_hash(&self, create_shard_tx_hash: &TxHash, state: StateOrBlock) -> Option<ShardId>;
     fn shard_root(&self, shard_id: ShardId, state: StateOrBlock) -> Option<H256>;
 
     fn shard_owners(&self, shard_id: ShardId, state: StateOrBlock) -> Option<Vec<Address>>;
@@ -195,10 +195,10 @@ pub trait Shard {
 /// Provides methods to import block into blockchain
 pub trait ImportBlock {
     /// Import a block into the blockchain.
-    fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError>;
+    fn import_block(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError>;
 
     /// Import a header into the blockchain
-    fn import_header(&self, bytes: Bytes) -> Result<H256, BlockImportError>;
+    fn import_header(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError>;
 
     /// Import sealed block. Skips all verifications.
     fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult;
@@ -244,22 +244,22 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
     fn block_total_score(&self, id: &BlockId) -> Option<U256>;
 
     /// Get block hash.
-    fn block_hash(&self, id: &BlockId) -> Option<H256>;
+    fn block_hash(&self, id: &BlockId) -> Option<BlockHash>;
 
     /// Get transaction with given hash.
     fn transaction(&self, id: &TransactionId) -> Option<LocalizedTransaction>;
 
     /// Get invoice with given hash.
-    fn error_hint(&self, hash: &H256) -> Option<String>;
+    fn error_hint(&self, hash: &TxHash) -> Option<String>;
 
     /// Get the transaction with given tracker.
-    fn transaction_by_tracker(&self, tracker: &H256) -> Option<LocalizedTransaction>;
+    fn transaction_by_tracker(&self, tracker: &Tracker) -> Option<LocalizedTransaction>;
 
-    fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)>;
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(TxHash, Option<String>)>;
 }
 
 /// Result of import block operation.
-pub type ImportResult = Result<H256, Error>;
+pub type ImportResult = Result<BlockHash, Error>;
 
 /// Provides methods used for sealing new state
 pub trait BlockProducer {
@@ -300,11 +300,17 @@ pub trait DatabaseClient {
 pub trait AssetClient {
     fn get_asset_scheme(&self, asset_type: H160, shard_id: ShardId, id: BlockId) -> TrieResult<Option<AssetScheme>>;
 
-    fn get_asset(&self, tracker: H256, index: usize, shard_id: ShardId, id: BlockId) -> TrieResult<Option<OwnedAsset>>;
+    fn get_asset(
+        &self,
+        tracker: Tracker,
+        index: usize,
+        shard_id: ShardId,
+        id: BlockId,
+    ) -> TrieResult<Option<OwnedAsset>>;
 
     fn is_asset_spent(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_id: BlockId,
@@ -313,7 +319,7 @@ pub trait AssetClient {
 
 /// Provides methods to texts
 pub trait TextClient {
-    fn get_text(&self, tx_hash: H256, id: BlockId) -> TrieResult<Option<Text>>;
+    fn get_text(&self, tx_hash: TxHash, id: BlockId) -> TrieResult<Option<Text>>;
 }
 
 pub trait ExecuteClient: ChainTimeInfo {

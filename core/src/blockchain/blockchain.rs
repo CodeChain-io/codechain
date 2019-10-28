@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ctypes::BlockNumber;
+use ctypes::{BlockHash, BlockNumber, Tracker, TxHash};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::H256;
@@ -44,16 +44,16 @@ const BEST_PROPOSAL_BLOCK_KEY: &[u8] = b"best-proposal-block";
 /// **Does not do input data verification.**
 pub struct BlockChain {
     /// The hash of the best block of the canonical chain.
-    best_block_hash: RwLock<H256>,
+    best_block_hash: RwLock<BlockHash>,
     /// The hash of the block which has the best score among the proposal blocks
-    best_proposal_block_hash: RwLock<H256>,
+    best_proposal_block_hash: RwLock<BlockHash>,
 
     headerchain: HeaderChain,
     body_db: BodyDB,
     invoice_db: InvoiceDB,
 
-    pending_best_block_hash: RwLock<Option<H256>>,
-    pending_best_proposal_block_hash: RwLock<Option<H256>>,
+    pending_best_block_hash: RwLock<Option<BlockHash>>,
+    pending_best_proposal_block_hash: RwLock<Option<BlockHash>>,
 }
 
 impl BlockChain {
@@ -63,7 +63,7 @@ impl BlockChain {
 
         // load best block
         let best_block_hash = match db.get(db::COL_EXTRA, BEST_BLOCK_KEY).unwrap() {
-            Some(hash) => H256::from_slice(&hash),
+            Some(hash) => H256::from_slice(&hash).into(),
             None => {
                 let hash = genesis_block.hash();
 
@@ -75,7 +75,7 @@ impl BlockChain {
         };
 
         let best_proposal_block_hash = match db.get(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY).unwrap() {
-            Some(hash) => H256::from_slice(&hash),
+            Some(hash) => H256::from_slice(&hash).into(),
             None => {
                 let hash = genesis_block.hash();
                 let mut batch = DBTransaction::new();
@@ -235,7 +235,7 @@ impl BlockChain {
     /// The new best block should be a child of the current best block.
     /// This will not change the best proposal block chain. This means it is possible
     /// to have the best block and the best proposal block in different branches.
-    pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: H256) -> ImportRoute {
+    pub fn update_best_as_committed(&self, batch: &mut DBTransaction, block_hash: BlockHash) -> ImportRoute {
         // FIXME: If it is possible, double check with the consensus engine.
         ctrace!(BLOCKCHAIN, "Update the best block to {}", block_hash);
 
@@ -311,12 +311,12 @@ impl BlockChain {
     }
 
     /// Get best block hash.
-    pub fn best_block_hash(&self) -> H256 {
+    pub fn best_block_hash(&self) -> BlockHash {
         *self.best_block_hash.read()
     }
 
     /// Get best_proposal block hash.
-    pub fn best_proposal_block_hash(&self) -> H256 {
+    pub fn best_proposal_block_hash(&self) -> BlockHash {
         *self.best_proposal_block_hash.read()
     }
 
@@ -349,12 +349,12 @@ impl BlockChain {
 pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
     /// Returns true if the given block is known
     /// (though not necessarily a part of the canon chain).
-    fn is_known(&self, hash: &H256) -> bool {
+    fn is_known(&self, hash: &BlockHash) -> bool {
         self.is_known_header(hash) && self.is_known_body(hash)
     }
 
     /// Get raw block data
-    fn block(&self, hash: &H256) -> Option<encoded::Block> {
+    fn block(&self, hash: &BlockHash) -> Option<encoded::Block> {
         let header = self.block_header_data(hash)?;
         let body = self.block_body(hash)?;
 
@@ -377,7 +377,7 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
 
     /// Get a list of transactions for a given block.
     /// Returns None if block does not exist.
-    fn transactions(&self, block_hash: &H256) -> Option<Vec<LocalizedTransaction>> {
+    fn transactions(&self, block_hash: &BlockHash) -> Option<Vec<LocalizedTransaction>> {
         self.block_body(block_hash)
             .and_then(|body| self.block_number(block_hash).map(|n| body.view().localized_transactions(block_hash, n)))
     }
@@ -386,55 +386,55 @@ pub trait BlockProvider: HeaderProvider + BodyProvider + InvoiceProvider {
 impl HeaderProvider for BlockChain {
     /// Returns true if the given block is known
     /// (though not necessarily a part of the canon chain).
-    fn is_known_header(&self, hash: &H256) -> bool {
+    fn is_known_header(&self, hash: &BlockHash) -> bool {
         self.headerchain.is_known_header(hash)
     }
 
     /// Get the familial details concerning a block.
-    fn block_details(&self, hash: &H256) -> Option<BlockDetails> {
+    fn block_details(&self, hash: &BlockHash) -> Option<BlockDetails> {
         self.headerchain.block_details(hash)
     }
 
     /// Get the hash of given block's number.
-    fn block_hash(&self, index: BlockNumber) -> Option<H256> {
+    fn block_hash(&self, index: BlockNumber) -> Option<BlockHash> {
         self.headerchain.block_hash(index)
     }
 
     /// Get the header RLP of a block.
-    fn block_header_data(&self, hash: &H256) -> Option<encoded::Header> {
+    fn block_header_data(&self, hash: &BlockHash) -> Option<encoded::Header> {
         self.headerchain.block_header_data(hash)
     }
 }
 
 impl BodyProvider for BlockChain {
-    fn is_known_body(&self, hash: &H256) -> bool {
+    fn is_known_body(&self, hash: &BlockHash) -> bool {
         self.body_db.is_known_body(hash)
     }
 
-    fn transaction_address(&self, hash: &H256) -> Option<TransactionAddress> {
+    fn transaction_address(&self, hash: &TxHash) -> Option<TransactionAddress> {
         self.body_db.transaction_address(hash)
     }
 
-    fn transaction_address_by_tracker(&self, tracker: &H256) -> Option<TransactionAddress> {
+    fn transaction_address_by_tracker(&self, tracker: &Tracker) -> Option<TransactionAddress> {
         self.body_db.transaction_address_by_tracker(tracker)
     }
 
-    fn block_body(&self, hash: &H256) -> Option<encoded::Body> {
+    fn block_body(&self, hash: &BlockHash) -> Option<encoded::Body> {
         self.body_db.block_body(hash)
     }
 }
 
 impl InvoiceProvider for BlockChain {
     /// Returns true if invoices for given hash is known
-    fn is_known_error_hint(&self, hash: &H256) -> bool {
+    fn is_known_error_hint(&self, hash: &TxHash) -> bool {
         self.invoice_db.is_known_error_hint(hash)
     }
 
-    fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)> {
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(TxHash, Option<String>)> {
         self.invoice_db.error_hints_by_tracker(tracker)
     }
 
-    fn error_hint(&self, hash: &H256) -> Option<String> {
+    fn error_hint(&self, hash: &TxHash) -> Option<String> {
         self.invoice_db.error_hint(hash)
     }
 }

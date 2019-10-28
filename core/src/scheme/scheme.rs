@@ -23,7 +23,7 @@ use ckey::Address;
 use cmerkle::TrieFactory;
 use cstate::{Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult, StateWithCache, TopLevelState};
 use ctypes::errors::SyntaxError;
-use ctypes::{CommonParams, Header, ShardId};
+use ctypes::{BlockHash, CommonParams, Header, ShardId};
 use hashdb::{AsHashDB, HashDB};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
@@ -52,7 +52,7 @@ pub struct Scheme {
     pub nodes: Vec<String>,
 
     /// The genesis block's parent hash field.
-    pub parent_hash: H256,
+    pub parent_hash: BlockHash,
     /// The genesis block's author field.
     pub author: Address,
     /// The genesis block's score field.

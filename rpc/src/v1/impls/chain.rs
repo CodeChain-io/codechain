@@ -26,7 +26,7 @@ use cjson::uint::Uint;
 use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockHash, BlockNumber, ShardId, Tracker, TxHash};
 use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
@@ -65,12 +65,12 @@ where
         + TermInfo
         + 'static,
 {
-    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>> {
+    fn get_transaction(&self, transaction_hash: TxHash) -> Result<Option<Transaction>> {
         let id = transaction_hash.into();
         Ok(self.client.transaction(&id).map(From::from))
     }
 
-    fn get_transaction_signer(&self, transaction_hash: H256) -> Result<Option<PlatformAddress>> {
+    fn get_transaction_signer(&self, transaction_hash: TxHash) -> Result<Option<PlatformAddress>> {
         let id = transaction_hash.into();
         Ok(self.client.transaction(&id).map(|mut tx| {
             let address = public_to_address(&tx.signer());
@@ -78,25 +78,25 @@ where
         }))
     }
 
-    fn contains_transaction(&self, transaction_hash: H256) -> Result<bool> {
+    fn contains_transaction(&self, transaction_hash: TxHash) -> Result<bool> {
         Ok(self.client.transaction_block(&transaction_hash.into()).is_some())
     }
 
-    fn contain_transaction(&self, transaction_hash: H256) -> Result<bool> {
+    fn contain_transaction(&self, transaction_hash: TxHash) -> Result<bool> {
         self.contains_transaction(transaction_hash)
     }
 
-    fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>> {
+    fn get_transaction_by_tracker(&self, tracker: Tracker) -> Result<Option<Transaction>> {
         Ok(self.client.transaction_by_tracker(&tracker).map(From::from))
     }
 
     fn get_asset_scheme_by_tracker(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<AssetScheme>> {
-        let asset_type = Blake::blake(tracker);
+        let asset_type = Blake::blake(*tracker);
         self.get_asset_scheme_by_type(asset_type, shard_id, block_number)
     }
 
@@ -123,7 +123,7 @@ where
         }
     }
 
-    fn get_text(&self, transaction_hash: H256, block_number: Option<u64>) -> Result<Option<Text>> {
+    fn get_text(&self, transaction_hash: TxHash, block_number: Option<u64>) -> Result<Option<Text>> {
         if block_number == Some(0) {
             return Ok(None)
         }
@@ -136,7 +136,7 @@ where
 
     fn get_asset(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_number: Option<u64>,
@@ -148,13 +148,13 @@ where
 
     fn is_asset_spent(
         &self,
-        transaction_hash: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<bool>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
-        self.client.is_asset_spent(transaction_hash, index, shard_id, block_id).map_err(errors::transaction_state)
+        self.client.is_asset_spent(tracker, index, shard_id, block_id).map_err(errors::transaction_state)
     }
 
     fn get_seq(&self, address: PlatformAddress, block_number: Option<u64>) -> Result<Option<u64>> {
@@ -193,7 +193,7 @@ where
         Ok(self.client.number_of_shards(block_id.into()))
     }
 
-    fn get_shard_id_by_hash(&self, create_shard_tx_hash: H256, block_number: Option<u64>) -> Result<Option<ShardId>> {
+    fn get_shard_id_by_hash(&self, create_shard_tx_hash: TxHash, block_number: Option<u64>) -> Result<Option<ShardId>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.shard_id_by_hash(&create_shard_tx_hash, block_id.into()))
     }
@@ -233,7 +233,7 @@ where
         })
     }
 
-    fn get_block_hash(&self, block_number: u64) -> Result<Option<H256>> {
+    fn get_block_hash(&self, block_number: u64) -> Result<Option<BlockHash>> {
         Ok(self.client.block_hash(&BlockId::Number(block_number)))
     }
 
@@ -249,7 +249,7 @@ where
         }))
     }
 
-    fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>> {
+    fn get_block_by_hash(&self, block_hash: BlockHash) -> Result<Option<Block>> {
         let id = BlockId::Hash(block_hash);
         Ok(self.client.block(&id).map(|block| {
             let block = block.decode();
@@ -262,7 +262,7 @@ where
         }))
     }
 
-    fn get_block_transaction_count_by_hash(&self, block_hash: H256) -> Result<Option<usize>> {
+    fn get_block_transaction_count_by_hash(&self, block_hash: BlockHash) -> Result<Option<usize>> {
         Ok(self.client.block(&BlockId::Hash(block_hash)).map(|block| block.transactions_count()))
     }
 

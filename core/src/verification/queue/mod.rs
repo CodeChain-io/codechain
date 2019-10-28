@@ -23,8 +23,9 @@ use std::sync::{Arc, Condvar as SCondvar, Mutex as SMutex};
 use std::thread::{self, JoinHandle};
 
 use cio::IoChannel;
+use ctypes::BlockHash;
 use parking_lot::{Mutex, RwLock};
-use primitives::{H256, U256};
+use primitives::U256;
 
 use self::kind::{BlockLike, Kind, MemUsage};
 use crate::consensus::CodeChainEngine;
@@ -65,7 +66,7 @@ impl Default for Config {
 pub struct VerificationQueue<K: Kind> {
     engine: Arc<dyn CodeChainEngine>,
     verification: Arc<Verification<K>>,
-    processing: RwLock<HashMap<H256, U256>>, // hash to score
+    processing: RwLock<HashMap<BlockHash, U256>>, // hash to score
     deleting: Arc<AtomicBool>,
     ready_signal: Arc<QueueSignal>,
     total_score: RwLock<U256>,
@@ -300,7 +301,7 @@ impl<K: Kind> VerificationQueue<K> {
     fn drain_verifying(
         verifying: &mut VecDeque<Verifying<K>>,
         verified: &mut VecDeque<K::Verified>,
-        bad: &mut HashSet<H256>,
+        bad: &mut HashSet<BlockHash>,
         sizes: &Sizes,
     ) {
         let mut removed_size = 0;
@@ -324,7 +325,7 @@ impl<K: Kind> VerificationQueue<K> {
     }
 
     /// Check if the item is currently in the queue
-    pub fn status(&self, hash: &H256) -> Status {
+    pub fn status(&self, hash: &BlockHash) -> Status {
         if self.processing.read().contains_key(hash) {
             return Status::Queued
         }
@@ -335,7 +336,7 @@ impl<K: Kind> VerificationQueue<K> {
     }
 
     /// Add a block to the queue.
-    pub fn import(&self, input: K::Input) -> Result<H256, Error> {
+    pub fn import(&self, input: K::Input) -> Result<BlockHash, Error> {
         let h = input.hash();
         {
             if self.processing.read().contains_key(&h) {
@@ -397,7 +398,7 @@ impl<K: Kind> VerificationQueue<K> {
 
     /// Mark given item as processed.
     /// Returns true if the queue becomes empty.
-    pub fn mark_as_good(&self, hashes: &[H256]) -> bool {
+    pub fn mark_as_good(&self, hashes: &[BlockHash]) -> bool {
         if hashes.is_empty() {
             return self.processing.read().is_empty()
         }
@@ -414,7 +415,7 @@ impl<K: Kind> VerificationQueue<K> {
 
     /// Mark given item and all its children as bad. pauses verification
     /// until complete.
-    pub fn mark_as_bad(&self, hashes: &[H256]) {
+    pub fn mark_as_bad(&self, hashes: &[BlockHash]) {
         if hashes.is_empty() {
             return
         }
@@ -509,7 +510,7 @@ struct Verification<K: Kind> {
     unverified: Mutex<VecDeque<K::Unverified>>,
     verifying: Mutex<VecDeque<Verifying<K>>>,
     verified: Mutex<VecDeque<K::Verified>>,
-    bad: Mutex<HashSet<H256>>,
+    bad: Mutex<HashSet<BlockHash>>,
     sizes: Sizes,
     check_seal: bool,
     #[allow(dead_code)]
@@ -519,7 +520,7 @@ struct Verification<K: Kind> {
 
 /// An item which is in the process of being verified.
 pub struct Verifying<K: Kind> {
-    hash: H256,
+    hash: BlockHash,
     output: Option<K::Verified>,
 }
 

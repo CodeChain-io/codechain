@@ -17,7 +17,7 @@
 use std::sync::Weak;
 
 use ckey::{Address, Public};
-use primitives::H256;
+use ctypes::BlockHash;
 
 use self::validator_list::RoundRobinValidator;
 use super::BitSet;
@@ -33,29 +33,29 @@ pub use self::dynamic_validator::DynamicValidator;
 pub trait ValidatorSet: Send + Sync {
     /// Checks if a given public key is a validator,
     /// using underlying, default call mechanism.
-    fn contains(&self, parent: &H256, public: &Public) -> bool;
+    fn contains(&self, parent: &BlockHash, public: &Public) -> bool;
 
     /// Checks if a given address is a validator.
-    fn contains_address(&self, parent: &H256, address: &Address) -> bool;
+    fn contains_address(&self, parent: &BlockHash, address: &Address) -> bool;
 
     /// Draws a validator from index modulo number of validators.
-    fn get(&self, parent: &H256, index: usize) -> Public;
+    fn get(&self, parent: &BlockHash, index: usize) -> Public;
 
     /// Draws a validator from nonce modulo number of validators.
-    fn get_index(&self, parent: &H256, public: &Public) -> Option<usize>;
+    fn get_index(&self, parent: &BlockHash, public: &Public) -> Option<usize>;
 
     /// Draws a validator index from validator address.
-    fn get_index_by_address(&self, parent: &H256, address: &Address) -> Option<usize>;
+    fn get_index_by_address(&self, parent: &BlockHash, address: &Address) -> Option<usize>;
 
-    fn next_block_proposer(&self, parent: &H256, view: u64) -> Option<Address>;
+    fn next_block_proposer(&self, parent: &BlockHash, view: u64) -> Option<Address>;
 
     /// Returns the current number of validators.
-    fn count(&self, parent: &H256) -> usize;
+    fn count(&self, parent: &BlockHash) -> usize;
 
-    fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError>;
+    fn check_enough_votes(&self, parent: &BlockHash, votes: &BitSet) -> Result<(), EngineError>;
 
     /// Allows blockchain state access.
     fn register_client(&self, _client: Weak<dyn ConsensusClient>) {}
 
-    fn addresses(&self, _parent: &H256) -> Vec<Address>;
+    fn addresses(&self, _parent: &BlockHash) -> Vec<Address>;
 }

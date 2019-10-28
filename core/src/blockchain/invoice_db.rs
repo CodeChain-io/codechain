@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
+use ctypes::{Tracker, TxHash};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::{H256, H264};
@@ -30,9 +31,9 @@ use crate::db::{self, CacheUpdatePolicy, Key, Readable, Writable};
 /// **Does not do input data verification.**
 pub struct InvoiceDB {
     // tracker -> transaction hashe + error hint
-    tracker_cache: RwLock<HashMap<H256, TrackerInvoices>>,
+    tracker_cache: RwLock<HashMap<Tracker, TrackerInvoices>>,
     // transaction hash -> error hint
-    hash_cache: RwLock<HashMap<H256, Option<String>>>,
+    hash_cache: RwLock<HashMap<TxHash, Option<String>>>,
 
     db: Arc<dyn KeyValueDB>,
 }
@@ -54,8 +55,8 @@ impl InvoiceDB {
     pub fn insert_invoice(
         &self,
         batch: &mut DBTransaction,
-        hash: H256,
-        tracker: Option<H256>,
+        hash: TxHash,
+        tracker: Option<Tracker>,
         error_hint: Option<String>,
     ) {
         if self.is_known_error_hint(&hash) {
@@ -79,34 +80,34 @@ impl InvoiceDB {
 /// Interface for querying invoices.
 pub trait InvoiceProvider {
     /// Returns true if invoices for given hash is known
-    fn is_known_error_hint(&self, hash: &H256) -> bool;
+    fn is_known_error_hint(&self, hash: &TxHash) -> bool;
 
     /// Get error hints
-    fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)>;
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(TxHash, Option<String>)>;
 
     /// Get error hint
-    fn error_hint(&self, hash: &H256) -> Option<String>;
+    fn error_hint(&self, hash: &TxHash) -> Option<String>;
 }
 
 impl InvoiceProvider for InvoiceDB {
-    fn is_known_error_hint(&self, hash: &H256) -> bool {
+    fn is_known_error_hint(&self, hash: &TxHash) -> bool {
         self.db.exists_with_cache(db::COL_ERROR_HINT, &self.hash_cache, hash)
     }
 
-    fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)> {
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(TxHash, Option<String>)> {
         self.db
             .read_with_cache(db::COL_ERROR_HINT, &mut *self.tracker_cache.write(), tracker)
             .map(|hashes| (*hashes).clone())
             .unwrap_or_default()
     }
 
-    fn error_hint(&self, hash: &H256) -> Option<String> {
+    fn error_hint(&self, hash: &TxHash) -> Option<String> {
         self.db.read_with_cache(db::COL_ERROR_HINT, &mut *self.hash_cache.write(), hash)?
     }
 }
 
 #[derive(Clone, Default)]
-pub struct TrackerInvoices(Vec<(H256, Option<String>)>);
+pub struct TrackerInvoices(Vec<(TxHash, Option<String>)>);
 
 impl Encodable for TrackerInvoices {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -136,14 +137,14 @@ impl Decodable for TrackerInvoices {
     }
 }
 
-impl From<Vec<(H256, Option<String>)>> for TrackerInvoices {
-    fn from(f: Vec<(H256, Option<String>)>) -> Self {
+impl From<Vec<(TxHash, Option<String>)>> for TrackerInvoices {
+    fn from(f: Vec<(TxHash, Option<String>)>) -> Self {
         TrackerInvoices(f)
     }
 }
 
 impl Deref for TrackerInvoices {
-    type Target = Vec<(H256, Option<String>)>;
+    type Target = Vec<(TxHash, Option<String>)>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -167,7 +168,7 @@ impl From<ErrorHintIndex> for u8 {
     }
 }
 
-impl Key<Option<String>> for H256 {
+impl Key<Option<String>> for TxHash {
     type Target = H264;
 
     fn key(&self) -> H264 {
@@ -175,7 +176,7 @@ impl Key<Option<String>> for H256 {
     }
 }
 
-impl Key<TrackerInvoices> for H256 {
+impl Key<TrackerInvoices> for Tracker {
     type Target = H264;
 
     fn key(&self) -> H264 {

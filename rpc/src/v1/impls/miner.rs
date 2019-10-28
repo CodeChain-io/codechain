@@ -19,8 +19,8 @@ use std::sync::Arc;
 use ccore::block::IsBlock;
 use ccore::{EngineClient, EngineInfo, MinerService, MiningBlockChainClient, TermInfo};
 use cjson::bytes::Bytes;
+use ctypes::BlockHash;
 use jsonrpc_core::Result;
-use primitives::H256;
 
 use super::super::errors;
 use super::super::traits::Miner;
@@ -67,7 +67,7 @@ where
             .unwrap_or_else(|| Err(errors::internal("No work found.", "")))
     }
 
-    fn submit_work(&self, pow_hash: H256, seal: Vec<Bytes>) -> Result<bool> {
+    fn submit_work(&self, pow_hash: BlockHash, seal: Vec<Bytes>) -> Result<bool> {
         if !self.miner.can_produce_work_package() {
             cwarn!(MINER, "Cannot give work package - engine seals internally.");
             return Err(errors::no_work_required())

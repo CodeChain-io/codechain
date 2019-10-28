@@ -17,12 +17,12 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
 use ckey::Address;
-use primitives::{H160, H256};
+use primitives::H160;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 use super::TaggedRlp;
 use crate::util::unexpected::Mismatch;
-use crate::ShardId;
+use crate::{ShardId, Tracker};
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]
@@ -30,11 +30,11 @@ pub enum Error {
     /// Desired input asset not found
     AssetNotFound {
         shard_id: ShardId,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
     },
     AssetSchemeDuplicated {
-        tracker: H256,
+        tracker: Tracker,
         shard_id: ShardId,
     },
     /// Desired input asset scheme not found
@@ -54,7 +54,7 @@ pub enum Error {
     /// Script execution result is `Fail`
     FailedToUnlock {
         shard_id: ShardId,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         reason: UnlockFailureReason,
     },
@@ -69,7 +69,7 @@ pub enum Error {
     InsufficientPermission,
     InvalidAssetQuantity {
         shard_id: ShardId,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         expected: u64,
         got: u64,

@@ -60,7 +60,7 @@ impl JobDispatcher for StratumJobDispatcher {
             return Err(StratumServiceError::InternalError)
         }
 
-        match self.miner.submit_seal(&*self.client, pow_hash, seal) {
+        match self.miner.submit_seal(&*self.client, pow_hash.into(), seal) {
             Ok(_) => Ok(()),
             Err(e) => {
                 cwarn!(STRATUM, "submit_seal error: {:?}", e);

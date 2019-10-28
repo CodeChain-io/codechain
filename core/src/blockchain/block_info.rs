@@ -16,7 +16,9 @@
 
 use super::route::TreeRoute;
 use crate::views::{BlockView, HeaderView};
-use primitives::{Bytes, H256};
+
+use ctypes::BlockHash;
+use primitives::Bytes;
 
 /// Describes how best block is changed
 #[derive(Debug, Clone, PartialEq)]
@@ -37,7 +39,7 @@ pub enum BestBlockChanged {
 }
 
 impl BestBlockChanged {
-    pub fn new_best_hash(&self) -> Option<H256> {
+    pub fn new_best_hash(&self) -> Option<BlockHash> {
         Some(self.best_block()?.hash())
     }
 
@@ -76,7 +78,7 @@ pub enum BestHeaderChanged {
 }
 
 impl BestHeaderChanged {
-    pub fn new_best_hash(&self) -> Option<H256> {
+    pub fn new_best_hash(&self) -> Option<BlockHash> {
         Some(self.header()?.hash())
     }
 

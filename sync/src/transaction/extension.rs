@@ -21,8 +21,8 @@ use std::time::Duration;
 use ccore::{BlockChainClient, UnverifiedTransaction};
 use cnetwork::{Api, NetworkExtension, NodeId};
 use ctimer::TimerToken;
+use ctypes::TxHash;
 use never_type::Never;
-use primitives::H256;
 use rlp::{Encodable, UntrustedRlp};
 
 use super::message::Message;
@@ -33,12 +33,12 @@ const MAX_HISTORY_SIZE: usize = 100_000;
 
 #[derive(Default)]
 struct KnownTxs {
-    history_set: HashSet<H256>,
-    history_queue: VecDeque<H256>,
+    history_set: HashSet<TxHash>,
+    history_queue: VecDeque<TxHash>,
 }
 
 impl KnownTxs {
-    fn push(&mut self, hash: H256) {
+    fn push(&mut self, hash: TxHash) {
         debug_assert!(!self.history_set.contains(&hash));
         self.history_set.insert(hash);
         self.history_queue.push_back(hash);
@@ -47,7 +47,7 @@ impl KnownTxs {
         }
     }
 
-    fn contains(&mut self, hash: &H256) -> bool {
+    fn contains(&mut self, hash: &TxHash) -> bool {
         self.history_set.contains(hash)
     }
 }

@@ -15,8 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
-use ctypes::Header;
-use primitives::H256;
+use ctypes::{BlockHash, Header, TxHash};
 use rlp::Rlp;
 
 use super::{HeaderView, TransactionView};
@@ -43,7 +42,7 @@ impl<'a> BlockView<'a> {
     }
 
     /// Block header hash.
-    pub fn hash(&self) -> H256 {
+    pub fn hash(&self) -> BlockHash {
         self.header_view().hash()
     }
 
@@ -101,8 +100,8 @@ impl<'a> BlockView<'a> {
     }
 
     /// Return transaction hashes.
-    pub fn transaction_hashes(&self) -> Vec<H256> {
-        self.rlp.at(1).iter().map(|rlp| blake256(rlp.as_raw())).collect()
+    pub fn transaction_hashes(&self) -> Vec<TxHash> {
+        self.rlp.at(1).iter().map(|rlp| blake256(rlp.as_raw()).into()).collect()
     }
 
     /// Returns transaction at given index without deserializing unnecessary data.

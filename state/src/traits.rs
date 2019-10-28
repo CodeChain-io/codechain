@@ -17,7 +17,7 @@
 use ckey::{public_to_address, Address, Public, Signature};
 use cmerkle::Result as TrieResult;
 use ctypes::transaction::ShardTransaction;
-use ctypes::{BlockNumber, CommonParams, ShardId};
+use ctypes::{BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H160, H256};
 
@@ -88,7 +88,7 @@ pub trait TopStateView {
         Ok(*self.metadata()?.expect("Metadata must exist").number_of_shards())
     }
 
-    fn shard_id_by_hash(&self, tx_hash: &H256) -> TrieResult<Option<ShardId>> {
+    fn shard_id_by_hash(&self, tx_hash: &TxHash) -> TrieResult<Option<ShardId>> {
         Ok(self.metadata()?.and_then(|metadata| metadata.shard_id_by_hash(tx_hash)))
     }
 
@@ -116,7 +116,7 @@ pub trait TopStateView {
     }
 
     /// Get the asset.
-    fn asset(&self, shard_id: ShardId, tracker: H256, index: usize) -> TrieResult<Option<OwnedAsset>> {
+    fn asset(&self, shard_id: ShardId, tracker: Tracker, index: usize) -> TrieResult<Option<OwnedAsset>> {
         match self.shard_state(shard_id)? {
             None => Ok(None),
             Some(state) => state.asset(tracker, index),
@@ -132,7 +132,7 @@ pub trait ShardStateView {
     /// Get the asset scheme.
     fn asset_scheme(&self, asset_type: H160) -> TrieResult<Option<AssetScheme>>;
     /// Get the asset.
-    fn asset(&self, tracker: H256, index: usize) -> TrieResult<Option<OwnedAsset>>;
+    fn asset(&self, tracker: Tracker, index: usize) -> TrieResult<Option<OwnedAsset>>;
 }
 
 pub trait ShardState {
@@ -166,7 +166,7 @@ pub trait TopState {
     /// Set the regular key of account `owner_public`
     fn set_regular_key(&mut self, owner_public: &Public, key: &Public) -> StateResult<()>;
 
-    fn create_shard(&mut self, fee_payer: &Address, tx_hash: H256, users: Vec<Address>) -> StateResult<()>;
+    fn create_shard(&mut self, fee_payer: &Address, tx_hash: TxHash, users: Vec<Address>) -> StateResult<()>;
     fn change_shard_owners(&mut self, shard_id: ShardId, owners: &[Address], sender: &Address) -> StateResult<()>;
     fn change_shard_users(&mut self, shard_id: ShardId, users: &[Address], sender: &Address) -> StateResult<()>;
 
@@ -174,8 +174,8 @@ pub trait TopState {
     fn set_shard_owners(&mut self, shard_id: ShardId, new_owners: Vec<Address>) -> StateResult<()>;
     fn set_shard_users(&mut self, shard_id: ShardId, new_users: Vec<Address>) -> StateResult<()>;
 
-    fn store_text(&mut self, key: &H256, text: Text, sig: &Signature) -> StateResult<()>;
-    fn remove_text(&mut self, key: &H256, sig: &Signature) -> StateResult<()>;
+    fn store_text(&mut self, key: &TxHash, text: Text, sig: &Signature) -> StateResult<()>;
+    fn remove_text(&mut self, key: &TxHash, sig: &Signature) -> StateResult<()>;
 
     fn increase_term_id(&mut self, last_term_finished_block_num: u64) -> StateResult<()>;
 

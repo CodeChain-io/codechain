@@ -18,8 +18,8 @@ use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, Address, Public};
 use ctypes::util::unexpected::OutOfBounds;
+use ctypes::BlockHash;
 use parking_lot::RwLock;
-use primitives::H256;
 
 use super::{RoundRobinValidator, ValidatorSet};
 use crate::client::ConsensusClient;
@@ -41,7 +41,7 @@ impl DynamicValidator {
         }
     }
 
-    fn validators(&self, parent: H256) -> Option<Vec<Validator>> {
+    fn validators(&self, parent: BlockHash) -> Option<Vec<Validator>> {
         let client: Arc<dyn ConsensusClient> =
             self.client.read().as_ref().and_then(Weak::upgrade).expect("Client is not initialized");
         let block_id = parent.into();
@@ -64,11 +64,11 @@ impl DynamicValidator {
         }
     }
 
-    fn validators_pubkey(&self, parent: H256) -> Option<Vec<Public>> {
+    fn validators_pubkey(&self, parent: BlockHash) -> Option<Vec<Public>> {
         self.validators(parent).map(|validators| validators.into_iter().map(|val| *val.pubkey()).collect())
     }
 
-    pub fn proposer_index(&self, parent: H256, prev_proposer_index: usize, proposed_view: usize) -> usize {
+    pub fn proposer_index(&self, parent: BlockHash, prev_proposer_index: usize, proposed_view: usize) -> usize {
         if let Some(validators) = self.validators(parent) {
             let num_validators = validators.len();
             proposed_view % num_validators
@@ -80,7 +80,7 @@ impl DynamicValidator {
 }
 
 impl ValidatorSet for DynamicValidator {
-    fn contains(&self, parent: &H256, public: &Public) -> bool {
+    fn contains(&self, parent: &BlockHash, public: &Public) -> bool {
         if let Some(validators) = self.validators_pubkey(*parent) {
             validators.into_iter().any(|pubkey| pubkey == *public)
         } else {
@@ -88,7 +88,7 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
-    fn contains_address(&self, parent: &H256, address: &Address) -> bool {
+    fn contains_address(&self, parent: &BlockHash, address: &Address) -> bool {
         if let Some(validators) = self.validators_pubkey(*parent) {
             validators.into_iter().any(|pubkey| public_to_address(&pubkey) == *address)
         } else {
@@ -96,7 +96,7 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
-    fn get(&self, parent: &H256, index: usize) -> Public {
+    fn get(&self, parent: &BlockHash, index: usize) -> Public {
         if let Some(validators) = self.validators_pubkey(*parent) {
             let n_validators = validators.len();
             *validators.get(index % n_validators).unwrap()
@@ -105,7 +105,7 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
-    fn get_index(&self, parent: &H256, public: &Public) -> Option<usize> {
+    fn get_index(&self, parent: &BlockHash, public: &Public) -> Option<usize> {
         if let Some(validators) = self.validators_pubkey(*parent) {
             validators.into_iter().enumerate().find(|(_index, pubkey)| pubkey == public).map(|(index, _)| index)
         } else {
@@ -113,7 +113,7 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
-    fn get_index_by_address(&self, parent: &H256, address: &Address) -> Option<usize> {
+    fn get_index_by_address(&self, parent: &BlockHash, address: &Address) -> Option<usize> {
         if let Some(validators) = self.validators_pubkey(*parent) {
             validators
                 .into_iter()
@@ -125,7 +125,7 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
-    fn next_block_proposer(&self, parent: &H256, view: u64) -> Option<Address> {
+    fn next_block_proposer(&self, parent: &BlockHash, view: u64) -> Option<Address> {
         if let Some(validators) = self.validators_pubkey(*parent) {
             let n_validators = validators.len();
             let index = view as usize % n_validators;
@@ -135,7 +135,7 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
-    fn count(&self, parent: &H256) -> usize {
+    fn count(&self, parent: &BlockHash) -> usize {
         if let Some(validators) = self.validators(*parent) {
             validators.len()
         } else {
@@ -143,7 +143,7 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
-    fn check_enough_votes(&self, parent: &H256, votes: &BitSet) -> Result<(), EngineError> {
+    fn check_enough_votes(&self, parent: &BlockHash, votes: &BitSet) -> Result<(), EngineError> {
         if let Some(validators) = self.validators(*parent) {
             let mut voted_delegation = 0u64;
             let n_validators = validators.len();
@@ -181,7 +181,7 @@ impl ValidatorSet for DynamicValidator {
         *client_lock = Some(client);
     }
 
-    fn addresses(&self, parent: &H256) -> Vec<Address> {
+    fn addresses(&self, parent: &BlockHash) -> Vec<Address> {
         if let Some(validators) = self.validators_pubkey(*parent) {
             validators.iter().map(public_to_address).collect()
         } else {

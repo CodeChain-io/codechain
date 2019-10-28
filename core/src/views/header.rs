@@ -16,7 +16,7 @@
 
 use ccrypto::blake256;
 use ckey::Address;
-use ctypes::BlockNumber;
+use ctypes::{BlockHash, BlockNumber};
 use primitives::{Bytes, H256, U256};
 use rlp::{self, Rlp};
 
@@ -41,8 +41,8 @@ impl<'a> HeaderView<'a> {
     }
 
     /// Returns header hash.
-    pub fn hash(&self) -> H256 {
-        blake256(self.rlp.as_raw())
+    pub fn hash(&self) -> BlockHash {
+        blake256(self.rlp.as_raw()).into()
     }
 
     /// Returns raw rlp.
@@ -51,8 +51,8 @@ impl<'a> HeaderView<'a> {
     }
 
     /// Returns parent hash.
-    pub fn parent_hash(&self) -> H256 {
-        self.rlp.val_at(0)
+    pub fn parent_hash(&self) -> BlockHash {
+        self.rlp.val_at::<BlockHash>(0)
     }
 
     /// Returns author.

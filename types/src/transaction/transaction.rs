@@ -16,11 +16,11 @@
 
 use ccrypto::blake256;
 use ckey::NetworkId;
-use primitives::H256;
 use rlp::RlpStream;
 
 use super::Action;
 use super::{AssetWrapCCCOutput, ShardTransaction};
+use crate::{Tracker, TxHash};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
@@ -44,14 +44,14 @@ impl Transaction {
         s.append(&self.action);
     }
 
-    /// The message hash of the tranasction.
-    pub fn hash(&self) -> H256 {
+    /// The message hash of the transaction.
+    pub fn hash(&self) -> TxHash {
         let mut stream = RlpStream::new();
         self.rlp_append_unsigned(&mut stream);
-        blake256(stream.as_raw())
+        blake256(stream.as_raw()).into()
     }
 
-    pub fn tracker(&self) -> Option<H256> {
+    pub fn tracker(&self) -> Option<Tracker> {
         let shard_tx = match self.action.clone() {
             Action::WrapCCC {
                 shard_id,

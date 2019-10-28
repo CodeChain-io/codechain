@@ -994,7 +994,7 @@ Gets the text with given transaction hash.
 Checks whether an asset is spent or not.
 
 ### Params
- 1. transaction id: `H256`
+ 1. tracker: `H256`
  2. index: `number`
  3. shard id: `number`
  4. block number: `number` | `null`

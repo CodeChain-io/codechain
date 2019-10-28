@@ -15,20 +15,20 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cnetwork::NodeId;
-use primitives::H256;
+use ctypes::{BlockHash, TxHash};
 
 /// Represents what has to be handled by actor listening to chain events
 pub trait ChainNotify: Send + Sync {
     /// fires when chain has new headers.
     fn new_headers(
         &self,
-        _imported: Vec<H256>,
-        _invalid: Vec<H256>,
-        _enacted: Vec<H256>,
-        _retracted: Vec<H256>,
-        _sealed: Vec<H256>,
+        _imported: Vec<BlockHash>,
+        _invalid: Vec<BlockHash>,
+        _enacted: Vec<BlockHash>,
+        _retracted: Vec<BlockHash>,
+        _sealed: Vec<BlockHash>,
         _duration: u64,
-        _new_best_proposal: Option<H256>,
+        _new_best_proposal: Option<BlockHash>,
     ) {
         // does nothing by default
     }
@@ -36,18 +36,18 @@ pub trait ChainNotify: Send + Sync {
     /// fires when chain has new blocks.
     fn new_blocks(
         &self,
-        _imported: Vec<H256>,
-        _invalid: Vec<H256>,
-        _enacted: Vec<H256>,
-        _retracted: Vec<H256>,
-        _sealed: Vec<H256>,
+        _imported: Vec<BlockHash>,
+        _invalid: Vec<BlockHash>,
+        _enacted: Vec<BlockHash>,
+        _retracted: Vec<BlockHash>,
+        _sealed: Vec<BlockHash>,
         _duration: u64,
     ) {
         // does nothing by default
     }
 
     /// fires when new transactions are received from a peer
-    fn transactions_received(&self, _hashes: Vec<H256>, _peer_id: NodeId) {
+    fn transactions_received(&self, _hashes: Vec<TxHash>, _peer_id: NodeId) {
         // does nothing by default
     }
 }

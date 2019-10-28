@@ -28,8 +28,9 @@ use std::ops::Range;
 use ckey::{Address, Password, PlatformAddress};
 use cstate::{FindActionHandler, TopStateView};
 use ctypes::transaction::IncompleteTransaction;
+use ctypes::{BlockHash, TxHash};
 use cvm::ChainTimeInfo;
-use primitives::{Bytes, H256};
+use primitives::Bytes;
 
 pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
@@ -73,8 +74,14 @@ pub trait MinerService: Send + Sync {
     fn set_transactions_limit(&self, limit: usize);
 
     /// Called when blocks are imported to chain, updates transactions queue.
-    fn chain_new_blocks<C>(&self, chain: &C, imported: &[H256], invalid: &[H256], enacted: &[H256], retracted: &[H256])
-    where
+    fn chain_new_blocks<C>(
+        &self,
+        chain: &C,
+        imported: &[BlockHash],
+        invalid: &[BlockHash],
+        enacted: &[BlockHash],
+        retracted: &[BlockHash],
+    ) where
         C: AccountData + BlockChainTrait + BlockProducer + EngineInfo + ImportBlock;
 
     /// PoW chain - can produce work package
@@ -102,7 +109,7 @@ pub trait MinerService: Send + Sync {
 
     /// Submit `seal` as a valid solution for the header of `pow_hash`.
     /// Will check the seal, but not actually insert the block into the chain.
-    fn submit_seal<C: ImportBlock>(&self, chain: &C, pow_hash: H256, seal: Vec<Bytes>) -> Result<(), Error>;
+    fn submit_seal<C: ImportBlock>(&self, chain: &C, pow_hash: BlockHash, seal: Vec<Bytes>) -> Result<(), Error>;
 
     /// Get the sealing work package and if `Some`, apply some transform.
     fn map_sealing_work<C, F, T>(&self, client: &C, f: F) -> Option<T>
@@ -134,7 +141,7 @@ pub trait MinerService: Send + Sync {
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
         seq: Option<u64>,
-    ) -> Result<(H256, u64), Error>;
+    ) -> Result<(TxHash, u64), Error>;
 
     /// Get a list of all pending transactions in the mem pool.
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions;
