@@ -1,0 +1,30 @@
+on: [push, pull_request]
+
+name: Actions - build
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macOS-10.14, ubuntu-18.04]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.37.0
+          override: true
+      - run: cargo fetch --verbose
+      - run: cargo build --release
+      - name: Archive
+        working-directory: target/release
+        run: |
+          echo ${{github.sha}} ${{github.ref}} | tee git-ref
+          shasum -a 256 codechain | tee sha256sums
+          mkdir codechain-${{matrix.os}}-${{github.sha}}
+          mv codechain git-ref sha256sums codechain-${{matrix.os}}-${{github.sha}}
+      - uses: actions/upload-artifact@v1
+        with:
+          name: codechain-${{matrix.os}}-${{github.sha}}
+          path: target/release/codechain-${{matrix.os}}-${{github.sha}}
