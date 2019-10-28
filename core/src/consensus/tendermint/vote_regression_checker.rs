@@ -49,7 +49,7 @@ mod tests {
         let mut checker = VoteRegressionChecker::new();
 
         let random_step = VoteStep::new(100, 10, Step::Prevote);
-        let random_hash = Some(H256::random());
+        let random_hash = Some(H256::random().into());
         assert!(checker.check(&VoteOn {
             step: random_step,
             block_hash: random_hash
@@ -62,7 +62,7 @@ mod tests {
         let mut checker = VoteRegressionChecker::new();
 
         let random_commit_step = VoteStep::new(100, 10, Step::Commit);
-        let random_hash = Some(H256::random());
+        let random_hash = Some(H256::random().into());
         checker.check(&VoteOn {
             step: random_commit_step,
             block_hash: random_hash,
@@ -75,12 +75,12 @@ mod tests {
 
         checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Prevote),
-            block_hash: Some(H256::from(1)),
+            block_hash: Some(H256::from(1).into()),
         });
 
         assert!(checker.check(&VoteOn {
             step: VoteStep::new(101, 10, Step::Prevote),
-            block_hash: Some(H256::from(2))
+            block_hash: Some(H256::from(2).into())
         }))
     }
 
@@ -90,12 +90,12 @@ mod tests {
 
         checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Prevote),
-            block_hash: Some(H256::from(1)),
+            block_hash: Some(H256::from(1).into()),
         });
 
         assert!(!checker.check(&VoteOn {
             step: VoteStep::new(99, 10, Step::Prevote),
-            block_hash: Some(H256::from(2))
+            block_hash: Some(H256::from(2).into())
         }))
     }
 
@@ -105,12 +105,12 @@ mod tests {
 
         checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Prevote),
-            block_hash: Some(H256::from(1)),
+            block_hash: Some(H256::from(1).into()),
         });
 
         assert!(checker.check(&VoteOn {
             step: VoteStep::new(100, 11, Step::Prevote),
-            block_hash: Some(H256::from(2))
+            block_hash: Some(H256::from(2).into())
         }))
     }
 
@@ -120,12 +120,12 @@ mod tests {
 
         checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Prevote),
-            block_hash: Some(H256::from(1)),
+            block_hash: Some(H256::from(1).into()),
         });
 
         assert!(!checker.check(&VoteOn {
             step: VoteStep::new(100, 9, Step::Prevote),
-            block_hash: Some(H256::from(2))
+            block_hash: Some(H256::from(2).into())
         }))
     }
 
@@ -135,12 +135,12 @@ mod tests {
 
         checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Prevote),
-            block_hash: Some(H256::from(1)),
+            block_hash: Some(H256::from(1).into()),
         });
 
         assert!(checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Precommit),
-            block_hash: Some(H256::from(2))
+            block_hash: Some(H256::from(2).into())
         }))
     }
 
@@ -150,12 +150,12 @@ mod tests {
 
         checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Prevote),
-            block_hash: Some(H256::from(1)),
+            block_hash: Some(H256::from(1).into()),
         });
 
         assert!(!checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Propose),
-            block_hash: Some(H256::from(2))
+            block_hash: Some(H256::from(2).into())
         }))
     }
 
@@ -163,7 +163,7 @@ mod tests {
     fn test_allow_same_hash() {
         let mut checker = VoteRegressionChecker::new();
 
-        let block_hash = Some(H256::random());
+        let block_hash = Some(H256::random().into());
         checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Prevote),
             block_hash,
@@ -181,12 +181,12 @@ mod tests {
 
         checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Prevote),
-            block_hash: Some(H256::from(1)),
+            block_hash: Some(H256::from(1).into()),
         });
 
         assert!(!checker.check(&VoteOn {
             step: VoteStep::new(100, 10, Step::Prevote),
-            block_hash: Some(H256::from(2))
+            block_hash: Some(H256::from(2).into())
         }))
     }
 }

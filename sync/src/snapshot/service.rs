@@ -20,8 +20,7 @@ use std::sync::Arc;
 use std::thread::spawn;
 
 use ccore::{BlockChainClient, BlockChainTrait, BlockId, ChainNotify, Client, DatabaseClient};
-
-use primitives::H256;
+use ctypes::BlockHash;
 
 use super::error::Error;
 use super::snapshot::{Snapshot, WriteSnapshot};
@@ -48,11 +47,11 @@ impl ChainNotify for Service {
     /// fires when chain has new blocks.
     fn new_blocks(
         &self,
-        _imported: Vec<H256>,
-        _invalid: Vec<H256>,
-        enacted: Vec<H256>,
-        _retracted: Vec<H256>,
-        _sealed: Vec<H256>,
+        _imported: Vec<BlockHash>,
+        _invalid: Vec<BlockHash>,
+        enacted: Vec<BlockHash>,
+        _retracted: Vec<BlockHash>,
+        _sealed: Vec<BlockHash>,
         _duration: u64,
     ) {
         let best_number = self.client.chain_info().best_block_number;
@@ -65,7 +64,7 @@ impl ChainNotify for Service {
             let header = self.client.block_header(&BlockId::Number(number)).expect("Snapshot target must exist");
 
             let db = self.client.database();
-            let path: PathBuf = [self.root_dir.clone(), format!("{:x}", header.hash())].iter().collect();
+            let path: PathBuf = [self.root_dir.clone(), format!("{:x}", *header.hash())].iter().collect();
             let root = header.state_root();
             // FIXME: The db can be corrupted because the CodeChain doesn't wait child threads end on exit.
             spawn(move || match Snapshot::try_new(path).map(|s| s.write_snapshot(db.as_ref(), &root)) {

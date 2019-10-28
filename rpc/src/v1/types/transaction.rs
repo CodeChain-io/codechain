@@ -17,7 +17,7 @@
 use ccore::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use cjson::uint::Uint;
 use ckey::{NetworkId, Signature};
-use primitives::H256;
+use ctypes::{BlockHash, TxHash};
 
 use super::ActionWithTracker;
 
@@ -25,14 +25,14 @@ use super::ActionWithTracker;
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     pub block_number: Option<u64>,
-    pub block_hash: Option<H256>,
+    pub block_hash: Option<BlockHash>,
     pub transaction_index: Option<usize>,
     pub result: Option<bool>,
     pub seq: u64,
     pub fee: Uint,
     pub network_id: NetworkId,
     pub action: ActionWithTracker,
-    pub hash: H256,
+    pub hash: TxHash,
     pub sig: Signature,
 }
 

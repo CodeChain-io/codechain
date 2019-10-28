@@ -17,7 +17,7 @@
 use cjson::scheme::Params;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
-use ctypes::{BlockNumber, ShardId};
+use ctypes::{BlockHash, BlockNumber, ShardId, Tracker, TxHash};
 use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
@@ -28,28 +28,28 @@ use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Te
 pub trait Chain {
     /// Gets transaction with given hash.
     #[rpc(name = "chain_getTransaction")]
-    fn get_transaction(&self, transaction_hash: H256) -> Result<Option<Transaction>>;
+    fn get_transaction(&self, transaction_hash: TxHash) -> Result<Option<Transaction>>;
 
     /// Gets the signer of transaction with given hash.
     #[rpc(name = "chain_getTransactionSigner")]
-    fn get_transaction_signer(&self, transaction_hash: H256) -> Result<Option<PlatformAddress>>;
+    fn get_transaction_signer(&self, transaction_hash: TxHash) -> Result<Option<PlatformAddress>>;
 
     /// Query whether the chain has the transaction with given transaction hash.
     #[rpc(name = "chain_containsTransaction")]
-    fn contains_transaction(&self, transaction_hash: H256) -> Result<bool>;
+    fn contains_transaction(&self, transaction_hash: TxHash) -> Result<bool>;
 
     #[rpc(name = "chain_containTransaction")]
-    fn contain_transaction(&self, transaction_hash: H256) -> Result<bool>;
+    fn contain_transaction(&self, transaction_hash: TxHash) -> Result<bool>;
 
     /// Gets transaction with given transaction tracker.
     #[rpc(name = "chain_getTransactionByTracker")]
-    fn get_transaction_by_tracker(&self, tracker: H256) -> Result<Option<Transaction>>;
+    fn get_transaction_by_tracker(&self, tracker: Tracker) -> Result<Option<Transaction>>;
 
     /// Gets asset scheme with given transaction tracker.
     #[rpc(name = "chain_getAssetSchemeByTracker")]
     fn get_asset_scheme_by_tracker(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         shard_id: ShardId,
         block_number: Option<u64>,
     ) -> Result<Option<AssetScheme>>;
@@ -65,13 +65,13 @@ pub trait Chain {
 
     /// Gets text with given transaction hash.
     #[rpc(name = "chain_getText")]
-    fn get_text(&self, transaction_hash: H256, block_number: Option<u64>) -> Result<Option<Text>>;
+    fn get_text(&self, transaction_hash: TxHash, block_number: Option<u64>) -> Result<Option<Text>>;
 
     /// Gets asset with given asset type.
     #[rpc(name = "chain_getAsset")]
     fn get_asset(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_number: Option<u64>,
@@ -81,7 +81,7 @@ pub trait Chain {
     #[rpc(name = "chain_isAssetSpent")]
     fn is_asset_spent(
         &self,
-        transaction_hash: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_number: Option<u64>,
@@ -113,7 +113,7 @@ pub trait Chain {
 
     /// Gets shard id
     #[rpc(name = "chain_getShardIdByHash")]
-    fn get_shard_id_by_hash(&self, create_shard_tx_hash: H256, block_number: Option<u64>) -> Result<Option<ShardId>>;
+    fn get_shard_id_by_hash(&self, create_shard_tx_hash: TxHash, block_number: Option<u64>) -> Result<Option<ShardId>>;
 
     /// Gets shard root
     #[rpc(name = "chain_getShardRoot")]
@@ -137,7 +137,7 @@ pub trait Chain {
 
     /// Gets the hash of the block with given number.
     #[rpc(name = "chain_getBlockHash")]
-    fn get_block_hash(&self, block_number: u64) -> Result<Option<H256>>;
+    fn get_block_hash(&self, block_number: u64) -> Result<Option<BlockHash>>;
 
     /// Gets block with given number.
     #[rpc(name = "chain_getBlockByNumber")]
@@ -145,11 +145,11 @@ pub trait Chain {
 
     /// Gets block with given hash.
     #[rpc(name = "chain_getBlockByHash")]
-    fn get_block_by_hash(&self, block_hash: H256) -> Result<Option<Block>>;
+    fn get_block_by_hash(&self, block_hash: BlockHash) -> Result<Option<Block>>;
 
     ///Gets the count of transactions in a block with given hash.
     #[rpc(name = "chain_getBlockTransactionCountByHash")]
-    fn get_block_transaction_count_by_hash(&self, block_hash: H256) -> Result<Option<usize>>;
+    fn get_block_transaction_count_by_hash(&self, block_hash: BlockHash) -> Result<Option<usize>>;
 
     ///Gets the minimum transaction fee of the given name.
     #[rpc(name = "chain_getMinTransactionFee")]

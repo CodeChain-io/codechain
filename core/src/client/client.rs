@@ -28,7 +28,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockNumber, CommonParams, ShardId};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use journaldb;
@@ -101,7 +101,7 @@ impl Client {
             // Sets the correct state root.
             state_db = scheme.ensure_genesis_state(state_db)?;
             let mut batch = DBTransaction::new();
-            state_db.journal_under(&mut batch, 0, scheme.genesis_header().hash())?;
+            state_db.journal_under(&mut batch, 0, *scheme.genesis_header().hash())?;
             db.write(batch).map_err(ClientError::Database)?;
         }
 
@@ -142,7 +142,7 @@ impl Client {
         self.notify.write().push(target);
     }
 
-    pub fn transactions_received(&self, hashes: &[H256], peer_id: NodeId) {
+    pub fn transactions_received(&self, hashes: &[TxHash], peer_id: NodeId) {
         self.notify(|notify| {
             notify.transactions_received(hashes.to_vec(), peer_id);
         });
@@ -150,11 +150,11 @@ impl Client {
 
     pub fn new_blocks(
         &self,
-        imported: &[H256],
-        invalid: &[H256],
-        enacted: &[H256],
-        retracted: &[H256],
-        sealed: &[H256],
+        imported: &[BlockHash],
+        invalid: &[BlockHash],
+        enacted: &[BlockHash],
+        retracted: &[BlockHash],
+        sealed: &[BlockHash],
         duration: u64,
     ) {
         self.notify(|notify| {
@@ -171,13 +171,13 @@ impl Client {
 
     pub fn new_headers(
         &self,
-        imported: &[H256],
-        invalid: &[H256],
-        enacted: &[H256],
-        retracted: &[H256],
-        sealed: &[H256],
+        imported: &[BlockHash],
+        invalid: &[BlockHash],
+        enacted: &[BlockHash],
+        retracted: &[BlockHash],
+        sealed: &[BlockHash],
         duration: u64,
-        new_best_proposal: Option<H256>,
+        new_best_proposal: Option<BlockHash>,
     ) {
         self.notify(|notify| {
             notify.new_headers(
@@ -217,7 +217,7 @@ impl Client {
         self.importer.miner.update_sealing(self, parent_block, allow_empty_block);
     }
 
-    fn block_hash(chain: &BlockChain, id: &BlockId) -> Option<H256> {
+    fn block_hash(chain: &BlockChain, id: &BlockId) -> Option<BlockHash> {
         match id {
             BlockId::Hash(hash) => Some(*hash),
             BlockId::Number(number) => chain.block_hash(*number),
@@ -239,7 +239,7 @@ impl Client {
         }
     }
 
-    fn transaction_addresses(&self, tracker: &H256) -> Option<TransactionAddress> {
+    fn transaction_addresses(&self, tracker: &Tracker) -> Option<TransactionAddress> {
         self.block_chain().transaction_address_by_tracker(tracker)
     }
 
@@ -257,7 +257,7 @@ impl Client {
 
     /// This is triggered by a message coming from the Tendermint engine when a block is committed.
     /// See EngineClient::update_best_as_committed() for details.
-    pub fn update_best_as_committed(&self, block_hash: H256) {
+    pub fn update_best_as_committed(&self, block_hash: BlockHash) {
         ctrace!(CLIENT, "Update the best block to the hash({}), as requested", block_hash);
         let start = Instant::now();
         let route = {
@@ -366,7 +366,13 @@ impl AssetClient for Client {
         }
     }
 
-    fn get_asset(&self, tracker: H256, index: usize, shard_id: ShardId, id: BlockId) -> TrieResult<Option<OwnedAsset>> {
+    fn get_asset(
+        &self,
+        tracker: Tracker,
+        index: usize,
+        shard_id: ShardId,
+        id: BlockId,
+    ) -> TrieResult<Option<OwnedAsset>> {
         if let Some(state) = Client::state_at(&self, id) {
             Ok(state.asset(shard_id, tracker, index)?)
         } else {
@@ -379,7 +385,7 @@ impl AssetClient for Client {
     /// It returns None if such an asset never existed in the shard at the given block.
     fn is_asset_spent(
         &self,
-        tracker: H256,
+        tracker: Tracker,
         index: usize,
         shard_id: ShardId,
         block_id: BlockId,
@@ -416,7 +422,7 @@ impl AssetClient for Client {
 }
 
 impl TextClient for Client {
-    fn get_text(&self, tx_hash: H256, id: BlockId) -> TrieResult<Option<Text>> {
+    fn get_text(&self, tx_hash: TxHash, id: BlockId) -> TrieResult<Option<Text>> {
         if let Some(state) = Client::state_at(&self, id) {
             Ok(state.text(&tx_hash)?)
         } else {
@@ -557,7 +563,7 @@ impl EngineClient for Client {
     }
 
     /// Submit a seal for a block in the mining queue.
-    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
+    fn submit_seal(&self, block_hash: BlockHash, seal: Vec<Bytes>) {
         if self.importer.miner.submit_seal(self, block_hash, seal).is_err() {
             cwarn!(CLIENT, "Wrong internal seal submission!")
         }
@@ -571,7 +577,7 @@ impl EngineClient for Client {
     /// Update the best block as the given block hash.
     ///
     /// Used in Tendermint, when going to the commit step.
-    fn update_best_as_committed(&self, block_hash: H256) {
+    fn update_best_as_committed(&self, block_hash: BlockHash) {
         ctrace!(ENGINE, "Requesting a best block update (block hash: {})", block_hash);
         match self.io_channel.lock().send(ClientIoMessage::UpdateBestAsCommitted(block_hash)) {
             Ok(_) => {}
@@ -625,17 +631,17 @@ impl BlockChainTrait for Client {
         Self::block_hash(&chain, id).and_then(|hash| chain.block(&hash))
     }
 
-    fn transaction_block(&self, id: &TransactionId) -> Option<H256> {
+    fn transaction_block(&self, id: &TransactionId) -> Option<BlockHash> {
         self.transaction_address(id).map(|addr| addr.block_hash)
     }
 
-    fn transaction_header(&self, tracker: &H256) -> Option<::encoded::Header> {
+    fn transaction_header(&self, tracker: &Tracker) -> Option<::encoded::Header> {
         self.transaction_addresses(tracker).map(|addr| addr.block_hash).and_then(|hash| self.block_header(&hash.into()))
     }
 }
 
 impl ImportBlock for Client {
-    fn import_block(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
+    fn import_block(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError> {
         use crate::verification::queue::kind::blocks::Unverified;
         use crate::verification::queue::kind::BlockLike;
 
@@ -648,7 +654,7 @@ impl ImportBlock for Client {
         Ok(self.importer.block_queue.import(unverified)?)
     }
 
-    fn import_header(&self, bytes: Bytes) -> Result<H256, BlockImportError> {
+    fn import_header(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError> {
         let unverified = ::encoded::Header::new(bytes).decode();
         {
             if self.block_chain().is_known_header(&unverified.hash()) {
@@ -781,7 +787,7 @@ impl BlockChainClient for Client {
         Self::block_hash(&chain, id).and_then(|hash| chain.block_details(&hash)).map(|d| d.total_score)
     }
 
-    fn block_hash(&self, id: &BlockId) -> Option<H256> {
+    fn block_hash(&self, id: &BlockId) -> Option<BlockHash> {
         let chain = self.block_chain();
         Self::block_hash(&chain, id)
     }
@@ -791,18 +797,18 @@ impl BlockChainClient for Client {
         self.transaction_address(id).and_then(|address| chain.transaction(&address))
     }
 
-    fn error_hint(&self, hash: &H256) -> Option<String> {
+    fn error_hint(&self, hash: &TxHash) -> Option<String> {
         let chain = self.block_chain();
         chain.error_hint(hash)
     }
 
-    fn transaction_by_tracker(&self, tracker: &H256) -> Option<LocalizedTransaction> {
+    fn transaction_by_tracker(&self, tracker: &Tracker) -> Option<LocalizedTransaction> {
         let chain = self.block_chain();
         let address = self.transaction_addresses(tracker);
         address.and_then(|address| chain.transaction(&address))
     }
 
-    fn error_hints_by_tracker(&self, tracker: &H256) -> Vec<(H256, Option<String>)> {
+    fn error_hints_by_tracker(&self, tracker: &Tracker) -> Vec<(TxHash, Option<String>)> {
         let chain = self.block_chain();
         chain.error_hints_by_tracker(tracker)
     }
@@ -849,7 +855,7 @@ impl Shard for Client {
         state.number_of_shards().ok()
     }
 
-    fn shard_id_by_hash(&self, create_shard_tx_hash: &H256, state: StateOrBlock) -> Option<u16> {
+    fn shard_id_by_hash(&self, create_shard_tx_hash: &TxHash, state: StateOrBlock) -> Option<u16> {
         let state = self.state_info(state)?;
         state.shard_id_by_hash(&create_shard_tx_hash).ok()?
     }
@@ -919,11 +925,11 @@ impl MiningBlockChainClient for Client {
 }
 
 impl ChainTimeInfo for Client {
-    fn transaction_block_age(&self, tracker: &H256, parent_block_number: BlockNumber) -> Option<u64> {
+    fn transaction_block_age(&self, tracker: &Tracker, parent_block_number: BlockNumber) -> Option<u64> {
         self.transaction_block_number(tracker).map(|block_number| parent_block_number - block_number)
     }
 
-    fn transaction_time_age(&self, tracker: &H256, parent_timestamp: u64) -> Option<u64> {
+    fn transaction_time_age(&self, tracker: &Tracker, parent_timestamp: u64) -> Option<u64> {
         self.transaction_block_timestamp(tracker).map(|block_timestamp| parent_timestamp - block_timestamp)
     }
 }

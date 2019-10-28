@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::BlockNumber;
-use primitives::H256;
+use ctypes::{BlockHash, BlockNumber, TxHash};
 
 /// Uniquely identifies block.
 #[derive(Debug, PartialEq, Copy, Clone, Hash, Eq)]
 pub enum BlockId {
     /// Block's blake256.
     /// Querying by hash is always faster.
-    Hash(H256),
+    Hash(BlockHash),
     /// Block number within canon blockchain.
     Number(BlockNumber),
     /// Earliest block (genesis).
@@ -33,8 +32,8 @@ pub enum BlockId {
     ParentOfLatest,
 }
 
-impl From<H256> for BlockId {
-    fn from(hash: H256) -> Self {
+impl From<BlockHash> for BlockId {
+    fn from(hash: BlockHash) -> Self {
         BlockId::Hash(hash)
     }
 }
@@ -48,14 +47,14 @@ impl From<BlockNumber> for BlockId {
 #[derive(Debug, PartialEq, Clone, Hash, Eq)]
 pub enum TransactionId {
     /// Transaction's blake256.
-    Hash(H256),
+    Hash(TxHash),
     /// Block id and transaction index within this block.
     /// Querying by block position is always faster.
     Location(BlockId, usize),
 }
 
-impl From<H256> for TransactionId {
-    fn from(hash: H256) -> Self {
+impl From<TxHash> for TransactionId {
+    fn from(hash: TxHash) -> Self {
         TransactionId::Hash(hash)
     }
 }

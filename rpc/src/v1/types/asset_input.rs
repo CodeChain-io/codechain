@@ -16,13 +16,13 @@
 
 use cjson::uint::Uint;
 use ctypes::transaction::{AssetOutPoint as AssetOutPointType, AssetTransferInput as AssetTransferInputType, Timelock};
-use ctypes::ShardId;
-use primitives::{Bytes, H160, H256};
+use ctypes::{ShardId, Tracker};
+use primitives::{Bytes, H160};
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetOutPoint {
-    pub tracker: H256,
+    pub tracker: Tracker,
     pub index: usize,
     pub asset_type: H160,
     pub shard_id: ShardId,

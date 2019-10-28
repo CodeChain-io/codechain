@@ -17,15 +17,15 @@
 use std::collections::{HashMap, HashSet};
 
 use ccore::UnverifiedTransaction;
-use ctypes::Header;
+use ctypes::{BlockHash, Header};
 use primitives::H256;
 
 use super::super::message::RequestMessage;
 
 #[derive(Clone)]
 struct Target {
-    hash: H256,
-    transaction_hash: H256,
+    hash: BlockHash,
+    parent_hash: BlockHash,
     transactions_root: H256,
     transaction_root: H256,
 }
@@ -33,8 +33,8 @@ struct Target {
 #[derive(Default)]
 pub struct BodyDownloader {
     targets: Vec<Target>,
-    downloading: HashSet<H256>,
-    downloaded: HashMap<H256, Vec<UnverifiedTransaction>>,
+    downloading: HashSet<BlockHash>,
+    downloaded: HashMap<BlockHash, Vec<UnverifiedTransaction>>,
 }
 
 impl BodyDownloader {
@@ -57,7 +57,7 @@ impl BodyDownloader {
         }
     }
 
-    pub fn import_bodies(&mut self, hashes: Vec<H256>, bodies: Vec<Vec<UnverifiedTransaction>>) {
+    pub fn import_bodies(&mut self, hashes: Vec<BlockHash>, bodies: Vec<Vec<UnverifiedTransaction>>) {
         for (hash, body) in hashes.into_iter().zip(bodies) {
             if self.downloading.remove(&hash) {
                 if body.is_empty() {
@@ -76,13 +76,13 @@ impl BodyDownloader {
         cdebug!(SYNC, "Add download target: {}", header.hash());
         self.targets.push(Target {
             hash: header.hash(),
-            transaction_hash: parent.hash(),
+            parent_hash: parent.hash(),
             transactions_root: *header.transactions_root(),
             transaction_root: *parent.transactions_root(),
         });
     }
 
-    pub fn remove_target(&mut self, targets: &[H256]) {
+    pub fn remove_target(&mut self, targets: &[BlockHash]) {
         if targets.is_empty() {
             return
         }
@@ -99,7 +99,7 @@ impl BodyDownloader {
         self.downloaded.shrink_to_fit();
     }
 
-    pub fn reset_downloading(&mut self, hashes: &[H256]) {
+    pub fn reset_downloading(&mut self, hashes: &[BlockHash]) {
         cdebug!(SYNC, "Remove downloading by timeout {:?}", hashes);
         for hash in hashes {
             self.downloading.remove(&hash);
@@ -107,7 +107,7 @@ impl BodyDownloader {
         self.downloading.shrink_to_fit();
     }
 
-    pub fn drain(&mut self) -> Vec<(H256, Vec<UnverifiedTransaction>)> {
+    pub fn drain(&mut self) -> Vec<(BlockHash, Vec<UnverifiedTransaction>)> {
         let mut result = Vec::new();
         for t in &self.targets {
             if let Some(body) = self.downloaded.remove(&t.hash) {

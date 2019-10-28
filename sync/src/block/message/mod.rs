@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{H256, U256};
+use ctypes::BlockHash;
+use primitives::U256;
 use rlp::{Decodable, DecoderError, Encodable, RlpStream, UntrustedRlp};
 
 mod request;
@@ -37,8 +38,8 @@ const MESSAGE_ID_STATE_CHUNK: u8 = 0x09;
 pub enum Message {
     Status {
         total_score: U256,
-        best_hash: H256,
-        genesis_hash: H256,
+        best_hash: BlockHash,
+        genesis_hash: BlockHash,
     },
     Request(u64, RequestMessage),
     Response(u64, ResponseMessage),
@@ -128,6 +129,7 @@ impl Decodable for Message {
 
 #[cfg(test)]
 mod tests {
+    use primitives::H256;
     use rlp::rlp_encode_and_decode_test;
 
     use super::*;
@@ -136,8 +138,8 @@ mod tests {
     fn status_message_rlp() {
         rlp_encode_and_decode_test!(Message::Status {
             total_score: U256::default(),
-            best_hash: H256::default(),
-            genesis_hash: H256::default(),
+            best_hash: H256::default().into(),
+            genesis_hash: H256::default().into(),
         });
     }
 
@@ -150,6 +152,6 @@ mod tests {
     #[test]
     fn request_state_head_rlp() {
         let request_id = 10;
-        rlp_encode_and_decode_test!(Message::Request(request_id, RequestMessage::StateHead(H256::random())));
+        rlp_encode_and_decode_test!(Message::Request(request_id, RequestMessage::StateHead(H256::random().into())));
     }
 }

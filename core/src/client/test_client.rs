@@ -43,7 +43,7 @@ use cstate::tests::helpers::empty_top_state;
 use cstate::{FindActionHandler, StateDB, TopLevelState};
 use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
-use ctypes::{BlockNumber, CommonParams, Header as BlockHeader};
+use ctypes::{BlockHash, BlockNumber, CommonParams, Header as BlockHeader, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use journaldb;
 use kvdb::KeyValueDB;
@@ -73,13 +73,13 @@ use client::ConsensusClient;
 /// Test client.
 pub struct TestBlockChainClient {
     /// Blocks.
-    pub blocks: RwLock<HashMap<H256, Bytes>>,
+    pub blocks: RwLock<HashMap<BlockHash, Bytes>>,
     /// Mapping of numbers to hashes.
-    pub numbers: RwLock<HashMap<usize, H256>>,
+    pub numbers: RwLock<HashMap<usize, BlockHash>>,
     /// Genesis block hash.
-    pub genesis_hash: H256,
+    pub genesis_hash: BlockHash,
     /// Last block hash.
-    pub last_hash: RwLock<H256>,
+    pub last_hash: RwLock<BlockHash>,
     /// Last transactions_root
     pub last_transactions_root: RwLock<H256>,
     /// Extra data do set for each block
@@ -203,7 +203,7 @@ impl TestBlockChainClient {
         }
     }
     /// Add a block to test client with designated author.
-    pub fn add_block_with_author(&self, author: Option<Address>, n: usize, transaction_length: usize) -> H256 {
+    pub fn add_block_with_author(&self, author: Option<Address>, n: usize, transaction_length: usize) -> BlockHash {
         let mut header = BlockHeader::new();
         header.set_score(From::from(n));
         header.set_parent_hash(*self.last_hash.read());
@@ -257,7 +257,7 @@ impl TestBlockChainClient {
         let block_id = n.into();
         let hash = self.block_hash(&block_id).unwrap();
         let mut header: BlockHeader = self.block_header(&block_id).unwrap().decode();
-        header.set_parent_hash(H256::from(42));
+        header.set_parent_hash(H256::from(42).into());
         let mut rlp = RlpStream::new_list(3);
         rlp.append(&header);
         rlp.append_raw(&::rlp::NULL_RLP, 1);
@@ -266,13 +266,13 @@ impl TestBlockChainClient {
     }
 
     /// TODO:
-    pub fn block_hash_delta_minus(&mut self, delta: usize) -> H256 {
+    pub fn block_hash_delta_minus(&mut self, delta: usize) -> BlockHash {
         let blocks_read = self.numbers.read();
         let index = blocks_read.len() - delta;
         blocks_read[&index]
     }
 
-    fn block_hash(&self, id: &BlockId) -> Option<H256> {
+    fn block_hash(&self, id: &BlockId) -> Option<BlockHash> {
         match id {
             BlockId::Hash(hash) => Some(*hash),
             BlockId::Number(n) => self.numbers.read().get(&(*n as usize)).cloned(),
@@ -291,7 +291,7 @@ impl TestBlockChainClient {
     }
 
     /// Inserts a transaction to miners mem pool.
-    pub fn insert_transaction_to_pool(&self) -> H256 {
+    pub fn insert_transaction_to_pool(&self) -> TxHash {
         let keypair = Random.generate().unwrap();
         let tx = Transaction {
             seq: 0,
@@ -455,17 +455,17 @@ impl BlockChainTrait for TestBlockChainClient {
         self.block_hash(id).and_then(|hash| self.blocks.read().get(&hash).cloned()).map(encoded::Block::new)
     }
 
-    fn transaction_block(&self, _id: &TransactionId) -> Option<H256> {
+    fn transaction_block(&self, _id: &TransactionId) -> Option<BlockHash> {
         None // Simple default.
     }
 
-    fn transaction_header(&self, _tracker: &H256) -> Option<::encoded::Header> {
+    fn transaction_header(&self, _tracker: &Tracker) -> Option<::encoded::Header> {
         None
     }
 }
 
 impl ImportBlock for TestBlockChainClient {
-    fn import_block(&self, b: Bytes) -> Result<H256, BlockImportError> {
+    fn import_block(&self, b: Bytes) -> Result<BlockHash, BlockImportError> {
         let header = Rlp::new(&b).val_at::<BlockHeader>(0);
         let h = header.hash();
         let number: usize = header.number() as usize;
@@ -487,7 +487,8 @@ impl ImportBlock for TestBlockChainClient {
                 *score += *header.score();
             }
             mem::replace(&mut *self.last_hash.write(), h);
-            mem::replace(&mut *self.last_transactions_root.write(), h);
+            // FIXME: The transactions root is not related to block hash.
+            mem::replace(&mut *self.last_transactions_root.write(), *h);
             self.blocks.write().insert(h, b);
             self.numbers.write().insert(number, h);
             let mut parent_hash = *header.parent_hash();
@@ -505,12 +506,12 @@ impl ImportBlock for TestBlockChainClient {
         Ok(h)
     }
 
-    fn import_header(&self, _bytes: Bytes) -> Result<H256, BlockImportError> {
+    fn import_header(&self, _bytes: Bytes) -> Result<BlockHash, BlockImportError> {
         unimplemented!()
     }
 
     fn import_sealed_block(&self, _block: &SealedBlock) -> ImportResult {
-        Ok(H256::default())
+        Ok(H256::default().into())
     }
 
     fn set_min_timer(&self) {}
@@ -584,7 +585,7 @@ impl BlockChainClient for TestBlockChainClient {
         Some(U256::zero())
     }
 
-    fn block_hash(&self, id: &BlockId) -> Option<H256> {
+    fn block_hash(&self, id: &BlockId) -> Option<BlockHash> {
         Self::block_hash(self, id)
     }
 
@@ -592,15 +593,15 @@ impl BlockChainClient for TestBlockChainClient {
         unimplemented!();
     }
 
-    fn error_hint(&self, _hash: &H256) -> Option<String> {
+    fn error_hint(&self, _hash: &TxHash) -> Option<String> {
         unimplemented!();
     }
 
-    fn transaction_by_tracker(&self, _: &H256) -> Option<LocalizedTransaction> {
+    fn transaction_by_tracker(&self, _: &Tracker) -> Option<LocalizedTransaction> {
         unimplemented!();
     }
 
-    fn error_hints_by_tracker(&self, _: &H256) -> Vec<(H256, Option<String>)> {
+    fn error_hints_by_tracker(&self, _: &Tracker) -> Vec<(TxHash, Option<String>)> {
         unimplemented!();
     }
 }
@@ -610,11 +611,11 @@ impl TimeoutHandler for TestBlockChainClient {
 }
 
 impl ChainTimeInfo for TestBlockChainClient {
-    fn transaction_block_age(&self, _: &H256, _parent_block_number: BlockNumber) -> Option<u64> {
+    fn transaction_block_age(&self, _: &Tracker, _parent_block_number: BlockNumber) -> Option<u64> {
         Some(0)
     }
 
-    fn transaction_time_age(&self, _: &H256, _parent_timestamp: u64) -> Option<u64> {
+    fn transaction_time_age(&self, _: &Tracker, _parent_timestamp: u64) -> Option<u64> {
         Some(0)
     }
 }
@@ -626,7 +627,7 @@ impl super::EngineClient for TestBlockChainClient {
         self.miner.update_sealing(self, parent_block, allow_empty_block)
     }
 
-    fn submit_seal(&self, block_hash: H256, seal: Vec<Bytes>) {
+    fn submit_seal(&self, block_hash: BlockHash, seal: Vec<Bytes>) {
         if self.miner.submit_seal(self, block_hash, seal).is_err() {
             cwarn!(CLIENT, "Wrong internal seal submission!")
         }
@@ -636,7 +637,7 @@ impl super::EngineClient for TestBlockChainClient {
         U256::zero()
     }
 
-    fn update_best_as_committed(&self, _block_hash: H256) {}
+    fn update_best_as_committed(&self, _block_hash: BlockHash) {}
 
     fn get_kvdb(&self) -> Arc<dyn KeyValueDB> {
         let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));

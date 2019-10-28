@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ctypes::BlockHash;
 use kvdb::{DBTransaction, KeyValueDB};
-use primitives::H256;
 
 use super::message::ConsensusMessage;
 use super::types::{Height, Step, View};
@@ -39,7 +39,7 @@ pub struct BackupDataV0 {
     pub view: View,
     pub step: Step,
     pub votes: Vec<ConsensusMessage>,
-    pub proposal: Option<H256>,
+    pub proposal: Option<BlockHash>,
     pub last_confirmed_view: View,
 }
 
@@ -48,7 +48,7 @@ pub struct BackupDataV1 {
     pub view: View,
     pub step: Step,
     pub votes: Vec<ConsensusMessage>,
-    pub proposal: Option<H256>,
+    pub proposal: Option<BlockHash>,
     pub finalized_view_of_previous_block: View,
     pub finalized_view_of_current_block: Option<View>,
 }
@@ -86,7 +86,7 @@ pub fn restore(db: &dyn KeyValueDB) -> Option<BackupDataV1> {
     load_v1(db)
 }
 
-fn find_proposal(votes: &[ConsensusMessage], height: Height, view: View) -> Option<H256> {
+fn find_proposal(votes: &[ConsensusMessage], height: Height, view: View) -> Option<BlockHash> {
     votes
         .iter()
         .rev()

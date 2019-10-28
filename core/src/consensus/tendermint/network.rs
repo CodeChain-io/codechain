@@ -24,7 +24,8 @@ use ckey::SchnorrSignature;
 use cnetwork::{Api, NetworkExtension, NodeId};
 use crossbeam_channel as crossbeam;
 use ctimer::TimerToken;
-use primitives::{Bytes, H256};
+use ctypes::BlockHash;
+use primitives::Bytes;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Encodable, UntrustedRlp};
@@ -69,7 +70,13 @@ impl TendermintExtension {
         }
     }
 
-    fn update_peer_state(&mut self, token: &NodeId, vote_step: VoteStep, proposal: Option<H256>, messages: BitSet) {
+    fn update_peer_state(
+        &mut self,
+        token: &NodeId,
+        vote_step: VoteStep,
+        proposal: Option<BlockHash>,
+        messages: BitSet,
+    ) {
         let peer_state = match self.peers.get_mut(token) {
             Some(peer_state) => peer_state,
             // update_peer_state could be called after the peer is disconnected
@@ -104,7 +111,13 @@ impl TendermintExtension {
         self.api.send(token, message);
     }
 
-    fn broadcast_state(&self, vote_step: VoteStep, proposal: Option<H256>, lock_view: Option<View>, votes: BitSet) {
+    fn broadcast_state(
+        &self,
+        vote_step: VoteStep,
+        proposal: Option<BlockHash>,
+        lock_view: Option<View>,
+        votes: BitSet,
+    ) {
         ctrace!(ENGINE, "Broadcast state {:?} {:?} {:?}", vote_step, proposal, votes);
         let tokens = self.select_random_peers();
         let message = Arc::new(
@@ -456,7 +469,7 @@ pub enum Event {
     },
     BroadcastState {
         vote_step: VoteStep,
-        proposal: Option<H256>,
+        proposal: Option<BlockHash>,
         lock_view: Option<View>,
         votes: BitSet,
     },

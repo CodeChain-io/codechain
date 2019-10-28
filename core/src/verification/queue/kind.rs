@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::{H256, U256};
+use ctypes::BlockHash;
+use primitives::U256;
 use rlp::*;
 
 pub use self::blocks::Blocks;
@@ -27,10 +28,10 @@ use crate::service::ClientIoMessage;
 /// Something which can produce a hash and a parent hash.
 pub trait BlockLike {
     /// Get the hash of this item.
-    fn hash(&self) -> H256;
+    fn hash(&self) -> BlockHash;
 
     /// Get the hash of this item's parent.
-    fn parent_hash(&self) -> H256;
+    fn parent_hash(&self) -> BlockHash;
 
     /// Get the score of this item.
     fn score(&self) -> U256;
@@ -84,8 +85,8 @@ pub trait Kind: 'static + Sized + Send + Sync {
 
 /// Verification for headers.
 pub mod headers {
-    use ctypes::Header;
-    use primitives::{H256, U256};
+    use ctypes::{BlockHash, Header};
+    use primitives::U256;
 
     use super::super::super::verification::verify_header_basic;
     use super::{BlockLike, Kind};
@@ -95,11 +96,11 @@ pub mod headers {
     use verification::verify_header_with_engine;
 
     impl BlockLike for Header {
-        fn hash(&self) -> H256 {
+        fn hash(&self) -> BlockHash {
             self.hash()
         }
 
-        fn parent_hash(&self) -> H256 {
+        fn parent_hash(&self) -> BlockHash {
             *self.parent_hash()
         }
 
@@ -147,8 +148,8 @@ pub mod headers {
 
 /// The blocks verification module.
 pub mod blocks {
-    use ctypes::Header;
-    use primitives::{Bytes, H256, U256};
+    use ctypes::{BlockHash, Header};
+    use primitives::{Bytes, U256};
 
     use super::super::super::verification::{
         verify_block_basic, verify_block_seal, verify_header_with_engine, PreverifiedBlock,
@@ -225,11 +226,11 @@ pub mod blocks {
     }
 
     impl BlockLike for Unverified {
-        fn hash(&self) -> H256 {
+        fn hash(&self) -> BlockHash {
             self.header.hash()
         }
 
-        fn parent_hash(&self) -> H256 {
+        fn parent_hash(&self) -> BlockHash {
             *self.header.parent_hash()
         }
 
@@ -239,11 +240,11 @@ pub mod blocks {
     }
 
     impl BlockLike for PreverifiedBlock {
-        fn hash(&self) -> H256 {
+        fn hash(&self) -> BlockHash {
             self.header.hash()
         }
 
-        fn parent_hash(&self) -> H256 {
+        fn parent_hash(&self) -> BlockHash {
             *self.header.parent_hash()
         }
 

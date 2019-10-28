@@ -19,8 +19,8 @@ use std::convert::TryFrom;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public, Signature};
 use ctypes::transaction::{Action as ActionType, AssetMintOutput as AssetMintOutputType};
-use ctypes::ShardId;
-use primitives::{Bytes, H160, H256};
+use ctypes::{ShardId, Tracker, TxHash};
+use primitives::{Bytes, H160};
 use rustc_serialize::hex::{FromHex, ToHex};
 
 use super::super::errors::ConversionError;
@@ -116,7 +116,7 @@ pub enum Action {
         signature: Signature,
     },
     Remove {
-        hash: H256,
+        hash: TxHash,
         signature: Signature,
     },
     #[serde(rename_all = "camelCase")]
@@ -142,7 +142,7 @@ pub enum ActionWithTracker {
 
         approvals: Vec<Signature>,
 
-        tracker: H256,
+        tracker: Tracker,
     },
     #[serde(rename_all = "camelCase")]
     TransferAsset {
@@ -158,7 +158,7 @@ pub enum ActionWithTracker {
         approvals: Vec<Signature>,
         expiration: Option<Uint>,
 
-        tracker: H256,
+        tracker: Tracker,
     },
     #[serde(rename_all = "camelCase")]
     ChangeAssetScheme {
@@ -173,7 +173,7 @@ pub enum ActionWithTracker {
 
         approvals: Vec<Signature>,
 
-        tracker: H256,
+        tracker: Tracker,
     },
     #[serde(rename_all = "camelCase")]
     IncreaseAssetSupply {
@@ -185,7 +185,7 @@ pub enum ActionWithTracker {
 
         approvals: Vec<Signature>,
 
-        tracker: H256,
+        tracker: Tracker,
     },
 
     #[serde(rename_all = "camelCase")]
@@ -194,7 +194,7 @@ pub enum ActionWithTracker {
         burn: Box<AssetTransferInput>,
         receiver: PlatformAddress,
 
-        tracker: H256,
+        tracker: Tracker,
     },
     Pay {
         receiver: PlatformAddress,
@@ -230,7 +230,7 @@ pub enum ActionWithTracker {
         signature: Signature,
     },
     Remove {
-        hash: H256,
+        hash: TxHash,
         signature: Signature,
     },
     #[serde(rename_all = "camelCase")]

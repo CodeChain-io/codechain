@@ -26,7 +26,7 @@ use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
 use cstate::{FindActionHandler, TopLevelState};
 use ctypes::errors::{HistoryError, RuntimeError};
 use ctypes::transaction::{Action, IncompleteTransaction, Timelock};
-use ctypes::{BlockNumber, Header};
+use ctypes::{BlockHash, BlockNumber, Header, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
@@ -111,7 +111,7 @@ struct SealingWork {
     enabled: bool,
 }
 
-type TransactionListener = Box<dyn Fn(&[H256]) + Send + Sync>;
+type TransactionListener = Box<dyn Fn(&[TxHash]) + Send + Sync>;
 
 pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
@@ -197,7 +197,7 @@ impl Miner {
     }
 
     /// Set a callback to be notified about imported transactions' hashes.
-    pub fn add_transactions_listener(&self, f: Box<dyn Fn(&[H256]) + Send + Sync>) {
+    pub fn add_transactions_listener(&self, f: Box<dyn Fn(&[TxHash]) + Send + Sync>) {
         self.transaction_listener.write().push(f);
     }
 
@@ -442,10 +442,10 @@ impl Miner {
                     "prepare_work: Pushing a new, refreshed or borrowed pending {}...",
                     block.block().header().hash()
                 );
-                let pow_hash = block.block().header().hash();
+                let pow_hash = *block.block().header().hash();
                 let number = block.block().header().number();
                 let score = *block.block().header().score();
-                let is_new = original_work_hash.map_or(true, |h| block.block().header().hash() != h);
+                let is_new = original_work_hash.map_or(true, |h| *block.block().header().hash() != h);
                 sealing_work.queue.push(block);
                 // If push notifications are enabled we assume all work items are used.
                 if !self.notifiers.read().is_empty() && is_new {
@@ -483,7 +483,7 @@ impl Miner {
         let (transactions, mut open_block, original_work_hash, block_number) = {
             let sealing_work = self.sealing_work.lock();
 
-            let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| pb.block().header().hash());
+            let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| *pb.block().header().hash());
             ctrace!(MINER, "prepare_block: No existing work - making new block");
             let params = self.params.read().clone();
             let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
@@ -774,10 +774,10 @@ impl MinerService for Miner {
     fn chain_new_blocks<C>(
         &self,
         chain: &C,
-        _imported: &[H256],
-        _invalid: &[H256],
-        _enacted: &[H256],
-        retracted: &[H256],
+        _imported: &[BlockHash],
+        _invalid: &[BlockHash],
+        _enacted: &[BlockHash],
+        retracted: &[BlockHash],
     ) where
         C: AccountData + BlockChainTrait + BlockProducer + EngineInfo + ImportBlock, {
         ctrace!(MINER, "chain_new_blocks");
@@ -937,8 +937,8 @@ impl MinerService for Miner {
         }
     }
 
-    fn submit_seal<C: ImportBlock>(&self, chain: &C, block_hash: H256, seal: Vec<Bytes>) -> Result<(), Error> {
-        let result = if let Some(b) = self.sealing_work.lock().queue.take_used_if(|b| b.hash() == block_hash) {
+    fn submit_seal<C: ImportBlock>(&self, chain: &C, block_hash: BlockHash, seal: Vec<Bytes>) -> Result<(), Error> {
+        let result = if let Some(b) = self.sealing_work.lock().queue.take_used_if(|b| b.hash() == *block_hash) {
             ctrace!(
                 MINER,
                 "Submitted block {}={}={} with seal {:?}",
@@ -1055,7 +1055,7 @@ impl MinerService for Miner {
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
         seq: Option<u64>,
-    ) -> Result<(H256, u64), Error> {
+    ) -> Result<(TxHash, u64), Error> {
         let address = platform_address.try_into_address()?;
         let seq = match seq {
             Some(seq) => seq,

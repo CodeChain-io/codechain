@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crossbeam_channel as crossbeam;
-use primitives::H256;
+use ctypes::BlockHash;
 
 use super::worker;
 use crate::client::ChainNotify;
@@ -36,11 +36,11 @@ impl ChainNotify for TendermintChainNotify {
     /// fires when chain has new blocks.
     fn new_blocks(
         &self,
-        imported: Vec<H256>,
-        _invalid: Vec<H256>,
-        enacted: Vec<H256>,
-        _retracted: Vec<H256>,
-        _sealed: Vec<H256>,
+        imported: Vec<BlockHash>,
+        _invalid: Vec<BlockHash>,
+        enacted: Vec<BlockHash>,
+        _retracted: Vec<BlockHash>,
+        _sealed: Vec<BlockHash>,
         _duration: u64,
     ) {
         self.inner
