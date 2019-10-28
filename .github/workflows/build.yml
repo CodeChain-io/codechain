@@ -1,9 +1,10 @@
 on: [push, pull_request]
 
-name: Actions - build
+name: build
 
 jobs:
   build:
+    name: Actions - build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
