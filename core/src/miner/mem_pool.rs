@@ -1503,6 +1503,20 @@ pub mod test {
         SignedTransaction::new_with_sign(tx, keypair.private())
     }
 
+    fn create_signed_pay_with_fee(seq: u64, fee: u64, keypair: KeyPair) -> SignedTransaction {
+        let receiver = 1u64.into();
+        let tx = Transaction {
+            seq,
+            fee,
+            network_id: "tc".into(),
+            action: Action::Pay {
+                receiver,
+                quantity: 100_000,
+            },
+        };
+        SignedTransaction::new_with_sign(tx, keypair.private())
+    }
+
     fn create_mempool_input_with_pay(seq: u64, keypair: KeyPair, timelock: TxTimelock) -> MemPoolInput {
         let signed = create_signed_pay(seq, keypair);
         MemPoolInput::new(signed, TxOrigin::Local, timelock)
@@ -1536,6 +1550,146 @@ pub mod test {
         let signed = SignedTransaction::new_with_sign(tx, keypair.private());
         let item = MemPoolItem::new(signed, TxOrigin::Local, 0, 0, 0, timelock);
         TransactionOrder::for_transaction(&item, 0)
+    }
+
+    fn abbreviated_mempool_add(
+        test_client: &TestBlockChainClient,
+        mem_pool: &mut MemPool,
+        txs: Vec<SignedTransaction>,
+        origin: TxOrigin,
+    ) -> Vec<Result<TransactionImportResult, Error>> {
+        let fetch_account = |p: &Public| -> AccountDetails {
+            let address = public_to_address(p);
+            let a = test_client.latest_regular_key_owner(&address).unwrap_or(address);
+            AccountDetails {
+                seq: test_client.latest_seq(&a),
+                balance: test_client.latest_balance(&a),
+            }
+        };
+        let no_timelock = TxTimelock {
+            block: None,
+            timestamp: None,
+        };
+
+        let inserted_block_number = 1;
+        let inserted_timestamp = 100;
+        let inputs: Vec<MemPoolInput> = txs.into_iter().map(|tx| MemPoolInput::new(tx, origin, no_timelock)).collect();
+        mem_pool.add(inputs, inserted_block_number, inserted_timestamp, &fetch_account)
+    }
+
+    #[test]
+    fn local_transactions_whose_fees_are_under_the_mem_pool_min_fee_should_not_be_rejected() {
+        let test_client = TestBlockChainClient::new();
+
+        // Set the pay transaction minimum fee
+        let fees = MemPoolFees::create_from_options(
+            Some(150),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
+        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db, fees);
+        let keypair = Random.generate().unwrap();
+        let address = public_to_address(keypair.public());
+
+        test_client.set_balance(address, 1_000_000_000_000);
+
+        let txs = vec![
+            create_signed_pay_with_fee(0, 200, keypair),
+            create_signed_pay_with_fee(1, 140, keypair),
+            create_signed_pay_with_fee(2, 160, keypair),
+        ];
+        let result = abbreviated_mempool_add(&test_client, &mut mem_pool, txs, TxOrigin::Local);
+        assert_eq!(
+            vec![
+                Ok(TransactionImportResult::Current),
+                Ok(TransactionImportResult::Current),
+                Ok(TransactionImportResult::Current)
+            ],
+            result
+        );
+
+        assert_eq!(
+            vec![
+                create_signed_pay_with_fee(0, 200, keypair),
+                create_signed_pay_with_fee(1, 140, keypair),
+                create_signed_pay_with_fee(2, 160, keypair)
+            ],
+            mem_pool.top_transactions(std::usize::MAX, None, 0..std::u64::MAX).transactions
+        );
+
+        assert_eq!(Vec::<SignedTransaction>::default(), mem_pool.future_transactions());
+    }
+
+    #[test]
+    fn external_transactions_whose_fees_are_under_the_mem_pool_min_fee_are_rejected() {
+        let test_client = TestBlockChainClient::new();
+        // Set the pay transaction minimum fee
+        let fees = MemPoolFees::create_from_options(
+            Some(150),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
+        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db, fees);
+        let keypair = Random.generate().unwrap();
+        let address = public_to_address(keypair.public());
+
+        test_client.set_balance(address, 1_000_000_000_000);
+
+        let txs = vec![
+            create_signed_pay_with_fee(0, 200, keypair),
+            create_signed_pay_with_fee(1, 140, keypair),
+            create_signed_pay_with_fee(1, 160, keypair),
+            create_signed_pay_with_fee(2, 149, keypair),
+        ];
+        let result = abbreviated_mempool_add(&test_client, &mut mem_pool, txs, TxOrigin::External);
+        assert_eq!(
+            vec![
+                Ok(TransactionImportResult::Current),
+                Err(Error::Syntax(SyntaxError::InsufficientFee {
+                    minimal: 150,
+                    got: 140,
+                })),
+                Ok(TransactionImportResult::Current),
+                Err(Error::Syntax(SyntaxError::InsufficientFee {
+                    minimal: 150,
+                    got: 149,
+                })),
+            ],
+            result
+        );
+
+        assert_eq!(
+            vec![create_signed_pay_with_fee(0, 200, keypair), create_signed_pay_with_fee(1, 160, keypair)],
+            mem_pool.top_transactions(std::usize::MAX, None, 0..std::u64::MAX).transactions
+        );
+
+        assert_eq!(Vec::<SignedTransaction>::default(), mem_pool.future_transactions());
     }
 
     #[test]
