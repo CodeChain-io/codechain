@@ -1,0 +1,18 @@
+[codechain]
+
+[mining]
+min_pay_transaction_cost = 150
+
+[network]
+
+[rpc]
+
+[ipc]
+
+[ws]
+
+[snapshot]
+
+[stratum]
+
+[email_alarm]
