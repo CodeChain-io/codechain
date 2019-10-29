@@ -29,6 +29,7 @@ kvdb-memorydb = "0.1"
 linked-hash-map = "0.5"
 log = "0.4.6"
 lru-cache = "0.1.2"
+statrs = "0.12.0"
 memorydb = { path = "../util/memorydb" }
 num-rational = "0.2.1"
 parking_lot = "0.6.0"

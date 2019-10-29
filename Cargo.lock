@@ -330,6 +330,7 @@ dependencies = [
  "rlp_compress",
  "rlp_derive",
  "snap",
+ "statrs",
  "table",
  "util-error",
 ]
@@ -2716,6 +2717,15 @@ name = "stable_deref_trait"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15132e0e364248108c5e2c02e3ab539be8d6f5d52a01ca9bbf27ed657316f02b"
+
+[[package]]
+name = "statrs"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cce16f6de653e88beca7bd13780d08e09d4489dbca1f9210e041bc4852481382"
+dependencies = [
+ "rand 0.7.2",
+]
 
 [[package]]
 name = "string"
