@@ -21,6 +21,7 @@ mod null_engine;
 mod signer;
 mod simple_poa;
 mod solo;
+mod sortition;
 pub mod stake;
 mod tendermint;
 mod validator_set;

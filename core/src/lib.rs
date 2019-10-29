@@ -51,9 +51,9 @@ extern crate rlp_compress;
 extern crate rlp_derive;
 extern crate parking_lot;
 extern crate snap;
+extern crate statrs;
 extern crate table;
 extern crate util_error;
-
 #[macro_use]
 extern crate log;
 extern crate core;
