@@ -114,9 +114,15 @@ pub struct MemPool {
 
 impl MemPool {
     /// Create new instance of this Queue with specified limits
-    pub fn with_limits(limit: usize, memory_limit: usize, fee_bump_shift: usize, db: Arc<dyn KeyValueDB>) -> Self {
+    pub fn with_limits(
+        limit: usize,
+        memory_limit: usize,
+        fee_bump_shift: usize,
+        db: Arc<dyn KeyValueDB>,
+        minimum_fees: MemPoolFees,
+    ) -> Self {
         MemPool {
-            minimum_fees: Default::default(),
+            minimum_fees,
             fee_bump_shift,
             max_block_number_period_in_pool: DEFAULT_POOLING_PERIOD,
             current: CurrentQueue::new(),
@@ -1420,7 +1426,7 @@ pub mod test {
         test_client.set_balance(default_addr, u64::max_value());
 
         let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
-        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
+        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone(), Default::default());
 
         let fetch_account = |p: &Public| -> AccountDetails {
             let address = public_to_address(p);
@@ -1468,7 +1474,7 @@ pub mod test {
         inputs.push(create_mempool_input_with_pay(7u64, keypair, no_timelock));
         mem_pool.add(inputs, inserted_block_number, inserted_timestamp, &fetch_account);
 
-        let mut mem_pool_recovered = MemPool::with_limits(8192, usize::max_value(), 3, db);
+        let mut mem_pool_recovered = MemPool::with_limits(8192, usize::max_value(), 3, db, Default::default());
         mem_pool_recovered.recover_from_db(&test_client);
 
         assert_eq!(mem_pool_recovered.first_seqs, mem_pool.first_seqs);
@@ -1538,7 +1544,7 @@ pub mod test {
         let test_client = TestBlockChainClient::new();
 
         let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
-        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db);
+        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db, Default::default());
 
         let fetch_account = |p: &Public| -> AccountDetails {
             let address = public_to_address(p);

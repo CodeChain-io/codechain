@@ -33,6 +33,7 @@ use parking_lot::{Mutex, RwLock};
 use primitives::{Bytes, H256};
 
 use super::mem_pool::{Error as MemPoolError, MemPool};
+pub use super::mem_pool_types::MemPoolFees;
 use super::mem_pool_types::{AccountDetails, MemPoolInput, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
@@ -79,6 +80,8 @@ pub struct MinerOptions {
     pub allow_create_shard: bool,
     /// How many historical work packages can we store before running out?
     pub work_queue_size: usize,
+    /// Minimum fees configured by the machine.
+    pub mem_pool_fees: MemPoolFees,
 }
 
 impl Default for MinerOptions {
@@ -96,6 +99,7 @@ impl Default for MinerOptions {
             mem_pool_fee_bump_shift: 3,
             allow_create_shard: false,
             work_queue_size: 20,
+            mem_pool_fees: Default::default(),
         }
     }
 }
@@ -163,6 +167,7 @@ impl Miner {
             mem_limit,
             options.mem_pool_fee_bump_shift,
             db,
+            options.mem_pool_fees,
         )));
 
         let notifiers: Vec<Box<dyn NotifyWork>> = if options.new_work_notify.is_empty() {
@@ -1180,7 +1185,7 @@ pub mod test {
         let scheme = Scheme::new_test();
         let miner = Arc::new(Miner::with_scheme(&scheme, db.clone()));
 
-        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone());
+        let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone(), Default::default());
         let client = generate_test_client(db, Arc::clone(&miner), &scheme).unwrap();
 
         let private: Private = H256::random().into();
