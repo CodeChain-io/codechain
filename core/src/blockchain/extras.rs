@@ -109,7 +109,7 @@ pub struct BlockDetails {
 pub struct TransactionAddress {
     /// Block hash
     pub block_hash: BlockHash,
-    /// Parcel index within the block
+    /// Transaction index within the block
     pub index: usize,
 }
 

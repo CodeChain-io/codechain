@@ -38,7 +38,7 @@ NODE_ENV=production yarn start
 
 # Writing Test
 
-Simple e2e test that sends a parcel and gets an invoice from CodeChain is implemented at `src/e2e/basic.test.ts`. It would be a good starting point for implementing new tests.
+Simple e2e test that sends a transaction and gets an invoice from CodeChain is implemented at `src/e2e/basic.test.ts`. It would be a good starting point for implementing new tests.
 
 Writing an e2e test involves spawning a new CodeChain process and attaching SDK to it. Helper class for automating this process is defined under `src/helper/spawn.ts`, named `CodeChain`. Some important functions are described below:
 
