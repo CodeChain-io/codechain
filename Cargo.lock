@@ -2208,7 +2208,6 @@ name = "rlp"
 version = "0.2.1"
 dependencies = [
  "elastic-array 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.4.0 (git+https://github.com/CodeChain-io/rust-codechain-primitives.git)",
  "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

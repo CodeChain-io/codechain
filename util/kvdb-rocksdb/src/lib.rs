@@ -42,7 +42,6 @@ use rocksdb::{
 
 use elastic_array::ElasticArray32;
 use kvdb::{DBOp, DBTransaction, DBValue, KeyValueDB, KeyValueDBIterator, Result};
-use rlp::{Compressible, RlpType, UntrustedRlp};
 
 #[cfg(target_os = "linux")]
 use regex::Regex;
@@ -55,7 +54,6 @@ const DB_DEFAULT_MEMORY_BUDGET_MB: usize = 128;
 
 enum KeyState {
     Insert(DBValue),
-    InsertCompressed(DBValue),
     Delete,
 }
 
@@ -416,14 +414,6 @@ impl Database {
                     let c = col_to_overlay_column(col);
                     overlay[c].insert(key, KeyState::Insert(value));
                 }
-                DBOp::InsertCompressed {
-                    col,
-                    key,
-                    value,
-                } => {
-                    let c = col_to_overlay_column(col);
-                    overlay[c].insert(key, KeyState::InsertCompressed(value));
-                }
                 DBOp::Delete {
                     col,
                     key,
@@ -458,14 +448,6 @@ impl Database {
                                 KeyState::Insert(ref value) => {
                                     if c > 0 {
                                         batch.put_cf(cfs[c - 1], &key, value)?;
-                                    } else {
-                                        batch.put(&key, &value)?;
-                                    }
-                                }
-                                KeyState::InsertCompressed(ref value) => {
-                                    let compressed = UntrustedRlp::new(&value).compress(RlpType::Blocks);
-                                    if c > 0 {
-                                        batch.put_cf(cfs[c - 1], &key, &compressed)?;
                                     } else {
                                         batch.put(&key, &value)?;
                                     }
@@ -519,17 +501,6 @@ impl Database {
                             value,
                         } => col
                             .map_or_else(|| batch.put(&key, &value), |c| batch.put_cf(cfs[c as usize], &key, &value))?,
-                        DBOp::InsertCompressed {
-                            col,
-                            key,
-                            value,
-                        } => {
-                            let compressed = UntrustedRlp::new(&value).compress(RlpType::Blocks);
-                            col.map_or_else(
-                                || batch.put(&key, &compressed),
-                                |c| batch.put_cf(cfs[c as usize], &key, &compressed),
-                            )?
-                        }
                         DBOp::Delete {
                             col,
                             key,
@@ -552,16 +523,12 @@ impl Database {
             }) => {
                 let overlay = &self.overlay.read()[col_to_overlay_column(col)];
                 match overlay.get(key) {
-                    Some(&KeyState::Insert(ref value)) | Some(&KeyState::InsertCompressed(ref value)) => {
-                        Ok(Some(value.clone()))
-                    }
+                    Some(&KeyState::Insert(ref value)) => Ok(Some(value.clone())),
                     Some(&KeyState::Delete) => Ok(None),
                     None => {
                         let flushing = &self.flushing.read()[col_to_overlay_column(col)];
                         match flushing.get(key) {
-                            Some(&KeyState::Insert(ref value)) | Some(&KeyState::InsertCompressed(ref value)) => {
-                                Ok(Some(value.clone()))
-                            }
+                            Some(&KeyState::Insert(ref value)) => Ok(Some(value.clone())),
                             Some(&KeyState::Delete) => Ok(None),
                             None => col
                                 .map_or_else(
@@ -609,7 +576,7 @@ impl Database {
                 let mut overlay_data = overlay
                     .iter()
                     .filter_map(|(k, v)| match *v {
-                        KeyState::Insert(ref value) | KeyState::InsertCompressed(ref value) => {
+                        KeyState::Insert(ref value) => {
                             Some((k.clone().into_vec().into_boxed_slice(), value.clone().into_vec().into_boxed_slice()))
                         }
                         KeyState::Delete => None,
