@@ -42,11 +42,6 @@ extern crate elastic_array;
 extern crate primitives;
 extern crate rustc_hex;
 
-#[macro_use]
-extern crate lazy_static;
-
-mod common;
-mod compression;
 mod error;
 mod impls;
 mod rlpin;
@@ -57,7 +52,6 @@ mod untrusted_rlp;
 use elastic_array::ElasticArray1024;
 use std::borrow::Borrow;
 
-pub use compression::RlpType;
 pub use error::DecoderError;
 pub use rlpin::{Rlp, RlpIterator};
 pub use stream::RlpStream;

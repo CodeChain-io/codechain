@@ -20,7 +20,6 @@ extern crate rlp;
 
 use kvdb::{DBOp, DBTransaction, DBValue, KeyValueDB, KeyValueDBIterator, Result};
 use parking_lot::RwLock;
-use rlp::{Compressible, RlpType, UntrustedRlp};
 use std::collections::{BTreeMap, HashMap};
 
 type Column = BTreeMap<Vec<u8>, DBValue>;
@@ -77,18 +76,6 @@ impl KeyValueDB for InMemory {
                     value,
                 } => {
                     if let Some(col) = columns.get_mut(&col) {
-                        col.insert(key.into_vec(), value);
-                    }
-                }
-                DBOp::InsertCompressed {
-                    col,
-                    key,
-                    value,
-                } => {
-                    if let Some(col) = columns.get_mut(&col) {
-                        let compressed = UntrustedRlp::new(&value).compress(RlpType::Blocks);
-                        let mut value = DBValue::new();
-                        value.append_slice(&compressed);
                         col.insert(key.into_vec(), value);
                     }
                 }
