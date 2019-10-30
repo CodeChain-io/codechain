@@ -137,7 +137,7 @@ impl BodyDB {
         }
     }
 
-    /// This function returns modified parcel addresses.
+    /// This function returns modified transaction addresses.
     fn new_parcel_address_entries(
         &self,
         best_block_changed: &BestBlockChanged,
@@ -175,7 +175,7 @@ impl BodyDB {
                     retracted_parcel_hashes.map(|hash| (hash, None))
                 });
 
-                // The order here is important! Don't remove parcel if it was part of enacted blocks as well.
+                // The order here is important! Don't remove transactions if it was part of enacted blocks as well.
                 retracted.chain(enacted).chain(current_addresses).collect()
             }
             BestBlockChanged::None => HashMap::new(),
@@ -283,12 +283,12 @@ pub trait BodyProvider {
     /// (though not necessarily a part of the canon chain).
     fn is_known_body(&self, hash: &BlockHash) -> bool;
 
-    /// Get the address of parcel with given hash.
+    /// Get the address of transaction with given hash.
     fn transaction_address(&self, hash: &TxHash) -> Option<TransactionAddress>;
 
     fn transaction_address_by_tracker(&self, tracker: &Tracker) -> Option<TransactionAddress>;
 
-    /// Get the block body (uncles and parcels).
+    /// Get the block body (transactions).
     fn block_body(&self, hash: &BlockHash) -> Option<encoded::Body>;
 }
 
@@ -297,7 +297,7 @@ impl BodyProvider for BodyDB {
         self.block_body(hash).is_some()
     }
 
-    /// Get the address of parcel with given hash.
+    /// Get the address of transaction with given hash.
     fn transaction_address(&self, hash: &TxHash) -> Option<TransactionAddress> {
         let result = self.db.read_with_cache(db::COL_EXTRA, &mut *self.parcel_address_cache.write(), hash)?;
         Some(result)
