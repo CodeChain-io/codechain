@@ -85,7 +85,7 @@ Leading zeros must be truncated. Note that it is allowed to decode a value with 
  1. Pop n values, which are distinct public keys.
  1. Pop one value, the value is m in the m-of-n Multisig. The value must be less than or equal to the value n.
  1. Pop m values, which are distinct signatures. The signature scheme is the same as CHKSIG.
- 1. Pop the tag value. 
+ 1. Pop the tag value.
  1. Verify the signatures over the transaction message filtered by the tag. The signatures must be ordered the same way as the public keys.
  1. Push true on success, false otherwise.
 The specification about the tag is [here](Tag-encoding.md)
@@ -97,9 +97,6 @@ The specification about the tag is [here](Tag-encoding.md)
 * RIPEMD160(0x92): Pop one value from the stack, and push the ripemd160 hash of it.
 * KECCAK256(0x93): Pop one value from the stack, and push the keccak-256 hash of it.
 * BLAKE160(0x94): Pop one value from the stack, and push the blake-160 hash of it. Blake-160 here refers to blake2b with a 20 byte output.
-
-## Environment
-* BLKNUM(0xa0): Push the block number specified in the transaction to the stack as an integer. If there's no specified block number, the machine must fail immediately.
 
 ## Timelock
 * CHKTIMELOCK(0xb0)
