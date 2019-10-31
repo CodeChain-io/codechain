@@ -38,6 +38,7 @@ rand = "0.6.1"
 rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 rlp_compress = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.2" }
 rlp_derive = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.2" }
+rug = "1.6"
 snap = "0.2"
 table = { path = "../util/table" }
 util-error = { path = "../util/error" }
