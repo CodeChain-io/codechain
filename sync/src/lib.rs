@@ -47,11 +47,9 @@ extern crate trie_standardmap;
 extern crate util_error;
 
 mod block;
-mod snapshot;
 mod transaction;
 
 pub use crate::block::{BlockSyncEvent, BlockSyncExtension, BlockSyncSender};
-pub use crate::snapshot::SnapshotService;
 pub use crate::transaction::TransactionSyncExtension;
 
 #[cfg(test)]
