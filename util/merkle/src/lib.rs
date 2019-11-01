@@ -67,24 +67,7 @@ impl fmt::Display for TrieError {
 pub type Result<T> = ::std::result::Result<T, TrieError>;
 
 /// Description of what kind of query will be made to the trie.
-pub trait Query {
-    /// Output item.
-    type Item;
-
-    /// Decode a byte-slice into the desired item.
-    fn decode(self, &[u8]) -> Self::Item;
-}
-
-impl<F, T> Query for F
-where
-    F: for<'a> FnOnce(&'a [u8]) -> T,
-{
-    type Item = T;
-
-    fn decode(self, value: &[u8]) -> T {
-        (self)(value)
-    }
-}
+pub type Query<T> = dyn Fn(&[u8]) -> T;
 
 /// A key-value datastore implemented as a database-backed modified Merkle tree.
 pub trait Trie {
@@ -103,12 +86,12 @@ pub trait Trie {
 
     /// What is the value of the given key in this trie?
     fn get(&self, key: &[u8]) -> Result<Option<DBValue>> {
-        self.get_with(key, DBValue::from_slice)
+        self.get_with(key, &DBValue::from_slice)
     }
 
     /// Search for the key with the given query parameter. See the docs of the `Query`
     /// trait for more details.
-    fn get_with<Q: Query>(&self, key: &[u8], query: Q) -> Result<Option<Q::Item>>;
+    fn get_with<T>(&self, key: &[u8], query: &Query<T>) -> Result<Option<T>>;
 }
 
 /// A key-value datastore implemented as a database-backed modified Merkle tree.
