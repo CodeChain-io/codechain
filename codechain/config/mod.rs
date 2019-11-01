@@ -20,7 +20,7 @@ use std::fs;
 use std::str::{self, FromStr};
 use std::time::Duration;
 
-use ccore::{MinerOptions, StratumConfig, TimeGapParams};
+use ccore::{MemPoolFees, MinerOptions, StratumConfig, TimeGapParams};
 use cidr::IpCidr;
 use ckey::PlatformAddress;
 use clap;
@@ -75,6 +75,23 @@ impl Config {
                 None => unreachable!(),
             };
 
+        let mem_pool_fees = MemPoolFees::create_from_options(
+            self.mining.min_pay_transaction_cost,
+            self.mining.min_set_regular_key_transaction_cost,
+            self.mining.min_create_shard_transaction_cost,
+            self.mining.min_set_shard_owners_transaction_cost,
+            self.mining.min_set_shard_users_transaction_cost,
+            self.mining.min_wrap_ccc_transaction_cost,
+            self.mining.min_custom_transaction_cost,
+            self.mining.min_store_transaction_cost,
+            self.mining.min_remove_transaction_cost,
+            self.mining.min_asset_mint_cost,
+            self.mining.min_asset_transfer_cost,
+            self.mining.min_asset_scheme_change_cost,
+            self.mining.min_asset_supply_increase_cost,
+            self.mining.min_asset_unwrap_ccc_cost,
+        );
+
         Ok(MinerOptions {
             mem_pool_size: self.mining.mem_pool_size.unwrap(),
             mem_pool_memory_limit: match self.mining.mem_pool_mem_limit.unwrap() {
@@ -91,6 +108,7 @@ impl Config {
             reseal_max_period: Duration::from_millis(self.mining.reseal_max_period.unwrap()),
             no_reseal_timer: self.mining.no_reseal_timer.unwrap(),
             work_queue_size: self.mining.work_queue_size.unwrap(),
+            mem_pool_fees,
         })
     }
 
@@ -230,6 +248,20 @@ pub struct Mining {
     pub work_queue_size: Option<usize>,
     pub allowed_past_gap: Option<u64>,
     pub allowed_future_gap: Option<u64>,
+    pub min_pay_transaction_cost: Option<u64>,
+    pub min_set_regular_key_transaction_cost: Option<u64>,
+    pub min_create_shard_transaction_cost: Option<u64>,
+    pub min_set_shard_owners_transaction_cost: Option<u64>,
+    pub min_set_shard_users_transaction_cost: Option<u64>,
+    pub min_wrap_ccc_transaction_cost: Option<u64>,
+    pub min_custom_transaction_cost: Option<u64>,
+    pub min_store_transaction_cost: Option<u64>,
+    pub min_remove_transaction_cost: Option<u64>,
+    pub min_asset_mint_cost: Option<u64>,
+    pub min_asset_transfer_cost: Option<u64>,
+    pub min_asset_scheme_change_cost: Option<u64>,
+    pub min_asset_supply_increase_cost: Option<u64>,
+    pub min_asset_unwrap_ccc_cost: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -372,6 +404,7 @@ impl Operating {
 }
 
 impl Mining {
+    #[allow(clippy::cognitive_complexity)]
     pub fn merge(&mut self, other: &Mining) {
         if other.author.is_some() {
             self.author = other.author;
@@ -408,6 +441,48 @@ impl Mining {
         }
         if other.work_queue_size.is_some() {
             self.work_queue_size = other.work_queue_size;
+        }
+        if other.min_pay_transaction_cost.is_some() {
+            self.min_pay_transaction_cost = other.min_pay_transaction_cost;
+        }
+        if other.min_set_regular_key_transaction_cost.is_some() {
+            self.min_set_regular_key_transaction_cost = other.min_set_regular_key_transaction_cost;
+        }
+        if other.min_create_shard_transaction_cost.is_some() {
+            self.min_create_shard_transaction_cost = other.min_create_shard_transaction_cost;
+        }
+        if other.min_set_shard_owners_transaction_cost.is_some() {
+            self.min_set_shard_owners_transaction_cost = other.min_set_shard_owners_transaction_cost;
+        }
+        if other.min_set_shard_users_transaction_cost.is_some() {
+            self.min_set_shard_users_transaction_cost = other.min_set_shard_users_transaction_cost;
+        }
+        if other.min_wrap_ccc_transaction_cost.is_some() {
+            self.min_wrap_ccc_transaction_cost = other.min_wrap_ccc_transaction_cost;
+        }
+        if other.min_custom_transaction_cost.is_some() {
+            self.min_custom_transaction_cost = other.min_custom_transaction_cost;
+        }
+        if other.min_store_transaction_cost.is_some() {
+            self.min_store_transaction_cost = other.min_store_transaction_cost;
+        }
+        if other.min_remove_transaction_cost.is_some() {
+            self.min_remove_transaction_cost = other.min_remove_transaction_cost;
+        }
+        if other.min_asset_mint_cost.is_some() {
+            self.min_asset_mint_cost = other.min_asset_mint_cost;
+        }
+        if other.min_asset_transfer_cost.is_some() {
+            self.min_asset_transfer_cost = other.min_asset_transfer_cost;
+        }
+        if other.min_asset_scheme_change_cost.is_some() {
+            self.min_asset_scheme_change_cost = other.min_asset_scheme_change_cost;
+        }
+        if other.min_asset_supply_increase_cost.is_some() {
+            self.min_asset_supply_increase_cost = other.min_asset_supply_increase_cost;
+        }
+        if other.min_asset_unwrap_ccc_cost.is_some() {
+            self.min_asset_unwrap_ccc_cost = other.min_asset_unwrap_ccc_cost;
         }
     }
 
