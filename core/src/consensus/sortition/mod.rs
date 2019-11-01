@@ -17,3 +17,67 @@
 mod binom_cdf;
 mod draw;
 pub mod vrf_sortition;
+
+use std::sync::Arc;
+
+use ckey::Public;
+use primitives::H256;
+use vrf::openssl::Error as VrfError;
+
+use self::vrf_sortition::{PriorityInfo, VRFSortition};
+
+pub struct PriorityMessage {
+    pub seed: H256,
+    pub info: PriorityInfo,
+}
+
+impl PriorityMessage {
+    pub fn verify(
+        &self,
+        signer_public: &Public,
+        voting_power: u64,
+        sortition_scheme: &VRFSortition,
+    ) -> Result<bool, VrfError> {
+        // fast verification first
+        Ok(self.info.verify_sub_user_idx(voting_power, sortition_scheme.total_power, sortition_scheme.expectation)
+            && self.info.verify_priority()
+            && self.info.verify_vrf_hash(signer_public, &self.seed, Arc::clone(&sortition_scheme.vrf_inst))?)
+    }
+}
+
+#[cfg(test)]
+mod priority_message_tests {
+    use ccrypto::sha256;
+    use ckey::{KeyPair, Private};
+    use parking_lot::RwLock;
+    use vrf::openssl::{CipherSuite, ECVRF};
+
+    use super::*;
+    #[test]
+    fn check_priority_message_verification() {
+        let priv_key: Private = sha256("secret_key").into();
+        let pub_key = *KeyPair::from_private(priv_key).expect("Valid private key").public();
+
+        let wrong_priv_key: Private = sha256("wrong_secret_key2").into();
+        let wrong_pub_key = *KeyPair::from_private(wrong_priv_key).expect("Valid private key").public();
+
+        let seed = sha256("seed");
+        let ec_vrf = ECVRF::from_suite(CipherSuite::SECP256K1_SHA256_SVDW).unwrap();
+        let ec_vrf = Arc::new(RwLock::new(ec_vrf));
+        let sortition_scheme = VRFSortition {
+            total_power: 100,
+            expectation: 71.85,
+            vrf_inst: ec_vrf,
+        };
+        let voting_power = 50;
+        let priority_info =
+            sortition_scheme.create_highest_priority_info(seed, priv_key, voting_power).unwrap().unwrap();
+
+        let priority_message = PriorityMessage {
+            seed,
+            info: priority_info,
+        };
+        assert!(priority_message.verify(&pub_key, voting_power, &sortition_scheme).unwrap());
+        assert!(priority_message.verify(&wrong_pub_key, voting_power, &sortition_scheme).is_err());
+    }
+}
