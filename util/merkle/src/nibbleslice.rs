@@ -19,7 +19,7 @@ use std::fmt;
 use elastic_array::ElasticArray36;
 
 
-#[derive(Eq, Ord)]
+#[derive(Eq, Ord, Copy, Clone)]
 pub struct NibbleSlice<'a> {
     pub data: &'a [u8],
     pub offset: usize,

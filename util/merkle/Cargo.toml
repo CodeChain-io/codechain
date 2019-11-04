@@ -8,8 +8,11 @@ elastic-array = "0.10"
 rand = "0.6.1"
 hashdb = {path = "../hashdb" }
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
+memorydb = { path = "../memorydb" }
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = {path = "../rlp" }
+rlp_derive = { path = "../rlp_derive" }
+snap = "0.2"
 
 [dev-dependencies]
 trie-standardmap = { path = "../trie-standardmap" }
