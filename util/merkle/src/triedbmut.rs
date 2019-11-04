@@ -171,6 +171,113 @@ impl<'a> TrieDBMut<'a> {
         }
     }
 
+    pub(crate) fn insert_raw(&mut self, node: RlpNode) -> crate::Result<Option<DBValue>> {
+        let mut old_val = None;
+        let cur_hash = *self.root;
+        *self.root = self.insert_raw_aux(node, Some(cur_hash), &mut old_val)?;
+
+        Ok(old_val)
+    }
+
+    fn insert_raw_aux(
+        &mut self,
+        node: RlpNode,
+        cur_node_hash: Option<H256>,
+        old_val: &mut Option<DBValue>,
+    ) -> crate::Result<H256> {
+        let path = match &node {
+            RlpNode::Leaf(slice, _) | RlpNode::Branch(slice, _) => slice,
+        };
+
+        match cur_node_hash {
+            Some(hash) => {
+                let existing_node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
+                match RlpNode::decoded(&existing_node_rlp) {
+                    Some(RlpNode::Leaf(partial, value)) => {
+                        // Renew the Leaf
+                        if &partial == path {
+                            let hash = self.db.insert(&RlpNode::encoded(node));
+                            *old_val = Some(existing_node_rlp);
+                            Ok(hash)
+                        } else {
+                            // Make branch node and insert Leaves
+                            let common = partial.common_prefix(&path);
+                            let mut new_child = empty_children();
+                            let new_partial = partial.mid(common);
+                            let new_path = path.mid(common);
+                            new_child[new_partial.at(0) as usize] = Some(self.insert_aux(
+                                new_partial.mid(1),
+                                value,
+                                new_child[new_partial.at(0) as usize],
+                                old_val,
+                            )?);
+                            new_child[new_path.at(0) as usize] = Some(self.insert_raw_aux(
+                                node.mid(common + 1),
+                                new_child[new_path.at(0) as usize],
+                                old_val,
+                            )?);
+
+                            let hash = self
+                                .db
+                                .insert(&RlpNode::encoded_until(RlpNode::Branch(partial, new_child.into()), common));
+
+                            Ok(hash)
+                        }
+                    }
+                    Some(RlpNode::Branch(partial, mut children)) => {
+                        let common = partial.common_prefix(&path);
+
+                        // Make new branch node and insert leaf and branch with new path
+                        if common < partial.len() {
+                            let mut new_child = empty_children();
+                            let new_partial = partial.mid(common);
+                            let new_path = path.mid(common);
+                            let o_branch = RlpNode::Branch(new_partial.mid(1), children);
+
+                            let b_hash = self.db.insert(&RlpNode::encoded(o_branch));
+
+                            new_child[new_partial.at(0) as usize] = Some(b_hash);
+                            new_child[new_path.at(0) as usize] = Some(self.insert_raw_aux(
+                                node.mid(common + 1),
+                                new_child[new_path.at(0) as usize],
+                                old_val,
+                            )?);
+
+                            let hash = self
+                                .db
+                                .insert(&RlpNode::encoded_until(RlpNode::Branch(partial, new_child.into()), common));
+
+                            Ok(hash)
+                        } else {
+                            // Insert leaf into the branch node
+                            let new_path = path.mid(common);
+
+                            children[new_path.at(0) as usize] = Some(self.insert_raw_aux(
+                                node.mid(common + 1),
+                                children[new_path.at(0) as usize],
+                                old_val,
+                            )?);
+
+                            let new_branch = RlpNode::Branch(partial, children);
+                            let node_rlp = RlpNode::encoded(new_branch);
+                            let hash = self.db.insert(&node_rlp);
+
+                            Ok(hash)
+                        }
+                    }
+                    None => {
+                        let hash = self.db.insert(&RlpNode::encoded(node));
+                        Ok(hash)
+                    }
+                }
+            }
+            None => {
+                let hash = self.db.insert(&RlpNode::encoded(node));
+                Ok(hash)
+            }
+        }
+    }
+
     /// Remove auxiliary
     fn remove_aux(
         &mut self,
