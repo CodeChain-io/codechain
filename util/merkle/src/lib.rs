@@ -20,6 +20,9 @@ extern crate hashdb;
 extern crate memorydb;
 extern crate primitives;
 extern crate rlp;
+#[macro_use]
+extern crate rlp_derive;
+extern crate snap;
 
 #[cfg(test)]
 extern crate trie_standardmap as standardmap;
@@ -33,6 +36,8 @@ use primitives::H256;
 mod nibbleslice;
 pub mod node;
 mod skewed;
+#[allow(dead_code)]
+pub mod snapshot;
 pub mod triedb;
 pub mod triedbmut;
 pub mod triehash;

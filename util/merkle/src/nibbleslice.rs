@@ -17,7 +17,7 @@ use std::cmp::*;
 use std::fmt;
 
 
-#[derive(Eq, Ord)]
+#[derive(Eq, Ord, Copy, Clone)]
 pub struct NibbleSlice<'a> {
     pub data: &'a [u8],
     pub offset: usize,
