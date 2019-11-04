@@ -34,7 +34,7 @@ memorydb = { path = "../util/memorydb" }
 num-rational = "0.2.1"
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
-rand = "0.6.1"
+rand = "0.6.5"
 rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 rlp_compress = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.2" }
 rlp_derive = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.2" }
@@ -42,6 +42,7 @@ rug = "1.6"
 snap = "0.2"
 table = { path = "../util/table" }
 util-error = { path = "../util/error" }
+vrf = { git = "https://github.com/CodeChain-io/vrf-rs.git" }
 
 [dev-dependencies]
 rand_xorshift = "0.1.0"
