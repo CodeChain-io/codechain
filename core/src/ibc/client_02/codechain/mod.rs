@@ -14,14 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[allow(dead_code)]
-#[allow(unused_variables)]
-mod client_02;
-#[allow(dead_code)]
-#[allow(unused_variables)]
-mod commitment_23;
-mod context;
-mod kv_store;
+mod types;
 
-pub use self::context::Context;
-pub use self::kv_store::KVStore;
+pub use self::types::State;
