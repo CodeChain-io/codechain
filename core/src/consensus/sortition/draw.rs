@@ -50,10 +50,10 @@ mod lot_tests {
         let voting_power = 4;
         let total_power = 16;
         let expectation = 8.0;
-        assert_eq!(lot(voting_power, total_power, expectation, &[0x0f, 0x5c]), 0);
-        assert_eq!(lot(voting_power, total_power, expectation, &[0x4c, 0xcc]), 1);
-        assert_eq!(lot(voting_power, total_power, expectation, &[0xae, 0x13]), 2);
-        assert_eq!(lot(voting_power, total_power, expectation, &[0xee, 0x13]), 3);
-        assert_eq!(lot(voting_power, total_power, expectation, &[0xf3, 0x32]), 4);
+        assert_eq!(draw(voting_power, total_power, expectation, &[0x0f, 0x5c]), 0);
+        assert_eq!(draw(voting_power, total_power, expectation, &[0x4c, 0xcc]), 1);
+        assert_eq!(draw(voting_power, total_power, expectation, &[0xae, 0x13]), 2);
+        assert_eq!(draw(voting_power, total_power, expectation, &[0xee, 0x13]), 3);
+        assert_eq!(draw(voting_power, total_power, expectation, &[0xf3, 0x32]), 4);
     }
 }

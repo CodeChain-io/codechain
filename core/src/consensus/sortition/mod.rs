@@ -16,3 +16,4 @@
 
 mod binom_cdf;
 mod draw;
+pub mod vrf_sortition;
