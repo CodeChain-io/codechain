@@ -20,7 +20,12 @@ mod client_02;
 #[allow(dead_code)]
 #[allow(unused_variables)]
 mod commitment_23;
+#[allow(dead_code)]
+#[allow(unused_variables)]
 mod context;
+#[allow(dead_code)]
+#[allow(unused_variables)]
+pub mod custom_action_handler;
 mod kv_store;
 
 pub use self::context::Context;

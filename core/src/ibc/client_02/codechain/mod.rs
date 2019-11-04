@@ -16,4 +16,4 @@
 
 mod types;
 
-pub use self::types::State;
+pub use self::types::{ConsensusState, State};

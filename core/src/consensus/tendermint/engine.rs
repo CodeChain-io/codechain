@@ -249,7 +249,8 @@ impl ConsensusEngine for Tendermint {
 
     fn register_client(&self, client: Weak<dyn ConsensusClient>) {
         *self.client.write() = Some(Weak::clone(&client));
-        self.stake.register_resources(client, Arc::downgrade(&self.validators));
+        self.stake.register_resources(Weak::clone(&client), Arc::downgrade(&self.validators));
+        self.ibc.register_resources(client);
     }
 
     fn is_proposal(&self, header: &Header) -> bool {
