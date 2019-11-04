@@ -70,6 +70,7 @@ mod db;
 mod db_version;
 pub mod encoded;
 mod error;
+mod ibc;
 mod invoice;
 mod miner;
 mod scheme;
