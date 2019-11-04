@@ -245,7 +245,7 @@ impl Client {
 
     /// Import transactions from the IO queue
     pub fn import_queued_transactions(&self, transactions: &[Bytes], peer_id: NodeId) -> usize {
-        ctrace!(EXTERNAL_PARCEL, "Importing queued");
+        ctrace!(EXTERNAL_TX, "Importing queued");
         self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
         let transactions: Vec<UnverifiedTransaction> =
             transactions.iter().filter_map(|bytes| Rlp::new(bytes).as_val().ok()).collect();
@@ -734,9 +734,9 @@ impl BlockChainClient for Client {
 
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: NodeId) {
         let queue_size = self.queue_transactions.load(AtomicOrdering::Relaxed);
-        ctrace!(EXTERNAL_PARCEL, "Queue size: {}", queue_size);
+        ctrace!(EXTERNAL_TX, "Queue size: {}", queue_size);
         if queue_size > MAX_MEM_POOL_SIZE {
-            cwarn!(EXTERNAL_PARCEL, "Ignoring {} transactions: queue is full", transactions.len());
+            cwarn!(EXTERNAL_TX, "Ignoring {} transactions: queue is full", transactions.len());
         } else {
             let len = transactions.len();
             match self.io_channel.lock().send(ClientIoMessage::NewTransactions(transactions, peer_id)) {
@@ -744,7 +744,7 @@ impl BlockChainClient for Client {
                     self.queue_transactions.fetch_add(len, AtomicOrdering::SeqCst);
                 }
                 Err(e) => {
-                    cwarn!(EXTERNAL_PARCEL, "Ignoring {} transactions: error queueing: {}", len, e);
+                    cwarn!(EXTERNAL_TX, "Ignoring {} transactions: error queueing: {}", len, e);
                 }
             }
         }

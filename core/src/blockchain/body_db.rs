@@ -37,11 +37,11 @@ const BODY_CACHE_SIZE: usize = 1000;
 pub struct BodyDB {
     // block cache
     body_cache: Mutex<LruCache<BlockHash, Bytes>>,
-    parcel_address_cache: RwLock<HashMap<TxHash, TransactionAddress>>,
-    pending_parcel_addresses: RwLock<HashMap<TxHash, Option<TransactionAddress>>>,
+    address_by_hash_cache: RwLock<HashMap<TxHash, TransactionAddress>>,
+    pending_addresses_by_hash: RwLock<HashMap<TxHash, Option<TransactionAddress>>>,
 
-    transaction_address_cache: Mutex<HashMap<Tracker, TransactionAddresses>>,
-    pending_transaction_addresses: Mutex<HashMap<Tracker, Option<TransactionAddresses>>>,
+    addresses_by_tracker_cache: Mutex<HashMap<Tracker, TransactionAddresses>>,
+    pending_addresses_by_tracker: Mutex<HashMap<Tracker, Option<TransactionAddresses>>>,
 
     db: Arc<dyn KeyValueDB>,
 }
@@ -53,11 +53,11 @@ impl BodyDB {
     pub fn new(genesis: &BlockView, db: Arc<dyn KeyValueDB>) -> Self {
         let bdb = Self {
             body_cache: Mutex::new(LruCache::new(BODY_CACHE_SIZE)),
-            parcel_address_cache: RwLock::new(HashMap::new()),
-            pending_parcel_addresses: RwLock::new(HashMap::new()),
+            address_by_hash_cache: RwLock::new(HashMap::new()),
+            pending_addresses_by_hash: RwLock::new(HashMap::new()),
 
-            transaction_address_cache: Default::default(),
-            pending_transaction_addresses: Default::default(),
+            addresses_by_tracker_cache: Default::default(),
+            pending_addresses_by_tracker: Default::default(),
 
             db,
         };
@@ -90,55 +90,55 @@ impl BodyDB {
     }
 
     pub fn update_best_block(&self, batch: &mut DBTransaction, best_block_changed: &BestBlockChanged) {
-        let mut pending_parcel_addresses = self.pending_parcel_addresses.write();
-        let mut pending_transaction_addresses = self.pending_transaction_addresses.lock();
+        let mut pending_addresses_by_hash = self.pending_addresses_by_hash.write();
+        let mut pending_addresses_by_tracker = self.pending_addresses_by_tracker.lock();
         batch.extend_with_option_cache(
             db::COL_EXTRA,
-            &mut *pending_parcel_addresses,
-            self.new_parcel_address_entries(best_block_changed),
+            &mut *pending_addresses_by_hash,
+            self.new_transaction_address_entries(best_block_changed),
             CacheUpdatePolicy::Overwrite,
         );
         batch.extend_with_option_cache(
             db::COL_EXTRA,
-            &mut *pending_transaction_addresses,
-            self.new_transaction_address_entries(best_block_changed),
+            &mut *pending_addresses_by_tracker,
+            self.new_transaction_addresses_entries(best_block_changed),
             CacheUpdatePolicy::Overwrite,
         );
     }
 
     /// Apply pending insertion updates
     pub fn commit(&self) {
-        let mut parcel_address_cache = self.parcel_address_cache.write();
-        let mut pending_parcel_addresses = self.pending_parcel_addresses.write();
+        let mut address_by_hash_cache = self.address_by_hash_cache.write();
+        let mut pending_addresses_by_hash = self.pending_addresses_by_hash.write();
 
-        let mut transaction_address_cache = self.transaction_address_cache.lock();
-        let mut pending_transaction_addresses = self.pending_transaction_addresses.lock();
+        let mut addresses_by_tracker_cache = self.addresses_by_tracker_cache.lock();
+        let mut pending_addresses_by_tracker = self.pending_addresses_by_tracker.lock();
 
-        let new_parcels = mem::replace(&mut *pending_parcel_addresses, HashMap::new());
-        let (retracted_parcels, enacted_parcels) =
-            new_parcels.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
+        let new_txs_by_hash = mem::replace(&mut *pending_addresses_by_hash, HashMap::new());
+        let (retracted_txs, enacted_txs) =
+            new_txs_by_hash.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
 
-        parcel_address_cache
-            .extend(enacted_parcels.into_iter().map(|(k, v)| (k, v.expect("Parcels were partitioned; qed"))));
+        address_by_hash_cache
+            .extend(enacted_txs.into_iter().map(|(k, v)| (k, v.expect("Transactions were partitioned; qed"))));
 
-        for hash in retracted_parcels.keys() {
-            parcel_address_cache.remove(hash);
+        for hash in retracted_txs.keys() {
+            address_by_hash_cache.remove(hash);
         }
 
-        let new_transactions = mem::replace(&mut *pending_transaction_addresses, HashMap::new());
+        let new_txs_by_tracker = mem::replace(&mut *pending_addresses_by_tracker, HashMap::new());
         let (removed_transactions, added_transactions) =
-            new_transactions.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
+            new_txs_by_tracker.into_iter().partition::<HashMap<_, _>, _>(|&(_, ref value)| value.is_none());
 
-        transaction_address_cache
-            .extend(added_transactions.into_iter().map(|(k, v)| (k, v.expect("Parcels were partitioned; qed"))));
+        addresses_by_tracker_cache
+            .extend(added_transactions.into_iter().map(|(k, v)| (k, v.expect("Transactions were partitioned; qed"))));
 
         for hash in removed_transactions.keys() {
-            transaction_address_cache.remove(hash);
+            addresses_by_tracker_cache.remove(hash);
         }
     }
 
-    /// This function returns modified parcel addresses.
-    fn new_parcel_address_entries(
+    /// This function returns modified transaction addresses.
+    fn new_transaction_address_entries(
         &self,
         best_block_changed: &BestBlockChanged,
     ) -> HashMap<TxHash, Option<TransactionAddress>> {
@@ -151,38 +151,38 @@ impl BodyDB {
             Some(block) => block,
             None => return HashMap::new(),
         };
-        let parcel_hashes = block.transaction_hashes();
+        let tx_hashes = block.transaction_hashes();
 
         match best_block_changed {
             BestBlockChanged::CanonChainAppended {
                 ..
-            } => parcel_address_entries(best_block_changed.new_best_hash().unwrap(), parcel_hashes).collect(),
+            } => tx_hash_and_address_entries(best_block_changed.new_best_hash().unwrap(), tx_hashes).collect(),
             BestBlockChanged::BranchBecomingCanonChain {
                 tree_route,
                 ..
             } => {
                 let enacted = tree_route.enacted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Enacted block must be in database.");
-                    let enacted_parcel_hashes = body.transaction_hashes();
-                    parcel_address_entries(*hash, enacted_parcel_hashes)
+                    let enacted_tx_hashes = body.transaction_hashes();
+                    tx_hash_and_address_entries(*hash, enacted_tx_hashes)
                 });
 
-                let current_addresses = { parcel_address_entries(block_hash, parcel_hashes) };
+                let current_addresses = { tx_hash_and_address_entries(block_hash, tx_hashes) };
 
                 let retracted = tree_route.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(&hash).expect("Retracted block must be in database.");
-                    let retracted_parcel_hashes = body.transaction_hashes().into_iter();
-                    retracted_parcel_hashes.map(|hash| (hash, None))
+                    let retracted_tx_hashes = body.transaction_hashes().into_iter();
+                    retracted_tx_hashes.map(|hash| (hash, None))
                 });
 
-                // The order here is important! Don't remove parcel if it was part of enacted blocks as well.
+                // The order here is important! Don't remove transactions if it was part of enacted blocks as well.
                 retracted.chain(enacted).chain(current_addresses).collect()
             }
             BestBlockChanged::None => HashMap::new(),
         }
     }
 
-    fn new_transaction_address_entries(
+    fn new_transaction_addresses_entries(
         &self,
         best_block_changed: &BestBlockChanged,
     ) -> HashMap<Tracker, Option<TransactionAddresses>> {
@@ -204,7 +204,7 @@ impl BodyDB {
                 ..
             } => (
                 Box::new(::std::iter::empty()),
-                Box::new(transaction_address_entries(block_hash, block.transactions())),
+                Box::new(tracker_and_addresses_entries(block_hash, block.transactions())),
             ),
             BestBlockChanged::BranchBecomingCanonChain {
                 ref tree_route,
@@ -215,13 +215,13 @@ impl BodyDB {
                     .iter()
                     .flat_map(|hash| {
                         let body = self.block_body(hash).expect("Enacted block must be in database.");
-                        transaction_address_entries(*hash, body.transactions())
+                        tracker_and_addresses_entries(*hash, body.transactions())
                     })
-                    .chain(transaction_address_entries(block_hash, block.transactions()));
+                    .chain(tracker_and_addresses_entries(block_hash, block.transactions()));
 
                 let retracted = tree_route.retracted.iter().flat_map(|hash| {
                     let body = self.block_body(hash).expect("Retracted block must be in database.");
-                    transaction_address_entries(*hash, body.transactions())
+                    tracker_and_addresses_entries(*hash, body.transactions())
                 });
 
                 (Box::new(retracted), Box::new(enacted))
@@ -283,12 +283,12 @@ pub trait BodyProvider {
     /// (though not necessarily a part of the canon chain).
     fn is_known_body(&self, hash: &BlockHash) -> bool;
 
-    /// Get the address of parcel with given hash.
+    /// Get the address of transaction with given hash.
     fn transaction_address(&self, hash: &TxHash) -> Option<TransactionAddress>;
 
     fn transaction_address_by_tracker(&self, tracker: &Tracker) -> Option<TransactionAddress>;
 
-    /// Get the block body (uncles and parcels).
+    /// Get the block body (transactions).
     fn block_body(&self, hash: &BlockHash) -> Option<encoded::Body>;
 }
 
@@ -297,14 +297,15 @@ impl BodyProvider for BodyDB {
         self.block_body(hash).is_some()
     }
 
-    /// Get the address of parcel with given hash.
+    /// Get the address of transaction with given hash.
     fn transaction_address(&self, hash: &TxHash) -> Option<TransactionAddress> {
-        let result = self.db.read_with_cache(db::COL_EXTRA, &mut *self.parcel_address_cache.write(), hash)?;
+        let result = self.db.read_with_cache(db::COL_EXTRA, &mut *self.address_by_hash_cache.write(), hash)?;
         Some(result)
     }
 
     fn transaction_address_by_tracker(&self, tracker: &Tracker) -> Option<TransactionAddress> {
-        let addresses = self.db.read_with_cache(db::COL_EXTRA, &mut *self.transaction_address_cache.lock(), tracker)?;
+        let addresses =
+            self.db.read_with_cache(db::COL_EXTRA, &mut *self.addresses_by_tracker_cache.lock(), tracker)?;
         addresses.into_iter().next()
     }
 
@@ -330,7 +331,7 @@ impl BodyProvider for BodyDB {
     }
 }
 
-fn parcel_address_entries(
+fn tx_hash_and_address_entries(
     block_hash: BlockHash,
     tx_hashes: impl IntoIterator<Item = TxHash>,
 ) -> impl Iterator<Item = (TxHash, Option<TransactionAddress>)> {
@@ -345,17 +346,17 @@ fn parcel_address_entries(
     })
 }
 
-fn transaction_address_entries(
+fn tracker_and_addresses_entries(
     block_hash: BlockHash,
-    parcel_hashes: impl IntoIterator<Item = UnverifiedTransaction>,
+    tx_hashes: impl IntoIterator<Item = UnverifiedTransaction>,
 ) -> impl Iterator<Item = TrackerAndAddress> {
-    parcel_hashes.into_iter().enumerate().filter_map(move |(parcel_index, parcel)| {
-        parcel.tracker().map(|tracker| {
+    tx_hashes.into_iter().enumerate().filter_map(move |(index, tx)| {
+        tx.tracker().map(|tracker| {
             (
                 tracker,
                 TransactionAddresses::new(TransactionAddress {
                     block_hash,
-                    index: parcel_index,
+                    index,
                 }),
             )
         })
