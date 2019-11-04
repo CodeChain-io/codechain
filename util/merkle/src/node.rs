@@ -112,4 +112,11 @@ impl<'a> Node<'a> {
             }
         }
     }
+
+    pub fn mid(self, offset: usize) -> Self {
+        match self {
+            Node::Leaf(partial, value) => Node::Leaf(partial.mid(offset), value),
+            Node::Branch(partial, child) => Node::Branch(partial.mid(offset), child),
+        }
+    }
 }

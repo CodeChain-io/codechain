@@ -461,6 +461,8 @@ dependencies = [
  "primitives",
  "rand 0.6.1",
  "rlp",
+ "rlp_derive",
+ "snap",
  "tempfile",
  "trie-standardmap",
 ]
