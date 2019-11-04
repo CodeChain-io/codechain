@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod codechain;
+pub mod codechain;
 mod manager;
 mod types;
 
 use ibc;
 use primitives::Bytes;
 
+pub use self::manager::Manager;
 pub use self::types::{ConsensusState, Header, Kind, State, KIND_CODECHAIN};
 
 use super::context::Context;

@@ -107,6 +107,7 @@ pub enum Error {
         idx: usize,
         parent_height: u64,
     },
+    IBC(String),
 }
 
 const ERROR_ID_ASSET_NOT_FOUND: u8 = 1;
@@ -144,6 +145,7 @@ const ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION: u8 = 31;
 const ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT: u8 = 32;
 const ERROR_ID_INSUFFICIENT_STAKES: u8 = 33;
 const ERROR_ID_INVALID_VALIDATOR_INDEX: u8 = 34;
+const ERROR_ID_IBC: u8 = 35;
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
@@ -180,6 +182,7 @@ impl TaggedRlp for RlpHelper {
             ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT => 2,
             ERROR_ID_INSUFFICIENT_STAKES => 3,
             ERROR_ID_INVALID_VALIDATOR_INDEX => 3,
+            ERROR_ID_IBC => 1,
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         })
     }
@@ -287,6 +290,7 @@ impl Encodable for Error {
                 idx,
                 parent_height,
             } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_VALIDATOR_INDEX).append(idx).append(parent_height),
+            Error::IBC(msg) => RlpHelper::new_tagged_list(s, ERROR_ID_IBC).append(msg),
         };
     }
 }
@@ -366,6 +370,7 @@ impl Decodable for Error {
                 idx: rlp.val_at(1)?,
                 parent_height: rlp.val_at(2)?,
             },
+            ERROR_ID_IBC => Error::IBC(rlp.val_at(1)?),
             _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         };
         RlpHelper::check_size(rlp, tag)?;
@@ -445,7 +450,8 @@ impl Display for Error {
                 write!(f, "Insufficient stakes: {}", mismatch),
             Error::InvalidValidatorIndex {
                 idx, parent_height,
-            } =>  write!(f, "The validator index {} is invalid at the parent hash {}", idx, parent_height),
+            } => write!(f, "The validator index {} is invalid at the parent hash {}", idx, parent_height),
+            Error::IBC(msg) => write!(f, "IBC: {}", msg)
         }
     }
 }
