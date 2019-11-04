@@ -14,14 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[allow(dead_code)]
-#[allow(unused_variables)]
-mod client_02;
-#[allow(dead_code)]
-#[allow(unused_variables)]
-mod commitment_23;
-mod context;
-mod kv_store;
+use super::new_state;
+use super::types::{ConsensusState, State};
+use ibc;
 
-pub use self::context::Context;
-pub use self::kv_store::KVStore;
+struct Manager {}
+
+impl Manager {
+    pub fn create(&self, ctx: &dyn ibc::Context, id: &str, cs: &dyn ConsensusState) -> Result<Box<dyn State>, String> {
+        let state = new_state(id, ctx, cs.kind());
+        if state.exists(ctx) {
+            return Err("Create client on already existing id".to_owned())
+        }
+        state.set_root(ctx, cs.get_height(), cs.get_root());
+        state.set_consensus_state(ctx, cs);
+        Ok(state)
+    }
+}

@@ -1,4 +1,4 @@
-// Copyright 2019 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,14 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[allow(dead_code)]
-#[allow(unused_variables)]
-mod client_02;
-#[allow(dead_code)]
-#[allow(unused_variables)]
-mod commitment_23;
-mod context;
-mod kv_store;
+type Path<'a> = &'a str;
 
-pub use self::context::Context;
-pub use self::kv_store::KVStore;
+pub trait KVStore {
+    fn get(&self, path: Path) -> Vec<u8>;
+    fn has(&self, path: Path) -> bool;
+    fn set(&self, path: Path, value: &[u8]);
+}
