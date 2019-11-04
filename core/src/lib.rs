@@ -55,6 +55,7 @@ extern crate snap;
 extern crate statrs;
 extern crate table;
 extern crate util_error;
+extern crate vrf;
 #[macro_use]
 extern crate log;
 extern crate core;

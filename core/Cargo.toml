@@ -46,6 +46,7 @@ vrf = { git = "https://github.com/CodeChain-io/vrf-rs.git" }
 
 [dev-dependencies]
 rand_xorshift = "0.1.0"
+hex = "0.4.0"
 
 [features]
 nightly = []
