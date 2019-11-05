@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod chunk;
+pub mod chunk;
 mod compress;
 mod error;
 mod ordered_heap;
