@@ -29,10 +29,8 @@ const MESSAGE_ID_GET_HEADERS: u8 = 0x02;
 const MESSAGE_ID_HEADERS: u8 = 0x03;
 const MESSAGE_ID_GET_BODIES: u8 = 0x04;
 const MESSAGE_ID_BODIES: u8 = 0x05;
-const MESSAGE_ID_GET_STATE_HEAD: u8 = 0x06;
-const MESSAGE_ID_STATE_HEAD: u8 = 0x07;
-const MESSAGE_ID_GET_STATE_CHUNK: u8 = 0x08;
-const MESSAGE_ID_STATE_CHUNK: u8 = 0x09;
+const MESSAGE_ID_GET_STATE_CHUNK: u8 = 0x0a;
+const MESSAGE_ID_STATE_CHUNK: u8 = 0x0b;
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
@@ -114,11 +112,10 @@ impl Decodable for Message {
             let request_id = rlp.val_at(1)?;
             let message = rlp.at(2)?;
             match id {
-                MESSAGE_ID_GET_HEADERS
-                | MESSAGE_ID_GET_BODIES
-                | MESSAGE_ID_GET_STATE_HEAD
-                | MESSAGE_ID_GET_STATE_CHUNK => Ok(Message::Request(request_id, RequestMessage::decode(id, &message)?)),
-                MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES | MESSAGE_ID_STATE_HEAD | MESSAGE_ID_STATE_CHUNK => {
+                MESSAGE_ID_GET_HEADERS | MESSAGE_ID_GET_BODIES | MESSAGE_ID_GET_STATE_CHUNK => {
+                    Ok(Message::Request(request_id, RequestMessage::decode(id, &message)?))
+                }
+                MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES | MESSAGE_ID_STATE_CHUNK => {
                     Ok(Message::Response(request_id, ResponseMessage::decode(id, &message)?))
                 }
                 _ => Err(DecoderError::Custom("Unknown message id detected")),
@@ -147,11 +144,5 @@ mod tests {
     fn request_bodies_message_rlp() {
         let request_id = 10;
         rlp_encode_and_decode_test!(Message::Request(request_id, RequestMessage::Bodies(vec![])));
-    }
-
-    #[test]
-    fn request_state_head_rlp() {
-        let request_id = 10;
-        rlp_encode_and_decode_test!(Message::Request(request_id, RequestMessage::StateHead(H256::random().into())));
     }
 }

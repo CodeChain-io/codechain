@@ -24,8 +24,7 @@ use ctypes::Header;
 pub enum ResponseMessage {
     Headers(Vec<Header>),
     Bodies(Vec<Vec<UnverifiedTransaction>>),
-    StateHead(Vec<u8>),
-    StateChunk(Vec<u8>),
+    StateChunk(Vec<Vec<u8>>),
 }
 
 impl Encodable for ResponseMessage {
@@ -53,13 +52,8 @@ impl Encodable for ResponseMessage {
 
                 s.append(&compressed);
             }
-            ResponseMessage::StateHead(bytes) => {
-                s.begin_list(1);
-                s.append(bytes);
-            }
-            ResponseMessage::StateChunk(bytes) => {
-                s.begin_list(1);
-                s.append(bytes);
+            ResponseMessage::StateChunk(chunks) => {
+                s.append_list::<Vec<u8>, Vec<u8>>(chunks);
             }
         };
     }
@@ -72,7 +66,6 @@ impl ResponseMessage {
                 ..
             } => super::MESSAGE_ID_HEADERS,
             ResponseMessage::Bodies(..) => super::MESSAGE_ID_BODIES,
-            ResponseMessage::StateHead(..) => super::MESSAGE_ID_STATE_HEAD,
             ResponseMessage::StateChunk {
                 ..
             } => super::MESSAGE_ID_STATE_CHUNK,
@@ -109,26 +102,7 @@ impl ResponseMessage {
                 }
                 ResponseMessage::Bodies(bodies)
             }
-            super::MESSAGE_ID_STATE_HEAD => {
-                let item_count = rlp.item_count()?;
-                if item_count != 1 {
-                    return Err(DecoderError::RlpIncorrectListLen {
-                        got: item_count,
-                        expected: 1,
-                    })
-                }
-                ResponseMessage::StateHead(rlp.val_at(0)?)
-            }
-            super::MESSAGE_ID_STATE_CHUNK => {
-                let item_count = rlp.item_count()?;
-                if item_count != 1 {
-                    return Err(DecoderError::RlpIncorrectListLen {
-                        got: item_count,
-                        expected: 1,
-                    })
-                }
-                ResponseMessage::StateChunk(rlp.val_at(0)?)
-            }
+            super::MESSAGE_ID_STATE_CHUNK => ResponseMessage::StateChunk(rlp.as_list()?),
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         };
 
@@ -181,12 +155,6 @@ mod tests {
         );
 
         let message = ResponseMessage::Bodies(vec![vec![tx]]);
-        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
-    }
-
-    #[test]
-    fn state_head_message_rlp() {
-        let message = ResponseMessage::StateHead(vec![]);
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
