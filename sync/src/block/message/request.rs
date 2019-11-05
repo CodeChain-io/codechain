@@ -25,11 +25,7 @@ pub enum RequestMessage {
         max_count: u64,
     },
     Bodies(Vec<BlockHash>),
-    StateHead(BlockHash),
-    StateChunk {
-        block_hash: BlockHash,
-        tree_root: H256,
-    },
+    StateChunk(BlockHash, Vec<H256>),
 }
 
 impl Encodable for RequestMessage {
@@ -46,17 +42,10 @@ impl Encodable for RequestMessage {
             RequestMessage::Bodies(hashes) => {
                 s.append_list(hashes);
             }
-            RequestMessage::StateHead(block_hash) => {
-                s.begin_list(1);
-                s.append(block_hash);
-            }
-            RequestMessage::StateChunk {
-                block_hash,
-                tree_root,
-            } => {
+            RequestMessage::StateChunk(block_hash, merkle_roots) => {
                 s.begin_list(2);
                 s.append(block_hash);
-                s.append(tree_root);
+                s.append_list(merkle_roots);
             }
         };
     }
@@ -69,7 +58,6 @@ impl RequestMessage {
                 ..
             } => super::MESSAGE_ID_GET_HEADERS,
             RequestMessage::Bodies(..) => super::MESSAGE_ID_GET_BODIES,
-            RequestMessage::StateHead(..) => super::MESSAGE_ID_GET_STATE_HEAD,
             RequestMessage::StateChunk {
                 ..
             } => super::MESSAGE_ID_GET_STATE_CHUNK,
@@ -92,16 +80,6 @@ impl RequestMessage {
                 }
             }
             super::MESSAGE_ID_GET_BODIES => RequestMessage::Bodies(rlp.as_list()?),
-            super::MESSAGE_ID_GET_STATE_HEAD => {
-                let item_count = rlp.item_count()?;
-                if item_count != 1 {
-                    return Err(DecoderError::RlpIncorrectListLen {
-                        got: item_count,
-                        expected: 1,
-                    })
-                }
-                RequestMessage::StateHead(rlp.val_at(0)?)
-            }
             super::MESSAGE_ID_GET_STATE_CHUNK => {
                 let item_count = rlp.item_count()?;
                 if item_count != 2 {
@@ -110,10 +88,7 @@ impl RequestMessage {
                         expected: 2,
                     })
                 }
-                RequestMessage::StateChunk {
-                    block_hash: rlp.val_at(0)?,
-                    tree_root: rlp.val_at(1)?,
-                }
+                RequestMessage::StateChunk(rlp.val_at(0)?, rlp.list_at(1)?)
             }
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         };
@@ -150,17 +125,8 @@ mod tests {
     }
 
     #[test]
-    fn request_state_head_message_rlp() {
-        let message = RequestMessage::StateHead(H256::default().into());
-        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
-    }
-
-    #[test]
     fn request_state_chunk_message_rlp() {
-        let message = RequestMessage::StateChunk {
-            block_hash: H256::default().into(),
-            tree_root: H256::default(),
-        };
+        let message = RequestMessage::StateChunk(H256::default().into(), vec![H256::default()]);
         assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 }

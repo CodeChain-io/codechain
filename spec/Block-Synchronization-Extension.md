@@ -53,32 +53,17 @@ Request corresponding bodies for each hash.
 * Restriction:
   * MUST include at least one item
 
-
-### GetStateHead
-
-```
-GetStateHead(block_hash)
-```
-
-Request corresponding state head for block of `block_hash`.
-
-* Identifier: 0x06
-* Restriction: Block number of requested block MUST be multiple of 214.
-
-
 ### GetStateChunk
 
 ```
-GetStateChunk(block_hash, tree_root)
+GetStateChunk(block_hash, [...chunk_roots])
 ```
 
-Request entire subtree starting from `tree_root`.
+Request corresponding snapshot chunk for each `chunk_root`.
 
-* Identifier: 0x08
+* Identifier: 0x0a
 * Restriction:
-  * Block number of requested block MUST be multiple of 214.
-  * `tree_root` MUST be included in requested block’s state trie.
-  * Depth of `tree_root` inside state trie MUST be equal to 2. (Depth of state root is 0)
+  * All values in `[...chunk_roots]` MUST be included in requested block’s state trie.
 
 
 ## Response messages
@@ -113,30 +98,15 @@ Response to `GetBodies` message. Snappy algorithm is used to compress content.
   * If received body is zero-length array, it means either body value is [], or sender doesn’t have body for requested hash
 
 
-### StateHead
-
-```
-StateHead(compressed((key_0, value_0), …) | [])
-```
-
-Response to `GetStateHead` message. Key and value included in this messages are raw value stored in state trie. Snappy algorithm is used for compression of content.
-
-* Identifier: 0x07
-* Restriction:
-  * State root of requested block MUST be included
-  * For all nodes with depth of less than 2 included in this message, all of its child MUST also be included.
-  * Content MUST be empty array if sender didn’t have requested data
-
-
 ### StateChunk
 ```
-StateChunk(compressed((key_0, value_0), …) | [])
+StateChunk([compressed([terminal_0, …] | []), ...])
 ```
 
-Response to `GetStateChunk` message. Details of message is same as `StateHead` message.
+Response to `GetStateChunk` message. Snappy algorithm is used for compression of content.
 
-* Identifier: 0x09
+* Identifier: 0x0b
 * Restriction:
-  * Node corresponding to tree_root in request MUST be included
-  * Every nodes included in message MUST have all of its child in same message.
-  * Content MUST be empty array if sender didn’t have requested data
+  * Number and order of chunks included in this message MUST be equal to request information.
+  * Node corresponding to `chunk_root` in request MUST be included
+  * If sender doesn’t have a chunk for the requested hash, corresponding chunk MUST be compressed([]), not omitted.
