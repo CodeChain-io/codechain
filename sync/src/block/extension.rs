@@ -49,8 +49,6 @@ const SYNC_EXPIRE_TOKEN_END: TimerToken = SYNC_EXPIRE_TOKEN_BEGIN + SYNC_EXPIRE_
 const SYNC_TIMER_INTERVAL: u64 = 1000;
 const SYNC_EXPIRE_REQUEST_INTERVAL: u64 = 15000;
 
-const SNAPSHOT_PERIOD: u64 = (1 << 14);
-
 #[derive(Debug, PartialEq)]
 pub struct TokenInfo {
     node_id: NodeId,
@@ -563,11 +561,9 @@ impl Extension {
                 ctrace!(SYNC, "Received body request from {}", from);
                 self.create_bodies_response(hashes)
             }
-            RequestMessage::StateHead(hash) => self.create_state_head_response(hash),
-            RequestMessage::StateChunk {
-                block_hash,
-                tree_root,
-            } => self.create_state_chunk_response(block_hash, tree_root),
+            RequestMessage::StateChunk(block_hash, chunk_root) => {
+                self.create_state_chunk_response(block_hash, chunk_root)
+            }
         };
 
         self.api.send(from, Arc::new(Message::Response(id, response).rlp_bytes()));
@@ -579,21 +575,9 @@ impl Extension {
                 ..
             } => true,
             RequestMessage::Bodies(hashes) => !hashes.is_empty(),
-            RequestMessage::StateHead(hash) => match self.client.block_number(&BlockId::Hash(*hash)) {
-                Some(number) if number % SNAPSHOT_PERIOD == 0 => true,
-                _ => false,
-            },
             RequestMessage::StateChunk {
-                block_hash,
                 ..
-            } => {
-                let _is_checkpoint = match self.client.block_number(&BlockId::Hash(*block_hash)) {
-                    Some(number) if number % SNAPSHOT_PERIOD == 0 => true,
-                    _ => false,
-                };
-                // FIXME:  check tree_root
-                unimplemented!()
-            }
+            } => unimplemented!(),
         }
     }
 
@@ -631,11 +615,7 @@ impl Extension {
         ResponseMessage::Bodies(bodies)
     }
 
-    fn create_state_head_response(&self, _hash: BlockHash) -> ResponseMessage {
-        unimplemented!()
-    }
-
-    fn create_state_chunk_response(&self, _hash: BlockHash, _tree_root: H256) -> ResponseMessage {
+    fn create_state_chunk_response(&self, _hash: BlockHash, _tree_root: Vec<H256>) -> ResponseMessage {
         unimplemented!()
     }
 
@@ -676,7 +656,7 @@ impl Extension {
                     self.on_body_response(hashes, bodies);
                     self.check_sync_variable();
                 }
-                _ => unimplemented!(),
+                ResponseMessage::StateChunk(..) => unimplemented!(),
             }
         }
     }
@@ -730,7 +710,6 @@ impl Extension {
                 }
                 true
             }
-            (RequestMessage::StateHead(..), ResponseMessage::StateHead(..)) => unimplemented!(),
             (
                 RequestMessage::StateChunk {
                     ..
