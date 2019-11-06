@@ -26,13 +26,6 @@ pub use self::types::{ConsensusState, Header, Kind, State, KIND_CODECHAIN};
 
 use super::context::Context;
 
-pub fn create(context: &mut impl Context, consensus_state: impl ConsensusState) {}
-
-pub fn check_validity_and_update_state(header: impl Header) {}
-
-pub fn check_misbehaviour_and_update_state(bytes: Bytes) {}
-
-
 pub fn new_state(id: &str, ctx: &mut dyn ibc::Context, client_type: Kind) -> Box<dyn State> {
     if client_type == KIND_CODECHAIN {
         Box::new(codechain::State::new(id, ctx))
