@@ -103,7 +103,7 @@ fn create_client(
     kind: ibc_client::Kind,
     consensus_state: &[u8],
 ) -> StateResult<()> {
-    let context = ibc_context::TopLevelContext::new(state);
+    let mut context = ibc_context::TopLevelContext::new(state);
     let client_manager = ibc_client::Manager::new();
     if kind != ibc_client::KIND_CODECHAIN {
         return Err(RuntimeError::IBC(format!("CreateClient has invalid type {}", kind)).into())
@@ -117,7 +117,7 @@ fn create_client(
     };
 
     client_manager
-        .create(&context, id, &codechain_consensus_state)
+        .create(&mut context, id, &codechain_consensus_state)
         .map_err(|err| RuntimeError::IBC(format!("CreateClient: {:?}", err)))?;
     Ok(())
 }
