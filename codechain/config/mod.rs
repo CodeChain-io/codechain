@@ -25,6 +25,7 @@ use cidr::IpCidr;
 use ckey::PlatformAddress;
 use clap;
 use cnetwork::{FilterEntry, NetworkConfig, SocketAddr};
+use primitives::H256;
 use toml;
 
 pub use self::chain_type::ChainType;
@@ -274,6 +275,8 @@ pub struct Network {
     pub min_peers: Option<usize>,
     pub max_peers: Option<usize>,
     pub sync: Option<bool>,
+    pub snapshot_hash: Option<H256>,
+    pub snapshot_number: Option<u64>,
     pub transaction_relay: Option<bool>,
     pub discovery: Option<bool>,
     pub discovery_type: Option<String>,
@@ -575,6 +578,12 @@ impl Network {
         if other.sync.is_some() {
             self.sync = other.sync;
         }
+        if other.snapshot_hash.is_some() {
+            self.snapshot_hash = other.snapshot_hash;
+        }
+        if other.snapshot_number.is_some() {
+            self.snapshot_number = other.snapshot_number;
+        }
         if other.transaction_relay.is_some() {
             self.transaction_relay = other.transaction_relay;
         }
@@ -626,6 +635,12 @@ impl Network {
 
         if matches.is_present("no-sync") {
             self.sync = Some(false);
+        }
+        if let Some(snapshot_hash) = matches.value_of("snapshot-hash") {
+            self.snapshot_hash = Some(snapshot_hash.parse().map_err(|_| "Invalid snapshot-hash")?);
+        }
+        if let Some(snapshot_number) = matches.value_of("snapshot-number") {
+            self.snapshot_number = Some(snapshot_number.parse().map_err(|_| "Invalid snapshot-number")?);
         }
         if matches.is_present("no-tx-relay") {
             self.transaction_relay = Some(false);

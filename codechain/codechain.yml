@@ -260,6 +260,16 @@ args:
         takes_value: true
         conflicts_with:
             - no-discovery
+    - snapshot-hash:
+        long: snapshot-hash
+        value_name: HASH
+        requires: snapshot-number
+        takes_value: true
+    - snapshot-number:
+        long: snapshot-number
+        value_name: NUM
+        requires: snapshot-hash
+        takes_value: true
     - no-snapshot:
         long: no-snapshot
         help: Disable snapshots
