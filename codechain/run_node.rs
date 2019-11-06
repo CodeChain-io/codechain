@@ -300,7 +300,11 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             if config.network.sync.unwrap() {
                 let sync_sender = {
                     let client = client.client();
-                    service.register_extension(move |api| BlockSyncExtension::new(client, api))
+                    let snapshot_target = match (config.network.snapshot_hash, config.network.snapshot_number) {
+                        (Some(hash), Some(num)) => Some((hash, num)),
+                        _ => None,
+                    };
+                    service.register_extension(move |api| BlockSyncExtension::new(client, api, snapshot_target))
                 };
                 let sync = Arc::new(BlockSyncSender::from(sync_sender.clone()));
                 client.client().add_notify(Arc::downgrade(&sync) as Weak<dyn ChainNotify>);

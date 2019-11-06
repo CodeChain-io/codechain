@@ -69,7 +69,7 @@ pub struct Extension {
 }
 
 impl Extension {
-    pub fn new(client: Arc<Client>, api: Box<dyn Api>) -> Extension {
+    pub fn new(client: Arc<Client>, api: Box<dyn Api>, _snapshot_target: Option<(H256, u64)>) -> Extension {
         api.set_timer(SYNC_TIMER_TOKEN, Duration::from_millis(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
 
         let mut header = client.best_header();
