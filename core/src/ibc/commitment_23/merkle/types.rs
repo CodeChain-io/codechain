@@ -20,6 +20,7 @@ use rlp::{DecoderError, RlpStream, UntrustedRlp};
 
 const MERKLE_KIND: &str = "merkle";
 
+// FIXME: We can simplify it.
 #[derive(RlpEncodable, RlpDecodable)]
 pub struct Root {
     hash: H256,
