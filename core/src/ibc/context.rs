@@ -18,7 +18,7 @@ use cstate::TopLevelState;
 use ibc::KVStore;
 
 pub trait Context {
-    fn get_kv_store(&self) -> &dyn kv_store::KVStore;
+    fn get_kv_store(&mut self) -> &mut dyn kv_store::KVStore;
 }
 
 pub struct TopLevelContext<'a> {
@@ -36,8 +36,8 @@ impl<'a> TopLevelContext<'a> {
 }
 
 impl<'a> Context for TopLevelContext<'a> {
-    fn get_kv_store(&self) -> &dyn KVStore {
-        &self.kv_store
+    fn get_kv_store(&mut self) -> &mut dyn KVStore {
+        &mut self.kv_store
     }
 }
 
@@ -54,7 +54,7 @@ impl<'a> kv_store::KVStore for TopLevelKVStore<'a> {
         unimplemented!()
     }
 
-    fn set(&self, path: &str, value: &[u8]) {
+    fn set(&mut self, path: &str, value: &[u8]) {
         unimplemented!()
     }
 }

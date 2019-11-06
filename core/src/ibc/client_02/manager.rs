@@ -25,7 +25,12 @@ impl Manager {
         Manager {}
     }
 
-    pub fn create(&self, ctx: &dyn ibc::Context, id: &str, cs: &dyn ConsensusState) -> Result<Box<dyn State>, String> {
+    pub fn create(
+        &self,
+        ctx: &mut dyn ibc::Context,
+        id: &str,
+        cs: &dyn ConsensusState,
+    ) -> Result<Box<dyn State>, String> {
         let state = new_state(id, ctx, cs.kind());
         if state.exists(ctx) {
             return Err("Create client on already existing id".to_owned())

@@ -19,5 +19,5 @@ type Path<'a> = &'a str;
 pub trait KVStore {
     fn get(&self, path: Path) -> Vec<u8>;
     fn has(&self, path: Path) -> bool;
-    fn set(&self, path: Path, value: &[u8]);
+    fn set(&mut self, path: Path, value: &[u8]);
 }

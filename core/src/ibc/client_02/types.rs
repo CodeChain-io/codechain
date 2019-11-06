@@ -36,9 +36,9 @@ pub trait Header {
 pub const KIND_CODECHAIN: Kind = 0_u8;
 
 pub trait State {
-    fn get_consensus_state(&self, ctx: &dyn ibc::Context) -> Box<dyn ConsensusState>;
-    fn set_consensus_state(&self, ctx: &dyn ibc::Context, cs: &dyn ConsensusState);
-    fn get_root(&self, ctx: &dyn ibc::Context, client_type: u8) -> Result<Box<dyn commitment::Root>, String>;
-    fn set_root(&self, ctx: &dyn ibc::Context, block_height: u64, root: &dyn commitment::Root);
-    fn exists(&self, ctx: &dyn ibc::Context) -> bool;
+    fn get_consensus_state(&self, ctx: &mut dyn ibc::Context) -> Box<dyn ConsensusState>;
+    fn set_consensus_state(&self, ctx: &mut dyn ibc::Context, cs: &dyn ConsensusState);
+    fn get_root(&self, ctx: &mut dyn ibc::Context, client_type: u8) -> Result<Box<dyn commitment::Root>, String>;
+    fn set_root(&self, ctx: &mut dyn ibc::Context, block_height: u64, root: &dyn commitment::Root);
+    fn exists(&self, ctx: &mut dyn ibc::Context) -> bool;
 }

@@ -103,7 +103,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(id: &str, ctx: &dyn ibc::Context) -> Self {
+    pub fn new(id: &str, ctx: &mut dyn ibc::Context) -> Self {
         let s = State {
             id: id.to_owned(),
         };
@@ -119,7 +119,7 @@ impl State {
         KIND_CODECHAIN
     }
 
-    fn set_type(&self, ctx: &dyn ibc::Context) {
+    fn set_type(&self, ctx: &mut dyn ibc::Context) {
         let kv_store = ctx.get_kv_store();
         let path = type_path(self.id());
         KVStore::set(kv_store, &path, &[self.kind()]);
@@ -127,28 +127,28 @@ impl State {
 }
 
 impl client::State for State {
-    fn get_consensus_state(&self, ctx: &dyn ibc::Context) -> Box<dyn client::ConsensusState> {
+    fn get_consensus_state(&self, ctx: &mut dyn ibc::Context) -> Box<dyn client::ConsensusState> {
         unimplemented!()
     }
 
-    fn set_consensus_state(&self, ctx: &dyn ibc::Context, cs: &dyn client::ConsensusState) {
+    fn set_consensus_state(&self, ctx: &mut dyn ibc::Context, cs: &dyn client::ConsensusState) {
         let kv_store = ctx.get_kv_store();
         let data = cs.encode();
         let path = client::consensus_state_path(self.id());
         KVStore::set(kv_store, &path, &data);
     }
 
-    fn get_root(&self, ctx: &dyn ibc::Context, client_type: u8) -> Result<Box<dyn commitment::Root>, String> {
+    fn get_root(&self, ctx: &mut dyn ibc::Context, client_type: u8) -> Result<Box<dyn commitment::Root>, String> {
         unimplemented!()
     }
 
-    fn set_root(&self, ctx: &dyn ibc::Context, block_height: u64, root: &dyn commitment::Root) {
+    fn set_root(&self, ctx: &mut dyn ibc::Context, block_height: u64, root: &dyn commitment::Root) {
         let kv_store = ctx.get_kv_store();
         let path = client::root_path(self.id(), block_height);
         KVStore::set(kv_store, &path, &root.encode());
     }
 
-    fn exists(&self, ctx: &dyn ibc::Context) -> bool {
+    fn exists(&self, ctx: &mut dyn ibc::Context) -> bool {
         let kv_store = ctx.get_kv_store();
         KVStore::has(kv_store, &client::consensus_state_path(self.id()))
     }
