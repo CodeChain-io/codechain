@@ -29,6 +29,7 @@ use crate::block::{ExecutedBlock, IsBlock};
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{EngineError, EngineType};
 use crate::error::Error;
+use crate::ibc;
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo {
@@ -45,6 +46,7 @@ impl Solo {
             action_handlers.push(Arc::new(HitHandler::new()));
         }
         action_handlers.push(Arc::new(stake::Stake::new(params.genesis_stakes.clone())));
+        action_handlers.push(Arc::new(ibc::custom_action_handler::IBC::new()));
 
         Solo {
             params,
