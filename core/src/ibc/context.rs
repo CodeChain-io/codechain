@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use super::kv_store;
-use cstate::TopLevelState;
+use cstate::{ActionDataKeyBuilder, TopState};
+use cstate::{TopLevelState, TopStateView};
+use ibc::custom_action_handler::CUSTOM_ACTION_HANDLER_ID;
 use ibc::KVStore;
+use primitives::H256;
 
 pub trait Context {
     fn get_kv_store(&mut self) -> &mut dyn kv_store::KVStore;
@@ -45,16 +48,26 @@ pub struct TopLevelKVStore<'a> {
     state: &'a mut TopLevelState,
 }
 
+impl<'a> TopLevelKVStore<'a> {
+    fn key(path: &str) -> H256 {
+        let key_builder = ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1);
+        key_builder.append(&path.as_bytes()).into_key()
+    }
+}
+
 impl<'a> kv_store::KVStore for TopLevelKVStore<'a> {
     fn get(&self, path: &str) -> Vec<u8> {
-        unimplemented!()
+        let key = TopLevelKVStore::key(path);
+        self.state.action_data(&key).expect("Get key").expect("Data empty").into()
     }
 
     fn has(&self, path: &str) -> bool {
-        unimplemented!()
+        let key = TopLevelKVStore::key(path);
+        self.state.action_data(&key).expect("Get key").is_some()
     }
 
     fn set(&mut self, path: &str, value: &[u8]) {
-        unimplemented!()
+        let key = TopLevelKVStore::key(path);
+        self.state.update_action_data(&key, value.to_vec()).expect("Set in IBC KVStore")
     }
 }
