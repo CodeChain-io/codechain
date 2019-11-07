@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::blake256;
+use ccrypto::{blake256, BLAKE_NULL_RLP};
 use hashdb::HashDB;
 use primitives::H256;
 
@@ -103,6 +103,27 @@ impl<'db> TrieDB<'db> {
             None => Ok(None),
         }
     }
+
+    /// Check if every leaf of the trie exists
+    #[allow(dead_code)]
+    pub fn is_complete(&self) -> bool {
+        *self.root == BLAKE_NULL_RLP || self.is_complete_aux(self.root)
+    }
+
+    /// Check if every leaf of the trie starting from `hash` exists
+    fn is_complete_aux(&self, hash: &H256) -> bool {
+        if let Some(node_rlp) = self.db.get(hash) {
+            match RlpNode::decoded(node_rlp.as_ref()) {
+                Some(RlpNode::Branch(.., children)) => {
+                    children.iter().flatten().all(|child| self.is_complete_aux(child))
+                }
+                Some(RlpNode::Leaf(..)) => true,
+                None => false,
+            }
+        } else {
+            false
+        }
+    }
 }
 
 impl<'db> Trie for TrieDB<'db> {
@@ -124,6 +145,19 @@ mod tests {
     use crate::*;
     use memorydb::*;
 
+    fn delete_any_child(db: &mut MemoryDB, root: &H256) {
+        let node_rlp = db.get(root).unwrap();
+        match RlpNode::decoded(&node_rlp).unwrap() {
+            RlpNode::Leaf(..) => {
+                db.remove(root);
+            }
+            RlpNode::Branch(.., children) => {
+                let first_child = children.iter().find(|c| c.is_some()).unwrap().unwrap();
+                db.remove(&first_child);
+            }
+        }
+    }
+
     #[test]
     fn get() {
         let mut memdb = MemoryDB::new();
@@ -138,5 +172,34 @@ mod tests {
         assert_eq!(t.get(b"A"), Ok(Some(b"ABC".to_vec())));
         assert_eq!(t.get(b"B"), Ok(Some(b"ABCBA".to_vec())));
         assert_eq!(t.get(b"C"), Ok(None));
+    }
+
+    #[test]
+    fn is_complete_success() {
+        let mut memdb = MemoryDB::new();
+        let mut root = H256::new();
+        {
+            let mut t = TrieDBMut::new(&mut memdb, &mut root);
+            t.insert(b"A", b"ABC").unwrap();
+            t.insert(b"B", b"ABCBA").unwrap();
+        }
+
+        let t = TrieDB::try_new(&memdb, &root).unwrap();
+        assert!(t.is_complete());
+    }
+
+    #[test]
+    fn is_complete_fail() {
+        let mut memdb = MemoryDB::new();
+        let mut root = H256::new();
+        {
+            let mut t = TrieDBMut::new(&mut memdb, &mut root);
+            t.insert(b"A", b"ABC").unwrap();
+            t.insert(b"B", b"ABCBA").unwrap();
+        }
+        delete_any_child(&mut memdb, &root);
+
+        let t = TrieDB::try_new(&memdb, &root).unwrap();
+        assert!(!t.is_complete());
     }
 }
