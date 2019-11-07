@@ -24,12 +24,14 @@ use ccore::{
     Block, BlockChainClient, BlockChainTrait, BlockId, BlockImportError, ChainNotify, Client, ImportBlock, ImportError,
     UnverifiedTransaction,
 };
+use cmerkle::TrieFactory;
 use cnetwork::{Api, EventSender, NetworkExtension, NodeId};
 use cstate::FindActionHandler;
 use ctimer::TimerToken;
 use ctypes::header::{Header, Seal};
 use ctypes::transaction::Action;
 use ctypes::{BlockHash, BlockNumber};
+use hashdb::AsHashDB;
 use primitives::{H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -55,7 +57,14 @@ pub struct TokenInfo {
     request_id: Option<u64>,
 }
 
+enum State {
+    SnapshotHeader(H256),
+    SnapshotChunk(H256),
+    Full,
+}
+
 pub struct Extension {
+    state: State,
     requests: HashMap<NodeId, Vec<(u64, RequestMessage)>>,
     connected_nodes: HashSet<NodeId>,
     header_downloaders: HashMap<NodeId, HeaderDownloader>,
@@ -69,9 +78,22 @@ pub struct Extension {
 }
 
 impl Extension {
-    pub fn new(client: Arc<Client>, api: Box<dyn Api>, _snapshot_target: Option<(H256, u64)>) -> Extension {
+    pub fn new(client: Arc<Client>, api: Box<dyn Api>, snapshot_target: Option<(H256, u64)>) -> Extension {
         api.set_timer(SYNC_TIMER_TOKEN, Duration::from_millis(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
 
+        let state = match snapshot_target {
+            Some((hash, num)) => match client.block_header(&BlockId::Number(num)) {
+                Some(ref header) if *header.hash() == hash => {
+                    let state_db = client.state_db().read();
+                    match TrieFactory::readonly(state_db.as_hashdb(), &header.state_root()) {
+                        Ok(ref trie) if trie.is_complete() => State::Full,
+                        _ => State::SnapshotChunk(*header.hash()),
+                    }
+                }
+                _ => State::SnapshotHeader(hash),
+            },
+            None => State::Full,
+        };
         let mut header = client.best_header();
         let mut hollow_headers = vec![header.decode()];
         while client.block_body(&BlockId::Hash(header.hash())).is_none() {
@@ -89,6 +111,7 @@ impl Extension {
         }
         cinfo!(SYNC, "Sync extension initialized");
         Extension {
+            state,
             requests: Default::default(),
             connected_nodes: Default::default(),
             header_downloaders: Default::default(),
@@ -286,31 +309,35 @@ impl NetworkExtension<Event> for Extension {
 
     fn on_timeout(&mut self, token: TimerToken) {
         match token {
-            SYNC_TIMER_TOKEN => {
-                let best_proposal_score = self.client.chain_info().best_proposal_score;
-                let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
-                peer_ids.shuffle(&mut thread_rng());
+            SYNC_TIMER_TOKEN => match self.state {
+                State::SnapshotHeader(..) => unimplemented!(),
+                State::SnapshotChunk(..) => unimplemented!(),
+                State::Full => {
+                    let best_proposal_score = self.client.chain_info().best_proposal_score;
+                    let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
+                    peer_ids.shuffle(&mut thread_rng());
 
-                for id in &peer_ids {
-                    let request = self.header_downloaders.get_mut(id).and_then(HeaderDownloader::create_request);
-                    if let Some(request) = request {
-                        self.send_header_request(id, request);
-                        break
+                    for id in &peer_ids {
+                        let request = self.header_downloaders.get_mut(id).and_then(HeaderDownloader::create_request);
+                        if let Some(request) = request {
+                            self.send_header_request(id, request);
+                            break
+                        }
+                    }
+
+                    for id in peer_ids {
+                        let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
+                            peer.total_score()
+                        } else {
+                            U256::zero()
+                        };
+
+                        if peer_score > best_proposal_score {
+                            self.send_body_request(&id);
+                        }
                     }
                 }
-
-                for id in peer_ids {
-                    let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
-                        peer.total_score()
-                    } else {
-                        U256::zero()
-                    };
-
-                    if peer_score > best_proposal_score {
-                        self.send_body_request(&id);
-                    }
-                }
-            }
+            },
             SYNC_EXPIRE_TOKEN_BEGIN..=SYNC_EXPIRE_TOKEN_END => {
                 self.check_sync_variable();
                 let (id, request_id) = {
@@ -572,33 +599,37 @@ impl Extension {
                 return
             }
 
-            match response {
-                ResponseMessage::Headers(headers) => {
-                    self.dismiss_request(from, id);
-                    self.on_header_response(from, &headers)
-                }
-                ResponseMessage::Bodies(bodies) => {
-                    self.check_sync_variable();
-                    let hashes = match request {
-                        RequestMessage::Bodies(hashes) => hashes,
-                        _ => unreachable!(),
-                    };
-                    assert_eq!(bodies.len(), hashes.len());
-                    if let Some(token) = self.tokens.get(from) {
-                        if let Some(token_info) = self.tokens_info.get_mut(token) {
-                            if token_info.request_id.is_none() {
-                                ctrace!(SYNC, "Expired before handling response");
-                                return
-                            }
-                            self.api.clear_timer(*token).expect("Timer clear succeed");
-                            token_info.request_id = None;
-                        }
+            match self.state {
+                State::SnapshotHeader(..) => unimplemented!(),
+                State::SnapshotChunk(..) => unimplemented!(),
+                State::Full => match response {
+                    ResponseMessage::Headers(headers) => {
+                        self.dismiss_request(from, id);
+                        self.on_header_response(from, &headers)
                     }
-                    self.dismiss_request(from, id);
-                    self.on_body_response(hashes, bodies);
-                    self.check_sync_variable();
-                }
-                _ => unimplemented!(),
+                    ResponseMessage::Bodies(bodies) => {
+                        self.check_sync_variable();
+                        let hashes = match request {
+                            RequestMessage::Bodies(hashes) => hashes,
+                            _ => unreachable!(),
+                        };
+                        assert_eq!(bodies.len(), hashes.len());
+                        if let Some(token) = self.tokens.get(from) {
+                            if let Some(token_info) = self.tokens_info.get_mut(token) {
+                                if token_info.request_id.is_none() {
+                                    ctrace!(SYNC, "Expired before handling response");
+                                    return
+                                }
+                                self.api.clear_timer(*token).expect("Timer clear succeed");
+                                token_info.request_id = None;
+                            }
+                        }
+                        self.dismiss_request(from, id);
+                        self.on_body_response(hashes, bodies);
+                        self.check_sync_variable();
+                    }
+                    _ => unimplemented!(),
+                },
             }
         }
     }

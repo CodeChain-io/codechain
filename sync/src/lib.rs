@@ -25,7 +25,6 @@ extern crate codechain_state as cstate;
 extern crate codechain_timer as ctimer;
 extern crate codechain_types as ctypes;
 
-#[cfg(test)]
 extern crate hashdb;
 extern crate journaldb;
 extern crate kvdb;
