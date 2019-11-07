@@ -105,6 +105,11 @@ impl<'db> TrieDB<'db> {
             None => Ok(None),
         }
     }
+
+    /// Check if every leaf of the trie exists
+    pub fn is_complete(&self) -> bool {
+        unimplemented!()
+    }
 }
 
 impl<'db> Trie for TrieDB<'db> {
