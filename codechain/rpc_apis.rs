@@ -48,6 +48,7 @@ impl ApiDependencies {
             AccountClient::new(Arc::clone(&self.account_provider), Arc::clone(&self.client), Arc::clone(&self.miner))
                 .to_delegate(),
         );
+        handler.extend_with(IBCClient::new(Arc::clone(&self.client)).to_delegate())
     }
 }
 

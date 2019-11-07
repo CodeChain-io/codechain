@@ -14,16 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub mod client_02;
-#[allow(dead_code)]
-#[allow(unused_variables)]
-mod commitment_23;
-pub mod context;
-#[allow(dead_code)]
-#[allow(unused_variables)]
-pub mod custom_action_handler;
-mod kv_store;
-
-pub use self::client_02 as client;
-pub use self::context::Context;
-pub use self::kv_store::KVStore;
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IBCQueryResult {
+    pub block_number: u64,
+    pub raw: String,
+    pub proof: String,
+}
