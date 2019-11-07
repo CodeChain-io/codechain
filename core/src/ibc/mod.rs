@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[allow(dead_code)]
-#[allow(unused_variables)]
 mod client_02;
 #[allow(dead_code)]
 #[allow(unused_variables)]

@@ -19,18 +19,24 @@ mod manager;
 mod types;
 
 use ibc;
-use primitives::Bytes;
 
 pub use self::manager::Manager;
 pub use self::types::{ConsensusState, Header, Kind, State, KIND_CODECHAIN};
-
-use super::context::Context;
 
 pub fn new_state(id: &str, ctx: &mut dyn ibc::Context, client_type: Kind) -> Box<dyn State> {
     if client_type == KIND_CODECHAIN {
         Box::new(codechain::State::new(id, ctx))
     } else {
         panic!("Invalid client type");
+    }
+}
+
+pub fn get_state(id: &str, ctx: &mut dyn ibc::Context) -> Result<Box<dyn State>, String> {
+    let s = codechain::State::find(id);
+    if s.exists(ctx) {
+        Ok(Box::new(s))
+    } else {
+        Err("client not exists".to_owned())
     }
 }
 

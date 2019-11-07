@@ -27,7 +27,7 @@ pub struct Root {
 }
 
 impl Root {
-    fn new(hash: H256) -> Self {
+    pub fn new(hash: H256) -> Self {
         Root {
             hash,
         }
