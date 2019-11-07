@@ -25,6 +25,7 @@ use ctypes::errors::SyntaxError;
 use ctypes::{CommonParams, Header};
 use ibc::client_02 as ibc_client;
 use ibc::client_02::codechain as ibc_codechain;
+use ibc::commitment_23::merkle::Proof;
 use ibc::context as ibc_context;
 use parking_lot::RwLock;
 use rlp::{Decodable, UntrustedRlp};
@@ -80,17 +81,43 @@ impl ActionHandler for IBC {
                 header,
             } => update_client(state, &id, &header),
             Action::OpenConnectionInit {
-                ..
-            } => unimplemented!(),
+                id,
+                client_id,
+                desired_counterparty_id,
+                counterparty_client_id,
+            } => open_connection_init(state, &id, &client_id, &desired_counterparty_id, &counterparty_client_id),
             Action::OpenConnectionTry {
-                ..
-            } => unimplemented!(),
+                desired_id,
+                client_id,
+                counterparty_connection_id,
+                counterparty_client_id,
+                counterparty_versions,
+                proof_init,
+                proof_height,
+                consensus_height,
+            } => open_connection_try(
+                state,
+                &desired_id,
+                &client_id,
+                &counterparty_connection_id,
+                &counterparty_client_id,
+                &counterparty_versions,
+                &proof_init,
+                &proof_height,
+                &consensus_height,
+            ),
             Action::OpenConnectionAck {
-                ..
-            } => unimplemented!(),
+                id,
+                version,
+                proof_try,
+                proof_height,
+                consensus_height,
+            } => open_connection_ack(state, &id, &version, &proof_try, &proof_height, &consensus_height),
             Action::OpenConnectionConfirm {
-                ..
-            } => unimplemented!(),
+                id,
+                proof_ack,
+                proof_height,
+            } => open_connection_confirm(state, &id, &proof_ack, &proof_height),
         }
     }
 
@@ -146,4 +173,48 @@ fn update_client(state: &mut TopLevelState, id: &str, header: &[u8]) -> StateRes
     client_state.update(&mut context, header).map_err(RuntimeError::IBC)?;
 
     Ok(())
+}
+
+fn open_connection_init(
+    state: &mut TopLevelState,
+    id: &str,
+    client_id: &str,
+    desired_counterparty_id: &str,
+    counterparty_client_id: &str,
+) -> StateResult<()> {
+    unimplemented!()
+}
+
+fn open_connection_try(
+    state: &mut TopLevelState,
+    desired_id: &str,
+    client_id: &str,
+    counterparty_connection_id: &str,
+    counterparty_client_id: &str,
+    counterparty_versions: &Vec<String>,
+    proof_init: &Proof,
+    proof_height: &u64,
+    consensus_height: &u64,
+) -> StateResult<()> {
+    unimplemented!()
+}
+
+fn open_connection_ack(
+    state: &mut TopLevelState,
+    id: &str,
+    version: &str,
+    proof_try: &Proof,
+    proof_height: &u64,
+    consensus_height: &u64,
+) -> StateResult<()> {
+    unimplemented!()
+}
+
+fn open_connection_confirm(
+    state: &mut TopLevelState,
+    id: &str,
+    proof_ack: &Proof,
+    proof_height: &u64,
+) -> StateResult<()> {
+    unimplemented!()
 }
