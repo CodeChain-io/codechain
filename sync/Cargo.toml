@@ -15,6 +15,7 @@ codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
 codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
+hashdb = { path = "../util/hashdb" }
 journaldb = { path = "../util/journaldb" }
 kvdb = { path = "../util/kvdb" }
 log = "0.4.6"
@@ -29,7 +30,6 @@ token-generator = "0.1.0"
 util-error = { path = "../util/error" }
 
 [dev-dependencies]
-hashdb = { path = "../util/hashdb" }
 kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 tempfile = "3.0.4"
 trie-standardmap = { path = "../util/trie-standardmap" }
