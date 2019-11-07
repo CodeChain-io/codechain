@@ -147,7 +147,7 @@ impl Encodable for Action {
                     .append(client_id)
                     .append(counterparty_connection_id)
                     .append(counterparty_client_id)
-                    .append_list(counterparty_versions)
+                    .append_list::<String, _>(counterparty_versions)
                     .append(proof_init)
                     .append(proof_height)
                     .append(consensus_height);

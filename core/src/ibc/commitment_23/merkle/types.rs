@@ -84,6 +84,7 @@ impl types::Prefix for Prefix {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Proof {
     key: Vec<u8>,
     value_hash: Vec<u8>,

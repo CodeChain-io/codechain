@@ -79,6 +79,18 @@ impl ActionHandler for IBC {
                 id,
                 header,
             } => update_client(state, &id, &header),
+            Action::OpenConnectionInit {
+                ..
+            } => unimplemented!(),
+            Action::OpenConnectionTry {
+                ..
+            } => unimplemented!(),
+            Action::OpenConnectionAck {
+                ..
+            } => unimplemented!(),
+            Action::OpenConnectionConfirm {
+                ..
+            } => unimplemented!(),
         }
     }
 
