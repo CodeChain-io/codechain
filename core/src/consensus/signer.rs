@@ -16,9 +16,12 @@
 
 use std::sync::Arc;
 
+#[cfg(test)]
+use ckey::Secret;
 use ckey::{Address, Public, SchnorrSignature, Signature};
 use ckeystore::DecryptedAccount;
 use primitives::H256;
+use vrf::openssl::ECVRF;
 
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 
@@ -52,6 +55,18 @@ impl EngineSigner {
         cinfo!(ENGINE, "Setting Engine signer to {}", address);
     }
 
+    #[cfg(test)]
+    fn set_decrypted_account(&mut self, secret: Secret) {
+        self.decrypted_account = Some(DecryptedAccount::new(secret));
+    }
+
+    #[cfg(test)]
+    pub fn create_engine_signer_with_secret(secret: Secret) -> Self {
+        let mut signer = Self::default();
+        signer.set_decrypted_account(secret);
+        signer
+    }
+
     // TODO: remove decrypted_account after some timeout
     pub fn set_to_keep_decrypted_account(&mut self, ap: Arc<AccountProvider>, address: Address) {
         let account =
@@ -75,6 +90,19 @@ impl EngineSigner {
             }
         };
         Ok(result)
+    }
+
+    /// Generate a vrf proof.
+    pub fn vrf_prove(&self, message: &[u8], vrf_inst: &mut ECVRF) -> Result<Vec<u8>, AccountProviderError> {
+        Ok(match &self.decrypted_account {
+            Some(account) => account.vrf_prove(message, vrf_inst)?,
+            None => {
+                let address = self.signer.map(|(address, _)| address).unwrap_or_default();
+                self.account_provider
+                    .get_unlocked_account(&address)
+                    .and_then(|account| account.vrf_prove(message, vrf_inst).map_err(From::from))?
+            }
+        })
     }
 
     /// Sign a message hash with ECDSA.

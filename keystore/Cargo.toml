@@ -20,6 +20,7 @@ parking_lot = "0.6.0"
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
 smallvec = "0.4"
 tempdir = "0.3"
+vrf = { git = "https://github.com/CodeChain-io/vrf-rs.git" }
 
 [dev-dependencies]
 matches = "0.1"
