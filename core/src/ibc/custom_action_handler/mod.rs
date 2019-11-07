@@ -26,6 +26,7 @@ use ctypes::{CommonParams, Header};
 use ibc::client_02 as ibc_client;
 use ibc::client_02::codechain as ibc_codechain;
 use ibc::commitment_23::merkle::Proof;
+use ibc::connection_03 as ibc_connection;
 use ibc::context as ibc_context;
 use parking_lot::RwLock;
 use rlp::{Decodable, UntrustedRlp};
@@ -182,7 +183,19 @@ fn open_connection_init(
     desired_counterparty_id: &str,
     counterparty_client_id: &str,
 ) -> StateResult<()> {
-    unimplemented!()
+    let mut context = ibc_context::TopLevelContext::new(state);
+    let client_manager = ibc_client::Manager::new();
+    let connection_manager = ibc_connection::Manager::new(client_manager);
+
+    connection_manager
+        .create(&mut context, id, client_id, desired_counterparty_id, counterparty_client_id)
+        .map_err(|err| RuntimeError::IBC(format!("OpenConnectionInit: {:?}", err)))?;
+
+    Ok(())
+
+    // 1. create client_manager and check client_id exists.
+    // 2. create connection_manager and check connection_id exists.
+    // 3. save ConnectionEnd
 }
 
 fn open_connection_try(
@@ -197,6 +210,9 @@ fn open_connection_try(
     consensus_height: &u64,
 ) -> StateResult<()> {
     unimplemented!()
+    // 1. create
+    // check desired id
+    // pick version
 }
 
 fn open_connection_ack(

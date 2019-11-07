@@ -18,6 +18,7 @@ mod client_02;
 #[allow(dead_code)]
 #[allow(unused_variables)]
 mod commitment_23;
+mod connection_03;
 #[allow(dead_code)]
 #[allow(unused_variables)]
 mod context;

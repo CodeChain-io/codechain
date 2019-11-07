@@ -14,6 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod manager;
 mod types;
 
+pub use self::manager::Manager;
 pub use self::types::{ConnectionEnd, ConnectionState, ConnectionVersion};
+
+pub fn connection_path(id: &str) -> String {
+    format!("connections/{}", id)
+}
+
+pub fn client_connections_path(client_id: &str) -> String {
+    format!("clients/{}/connections", client_id)
+}
