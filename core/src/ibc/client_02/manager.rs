@@ -17,6 +17,7 @@
 use super::new_state;
 use super::types::{ConsensusState, State};
 use ibc;
+use ibc::client_02::get_state;
 
 pub struct Manager {}
 
@@ -38,5 +39,9 @@ impl Manager {
         state.set_root(ctx, cs.get_height(), cs.get_root());
         state.set_consensus_state(ctx, cs);
         Ok(state)
+    }
+
+    pub fn query(&self, ctx: &mut dyn ibc::Context, id: &str) -> Result<Box<dyn State>, String> {
+        get_state(id, ctx)
     }
 }

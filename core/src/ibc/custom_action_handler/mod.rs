@@ -75,6 +75,10 @@ impl ActionHandler for IBC {
                 kind,
                 consensus_state,
             } => create_client(state, fee_payer, &id, kind, &consensus_state),
+            Action::UpdateClient {
+                id,
+                header,
+            } => update_client(state, &id, &header),
         }
     }
 
@@ -119,5 +123,15 @@ fn create_client(
     client_manager
         .create(&mut context, id, &codechain_consensus_state)
         .map_err(|err| RuntimeError::IBC(format!("CreateClient: {:?}", err)))?;
+    Ok(())
+}
+
+fn update_client(state: &mut TopLevelState, id: &str, header: &[u8]) -> StateResult<()> {
+    let mut context = ibc_context::TopLevelContext::new(state);
+    let client_manager = ibc_client::Manager::new();
+    let client_state = client_manager.query(&mut context, id).map_err(RuntimeError::IBC)?;
+
+    client_state.update(&mut context, header).map_err(RuntimeError::IBC)?;
+
     Ok(())
 }

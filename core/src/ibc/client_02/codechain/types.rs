@@ -20,9 +20,10 @@ use ckey::Public;
 use encoded;
 use ibc;
 use ibc::client_02 as client;
-use ibc::client_02::{type_path, Kind, KIND_CODECHAIN};
+use ibc::client_02::{type_path, Header as ClientHeader, Kind, KIND_CODECHAIN};
 use ibc::commitment_23 as commitment;
 use ibc::KVStore;
+use primitives::H256;
 use rlp::{DecoderError, UntrustedRlp};
 
 pub type ValidatorSet = Vec<Public>;
@@ -59,6 +60,13 @@ impl rlp::Decodable for ConsensusState {
     }
 }
 
+impl ConsensusState {
+    fn update(&mut self, header: &self::Header) {
+        self.height = header.get_height();
+        self.root = commitment::merkle::Root::new(header.raw.state_root())
+    }
+}
+
 impl client::ConsensusState for ConsensusState {
     fn kind(&self) -> u8 {
         client::KIND_CODECHAIN
@@ -72,8 +80,15 @@ impl client::ConsensusState for ConsensusState {
         &self.root
     }
 
-    fn check_validity_and_update_state(&mut self) -> Result<(), String> {
-        unimplemented!()
+    fn check_validity_and_update_state(&mut self, header: &[u8]) -> Result<(), String> {
+        let header = self::Header::new(header.to_vec());
+
+        header.verify_basic()?;
+        header.verify_signature(&self.next_validator_set)?;
+
+        self.update(&header);
+
+        Ok(())
     }
 
     fn check_misbehaviour_and_update_state(&mut self) -> bool {
@@ -89,12 +104,33 @@ pub struct Header {
     raw: encoded::Header,
 }
 
+impl Header {
+    fn new(bytes: Vec<u8>) -> Self {
+        Self {
+            raw: encoded::Header::new(bytes),
+        }
+    }
+
+    fn verify_basic(&self) -> Result<(), String> {
+        // TODO
+        Ok(())
+    }
+
+    fn verify_signature(&self, _validator_set: &[Public]) -> Result<(), String> {
+        // TODO
+        Ok(())
+    }
+}
+
 impl client::Header for Header {
     fn kind(&self) -> u8 {
         client::KIND_CODECHAIN
     }
     fn get_height(&self) -> u64 {
         self.raw.number()
+    }
+    fn encode(&self) -> &[u8] {
+        self.raw.rlp().as_raw()
     }
 }
 
@@ -109,6 +145,12 @@ impl State {
         };
         s.set_type(ctx);
         s
+    }
+
+    pub fn find(id: &str) -> Self {
+        State {
+            id: id.to_owned(),
+        }
     }
 
     fn id(&self) -> &str {
@@ -128,7 +170,11 @@ impl State {
 
 impl client::State for State {
     fn get_consensus_state(&self, ctx: &mut dyn ibc::Context) -> Box<dyn client::ConsensusState> {
-        unimplemented!()
+        let kv_store = ctx.get_kv_store();
+        let bytes = kv_store.get(&client::consensus_state_path(self.id()));
+        let rlp = UntrustedRlp::new(&bytes);
+        let consensus_state: ConsensusState = rlp.as_val().expect("data from DB");
+        Box::new(consensus_state)
     }
 
     fn set_consensus_state(&self, ctx: &mut dyn ibc::Context, cs: &dyn client::ConsensusState) {
@@ -138,8 +184,13 @@ impl client::State for State {
         KVStore::set(kv_store, &path, &data);
     }
 
-    fn get_root(&self, ctx: &mut dyn ibc::Context, client_type: u8) -> Result<Box<dyn commitment::Root>, String> {
-        unimplemented!()
+    fn get_root(&self, ctx: &mut dyn ibc::Context, block_height: u64) -> Result<Box<dyn commitment::Root>, String> {
+        let kv_store = ctx.get_kv_store();
+        let path = client::root_path(self.id(), block_height);
+        let bytes = KVStore::get(kv_store, &path);
+        let rlp = UntrustedRlp::new(&bytes);
+        let raw_hash: H256 = rlp.as_val().map_err(|err| format!("ibc get_root: {}", err.to_string()))?;
+        Ok(Box::new(commitment::merkle::Root::new(raw_hash)))
     }
 
     fn set_root(&self, ctx: &mut dyn ibc::Context, block_height: u64, root: &dyn commitment::Root) {
@@ -153,5 +204,17 @@ impl client::State for State {
         KVStore::has(kv_store, &client::consensus_state_path(self.id()))
     }
 
-    // is, update, freeze, delete,
+    fn update(&self, ctx: &mut dyn ibc::Context, header: &[u8]) -> Result<(), String> {
+        if !self.exists(ctx) {
+            return Err("client not exist".to_owned())
+        }
+
+        let mut consensus_state = self.get_consensus_state(ctx);
+        consensus_state.check_validity_and_update_state(header)?;
+
+        self.set_consensus_state(ctx, consensus_state.as_ref());
+        self.set_root(ctx, consensus_state.get_height(), consensus_state.get_root());
+
+        Ok(())
+    }
 }
