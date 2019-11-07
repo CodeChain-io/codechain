@@ -41,6 +41,7 @@ extern crate serde_json;
 extern crate smallvec;
 extern crate tempdir;
 extern crate time;
+extern crate vrf;
 
 extern crate codechain_crypto as ccrypto;
 extern crate codechain_json as cjson;

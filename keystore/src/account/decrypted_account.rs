@@ -17,6 +17,8 @@
 use ckey::{
     sign, sign_schnorr, Error as KeyError, KeyPair, Message, Private, Public, SchnorrSignature, Secret, Signature,
 };
+use vrf::openssl::{Error as VRFError, ECVRF};
+use vrf::VRF;
 
 /// An opaque wrapper for secret.
 pub struct DecryptedAccount {
@@ -38,6 +40,11 @@ impl DecryptedAccount {
     /// Sign a message with Schnorr scheme.
     pub fn sign_schnorr(&self, message: &Message) -> Result<SchnorrSignature, KeyError> {
         sign_schnorr(&Private::from(self.secret), message)
+    }
+
+    ///  Generate VRF random hash output.
+    pub fn vrf_hash(&self, message: &Message, vrf_inst: &mut ECVRF) -> Result<Vec<u8>, VRFError> {
+        vrf_inst.prove(&Private::from(self.secret), message).and_then(|proof| vrf_inst.proof_to_hash(&proof))
     }
 
     /// Derive public key.
