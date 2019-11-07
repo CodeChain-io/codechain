@@ -23,6 +23,7 @@ use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use snap;
 
+pub use super::super::sortition::PriorityMessage;
 use super::super::BitSet;
 use super::{Height, Step, View};
 
@@ -79,10 +80,17 @@ const MESSAGE_ID_REQUEST_MESSAGE: u8 = 0x04;
 const MESSAGE_ID_REQUEST_PROPOSAL: u8 = 0x05;
 const MESSAGE_ID_REQUEST_COMMIT: u8 = 0x06;
 const MESSAGE_ID_COMMIT: u8 = 0x07;
+const MESSAGE_ID_PRIORITY: u8 = 0x08;
 
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
     ConsensusMessage(Vec<Bytes>),
+    PriorityMessage {
+        height: Height,
+        view: View,
+        signer_idx: usize,
+        message: PriorityMessage,
+    },
     ProposalBlock {
         signature: SchnorrSignature,
         view: View,
@@ -182,6 +190,15 @@ impl Encodable for TendermintMessage {
                 s.append(&MESSAGE_ID_COMMIT);
                 s.append(block);
                 s.append_list(votes);
+            }
+            TendermintMessage::PriorityMessage {
+                height,
+                view,
+                signer_idx,
+                message,
+            } => {
+                s.begin_list(5);
+                s.append(&MESSAGE_ID_PRIORITY).append(height).append(view).append(signer_idx).append(message);
             }
         }
     }
@@ -304,6 +321,25 @@ impl Decodable for TendermintMessage {
                     votes,
                 }
             }
+            MESSAGE_ID_PRIORITY => {
+                let item_count = rlp.item_count()?;
+                if item_count != 5 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 5,
+                    })
+                }
+                let height = rlp.at(1)?.as_val()?;
+                let view = rlp.at(2)?.as_val()?;
+                let signer_idx = rlp.at(3)?.as_val()?;
+                let message = rlp.at(4)?.as_val()?;
+                TendermintMessage::PriorityMessage {
+                    height,
+                    view,
+                    signer_idx,
+                    message,
+                }
+            }
             _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
     }
@@ -357,8 +393,15 @@ impl ConsensusMessage {
 
 #[cfg(test)]
 mod tests {
-    use rlp::{self, rlp_encode_and_decode_test};
+    use std::sync::Arc;
 
+    use ccrypto::sha256;
+    use ckey::Private;
+    use parking_lot::RwLock;
+    use rlp::{self, rlp_encode_and_decode_test};
+    use vrf::openssl::{CipherSuite, ECVRF};
+
+    use super::super::super::sortition::vrf_sortition::VRFSortition;
     use super::super::Step;
     use super::*;
 
@@ -451,6 +494,34 @@ mod tests {
                     },
                 }
             ]
+        });
+    }
+
+    #[test]
+    fn encode_and_decode_tendermint_message_8() {
+        let priv_key: Private = sha256("secret_key").into();
+
+        let seed = sha256("seed");
+        let ec_vrf = ECVRF::from_suite(CipherSuite::SECP256K1_SHA256_SVDW).unwrap();
+        let ec_vrf = Arc::new(RwLock::new(ec_vrf));
+        let sortition_scheme = VRFSortition {
+            total_power: 100,
+            expectation: 71.85,
+            vrf_inst: ec_vrf,
+        };
+        let voting_power = 50;
+        let priority_info =
+            sortition_scheme.create_highest_priority_info(seed, priv_key, voting_power).unwrap().unwrap();
+
+        let priority_message = PriorityMessage {
+            seed,
+            info: priority_info,
+        };
+        rlp_encode_and_decode_test!(TendermintMessage::PriorityMessage {
+            height: 2187,
+            view: 1,
+            signer_idx: 11,
+            message: priority_message
         });
     }
 

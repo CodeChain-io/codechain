@@ -34,7 +34,7 @@ pub struct VRFSortition {
     pub vrf_inst: Arc<RwLock<ECVRF>>,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Debug, RlpEncodable, RlpDecodable)]
 pub struct PriorityInfo {
     priority: Priority,
     sub_user_idx: u64,
@@ -125,6 +125,7 @@ mod vrf_tests {
 
     use ccrypto::sha256;
     use ckey::KeyPair;
+    use rlp::rlp_encode_and_decode_test;
     use vrf::openssl::CipherSuite;
 
     use super::*;
@@ -227,5 +228,16 @@ mod vrf_tests {
         let priority_info =
             sortition_scheme.create_highest_priority_info(seed, priv_key.into(), voting_power).unwrap().unwrap();
         assert!(priority_info.verify_priority());
+    }
+
+    #[test]
+    fn test_encode_and_decode_priority_info() {
+        let priority_info = PriorityInfo {
+            priority: H256::random(),
+            sub_user_idx: 1,
+            vrf_hash: vec![0x10, 0x11, 0x30, 0x31],
+            vrf_proof: vec![0x41, 0x22, 0x11, 0x12, 0x22, 0x78],
+        };
+        rlp_encode_and_decode_test!(priority_info);
     }
 }
