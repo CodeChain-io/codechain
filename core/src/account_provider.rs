@@ -25,6 +25,7 @@ use ckey::{public_to_address, Address, Error as KeyError, Generator, KeyPair, Pa
 use ckeystore::accounts_dir::MemoryDirectory;
 use ckeystore::{DecryptedAccount, Error as KeystoreError, KeyStore, SecretStore, SimpleSecretStore};
 use parking_lot::RwLock;
+use vrf::openssl::Error as VRFError;
 
 /// Type of unlock.
 #[derive(Clone, PartialEq)]
@@ -56,6 +57,8 @@ pub enum Error {
     KeyError(KeyError),
     /// Keystore error.
     KeystoreError(KeystoreError),
+    /// VRF error,
+    VRFError(VRFError),
 }
 
 impl From<KeyError> for Error {
@@ -70,6 +73,12 @@ impl From<KeystoreError> for Error {
     }
 }
 
+impl From<VRFError> for Error {
+    fn from(e: VRFError) -> Self {
+        Error::VRFError(e)
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
@@ -77,6 +86,7 @@ impl fmt::Display for Error {
             Error::NotFound => write!(f, "Account does not exist"),
             Error::KeyError(e) => write!(f, "{}", e),
             Error::KeystoreError(e) => write!(f, "{}", e),
+            Error::VRFError(e) => write!(f, "{}", e),
         }
     }
 }

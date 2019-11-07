@@ -19,6 +19,7 @@ use std::sync::Arc;
 use ckey::{Address, Public, SchnorrSignature, Signature};
 use ckeystore::DecryptedAccount;
 use primitives::H256;
+use vrf::openssl::ECVRF;
 
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 
@@ -75,6 +76,19 @@ impl EngineSigner {
             }
         };
         Ok(result)
+    }
+
+    /// Generate a vrf random hash.
+    pub fn vrf_hash(&self, hash: H256, vrf_inst: &mut ECVRF) -> Result<Vec<u8>, AccountProviderError> {
+        Ok(match &self.decrypted_account {
+            Some(account) => account.vrf_hash(&hash, vrf_inst)?,
+            None => {
+                let address = self.signer.map(|(address, _)| address).unwrap_or_default();
+                self.account_provider
+                    .get_unlocked_account(&address)
+                    .and_then(|account| account.vrf_hash(&hash, vrf_inst).map_err(From::from))?
+            }
+        })
     }
 
     /// Sign a message hash with ECDSA.
