@@ -124,7 +124,7 @@ impl<Stream: TryRead + TryWrite + PeerAddr + Shutdown> TryStream<Stream> {
         Ok(None)
     }
 
-    fn read_len(&mut self) -> Result<Option<(Vec<u8>)>> {
+    fn read_len(&mut self) -> Result<Option<Vec<u8>>> {
         debug_assert_eq!(None, self.read);
         let mut bytes: Vec<u8> = vec![0];
 
