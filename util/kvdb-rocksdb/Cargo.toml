@@ -10,7 +10,7 @@ log = "0.4.6"
 num_cpus = "1.8"
 parking_lot = "0.6.0"
 regex = "0.2"
-rlp = { path = "../rlp" }
+rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.3" }
 rocksdb = { git = "https://github.com/paritytech/rust-rocksdb", rev = "ecf06adf3148ab10f6f7686b724498382ff4f36e" }
 interleaved-ordered = "0.1.0"
 

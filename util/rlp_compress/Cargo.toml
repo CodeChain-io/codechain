@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]
-rlp = { path = "../rlp" }
 elastic-array = "0.10"
 lazy_static = "1.2"
+rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.3" }
