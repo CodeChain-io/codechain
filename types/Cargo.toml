@@ -8,7 +8,7 @@ codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypt
 codechain-json = { path = "../json" }
 codechain-key = { path = "../key" }
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
-rlp = { path = "../util/rlp" }
+rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.3" }
 rlp_derive = { path = "../util/rlp_derive" }
 serde = "1.0"
 serde_derive = "1.0"
