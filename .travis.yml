@@ -16,8 +16,8 @@ jobs:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '(^spec/|\.md$)'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
-        - nvm install 10
-        - nvm use 10
+        - nvm install 12
+        - nvm use 12
         - npm install -g yarn
       before_script:
         - cargo fetch --verbose
@@ -34,8 +34,8 @@ jobs:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
-        - nvm install 10
-        - nvm use 10
+        - nvm install 12
+        - nvm use 12
         - npm install -g yarn
       before_script:
         - cargo fetch --verbose
@@ -52,8 +52,8 @@ jobs:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
-        - nvm install 10
-        - nvm use 10
+        - nvm install 12
+        - nvm use 12
         - npm install -g yarn
       before_script:
         - cargo build --verbose
@@ -68,8 +68,8 @@ jobs:
         - SKIP=`.travis/check-mergify-merge` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
         - SKIP=`.travis/check-change '^spec/|\.md$'` && if [[ "$SKIP" = "skip" ]]; then exit 0; fi
       install:
-        - nvm install 10
-        - nvm use 10
+        - nvm install 12
+        - nvm use 12
         - npm install -g yarn
       before_script:
         - cargo build --verbose
