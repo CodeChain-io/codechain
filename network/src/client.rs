@@ -230,7 +230,7 @@ impl Client {
 
     pub fn extension_versions(&self) -> Vec<(String, Vec<u64>)> {
         let extensions = self.extensions.read();
-        extensions.iter().map(|(name, extension)| (name.to_string(), extension.versions.clone())).collect()
+        extensions.iter().map(|(name, extension)| ((*name).to_string(), extension.versions.clone())).collect()
     }
 
     pub fn on_node_removed(&self, id: &NodeId) {

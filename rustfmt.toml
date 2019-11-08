@@ -34,7 +34,6 @@ reorder_modules = true
 # reorder_impl_items = false
 # report_todo = "Never"
 # report_fixme = "Never"
-# skip_children = false
 space_after_colon = true
 space_before_colon = false
 struct_field_align_threshold = 0
