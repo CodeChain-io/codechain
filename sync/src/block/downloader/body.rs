@@ -18,16 +18,13 @@ use std::collections::{HashMap, HashSet};
 
 use ccore::UnverifiedTransaction;
 use ctypes::{BlockHash, Header};
-use primitives::H256;
 
 use super::super::message::RequestMessage;
 
 #[derive(Clone)]
 struct Target {
     hash: BlockHash,
-    parent_hash: BlockHash,
-    transactions_root: H256,
-    transaction_root: H256,
+    is_empty: bool,
 }
 
 #[derive(Default)]
@@ -62,7 +59,7 @@ impl BodyDownloader {
             if self.downloading.remove(&hash) {
                 if body.is_empty() {
                     let target = self.targets.iter().find(|t| t.hash == hash).expect("Downloading target must exist");
-                    if target.transaction_root != target.transactions_root {
+                    if !target.is_empty {
                         continue
                     }
                 }
@@ -72,13 +69,11 @@ impl BodyDownloader {
         self.downloading.shrink_to_fit();
     }
 
-    pub fn add_target(&mut self, header: &Header, parent: &Header) {
+    pub fn add_target(&mut self, header: &Header, is_empty: bool) {
         cdebug!(SYNC, "Add download target: {}", header.hash());
         self.targets.push(Target {
             hash: header.hash(),
-            parent_hash: parent.hash(),
-            transactions_root: *header.transactions_root(),
-            transaction_root: *parent.transactions_root(),
+            is_empty,
         });
     }
 
