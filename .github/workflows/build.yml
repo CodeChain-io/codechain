@@ -21,11 +21,12 @@ jobs:
       - name: Archive
         working-directory: target/release
         run: |
-          echo ${{github.sha}} ${{github.ref}} | tee git-ref
-          shasum -a 256 codechain | tee sha256sums
-          mkdir codechain-${{matrix.os}}-${{github.sha}}
-          mv codechain git-ref sha256sums codechain-${{matrix.os}}-${{github.sha}}
+          mkdir artifacts
+          echo ${{github.sha}} ${{github.ref}} | tee artifacts/git-ref
+          shasum -a 256 codechain | tee artifacts/sha256sums
+          CODECHAIN_VERSION="$(./codechain --version | cut -d ' ' -f 2)"
+          tar cvfz artifacts/codechain-${CODECHAIN_VERSION}-$(uname -m)-$(echo $(uname) | tr '[:upper:]' '[:lower:]').tar.gz codechain
       - uses: actions/upload-artifact@v1
         with:
-          name: codechain-${{matrix.os}}-${{github.sha}}
-          path: target/release/codechain-${{matrix.os}}-${{github.sha}}
+          name: codechain-${{ matrix.os }}
+          path: target/release/artifacts
