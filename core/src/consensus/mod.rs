@@ -31,6 +31,7 @@ pub use self::cuckoo::Cuckoo;
 pub use self::null_engine::NullEngine;
 pub use self::simple_poa::SimplePoA;
 pub use self::solo::Solo;
+pub use self::sortition::vrf_sortition::{Priority, PriorityInfo, VRFSortition};
 pub use self::tendermint::{
     ConsensusMessage, Height, Step, Tendermint, TendermintParams, TimeGapParams, View, VoteOn, VoteStep,
 };
@@ -54,6 +55,7 @@ use crate::account_provider::AccountProvider;
 use crate::block::{ExecutedBlock, SealedBlock};
 use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::sortition::seed::SeedInfo;
 use crate::error::Error;
 use crate::transaction::UnverifiedTransaction;
 use crate::views::HeaderView;

@@ -26,6 +26,14 @@ use snap;
 use super::super::BitSet;
 use super::{Height, Step, View};
 
+/// Step for the sortition round.
+/// FIXME: It has a large overlap with the previous VoteStep.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RlpDecodable, RlpEncodable)]
+pub struct SortitionRound {
+    pub height: Height,
+    pub view: View,
+}
+
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RlpDecodable, RlpEncodable)]
 pub struct VoteStep {
@@ -45,6 +53,25 @@ impl VoteStep {
 
     pub fn is_step(&self, height: Height, view: View, step: Step) -> bool {
         self.height == height && self.view == view && self.step == step
+    }
+}
+
+impl From<VoteStep> for SortitionRound {
+    fn from(step: VoteStep) -> Self {
+        Self {
+            height: step.height,
+            view: step.view,
+        }
+    }
+}
+
+impl From<SortitionRound> for VoteStep {
+    fn from(round: SortitionRound) -> Self {
+        Self {
+            height: round.height,
+            view: round.view,
+            step: Step::Propose,
+        }
     }
 }
 
@@ -69,6 +96,18 @@ impl Ord for VoteStep {
         } else {
             self.step.number().cmp(&m.step.number())
         }
+    }
+}
+
+impl PartialOrd for SortitionRound {
+    fn partial_cmp(&self, other: &SortitionRound) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SortitionRound {
+    fn cmp(&self, other: &SortitionRound) -> cmp::Ordering {
+        (self.height, self.view).cmp(&(other.height, other.view))
     }
 }
 
