@@ -57,8 +57,9 @@ pub struct TokenInfo {
     request_id: Option<u64>,
 }
 
+#[derive(Debug)]
 enum State {
-    SnapshotHeader(H256),
+    SnapshotHeader(BlockHash, u64),
     SnapshotChunk(H256),
     Full,
 }
@@ -90,10 +91,11 @@ impl Extension {
                         _ => State::SnapshotChunk(*header.hash()),
                     }
                 }
-                _ => State::SnapshotHeader(hash),
+                _ => State::SnapshotHeader(hash.into(), num),
             },
             None => State::Full,
         };
+        cdebug!(SYNC, "Initial state is {:?}", state);
         let mut header = client.best_header();
         let mut hollow_headers = vec![header.decode()];
         while client.block_body(&BlockId::Hash(header.hash())).is_none() {
@@ -309,35 +311,45 @@ impl NetworkExtension<Event> for Extension {
 
     fn on_timeout(&mut self, token: TimerToken) {
         match token {
-            SYNC_TIMER_TOKEN => match self.state {
-                State::SnapshotHeader(..) => unimplemented!(),
-                State::SnapshotChunk(..) => unimplemented!(),
-                State::Full => {
-                    let best_proposal_score = self.client.chain_info().best_proposal_score;
-                    let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
-                    peer_ids.shuffle(&mut thread_rng());
+            SYNC_TIMER_TOKEN => {
+                let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
+                peer_ids.shuffle(&mut thread_rng());
 
-                    for id in &peer_ids {
-                        let request = self.header_downloaders.get_mut(id).and_then(HeaderDownloader::create_request);
-                        if let Some(request) = request {
-                            self.send_header_request(id, request);
-                            break
+                match self.state {
+                    State::SnapshotHeader(_, num) => {
+                        for id in &peer_ids {
+                            self.send_header_request(id, RequestMessage::Headers {
+                                start_number: num,
+                                max_count: 1,
+                            });
                         }
                     }
+                    State::SnapshotChunk(..) => unimplemented!(),
+                    State::Full => {
+                        let best_proposal_score = self.client.chain_info().best_proposal_score;
+                        for id in &peer_ids {
+                            let request =
+                                self.header_downloaders.get_mut(id).and_then(HeaderDownloader::create_request);
+                            if let Some(request) = request {
+                                self.send_header_request(id, request);
+                                break
+                            }
+                        }
 
-                    for id in peer_ids {
-                        let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
-                            peer.total_score()
-                        } else {
-                            U256::zero()
-                        };
+                        for id in peer_ids {
+                            let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
+                                peer.total_score()
+                            } else {
+                                U256::zero()
+                            };
 
-                        if peer_score > best_proposal_score {
-                            self.send_body_request(&id);
+                            if peer_score > best_proposal_score {
+                                self.send_body_request(&id);
+                            }
                         }
                     }
                 }
-            },
+            }
             SYNC_EXPIRE_TOKEN_BEGIN..=SYNC_EXPIRE_TOKEN_END => {
                 self.check_sync_variable();
                 let (id, request_id) = {
@@ -413,39 +425,72 @@ pub enum Event {
 
 impl Extension {
     fn new_headers(&mut self, imported: Vec<BlockHash>, enacted: Vec<BlockHash>, retracted: Vec<BlockHash>) {
-        let peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
-        for id in peer_ids {
-            if let Some(peer) = self.header_downloaders.get_mut(&id) {
-                peer.mark_as_imported(imported.clone());
+        if let Some(next_state) = match self.state {
+            State::SnapshotHeader(hash, ..) => {
+                if imported.contains(&hash) {
+                    let header = self.client.block_header(&BlockId::Hash(hash)).expect("Imported header must exist");
+                    Some(State::SnapshotChunk(header.state_root()))
+                } else {
+                    None
+                }
             }
-        }
-        let mut headers_to_download: Vec<_> = enacted
-            .into_iter()
-            .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
-            .collect();
-        headers_to_download.sort_unstable_by_key(EncodedHeader::number);
-        #[allow(clippy::redundant_closure)]
-        // False alarm. https://github.com/rust-lang/rust-clippy/issues/1439
-        headers_to_download.dedup_by_key(|h| h.hash());
+            State::SnapshotChunk(..) => unimplemented!(),
+            State::Full => {
+                let peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
+                for id in peer_ids {
+                    if let Some(peer) = self.header_downloaders.get_mut(&id) {
+                        peer.mark_as_imported(imported.clone());
+                    }
+                }
+                let mut headers_to_download: Vec<_> = enacted
+                    .into_iter()
+                    .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
+                    .collect();
+                headers_to_download.sort_unstable_by_key(EncodedHeader::number);
+                #[allow(clippy::redundant_closure)]
+                // False alarm. https://github.com/rust-lang/rust-clippy/issues/1439
+                headers_to_download.dedup_by_key(|h| h.hash());
 
-        let headers: Vec<_> = headers_to_download
-            .into_iter()
-            .filter(|header| self.client.block_body(&BlockId::Hash(header.hash())).is_none())
-            .collect(); // FIXME: No need to collect here if self is not borrowed.
-        for header in headers {
-            let parent = self
-                .client
-                .block_header(&BlockId::Hash(header.parent_hash()))
-                .expect("Enacted header must have parent");
-            self.body_downloader.add_target(&header.decode(), &parent.decode());
+                let headers: Vec<_> = headers_to_download
+                    .into_iter()
+                    .filter(|header| self.client.block_body(&BlockId::Hash(header.hash())).is_none())
+                    .collect(); // FIXME: No need to collect here if self is not borrowed.
+                for header in headers {
+                    let parent = self
+                        .client
+                        .block_header(&BlockId::Hash(header.parent_hash()))
+                        .expect("Enacted header must have parent");
+                    self.body_downloader.add_target(&header.decode(), &parent.decode());
+                }
+                self.body_downloader.remove_target(&retracted);
+                None
+            }
+        } {
+            cdebug!(SYNC, "Transitioning state to {:?}", next_state);
+            self.state = next_state;
         }
-        self.body_downloader.remove_target(&retracted);
     }
 
     fn new_blocks(&mut self, imported: Vec<BlockHash>, invalid: Vec<BlockHash>) {
-        self.body_downloader.remove_target(&imported);
-        self.body_downloader.remove_target(&invalid);
-
+        if let Some(next_state) = match self.state {
+            State::SnapshotHeader(hash, ..) => {
+                if imported.contains(&hash) {
+                    let header = self.client.block_header(&BlockId::Hash(hash)).expect("Imported header must exist");
+                    Some(State::SnapshotChunk(header.state_root()))
+                } else {
+                    None
+                }
+            }
+            State::SnapshotChunk(..) => None,
+            State::Full => {
+                self.body_downloader.remove_target(&imported);
+                self.body_downloader.remove_target(&invalid);
+                None
+            }
+        } {
+            cdebug!(SYNC, "Transitioning state to {:?}", next_state);
+            self.state = next_state;
+        }
 
         let chain_info = self.client.chain_info();
 
@@ -599,37 +644,33 @@ impl Extension {
                 return
             }
 
-            match self.state {
-                State::SnapshotHeader(..) => unimplemented!(),
-                State::SnapshotChunk(..) => unimplemented!(),
-                State::Full => match response {
-                    ResponseMessage::Headers(headers) => {
-                        self.dismiss_request(from, id);
-                        self.on_header_response(from, &headers)
-                    }
-                    ResponseMessage::Bodies(bodies) => {
-                        self.check_sync_variable();
-                        let hashes = match request {
-                            RequestMessage::Bodies(hashes) => hashes,
-                            _ => unreachable!(),
-                        };
-                        assert_eq!(bodies.len(), hashes.len());
-                        if let Some(token) = self.tokens.get(from) {
-                            if let Some(token_info) = self.tokens_info.get_mut(token) {
-                                if token_info.request_id.is_none() {
-                                    ctrace!(SYNC, "Expired before handling response");
-                                    return
-                                }
-                                self.api.clear_timer(*token).expect("Timer clear succeed");
-                                token_info.request_id = None;
+            match response {
+                ResponseMessage::Headers(headers) => {
+                    self.dismiss_request(from, id);
+                    self.on_header_response(from, &headers)
+                }
+                ResponseMessage::Bodies(bodies) => {
+                    self.check_sync_variable();
+                    let hashes = match request {
+                        RequestMessage::Bodies(hashes) => hashes,
+                        _ => unreachable!(),
+                    };
+                    assert_eq!(bodies.len(), hashes.len());
+                    if let Some(token) = self.tokens.get(from) {
+                        if let Some(token_info) = self.tokens_info.get_mut(token) {
+                            if token_info.request_id.is_none() {
+                                ctrace!(SYNC, "Expired before handling response");
+                                return
                             }
+                            self.api.clear_timer(*token).expect("Timer clear succeed");
+                            token_info.request_id = None;
                         }
-                        self.dismiss_request(from, id);
-                        self.on_body_response(hashes, bodies);
-                        self.check_sync_variable();
                     }
-                    _ => unimplemented!(),
-                },
+                    self.dismiss_request(from, id);
+                    self.on_body_response(hashes, bodies);
+                    self.check_sync_variable();
+                }
+                _ => unimplemented!(),
             }
         }
     }
@@ -699,42 +740,61 @@ impl Extension {
 
     fn on_header_response(&mut self, from: &NodeId, headers: &[Header]) {
         ctrace!(SYNC, "Received header response from({}) with length({})", from, headers.len());
-        let (mut completed, pivot_score_changed) = if let Some(peer) = self.header_downloaders.get_mut(from) {
-            let before_pivot_score = peer.pivot_score();
-            let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
-            peer.import_headers(&encoded);
-            let after_pivot_score = peer.pivot_score();
-            (peer.downloaded(), before_pivot_score != after_pivot_score)
-        } else {
-            (Vec::new(), false)
-        };
-        completed.sort_unstable_by_key(EncodedHeader::number);
-
-        let mut exists = Vec::new();
-        let mut queued = Vec::new();
-
-        for header in completed {
-            let hash = header.hash();
-            match self.client.import_header(header.clone().into_inner()) {
-                Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
-                Err(BlockImportError::Import(ImportError::AlreadyQueued)) => queued.push(hash),
-                // FIXME: handle import errors
-                Err(err) => {
-                    cwarn!(SYNC, "Cannot import header({}): {:?}", header.hash(), err);
-                    break
+        match self.state {
+            State::SnapshotHeader(..) => {
+                for header in headers {
+                    match self.client.import_header(header.rlp_bytes().to_vec()) {
+                        Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {}
+                        Err(BlockImportError::Import(ImportError::AlreadyQueued)) => {}
+                        // FIXME: handle import errors
+                        Err(err) => {
+                            cwarn!(SYNC, "Cannot import header({}): {:?}", header.hash(), err);
+                            break
+                        }
+                        _ => {}
+                    }
                 }
-                _ => {}
             }
-        }
+            State::SnapshotChunk(..) => {}
+            State::Full => {
+                let (mut completed, pivot_score_changed) = if let Some(peer) = self.header_downloaders.get_mut(from) {
+                    let before_pivot_score = peer.pivot_score();
+                    let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
+                    peer.import_headers(&encoded);
+                    let after_pivot_score = peer.pivot_score();
+                    (peer.downloaded(), before_pivot_score != after_pivot_score)
+                } else {
+                    (Vec::new(), false)
+                };
+                completed.sort_unstable_by_key(EncodedHeader::number);
 
-        let request = self.header_downloaders.get_mut(from).and_then(|peer| {
-            peer.mark_as_queued(queued);
-            peer.mark_as_imported(exists);
-            peer.create_request()
-        });
-        if pivot_score_changed {
-            if let Some(request) = request {
-                self.send_header_request(from, request);
+                let mut exists = Vec::new();
+                let mut queued = Vec::new();
+
+                for header in completed {
+                    let hash = header.hash();
+                    match self.client.import_header(header.clone().into_inner()) {
+                        Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
+                        Err(BlockImportError::Import(ImportError::AlreadyQueued)) => queued.push(hash),
+                        // FIXME: handle import errors
+                        Err(err) => {
+                            cwarn!(SYNC, "Cannot import header({}): {:?}", header.hash(), err);
+                            break
+                        }
+                        _ => {}
+                    }
+                }
+
+                let request = self.header_downloaders.get_mut(from).and_then(|peer| {
+                    peer.mark_as_queued(queued);
+                    peer.mark_as_imported(exists);
+                    peer.create_request()
+                });
+                if pivot_score_changed {
+                    if let Some(request) = request {
+                        self.send_header_request(from, request);
+                    }
+                }
             }
         }
     }
