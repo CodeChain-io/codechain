@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#![allow(dead_code)]
+
 mod binom_cdf;
 mod draw;
 pub mod vrf_sortition;

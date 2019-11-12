@@ -78,6 +78,7 @@ impl EngineSigner {
         Ok(result)
     }
 
+    #[allow(dead_code)]
     /// Generate a vrf random hash.
     pub fn vrf_hash(&self, hash: H256, vrf_inst: &mut ECVRF) -> Result<Vec<u8>, AccountProviderError> {
         Ok(match &self.decrypted_account {
