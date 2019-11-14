@@ -100,7 +100,7 @@ impl Importer {
             }
 
             {
-                let headers: Vec<&Header> = blocks.iter().map(|block| &block.header).collect();
+                let headers: Vec<_> = blocks.iter().map(|block| &block.header).collect();
                 self.import_headers(headers, client, &import_lock);
             }
 
@@ -360,6 +360,23 @@ impl Importer {
         client.db().flush().expect("DB flush failed.");
 
         imported.len()
+    }
+
+    pub fn import_bootstrap_header<'a>(&'a self, header: &'a Header, client: &Client, _importer_lock: &MutexGuard<()>) {
+        let hash = header.hash();
+        ctrace!(CLIENT, "Importing bootstrap header {}-{:?}", header.number(), hash);
+
+        {
+            let chain = client.block_chain();
+            let mut batch = DBTransaction::new();
+            chain.insert_bootstrap_header(&mut batch, &HeaderView::new(&header.rlp_bytes()));
+            client.db().write_buffered(batch);
+            chain.commit();
+        }
+
+        client.new_headers(&[hash], &[], &[hash], &[], &[], Some(hash));
+
+        client.db().flush().expect("DB flush failed.");
     }
 
     fn check_header(&self, header: &Header, parent: &Header) -> bool {

@@ -99,10 +99,12 @@ impl Extension {
         let mut header = client.best_header();
         let mut hollow_headers = vec![header.decode()];
         while client.block_body(&BlockId::Hash(header.hash())).is_none() {
-            header = client
-                .block_header(&BlockId::Hash(header.parent_hash()))
-                .expect("Every imported header must have parent");
-            hollow_headers.push(header.decode());
+            if let Some(h) = client.block_header(&BlockId::Hash(header.parent_hash())) {
+                header = h;
+                hollow_headers.push(header.decode());
+            } else {
+                break
+            }
         }
         let mut body_downloader = BodyDownloader::default();
         for neighbors in hollow_headers.windows(2).rev() {
@@ -747,7 +749,7 @@ impl Extension {
         match self.state {
             State::SnapshotHeader(..) => {
                 for header in headers {
-                    match self.client.import_header(header.rlp_bytes().to_vec()) {
+                    match self.client.import_bootstrap_header(&header) {
                         Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {}
                         Err(BlockImportError::Import(ImportError::AlreadyQueued)) => {}
                         // FIXME: handle import errors

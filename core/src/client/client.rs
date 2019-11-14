@@ -27,7 +27,7 @@ use cstate::{
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
+use ctypes::{BlockHash, BlockNumber, CommonParams, Header, ShardId, Tracker, TxHash};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use hashdb::AsHashDB;
 use journaldb;
@@ -653,6 +653,15 @@ impl ImportBlock for Client {
             }
         }
         Ok(self.importer.header_queue.import(unverified)?)
+    }
+
+    fn import_bootstrap_header(&self, header: &Header) -> Result<BlockHash, BlockImportError> {
+        if self.block_chain().is_known_header(&header.hash()) {
+            return Err(BlockImportError::Import(ImportError::AlreadyInChain))
+        }
+        let import_lock = self.importer.import_lock.lock();
+        self.importer.import_bootstrap_header(header, self, &import_lock);
+        Ok(header.hash())
     }
 
     fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult {
