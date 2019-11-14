@@ -98,6 +98,18 @@ impl BlockChain {
         }
     }
 
+    pub fn insert_bootstrap_header(&self, batch: &mut DBTransaction, header: &HeaderView) {
+        self.headerchain.insert_bootstrap_header(batch, header);
+
+        let hash = header.hash();
+
+        *self.pending_best_block_hash.write() = Some(hash);
+        batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &hash);
+
+        *self.pending_best_proposal_block_hash.write() = Some(hash);
+        batch.put(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY, &hash);
+    }
+
     pub fn insert_header(
         &self,
         batch: &mut DBTransaction,
