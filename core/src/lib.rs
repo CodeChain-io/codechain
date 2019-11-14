@@ -99,4 +99,4 @@ pub use crate::service::ClientService;
 pub use crate::transaction::{
     LocalizedTransaction, PendingSignedTransactions, SignedTransaction, UnverifiedTransaction,
 };
-pub use crate::types::{BlockId, TransactionId};
+pub use crate::types::{BlockId, BlockStatus, TransactionId};
