@@ -143,6 +143,27 @@ impl ValidatorSet for DynamicValidator {
         }
     }
 
+    fn normalized_voting_power(
+        &self,
+        height: u64,
+        parent: &BlockHash,
+        index: usize,
+        total_power: u64,
+    ) -> Result<u64, EngineError> {
+        if let Some(validators) = self.validators(*parent) {
+            let validator = validators.get(index).ok_or_else(|| EngineError::ValidatorNotExist {
+                height,
+                index,
+            })?;
+            let signer_delegation = validator.delegation();
+            let total_delegation: u64 = validators.iter().map(Validator::delegation).sum();
+            let normalized_power = ((signer_delegation * total_power) as f64) / (total_delegation as f64);
+            Ok(normalized_power as u64)
+        } else {
+            self.initial_list.normalized_voting_power(height, parent, index, total_power)
+        }
+    }
+
     fn check_enough_votes(&self, parent: &BlockHash, votes: &BitSet) -> Result<(), EngineError> {
         if let Some(validators) = self.validators(*parent) {
             let mut voted_delegation = 0u64;

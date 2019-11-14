@@ -86,6 +86,18 @@ impl ValidatorSet for RoundRobinValidator {
         self.validators.len()
     }
 
+    fn normalized_voting_power(
+        &self,
+        _height: u64,
+        parent: &BlockHash,
+        _signer_idx: usize,
+        total_power: u64,
+    ) -> Result<u64, EngineError> {
+        let validator_count = self.count(parent);
+        let normalized_voting_power = (total_power as f64) / (validator_count as f64);
+        Ok(normalized_voting_power as u64)
+    }
+
     fn check_enough_votes(&self, parent: &BlockHash, votes: &BitSet) -> Result<(), EngineError> {
         let validator_count = self.count(parent);
         let voted = votes.count();
