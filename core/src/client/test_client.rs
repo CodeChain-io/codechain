@@ -509,6 +509,10 @@ impl ImportBlock for TestBlockChainClient {
         unimplemented!()
     }
 
+    fn import_bootstrap_header(&self, _header: &BlockHeader) -> Result<BlockHash, BlockImportError> {
+        unimplemented!()
+    }
+
     fn import_sealed_block(&self, _block: &SealedBlock) -> ImportResult {
         Ok(H256::default().into())
     }

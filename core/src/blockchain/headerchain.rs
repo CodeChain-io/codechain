@@ -115,6 +115,48 @@ impl HeaderChain {
         }
     }
 
+    /// Inserts a bootstrap header into backing cache database.
+    /// Makes the imported header the best header.
+    /// Expects the header to be valid and already verified.
+    /// If the header is already known, does nothing.
+    // FIXME: Find better return type. Returning `None` at duplication is not natural
+    pub fn insert_bootstrap_header(&self, batch: &mut DBTransaction, header: &HeaderView) {
+        let hash = header.hash();
+
+        ctrace!(HEADERCHAIN, "Inserting bootstrap block header #{}({}) to the headerchain.", header.number(), hash);
+
+        if self.is_known_header(&hash) {
+            ctrace!(HEADERCHAIN, "Block header #{}({}) is already known.", header.number(), hash);
+            return
+        }
+
+        assert!(self.pending_best_header_hash.read().is_none());
+        assert!(self.pending_best_proposal_block_hash.read().is_none());
+
+        let compressed_header = compress(header.rlp().as_raw(), blocks_swapper());
+        batch.put(db::COL_HEADERS, &hash, &compressed_header);
+
+        let mut new_hashes = HashMap::new();
+        new_hashes.insert(header.number(), hash);
+        let mut new_details = HashMap::new();
+        new_details.insert(hash, BlockDetails {
+            number: header.number(),
+            total_score: 0.into(),
+            parent: header.parent_hash(),
+        });
+
+        batch.put(db::COL_EXTRA, BEST_HEADER_KEY, &hash);
+        *self.pending_best_header_hash.write() = Some(hash);
+        batch.put(db::COL_EXTRA, BEST_PROPOSAL_HEADER_KEY, &hash);
+        *self.pending_best_proposal_block_hash.write() = Some(hash);
+
+        let mut pending_hashes = self.pending_hashes.write();
+        let mut pending_details = self.pending_details.write();
+
+        batch.extend_with_cache(db::COL_EXTRA, &mut *pending_details, new_details, CacheUpdatePolicy::Overwrite);
+        batch.extend_with_cache(db::COL_EXTRA, &mut *pending_hashes, new_hashes, CacheUpdatePolicy::Overwrite);
+    }
+
     /// Inserts the header into backing cache database.
     /// Expects the header to be valid and already verified.
     /// If the header is already known, does nothing.
