@@ -64,7 +64,9 @@ export class BlockSyncMessage {
         if (msgId === MessageType.MESSAGE_ID_STATUS) {
             Emitter.emit("status");
             const msg = decodedmsg[1];
-            const totalScore = new U256(parseInt(msg[0].toString("hex"), 16));
+            const totalScore = new U256(
+                parseInt(msg[0].toString("hex"), 16) || 0
+            );
             const bestHash = new H256(msg[1].toString("hex"));
             const genesisHash = new H256(msg[2].toString("hex"));
             return new BlockSyncMessage({
