@@ -37,7 +37,7 @@ const MESSAGE_ID_STATE_CHUNK: u8 = 0x09;
 #[derive(Debug, PartialEq)]
 pub enum Message {
     Status {
-        total_score: U256,
+        nonce: U256,
         best_hash: BlockHash,
         genesis_hash: BlockHash,
     },
@@ -49,7 +49,7 @@ impl Encodable for Message {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
             Message::Status {
-                total_score,
+                nonce,
                 best_hash,
                 genesis_hash,
             } => {
@@ -57,7 +57,7 @@ impl Encodable for Message {
                 s.append(&MESSAGE_ID_STATUS);
 
                 s.begin_list(3);
-                s.append(total_score);
+                s.append(nonce);
                 s.append(best_hash);
                 s.append(genesis_hash);
             }
@@ -99,7 +99,7 @@ impl Decodable for Message {
             }
 
             Ok(Message::Status {
-                total_score: message.val_at(0)?,
+                nonce: message.val_at(0)?,
                 best_hash: message.val_at(1)?,
                 genesis_hash: message.val_at(2)?,
             })
@@ -137,7 +137,7 @@ mod tests {
     #[test]
     fn status_message_rlp() {
         rlp_encode_and_decode_test!(Message::Status {
-            total_score: U256::default(),
+            nonce: U256::zero(),
             best_hash: H256::default().into(),
             genesis_hash: H256::default().into(),
         });

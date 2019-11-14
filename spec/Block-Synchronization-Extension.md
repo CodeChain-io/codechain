@@ -19,13 +19,14 @@ Message :=
 ### Status
 
 ```
-Status(total_score, best_hash, genesis_hash)
+Status(nonce, best_hash, genesis_hash)
 ```
 
 Send current chain status to peer.
 
 * Identifier: 0x01
-* Restriction: None
+* Restriction:
+  * `nonce` SHOULD be monotonically increasing every time the message is sent.
 
 ## Request messages
 
