@@ -21,8 +21,8 @@ use std::time::Duration;
 
 use ccore::encoded::Header as EncodedHeader;
 use ccore::{
-    Block, BlockChainClient, BlockChainTrait, BlockId, BlockImportError, ChainNotify, Client, ImportBlock, ImportError,
-    UnverifiedTransaction,
+    Block, BlockChainClient, BlockChainTrait, BlockId, BlockImportError, BlockStatus, ChainNotify, Client, ImportBlock,
+    ImportError, UnverifiedTransaction,
 };
 use cmerkle::TrieFactory;
 use cnetwork::{Api, EventSender, NetworkExtension, NodeId};
@@ -74,6 +74,7 @@ pub struct Extension {
     client: Arc<Client>,
     api: Box<dyn Api>,
     last_request: u64,
+    nonce: u64,
 }
 
 impl Extension {
@@ -124,6 +125,7 @@ impl Extension {
             client,
             api,
             last_request: Default::default(),
+            nonce: Default::default(),
         }
     }
 
@@ -144,6 +146,14 @@ impl Extension {
     }
 
     fn send_body_request(&mut self, id: &NodeId) {
+        if let Some(downloader) = self.header_downloaders.get(&id) {
+            if self.client.block_status(&BlockId::Hash(downloader.best_hash())) == BlockStatus::InChain {
+                // Peer is lagging behind the local blockchain.
+                // We don't need to request block bodies to this peer
+                return
+            }
+        }
+
         self.check_sync_variable();
         if let Some(requests) = self.requests.get_mut(id) {
             let have_body_request = {
@@ -241,7 +251,7 @@ impl NetworkExtension<Event> for Extension {
             id,
             Arc::new(
                 Message::Status {
-                    total_score: chain_info.best_proposal_score,
+                    nonce: U256::from(self.nonce),
                     best_hash: chain_info.best_proposal_block_hash,
                     genesis_hash: chain_info.genesis_hash,
                 }
@@ -249,6 +259,7 @@ impl NetworkExtension<Event> for Extension {
                 .into_vec(),
             ),
         );
+        self.nonce += 1;
         let t = self.connected_nodes.insert(*id);
         debug_assert!(t, "{} is already added to peer list", id);
 
@@ -297,10 +308,10 @@ impl NetworkExtension<Event> for Extension {
         if let Ok(received_message) = UntrustedRlp::new(data).as_val() {
             match received_message {
                 Message::Status {
-                    total_score,
+                    nonce,
                     best_hash,
                     genesis_hash,
-                } => self.on_peer_status(id, total_score, best_hash, genesis_hash),
+                } => self.on_peer_status(id, nonce, best_hash, genesis_hash),
                 Message::Request(request_id, request) => self.on_peer_request(id, request_id, request),
                 Message::Response(request_id, response) => self.on_peer_response(id, request_id, response),
             }
@@ -326,7 +337,6 @@ impl NetworkExtension<Event> for Extension {
                     }
                     State::SnapshotChunk(..) => unimplemented!(),
                     State::Full => {
-                        let best_proposal_score = self.client.chain_info().best_proposal_score;
                         for id in &peer_ids {
                             let request =
                                 self.header_downloaders.get_mut(id).and_then(HeaderDownloader::create_request);
@@ -337,15 +347,7 @@ impl NetworkExtension<Event> for Extension {
                         }
 
                         for id in peer_ids {
-                            let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
-                                peer.total_score()
-                            } else {
-                                U256::zero()
-                            };
-
-                            if peer_score > best_proposal_score {
-                                self.send_body_request(&id);
-                            }
+                            self.send_body_request(&id);
                         }
                     }
                 }
@@ -499,7 +501,7 @@ impl Extension {
                 id,
                 Arc::new(
                     Message::Status {
-                        total_score: chain_info.best_proposal_score,
+                        nonce: U256::from(self.nonce),
                         best_hash: chain_info.best_proposal_block_hash,
                         genesis_hash: chain_info.genesis_hash,
                     }
@@ -507,12 +509,13 @@ impl Extension {
                     .into_vec(),
                 ),
             );
+            self.nonce += 1;
         }
     }
 }
 
 impl Extension {
-    fn on_peer_status(&mut self, from: &NodeId, total_score: U256, best_hash: BlockHash, genesis_hash: BlockHash) {
+    fn on_peer_status(&mut self, from: &NodeId, nonce: U256, best_hash: BlockHash, genesis_hash: BlockHash) {
         // Validity check
         if genesis_hash != self.client.chain_info().genesis_hash {
             cinfo!(SYNC, "Genesis hash mismatch with peer {}", from);
@@ -521,17 +524,17 @@ impl Extension {
 
         match self.header_downloaders.entry(*from) {
             Entry::Occupied(mut peer) => {
-                if !peer.get_mut().update(total_score, best_hash) {
+                if !peer.get_mut().update(nonce, best_hash) {
                     // FIXME: It should be an error level if the consensus is PoW.
                     cdebug!(SYNC, "Peer #{} status updated but score is less than before", from);
                     return
                 }
             }
             Entry::Vacant(e) => {
-                e.insert(HeaderDownloader::new(self.client.clone(), total_score, best_hash));
+                e.insert(HeaderDownloader::new(self.client.clone(), nonce, best_hash));
             }
         }
-        cinfo!(SYNC, "Peer #{} status update: total_score: {}, best_hash: {}", from, total_score, best_hash);
+        cinfo!(SYNC, "Peer #{} status update: nonce: {}, best_hash: {}", from, nonce, best_hash);
     }
 
     fn on_peer_request(&self, from: &NodeId, id: u64, request: RequestMessage) {
@@ -746,14 +749,12 @@ impl Extension {
             },
             State::SnapshotChunk(..) => {}
             State::Full => {
-                let (mut completed, pivot_score_changed) = if let Some(peer) = self.header_downloaders.get_mut(from) {
-                    let before_pivot_score = peer.pivot_score();
+                let (mut completed, peer_is_caught_up) = if let Some(peer) = self.header_downloaders.get_mut(from) {
                     let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
                     peer.import_headers(&encoded);
-                    let after_pivot_score = peer.pivot_score();
-                    (peer.downloaded(), before_pivot_score != after_pivot_score)
+                    (peer.downloaded(), peer.is_caught_up())
                 } else {
-                    (Vec::new(), false)
+                    (Vec::new(), true)
                 };
                 completed.sort_unstable_by_key(EncodedHeader::number);
 
@@ -779,7 +780,7 @@ impl Extension {
                     peer.mark_as_imported(exists);
                     peer.create_request()
                 });
-                if pivot_score_changed {
+                if !peer_is_caught_up {
                     if let Some(request) = request {
                         self.send_header_request(from, request);
                     }
@@ -821,20 +822,11 @@ impl Extension {
             }
         }
 
-        let total_score = self.client.chain_info().best_proposal_score;
         let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
         peer_ids.shuffle(&mut thread_rng());
 
         for id in peer_ids {
-            let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
-                peer.total_score()
-            } else {
-                U256::zero()
-            };
-
-            if peer_score > total_score {
-                self.send_body_request(&id);
-            }
+            self.send_body_request(&id);
         }
     }
 }

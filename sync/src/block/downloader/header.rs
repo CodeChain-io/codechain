@@ -32,20 +32,13 @@ const MAX_RETRY: usize = 3;
 const MAX_WAIT: u64 = 15;
 
 #[derive(Clone)]
-struct Pivot {
-    hash: BlockHash,
-    total_score: U256,
-}
-
-#[derive(Clone)]
 pub struct HeaderDownloader {
     // NOTE: Use this member as minimum as possible.
     client: Arc<dyn BlockChainClient>,
 
-    total_score: U256,
+    nonce: U256,
     best_hash: BlockHash,
-
-    pivot: Pivot,
+    pivot: BlockHash,
     request_time: Option<Instant>,
     downloaded: HashMap<BlockHash, Header>,
     queued: HashMap<BlockHash, Header>,
@@ -53,24 +46,15 @@ pub struct HeaderDownloader {
 }
 
 impl HeaderDownloader {
-    pub fn total_score(&self) -> U256 {
-        self.total_score
-    }
-
-    pub fn new(client: Arc<dyn BlockChainClient>, total_score: U256, best_hash: BlockHash) -> Self {
+    pub fn new(client: Arc<dyn BlockChainClient>, nonce: U256, best_hash: BlockHash) -> Self {
         let best_header_hash = client.best_block_header().hash();
-        let best_score = client.block_total_score(&BlockId::Latest).expect("Best block always exist");
 
         Self {
             client,
 
-            total_score,
+            nonce,
             best_hash,
-
-            pivot: Pivot {
-                hash: best_header_hash,
-                total_score: best_score,
-            },
+            pivot: best_header_hash,
             request_time: None,
             downloaded: HashMap::new(),
             queued: HashMap::new(),
@@ -78,18 +62,19 @@ impl HeaderDownloader {
         }
     }
 
-    pub fn update(&mut self, total_score: U256, best_hash: BlockHash) -> bool {
-        match self.total_score.cmp(&total_score) {
+    pub fn best_hash(&self) -> BlockHash {
+        self.best_hash
+    }
+
+    pub fn update(&mut self, nonce: U256, best_hash: BlockHash) -> bool {
+        match self.nonce.cmp(&nonce) {
             Ordering::Equal => true,
             Ordering::Less => {
-                self.total_score = total_score;
+                self.nonce = nonce;
                 self.best_hash = best_hash;
 
                 if self.client.block_header(&BlockId::Hash(best_hash)).is_some() {
-                    self.pivot = Pivot {
-                        hash: best_hash,
-                        total_score,
-                    }
+                    self.pivot = best_hash;
                 }
                 true
             }
@@ -108,23 +93,23 @@ impl HeaderDownloader {
     /// Find header from queued headers, downloaded cache and then from blockchain
     /// Panics if header dosn't exist
     fn pivot_header(&self) -> Header {
-        match self.queued.get(&self.pivot.hash) {
+        match self.queued.get(&self.pivot) {
             Some(header) => header.clone(),
-            None => match self.downloaded.get(&self.pivot.hash) {
+            None => match self.downloaded.get(&self.pivot) {
                 Some(header) => header.clone(),
-                None => self.client.block_header(&BlockId::Hash(self.pivot.hash)).unwrap(),
+                None => self.client.block_header(&BlockId::Hash(self.pivot)).unwrap(),
             },
         }
     }
 
-    pub fn pivot_score(&self) -> U256 {
-        self.pivot.total_score
-    }
-
     pub fn is_idle(&self) -> bool {
-        let can_request = self.request_time.is_none() && self.total_score > self.pivot.total_score;
+        let can_request = self.request_time.is_none() && self.best_hash != self.pivot;
 
         self.is_valid() && (can_request || self.is_expired())
+    }
+
+    pub fn is_caught_up(&self) -> bool {
+        self.pivot == self.best_hash
     }
 
     pub fn create_request(&mut self) -> Option<RequestMessage> {
@@ -154,19 +139,15 @@ impl HeaderDownloader {
         let pivot_header = self.pivot_header();
 
         // This happens when best_hash is imported by other peer.
-        if self.best_hash == self.pivot.hash {
+        if self.best_hash == self.pivot {
             ctrace!(SYNC, "Ignore received headers, pivot already reached the best hash");
-        } else if first_header_hash == self.pivot.hash {
+        } else if first_header_hash == self.pivot {
             for header in headers.iter() {
                 self.downloaded.insert(header.hash(), header.clone());
             }
 
             // FIXME: skip known headers
-            let new_scores = headers[1..].iter().fold(U256::zero(), |acc, header| acc + header.score());
-            self.pivot = Pivot {
-                hash: headers.last().expect("Last downloaded header must exist").hash(),
-                total_score: self.pivot.total_score + new_scores,
-            }
+            self.pivot = headers.last().expect("Last downloaded header must exist").hash();
         } else if first_header_number < pivot_header.number() {
             ctrace!(
                 SYNC,
@@ -174,17 +155,14 @@ impl HeaderDownloader {
             );
         } else if first_header_number == pivot_header.number() {
             if pivot_header.number() != 0 {
-                self.pivot = Pivot {
-                    hash: pivot_header.parent_hash(),
-                    total_score: self.pivot.total_score - pivot_header.score(),
-                }
+                self.pivot = pivot_header.parent_hash();
             }
         } else {
             cerror!(
                 SYNC,
-                "Invalid header update state. best_hash: {}, self.pivot.hash: {}, first_header_hash: {}",
+                "Invalid header update state. best_hash: {}, self.pivot: {}, first_header_hash: {}",
                 self.best_hash,
-                self.pivot.hash,
+                self.pivot,
                 first_header_hash
             );
         }
@@ -203,10 +181,7 @@ impl HeaderDownloader {
             self.downloaded.remove(&hash);
 
             if self.best_hash == hash {
-                self.pivot = Pivot {
-                    hash,
-                    total_score: self.total_score,
-                }
+                self.pivot = hash;
             }
         }
         self.queued.shrink_to_fit();
