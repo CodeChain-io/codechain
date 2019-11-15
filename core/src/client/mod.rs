@@ -20,6 +20,7 @@ mod client;
 mod config;
 mod error;
 mod importer;
+pub mod snapshot_notify;
 mod test_client;
 
 pub use self::chain_notify::ChainNotify;
