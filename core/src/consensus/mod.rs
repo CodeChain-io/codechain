@@ -207,6 +207,7 @@ pub trait ConsensusEngine: Sync + Send {
     }
 
     /// Phase 3 verification. Check block information against parent. Returns either a null `Ok` or a general error detailing the problem with import.
+    /// The verifiaction must be conducted only with the two headers' information.
     fn verify_block_family(&self, _header: &Header, _parent: &Header) -> Result<(), Error> {
         Ok(())
     }
