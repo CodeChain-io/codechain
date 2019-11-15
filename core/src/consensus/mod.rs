@@ -265,6 +265,8 @@ pub trait ConsensusEngine: Sync + Send {
 
     fn register_snapshot_notify_sender(&self, _sender: SnapshotNotifySender) {}
 
+    fn send_snapshot_notify(&self, _block_hash: BlockHash) {}
+
     fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> BlockHash {
         header.hash()
     }

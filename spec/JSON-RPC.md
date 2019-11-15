@@ -367,6 +367,7 @@ When `Transaction` is included in any response, there will be an additional fiel
 ***
  * [devel_getStateTrieKeys](#devel_getstatetriekeys)
  * [devel_getStateTrieValue](#devel_getstatetrievalue)
+ * [devel_snapshot](#devel_snapshot)
  * [devel_startSealing](#devel_startsealing)
  * [devel_stopSealing](#devel_stopsealing)
  * [devel_getBlockSyncPeers](#devel_getblocksyncpeers)
@@ -2973,6 +2974,33 @@ Gets the value of the state trie with the given key.
     "0x20d560025f3a1c6675cb32384355ae05b224a3473ae17d3d15b6aa164af7d717",
     "0xf84541a053000000000000002ab33f741ba153ff1ffdf1107845828637c864d5360e4932a00000000000000000000000000000000000000000000000000000000000000000c06f"
   ],
+  "id":null
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## devel_snapshot
+Snapshot the state of the given block hash.
+
+### Params
+ 1. key: `H256`
+
+### Returns
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "devel_snapshot", "params": ["0xfc196ede542b03b55aee9f106004e7e3d7ea6a9600692e964b4735a260356b50"], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":[],
   "id":null
 }
 ```
