@@ -69,8 +69,20 @@ pub type Message = H256;
 pub type Secret = H256;
 pub type Public = H512;
 
+const SECP256K1_TAG_PUBKEY_UNCOMPRESSED: u8 = 0x04;
+
 lazy_static! {
     pub static ref SECP256K1: secp256k1::Secp256k1 = Default::default();
+}
+
+// CodeChain is using uncompressed form of public keys without prefix, so the prefix is required
+// for public keys to be used in openssl.
+pub fn standard_uncompressed_pubkey(pubkey: &Public) -> [u8; 65] {
+    let mut result = [0; 65];
+    result[0] = SECP256K1_TAG_PUBKEY_UNCOMPRESSED;
+    result[1..].copy_from_slice(pubkey);
+
+    result
 }
 
 /// Uninstantiatable error type for infallible generators.
