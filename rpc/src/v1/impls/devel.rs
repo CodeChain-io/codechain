@@ -23,7 +23,7 @@ use std::vec::Vec;
 
 use ccore::{
     BlockId, DatabaseClient, EngineClient, EngineInfo, MinerService, MiningBlockChainClient, SignedTransaction,
-    TermInfo, COL_STATE,
+    SnapshotClient, TermInfo, COL_STATE,
 };
 use ccrypto::Blake;
 use cjson::bytes::Bytes;
@@ -33,7 +33,7 @@ use csync::BlockSyncEvent;
 use ctypes::transaction::{
     Action, AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction,
 };
-use ctypes::{Tracker, TxHash};
+use ctypes::{BlockHash, Tracker, TxHash};
 use jsonrpc_core::Result;
 use kvdb::KeyValueDB;
 use primitives::{H160, H256};
@@ -70,7 +70,7 @@ where
 
 impl<C, M> Devel for DevelClient<C, M>
 where
-    C: DatabaseClient + EngineInfo + EngineClient + MiningBlockChainClient + TermInfo + 'static,
+    C: DatabaseClient + EngineInfo + EngineClient + MiningBlockChainClient + TermInfo + SnapshotClient + 'static,
     M: MinerService + 'static,
 {
     fn get_state_trie_keys(&self, offset: usize, limit: usize) -> Result<Vec<H256>> {
@@ -106,6 +106,11 @@ where
         } else {
             Ok(Vec::new())
         }
+    }
+
+    fn snapshot(&self, block_hash: BlockHash) -> Result<()> {
+        self.client.notify_snapshot(BlockId::Hash(block_hash));
+        Ok(())
     }
 
     fn test_tps(&self, setting: TPSTestSetting) -> Result<f64> {

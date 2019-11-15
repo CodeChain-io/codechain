@@ -45,7 +45,7 @@ use super::{
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress};
-use crate::client::{ConsensusClient, TermInfo};
+use crate::client::{ConsensusClient, SnapshotClient, TermInfo};
 use crate::consensus::{CodeChainEngine, EngineError};
 use crate::encoded;
 use crate::error::{BlockImportError, Error, ImportError, SchemeError};
@@ -963,5 +963,13 @@ impl ChainTimeInfo for Client {
 impl FindActionHandler for Client {
     fn find_action_handler_for(&self, id: u64) -> Option<&dyn ActionHandler> {
         self.engine.find_action_handler_for(id)
+    }
+}
+
+impl SnapshotClient for Client {
+    fn notify_snapshot(&self, id: BlockId) {
+        if let Some(header) = self.block_header(&id) {
+            self.engine.send_snapshot_notify(header.hash())
+        }
     }
 }

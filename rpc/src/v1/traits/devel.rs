@@ -17,6 +17,7 @@
 use std::net::SocketAddr;
 
 use cjson::bytes::Bytes;
+use ctypes::BlockHash;
 use jsonrpc_core::Result;
 use primitives::H256;
 
@@ -38,6 +39,9 @@ pub trait Devel {
 
     #[rpc(name = "devel_getBlockSyncPeers")]
     fn get_block_sync_peers(&self) -> Result<Vec<SocketAddr>>;
+
+    #[rpc(name = "devel_snapshot")]
+    fn snapshot(&self, hash: BlockHash) -> Result<()>;
 
     #[rpc(name = "devel_testTPS")]
     fn test_tps(&self, setting: TPSTestSetting) -> Result<f64>;
