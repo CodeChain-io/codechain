@@ -47,7 +47,10 @@ use crate::block::*;
 use crate::client::ConsensusClient;
 use crate::consensus::signer::EngineSigner;
 use crate::consensus::validator_set::{DynamicValidator, ValidatorSet};
-use crate::consensus::{sortition::VRFSeed, EngineError, Seal};
+use crate::consensus::{
+    sortition::seed::{SeedInfo, VRFSeed},
+    EngineError, Seal, VRFSortition,
+};
 use crate::encoded;
 use crate::error::{BlockError, Error};
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
@@ -94,6 +97,8 @@ struct Worker {
     validators: Arc<DynamicValidator>,
     /// Channel to the network extension, must be set later.
     extension: EventSender<network::Event>,
+    // VRF sortition scheme,
+    sortition_scheme: VRFSortition,
     time_gap_params: TimeGapParams,
     timeout_token_nonce: usize,
     vote_regression_checker: VoteRegressionChecker,
@@ -389,12 +394,15 @@ impl Worker {
             .hash()
     }
 
-    fn prev_vrf_seed(&self) -> VRFSeed {
-        let parent_header =
-            self.prev_block_header_of_height(self.height).expect("Height is increased when previous block is imported");
-        let parent_seal = parent_header.seal();
-        let seal_view = TendermintSealView::new(&parent_seal);
-        seal_view.vrf_seed().unwrap()
+    fn fetch_vrf_seed_info(&self, block_hash: BlockHash) -> Option<SeedInfo> {
+        let block_header = self.client().block_header(&block_hash.into())?;
+        let block_seal = block_header.seal();
+        Some(TendermintSealView::new(&block_seal).vrf_seed_info().expect("Seal fields was verified"))
+    }
+
+    fn prev_vrf_seed_of_height(&self, height: Height) -> Option<VRFSeed> {
+        self.prev_block_header_of_height(height)
+            .and_then(|parent_header| self.fetch_vrf_seed_info(parent_header.hash()).map(|seed_info| *seed_info.seed()))
     }
 
     /// Get the index of the proposer of a block to check the new proposer is valid.
@@ -1191,7 +1199,33 @@ impl Worker {
         Ok(())
     }
 
-    fn verify_block_external(&self, header: &Header) -> Result<(), Error> {
+    fn verify_seed(&mut self, header: &Header, parent: &Header) -> Result<(), Error> {
+        let current_seal_view = TendermintSealView::new(&header.seal());
+        let current_seed_signer_idx = current_seal_view.vrf_seed_info().expect("Seal field verified").signer_idx();
+        let current_signer_public = self.validators.get(&parent.hash(), current_seed_signer_idx);
+
+        let parent_seal_view = TendermintSealView::new(&parent.seal());
+
+        let parent_seed_info = parent_seal_view.vrf_seed_info().map_err(|_| BlockError::InvalidSeal)?;
+        let current_seed_info = current_seal_view.vrf_seed_info().map_err(|_| BlockError::InvalidSeal)?;
+
+        match current_seed_info.verify(
+            header.number(),
+            current_seal_view.author_view().map_err(|_| BlockError::InvalidSeal)?,
+            parent_seed_info.seed(),
+            &current_signer_public,
+            &mut self.sortition_scheme.vrf_inst,
+        ) {
+            Ok(true) => Ok(()),
+            _ => Err(BlockError::InvalidSeal.into()),
+        }
+    }
+
+    fn verify_block_external(&mut self, header: &Header) -> Result<(), Error> {
+        let parent_header =
+            self.client().block_header(&(*header.parent_hash()).into()).expect("The parent block must exist");
+        self.verify_seed(header, &parent_header.decode())?;
+
         let height = header.number() as usize;
         let author_view = TendermintSealView::new(header.seal()).author_view()?;
         ctrace!(ENGINE, "Verify external at {}-{}, {:?}", height, author_view, header);
@@ -1229,11 +1263,7 @@ impl Worker {
         };
 
         let mut voted_validators = BitSet::new();
-        let grand_parent_hash = self
-            .client()
-            .block_header(&(*header.parent_hash()).into())
-            .expect("The parent block must exist")
-            .parent_hash();
+        let grand_parent_hash = parent_header.parent_hash();
         for (bitset_index, signature) in seal_view.signatures()? {
             let public = self.validators.get(&grand_parent_hash, bitset_index);
             if !verify_schnorr(&public, &signature, &precommit_vote_on.hash())? {
