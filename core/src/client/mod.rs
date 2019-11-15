@@ -347,3 +347,7 @@ pub trait StateInfo {
     /// is unknown.
     fn state_at(&self, id: BlockId) -> Option<TopLevelState>;
 }
+
+pub trait SnapshotClient {
+    fn notify_snapshot(&self, id: BlockId);
+}
