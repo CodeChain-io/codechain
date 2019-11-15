@@ -46,6 +46,7 @@ extern crate trie_standardmap;
 extern crate util_error;
 
 mod block;
+pub mod snapshot;
 mod transaction;
 
 pub use crate::block::{BlockSyncEvent, BlockSyncExtension, BlockSyncSender};

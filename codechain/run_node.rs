@@ -19,6 +19,7 @@ use std::path::Path;
 use std::sync::{Arc, Weak};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use ccore::snapshot_notify;
 use ccore::{
     AccountProvider, AccountProviderError, BlockId, ChainNotify, Client, ClientConfig, ClientService, EngineInfo,
     EngineType, Miner, MinerService, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
@@ -30,6 +31,7 @@ use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, EmailAlarm, EmailAlarmConfig, LoggerConfig};
 use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, RoutingTable, SocketAddr};
+use csync::snapshot::Service as SnapshotService;
 use csync::{BlockSyncExtension, BlockSyncSender, TransactionSyncExtension};
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
@@ -359,6 +361,18 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     if (!config.stratum.disable.unwrap()) && (miner.engine_type() == EngineType::PoW) {
         stratum_start(&config.stratum_config(), &miner, client.client())?
     }
+
+    let _snapshot_service = {
+        if !config.snapshot.disable.unwrap() {
+            let client = client.client();
+            let (tx, rx) = snapshot_notify::create();
+            client.engine().register_snapshot_notify_sender(tx);
+            let service = Arc::new(SnapshotService::new(client, rx, config.snapshot.path.unwrap()));
+            Some(service)
+        } else {
+            None
+        }
+    };
 
     // drop the scheme to free up genesis state.
     drop(scheme);

@@ -26,6 +26,8 @@ use hashdb::HashDB;
 use primitives::H256;
 
 use self::chunk::{Chunk, RecoveredChunk, UnresolvedChunk};
+pub use self::compress::{ChunkCompressor, ChunkDecompressor};
+pub use self::error::Error;
 use self::ordered_heap::OrderedHeap;
 use crate::nibbleslice::NibbleSlice;
 
