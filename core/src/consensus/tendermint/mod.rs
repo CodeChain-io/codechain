@@ -121,7 +121,7 @@ impl Tendermint {
     }
 }
 
-const SEAL_FIELDS: usize = 4;
+const SEAL_FIELDS: usize = 5;
 
 #[cfg(test)]
 mod tests {
@@ -243,6 +243,7 @@ mod tests {
             cur_view: 0,
             precommits: vec![signature2],
             precommit_bitset: BitSet::new_with_indices(&[2]),
+            vrf_seed_info: Box::new(Default::default()),
         }
         .seal_fields()
         .unwrap();
@@ -282,6 +283,7 @@ mod tests {
             cur_view: 0,
             precommits: vec![signature2],
             precommit_bitset: BitSet::new_with_indices(&[2]),
+            vrf_seed_info: Box::new(Default::default()),
         }
         .seal_fields()
         .unwrap();
@@ -303,6 +305,7 @@ mod tests {
             cur_view: 0,
             precommits: vec![signature0, signature2, signature3],
             precommit_bitset: BitSet::new_with_indices(&[0, 2, 3]),
+            vrf_seed_info: Box::new(Default::default()),
         }
         .seal_fields()
         .unwrap();
@@ -318,6 +321,7 @@ mod tests {
             cur_view: 0,
             precommits: vec![signature0, signature2, bad_signature],
             precommit_bitset: BitSet::new_with_indices(&[0, 2, 3]),
+            vrf_seed_info: Box::new(Default::default()),
         }
         .seal_fields()
         .unwrap();

@@ -15,8 +15,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::bytes::Bytes;
-use crate::hash::H520;
+use crate::hash::{H256, H520};
 use crate::uint::Uint;
+
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct SeedInfo {
+    /// Seed signer index in the validator set
+    pub seed_signer_idx: Uint,
+    /// Seed hash generated from the vrf
+    pub seed: H256,
+    /// Seed proof
+    pub proof: Bytes,
+}
 
 /// Tendermint seal.
 #[derive(Debug, PartialEq, Deserialize)]
@@ -27,6 +37,10 @@ pub struct TendermintSeal {
     pub cur_view: Uint,
     /// Proposal seal signature.
     pub precommits: Vec<H520>,
+    /// Precommit signatures' bitset
+    pub precommit_bitset: Bytes,
+    /// Seed information for randomized leader election
+    pub vrf_seed_info: SeedInfo,
 }
 
 /// Seal variants.
@@ -41,12 +55,12 @@ pub enum Seal {
 
 #[cfg(test)]
 mod tests {
-    use primitives::H520 as Core520;
+    use primitives::{H256 as Core256, H520 as Core520};
     use serde_json;
 
-    use super::{Seal, TendermintSeal};
+    use super::{Seal, SeedInfo, TendermintSeal};
     use crate::bytes::Bytes;
-    use crate::hash::H520;
+    use crate::hash::{H256, H520};
 
     #[test]
     fn seal_deserialization() {
@@ -58,7 +72,13 @@ mod tests {
                 "cur_view": "0x4",
                 "precommits": [
                 "0x4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"
-                ]
+                ],
+                "precommit_bitset": "0x0000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000001",
+                "vrf_seed_info": {
+                    "seed_signer_idx": "0x0",
+                    "seed": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                    "proof": "0x0000001000000000000000000000000000000000000000000000000000000001"
+                }
             }
         }]"#;
 
@@ -71,7 +91,20 @@ mod tests {
             Seal::Tendermint(TendermintSeal {
                 prev_view: 0x3.into(),
                 cur_view: 0x4.into(),
-                precommits: vec![H520(Core520::from("0x4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"))]
+                precommits: vec![H520(Core520::from("0x4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"))],
+                precommit_bitset: Bytes::new(vec![
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                ]),
+                vrf_seed_info: SeedInfo {
+                    seed_signer_idx: 0x0.into(),
+                    seed: H256(Core256::from("0x0000000000000000000000000000000000000000000000000000000000000001")),
+                    proof: Bytes::new(vec![
+                        0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                    ])
+                },
             }),
         ]);
     }

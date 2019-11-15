@@ -24,6 +24,7 @@ use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use super::super::BitSet;
 use super::message::VoteStep;
 use crate::block::{IsBlock, SealedBlock};
+use crate::consensus::sortition::SeedInfo;
 
 pub type Height = u64;
 pub type View = u64;
@@ -264,6 +265,12 @@ impl<'a> TendermintSealView<'a> {
             .zip(signatures)
             .map(|(index, signature)| signature.map(|signature| (index, signature)))
             .collect::<Result<_, _>>()
+    }
+
+    pub fn vrf_seed_info(&self) -> Result<SeedInfo, DecoderError> {
+        let seed_rlp =
+            self.seal.get(4).expect("block went through verify_block_basic; block has .seal_fields() fields; qed");
+        Rlp::new(seed_rlp.as_slice()).as_val()
     }
 }
 

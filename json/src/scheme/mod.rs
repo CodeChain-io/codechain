@@ -38,7 +38,7 @@ pub use self::genesis::Genesis;
 pub use self::null_engine::{NullEngine, NullEngineParams};
 pub use self::params::Params;
 pub use self::scheme::Scheme;
-pub use self::seal::{Seal, TendermintSeal};
+pub use self::seal::{Seal, SeedInfo, TendermintSeal};
 pub use self::shard::Shard;
 pub use self::simple_poa::{SimplePoA, SimplePoAParams};
 pub use self::solo::{Solo, SoloParams};

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,8 +15,21 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cjson;
-use primitives::H520;
+use primitives::{H256, H520};
 use rlp::RlpStream;
+
+#[derive(RlpEncodable)]
+pub struct VRFSeed(pub H256);
+
+#[derive(RlpEncodable)]
+pub struct SeedInfo {
+    /// Seed signer index in the validator set
+    pub seed_signer_idx: usize,
+    /// Seed hash generated from the vrf
+    pub seed: VRFSeed,
+    /// Seed proof
+    pub proof: Vec<u8>,
+}
 
 /// Tendermint seal.
 pub struct Tendermint {
@@ -26,12 +39,21 @@ pub struct Tendermint {
     pub cur_view: usize,
     /// Precommit seal signatures.
     pub precommits: Vec<H520>,
+    /// Precommit signatures' bitset
+    pub precommit_bitset: Vec<u8>,
+    /// Seed information for randomized leader election
+    pub vrf_seed_info: SeedInfo,
 }
 
 impl From<Tendermint> for Generic {
     fn from(tendermint: Tendermint) -> Self {
-        let mut stream = RlpStream::new_list(3);
-        stream.append(&tendermint.prev_view).append(&tendermint.cur_view).append_list(&tendermint.precommits);
+        let mut stream = RlpStream::new_list(5);
+        stream
+            .append(&tendermint.prev_view)
+            .append(&tendermint.cur_view)
+            .append_list(&tendermint.precommits)
+            .append(&tendermint.precommit_bitset)
+            .append(&tendermint.vrf_seed_info);
         Generic(stream.out())
     }
 }
@@ -53,6 +75,12 @@ impl From<cjson::scheme::Seal> for Seal {
                 prev_view: tender.prev_view.into(),
                 cur_view: tender.cur_view.into(),
                 precommits: tender.precommits.into_iter().map(Into::into).collect(),
+                precommit_bitset: tender.precommit_bitset.into(),
+                vrf_seed_info: SeedInfo {
+                    seed_signer_idx: tender.vrf_seed_info.seed_signer_idx.into(),
+                    seed: VRFSeed(tender.vrf_seed_info.seed.into()),
+                    proof: tender.vrf_seed_info.proof.into(),
+                },
             }),
             cjson::scheme::Seal::Generic(g) => Seal::Generic(Generic(g.into())),
         }

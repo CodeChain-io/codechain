@@ -69,6 +69,7 @@ pub enum Seal {
         cur_view: View,
         precommits: Vec<SchnorrSignature>,
         precommit_bitset: BitSet,
+        vrf_seed_info: Box<SeedInfo>,
     },
     None,
 }
@@ -84,11 +85,13 @@ impl Seal {
                 cur_view,
                 precommits,
                 precommit_bitset,
+                vrf_seed_info,
             } => Some(vec![
                 ::rlp::encode(prev_view),
                 ::rlp::encode(cur_view),
                 ::rlp::encode_list(precommits),
                 ::rlp::encode(precommit_bitset),
+                ::rlp::encode(&**vrf_seed_info),
             ]),
         }
     }

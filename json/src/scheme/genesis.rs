@@ -52,7 +52,7 @@ mod tests {
     use primitives::{H256 as Core256, H520 as Core520};
     use serde_json;
 
-    use super::super::{Seal, TendermintSeal};
+    use super::super::{Seal, SeedInfo, TendermintSeal};
     use super::Genesis;
     use crate::bytes::Bytes;
     use crate::hash::{H256, H520};
@@ -67,7 +67,13 @@ mod tests {
                     "cur_view": "0x0",
                     "precommits": [
                     "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-                    ]
+                    ],
+                    "precommit_bitset": "0x0000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000001",
+                    "vrf_seed_info": {
+                        "seed_signer_idx": "0x0",
+                        "seed": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                        "proof": "0x0000001000000000000000000000000000000000000000000000000000000001"
+                    }
                 }
             },
             "author": "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3",
@@ -83,7 +89,20 @@ mod tests {
                 cur_view: 0x0.into(),
                 precommits: vec![
                     H520(Core520::from("0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")),
-                ]
+                ],
+                precommit_bitset: Bytes::new(vec![
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                ]),
+                vrf_seed_info: SeedInfo {
+                    seed_signer_idx: 0x0.into(),
+                    seed: H256(Core256::from("0x0000000000000000000000000000000000000000000000000000000000000001")),
+                    proof: Bytes::new(vec![
+                        0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                    ])
+                },
             }),
             score: 0x0004_0000_0000u64.into(),
             author: Some(PlatformAddress::from_str("tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhhn9p3").unwrap()),

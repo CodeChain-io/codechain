@@ -47,7 +47,7 @@ use crate::block::*;
 use crate::client::ConsensusClient;
 use crate::consensus::signer::EngineSigner;
 use crate::consensus::validator_set::{DynamicValidator, ValidatorSet};
-use crate::consensus::{EngineError, Seal};
+use crate::consensus::{sortition::VRFSeed, EngineError, Seal};
 use crate::encoded;
 use crate::error::{BlockError, Error};
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
@@ -387,6 +387,14 @@ impl Worker {
         self.prev_block_header_of_height(self.height)
             .expect("Height is increased when previous block is imported")
             .hash()
+    }
+
+    fn prev_vrf_seed(&self) -> VRFSeed {
+        let parent_header =
+            self.prev_block_header_of_height(self.height).expect("Height is increased when previous block is imported");
+        let parent_seal = parent_header.seal();
+        let seal_view = TendermintSealView::new(&parent_seal);
+        seal_view.vrf_seed().unwrap()
     }
 
     /// Get the index of the proposer of a block to check the new proposer is valid.
@@ -1105,6 +1113,8 @@ impl Worker {
             cur_view: view,
             precommits,
             precommit_bitset,
+            vrf_seed: self.prev_vrf_seed(),
+            vrf_seed_proof: vec![],
         }
     }
 
