@@ -722,20 +722,28 @@ impl Extension {
     fn on_header_response(&mut self, from: &NodeId, headers: &[Header]) {
         ctrace!(SYNC, "Received header response from({}) with length({})", from, headers.len());
         match self.state {
-            State::SnapshotHeader(..) => {
-                for header in headers {
+            State::SnapshotHeader(hash, _) => match headers {
+                [header] if header.hash() == hash => {
                     match self.client.import_bootstrap_header(&header) {
-                        Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {}
+                        Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {
+                            self.state = State::SnapshotChunk(*header.state_root());
+                        }
                         Err(BlockImportError::Import(ImportError::AlreadyQueued)) => {}
                         // FIXME: handle import errors
                         Err(err) => {
                             cwarn!(SYNC, "Cannot import header({}): {:?}", header.hash(), err);
-                            break
                         }
                         _ => {}
                     }
                 }
-            }
+                _ => cdebug!(
+                    SYNC,
+                    "Peer {} responded with a invalid response. requested hash: {}, response length: {}",
+                    from,
+                    hash,
+                    headers.len()
+                ),
+            },
             State::SnapshotChunk(..) => {}
             State::Full => {
                 let (mut completed, pivot_score_changed) = if let Some(peer) = self.header_downloaders.get_mut(from) {
