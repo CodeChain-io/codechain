@@ -1033,6 +1033,11 @@ impl Worker {
         let client = self.client();
         let backup = restore(client.get_kvdb().as_ref());
         if let Some(backup) = backup {
+            if backup.step == Step::Commit {
+                self.finalized_view_of_current_block = None;
+            } else {
+                self.finalized_view_of_current_block = backup.finalized_view_of_current_block;
+            }
             let backup_step = match backup.step {
                 Step::Propose => TendermintState::Propose,
                 Step::Prevote => TendermintState::Prevote,
@@ -1046,7 +1051,6 @@ impl Worker {
             self.height = backup.height;
             self.view = backup.view;
             self.finalized_view_of_previous_block = backup.finalized_view_of_previous_block;
-            self.finalized_view_of_current_block = backup.finalized_view_of_current_block;
 
             if let Some(proposal) = backup.proposal {
                 if client.block(&BlockId::Hash(proposal)).is_some() {
