@@ -20,13 +20,14 @@ use std::sync::{Arc, Weak};
 
 use ckey::Address;
 use cstate::{ActionHandler, HitHandler};
-use ctypes::{CommonParams, Header};
+use ctypes::{BlockHash, CommonParams, Header};
 use parking_lot::RwLock;
 
 use self::params::SoloParams;
 use super::stake;
 use super::{ConsensusEngine, Seal};
 use crate::block::{ExecutedBlock, IsBlock};
+use crate::client::snapshot_notify::NotifySender;
 use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{EngineError, EngineType};
@@ -38,6 +39,7 @@ pub struct Solo {
     params: SoloParams,
     machine: CodeChainMachine,
     action_handlers: Vec<Arc<dyn ActionHandler>>,
+    snapshot_notify_sender: Arc<RwLock<Option<NotifySender>>>,
 }
 
 impl Solo {
@@ -54,6 +56,7 @@ impl Solo {
             params,
             machine,
             action_handlers,
+            snapshot_notify_sender: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -148,6 +151,18 @@ impl ConsensusEngine for Solo {
 
     fn recommended_confirmation(&self) -> u32 {
         1
+    }
+
+    fn register_snapshot_notify_sender(&self, sender: NotifySender) {
+        let mut guard = self.snapshot_notify_sender.write();
+        assert!(guard.is_none(), "snapshot_notify_sender is registered twice");
+        *guard = Some(sender);
+    }
+
+    fn send_snapshot_notify(&self, block_hash: BlockHash) {
+        if let Some(sender) = self.snapshot_notify_sender.read().as_ref() {
+            sender.notify(block_hash)
+        }
     }
 
     fn action_handlers(&self) -> &[Arc<dyn ActionHandler>] {

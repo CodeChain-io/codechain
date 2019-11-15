@@ -270,6 +270,8 @@ pub trait ConsensusEngine: Sync + Send {
 
     fn complete_register(&self) {}
 
+    fn send_snapshot_notify(&self, _block_hash: BlockHash) {}
+
     fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> BlockHash {
         header.hash()
     }
