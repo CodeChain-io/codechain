@@ -17,7 +17,6 @@
 #[macro_use]
 extern crate log;
 
-extern crate elastic_array;
 extern crate interleaved_ordered;
 extern crate num_cpus;
 extern crate parking_lot;
@@ -40,7 +39,6 @@ use rocksdb::{
     WriteOptions, DB,
 };
 
-use elastic_array::ElasticArray32;
 use kvdb::{DBOp, DBTransaction, DBValue, KeyValueDB, KeyValueDBIterator, Result};
 
 #[cfg(target_os = "linux")]
@@ -248,9 +246,9 @@ pub struct Database {
     block_opts: BlockBasedOptions,
     path: String,
     // Dirty values added with `write_buffered`. Cleaned on `flush`.
-    overlay: RwLock<Vec<HashMap<ElasticArray32<u8>, KeyState>>>,
+    overlay: RwLock<Vec<HashMap<Vec<u8>, KeyState>>>,
     // Values currently being flushed. Cleared when `flush` completes.
-    flushing: RwLock<Vec<HashMap<ElasticArray32<u8>, KeyState>>>,
+    flushing: RwLock<Vec<HashMap<Vec<u8>, KeyState>>>,
     // Prevents concurrent flushes.
     // Value indicates if a flush is in progress.
     flushing_lock: Mutex<bool>,
@@ -532,10 +530,10 @@ impl Database {
                             Some(&KeyState::Delete) => Ok(None),
                             None => col
                                 .map_or_else(
-                                    || db.get_opt(key, &self.read_opts).map(|r| r.map(|v| DBValue::from_slice(&v))),
+                                    || db.get_opt(key, &self.read_opts).map(|r| r.map(|v| v.to_vec())),
                                     |c| {
                                         db.get_cf_opt(cfs[c as usize], key, &self.read_opts)
-                                            .map(|r| r.map(|v| DBValue::from_slice(&v)))
+                                            .map(|r| r.map(|v| v.to_vec()))
                                     },
                                 )
                                 .map_err(Into::into),
@@ -577,7 +575,7 @@ impl Database {
                     .iter()
                     .filter_map(|(k, v)| match *v {
                         KeyState::Insert(ref value) => {
-                            Some((k.clone().into_vec().into_boxed_slice(), value.clone().into_vec().into_boxed_slice()))
+                            Some((k.clone().into_boxed_slice(), value.clone().into_boxed_slice()))
                         }
                         KeyState::Delete => None,
                     })

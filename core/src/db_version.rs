@@ -36,5 +36,5 @@ pub fn set_version(batch: &mut DBTransaction, key: &[u8], value: u32) {
         key.starts_with(VERSION_KEY_PREFIX),
         "Version keys should be prefixed with".to_owned() + std::str::from_utf8(VERSION_KEY_PREFIX).unwrap()
     );
-    batch.put(db::COL_EXTRA, key, &rlp::encode(&value).into_vec());
+    batch.put(db::COL_EXTRA, key, &rlp::encode(&value));
 }

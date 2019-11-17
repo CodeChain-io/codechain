@@ -35,7 +35,7 @@ pub fn create_test_block_with_data(header: &Header, txs: &[SignedTransaction], u
     rlp.append(header);
     rlp.begin_list(txs.len());
     for t in txs {
-        rlp.append_raw(&rlp::encode(t).into_vec(), 1);
+        rlp.append_raw(&rlp::encode(t), 1);
     }
     rlp.append_list(&uncles);
     rlp.out()

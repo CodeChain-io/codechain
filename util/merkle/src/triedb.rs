@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -43,7 +43,7 @@ use crate::{Query, Trie, TrieError};
 /// TrieDBMut::new(&mut memdb, &mut root).insert(b"foo", b"bar").unwrap();
 /// let t = TrieDB::try_new(&memdb, &root).unwrap();
 /// assert!(t.contains(b"foo").unwrap());
-/// assert_eq!(t.get(b"foo").unwrap().unwrap(), DBValue::from_slice(b"bar"));
+/// assert_eq!(t.get(b"foo").unwrap().unwrap(), b"bar".to_vec());
 /// ```
 pub struct TrieDB<'db> {
     db: &'db dyn HashDB,
@@ -137,8 +137,8 @@ mod tests {
         }
 
         let t = TrieDB::try_new(&memdb, &root).unwrap();
-        assert_eq!(t.get(b"A"), Ok(Some(DBValue::from_slice(b"ABC"))));
-        assert_eq!(t.get(b"B"), Ok(Some(DBValue::from_slice(b"ABCBA"))));
+        assert_eq!(t.get(b"A"), Ok(Some(b"ABC".to_vec())));
+        assert_eq!(t.get(b"B"), Ok(Some(b"ABCBA".to_vec())));
         assert_eq!(t.get(b"C"), Ok(None));
     }
 }

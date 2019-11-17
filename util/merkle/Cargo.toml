@@ -4,12 +4,11 @@ version = "0.1.0"
 authors = ["CodeChain Team <codechain@codechain.io>"]
 
 [dependencies]
-elastic-array = "0.10"
 rand = "0.6.1"
 hashdb = {path = "../hashdb" }
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
-rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.3" }
+rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 
 [dev-dependencies]
 journaldb = { path = "../journaldb" }

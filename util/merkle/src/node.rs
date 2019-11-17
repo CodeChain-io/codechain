@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use elastic_array::ElasticArray1024;
 use primitives::H256;
 use rlp::*;
 
@@ -62,7 +61,7 @@ impl<'a> Node<'a> {
     }
 
     /// Encode the node into RLP.
-    pub fn encoded(node: Self) -> ElasticArray1024<u8> {
+    pub fn encoded(node: Self) -> Vec<u8> {
         match node {
             Node::Leaf(slice, value) => {
                 let mut stream = RlpStream::new_list(2);
@@ -89,7 +88,7 @@ impl<'a> Node<'a> {
 
     /// Encode the node into RLP.
     /// What the difference with above `encoded()` is length of nibblepath encoded
-    pub fn encoded_until(node: Self, size: usize) -> ElasticArray1024<u8> {
+    pub fn encoded_until(node: Self, size: usize) -> Vec<u8> {
         match node {
             Node::Leaf(slice, value) => {
                 let mut stream = RlpStream::new_list(2);

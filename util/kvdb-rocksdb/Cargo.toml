@@ -4,13 +4,12 @@ version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]
-elastic-array = "0.10"
 kvdb = { path = "../kvdb" }
 log = "0.4.6"
 num_cpus = "1.8"
 parking_lot = "0.6.0"
 regex = "0.2"
-rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.3" }
+rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 rocksdb = { git = "https://github.com/paritytech/rust-rocksdb", rev = "ecf06adf3148ab10f6f7686b724498382ff4f36e" }
 interleaved-ordered = "0.1.0"
 

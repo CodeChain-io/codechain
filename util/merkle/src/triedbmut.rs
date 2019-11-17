@@ -80,7 +80,7 @@ impl<'a> TrieDBMut<'a> {
                             let node_rlp = RlpNode::encoded(node);
                             let hash = self.db.insert(&node_rlp);
 
-                            *old_val = Some(DBValue::from_slice(value));
+                            *old_val = Some(value.to_vec());
 
                             Ok(hash)
                         } else {
@@ -185,7 +185,7 @@ impl<'a> TrieDBMut<'a> {
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
                         if path == &partial {
-                            *old_val = Some(DBValue::from_slice(&value));
+                            *old_val = Some(value.to_vec());
 
                             Ok(None)
                         } else {
@@ -569,9 +569,9 @@ mod tests {
         let mut root = H256::new();
         let mut t = TrieDBMut::new(&mut memdb, &mut root);
         t.insert(&[0x01u8, 0x23], &[0x01u8, 0x23]).unwrap();
-        assert_eq!(t.get(&[0x1, 0x23]).unwrap().unwrap(), DBValue::from_slice(&[0x1u8, 0x23]));
+        assert_eq!(t.get(&[0x1, 0x23]).unwrap().unwrap(), vec![0x1u8, 0x23]);
 
-        assert_eq!(t.get(&[0x1, 0x23]).unwrap().unwrap(), DBValue::from_slice(&[0x1u8, 0x23]));
+        assert_eq!(t.get(&[0x1, 0x23]).unwrap().unwrap(), vec![0x1u8, 0x23]);
     }
 
     #[test]
@@ -582,14 +582,14 @@ mod tests {
         t.insert(&[0x01u8, 0x23], &[0x01u8, 0x23]).unwrap();
         t.insert(&[0xf1u8, 0x23], &[0xf1u8, 0x23]).unwrap();
         t.insert(&[0x81u8, 0x23], &[0x81u8, 0x23]).unwrap();
-        assert_eq!(t.get(&[0x01, 0x23]).unwrap().unwrap(), DBValue::from_slice(&[0x01u8, 0x23]));
-        assert_eq!(t.get(&[0xf1, 0x23]).unwrap().unwrap(), DBValue::from_slice(&[0xf1u8, 0x23]));
-        assert_eq!(t.get(&[0x81, 0x23]).unwrap().unwrap(), DBValue::from_slice(&[0x81u8, 0x23]));
+        assert_eq!(t.get(&[0x01, 0x23]).unwrap().unwrap(), vec![0x01u8, 0x23]);
+        assert_eq!(t.get(&[0xf1, 0x23]).unwrap().unwrap(), vec![0xf1u8, 0x23]);
+        assert_eq!(t.get(&[0x81, 0x23]).unwrap().unwrap(), vec![0x81u8, 0x23]);
         assert_eq!(t.get(&[0x82, 0x23]), Ok(None));
 
-        assert_eq!(t.get(&[0x01, 0x23]).unwrap().unwrap(), DBValue::from_slice(&[0x01u8, 0x23]));
-        assert_eq!(t.get(&[0xf1, 0x23]).unwrap().unwrap(), DBValue::from_slice(&[0xf1u8, 0x23]));
-        assert_eq!(t.get(&[0x81, 0x23]).unwrap().unwrap(), DBValue::from_slice(&[0x81u8, 0x23]));
+        assert_eq!(t.get(&[0x01, 0x23]).unwrap().unwrap(), vec![0x01u8, 0x23]);
+        assert_eq!(t.get(&[0xf1, 0x23]).unwrap().unwrap(), vec![0xf1u8, 0x23]);
+        assert_eq!(t.get(&[0x81, 0x23]).unwrap().unwrap(), vec![0x81u8, 0x23]);
         assert_eq!(t.get(&[0x82, 0x23]), Ok(None));
     }
 
@@ -708,11 +708,11 @@ mod tests {
         let mut t = TrieDBMut::new(&mut db, &mut root);
         for &(ref key, ref value) in &x {
             assert!(t.insert(key, value).unwrap().is_none());
-            assert_eq!(t.insert(key, value).unwrap(), Some(DBValue::from_slice(value)));
+            assert_eq!(t.insert(key, value).unwrap(), Some(value.clone()));
         }
 
         for (key, value) in x {
-            assert_eq!(t.remove(&key).unwrap(), Some(DBValue::from_slice(&value)));
+            assert_eq!(t.remove(&key).unwrap(), Some(value));
             assert!(t.remove(&key).unwrap().is_none());
         }
     }

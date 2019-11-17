@@ -6,4 +6,4 @@ authors = ["Parity Technologies <admin@parity.io>"]
 [dependencies]
 parking_lot = "0.6.0"
 kvdb = { path = "../kvdb" }
-rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.3" }
+rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }

@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,8 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use std::cmp::*;
 use std::fmt;
-
-use elastic_array::ElasticArray36;
 
 
 #[derive(Eq, Ord)]
@@ -99,9 +97,9 @@ where
     }
 
     /// Encode while nibble slice in prefixed hex notation, noting whether it `is_leaf`.
-    pub fn encoded(&self) -> ElasticArray36<u8> {
+    pub fn encoded(&self) -> Vec<u8> {
         let l = self.len();
-        let mut r = ElasticArray36::new();
+        let mut r = Vec::new();
         let mut i = l % 2;
         r.push(if i == 1 {
             0b1_0000 + self.at(0)
@@ -118,9 +116,9 @@ where
 
     /// Encode only the leftmost `n` bytes of the nibble slice in prefixed hex notation,
     /// noting whether it `is_leaf`.
-    pub fn encoded_leftmost(&self, n: usize) -> ElasticArray36<u8> {
+    pub fn encoded_leftmost(&self, n: usize) -> Vec<u8> {
         let l = min(self.len(), n);
-        let mut r = ElasticArray36::new();
+        let mut r = Vec::new();
         let mut i = l % 2;
         r.push(if i == 1 {
             0b1_0000 + self.at(0)
@@ -142,8 +140,8 @@ where
         vec
     }
 
-    pub fn from_vec(v: &[u8]) -> (ElasticArray36<u8>, usize) {
-        let mut r = ElasticArray36::new();
+    pub fn from_vec(v: &[u8]) -> (Vec<u8>, usize) {
+        let mut r = Vec::new();
         let l = v.len();
         let mut i = l % 2;
         r.push(if i == 1 {
@@ -195,7 +193,6 @@ impl<'a> fmt::Debug for NibbleSlice<'a> {
 #[cfg(test)]
 mod tests {
     use super::NibbleSlice;
-    use elastic_array::ElasticArray36;
 
     static D: &[u8; 3] = &[0x01u8, 0x23, 0x45];
 
@@ -231,8 +228,8 @@ mod tests {
     #[test]
     fn encoded() {
         let n = NibbleSlice::new(D);
-        assert_eq!(n.encoded(), ElasticArray36::from_slice(&[0x00, 0x01, 0x23, 0x45]));
-        assert_eq!(n.mid(1).encoded(), ElasticArray36::from_slice(&[0x11, 0x23, 0x45]));
+        assert_eq!(n.encoded(), vec![0x00, 0x01, 0x23, 0x45]);
+        assert_eq!(n.mid(1).encoded(), vec![0x11, 0x23, 0x45]);
     }
 
     #[test]

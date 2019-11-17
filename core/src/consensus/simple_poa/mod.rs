@@ -173,7 +173,7 @@ mod tests {
     fn fail_to_verify_signature_when_seal_is_invalid() {
         let engine = Scheme::new_test_simple_poa().engine;
         let mut header: Header = Header::default();
-        header.set_seal(vec![::rlp::encode(&Signature::default()).into_vec()]);
+        header.set_seal(vec![::rlp::encode(&Signature::default())]);
 
         let verify_result = engine.verify_block_external(&header);
         assert!(verify_result.is_err());

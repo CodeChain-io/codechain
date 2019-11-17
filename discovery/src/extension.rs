@@ -74,7 +74,7 @@ impl NetworkExtension<Never> for Extension {
 
     fn on_node_added(&mut self, node: &NodeId, _version: u64) {
         self.nodes.insert(*node);
-        self.api.send(&node, Arc::new(Message::Request(self.config.bucket_size).rlp_bytes().into_vec()));
+        self.api.send(&node, Arc::new(Message::Request(self.config.bucket_size).rlp_bytes()));
     }
 
     fn on_node_removed(&mut self, node: &NodeId) {
@@ -112,7 +112,7 @@ impl NetworkExtension<Never> for Extension {
                     addresses.shuffle(&mut thread_rng());
                     addresses.into_iter().take(::std::cmp::min(self.config.bucket_size, len) as usize).collect()
                 };
-                let response = Arc::new(Message::Response(addresses).rlp_bytes().into_vec());
+                let response = Arc::new(Message::Response(addresses).rlp_bytes());
                 self.api.send(&node, response);
             }
             Message::Response(addresses) => {
@@ -124,7 +124,7 @@ impl NetworkExtension<Never> for Extension {
     fn on_timeout(&mut self, timer: TimerToken) {
         match timer {
             REFRESH_TOKEN => {
-                let request = Arc::new(Message::Request(self.config.bucket_size).rlp_bytes().into_vec());
+                let request = Arc::new(Message::Request(self.config.bucket_size).rlp_bytes());
                 for node in &self.nodes {
                     self.api.send(node, Arc::clone(&request));
                 }

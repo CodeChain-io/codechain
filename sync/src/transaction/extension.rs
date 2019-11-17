@@ -166,7 +166,7 @@ impl Extension {
             }
             cinfo!(SYNC_TX, "Send {} transactions to {}", unsent.len(), token);
             ctrace!(SYNC_TX, "Send {:?}", unsent_hashes);
-            self.api.send(token, Arc::new(Message::Transactions(unsent).rlp_bytes().into_vec()));
+            self.api.send(token, Arc::new(Message::Transactions(unsent).rlp_bytes()));
         }
     }
 }

@@ -6,5 +6,4 @@ description = "trait for hash-keyed databases."
 license = "GPL-3.0"
 
 [dependencies]
-elastic-array = "0.10"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

@@ -904,7 +904,7 @@ impl MemPool {
             })
             .filter(|t| range.contains(&t.inserted_timestamp))
             .take_while(|t| {
-                let encoded_byte_array: Vec<u8> = rlp::encode(&t.tx).into_vec();
+                let encoded_byte_array = rlp::encode(&t.tx);
                 let size_in_byte = encoded_byte_array.len();
                 current_size += size_in_byte;
                 current_size < size_limit

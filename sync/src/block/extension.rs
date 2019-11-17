@@ -114,7 +114,7 @@ impl Extension {
             let request_id = self.last_request;
             self.last_request += 1;
             requests.push((request_id, request.clone()));
-            self.api.send(id, Arc::new(Message::Request(request_id, request).rlp_bytes().into_vec()));
+            self.api.send(id, Arc::new(Message::Request(request_id, request).rlp_bytes()));
         }
     }
 
@@ -137,7 +137,7 @@ impl Extension {
                 let request_id = self.last_request;
                 self.last_request += 1;
                 requests.push((request_id, request.clone()));
-                self.api.send(id, Arc::new(Message::Request(request_id, request).rlp_bytes().into_vec()));
+                self.api.send(id, Arc::new(Message::Request(request_id, request).rlp_bytes()));
 
                 let token = &self.tokens[id];
                 let token_info = self.tokens_info.get_mut(token).unwrap();
@@ -220,8 +220,7 @@ impl NetworkExtension<Event> for Extension {
                     best_hash: chain_info.best_proposal_block_hash,
                     genesis_hash: chain_info.genesis_hash,
                 }
-                .rlp_bytes()
-                .into_vec(),
+                .rlp_bytes(),
             ),
         );
         let t = self.connected_nodes.insert(*id);
@@ -431,8 +430,7 @@ impl Extension {
                         best_hash: chain_info.best_proposal_block_hash,
                         genesis_hash: chain_info.genesis_hash,
                     }
-                    .rlp_bytes()
-                    .into_vec(),
+                    .rlp_bytes(),
                 ),
             );
         }
@@ -492,7 +490,7 @@ impl Extension {
             } => self.create_state_chunk_response(block_hash, tree_root),
         };
 
-        self.api.send(from, Arc::new(Message::Response(id, response).rlp_bytes().into_vec()));
+        self.api.send(from, Arc::new(Message::Response(id, response).rlp_bytes()));
     }
 
     fn is_valid_request(&self, request: &RequestMessage) -> bool {

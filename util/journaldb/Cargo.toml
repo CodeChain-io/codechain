@@ -10,7 +10,7 @@ primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.
 hashdb = { path = "../hashdb" }
 kvdb = { path = "../kvdb" }
 memorydb = { path = "../memorydb" }
-rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.3" }
+rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 util-error = { path = "../error" }
 
 [dev-dependencies]

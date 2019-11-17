@@ -564,7 +564,7 @@ impl Worker {
     }
 
     fn broadcast_message(&self, message: ConsensusMessage) {
-        let message = message.rlp_bytes().to_vec();
+        let message = message.rlp_bytes();
         self.extension
             .send(network::Event::BroadcastMessage {
                 message,
@@ -1457,7 +1457,7 @@ impl Worker {
             network_id,
             action: Action::Custom {
                 handler_id: CUSTOM_ACTION_HANDLER_ID,
-                bytes: double.to_action().rlp_bytes().into_vec(),
+                bytes: double.to_action().rlp_bytes(),
             },
         };
         let signature = match self.signer.sign_ecdsa(*tx.hash()) {
@@ -1679,8 +1679,7 @@ impl Worker {
             message,
             view,
         }
-        .rlp_bytes()
-        .into_vec();
+        .rlp_bytes();
         result.send(message).unwrap();
     }
 
@@ -1696,8 +1695,7 @@ impl Worker {
             vote_step,
             requested_votes,
         }
-        .rlp_bytes()
-        .into_vec();
+        .rlp_bytes();
         result.send(message).unwrap();
     }
 
@@ -1707,8 +1705,7 @@ impl Worker {
             height,
             view,
         }
-        .rlp_bytes()
-        .into_vec();
+        .rlp_bytes();
         result.send(message).unwrap();
     }
 
@@ -1717,8 +1714,7 @@ impl Worker {
         let message = TendermintMessage::RequestCommit {
             height,
         }
-        .rlp_bytes()
-        .into_vec();
+        .rlp_bytes();
         result.send(message).unwrap();
     }
 
@@ -1728,7 +1724,7 @@ impl Worker {
             votes,
         };
 
-        result.send(message.rlp_bytes().into_vec()).unwrap();
+        result.send(message.rlp_bytes()).unwrap();
     }
 
     fn on_proposal_message(

@@ -204,7 +204,7 @@ impl JournalDB for ArchiveDB {
 mod tests {
     use super::*;
     use crypto::blake256;
-    use hashdb::{DBValue, HashDB};
+    use hashdb::HashDB;
     use {kvdb_memorydb, JournalDB};
 
     #[test]
@@ -364,7 +364,7 @@ mod tests {
             let mut jdb = ArchiveDB::new(shared_db.clone(), None);
             // history is 1
             let foo_hash = jdb.insert(b"foo");
-            jdb.emplace(bar_hash, DBValue::from_slice(b"bar"));
+            jdb.emplace(bar_hash, b"bar".to_vec());
             jdb.commit_batch(0, &blake256(b"0"), None).unwrap();
             foo_hash
         };
@@ -461,7 +461,7 @@ mod tests {
         let key = jdb.insert(b"dog");
         jdb.inject_batch().unwrap();
 
-        assert_eq!(jdb.get(&key).unwrap(), DBValue::from_slice(b"dog"));
+        assert_eq!(jdb.get(&key).unwrap(), b"dog".to_vec());
         jdb.remove(&key);
         jdb.inject_batch().unwrap();
 
