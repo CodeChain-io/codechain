@@ -99,7 +99,7 @@ impl TendermintExtension {
 
     fn broadcast_message(&self, message: Bytes) {
         let tokens = self.select_random_peers();
-        let message = Arc::new(TendermintMessage::ConsensusMessage(vec![message]).rlp_bytes().into_vec());
+        let message = Arc::new(TendermintMessage::ConsensusMessage(vec![message]).rlp_bytes());
         for token in tokens {
             self.api.send(&token, Arc::clone(&message));
         }
@@ -107,7 +107,7 @@ impl TendermintExtension {
 
     fn send_votes(&self, token: &NodeId, messages: Vec<Bytes>) {
         ctrace!(ENGINE, "Send messages({}) to {}", messages.len(), token);
-        let message = Arc::new(TendermintMessage::ConsensusMessage(messages).rlp_bytes().into_vec());
+        let message = Arc::new(TendermintMessage::ConsensusMessage(messages).rlp_bytes());
         self.api.send(token, message);
     }
 
@@ -127,8 +127,7 @@ impl TendermintExtension {
                 lock_view,
                 known_votes: votes,
             }
-            .rlp_bytes()
-            .into_vec(),
+            .rlp_bytes(),
         );
 
         for token in tokens {
@@ -143,8 +142,7 @@ impl TendermintExtension {
                 message,
                 view,
             }
-            .rlp_bytes()
-            .into_vec(),
+            .rlp_bytes(),
         );
         for token in self.peers.keys() {
             self.api.send(token, Arc::clone(&message));
@@ -179,8 +177,7 @@ impl TendermintExtension {
                 height,
                 view,
             }
-            .rlp_bytes()
-            .into_vec(),
+            .rlp_bytes(),
         );
         self.api.send(&token, message);
     }
@@ -201,8 +198,7 @@ impl TendermintExtension {
                 vote_step,
                 requested_votes,
             }
-            .rlp_bytes()
-            .into_vec(),
+            .rlp_bytes(),
         );
         self.api.send(&token, message);
     }
@@ -360,7 +356,7 @@ impl NetworkExtension<Event> for TendermintExtension {
                     })
                     .unwrap();
 
-                let votes: Vec<_> = receiver.iter().map(|vote| vote.rlp_bytes().into_vec()).collect();
+                let votes: Vec<_> = receiver.iter().map(|vote| vote.rlp_bytes()).collect();
                 if !votes.is_empty() {
                     self.send_votes(token, votes);
                 }

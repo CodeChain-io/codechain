@@ -60,7 +60,7 @@ impl KeyValueDB for InMemory {
         match columns.get(&col) {
             None => None,
             Some(map) => {
-                map.iter().find(|&(ref k, _)| k.starts_with(prefix)).map(|(_, v)| v.to_vec().into_boxed_slice())
+                map.iter().find(|&(ref k, _)| k.starts_with(prefix)).map(|(_, v)| v.clone().into_boxed_slice())
             }
         }
     }
@@ -76,7 +76,7 @@ impl KeyValueDB for InMemory {
                     value,
                 } => {
                     if let Some(col) = columns.get_mut(&col) {
-                        col.insert(key.into_vec(), value);
+                        col.insert(key, value);
                     }
                 }
                 DBOp::Delete {
@@ -99,7 +99,7 @@ impl KeyValueDB for InMemory {
         match self.columns.read().get(&col) {
             Some(map) => Box::new(
                 // TODO: worth optimizing at all?
-                map.clone().into_iter().map(|(k, v)| (k.into_boxed_slice(), v.into_vec().into_boxed_slice())),
+                map.clone().into_iter().map(|(k, v)| (k.into_boxed_slice(), v.into_boxed_slice())),
             ),
             None => Box::new(None.into_iter()),
         }
@@ -111,7 +111,7 @@ impl KeyValueDB for InMemory {
                 map.clone()
                     .into_iter()
                     .skip_while(move |&(ref k, _)| !k.starts_with(prefix))
-                    .map(|(k, v)| (k.into_boxed_slice(), v.into_vec().into_boxed_slice())),
+                    .map(|(k, v)| (k.into_boxed_slice(), v.into_boxed_slice())),
             ),
             None => Box::new(None.into_iter()),
         }

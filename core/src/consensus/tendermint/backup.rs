@@ -74,7 +74,7 @@ pub fn backup(db: &dyn KeyValueDB, backup_data: BackupView) {
         "version key should end with the backup key"
     );
     db_version::set_version(&mut batch, db_version::VERSION_KEY_TENDERMINT_BACKUP, BACKUP_VERSION);
-    batch.put(db::COL_EXTRA, BACKUP_KEY, &s.drain().into_vec());
+    batch.put(db::COL_EXTRA, BACKUP_KEY, &s.drain());
     db.write(batch).expect("Low level database error. Some issue with disk?");
 }
 
@@ -150,7 +150,6 @@ fn migrate_from_0_to_1(db: &dyn KeyValueDB) {
 fn load_v0(db: &dyn KeyValueDB) -> Option<BackupDataV0> {
     let value = db.get(db::COL_EXTRA, BACKUP_KEY).expect("Low level database error. Some issue with disk?");
     let (height, view, step, votes, last_confirmed_view) = value.map(|bytes| {
-        let bytes = bytes.into_vec();
         let rlp = rlp::Rlp::new(&bytes);
         (
             rlp.val_at(0).unwrap(),

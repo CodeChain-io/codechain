@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_crypto as ccrypto;
-extern crate elastic_array;
 extern crate hashdb;
 #[cfg(test)]
 extern crate memorydb;
@@ -86,7 +85,7 @@ pub trait Trie {
 
     /// What is the value of the given key in this trie?
     fn get(&self, key: &[u8]) -> Result<Option<DBValue>> {
-        self.get_with(key, &DBValue::from_slice)
+        self.get_with(key, &|bytes| bytes.to_vec())
     }
 
     /// Search for the key with the given query parameter. See the docs of the `Query`

@@ -6,7 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate elastic_array;
 #[macro_use]
 extern crate lazy_static;
 extern crate rlp;
@@ -14,7 +13,6 @@ extern crate rlp;
 mod common;
 
 use common::{BLOCKS_SWAPPER, SNAPSHOT_SWAPPER};
-use elastic_array::ElasticArray1024;
 use rlp::{Rlp, RlpStream};
 use std::cmp;
 use std::collections::HashMap;
@@ -40,26 +38,26 @@ pub trait Decompressor {
 }
 
 /// Call this function to compress rlp.
-pub fn compress(c: &[u8], swapper: &dyn Compressor) -> ElasticArray1024<u8> {
+pub fn compress(c: &[u8], swapper: &dyn Compressor) -> Vec<u8> {
     let rlp = Rlp::new(c);
     if rlp.is_data() {
-        ElasticArray1024::from_slice(swapper.compressed(rlp.as_raw()).unwrap_or_else(|| rlp.as_raw()))
+        (swapper.compressed(rlp.as_raw()).unwrap_or_else(|| rlp.as_raw())).to_vec()
     } else {
         map_rlp(&rlp, |r| compress(r.as_raw(), swapper))
     }
 }
 
 /// Call this function to decompress rlp.
-pub fn decompress(c: &[u8], swapper: &dyn Decompressor) -> ElasticArray1024<u8> {
+pub fn decompress(c: &[u8], swapper: &dyn Decompressor) -> Vec<u8> {
     let rlp = Rlp::new(c);
     if rlp.is_data() {
-        ElasticArray1024::from_slice(swapper.decompressed(rlp.as_raw()).unwrap_or_else(|| rlp.as_raw()))
+        swapper.decompressed(rlp.as_raw()).unwrap_or_else(|| rlp.as_raw()).to_vec()
     } else {
         map_rlp(&rlp, |r| decompress(r.as_raw(), swapper))
     }
 }
 
-fn map_rlp<F: Fn(&Rlp) -> ElasticArray1024<u8>>(rlp: &Rlp, f: F) -> ElasticArray1024<u8> {
+fn map_rlp<F: Fn(&Rlp) -> Vec<u8>>(rlp: &Rlp, f: F) -> Vec<u8> {
     let mut stream = RlpStream::new_list(rlp.item_count().unwrap_or_default());
     for subrlp in rlp.iter() {
         stream.append_raw(&f(&subrlp), 1);

@@ -82,7 +82,7 @@ impl<'a> StakeAccount<'a> {
         let account_key = get_account_key(self.address);
         if self.balance != 0 {
             let rlp = rlp::encode(&self.balance);
-            state.update_action_data(&account_key, rlp.into_vec())?;
+            state.update_action_data(&account_key, rlp)?;
         } else {
             state.remove_action_data(&account_key);
         }
@@ -716,7 +716,7 @@ where
     for value in set.iter() {
         rlp.append(value);
     }
-    rlp.drain().into_vec()
+    rlp.drain()
 }
 
 fn decode_map<K, V>(data: Option<&ActionData>) -> BTreeMap<K, V>
@@ -750,7 +750,7 @@ where
     V: Encodable, {
     let mut rlp = RlpStream::new();
     encode_map_impl(&mut rlp, map);
-    rlp.drain().into_vec()
+    rlp.drain()
 }
 
 fn encode_map_impl<K, V>(rlp: &mut RlpStream, map: &BTreeMap<K, V>)
@@ -789,7 +789,7 @@ where
     encode_map_impl(&mut rlp, map0);
     encode_map_impl(&mut rlp, map1);
 
-    rlp.drain().into_vec()
+    rlp.drain()
 }
 
 fn encode_iter<'a, V, I>(iter: I) -> Vec<u8>
@@ -801,7 +801,7 @@ where
     for value in iter {
         rlp.append(value);
     }
-    rlp.drain().into_vec()
+    rlp.drain()
 }
 
 #[cfg(test)]

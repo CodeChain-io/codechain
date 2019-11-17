@@ -16,7 +16,6 @@
 
 //! Reference-counted memory-based `HashDB` implementation.
 extern crate codechain_crypto;
-extern crate elastic_array;
 extern crate hashdb;
 extern crate plain_hasher;
 extern crate primitives;
@@ -124,7 +123,7 @@ impl MemoryDB {
     /// when the refs > 0.
     pub fn raw(&self, key: &H256) -> Option<(DBValue, i32)> {
         if key == &BLAKE_NULL_RLP {
-            return Some((DBValue::from_slice(&NULL_RLP), 1))
+            return Some((NULL_RLP.to_vec(), 1))
         }
         self.data.get(key).cloned()
     }
@@ -173,7 +172,7 @@ impl MemoryDB {
 impl HashDB for MemoryDB {
     fn get(&self, key: &H256) -> Option<DBValue> {
         if key == &BLAKE_NULL_RLP {
-            return Some(DBValue::from_slice(&NULL_RLP))
+            return Some(NULL_RLP.to_vec())
         }
 
         match self.data.get(key) {
@@ -215,12 +214,12 @@ impl HashDB for MemoryDB {
             Entry::Occupied(mut entry) => {
                 let &mut (ref mut old_value, ref mut rc) = entry.get_mut();
                 if *rc <= 0 {
-                    *old_value = DBValue::from_slice(value);
+                    *old_value = value.to_vec();
                 }
                 *rc += 1;
             }
             Entry::Vacant(entry) => {
-                entry.insert((DBValue::from_slice(value), 1));
+                entry.insert((value.to_vec(), 1));
             }
         }
         key
@@ -305,7 +304,7 @@ mod tests {
         main.remove(&remove_key);
 
         let insert_key = other.insert(b"arf");
-        main.emplace(insert_key, DBValue::from_slice(b"arf"));
+        main.emplace(insert_key, b"arf".to_vec());
 
         let negative_remove_key = other.insert(b"negative");
         other.remove(&negative_remove_key); // ref cnt: 0
@@ -316,8 +315,8 @@ mod tests {
 
         let overlay = main.drain();
 
-        assert_eq!(overlay[&remove_key], (DBValue::from_slice(b"doggo"), 0));
-        assert_eq!(overlay[&insert_key], (DBValue::from_slice(b"arf"), 2));
-        assert_eq!(overlay[&negative_remove_key], (DBValue::from_slice(b"negative"), -2));
+        assert_eq!(overlay[&remove_key], (b"doggo".to_vec(), 0));
+        assert_eq!(overlay[&insert_key], (b"arf".to_vec(), 2));
+        assert_eq!(overlay[&negative_remove_key], (b"negative".to_vec(), -2));
     }
 }

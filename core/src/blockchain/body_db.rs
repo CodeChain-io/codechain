@@ -323,7 +323,7 @@ impl BodyProvider for BodyDB {
         let compressed_body =
             self.db.get(db::COL_BODIES, hash).expect("Low level database error. Some issue with disk?")?;
 
-        let raw_body = decompress(&compressed_body, blocks_swapper()).into_vec();
+        let raw_body = decompress(&compressed_body, blocks_swapper());
         let mut lock = self.body_cache.lock();
         lock.insert(*hash, raw_body.clone());
 

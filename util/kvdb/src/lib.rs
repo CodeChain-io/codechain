@@ -18,17 +18,15 @@
 
 #[macro_use]
 extern crate error_chain;
-extern crate elastic_array;
 extern crate primitives;
 
-use elastic_array::{ElasticArray128, ElasticArray32};
 use primitives::Bytes;
 
 /// Required length of prefixes.
 pub const PREFIX_LEN: usize = 12;
 
 /// Database value.
-pub type DBValue = ElasticArray128<u8>;
+pub type DBValue = Vec<u8>;
 
 #[allow(deprecated)]
 mod errors {
@@ -59,12 +57,12 @@ pub struct DBTransaction {
 pub enum DBOp {
     Insert {
         col: Option<u32>,
-        key: ElasticArray32<u8>,
+        key: Vec<u8>,
         value: DBValue,
     },
     Delete {
         col: Option<u32>,
-        key: ElasticArray32<u8>,
+        key: Vec<u8>,
     },
 }
 
@@ -83,30 +81,30 @@ impl DBTransaction {
 
     /// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
     pub fn put(&mut self, col: Option<u32>, key: &[u8], value: &[u8]) {
-        let mut ekey = ElasticArray32::new();
-        ekey.append_slice(key);
+        let mut ekey = Vec::new();
+        ekey.extend_from_slice(key);
         self.ops.push(DBOp::Insert {
             col,
             key: ekey,
-            value: DBValue::from_slice(value),
+            value: value.to_vec(),
         });
     }
 
     /// Insert a key-value pair in the transaction. Any existing value will be overwritten upon write.
     pub fn put_vec(&mut self, col: Option<u32>, key: &[u8], value: Bytes) {
-        let mut ekey = ElasticArray32::new();
-        ekey.append_slice(key);
+        let mut ekey = Vec::new();
+        ekey.extend_from_slice(key);
         self.ops.push(DBOp::Insert {
             col,
             key: ekey,
-            value: DBValue::from_vec(value),
+            value,
         });
     }
 
     /// Delete value by key.
     pub fn delete(&mut self, col: Option<u32>, key: &[u8]) {
-        let mut ekey = ElasticArray32::new();
-        ekey.append_slice(key);
+        let mut ekey = Vec::new();
+        ekey.extend_from_slice(key);
         self.ops.push(DBOp::Delete {
             col,
             key: ekey,

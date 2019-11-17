@@ -15,15 +15,13 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Database of byte-slices keyed to their Keccak hash.
-extern crate elastic_array;
 extern crate primitives;
 
-use elastic_array::ElasticArray128;
 use primitives::H256;
 use std::collections::HashMap;
 
 /// `HashDB` value type.
-pub type DBValue = ElasticArray128<u8>;
+pub type DBValue = Vec<u8>;
 
 /// Trait modelling datastore keyed by a 32-byte Keccak hash.
 pub trait HashDB: AsHashDB + Send + Sync {

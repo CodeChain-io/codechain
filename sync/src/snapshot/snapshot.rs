@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -297,7 +297,6 @@ mod tests {
     use ccore::COL_STATE;
 
     use cmerkle::{Trie, TrieDB, TrieDBMut, TrieMut};
-    use hashdb::DBValue;
     use journaldb;
     use journaldb::Algorithm;
     use kvdb_memorydb;
@@ -349,7 +348,7 @@ mod tests {
                         continue
                     }
                     assert!(t.insert(key, value).unwrap().is_none());
-                    assert_eq!(t.insert(key, value).unwrap(), Some(DBValue::from_slice(value)));
+                    assert_eq!(t.insert(key, value).unwrap(), Some(value.to_vec()));
                 }
             }
             {
@@ -372,7 +371,7 @@ mod tests {
                 if !inserted_keys.insert(key) {
                     continue
                 }
-                assert_eq!(t.get(key).unwrap(), Some(DBValue::from_slice(value)));
+                assert_eq!(t.get(key).unwrap(), Some(value.to_vec()));
             }
         }
     }

@@ -425,7 +425,7 @@ fn block_header_data(
     // Read from DB and populate cache
     let b = db.get(db::COL_HEADERS, hash).expect("Low level database error. Some issue with disk?")?;
 
-    let bytes = decompress(&b, blocks_swapper()).into_vec();
+    let bytes = decompress(&b, blocks_swapper());
 
     let mut lock = header_cache.lock();
     if let Some(v) = lock.get_mut(hash) {

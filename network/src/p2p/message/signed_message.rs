@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ impl SignedMessage {
     pub fn new<M>(message: &M, session: &Session) -> Self
     where
         M: Encodable, {
-        let message = message.rlp_bytes().into_vec();
+        let message = message.rlp_bytes();
         let signature = session.sign(&message);
         Self {
             message,

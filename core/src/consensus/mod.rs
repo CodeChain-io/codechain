@@ -75,17 +75,17 @@ impl Seal {
         match self {
             Seal::None => None,
             Seal::Solo => Some(Vec::new()),
-            Seal::SimplePoA(signature) => Some(vec![::rlp::encode(signature).into_vec()]),
+            Seal::SimplePoA(signature) => Some(vec![::rlp::encode(signature)]),
             Seal::Tendermint {
                 prev_view,
                 cur_view,
                 precommits,
                 precommit_bitset,
             } => Some(vec![
-                ::rlp::encode(prev_view).into_vec(),
-                ::rlp::encode(cur_view).into_vec(),
-                ::rlp::encode_list(precommits).into_vec(),
-                ::rlp::encode(precommit_bitset).into_vec(),
+                ::rlp::encode(prev_view),
+                ::rlp::encode(cur_view),
+                ::rlp::encode_list(precommits),
+                ::rlp::encode(precommit_bitset),
             ]),
         }
     }

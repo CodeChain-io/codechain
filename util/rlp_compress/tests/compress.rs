@@ -35,11 +35,11 @@ fn nested_list_rlp() {
     let compressed = compress(&nested_basic_account_rlp, blocks_swapper());
     assert_eq!(compressed, vec![197, 4, 195, 2, 129, 0]);
     let decompressed = decompress(&compressed, blocks_swapper());
-    assert_eq!(decompressed.into_vec(), nested_basic_account_rlp);
+    assert_eq!(decompressed, nested_basic_account_rlp);
     let compressed = compress(&nested_basic_account_rlp, snapshot_swapper());
     assert_eq!(compressed, vec![197, 4, 195, 2, 129, 0]);
     let decompressed = decompress(&compressed, snapshot_swapper());
-    assert_eq!(decompressed.into_vec(), nested_basic_account_rlp);
+    assert_eq!(decompressed, nested_basic_account_rlp);
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn malformed_rlp() {
         241, 246, 99, 135, 92, 168, 149, 170, 114, 9, 143, 4, 93, 25, 76, 54, 176, 119, 230, 170, 154, 105, 47, 121,
         10, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
     ];
-    assert_eq!(decompress(&malformed, blocks_swapper()).into_vec(), malformed);
+    assert_eq!(decompress(&malformed, blocks_swapper()), malformed);
 }
 
 #[test]
@@ -1074,5 +1074,5 @@ fn large_block() {
     ];
     let compressed = compress(&block, blocks_swapper());
     let decompressed = decompress(&compressed, blocks_swapper());
-    assert_eq!(decompressed.into_vec(), block);
+    assert_eq!(decompressed, block);
 }
