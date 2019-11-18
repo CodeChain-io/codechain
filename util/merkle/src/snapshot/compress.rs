@@ -35,7 +35,7 @@ impl<R> ChunkDecompressor<R> {
 }
 
 impl<'a> ChunkDecompressor<Cursor<&'a [u8]>> {
-    fn from_slice(slice: &'a [u8]) -> Self {
+    pub fn from_slice(slice: &'a [u8]) -> Self {
         ChunkDecompressor::new(Cursor::new(slice))
     }
 }
