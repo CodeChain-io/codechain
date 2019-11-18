@@ -366,10 +366,11 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     }
 
     let _snapshot_service = {
+        let client = client.client();
+        let (tx, rx) = snapshot_notify::create();
+        client.engine().register_snapshot_notify_sender(tx);
+
         if !config.snapshot.disable.unwrap() {
-            let client = client.client();
-            let (tx, rx) = snapshot_notify::create();
-            client.engine().register_snapshot_notify_sender(tx);
             let service = Arc::new(SnapshotService::new(client, rx, config.snapshot.path.unwrap()));
             Some(service)
         } else {

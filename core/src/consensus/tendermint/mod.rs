@@ -41,6 +41,7 @@ pub use self::types::{Height, Step, View};
 use super::{stake, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
+use crate::snapshot_notify::NotifySender as SnapshotNotifySender;
 use crate::ChainNotify;
 
 /// Timer token representing the consensus step timeouts.
@@ -58,6 +59,7 @@ pub struct Tendermint {
     client: RwLock<Option<Weak<dyn ConsensusClient>>>,
     external_params_initializer: crossbeam::Sender<TimeGapParams>,
     extension_initializer: crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<dyn ConsensusClient>)>,
+    snapshot_notify_sender_initializer: crossbeam::Sender<SnapshotNotifySender>,
     timeouts: TimeoutParams,
     join: Option<JoinHandle<()>>,
     quit_tendermint: crossbeam::Sender<()>,
@@ -93,8 +95,14 @@ impl Tendermint {
         let timeouts = our_params.timeouts;
         let machine = Arc::new(machine);
 
-        let (join, external_params_initializer, extension_initializer, inner, quit_tendermint) =
-            worker::spawn(our_params.validators);
+        let (
+            join,
+            external_params_initializer,
+            extension_initializer,
+            snapshot_notify_sender_initializer,
+            inner,
+            quit_tendermint,
+        ) = worker::spawn(our_params.validators);
         let action_handlers: Vec<Arc<dyn ActionHandler>> = vec![stake.clone()];
         let chain_notify = Arc::new(TendermintChainNotify::new(inner.clone()));
 
@@ -102,6 +110,7 @@ impl Tendermint {
             client: Default::default(),
             external_params_initializer,
             extension_initializer,
+            snapshot_notify_sender_initializer,
             timeouts,
             join: Some(join),
             quit_tendermint,

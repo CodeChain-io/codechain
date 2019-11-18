@@ -37,6 +37,7 @@ use super::worker;
 use super::{ChainNotify, Tendermint, SEAL_FIELDS};
 use crate::account_provider::AccountProvider;
 use crate::block::*;
+use crate::client::snapshot_notify::NotifySender as SnapshotNotifySender;
 use crate::client::{Client, ConsensusClient};
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::tendermint::params::TimeGapParams;
@@ -357,6 +358,10 @@ impl ConsensusEngine for Tendermint {
 
     fn register_chain_notify(&self, client: &Client) {
         client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<dyn ChainNotify>);
+    }
+
+    fn register_snapshot_notify_sender(&self, sender: SnapshotNotifySender) {
+        self.snapshot_notify_sender_initializer.send(sender).unwrap();
     }
 
     fn complete_register(&self) {
