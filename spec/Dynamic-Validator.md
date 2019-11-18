@@ -198,7 +198,7 @@ The transaction will reprioritize the sender.
 
 It's a transaction used by the stakeholders to select the validators.
 The stakeholders can delegate as much stakes as they have.
-The stakeholders can delegate any candidates, including validators and jailed accounts.
+The stakeholders can delegate any candidates, including validators.
 The delegations return automatically when the delegatee becomes eligible or banned.
 
 *DELEGATE* transactions to banned, jailed or eligible accounts fail.
@@ -280,11 +280,12 @@ fn reprioritize(candidates: &mut Vec<Candidate>, target: &Address) {
 ```
 
 ### on TermEnd events
-1. Update `term_id` to the current block number and the next term id
+1. Calculate rewards of the previous block and update `intermediate_rewards`.
 2. Renew the nomination expiration of the current validators, and reprioritize them.
     * Reprioritization preserves the relative order of the reprioritized validators.
-3. Remove the expired candidates and give back the deposits
-4. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits
-5. Calculate rewards of the previous block and update `intermediate_rewards`
-6. Elect validators
-    * Store validators in the ascending order
+3. Remove the expired candidates and give back the deposits.
+4. Remove the jailed accounts if the current term is greater than `released_at` and give back the deposits.
+5. Jail inactive validators.
+6. Elect validators.
+    * Store validators in the ascending order.
+7. Update `term_id` to the current block number and the next term id.
