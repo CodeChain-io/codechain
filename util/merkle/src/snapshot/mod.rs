@@ -36,22 +36,20 @@ const CHUNK_MAX_NODES: usize = 256; // 16 ^ (CHUNK_HEIGHT-1)
 
 /// Example:
 /// use codechain_merkle::snapshot::Restore;
-/// let mut rm = Restore::new(db, root);
+/// let mut rm = Restore::new(root);
 /// while let Some(root) = rm.next_to_feed() {
 ///     let raw_chunk = request(block_hash, root)?;
 ///     let chunk = raw_chunk.recover(root)?;
-///     rm.feed(chunk);
+///     rm.feed(db, chunk);
 /// }
-pub struct Restore<'a> {
-    db: &'a mut dyn HashDB,
+pub struct Restore {
     pending: Option<ChunkPathPrefix>,
     unresolved: OrderedHeap<DepthFirst<ChunkPathPrefix>>,
 }
 
-impl<'a> Restore<'a> {
-    pub fn new(db: &'a mut dyn HashDB, merkle_root: H256) -> Self {
+impl Restore {
+    pub fn new(merkle_root: H256) -> Self {
         let mut result = Restore {
-            db,
             pending: None,
             unresolved: OrderedHeap::new(),
         };
@@ -61,13 +59,13 @@ impl<'a> Restore<'a> {
         result
     }
 
-    pub fn feed(&mut self, chunk: RecoveredChunk) {
+    pub fn feed(&mut self, db: &mut dyn HashDB, chunk: RecoveredChunk) {
         let pending_path = self.pending.take().expect("feed() should be called after next()");
         assert_eq!(pending_path.chunk_root, chunk.root, "Unexpected chunk");
 
         // Pour nodes into the DB
         for (key, value) in chunk.nodes {
-            self.db.emplace(key, value);
+            db.emplace(key, value);
         }
 
         // Extend search paths
@@ -79,8 +77,9 @@ impl<'a> Restore<'a> {
     }
 
     pub fn next_to_feed(&mut self) -> Option<H256> {
-        if let Some(path) = self.unresolved.pop() {
-            assert!(self.pending.is_none(), "Previous feed() was failed");
+        if let Some(pending) = &self.pending {
+            Some(pending.chunk_root)
+        } else if let Some(path) = self.unresolved.pop() {
             let chunk_root = path.chunk_root;
             self.pending = Some(path.0);
 
@@ -88,6 +87,12 @@ impl<'a> Restore<'a> {
         } else {
             None
         }
+    }
+}
+
+impl std::fmt::Debug for Restore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_struct("Restore").field("pending", &self.pending).field("unresolved", &"<...>".to_string()).finish()
     }
 }
 
@@ -294,10 +299,10 @@ mod tests {
         dbg!(chunks.len());
 
         let mut db = MemoryDB::new();
-        let mut recover = Restore::new(&mut db, root);
+        let mut recover = Restore::new(root);
         while let Some(chunk_root) = recover.next_to_feed() {
             let recovered = chunks[&chunk_root].recover(chunk_root).unwrap();
-            recover.feed(recovered);
+            recover.feed(&mut db, recovered);
         }
 
         let trie = TrieDB::try_new(&db, &root).unwrap();

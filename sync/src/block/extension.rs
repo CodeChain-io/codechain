@@ -24,6 +24,8 @@ use ccore::{
     Block, BlockChainClient, BlockChainTrait, BlockId, BlockImportError, BlockStatus, ChainNotify, Client, ImportBlock,
     ImportError, UnverifiedTransaction,
 };
+use cmerkle::snapshot::ChunkDecompressor;
+use cmerkle::snapshot::Restore as SnapshotRestore;
 use cmerkle::TrieFactory;
 use cnetwork::{Api, EventSender, NetworkExtension, NodeId};
 use cstate::FindActionHandler;
@@ -32,6 +34,7 @@ use ctypes::header::{Header, Seal};
 use ctypes::transaction::Action;
 use ctypes::{BlockHash, BlockNumber};
 use hashdb::AsHashDB;
+use kvdb::DBTransaction;
 use primitives::{H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -58,7 +61,10 @@ pub struct TokenInfo {
 #[derive(Debug)]
 enum State {
     SnapshotHeader(BlockHash, u64),
-    SnapshotChunk(H256),
+    SnapshotChunk {
+        block: BlockHash,
+        restore: SnapshotRestore,
+    },
     Full,
 }
 
@@ -85,9 +91,13 @@ impl Extension {
             Some((hash, num)) => match client.block_header(&BlockId::Number(num)) {
                 Some(ref header) if *header.hash() == hash => {
                     let state_db = client.state_db().read();
-                    match TrieFactory::readonly(state_db.as_hashdb(), &header.state_root()) {
+                    let state_root = header.state_root();
+                    match TrieFactory::readonly(state_db.as_hashdb(), &state_root) {
                         Ok(ref trie) if trie.is_complete() => State::Full,
-                        _ => State::SnapshotChunk(*header.hash()),
+                        _ => State::SnapshotChunk {
+                            block: hash.into(),
+                            restore: SnapshotRestore::new(state_root),
+                        },
                     }
                 }
                 _ => State::SnapshotHeader(hash.into(), num),
@@ -187,6 +197,37 @@ impl Extension {
         self.check_sync_variable();
     }
 
+    fn send_chunk_request(&mut self, block: &BlockHash, root: &H256) {
+        let have_chunk_request = self.requests.values().flatten().any(|r| match r {
+            (_, RequestMessage::StateChunk(..)) => true,
+            _ => false,
+        });
+
+        if !have_chunk_request {
+            let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
+            peer_ids.shuffle(&mut thread_rng());
+            if let Some(id) = peer_ids.first() {
+                if let Some(requests) = self.requests.get_mut(&id) {
+                    let req = RequestMessage::StateChunk(*block, vec![*root]);
+                    cdebug!(SYNC, "Request chunk to {} {:?}", id, req);
+                    let request_id = self.last_request;
+                    self.last_request += 1;
+                    requests.push((request_id, req.clone()));
+                    self.api.send(id, Arc::new(Message::Request(request_id, req).rlp_bytes().into_vec()));
+
+                    let token = &self.tokens[id];
+                    let token_info = self.tokens_info.get_mut(token).unwrap();
+
+                    let _ = self.api.clear_timer(*token);
+                    self.api
+                        .set_timer_once(*token, Duration::from_millis(SYNC_EXPIRE_REQUEST_INTERVAL))
+                        .expect("Timer set succeeds");
+                    token_info.request_id = Some(request_id);
+                }
+            }
+        }
+    }
+
     fn check_sync_variable(&self) {
         let mut has_error = false;
         for id in self.header_downloaders.keys() {
@@ -203,6 +244,14 @@ impl Extension {
                 })
                 .collect();
 
+            let chunk_requests: Vec<RequestMessage> = requests
+                .iter()
+                .filter_map(|r| match r {
+                    (_, RequestMessage::StateChunk(..)) => Some(r.1.clone()),
+                    _ => None,
+                })
+                .collect();
+
             if body_requests.len() > 1 {
                 cerror!(SYNC, "Body request length {} > 1, body_requests: {:?}", body_requests.len(), body_requests);
                 has_error = true;
@@ -211,16 +260,18 @@ impl Extension {
             let token = &self.tokens[id];
             let token_info = &self.tokens_info[token];
 
-            match (token_info.request_id, body_requests.len()) {
+            match (token_info.request_id, body_requests.len() + chunk_requests.len()) {
                 (Some(_), 1) => {}
                 (None, 0) => {}
                 _ => {
                     cerror!(
                         SYNC,
-                        "request_id: {:?}, body_requests.len(): {}, body_requests: {:?}",
+                        "request_id: {:?}, body_requests.len(): {}, body_requests: {:?}, chunk_requests.len(): {}, chunk_requests: {:?}",
                         token_info.request_id,
                         body_requests.len(),
-                        body_requests
+                        body_requests,
+                        chunk_requests.len(),
+                        chunk_requests
                     );
                     has_error = true;
                 }
@@ -335,7 +386,17 @@ impl NetworkExtension<Event> for Extension {
                             });
                         }
                     }
-                    State::SnapshotChunk(..) => unimplemented!(),
+                    State::SnapshotChunk {
+                        block,
+                        ref mut restore,
+                    } => {
+                        if let Some(root) = restore.next_to_feed() {
+                            self.send_chunk_request(&block, &root);
+                        } else {
+                            cdebug!(SYNC, "Transitioning state to {:?}", State::Full);
+                            self.state = State::Full;
+                        }
+                    }
                     State::Full => {
                         for id in &peer_ids {
                             let request =
@@ -431,12 +492,17 @@ impl Extension {
             State::SnapshotHeader(hash, ..) => {
                 if imported.contains(&hash) {
                     let header = self.client.block_header(&BlockId::Hash(hash)).expect("Imported header must exist");
-                    Some(State::SnapshotChunk(header.state_root()))
+                    Some(State::SnapshotChunk {
+                        block: hash,
+                        restore: SnapshotRestore::new(header.state_root()),
+                    })
                 } else {
                     None
                 }
             }
-            State::SnapshotChunk(..) => unimplemented!(),
+            State::SnapshotChunk {
+                ..
+            } => None,
             State::Full => {
                 let peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
                 for id in peer_ids {
@@ -478,12 +544,17 @@ impl Extension {
             State::SnapshotHeader(hash, ..) => {
                 if imported.contains(&hash) {
                     let header = self.client.block_header(&BlockId::Hash(hash)).expect("Imported header must exist");
-                    Some(State::SnapshotChunk(header.state_root()))
+                    Some(State::SnapshotChunk {
+                        block: hash,
+                        restore: SnapshotRestore::new(header.state_root()),
+                    })
                 } else {
                     None
                 }
             }
-            State::SnapshotChunk(..) => None,
+            State::SnapshotChunk {
+                ..
+            } => None,
             State::Full => {
                 self.body_downloader.remove_target(&imported);
                 self.body_downloader.remove_target(&invalid);
@@ -576,7 +647,7 @@ impl Extension {
             RequestMessage::Bodies(hashes) => !hashes.is_empty(),
             RequestMessage::StateChunk {
                 ..
-            } => unimplemented!(),
+            } => true,
         }
     }
 
@@ -655,7 +726,24 @@ impl Extension {
                     self.on_body_response(hashes, bodies);
                     self.check_sync_variable();
                 }
-                ResponseMessage::StateChunk(..) => unimplemented!(),
+                ResponseMessage::StateChunk(chunks) => {
+                    let roots = match request {
+                        RequestMessage::StateChunk(_, roots) => roots,
+                        _ => unreachable!(),
+                    };
+                    if let Some(token) = self.tokens.get(from) {
+                        if let Some(token_info) = self.tokens_info.get_mut(token) {
+                            if token_info.request_id.is_none() {
+                                ctrace!(SYNC, "Expired before handling response");
+                                return
+                            }
+                            self.api.clear_timer(*token).expect("Timer clear succeed");
+                            token_info.request_id = None;
+                        }
+                    }
+                    self.dismiss_request(from, id);
+                    self.on_chunk_response(from, &roots, &chunks);
+                }
             }
         }
     }
@@ -709,12 +797,10 @@ impl Extension {
                 }
                 true
             }
-            (
-                RequestMessage::StateChunk {
-                    ..
-                },
-                ResponseMessage::StateChunk(..),
-            ) => unimplemented!(),
+            (RequestMessage::StateChunk(_, roots), ResponseMessage::StateChunk(chunks)) => {
+                // Check length
+                roots.len() == chunks.len()
+            }
             _ => {
                 cwarn!(SYNC, "Invalid response type");
                 false
@@ -729,7 +815,10 @@ impl Extension {
                 [header] if header.hash() == hash => {
                     match self.client.import_bootstrap_header(&header) {
                         Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {
-                            self.state = State::SnapshotChunk(*header.state_root());
+                            self.state = State::SnapshotChunk {
+                                block: hash,
+                                restore: SnapshotRestore::new(*header.state_root()),
+                            };
                         }
                         Err(BlockImportError::Import(ImportError::AlreadyQueued)) => {}
                         // FIXME: handle import errors
@@ -747,7 +836,9 @@ impl Extension {
                     headers.len()
                 ),
             },
-            State::SnapshotChunk(..) => {}
+            State::SnapshotChunk {
+                ..
+            } => {}
             State::Full => {
                 let (mut completed, peer_is_caught_up) = if let Some(peer) = self.header_downloaders.get_mut(from) {
                     let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
@@ -827,6 +918,63 @@ impl Extension {
 
         for id in peer_ids {
             self.send_body_request(&id);
+        }
+    }
+
+    fn on_chunk_response(&mut self, from: &NodeId, roots: &[H256], chunks: &[Vec<u8>]) {
+        if let State::SnapshotChunk {
+            block,
+            ref mut restore,
+        } = self.state
+        {
+            for (r, c) in roots.iter().zip(chunks) {
+                if c.is_empty() {
+                    cdebug!(SYNC, "Peer {} sent empty response for chunk request {}", from, r);
+                    continue
+                }
+                let decompressor = ChunkDecompressor::from_slice(c);
+                let raw_chunk = match decompressor.decompress() {
+                    Ok(chunk) => chunk,
+                    Err(e) => {
+                        cwarn!(SYNC, "Decode failed for chunk response from peer {}: {}", from, e);
+                        continue
+                    }
+                };
+                let recovered = match raw_chunk.recover(*r) {
+                    Ok(chunk) => chunk,
+                    Err(e) => {
+                        cwarn!(SYNC, "Invalid chunk response from peer {}: {}", from, e);
+                        continue
+                    }
+                };
+
+                let batch = {
+                    let mut state_db = self.client.state_db().write();
+                    let hash_db = state_db.as_hashdb_mut();
+                    restore.feed(hash_db, recovered);
+
+                    let mut batch = DBTransaction::new();
+                    match state_db.journal_under(&mut batch, 0, H256::zero()) {
+                        Ok(_) => batch,
+                        Err(e) => {
+                            cwarn!(SYNC, "Failed to write state chunk to database: {}", e);
+                            continue
+                        }
+                    }
+                };
+                self.client.db().write_buffered(batch);
+                match self.client.db().flush() {
+                    Ok(_) => cdebug!(SYNC, "Wrote state chunk to database: {}", r),
+                    Err(e) => cwarn!(SYNC, "Failed to flush database: {}", e),
+                }
+            }
+
+            if let Some(root) = restore.next_to_feed() {
+                self.send_chunk_request(&block, &root);
+            } else {
+                cdebug!(SYNC, "Transitioning state to {:?}", State::Full);
+                self.state = State::Full;
+            }
         }
     }
 }
