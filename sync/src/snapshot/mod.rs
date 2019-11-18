@@ -32,6 +32,19 @@ pub struct Service {
     canceller: Option<ReceiverCanceller>,
 }
 
+pub fn snapshot_dir(root_dir: &str, block: &BlockHash) -> PathBuf {
+    let mut path = PathBuf::new();
+    path.push(root_dir);
+    path.push(format!("{:x}", block.deref()));
+    path
+}
+
+pub fn snapshot_path(root_dir: &str, block: &BlockHash, chunk_root: &H256) -> PathBuf {
+    let mut path = snapshot_dir(root_dir, block);
+    path.push(format!("{:x}", chunk_root));
+    path
+}
+
 impl Service {
     pub fn new(client: Arc<Client>, notify_receiver_source: NotifyReceiverSource, root_dir: String) -> Self {
         let NotifyReceiverSource(canceller, receiver) = notify_receiver_source;
@@ -70,17 +83,11 @@ impl Service {
 }
 
 fn snapshot(db: &dyn HashDB, block_hash: BlockHash, chunk_root: H256, root_dir: &str) -> Result<(), SnapshotError> {
-    let snapshot_dir = {
-        let mut res = PathBuf::new();
-        res.push(root_dir);
-        res.push(format!("{:x}", block_hash.deref()));
-        res
-    };
-    create_dir_all(&snapshot_dir)?;
+    let snapshot_dir = snapshot_dir(root_dir, &block_hash);
+    create_dir_all(snapshot_dir)?;
 
     for chunk in Snapshot::from_hashdb(db, chunk_root) {
-        let mut chunk_path = snapshot_dir.clone();
-        chunk_path.push(format!("{:x}", chunk.root));
+        let chunk_path = snapshot_path(root_dir, &block_hash, &chunk.root);
         let chunk_file = File::create(chunk_path)?;
         let compressor = ChunkCompressor::new(chunk_file);
         compressor.compress_chunk(&chunk)?;
