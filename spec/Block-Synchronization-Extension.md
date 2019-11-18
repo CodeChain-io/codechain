@@ -110,4 +110,4 @@ Response to `GetStateChunk` message. Snappy algorithm is used for compression of
 * Restriction:
   * Number and order of chunks included in this message MUST be equal to request information.
   * Node corresponding to `chunk_root` in request MUST be included
-  * If sender doesn’t have a chunk for the requested hash, corresponding chunk MUST be compressed([]), not omitted.
+  * If sender doesn’t have a chunk for the requested hash, corresponding chunk MUST be `[]`(uncompressed), not omitted.
