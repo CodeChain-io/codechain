@@ -50,6 +50,7 @@ use crate::consensus::validator_set::{DynamicValidator, ValidatorSet};
 use crate::consensus::{EngineError, Seal};
 use crate::encoded;
 use crate::error::{BlockError, Error};
+use crate::snapshot_notify::NotifySender as SnapshotNotifySender;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::BlockView;
 use crate::BlockId;
@@ -59,6 +60,7 @@ type SpawnResult = (
     JoinHandle<()>,
     crossbeam::Sender<TimeGapParams>,
     crossbeam::Sender<(crossbeam::Sender<network::Event>, Weak<dyn ConsensusClient>)>,
+    crossbeam::Sender<SnapshotNotifySender>,
     crossbeam::Sender<Event>,
     crossbeam::Sender<()>,
 );
@@ -97,6 +99,7 @@ struct Worker {
     time_gap_params: TimeGapParams,
     timeout_token_nonce: usize,
     vote_regression_checker: VoteRegressionChecker,
+    snapshot_notify_sender: SnapshotNotifySender,
 }
 
 pub enum Event {
@@ -180,6 +183,7 @@ impl Worker {
         extension: EventSender<network::Event>,
         client: Weak<dyn ConsensusClient>,
         time_gap_params: TimeGapParams,
+        snapshot_notify_sender: SnapshotNotifySender,
     ) -> Self {
         Worker {
             client,
@@ -198,6 +202,7 @@ impl Worker {
             time_gap_params,
             timeout_token_nonce: ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
             vote_regression_checker: VoteRegressionChecker::new(),
+            snapshot_notify_sender,
         }
     }
 
@@ -206,6 +211,7 @@ impl Worker {
         let (quit, quit_receiver) = crossbeam::bounded(1);
         let (external_params_initializer, external_params_receiver) = crossbeam::bounded(1);
         let (extension_initializer, extension_receiver) = crossbeam::bounded(1);
+        let (snapshot_notify_sender_initializer, snapshot_notify_sender_receiver) = crossbeam::bounded(1);
         let join = Builder::new()
             .name("tendermint".to_string())
             .spawn(move || {
@@ -249,8 +255,29 @@ impl Worker {
                     return
                 }
                 };
+                // TODO: Make initialization steps to order insensitive.
+                let snapshot_notify_sender = crossbeam::select! {
+                recv(snapshot_notify_sender_receiver) -> msg => {
+                    match msg {
+                        Ok(sender) => sender,
+                        Err(crossbeam::RecvError) => {
+                            cerror!(ENGINE, "The tendermint extension is not initalized.");
+                            return
+                        }
+                    }
+                }
+                recv(quit_receiver) -> msg => {
+                    match msg {
+                        Ok(()) => {},
+                        Err(crossbeam::RecvError) => {
+                            cerror!(ENGINE, "The quit channel for tendermint thread had been closed.");
+                        }
+                    }
+                    return
+                }
+                };
                 validators.register_client(Weak::clone(&client));
-                let mut inner = Self::new(validators, extension, client, time_gap_params);
+                let mut inner = Self::new(validators, extension, client, time_gap_params, snapshot_notify_sender);
                 loop {
                     crossbeam::select! {
                     recv(receiver) -> msg => {
@@ -374,7 +401,7 @@ impl Worker {
                 }
             })
             .unwrap();
-        (join, external_params_initializer, extension_initializer, sender, quit)
+        (join, external_params_initializer, extension_initializer, snapshot_notify_sender_initializer, sender, quit)
     }
 
     /// The client is a thread-safe struct. Using it in multi-threads is safe.
