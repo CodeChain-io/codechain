@@ -612,8 +612,11 @@ impl Worker {
     }
 
     /// Do we need this function?
-    fn set_finalized_view_in_current_height(&mut self, view: View) {
-        assert_eq!(self.finalized_view_of_current_block, None);
+    fn set_finalized_view_in_current_height(&mut self, view: View, is_restoring: bool) {
+        if !is_restoring {
+            assert_eq!(self.finalized_view_of_current_block, None);
+        }
+
         self.finalized_view_of_current_block = Some(view);
     }
 
@@ -774,7 +777,7 @@ impl Worker {
             Step::Commit => {
                 cinfo!(ENGINE, "move_to_step: Commit.");
                 let (view, block_hash) = state.committed().expect("commit always has committed_view");
-                self.set_finalized_view_in_current_height(view);
+                self.set_finalized_view_in_current_height(view, is_restoring);
 
                 let proposal_received = self.is_proposal_received(self.height, view, block_hash);
                 let proposal_imported = self.client().block(&block_hash.into()).is_some();
