@@ -45,6 +45,7 @@ use crate::encoded;
 use crate::error::Error;
 use crate::views::HeaderView;
 use crate::BlockId;
+use client::snapshot_notify::NotifySender as SnapshotNotifySender;
 use rlp::Encodable;
 
 impl ConsensusEngine for Tendermint {
@@ -297,6 +298,10 @@ impl ConsensusEngine for Tendermint {
 
     fn register_chain_notify(&self, client: &Client) {
         client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<dyn ChainNotify>);
+    }
+
+    fn register_snapshot_notify_sender(&self, sender: SnapshotNotifySender) {
+        self.snapshot_notify_sender_initializer.send(sender).unwrap();
     }
 
     fn register_is_done(&self) {
