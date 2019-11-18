@@ -16,6 +16,7 @@
 
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -43,6 +44,7 @@ use token_generator::TokenGenerator;
 
 use super::downloader::{BodyDownloader, HeaderDownloader};
 use super::message::{Message, RequestMessage, ResponseMessage};
+use crate::snapshot::snapshot_path;
 
 const SYNC_TIMER_TOKEN: TimerToken = 0;
 const SYNC_EXPIRE_TOKEN_BEGIN: TimerToken = SYNC_TIMER_TOKEN + 1;
@@ -81,10 +83,16 @@ pub struct Extension {
     api: Box<dyn Api>,
     last_request: u64,
     nonce: u64,
+    snapshot_dir: Option<String>,
 }
 
 impl Extension {
-    pub fn new(client: Arc<Client>, api: Box<dyn Api>, snapshot_target: Option<(H256, u64)>) -> Extension {
+    pub fn new(
+        client: Arc<Client>,
+        api: Box<dyn Api>,
+        snapshot_target: Option<(H256, u64)>,
+        snapshot_dir: Option<String>,
+    ) -> Extension {
         api.set_timer(SYNC_TIMER_TOKEN, Duration::from_millis(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
 
         let state = match snapshot_target {
@@ -137,6 +145,7 @@ impl Extension {
             api,
             last_request: Default::default(),
             nonce: Default::default(),
+            snapshot_dir,
         }
     }
 
@@ -689,8 +698,18 @@ impl Extension {
         ResponseMessage::Bodies(bodies)
     }
 
-    fn create_state_chunk_response(&self, _hash: BlockHash, _tree_root: Vec<H256>) -> ResponseMessage {
-        unimplemented!()
+    fn create_state_chunk_response(&self, hash: BlockHash, chunk_roots: Vec<H256>) -> ResponseMessage {
+        let mut result = Vec::new();
+        for root in chunk_roots {
+            if let Some(dir) = &self.snapshot_dir {
+                let chunk_path = snapshot_path(&dir, &hash, &root);
+                match fs::read(chunk_path) {
+                    Ok(chunk) => result.push(chunk),
+                    _ => result.push(Vec::new()),
+                }
+            }
+        }
+        ResponseMessage::StateChunk(result)
     }
 
     fn on_peer_response(&mut self, from: &NodeId, id: u64, mut response: ResponseMessage) {
