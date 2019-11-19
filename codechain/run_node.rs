@@ -367,6 +367,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
     // drop the scheme to free up genesis state.
     drop(scheme);
+    client.client().engine().complete_register();
 
     cinfo!(TEST_SCRIPT, "Initialization complete");
 
