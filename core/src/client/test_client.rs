@@ -679,6 +679,10 @@ impl TermInfo for TestBlockChainClient {
     fn current_term_id(&self, _id: BlockId) -> Option<u64> {
         self.term_id
     }
+
+    fn term_common_params(&self, _id: BlockId) -> Option<CommonParams> {
+        None
+    }
 }
 
 impl StateInfo for TestBlockChainClient {

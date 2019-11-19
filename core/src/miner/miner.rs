@@ -603,16 +603,7 @@ impl Miner {
             let parent_header = chain.block_header(&parent_hash.into()).expect("Parent header MUST exist");
             (parent_header.decode(), parent_hash)
         };
-        let term_common_params = {
-            let block_number = chain
-                .last_term_finished_block_num(parent_hash.into())
-                .expect("The block of the parent hash should exist");
-            if block_number == 0 {
-                None
-            } else {
-                Some(chain.common_params((block_number).into()).expect("Common params should exist"))
-            }
-        };
+        let term_common_params = chain.term_common_params(parent_hash.into());
         let block = open_block.close(&parent_header, term_common_params.as_ref())?;
 
         let fetch_seq = |p: &Public| {
