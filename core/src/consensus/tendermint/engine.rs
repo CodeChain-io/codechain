@@ -345,7 +345,7 @@ impl ConsensusEngine for Tendermint {
     }
 }
 
-fn block_number_if_term_changed(
+pub(crate) fn block_number_if_term_changed(
     header: &Header,
     parent_header: &Header,
     common_params: &CommonParams,
