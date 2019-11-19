@@ -41,6 +41,7 @@ use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use crate::block::{Block, ClosedBlock, IsBlock};
 use crate::client::{
     AccountData, BlockChainTrait, BlockProducer, Client, EngineInfo, ImportBlock, MiningBlockChainClient, TermInfo,
+    TermInfoExt,
 };
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{CodeChainEngine, EngineType};
@@ -599,16 +600,7 @@ impl Miner {
             (parent_header.decode(), parent_hash)
         };
         let parent_common_params = chain.common_params(parent_hash.into()).unwrap();
-        let term_common_params = {
-            let block_number = chain
-                .last_term_finished_block_num(parent_hash.into())
-                .expect("The block of the parent hash should exist");
-            if block_number == 0 {
-                None
-            } else {
-                Some(chain.common_params((block_number).into()).expect("Common params should exist"))
-            }
-        };
+        let term_common_params = chain.term_common_params(parent_hash.into());
         let block = open_block.close(&parent_header, &parent_common_params, term_common_params.as_ref())?;
 
         let fetch_seq = |p: &Public| {
