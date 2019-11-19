@@ -52,6 +52,7 @@ max_connections = 100
 [snapshot]
 disable = true
 path = "snapshot"
+expiration = 100000 # blocks. About a week
 
 [stratum]
 disable = true
