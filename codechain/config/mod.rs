@@ -316,6 +316,8 @@ fn default_enable_devel_api() -> bool {
 pub struct Snapshot {
     pub disable: Option<bool>,
     pub path: Option<String>,
+    // Snapshot's age in blocks
+    pub expiration: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -753,6 +755,9 @@ impl Snapshot {
         }
         if other.path.is_some() {
             self.path = other.path.clone();
+        }
+        if other.expiration.is_some() {
+            self.expiration = other.expiration;
         }
     }
 
