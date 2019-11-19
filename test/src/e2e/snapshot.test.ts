@@ -57,7 +57,7 @@ describe("Snapshot", async function() {
                     stateRoot.toString()
                 )
             )
-        );
+        ).to.be.true;
     });
 
     afterEach(function() {
