@@ -188,6 +188,11 @@ impl MessageCollector {
         }
         result
     }
+
+    /// get a ConsensusMessage corresponding to a certain index.
+    fn fetch_by_idx(&self, idx: usize) -> Option<ConsensusMessage> {
+        self.voted.get(&idx).cloned()
+    }
 }
 
 impl Default for VoteCollector {
@@ -288,13 +293,6 @@ impl VoteCollector {
         } else {
             Default::default()
         }
-    }
-
-    pub fn get_block_hashes(&self, round: &VoteStep) -> Vec<BlockHash> {
-        self.votes
-            .get(round)
-            .map(|c| c.block_votes.keys().cloned().filter_map(|x| x).collect())
-            .unwrap_or_else(Vec::new)
     }
 
     pub fn has_votes_for(&self, round: &VoteStep, block_hash: BlockHash) -> bool {

@@ -128,11 +128,6 @@ impl EngineSigner {
         self.signer.as_ref().map(|(address, _)| address)
     }
 
-    /// Check if the given address is the signing address.
-    pub fn is_address(&self, a: &Address) -> bool {
-        self.signer.map_or(false, |(address, _public)| *a == address)
-    }
-
     /// Check if the signing address was set.
     pub fn is_some(&self) -> bool {
         self.signer.is_some()
