@@ -54,6 +54,8 @@ impl Service {
                         state_root,
                         err
                     );
+                } else {
+                    cinfo!(SYNC, "Snapshot is ready for block: {}", block_hash)
                 }
             }
             cinfo!(SYNC, "Snapshot service is stopped")
