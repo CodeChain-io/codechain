@@ -1657,6 +1657,28 @@ impl Worker {
             }
         }
 
+        let mut last_term_end = None;
+        for block_hash in &enacted {
+            let header = c.block_header(&BlockId::Hash(*block_hash)).expect("Block is enacted").decode();
+            if header.number() == 0 {
+                continue
+            }
+            let parent_header =
+                c.block_header(&BlockId::Hash(*header.parent_hash())).expect("Parent block should be enacted").decode();
+            let term_common_params = if let Some(p) = c.term_common_params(parent_header.hash().into()) {
+                p
+            } else {
+                continue
+            };
+            if super::engine::block_number_if_term_changed(&header, &parent_header, &term_common_params).is_some() {
+                last_term_end = Some(*block_hash);
+            }
+        }
+        if let Some(last_term_end) = last_term_end {
+            // TODO: Reduce the snapshot frequency.
+            self.snapshot_notify_sender.notify(last_term_end);
+        }
+
         if let Some((last, rest)) = imported.split_last() {
             let (imported, last_proposal_header) = {
                 let header =
