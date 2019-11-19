@@ -249,7 +249,7 @@ impl Extension {
             let body_requests: Vec<RequestMessage> = requests
                 .iter()
                 .filter_map(|r| match r {
-                    (_, RequestMessage::Bodies(..)) => Some(r.1.clone()),
+                    (_, msg @ RequestMessage::Bodies(..)) => Some(msg.clone()),
                     _ => None,
                 })
                 .collect();
@@ -257,7 +257,7 @@ impl Extension {
             let chunk_requests: Vec<RequestMessage> = requests
                 .iter()
                 .filter_map(|r| match r {
-                    (_, RequestMessage::StateChunk(..)) => Some(r.1.clone()),
+                    (_, msg @ RequestMessage::StateChunk(..)) => Some(msg.clone()),
                     _ => None,
                 })
                 .collect();
