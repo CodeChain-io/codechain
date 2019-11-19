@@ -278,10 +278,6 @@ impl ConsensusEngine for Tendermint {
         let extension = service.register_extension(move |api| TendermintExtension::new(inner, timeouts, api));
         let client = Arc::downgrade(&self.client().unwrap());
         self.extension_initializer.send((extension, client)).unwrap();
-
-        let (result, receiver) = crossbeam::bounded(1);
-        self.inner.send(worker::Event::Restore(result)).unwrap();
-        receiver.recv().unwrap();
     }
 
     fn register_time_gap_config_to_worker(&self, time_gap_params: TimeGapParams) {
@@ -298,6 +294,12 @@ impl ConsensusEngine for Tendermint {
 
     fn register_chain_notify(&self, client: &Client) {
         client.add_notify(Arc::downgrade(&self.chain_notify) as Weak<dyn ChainNotify>);
+    }
+
+    fn complete_register(&self) {
+        let (result, receiver) = crossbeam::bounded(1);
+        self.inner.send(worker::Event::Restore(result)).unwrap();
+        receiver.recv().unwrap();
     }
 
     fn get_best_block_from_best_proposal_header(&self, header: &HeaderView) -> BlockHash {
