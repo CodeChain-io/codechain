@@ -28,17 +28,29 @@ interface ValidatorConfig {
     delegation?: U64Value;
 }
 
-export function withNodes(
+interface NodePropertyModifier<T> {
+    additionalArgv: string[];
+    nodeAdditionalProperties: T;
+}
+
+export function withNodes<T>(
     suite: Suite,
     options: {
         promiseExpect: PromiseExpect;
         validators: ValidatorConfig[];
         overrideParams?: Partial<typeof defaultParams>;
         onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
+        modify?: (signer: Signer, index: number) => NodePropertyModifier<T>;
     }
 ) {
-    const nodes: CodeChain[] = [];
-    const { overrideParams = {} } = options;
+    const nodes: (CodeChain & T)[] = [];
+    const {
+        overrideParams = {},
+        modify = () => ({
+            additionalArgv: [],
+            nodeAdditionalProperties: {} as T
+        })
+    } = options;
     const initialParams = {
         ...defaultParams,
         ...overrideParams
@@ -51,7 +63,8 @@ export function withNodes(
         nodes.length = 0;
         const newNodes = await createNodes({
             ...options,
-            initialParams
+            initialParams,
+            modify
         });
         nodes.push(...newNodes);
     });
@@ -84,14 +97,15 @@ export function findNode(nodes: CodeChain[], signer: Signer) {
     );
 }
 
-async function createNodes(options: {
+async function createNodes<T>(options: {
     promiseExpect: PromiseExpect;
     validators: ValidatorConfig[];
     initialParams: typeof defaultParams;
     onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
-}): Promise<CodeChain[]> {
+    modify: (signer: Signer, index: number) => NodePropertyModifier<T>;
+}): Promise<(CodeChain & T)[]> {
     const chain = `${__dirname}/../scheme/tendermint-dynval.json`;
-    const { promiseExpect, validators, initialParams } = options;
+    const { promiseExpect, validators, initialParams, modify } = options;
 
     const initialNodes: CodeChain[] = [];
     const initialValidators = [
@@ -113,20 +127,24 @@ async function createNodes(options: {
         });
     }
 
-    const nodes: CodeChain[] = [];
+    const nodes: (CodeChain & T)[] = [];
     for (let i = 0; i < validators.length; i++) {
         const { signer: validator } = validators[i];
-        nodes[i] = new CodeChain({
+        const modifier = modify(validator, i);
+        const node = new CodeChain({
             chain,
             argv: [
                 "--engine-signer",
                 validator.platformAddress.value,
                 "--password-path",
                 `test/tendermint.dynval/${validator.platformAddress.value}/password.json`,
-                "--force-sealing"
+                "--force-sealing",
+                ...modifier.additionalArgv
             ],
             additionalKeysPath: `tendermint.dynval/${validator.platformAddress.value}/keys`
         });
+
+        nodes[i] = Object.assign(node, modifier.nodeAdditionalProperties);
         nodes[i].setSigner(validator);
     }
     let bootstrapFailed = false;
