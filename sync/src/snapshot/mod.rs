@@ -57,6 +57,7 @@ impl Service {
                 } else {
                     cinfo!(SYNC, "Snapshot is ready for block: {}", block_hash)
                 }
+                // TODO: Prune old snapshots
             }
             cinfo!(SYNC, "Snapshot service is stopped")
         });
