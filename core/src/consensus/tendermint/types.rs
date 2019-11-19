@@ -22,9 +22,9 @@ use primitives::Bytes;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 use super::super::BitSet;
-use super::message::VoteStep;
+use super::message::{ProposalSummary, VoteStep};
 use crate::block::{IsBlock, SealedBlock};
-use crate::consensus::sortition::SeedInfo;
+use crate::consensus::{sortition::seed::SeedInfo, Priority};
 
 pub type Height = u64;
 pub type View = u64;
@@ -179,7 +179,7 @@ impl Encodable for Step {
 
 pub struct PeerState {
     pub vote_step: VoteStep,
-    pub proposal: Option<BlockHash>,
+    pub proposal: Option<ProposalSummary>,
     pub messages: BitSet,
 }
 

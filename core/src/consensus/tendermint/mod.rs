@@ -35,7 +35,7 @@ use ctimer::TimerToken;
 use parking_lot::RwLock;
 
 use self::chain_notify::TendermintChainNotify;
-pub use self::message::{ConsensusMessage, SortitionRound, VoteOn, VoteStep};
+pub use self::message::{ConsensusMessage, ProposalSummary, SortitionRound, VoteOn, VoteStep};
 pub use self::params::{TendermintParams, TimeGapParams, TimeoutParams};
 pub use self::types::{Height, Step, View};
 use super::{stake, ValidatorSet};

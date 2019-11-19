@@ -24,7 +24,6 @@ use ckey::SchnorrSignature;
 use cnetwork::{Api, NetworkExtension, NodeId};
 use crossbeam_channel as crossbeam;
 use ctimer::TimerToken;
-use ctypes::BlockHash;
 use primitives::Bytes;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -33,9 +32,9 @@ use rlp::{Encodable, Rlp};
 use super::super::BitSet;
 use super::message::*;
 use super::params::TimeoutParams;
-use super::types::{Height, PeerState, Step, View};
+use super::types::{PeerState, Step, View};
 use super::worker;
-use crate::consensus::EngineError;
+use crate::consensus::{EngineError, PriorityInfo};
 
 use super::{
     ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
@@ -73,7 +72,7 @@ impl TendermintExtension {
         &mut self,
         token: &NodeId,
         vote_step: VoteStep,
-        proposal: Option<BlockHash>,
+        proposal: Option<ProposalSummary>,
         messages: BitSet,
     ) {
         let peer_state = match self.peers.get_mut(token) {
@@ -113,7 +112,7 @@ impl TendermintExtension {
     fn broadcast_state(
         &self,
         vote_step: VoteStep,
-        proposal: Option<BlockHash>,
+        proposal: Option<ProposalSummary>,
         lock_view: Option<View>,
         votes: BitSet,
     ) {
@@ -122,7 +121,7 @@ impl TendermintExtension {
         let message = Arc::new(
             TendermintMessage::StepState {
                 vote_step,
-                proposal,
+                proposal: Box::new(proposal),
                 lock_view,
                 known_votes: votes,
             }
@@ -134,10 +133,17 @@ impl TendermintExtension {
         }
     }
 
-    fn broadcast_proposal_block(&self, signature: SchnorrSignature, view: View, message: Bytes) {
+    fn broadcast_proposal_block(
+        &self,
+        signature: SchnorrSignature,
+        priority_info: Box<PriorityInfo>,
+        view: View,
+        message: Bytes,
+    ) {
         let message = Arc::new(
             TendermintMessage::ProposalBlock {
                 signature,
+                priority_info,
                 message,
                 view,
             }
@@ -148,33 +154,28 @@ impl TendermintExtension {
         }
     }
 
-    fn request_proposal_to_any(&self, height: Height, view: View) {
+    fn request_proposal_to_any(&self, round: SortitionRound) {
         for (token, peer) in &self.peers {
-            let is_future_height_and_view = {
-                let higher_height = peer.vote_step.height > height;
-                let same_height_and_higher_view = peer.vote_step.height == height && peer.vote_step.view > view;
-                higher_height || same_height_and_higher_view
-            };
+            let is_future_height_and_view = round < peer.vote_step.into();
 
             if is_future_height_and_view {
-                self.request_proposal(token, height, view);
+                self.request_proposal(token, round);
                 continue
             }
 
-            let is_same_height_and_view = peer.vote_step.height == height && peer.vote_step.view == view;
+            let is_same_height_and_view = round == peer.vote_step.into();
 
             if is_same_height_and_view && peer.proposal.is_some() {
-                self.request_proposal(token, height, view);
+                self.request_proposal(token, round);
             }
         }
     }
 
-    fn request_proposal(&self, token: &NodeId, height: Height, view: View) {
-        ctrace!(ENGINE, "Request proposal {} {} to {:?}", height, view, token);
+    fn request_proposal(&self, token: &NodeId, round: SortitionRound) {
+        ctrace!(ENGINE, "Request proposal {:?} to {:?}", round, token);
         let message = Arc::new(
             TendermintMessage::RequestProposal {
-                height,
-                view,
+                round,
             }
             .rlp_bytes(),
         );
@@ -266,6 +267,7 @@ impl NetworkExtension<Event> for TendermintExtension {
             }
             Ok(TendermintMessage::ProposalBlock {
                 signature,
+                priority_info,
                 view,
                 message,
             }) => {
@@ -273,6 +275,7 @@ impl NetworkExtension<Event> for TendermintExtension {
                 self.inner
                     .send(worker::Event::ProposalBlock {
                         signature,
+                        priority_info,
                         view,
                         message: message.clone(),
                         result,
@@ -298,13 +301,13 @@ impl NetworkExtension<Event> for TendermintExtension {
                     lock_view,
                     known_votes,
                 );
-                self.update_peer_state(token, vote_step, proposal, known_votes);
+                self.update_peer_state(token, vote_step, (*proposal).clone(), known_votes);
                 let (result, receiver) = crossbeam::unbounded();
                 self.inner
                     .send(worker::Event::StepState {
                         token: *token,
                         vote_step,
-                        proposal,
+                        proposal: *proposal,
                         lock_view,
                         known_votes: Box::from(known_votes),
                         result,
@@ -316,15 +319,13 @@ impl NetworkExtension<Event> for TendermintExtension {
                 }
             }
             Ok(TendermintMessage::RequestProposal {
-                height,
-                view,
+                round,
             }) => {
                 let (result, receiver) = crossbeam::bounded(1);
                 self.inner
                     .send(worker::Event::RequestProposal {
                         token: *token,
-                        height,
-                        view,
+                        round,
                         result,
                     })
                     .unwrap();
@@ -411,7 +412,7 @@ impl NetworkExtension<Event> for TendermintExtension {
                 lock_view,
                 votes,
             } => {
-                self.broadcast_state(vote_step, proposal, lock_view, votes);
+                self.broadcast_state(vote_step, *proposal, lock_view, votes);
             }
             Event::RequestMessagesToAll {
                 vote_step,
@@ -420,10 +421,9 @@ impl NetworkExtension<Event> for TendermintExtension {
                 self.request_messages_to_all(vote_step, requested_votes);
             }
             Event::RequestProposalToAny {
-                height,
-                view,
+                round,
             } => {
-                self.request_proposal_to_any(height, view);
+                self.request_proposal_to_any(round);
             }
             Event::SetTimerStep {
                 step,
@@ -432,10 +432,11 @@ impl NetworkExtension<Event> for TendermintExtension {
             } => self.set_timer_step(step, view, expired_token_nonce),
             Event::BroadcastProposalBlock {
                 signature,
+                priority_info,
                 view,
                 message,
             } => {
-                self.broadcast_proposal_block(signature, view, message);
+                self.broadcast_proposal_block(signature, priority_info, view, message);
             }
         }
     }
@@ -447,7 +448,7 @@ pub enum Event {
     },
     BroadcastState {
         vote_step: VoteStep,
-        proposal: Option<BlockHash>,
+        proposal: Box<Option<ProposalSummary>>,
         lock_view: Option<View>,
         votes: BitSet,
     },
@@ -456,8 +457,7 @@ pub enum Event {
         requested_votes: BitSet,
     },
     RequestProposalToAny {
-        height: Height,
-        view: View,
+        round: SortitionRound,
     },
     SetTimerStep {
         step: Step,
@@ -466,6 +466,7 @@ pub enum Event {
     },
     BroadcastProposalBlock {
         signature: SchnorrSignature,
+        priority_info: Box<PriorityInfo>,
         view: View,
         message: Bytes,
     },
