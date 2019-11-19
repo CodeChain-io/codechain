@@ -813,6 +813,15 @@ impl TermInfo for Client {
             .map(|state| state.metadata().unwrap().expect("Metadata always exist"))
             .map(|metadata| metadata.current_term_id())
     }
+
+    fn term_common_params(&self, id: BlockId) -> Option<CommonParams> {
+        let block_number = self.last_term_finished_block_num(id).expect("The block of the parent hash should exist");
+        if block_number == 0 {
+            None
+        } else {
+            Some(self.common_params((block_number).into()).expect("Common params should exist"))
+        }
+    }
 }
 
 impl AccountData for Client {

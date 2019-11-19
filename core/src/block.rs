@@ -33,6 +33,7 @@ use crate::client::{EngineInfo, TermInfo};
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error};
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::BlockId;
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]
@@ -493,16 +494,7 @@ pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo>(
     b.populate_from(header);
     b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
 
-    let term_common_params = {
-        let block_number = client
-            .last_term_finished_block_num((*header.parent_hash()).into())
-            .expect("The block of the parent hash should exist");
-        if block_number == 0 {
-            None
-        } else {
-            Some(client.common_params((block_number).into()).expect("Common params should exist"))
-        }
-    };
+    let term_common_params = client.term_common_params(BlockId::Hash(*header.parent_hash()));
     b.close_and_lock(parent, term_common_params.as_ref())
 }
 
