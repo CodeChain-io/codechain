@@ -402,8 +402,7 @@ impl NetworkExtension<Event> for Extension {
                         if let Some(root) = restore.next_to_feed() {
                             self.send_chunk_request(&block, &root);
                         } else {
-                            cdebug!(SYNC, "Transitioning state to {:?}", State::Full);
-                            self.state = State::Full;
+                            self.transition_to_full();
                         }
                     }
                     State::Full => {
@@ -991,10 +990,17 @@ impl Extension {
             if let Some(root) = restore.next_to_feed() {
                 self.send_chunk_request(&block, &root);
             } else {
-                cdebug!(SYNC, "Transitioning state to {:?}", State::Full);
-                self.state = State::Full;
+                self.transition_to_full();
             }
         }
+    }
+
+    fn transition_to_full(&mut self) {
+        cdebug!(SYNC, "Transitioning state to {:?}", State::Full);
+        for downloader in self.header_downloaders.values_mut() {
+            downloader.update_pivot(self.client.best_block_header().hash());
+        }
+        self.state = State::Full;
     }
 }
 
