@@ -37,6 +37,7 @@ impl ApiDependencies {
         use crpc::v1::*;
         handler.extend_with(ChainClient::new(Arc::clone(&self.client)).to_delegate());
         handler.extend_with(MempoolClient::new(Arc::clone(&self.client)).to_delegate());
+        handler.extend_with(SnapshotClient::new(Arc::clone(&self.client), config.snapshot.path.clone()).to_delegate());
         if config.rpc.enable_devel_api {
             handler.extend_with(
                 DevelClient::new(Arc::clone(&self.client), Arc::clone(&self.miner), self.block_sync.clone())

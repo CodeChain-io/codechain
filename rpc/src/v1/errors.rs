@@ -294,6 +294,14 @@ pub fn invalid_custom_action(err: String) -> Error {
     }
 }
 
+pub fn io(error: std::io::Error) -> Error {
+    Error {
+        code: ErrorCode::InternalError,
+        message: format!("{}", error),
+        data: None,
+    }
+}
+
 /// Internal error signifying a logic error in code.
 /// Should not be used when function can just fail
 /// because of invalid parameters or incomplete node state.
