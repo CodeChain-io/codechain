@@ -17,13 +17,16 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+import * as stake from "codechain-stakeholder-sdk";
 import * as fs from "fs";
 import "mocha";
 import * as path from "path";
 
 import mkdirp = require("mkdirp");
 import { validators } from "../../../tendermint.dynval/constants";
+import { faucetAddress, faucetSecret } from "../../helper/constants";
 import { PromiseExpect } from "../../helper/promise";
+import CodeChain, { Signer } from "../../helper/spawn";
 import { setTermTestTimeout, withNodes } from "../setup";
 
 chai.use(chaiAsPromised);
@@ -34,6 +37,7 @@ const SNAPSHOT_PATH = `${__dirname}/../../../../snapshot/`;
 describe("Snapshot for Tendermint with Dynamic Validator", function() {
     const promiseExpect = new PromiseExpect();
     const snapshotValidators = validators.slice(0, 3);
+    const freshNodeValidator = validators[3];
     const { nodes } = withNodes(this, {
         promiseExpect,
         overrideParams: {
@@ -86,7 +90,95 @@ describe("Snapshot for Tendermint with Dynamic Validator", function() {
         ).to.be.true;
     });
 
+    it("should be able to boot with the snapshot", async function() {
+        const termWaiter = setTermTestTimeout(this, {
+            terms: 3
+        });
+        const termMetadata1 = await termWaiter.waitNodeUntilTerm(nodes[0], {
+            target: 2,
+            termPeriods: 1
+        });
+        const block = (await nodes[0].sdk.rpc.chain.getBlock(
+            termMetadata1.lastTermFinishedBlockNumber
+        ))!;
+        await makeItValidator(nodes[0], freshNodeValidator);
+        const snapshotPath = fs.mkdtempSync(SNAPSHOT_PATH);
+        const node = new CodeChain({
+            chain: `${__dirname}/../../scheme/tendermint-dynval.json`,
+            argv: [
+                "--engine-signer",
+                freshNodeValidator.platformAddress.toString(),
+                "--password-path",
+                `test/tendermint.dynval/${freshNodeValidator.platformAddress.value}/password.json`,
+                "--force-sealing",
+                "--snapshot-path",
+                snapshotPath,
+                "--config",
+                SNAPSHOT_CONFIG,
+                "--snapshot-hash",
+                block.hash.toString(),
+                "--snapshot-number",
+                block.number.toString()
+            ],
+            additionalKeysPath: `tendermint.dynval/${freshNodeValidator.platformAddress.value}/keys`
+        });
+        try {
+            await node.start();
+            await node.connect(nodes[0]);
+            await termWaiter.waitNodeUntilTerm(node, {
+                target: 4,
+                termPeriods: 2
+            });
+
+            // Check that the freshNodeValidator is still a validator & make sure it doesn't have a block/header before termMetadata1.
+        } catch (e) {
+            node.keepLogs();
+            throw e;
+        }
+    });
+
     afterEach(async function() {
         promiseExpect.checkFulfilled();
     });
 });
+
+async function makeItValidator(node: CodeChain, freshNodeValidator: Signer) {
+    const faucetSeq = await node.sdk.rpc.chain.getSeq(faucetAddress);
+    const payTx = node.sdk.core
+        .createPayTransaction({
+            recipient: freshNodeValidator.platformAddress,
+            quantity: 200000000
+        })
+        .sign({
+            secret: faucetSecret,
+            seq: faucetSeq,
+            fee: 10
+        });
+    await node.waitForTx(await node.sdk.rpc.chain.sendSignedTransaction(payTx));
+    const selfNominateTx = stake
+        .createSelfNominateTransaction(node.sdk, 10000000, "")
+        .sign({
+            secret: freshNodeValidator.privateKey,
+            seq: await node.sdk.rpc.chain.getSeq(
+                freshNodeValidator.platformAddress
+            ),
+            fee: 10
+        });
+    await node.waitForTx(
+        await node.sdk.rpc.chain.sendSignedTransaction(selfNominateTx)
+    );
+    const delegateTx = stake
+        .createDelegateCCSTransaction(
+            node.sdk,
+            freshNodeValidator.platformAddress,
+            5000
+        )
+        .sign({
+            secret: faucetSecret,
+            seq: faucetSeq + 1,
+            fee: 10
+        });
+    await node.waitForTx(
+        await node.sdk.rpc.chain.sendSignedTransaction(delegateTx)
+    );
+}
