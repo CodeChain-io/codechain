@@ -453,7 +453,7 @@ interface TermWaiter {
             target: number;
             termPeriods: number;
         }
-    ): Promise<void>;
+    ): Promise<stake.TermMetadata>;
 }
 
 export function setTermTestTimeout(
@@ -485,7 +485,7 @@ export function setTermTestTimeout(
                 termPeriods: number;
             }
         ) {
-            await node.waitForTermChange(
+            return await node.waitForTermChange(
                 waiterParams.target,
                 termPeriodsToTime(waiterParams.termPeriods, 0.5)
             );

@@ -17,8 +17,6 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
-import { SDK } from "codechain-sdk";
-import * as stake from "codechain-stakeholder-sdk";
 import * as fs from "fs";
 import "mocha";
 import * as path from "path";
@@ -69,26 +67,13 @@ describe("Snapshot for Tendermint with Dynamic Validator", function() {
             const termWaiter = setTermTestTimeout(this, {
                 terms: 1
             });
-            await termWaiter.waitNodeUntilTerm(nodes[0], {
+            const termMetadata = await termWaiter.waitNodeUntilTerm(nodes[0], {
                 target: 2,
                 termPeriods: 1
             });
-            const blockNumber = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
-            const termMetadata = await stake.getTermMetadata(
-                nodes[0].sdk,
-                blockNumber
-            );
-
-            expect(termMetadata).not.to.be.null;
-            const {
-                currentTermId,
-                lastTermFinishedBlockNumber
-            } = termMetadata!;
-            expect(currentTermId).to.be.equals(2);
-            expect(lastTermFinishedBlockNumber).to.be.lte(blockNumber);
 
             const blockHash = (await nodes[0].sdk.rpc.chain.getBlockHash(
-                lastTermFinishedBlockNumber
+                termMetadata.lastTermFinishedBlockNumber
             ))!;
             const stateRoot = (await nodes[0].sdk.rpc.chain.getBlock(
                 blockHash
@@ -104,7 +89,6 @@ describe("Snapshot for Tendermint with Dynamic Validator", function() {
             ).to.be.true;
         });
     });
-
     afterEach(async function() {
         promiseExpect.checkFulfilled();
     });

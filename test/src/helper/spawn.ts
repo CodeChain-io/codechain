@@ -861,7 +861,7 @@ export default class CodeChain {
         while (true) {
             const termMetadata = await stake.getTermMetadata(this.sdk);
             if (termMetadata && termMetadata.currentTermId >= target) {
-                break;
+                return termMetadata;
             }
             await wait(1000);
             if (timeout) {
