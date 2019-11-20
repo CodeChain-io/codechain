@@ -1,4 +1,4 @@
-// Copyright 2018 Kodebox, Inc.
+// Copyright 2018-2019 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,20 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod account;
-mod chain;
-mod devel;
-mod engine;
-mod mempool;
-mod miner;
-mod net;
-mod snapshot;
+use jsonrpc_core::Result;
 
-pub use self::account::AccountClient;
-pub use self::chain::ChainClient;
-pub use self::devel::DevelClient;
-pub use self::engine::EngineClient;
-pub use self::mempool::MempoolClient;
-pub use self::miner::MinerClient;
-pub use self::net::NetClient;
-pub use self::snapshot::SnapshotClient;
+use super::super::types::BlockNumberAndHash;
+
+#[rpc(server)]
+pub trait Snapshot {
+    /// Gets list of block numbers and block hashes of the snapshots.
+    #[rpc(name = "snapshot_getList")]
+    fn get_snapshot_list(&self) -> Result<Vec<BlockNumberAndHash>>;
+}

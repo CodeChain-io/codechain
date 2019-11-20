@@ -21,6 +21,7 @@ mod engine;
 mod mempool;
 mod miner;
 mod net;
+mod snapshot;
 
 pub use self::account::Account;
 pub use self::chain::Chain;
@@ -29,3 +30,4 @@ pub use self::engine::Engine;
 pub use self::mempool::Mempool;
 pub use self::miner::Miner;
 pub use self::net::Net;
+pub use self::snapshot::Snapshot;
