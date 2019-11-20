@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::io;
-use std::net::SocketAddr;
 
+use crate::config::Config;
 use crate::rpc_apis;
 use crpc::{
     jsonrpc_core, start_http, start_ipc, start_ws, HttpServer, IpcServer, MetaIoHandler, Middleware, WsError, WsServer,
@@ -33,38 +33,27 @@ pub struct RpcHttpConfig {
 }
 
 pub fn rpc_http_start(
-    cfg: RpcHttpConfig,
-    enable_devel_api: bool,
-    deps: &rpc_apis::ApiDependencies,
+    server: MetaIoHandler<(), impl Middleware<()>>,
+    config: RpcHttpConfig,
 ) -> Result<HttpServer, String> {
-    let url = format!("{}:{}", cfg.interface, cfg.port);
+    let url = format!("{}:{}", config.interface, config.port);
     let addr = url.parse().map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?;
-    let server = setup_http_rpc_server(&addr, cfg.cors.clone(), cfg.hosts.clone(), enable_devel_api, deps)?;
-    cinfo!(RPC, "RPC Listening on {}", url);
-    if let Some(hosts) = cfg.hosts {
-        cinfo!(RPC, "Allowed hosts are {:?}", hosts);
-    }
-    if let Some(cors) = cfg.cors {
-        cinfo!(RPC, "CORS domains are {:?}", cors);
-    }
-    Ok(server)
-}
-
-fn setup_http_rpc_server(
-    url: &SocketAddr,
-    cors_domains: Option<Vec<String>>,
-    allowed_hosts: Option<Vec<String>>,
-    enable_devel_api: bool,
-    deps: &rpc_apis::ApiDependencies,
-) -> Result<HttpServer, String> {
-    let server = setup_rpc_server(enable_devel_api, deps);
-    let start_result = start_http(url, cors_domains, allowed_hosts, server);
+    let start_result = start_http(&addr, config.cors.clone(), config.hosts.clone(), server);
     match start_result {
         Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => {
             Err(format!("RPC address {} is already in use, make sure that another instance of a CodeChain node is not running or change the address using the --jsonrpc-port option.", url))
         },
         Err(e) => Err(format!("RPC error: {:?}", e)),
-        Ok(server) => Ok(server),
+        Ok(server) => {
+            cinfo!(RPC, "RPC Listening on {}", url);
+            if let Some(hosts) = config.hosts {
+                cinfo!(RPC, "Allowed hosts are {:?}", hosts);
+            }
+            if let Some(cors) = config.cors {
+                cinfo!(RPC, "CORS domains are {:?}", cors);
+            }
+            Ok(server)
+        },
     }
 }
 
@@ -74,19 +63,17 @@ pub struct RpcIpcConfig {
 }
 
 pub fn rpc_ipc_start(
-    cfg: &RpcIpcConfig,
-    enable_devel_api: bool,
-    deps: &rpc_apis::ApiDependencies,
+    server: MetaIoHandler<(), impl Middleware<()>>,
+    config: RpcIpcConfig,
 ) -> Result<IpcServer, String> {
-    let server = setup_rpc_server(enable_devel_api, deps);
-    let start_result = start_ipc(&cfg.socket_addr, server);
+    let start_result = start_ipc(&config.socket_addr, server);
     match start_result {
         Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => {
-            Err(format!("IPC address {} is already in use, make sure that another instance of a Codechain node is not running or change the address using the --ipc-path options.", cfg.socket_addr))
+            Err(format!("IPC address {} is already in use, make sure that another instance of a Codechain node is not running or change the address using the --ipc-path options.", config.socket_addr))
             },
         Err(e) => Err(format!("IPC error: {:?}", e)),
         Ok(server) =>  {
-            cinfo!(RPC, "IPC Listening on {}", cfg.socket_addr);
+            cinfo!(RPC, "IPC Listening on {}", config.socket_addr);
             Ok(server)
         },
     }
@@ -99,15 +86,10 @@ pub struct RpcWsConfig {
     pub max_connections: usize,
 }
 
-pub fn rpc_ws_start(
-    cfg: &RpcWsConfig,
-    enable_devel_api: bool,
-    deps: &rpc_apis::ApiDependencies,
-) -> Result<WsServer, String> {
-    let server = setup_rpc_server(enable_devel_api, deps);
-    let url = format!("{}:{}", cfg.interface, cfg.port);
+pub fn rpc_ws_start(server: MetaIoHandler<(), impl Middleware<()>>, config: RpcWsConfig) -> Result<WsServer, String> {
+    let url = format!("{}:{}", config.interface, config.port);
     let addr = url.parse().map_err(|_| format!("Invalid WebSockets listen host/port given: {}", url))?;
-    let start_result = start_ws(&addr, server, cfg.max_connections);
+    let start_result = start_ws(&addr, server, config.max_connections);
     match start_result {
         Err(WsError::Io(ref err)) if err.kind() == io::ErrorKind::AddrInUse => {
             Err(format!("WebSockets address {} is already in use, make sure that another instance of a Codechain node is not running or change the address using the --ws-port options.", addr))
@@ -120,12 +102,9 @@ pub fn rpc_ws_start(
     }
 }
 
-fn setup_rpc_server(
-    enable_devel_api: bool,
-    deps: &rpc_apis::ApiDependencies,
-) -> MetaIoHandler<(), impl Middleware<()>> {
+pub fn setup_rpc_server(config: &Config, deps: &rpc_apis::ApiDependencies) -> MetaIoHandler<(), impl Middleware<()>> {
     let mut handler = MetaIoHandler::with_middleware(LogMiddleware::new());
-    deps.extend_api(enable_devel_api, &mut handler);
+    deps.extend_api(config, &mut handler);
     rpc_apis::setup_rpc(handler)
 }
 
