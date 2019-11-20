@@ -85,7 +85,8 @@ impl Extension {
             let child = &neighbors[0];
             let parent = &neighbors[1];
             cdebug!(SYNC, "Adding block #{} (hash: {}) for initial body download target", child.number(), child.hash());
-            body_downloader.add_target(child, parent);
+            let is_empty = child.transactions_root() == parent.transactions_root();
+            body_downloader.add_target(child, is_empty);
         }
         cinfo!(SYNC, "Sync extension initialized");
         Extension {
@@ -409,7 +410,8 @@ impl Extension {
                 .client
                 .block_header(&BlockId::Hash(header.parent_hash()))
                 .expect("Enacted header must have parent");
-            self.body_downloader.add_target(&header.decode(), &parent.decode());
+            let is_empty = header.transactions_root() == parent.transactions_root();
+            self.body_downloader.add_target(&header.decode(), is_empty);
         }
         self.body_downloader.remove_target(&retracted);
     }
