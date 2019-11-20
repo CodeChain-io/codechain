@@ -853,14 +853,16 @@ export default class CodeChain {
     public async waitForTermChange(target: number, timeout?: number) {
         const start = Date.now();
         while (true) {
-            const termMetadata = await stake.getTermMetadata(this.sdk);
+            const termMetadata = (await stake.getTermMetadata(this.sdk))!;
             if (termMetadata && termMetadata.currentTermId >= target) {
                 return termMetadata;
             }
             await wait(1000);
             if (timeout) {
                 if (Date.now() - start > timeout * 1000) {
-                    throw new Error(`Term didn't changed in ${timeout} s`);
+                    throw new Error(
+                        `Term didn't changed to ${target} in ${timeout} s. It is ${termMetadata.currentTermId} now`
+                    );
                 }
             }
         }
