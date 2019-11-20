@@ -1,61 +1,19 @@
 [codechain]
-quiet = false
-base_path = "."
-chain = "solo"
 
 [mining]
-mem_pool_mem_limit = 4 # MB
-mem_pool_size = 32768
-mem_pool_fee_bump_shift = 3 # 12.5%
-allow_create_shard = false
-notify_work = []
-force_sealing = false
-reseal_on_txs = "all"
-reseal_min_period = 0
-reseal_max_period = 120000
-no_reseal_timer = false
-work_queue_size = 20
-allowed_past_gap = 30000
-allowed_future_gap = 5000
 
 [network]
-disable = false
-interface = "0.0.0.0"
-port = 3485
-max_peers = 30
-min_peers = 10
-bootstrap_addresses = []
-sync = true
-transaction_relay = true
-discovery = true
-discovery_type = "unstructured"
-discovery_refresh = 60000
-discovery_bucket_size = 10
-# whitelist_path = "whitelist.txt"
-# blacklist_path = "blacklist.txt"
 
 [rpc]
-disable = false
-interface = "127.0.0.1"
-port = 8080
 
 [ipc]
-disable = false
-path = "/tmp/jsonrpc.ipc"
 
 [ws]
-disable = false
-interface = "127.0.0.1"
-port = 8081
-max_connections = 100
 
 [snapshot]
 disable = false
-path = "snapshot"
 
 [stratum]
-disable = false
-port = 8008
 
 [email_alarm]
-disable = true
+
