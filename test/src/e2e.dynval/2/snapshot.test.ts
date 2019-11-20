@@ -34,61 +34,58 @@ const SNAPSHOT_PATH = `${__dirname}/../../../../snapshot/`;
 describe("Snapshot for Tendermint with Dynamic Validator", function() {
     const promiseExpect = new PromiseExpect();
     const snapshotValidators = validators.slice(0, 3);
-
-    describe("Snapshot", async function() {
-        const { nodes } = withNodes(this, {
-            promiseExpect,
-            overrideParams: {
-                maxNumOfValidators: 3
-            },
-            validators: snapshotValidators.map((signer, index) => ({
-                signer,
-                delegation: 5000,
-                deposit: 10_000_000 - index // tie-breaker
-            })),
-            modify: () => {
-                mkdirp.sync(SNAPSHOT_PATH);
-                const snapshotPath = fs.mkdtempSync(SNAPSHOT_PATH);
-                return {
-                    additionalArgv: [
-                        "--snapshot-path",
-                        snapshotPath,
-                        "--config",
-                        SNAPSHOT_CONFIG
-                    ],
-                    nodeAdditionalProperties: {
-                        snapshotPath
-                    }
-                };
-            }
-        });
-
-        it("should be exist after some time", async function() {
-            const termWaiter = setTermTestTimeout(this, {
-                terms: 1
-            });
-            const termMetadata = await termWaiter.waitNodeUntilTerm(nodes[0], {
-                target: 2,
-                termPeriods: 1
-            });
-
-            const blockHash = (await nodes[0].sdk.rpc.chain.getBlockHash(
-                termMetadata.lastTermFinishedBlockNumber
-            ))!;
-            const stateRoot = (await nodes[0].sdk.rpc.chain.getBlock(
-                blockHash
-            ))!.stateRoot;
-            expect(
-                fs.existsSync(
-                    path.join(
-                        nodes[0].snapshotPath,
-                        blockHash.toString(),
-                        stateRoot.toString()
-                    )
-                )
-            ).to.be.true;
-        });
+    const { nodes } = withNodes(this, {
+        promiseExpect,
+        overrideParams: {
+            maxNumOfValidators: 3
+        },
+        validators: snapshotValidators.map((signer, index) => ({
+            signer,
+            delegation: 5000,
+            deposit: 10_000_000 - index // tie-breaker
+        })),
+        modify: () => {
+            mkdirp.sync(SNAPSHOT_PATH);
+            const snapshotPath = fs.mkdtempSync(SNAPSHOT_PATH);
+            return {
+                additionalArgv: [
+                    "--snapshot-path",
+                    snapshotPath,
+                    "--config",
+                    SNAPSHOT_CONFIG
+                ],
+                nodeAdditionalProperties: {
+                    snapshotPath
+                }
+            };
+        }
     });
+
+    it("should be exist after some time", async function() {
+        const termWaiter = setTermTestTimeout(this, {
+            terms: 1
+        });
+        const termMetadata = await termWaiter.waitNodeUntilTerm(nodes[0], {
+            target: 2,
+            termPeriods: 1
+        });
+
+        const blockHash = (await nodes[0].sdk.rpc.chain.getBlockHash(
+            termMetadata.lastTermFinishedBlockNumber
+        ))!;
+        const stateRoot = (await nodes[0].sdk.rpc.chain.getBlock(blockHash))!
+            .stateRoot;
+        expect(
+            fs.existsSync(
+                path.join(
+                    nodes[0].snapshotPath,
+                    blockHash.toString(),
+                    stateRoot.toString()
+                )
+            )
+        ).to.be.true;
+    });
+
     afterEach(async function() {
         promiseExpect.checkFulfilled();
     });
