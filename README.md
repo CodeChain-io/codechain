@@ -132,7 +132,7 @@ You can create a block by sending a transaction through [JSON-RPC](https://githu
 ## Formatting
 
 
-Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2018-12-06 version of `rustfmt`.
+Make sure you run `rustfmt` before creating a PR to the repo. You need to install the nightly-2019-11-06 version of `rustfmt`.
 
 ```sh
 rustup toolchain install nightly-2019-11-06
