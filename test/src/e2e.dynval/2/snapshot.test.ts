@@ -134,6 +134,8 @@ describe("Snapshot for Tendermint with Dynamic Validator", function() {
         } catch (e) {
             node.keepLogs();
             throw e;
+        } finally {
+            await node.clean();
         }
     });
 
