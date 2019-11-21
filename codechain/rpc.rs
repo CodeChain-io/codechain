@@ -149,14 +149,6 @@ impl<M: jsonrpc_core::Metadata> jsonrpc_core::Middleware<M> for LogMiddleware {
         }
         Either::B(next(request, meta))
     }
-
-    fn on_call<F, X>(&self, call: jsonrpc_core::Call, meta: M, next: F) -> Either<Self::CallFuture, X>
-    where
-        F: FnOnce(jsonrpc_core::Call, M) -> X + Send,
-        X: futures::Future<Item = Option<jsonrpc_core::Output>, Error = ()> + Send + 'static, {
-        Self::print_call(&call);
-        Either::B(next(call, meta))
-    }
 }
 
 impl LogMiddleware {
