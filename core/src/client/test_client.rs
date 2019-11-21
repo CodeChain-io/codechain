@@ -52,7 +52,7 @@ use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
 
-use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
+use crate::block::{Block, ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::client::{
     AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, ConsensusClient, EngineInfo,
@@ -509,7 +509,7 @@ impl ImportBlock for TestBlockChainClient {
         unimplemented!()
     }
 
-    fn import_bootstrap_header(&self, _header: &BlockHeader) -> Result<BlockHash, BlockImportError> {
+    fn import_bootstrap_block(&self, _header: &Block) -> Result<BlockHash, BlockImportError> {
         unimplemented!()
     }
 

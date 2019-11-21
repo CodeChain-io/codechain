@@ -19,14 +19,14 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use cio::IoChannel;
-use ctypes::header::Header;
+use ctypes::header::{Header, Seal};
 use ctypes::BlockHash;
 use kvdb::DBTransaction;
 use parking_lot::{Mutex, MutexGuard};
 use rlp::Encodable;
 
 use super::{BlockChainTrait, Client, ClientConfig};
-use crate::block::{enact, IsBlock, LockedBlock};
+use crate::block::{enact, Block, IsBlock, LockedBlock};
 use crate::blockchain::{BodyProvider, HeaderProvider, ImportRoute};
 use crate::client::EngineInfo;
 use crate::consensus::CodeChainEngine;
@@ -362,19 +362,21 @@ impl Importer {
         imported.len()
     }
 
-    pub fn import_bootstrap_header<'a>(&'a self, header: &'a Header, client: &Client, _importer_lock: &MutexGuard<()>) {
+    pub fn import_bootstrap_block<'a>(&'a self, block: &'a Block, client: &Client, _importer_lock: &MutexGuard<()>) {
+        let header = &block.header;
         let hash = header.hash();
-        ctrace!(CLIENT, "Importing bootstrap header {}-{:?}", header.number(), hash);
+        ctrace!(CLIENT, "Importing bootstrap block #{}-{:?}", header.number(), hash);
 
         {
             let chain = client.block_chain();
             let mut batch = DBTransaction::new();
-            chain.insert_bootstrap_header(&mut batch, &HeaderView::new(&header.rlp_bytes()));
+            chain.insert_bootstrap_block(&mut batch, &block.rlp_bytes(&Seal::With));
             client.db().write_buffered(batch);
             chain.commit();
         }
-
         client.new_headers(&[hash], &[], &[hash], &[], &[], Some(hash));
+        self.miner.chain_new_blocks(client, &[hash], &[], &[hash], &[]);
+        client.new_blocks(&[hash], &[], &[hash], &[], &[]);
 
         client.db().flush().expect("DB flush failed.");
     }
