@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 description = "A `HashDB` which can manage a short-term journal potentially containing many forks of mutually exclusive actions"
 license = "GPL3"
+edition = "2018"
 
 [dependencies]
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

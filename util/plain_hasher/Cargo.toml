@@ -6,6 +6,7 @@ authors = ["Parity Technologies <admin@parity.io>"]
 license = "MIT"
 keywords = ["hash", "hasher"]
 homepage = "https://github.com/paritytech/plain_hasher"
+edition = "2018"
 
 [dependencies]
 crunchy = "0.1.6"

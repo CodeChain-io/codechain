@@ -18,12 +18,12 @@ use std::sync::Arc;
 
 use ccrypto::Blake;
 use ckey::{recover, Address, Signature};
-use client::ConsensusClient;
 use ctypes::errors::SyntaxError;
 use ctypes::CommonParams;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
+use crate::client::ConsensusClient;
 use crate::consensus::{ConsensusMessage, ValidatorSet};
 
 const ACTION_TAG_TRANSFER_CCS: u8 = 1;
@@ -358,9 +358,9 @@ impl Decodable for Action {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::client::TestBlockChainClient;
+    use crate::consensus::{ConsensusMessage, DynamicValidator, Step, VoteOn, VoteStep};
     use ckey::sign_schnorr;
-    use client::TestBlockChainClient;
-    use consensus::{ConsensusMessage, DynamicValidator, Step, VoteOn, VoteStep};
     use ctypes::BlockHash;
     use rlp::rlp_encode_and_decode_test;
 

@@ -41,7 +41,8 @@ use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
 use mio::timer::Timeout;
 use mio::*;
 use parking_lot::{Mutex, RwLock};
-use worker::{Work, WorkType, Worker};
+
+use crate::worker::{Work, WorkType, Worker};
 
 use super::{IoError, IoHandler};
 

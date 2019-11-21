@@ -92,7 +92,7 @@ impl Client {
         message_channel: IoChannel<ClientIoMessage>,
         reseal_timer: TimerApi,
     ) -> Result<Arc<Client>, Error> {
-        let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, ::db::COL_STATE);
+        let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, crate::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db);
         if !scheme.check_genesis_root(state_db.as_hashdb()) {
             return Err(SchemeError::InvalidState.into())
@@ -607,7 +607,7 @@ impl BlockChainTrait for Client {
         self.genesis_accounts.iter().map(|addr| PlatformAddress::new_v1(network_id, *addr)).collect()
     }
 
-    fn block_header(&self, id: &BlockId) -> Option<::encoded::Header> {
+    fn block_header(&self, id: &BlockId) -> Option<encoded::Header> {
         let chain = self.block_chain();
 
         Self::block_hash(&chain, id).and_then(|hash| chain.block_header_data(&hash))
@@ -635,7 +635,7 @@ impl BlockChainTrait for Client {
         self.transaction_address(id).map(|addr| addr.block_hash)
     }
 
-    fn transaction_header(&self, tracker: &Tracker) -> Option<::encoded::Header> {
+    fn transaction_header(&self, tracker: &Tracker) -> Option<encoded::Header> {
         self.transaction_addresses(tracker).map(|addr| addr.block_hash).and_then(|hash| self.block_header(&hash.into()))
     }
 }
@@ -655,7 +655,7 @@ impl ImportBlock for Client {
     }
 
     fn import_header(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError> {
-        let unverified = ::encoded::Header::new(bytes).decode();
+        let unverified = encoded::Header::new(bytes).decode();
         {
             if self.block_chain().is_known_header(&unverified.hash()) {
                 return Err(BlockImportError::Import(ImportError::AlreadyInChain))

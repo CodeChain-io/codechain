@@ -2,6 +2,7 @@
 name = "codechain-sync"
 version = "0.1.0"
 authors = ["CodeChain Team <hi@codechain.io>"]
+edition = "2018"
 
 [lib]
 

@@ -12,6 +12,7 @@ exclude = [
     "spec/*",
     "test/*",
 ]
+edition = "2018"
 
 [dependencies]
 app_dirs = "^1.2.1"

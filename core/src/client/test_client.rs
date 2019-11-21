@@ -54,10 +54,9 @@ use rlp::*;
 
 use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
-use crate::client::ImportResult;
 use crate::client::{
-    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, EngineInfo, ImportBlock,
-    MiningBlockChainClient, StateInfo, StateOrBlock, TermInfo,
+    AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, ConsensusClient, EngineInfo,
+    ImportBlock, ImportResult, MiningBlockChainClient, StateInfo, StateOrBlock, TermInfo,
 };
 use crate::consensus::stake::{Validator, Validators};
 use crate::consensus::EngineError;
@@ -68,7 +67,6 @@ use crate::miner::{Miner, MinerService, TransactionImportResult};
 use crate::scheme::Scheme;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use crate::types::{BlockId, TransactionId, VerificationQueueInfo as QueueInfo};
-use client::ConsensusClient;
 
 /// Test client.
 pub struct TestBlockChainClient {
@@ -459,7 +457,7 @@ impl BlockChainTrait for TestBlockChainClient {
         None // Simple default.
     }
 
-    fn transaction_header(&self, _tracker: &Tracker) -> Option<::encoded::Header> {
+    fn transaction_header(&self, _tracker: &Tracker) -> Option<encoded::Header> {
         None
     }
 }

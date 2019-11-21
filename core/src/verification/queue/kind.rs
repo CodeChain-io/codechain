@@ -93,7 +93,7 @@ pub mod headers {
     use crate::consensus::CodeChainEngine;
     use crate::error::Error;
     use crate::service::ClientIoMessage;
-    use verification::verify_header_with_engine;
+    use crate::verification::verify_header_with_engine;
 
     impl BlockLike for Header {
         fn hash(&self) -> BlockHash {

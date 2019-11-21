@@ -19,8 +19,7 @@ use ckey::{Address, KeyPair, Password};
 
 use super::crypto::Crypto;
 use crate::account::Version;
-use crate::{json, Error};
-use DecryptedAccount;
+use crate::{json, DecryptedAccount, Error};
 
 /// Account representation.
 #[derive(Debug, PartialEq, Clone)]

@@ -1,5 +1,6 @@
-use consensus::{Step, VoteOn};
 use std::cmp::Ordering;
+
+use crate::consensus::{Step, VoteOn};
 
 pub struct VoteRegressionChecker {
     last_vote: Option<VoteOn>,
@@ -41,7 +42,9 @@ impl VoteRegressionChecker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use consensus::VoteStep;
+
+    use crate::consensus::VoteStep;
+
     use primitives::H256;
 
     #[test]

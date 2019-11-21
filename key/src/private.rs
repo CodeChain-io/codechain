@@ -18,10 +18,10 @@ use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
 
-use hex::ToHex;
 use primitives::H256;
 use secp256k1::key;
 
+use crate::hex::ToHex;
 use crate::Error;
 
 #[derive(Clone, Copy, PartialEq, Eq)]

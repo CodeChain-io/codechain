@@ -199,8 +199,7 @@ mod tests {
 
     use super::super::ValidatorSet;
     use super::DynamicValidator;
-    use crate::client::TestBlockChainClient;
-    use client::ConsensusClient;
+    use crate::client::{ConsensusClient, TestBlockChainClient};
 
     #[test]
     fn validator_set() {

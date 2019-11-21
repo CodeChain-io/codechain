@@ -41,7 +41,7 @@ pub use self::types::{Height, Step, View};
 use super::{stake, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
-use ChainNotify;
+use crate::ChainNotify;
 
 /// Timer token representing the consensus step timeouts.
 const ENGINE_TIMEOUT_TOKEN_NONCE_BASE: TimerToken = 23;
