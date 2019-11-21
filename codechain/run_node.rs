@@ -35,6 +35,7 @@ use csync::snapshot::Service as SnapshotService;
 use csync::{BlockSyncExtension, BlockSyncSender, TransactionSyncExtension};
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
+use ctypes::BlockHash;
 use fdlimit::raise_fd_limit;
 use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
@@ -303,7 +304,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
                 let sync_sender = {
                     let client = client.client();
                     let snapshot_target = match (config.network.snapshot_hash, config.network.snapshot_number) {
-                        (Some(hash), Some(num)) => Some((hash, num)),
+                        (Some(hash), Some(num)) => Some((BlockHash::from(hash), num)),
                         _ => None,
                     };
                     let snapshot_dir = config.snapshot.path.clone();
