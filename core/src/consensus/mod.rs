@@ -56,7 +56,7 @@ use crate::codechain_machine::CodeChainMachine;
 use crate::error::Error;
 use crate::transaction::UnverifiedTransaction;
 use crate::views::HeaderView;
-use Client;
+use crate::Client;
 
 pub enum Seal {
     Solo,

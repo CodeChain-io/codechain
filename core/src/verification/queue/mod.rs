@@ -527,12 +527,12 @@ pub struct Verifying<K: Kind> {
 #[cfg(test)]
 mod tests {
     use cio::IoChannel;
-    use tests::helpers::*;
 
     use super::kind::blocks::Unverified;
     use super::{BlockQueue, Config};
     use crate::error::{Error, ImportError};
     use crate::scheme::Scheme;
+    use crate::tests::helpers::get_good_dummy_block;
 
     // create a test block queue.
     // auto_scaling enables verifier adjustment.

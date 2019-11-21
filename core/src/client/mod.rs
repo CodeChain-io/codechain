@@ -75,7 +75,7 @@ pub trait BlockChainTrait {
     /// Get the hash of block that contains the transaction, if any.
     fn transaction_block(&self, id: &TransactionId) -> Option<BlockHash>;
 
-    fn transaction_header(&self, tracker: &Tracker) -> Option<::encoded::Header>;
+    fn transaction_header(&self, tracker: &Tracker) -> Option<encoded::Header>;
 
     fn transaction_block_number(&self, tracker: &Tracker) -> Option<BlockNumber> {
         self.transaction_header(tracker).map(|header| header.number())

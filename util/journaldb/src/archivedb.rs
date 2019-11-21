@@ -26,7 +26,8 @@ use rlp::{decode, encode};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;
-use traits::JournalDB;
+
+use crate::traits::JournalDB;
 
 /// Implementation of the `HashDB` trait for a disk-backed database with a memory overlay
 /// and latent-removal semantics.

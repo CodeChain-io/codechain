@@ -86,7 +86,7 @@ pub trait MinerService: Send + Sync {
     fn engine_type(&self) -> EngineType;
 
     /// Returns true if we had to prepare new pending block.
-    fn prepare_work_sealing<C>(&self, &C) -> bool
+    fn prepare_work_sealing<C>(&self, _: &C) -> bool
     where
         C: AccountData + BlockChainTrait + BlockProducer + ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo;
 

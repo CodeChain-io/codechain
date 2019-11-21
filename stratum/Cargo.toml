@@ -4,6 +4,7 @@ name = "codechain-stratum"
 version = "1.11.0"
 license = "GPL-3.0"
 authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <hi@codechain.io>"]
+edition = "2018"
 
 [dependencies]
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }

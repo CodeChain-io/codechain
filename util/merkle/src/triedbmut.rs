@@ -20,10 +20,9 @@ use hashdb::DBValue;
 use hashdb::HashDB;
 use primitives::H256;
 
-use nibbleslice::NibbleSlice;
-use node::Node as RlpNode;
-use triedb::TrieDB;
-
+use crate::nibbleslice::NibbleSlice;
+use crate::node::Node as RlpNode;
+use crate::triedb::TrieDB;
 use crate::{Trie, TrieError, TrieMut};
 
 fn empty_children() -> [Option<H256>; 16] {

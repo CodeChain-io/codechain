@@ -2,6 +2,7 @@
 name = "codechain-keystore"
 version = "0.1.0"
 authors = ["CodeChain Team <hi@codechain.io>", "Parity Technologies <admin@parity.io>"]
+edition = "2018"
 
 [dependencies]
 log = "0.4.6"

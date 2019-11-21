@@ -2,6 +2,7 @@
 name = "rlp_derive"
 version = "0.1.0"
 authors = ["debris <marek.kotewicz@gmail.com>"]
+edition = "2018"
 
 [lib]
 name = "rlp_derive"

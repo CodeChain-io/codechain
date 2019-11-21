@@ -1,4 +1,4 @@
-use sendgrid::v3 as sendgrid;
+use ::sendgrid::v3 as sendgrid;
 
 pub struct EmailAlarmConfig {
     to: String,

@@ -547,7 +547,7 @@ mod tests {
     use super::action_data::get_account_key;
     use super::*;
 
-    use consensus::stake::action_data::{get_delegation_key, Candidate, Prisoner};
+    use crate::consensus::stake::action_data::{get_delegation_key, Candidate, Prisoner};
     use cstate::tests::helpers;
     use cstate::TopStateView;
     use rlp::Encodable;

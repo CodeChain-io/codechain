@@ -17,7 +17,7 @@
 use primitives::H256;
 use rlp::*;
 
-use nibbleslice::NibbleSlice;
+use crate::nibbleslice::NibbleSlice;
 
 
 #[derive(Eq, PartialEq, Debug)]

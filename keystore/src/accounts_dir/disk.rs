@@ -176,7 +176,7 @@ where
 
         // check for duplicate filename and append random suffix
         if dedup && keyfile_path.exists() {
-            let suffix = ::random::random_string(4);
+            let suffix = crate::random::random_string(4);
             filename.push_str(&format!("-{}", suffix));
             keyfile_path.set_file_name(&filename);
         }

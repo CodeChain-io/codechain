@@ -2,6 +2,7 @@
 name = "codechain-key"
 version = "0.1.0"
 authors = ["debris <marek.kotewicz@gmail.com>", "CodeChain Team <hi@codechain.io>"]
+edition = "2018"
 
 [dependencies]
 rand = "0.6.1"

@@ -5,6 +5,7 @@ license = "GPL-3.0"
 name = "codechain-io"
 version = "1.9.0"
 authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <hi@codechain.io>"]
+edition = "2018"
 
 [dependencies]
 codechain-logger = { path = "../logger" }

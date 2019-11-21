@@ -29,6 +29,7 @@ use rlp::Encodable;
 use super::{BlockChainTrait, Client, ClientConfig};
 use crate::block::{enact, IsBlock, LockedBlock};
 use crate::blockchain::{BodyProvider, HeaderProvider, ImportRoute};
+use crate::client::EngineInfo;
 use crate::consensus::CodeChainEngine;
 use crate::error::Error;
 use crate::miner::{Miner, MinerService};
@@ -37,7 +38,6 @@ use crate::types::BlockId;
 use crate::verification::queue::{BlockQueue, HeaderQueue};
 use crate::verification::{self, PreverifiedBlock, Verifier};
 use crate::views::{BlockView, HeaderView};
-use client::EngineInfo;
 
 pub struct Importer {
     /// Lock used during block import
