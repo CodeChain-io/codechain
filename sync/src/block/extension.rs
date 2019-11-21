@@ -152,7 +152,7 @@ impl Extension {
                 client.block_header(&parent_hash.into()).expect("Parent header of the snapshot header must exist");
             return State::SnapshotBody {
                 block: hash,
-                prev_root: parent.state_root(),
+                prev_root: parent.transactions_root(),
             }
         }
 
@@ -431,8 +431,8 @@ impl NetworkExtension<Event> for Extension {
                     State::SnapshotHeader(_, num) => {
                         for id in &peer_ids {
                             self.send_header_request(id, RequestMessage::Headers {
-                                start_number: num,
-                                max_count: 1,
+                                start_number: num - 1,
+                                max_count: 2,
                             });
                         }
                     }
@@ -541,86 +541,38 @@ pub enum Event {
 
 impl Extension {
     fn new_headers(&mut self, imported: Vec<BlockHash>, enacted: Vec<BlockHash>, retracted: Vec<BlockHash>) {
-        if let Some(next_state) = match self.state {
-            State::SnapshotHeader(hash, ..) => {
-                if imported.contains(&hash) {
-                    let header = self.client.block_header(&BlockId::Hash(hash)).expect("Imported header must exist");
-                    Some(State::SnapshotChunk {
-                        block: hash,
-                        restore: SnapshotRestore::new(header.state_root()),
-                    })
-                } else {
-                    None
-                }
+        if let State::Full = self.state {
+            for peer in self.header_downloaders.values_mut() {
+                peer.mark_as_imported(imported.clone());
             }
-            State::SnapshotBody {
-                ..
-            } => None,
-            State::SnapshotChunk {
-                ..
-            } => None,
-            State::Full => {
-                for peer in self.header_downloaders.values_mut() {
-                    peer.mark_as_imported(imported.clone());
-                }
-                let mut headers_to_download: Vec<_> = enacted
-                    .into_iter()
-                    .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
-                    .collect();
-                headers_to_download.sort_unstable_by_key(EncodedHeader::number);
-                #[allow(clippy::redundant_closure)]
-                // False alarm. https://github.com/rust-lang/rust-clippy/issues/1439
-                headers_to_download.dedup_by_key(|h| h.hash());
+            let mut headers_to_download: Vec<_> = enacted
+                .into_iter()
+                .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
+                .collect();
+            headers_to_download.sort_unstable_by_key(EncodedHeader::number);
+            #[allow(clippy::redundant_closure)]
+            // False alarm. https://github.com/rust-lang/rust-clippy/issues/1439
+            headers_to_download.dedup_by_key(|h| h.hash());
 
-                let headers: Vec<_> = headers_to_download
-                    .into_iter()
-                    .filter(|header| self.client.block_body(&BlockId::Hash(header.hash())).is_none())
-                    .collect(); // FIXME: No need to collect here if self is not borrowed.
-                for header in headers {
-                    let parent = self
-                        .client
-                        .block_header(&BlockId::Hash(header.parent_hash()))
-                        .expect("Enacted header must have parent");
-                    let is_empty = header.transactions_root() == parent.transactions_root();
-                    self.body_downloader.add_target(&header.decode(), is_empty);
-                }
-                self.body_downloader.remove_target(&retracted);
-                None
+            let headers: Vec<_> = headers_to_download
+                .into_iter()
+                .filter(|header| self.client.block_body(&BlockId::Hash(header.hash())).is_none())
+                .collect(); // FIXME: No need to collect here if self is not borrowed.
+            for header in headers {
+                let parent = self
+                    .client
+                    .block_header(&BlockId::Hash(header.parent_hash()))
+                    .expect("Enacted header must have parent");
+                let is_empty = header.transactions_root() == parent.transactions_root();
+                self.body_downloader.add_target(&header.decode(), is_empty);
             }
-        } {
-            cdebug!(SYNC, "Transitioning state to {:?}", next_state);
-            self.state = next_state;
+            self.body_downloader.remove_target(&retracted);
         }
     }
 
     fn new_blocks(&mut self, imported: Vec<BlockHash>, invalid: Vec<BlockHash>) {
-        if let Some(next_state) = match self.state {
-            State::SnapshotHeader(hash, ..) => {
-                if imported.contains(&hash) {
-                    let header = self.client.block_header(&BlockId::Hash(hash)).expect("Imported header must exist");
-                    Some(State::SnapshotChunk {
-                        block: hash,
-                        restore: SnapshotRestore::new(header.state_root()),
-                    })
-                } else {
-                    None
-                }
-            }
-            State::SnapshotBody {
-                ..
-            } => unimplemented!(),
-            State::SnapshotChunk {
-                ..
-            } => None,
-            State::Full => {
-                self.body_downloader.remove_target(&imported);
-                self.body_downloader.remove_target(&invalid);
-                None
-            }
-        } {
-            cdebug!(SYNC, "Transitioning state to {:?}", next_state);
-            self.state = next_state;
-        }
+        self.body_downloader.remove_target(&imported);
+        self.body_downloader.remove_target(&invalid);
         self.send_status_broadcast();
     }
 }
@@ -862,20 +814,20 @@ impl Extension {
         ctrace!(SYNC, "Received header response from({}) with length({})", from, headers.len());
         match self.state {
             State::SnapshotHeader(hash, _) => match headers {
-                [header] if header.hash() == hash => {
+                [parent, header] if header.hash() == hash => {
                     match self.client.import_bootstrap_header(&header) {
-                        Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {
-                            self.state = State::SnapshotChunk {
+                        Ok(_) | Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {
+                            self.state = State::SnapshotBody {
                                 block: hash,
-                                restore: SnapshotRestore::new(*header.state_root()),
+                                prev_root: *parent.transactions_root(),
                             };
+                            cdebug!(SYNC, "Transitioning state to {:?}", self.state);
                         }
                         Err(BlockImportError::Import(ImportError::AlreadyQueued)) => {}
                         // FIXME: handle import errors
                         Err(err) => {
                             cwarn!(SYNC, "Cannot import header({}): {:?}", header.hash(), err);
                         }
-                        _ => {}
                     }
                 }
                 _ => cdebug!(
