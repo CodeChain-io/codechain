@@ -54,6 +54,60 @@ describe("Snapshot", async function() {
         ).to.satisfies(fs.existsSync);
     });
 
+    it("can restore from snapshot", async function() {
+        for (let i = 0; i < 10; i++) {
+            const tx = await node.sendPayTx({
+                quantity: 100,
+                recipient: aliceAddress
+            });
+            await node.waitForTx(tx.hash());
+        }
+
+        const pay = await node.sendPayTx({
+            quantity: 100,
+            recipient: aliceAddress
+        });
+
+        const blockHash = (await node.sdk.rpc.chain.getTransaction(pay.hash()))!
+            .blockHash!;
+
+        const block = (await node.sdk.rpc.chain.getBlock(blockHash))!;
+        await node.sdk.rpc.sendRpcRequest("devel_snapshot", [
+            blockHash.toJSON()
+        ]);
+        // Wait for 1 secs
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const newNode = new CodeChain({
+            argv: [
+                "--snapshot-hash",
+                block.hash.toString(),
+                "--snapshot-number",
+                block.number.toString()
+            ]
+        });
+
+        try {
+            await newNode.start();
+            await newNode.connect(node);
+            await newNode.waitBlockNumber(block.number);
+            await node.sdk.rpc.devel.stopSealing();
+            // New node creates block
+            const newPay = await newNode.sendPayTx({
+                quantity: 100,
+                recipient: aliceAddress
+            });
+            await newNode.waitForTx(newPay.hash());
+            await node.sdk.rpc.devel.startSealing();
+            await node.waitForTx(newPay.hash());
+        } catch (e) {
+            newNode.keepLogs();
+            throw e;
+        } finally {
+            await newNode.clean();
+        }
+    });
+
     afterEach(function() {
         if (this.currentTest!.state === "failed") {
             node.keepLogs();
