@@ -63,6 +63,10 @@ pub struct TokenInfo {
 #[derive(Debug)]
 enum State {
     SnapshotHeader(BlockHash, u64),
+    SnapshotBody {
+        block: BlockHash,
+        prev_root: H256,
+    },
     SnapshotChunk {
         block: BlockHash,
         restore: SnapshotRestore,
@@ -90,28 +94,12 @@ impl Extension {
     pub fn new(
         client: Arc<Client>,
         api: Box<dyn Api>,
-        snapshot_target: Option<(H256, u64)>,
+        snapshot_target: Option<(BlockHash, u64)>,
         snapshot_dir: Option<String>,
     ) -> Extension {
         api.set_timer(SYNC_TIMER_TOKEN, Duration::from_millis(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
 
-        let state = match snapshot_target {
-            Some((hash, num)) => match client.block_header(&BlockId::Number(num)) {
-                Some(ref header) if *header.hash() == hash => {
-                    let state_db = client.state_db().read();
-                    let state_root = header.state_root();
-                    match TrieFactory::readonly(state_db.as_hashdb(), &state_root) {
-                        Ok(ref trie) if trie.is_complete() => State::Full,
-                        _ => State::SnapshotChunk {
-                            block: hash.into(),
-                            restore: SnapshotRestore::new(state_root),
-                        },
-                    }
-                }
-                _ => State::SnapshotHeader(hash.into(), num),
-            },
-            None => State::Full,
-        };
+        let state = Extension::initial_state(client.clone(), snapshot_target);
         cdebug!(SYNC, "Initial state is {:?}", state);
         let mut header = client.best_header();
         let mut hollow_headers = vec![header.decode()];
@@ -146,6 +134,36 @@ impl Extension {
             last_request: Default::default(),
             nonce: Default::default(),
             snapshot_dir,
+        }
+    }
+
+    fn initial_state(client: Arc<Client>, snapshot_target: Option<(BlockHash, u64)>) -> State {
+        let (hash, num) = match snapshot_target {
+            Some(target) => target,
+            None => return State::Full,
+        };
+        let header = match client.block_header(&num.into()) {
+            Some(ref h) if h.hash() == hash => h.clone(),
+            _ => return State::SnapshotHeader(hash, num),
+        };
+        if client.block_body(&hash.into()).is_none() {
+            let parent_hash = header.parent_hash();
+            let parent =
+                client.block_header(&parent_hash.into()).expect("Parent header of the snapshot header must exist");
+            return State::SnapshotBody {
+                block: hash,
+                prev_root: parent.state_root(),
+            }
+        }
+
+        let state_db = client.state_db().read();
+        let state_root = header.state_root();
+        match TrieFactory::readonly(state_db.as_hashdb(), &state_root) {
+            Ok(ref trie) if trie.is_complete() => State::Full,
+            _ => State::SnapshotChunk {
+                block: hash,
+                restore: SnapshotRestore::new(state_root),
+            },
         }
     }
 
@@ -418,6 +436,9 @@ impl NetworkExtension<Event> for Extension {
                             });
                         }
                     }
+                    State::SnapshotBody {
+                        ..
+                    } => unimplemented!(),
                     State::SnapshotChunk {
                         block,
                         ref mut restore,
@@ -532,6 +553,9 @@ impl Extension {
                     None
                 }
             }
+            State::SnapshotBody {
+                ..
+            } => None,
             State::SnapshotChunk {
                 ..
             } => None,
@@ -582,6 +606,9 @@ impl Extension {
                     None
                 }
             }
+            State::SnapshotBody {
+                ..
+            } => unimplemented!(),
             State::SnapshotChunk {
                 ..
             } => None,
@@ -859,6 +886,9 @@ impl Extension {
                     headers.len()
                 ),
             },
+            State::SnapshotBody {
+                ..
+            } => {}
             State::SnapshotChunk {
                 ..
             } => {}
