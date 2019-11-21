@@ -212,7 +212,6 @@ pub fn open_db(cfg: &config::Operating, client_config: &ClientConfig) -> Result<
 
     db_config.memory_budget = client_config.db_cache_size;
     db_config.compaction = client_config.db_compaction.compaction_profile(client_path);
-    db_config.wal = client_config.db_wal;
 
     let db = Arc::new(
         Database::open(&db_config, &client_path.to_str().expect("DB path could not be converted to string."))

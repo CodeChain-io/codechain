@@ -79,7 +79,7 @@ where
     }
 
     fn get_state_trie_value(&self, key: H256) -> Result<Vec<Bytes>> {
-        match self.db.get(COL_STATE, &key).map_err(|e| errors::kvdb(&e))? {
+        match self.db.get(COL_STATE, &key).map_err(errors::core)? {
             Some(value) => {
                 let rlp = Rlp::new(&value);
                 Ok(rlp.as_list::<Vec<u8>>().map_err(|e| errors::rlp(&e))?.into_iter().map(Bytes::from).collect())

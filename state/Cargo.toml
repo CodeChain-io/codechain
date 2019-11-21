@@ -13,8 +13,8 @@ codechain-types = { path = "../types" }
 codechain-vm = { path = "../vm" }
 hashdb = { path = "../util/hashdb" }
 journaldb = { path = "../util/journaldb" }
-kvdb = { path = "../util/kvdb" }
-kvdb-memorydb = { path = "../util/kvdb-memorydb" }
+kvdb = "0.1"
+kvdb-memorydb = "0.1"
 log = "0.4.6"
 lru-cache = "0.1.1"
 parking_lot = "0.6.0"

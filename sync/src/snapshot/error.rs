@@ -17,7 +17,6 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 use std::io::{Error as FileError, ErrorKind};
 
-use kvdb::Error as DBError;
 use primitives::H256;
 use util_error::UtilError;
 
@@ -25,15 +24,8 @@ use util_error::UtilError;
 pub enum Error {
     NodeNotFound(H256),
     SyncError(String),
-    DBError(DBError),
     FileError(ErrorKind),
     UtilError(UtilError),
-}
-
-impl From<DBError> for Error {
-    fn from(error: DBError) -> Self {
-        Error::DBError(error)
-    }
 }
 
 impl From<FileError> for Error {
@@ -53,7 +45,6 @@ impl Display for Error {
         match self {
             Error::NodeNotFound(key) => write!(f, "State node not found: {:x}", key),
             Error::SyncError(reason) => write!(f, "Sync error: {}", reason),
-            Error::DBError(error) => write!(f, "DB Error: {:?}", error),
             Error::FileError(kind) => write!(f, "File system error: {:?}", kind),
             Error::UtilError(error) => write!(f, "Util error: {:?}", error),
         }

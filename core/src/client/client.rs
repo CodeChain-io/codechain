@@ -101,7 +101,7 @@ impl Client {
             state_db = scheme.ensure_genesis_state(state_db)?;
             let mut batch = DBTransaction::new();
             state_db.journal_under(&mut batch, 0, *scheme.genesis_header().hash())?;
-            db.write(batch).map_err(ClientError::Database)?;
+            db.write(batch)?;
         }
 
         let gb = scheme.genesis_block();
@@ -127,7 +127,7 @@ impl Client {
         });
 
         // ensure buffered changes are flushed.
-        client.db.flush().map_err(ClientError::Database)?;
+        client.db.flush()?;
         Ok(client)
     }
 

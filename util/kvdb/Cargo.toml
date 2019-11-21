@@ -1,9 +1,0 @@
-[package]
-name = "kvdb"
-version = "0.1.0"
-authors = ["Parity Technologies <admin@parity.io>"]
-edition = "2018"
-
-[dependencies]
-error-chain = { version = "0.12", default-features = false }
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

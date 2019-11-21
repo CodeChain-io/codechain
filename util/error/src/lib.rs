@@ -22,7 +22,6 @@
 #[macro_use]
 extern crate error_chain;
 
-extern crate kvdb;
 extern crate primitives;
 extern crate rlp;
 extern crate rustc_hex;
@@ -66,10 +65,6 @@ mod errors {
     error_chain! {
         types {
             UtilError, ErrorKind, ResultExt, Result;
-        }
-
-        links {
-            Db(kvdb::Error, kvdb::ErrorKind);
         }
 
         foreign_links {

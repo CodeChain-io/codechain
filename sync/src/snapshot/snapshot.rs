@@ -197,7 +197,7 @@ impl WriteSnapshot for Snapshot {
         let root_val = match db.get(COL_STATE, root) {
             Ok(Some(value)) => value.to_vec(),
             Ok(None) => return Err(Error::SyncError("Invalid state root, or the database is empty".to_string())),
-            Err(e) => return Err(Error::DBError(e)),
+            Err(e) => return Err(e.into()),
         };
 
         let children = children_of(db, &root_val)?;
@@ -257,7 +257,7 @@ fn get_node(db: &dyn KeyValueDB, key: &H256) -> Result<Vec<u8>, Error> {
     match db.get(COL_STATE, key) {
         Ok(Some(value)) => Ok(value.to_vec()),
         Ok(None) => Err(Error::NodeNotFound(*key)),
-        Err(e) => Err(Error::DBError(e)),
+        Err(e) => Err(e.into()),
     }
 }
 

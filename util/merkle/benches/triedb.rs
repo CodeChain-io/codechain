@@ -50,7 +50,6 @@ impl TestDB {
         let mut config = DatabaseConfig::with_columns(Some(1));
         config.memory_budget = Default::default();
         config.compaction = CompactionProfile::auto(path);
-        config.wal = true;
         config
     }
 

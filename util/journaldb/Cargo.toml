@@ -9,11 +9,11 @@ edition = "2018"
 [dependencies]
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 hashdb = { path = "../hashdb" }
-kvdb = { path = "../kvdb" }
+kvdb = "0.1"
 memorydb = { path = "../memorydb" }
 rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 util-error = { path = "../error" }
 
 [dev-dependencies]
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
-kvdb-memorydb = { path = "../kvdb-memorydb" }
+kvdb-memorydb = "0.1"

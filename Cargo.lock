@@ -16,6 +16,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aho-corasick"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58fb5e95d83b38284460a5fda7d6470aa0b8844d283a0b614b8535e880800d2d"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -177,9 +186,6 @@ name = "cc"
 version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4390a3b5f4f6bce9c1d0c00128379df433e53777fdd30e92f16a529332baec4e"
-dependencies = [
- "rayon",
-]
 
 [[package]]
 name = "cfg-if"
@@ -231,6 +237,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "cmake"
+version = "0.1.35"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ec65ee4f9c9d16f335091d23693457ed4928657ba4982289d7fafee03bc614a"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -674,9 +689,9 @@ checksum = "d1c92ff2d7a202d592f5a412d75cf421495c913817781c1cb383bf12a77e185f"
 dependencies = [
  "cfg-if",
  "crossbeam-channel",
- "crossbeam-deque 0.6.2",
- "crossbeam-epoch 0.6.1",
- "crossbeam-utils 0.6.5",
+ "crossbeam-deque",
+ "crossbeam-epoch",
+ "crossbeam-utils",
  "lazy_static 1.2.0",
  "num_cpus",
  "parking_lot 0.6.4",
@@ -688,18 +703,8 @@ version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f0ed1a4de2235cabda8558ff5840bffb97fcb64c97827f354a451307df5f72b"
 dependencies = [
- "crossbeam-utils 0.6.5",
+ "crossbeam-utils",
  "smallvec 0.6.4",
-]
-
-[[package]]
-name = "crossbeam-deque"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f739f8c5363aca78cfb059edf753d8f0d36908c348f3d8d1503f03d8b75d9cf3"
-dependencies = [
- "crossbeam-epoch 0.3.1",
- "crossbeam-utils 0.2.2",
 ]
 
 [[package]]
@@ -708,23 +713,8 @@ version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fe1b6f945f824c7a25afe44f62e25d714c0cc523f8e99d8db5cd1026e1269d3"
 dependencies = [
- "crossbeam-epoch 0.6.1",
- "crossbeam-utils 0.6.5",
-]
-
-[[package]]
-name = "crossbeam-epoch"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "927121f5407de9956180ff5e936fe3cf4324279280001cd56b669d28ee7e9150"
-dependencies = [
- "arrayvec",
- "cfg-if",
- "crossbeam-utils 0.2.2",
- "lazy_static 1.2.0",
- "memoffset",
- "nodrop",
- "scopeguard 0.3.3",
+ "crossbeam-epoch",
+ "crossbeam-utils",
 ]
 
 [[package]]
@@ -735,19 +725,10 @@ checksum = "2449aaa4ec7ef96e5fb24db16024b935df718e9ae1cec0a1e68feeca2efca7b8"
 dependencies = [
  "arrayvec",
  "cfg-if",
- "crossbeam-utils 0.6.5",
+ "crossbeam-utils",
  "lazy_static 1.2.0",
  "memoffset",
  "scopeguard 0.3.3",
-]
-
-[[package]]
-name = "crossbeam-utils"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2760899e32a1d58d5abb31129f8fae5de75220bc2176e77ff7c627ae45c918d9"
-dependencies = [
- "cfg-if",
 ]
 
 [[package]]
@@ -844,10 +825,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09c3753c3db574d215cba4ea76018483895d7bff25a31b49ba45db21c48e50ab"
 
 [[package]]
-name = "either"
-version = "1.5.0"
+name = "elastic-array"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3be565ca5c557d7f59e7cfcf1844f9e3033650c929c6566f511e8005f205c1d0"
+checksum = "073be79b6538296faf81c631872676600616073817dd9a440c477ad09b408983"
+dependencies = [
+ "heapsize",
+]
 
 [[package]]
 name = "encoding_rs"
@@ -867,7 +851,7 @@ dependencies = [
  "atty",
  "humantime",
  "log 0.4.6",
- "regex 1.0.3",
+ "regex",
  "termcolor 0.3.6",
 ]
 
@@ -880,7 +864,7 @@ dependencies = [
  "atty",
  "humantime",
  "log 0.4.6",
- "regex 1.0.3",
+ "regex",
  "termcolor 1.0.4",
 ]
 
@@ -1006,6 +990,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
+name = "fs-swap"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "921d332c89b3b61a826de38c61ee5b6e02c56806cade1b0e5d81bd71f57a71bb"
+dependencies = [
+ "lazy_static 1.2.0",
+ "libc",
+ "libloading",
+ "winapi 0.3.6",
+]
+
+[[package]]
 name = "fuchsia-zircon"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1108,11 +1104,11 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e49edbcc9c7fc5beb8c0a54e7319ff8bed353a2b55e85811c6281188c2a6c84"
 dependencies = [
- "aho-corasick",
+ "aho-corasick 0.6.4",
  "fnv",
  "log 0.4.6",
  "memchr",
- "regex 1.0.3",
+ "regex",
 ]
 
 [[package]]
@@ -1147,6 +1143,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1679e6ea370dee694f91f1dc469bf94cf8f52051d147aec3e1f9497c6fc22461"
 dependencies = [
  "winapi 0.3.6",
+]
+
+[[package]]
+name = "hermit-abi"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "307c3c9f937f38e3534b1d6447ecf090cafcc9744e4a6360e8b037b2cf5af120"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
@@ -1400,35 +1405,39 @@ dependencies = [
 
 [[package]]
 name = "kvdb"
-version = "0.1.0"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1b2f251f01a7224426abdb2563707d856f7de995d821744fd8fa8e2874f69e3"
 dependencies = [
- "error-chain",
- "primitives",
+ "elastic-array",
+ "parity-bytes",
 ]
 
 [[package]]
 name = "kvdb-memorydb"
-version = "0.1.0"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "296c12309ed36cb74d59206406adbf1971c3baa56d5410efdb508d8f1c60a351"
 dependencies = [
  "kvdb",
- "parking_lot 0.6.4",
- "rlp",
+ "parking_lot 0.9.0",
 ]
 
 [[package]]
 name = "kvdb-rocksdb"
-version = "0.1.0"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96eb0e0112bb66fe5401294ca0f43c9cb771456af9270443545026e55fd00912"
 dependencies = [
+ "elastic-array",
+ "fs-swap",
  "interleaved-ordered",
  "kvdb",
  "log 0.4.6",
  "num_cpus",
- "parking_lot 0.6.4",
- "primitives",
- "regex 0.2.11",
- "rlp",
- "rocksdb",
- "tempdir",
+ "parity-rocksdb",
+ "parking_lot 0.9.0",
+ "regex",
 ]
 
 [[package]]
@@ -1470,6 +1479,16 @@ dependencies = [
  "adler32",
  "byteorder",
  "crc32fast",
+]
+
+[[package]]
+name = "libloading"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b111a074963af1d37a139918ac6d49ad1d0d5e47f72fd55388619691a7d753"
+dependencies = [
+ "cc",
+ "winapi 0.3.6",
 ]
 
 [[package]]
@@ -1564,12 +1583,9 @@ checksum = "100aabe6b8ff4e4a7e32c1c13523379802df0772b82466207ac25b013f193376"
 
 [[package]]
 name = "memchr"
-version = "2.0.1"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "796fba70e76612589ed2ce7f45282f5af869e0fdd7cc6199fa1aa1f1d591ba9d"
-dependencies = [
- "libc",
-]
+checksum = "88579771288728879b57485cc7d6b07d648c9f0141eb955f8ab7f9d45394468e"
 
 [[package]]
 name = "memoffset"
@@ -1782,10 +1798,11 @@ checksum = "630de1ef5cc79d0cdd78b7e33b81f083cbfe90de0f4b2b2f07f905867c70e9fe"
 
 [[package]]
 name = "num_cpus"
-version = "1.8.0"
+version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c51a3322e4bca9d212ad9a158a02abc6934d005490c054a2778df73a70aa0a30"
+checksum = "76dac5ed2a876980778b8b85f75a71b6cbf0db0b1232ee12f826bccb00d09d72"
 dependencies = [
+ "hermit-abi",
  "libc",
 ]
 
@@ -1855,6 +1872,45 @@ dependencies = [
  "codechain-logger",
  "get_if_addrs",
  "my_internet_ip",
+]
+
+[[package]]
+name = "parity-bytes"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c276d76c5333b8c2579e02d49a06733a55b8282d2d9b13e8d53b6406bd7e30a"
+
+[[package]]
+name = "parity-rocksdb"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d17caf6640e24b70242f3f48615e3f0764f98871e8c7aea25584e29833eb5a8"
+dependencies = [
+ "libc",
+ "local-encoding",
+ "parity-rocksdb-sys",
+]
+
+[[package]]
+name = "parity-rocksdb-sys"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9581e6b8c63f3808500638372ee56faaaffb57c4d349974bff591606b94d5f57"
+dependencies = [
+ "cmake",
+ "libc",
+ "local-encoding",
+ "parity-snappy-sys",
+]
+
+[[package]]
+name = "parity-snappy-sys"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a413d51e5e1927320c9de992998e4a279dffb8c8a7363570198bd8383e66f1b"
+dependencies = [
+ "cmake",
+ "libc",
 ]
 
 [[package]]
@@ -2246,29 +2302,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rayon"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80e811e76f1dbf68abf87a759083d34600017fc4e10b6bd5ad84a700f9dba4b1"
-dependencies = [
- "either",
- "rayon-core",
-]
-
-[[package]]
-name = "rayon-core"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d24ad214285a7729b174ed6d3bcfcb80177807f959d95fafd5bfc5c4f201ac8"
-dependencies = [
- "crossbeam-deque 0.2.0",
- "lazy_static 1.2.0",
- "libc",
- "num_cpus",
- "rand 0.4.3",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.1.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2285,47 +2318,21 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "0.2.11"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9329abc99e39129fcceabd24cf5d85b4671ef7c29c50e972bc5afe32438ec384"
+checksum = "dc220bd33bdce8f093101afe22a037b8eb0e5af33592e6a9caafff0d4cb81cbd"
 dependencies = [
- "aho-corasick",
+ "aho-corasick 0.7.6",
  "memchr",
- "regex-syntax 0.5.6",
+ "regex-syntax",
  "thread_local",
- "utf8-ranges",
-]
-
-[[package]]
-name = "regex"
-version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d8c9f33201f46669484bacc312b00e7541bed6aaf296dffe2bb4e0ac6b8ce2a"
-dependencies = [
- "aho-corasick",
- "memchr",
- "regex-syntax 0.6.0",
- "thread_local",
- "utf8-ranges",
 ]
 
 [[package]]
 name = "regex-syntax"
-version = "0.5.6"
+version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d707a4fa2637f2dca2ef9fd02225ec7661fe01a53623c1e6515b6916511f7a7"
-dependencies = [
- "ucd-util",
-]
-
-[[package]]
-name = "regex-syntax"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f1ac0f60d675cc6cf13a20ec076568254472551051ad5dd050364d70671bf6b"
-dependencies = [
- "ucd-util",
-]
+checksum = "11a7e20d1cce64ef2fed88b66d347f88bd9babb82845b2b858f3edbf59a4f716"
 
 [[package]]
 name = "remove_dir_all"
@@ -2401,27 +2408,6 @@ dependencies = [
  "quote 0.3.15",
  "rlp",
  "syn 0.11.11",
-]
-
-[[package]]
-name = "rocksdb"
-version = "0.4.5"
-source = "git+https://github.com/paritytech/rust-rocksdb?rev=ecf06adf3148ab10f6f7686b724498382ff4f36e#ecf06adf3148ab10f6f7686b724498382ff4f36e"
-dependencies = [
- "libc",
- "local-encoding",
- "rocksdb-sys",
-]
-
-[[package]]
-name = "rocksdb-sys"
-version = "0.3.0"
-source = "git+https://github.com/paritytech/rust-rocksdb?rev=ecf06adf3148ab10f6f7686b724498382ff4f36e#ecf06adf3148ab10f6f7686b724498382ff4f36e"
-dependencies = [
- "cc",
- "libc",
- "local-encoding",
- "snappy-sys",
 ]
 
 [[package]]
@@ -2706,15 +2692,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "snappy-sys"
-version = "0.1.0"
-source = "git+https://github.com/paritytech/rust-snappy#40ac9a0d9fd613e7f38df800a11a589b7296da73"
-dependencies = [
- "cc",
- "libc",
-]
-
-[[package]]
 name = "socket2"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2996,7 +2973,7 @@ version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f27ee0e6db01c5f0b2973824547ce7e637b2ed79b891a9677b0de9bd532b6ac"
 dependencies = [
- "crossbeam-utils 0.6.5",
+ "crossbeam-utils",
  "futures",
 ]
 
@@ -3089,8 +3066,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17465013014410310f9f61fa10bf4724803c149ea1d51efece131c38efca93aa"
 dependencies = [
  "crossbeam-channel",
- "crossbeam-deque 0.6.2",
- "crossbeam-utils 0.6.5",
+ "crossbeam-deque",
+ "crossbeam-utils",
  "futures",
  "log 0.4.6",
  "num_cpus",
@@ -3104,7 +3081,7 @@ version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2106812d500ed25a4f38235b9cae8f78a09edf43203e16e59c3b769a342a60e"
 dependencies = [
- "crossbeam-utils 0.6.5",
+ "crossbeam-utils",
  "futures",
  "slab 0.4.2",
  "tokio-executor",
@@ -3189,12 +3166,6 @@ name = "typenum"
 version = "1.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d2783fe2d6b8c1101136184eb41be8b1ad379e4657050b8aaff0c79ee7575f9"
-
-[[package]]
-name = "ucd-util"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd2be2d6639d0f8fe6cdda291ad456e23629558d466e2789d2c3e9892bda285d"
 
 [[package]]
 name = "uint"
@@ -3303,17 +3274,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "utf8-ranges"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "662fab6525a98beff2921d7f61a39e7d59e0b425ebc7d0d9e66d316e55124122"
-
-[[package]]
 name = "util-error"
 version = "0.1.0"
 dependencies = [
  "error-chain",
- "kvdb",
  "primitives",
  "rlp",
  "rustc-hex 1.0.0",
