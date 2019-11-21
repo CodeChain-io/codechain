@@ -16,7 +16,7 @@ codechain-state = { path = "../state" }
 codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
 journaldb = { path = "../util/journaldb" }
-kvdb = { path = "../util/kvdb" }
+kvdb = "0.1"
 log = "0.4.6"
 never-type = "0.1.0"
 parking_lot = "0.6.0"
@@ -30,6 +30,6 @@ util-error = { path = "../util/error" }
 
 [dev-dependencies]
 hashdb = { path = "../util/hashdb" }
-kvdb-memorydb = { path = "../util/kvdb-memorydb" }
+kvdb-memorydb = "0.1"
 tempfile = "3.0.4"
 trie-standardmap = { path = "../util/trie-standardmap" }

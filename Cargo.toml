@@ -36,8 +36,8 @@ ctrlc = { git = "https://github.com/paritytech/rust-ctrlc.git" }
 fdlimit = "0.1"
 finally-block = "0.1"
 futures = "0.1"
-kvdb = { path = "util/kvdb" }
-kvdb-rocksdb = { path = "util/kvdb-rocksdb" }
+kvdb = "0.1"
+kvdb-rocksdb = "0.1"
 log = "0.4.6"
 env_logger = "0.5.3"
 never-type = "0.1.0"

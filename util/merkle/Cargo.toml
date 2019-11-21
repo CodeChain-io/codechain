@@ -13,8 +13,8 @@ rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 
 [dev-dependencies]
 journaldb = { path = "../journaldb" }
-kvdb = { path = "../kvdb" }
-kvdb-rocksdb = { path = "../kvdb-rocksdb" }
+kvdb = "0.1"
+kvdb-rocksdb = "0.1"
 tempfile = "3.1.0"
 trie-standardmap = { path = "../trie-standardmap" }
 memorydb = {path = "../memorydb" }

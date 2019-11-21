@@ -23,12 +23,12 @@ cuckoo = { git = "https://github.com/CodeChain-io/rust-cuckoo.git", rev = "280ca
 hashdb = { path = "../util/hashdb" }
 hyper = { git = "https://github.com/paritytech/hyper", default-features = false }
 journaldb = { path = "../util/journaldb" }
+kvdb = "0.1"
+kvdb-rocksdb = "0.1"
+kvdb-memorydb = "0.1"
 linked-hash-map = "0.5"
 log = "0.4.6"
 lru-cache = "0.1.2"
-kvdb = { path = "../util/kvdb" }
-kvdb-rocksdb = { path = "../util/kvdb-rocksdb" }
-kvdb-memorydb = { path = "../util/kvdb-memorydb" }
 memorydb = { path = "../util/memorydb" }
 num-rational = "0.2.1"
 parking_lot = "0.6.0"

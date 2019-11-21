@@ -5,8 +5,7 @@ authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
 
 [dependencies]
-kvdb = { path = "../kvdb" }
-primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 error-chain = { version = "0.12", default-features = false }
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 rustc-hex = "1.0"

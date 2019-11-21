@@ -59,7 +59,10 @@ impl ArchiveDB {
     }
 
     fn payload(&self, key: &H256) -> Option<DBValue> {
-        self.backing.get(self.column, key).expect("Low-level database error. Some issue with your hard disk?")
+        self.backing
+            .get(self.column, &**key)
+            .expect("Low-level database error. Some issue with your hard disk?")
+            .map(|data| data.to_vec())
     }
 }
 

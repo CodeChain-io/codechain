@@ -71,8 +71,6 @@ pub struct ClientConfig {
     pub db_cache_size: Option<usize>,
     /// State db compaction profile
     pub db_compaction: DatabaseCompactionProfile,
-    /// Should db have WAL enabled?
-    pub db_wal: bool,
     /// State db cache-size.
     pub state_cache_size: usize,
     /// Type of block verifier used by client.
@@ -87,7 +85,6 @@ impl Default for ClientConfig {
             queue: Default::default(),
             db_cache_size: Default::default(),
             db_compaction: Default::default(),
-            db_wal: true,
             state_cache_size: DEFAULT_STATE_CACHE_SIZE as usize * mb,
             verifier_type: Default::default(),
         }

@@ -23,7 +23,6 @@ use ckeystore::Error as KeystoreError;
 use cnetwork::control::Error as NetworkControlError;
 use cstate::StateError;
 use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
-use kvdb::Error as KVDBError;
 use rlp::DecoderError;
 use rustc_serialize::hex::FromHexError as HexError;
 
@@ -52,7 +51,6 @@ mod codes {
     pub const HEX_ERROR: i64 = -32007;
     pub const RLP_ERROR: i64 = -32009;
     pub const CORE_ERROR: i64 = -32010;
-    pub const KVDB_ERROR: i64 = -32011;
     pub const RUNTIME_ERROR: i64 = -32012;
     pub const NETWORK_DISABLED: i64 = -32014;
     pub const NETWORK_CANNOT_DISCONNECT_NOT_CONNECTED_ERROR: i64 = -32015;
@@ -180,14 +178,6 @@ pub fn transaction_core<T: Into<CoreError>>(error: T) -> Error {
         },
         CoreError::Syntax(SyntaxError::InvalidCustomAction(err)) => invalid_custom_action(err),
         _ => unknown_error,
-    }
-}
-
-pub fn kvdb(error: &KVDBError) -> Error {
-    Error {
-        code: ErrorCode::ServerError(codes::KVDB_ERROR),
-        message: "KVDB error.".into(),
-        data: Some(Value::String(format!("{:?}", error))),
     }
 }
 

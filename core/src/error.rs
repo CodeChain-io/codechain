@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::fmt;
+use std::io::Error as StdIoError;
 
 use cio::IoError;
 use ckey::{Address, Error as KeyError};
@@ -223,6 +224,12 @@ impl From<ClientError> for Error {
 impl From<IoError> for Error {
     fn from(err: IoError) -> Error {
         Error::Io(err)
+    }
+}
+
+impl From<StdIoError> for Error {
+    fn from(err: StdIoError) -> Self {
+        Self::Io(err.into())
     }
 }
 
