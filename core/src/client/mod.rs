@@ -38,12 +38,12 @@ use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, Header, ShardId, Tracker, TxHash};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use primitives::{Bytes, H160, H256, U256};
 
-use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
+use crate::block::{Block, ClosedBlock, OpenBlock, SealedBlock};
 use crate::blockchain_info::BlockChainInfo;
 use crate::consensus::EngineError;
 use crate::encoded;
@@ -204,7 +204,7 @@ pub trait ImportBlock {
 
     /// Import a trusted bootstrap header into the blockchain
     /// Bootstrap headers don't execute any verifications
-    fn import_bootstrap_header(&self, bytes: &Header) -> Result<BlockHash, BlockImportError>;
+    fn import_bootstrap_block(&self, bytes: &Block) -> Result<BlockHash, BlockImportError>;
 
     /// Import sealed block. Skips all verifications.
     fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult;
