@@ -52,6 +52,7 @@ use crate::encoded;
 use crate::error::{BlockError, Error};
 use crate::snapshot_notify::NotifySender as SnapshotNotifySender;
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::types::BlockStatus;
 use crate::views::BlockView;
 use crate::BlockId;
 use std::cell::Cell;
@@ -958,7 +959,8 @@ impl Worker {
     }
 
     pub fn on_imported_proposal(&mut self, proposal: &Header) {
-        if proposal.number() < 1 {
+        // NOTE: Only the genesis block and the snapshot target don't have the parent in the blockchain
+        if self.client().block_status(&BlockId::Hash(*proposal.parent_hash())) == BlockStatus::Unknown {
             return
         }
 
@@ -1660,11 +1662,11 @@ impl Worker {
         let mut last_term_end = None;
         for block_hash in &enacted {
             let header = c.block_header(&BlockId::Hash(*block_hash)).expect("Block is enacted").decode();
-            if header.number() == 0 {
-                continue
-            }
-            let parent_header =
-                c.block_header(&BlockId::Hash(*header.parent_hash())).expect("Parent block should be enacted").decode();
+            let parent_header = match c.block_header(&BlockId::Hash(*header.parent_hash())) {
+                Some(h) => h.decode(),
+                // NOTE: Only the genesis block and the snapshot target don't have the parent in the blockchain
+                None => continue,
+            };
             let term_common_params = if let Some(p) = c.term_common_params(parent_header.hash().into()) {
                 p
             } else {
