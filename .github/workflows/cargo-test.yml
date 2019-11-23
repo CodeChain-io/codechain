@@ -11,8 +11,8 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2019-11-06
+          components: clippy
           override: true
-      - run: rustup component add clippy
       - run: cargo fetch --verbose
       - run: cargo clippy --all --all-targets -- -D warnings
 
@@ -24,8 +24,8 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2019-11-06
+          components: rustfmt
           override: true
-      - run: rustup component add rustfmt
       - run: cargo fmt -- --check
 
   unit-test:
