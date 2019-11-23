@@ -12,6 +12,7 @@ jobs:
         with:
           toolchain: nightly-2019-11-06
           components: clippy
+          profile: minimal
           override: true
       - run: cargo fetch --verbose
       - run: cargo clippy --all --all-targets -- -D warnings
@@ -25,6 +26,7 @@ jobs:
         with:
           toolchain: nightly-2019-11-06
           components: rustfmt
+          profile: minimal
           override: true
       - run: cargo fmt -- --check
 
@@ -39,6 +41,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: 1.39.0
+          profile: minimal
           override: true
       - run: cargo fetch --verbose
       - run: cargo build
