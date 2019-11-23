@@ -12,6 +12,8 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: 1.39.0
