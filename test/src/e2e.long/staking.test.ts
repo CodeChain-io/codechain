@@ -15,11 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
-import {
-    H256,
-    PlatformAddress,
-    PlatformAddressValue
-} from "codechain-primitives/lib";
+import { H256, PlatformAddress } from "codechain-primitives/lib";
 import { toHex } from "codechain-sdk/lib/utils";
 import "mocha";
 import {
