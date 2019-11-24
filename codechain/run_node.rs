@@ -320,17 +320,17 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
         }
     };
 
-    let rpc_apis_deps = Arc::new(ApiDependencies {
+    let rpc_apis_deps = ApiDependencies {
         client: client.client(),
         miner: Arc::clone(&miner),
         network_control: Arc::clone(&network_service),
         account_provider: ap,
         block_sync: maybe_sync_sender,
-    });
+    };
 
     let rpc_server = {
         if !config.rpc.disable.unwrap() {
-            Some(rpc_http_start(config.rpc_http_config(), config.rpc.enable_devel_api, &*rpc_apis_deps)?)
+            Some(rpc_http_start(config.rpc_http_config(), config.rpc.enable_devel_api, &rpc_apis_deps)?)
         } else {
             None
         }
@@ -338,7 +338,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
     let ipc_server = {
         if !config.ipc.disable.unwrap() {
-            Some(rpc_ipc_start(&config.rpc_ipc_config(), config.rpc.enable_devel_api, &*rpc_apis_deps)?)
+            Some(rpc_ipc_start(&config.rpc_ipc_config(), config.rpc.enable_devel_api, &rpc_apis_deps)?)
         } else {
             None
         }
@@ -346,7 +346,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
 
     let ws_server = {
         if !config.ws.disable.unwrap() {
-            Some(rpc_ws_start(&config.rpc_ws_config(), config.rpc.enable_devel_api, &*rpc_apis_deps)?)
+            Some(rpc_ws_start(&config.rpc_ws_config(), config.rpc.enable_devel_api, &rpc_apis_deps)?)
         } else {
             None
         }

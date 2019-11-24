@@ -77,7 +77,7 @@ impl Stratum {
         addr: &SocketAddr,
         dispatcher: Arc<dyn JobDispatcher>,
         secret: Option<H256>,
-    ) -> Result<Arc<Stratum>, Error> {
+    ) -> Result<Stratum, Error> {
         let implementation = Arc::new(StratumImpl {
             subscribers: RwLock::new(Vec::new()),
             job_que: RwLock::new(HashSet::new()),
@@ -99,11 +99,11 @@ impl Stratum {
         let server_builder = server_builder.session_meta_extractor(PeerMetaExtractor::new(tcp_dispatcher.clone()));
         let server = server_builder.start(addr)?;
 
-        let stratum = Arc::new(Stratum {
+        let stratum = Stratum {
             rpc_server: Some(server),
             implementation,
             tcp_dispatcher,
-        });
+        };
 
         Ok(stratum)
     }

@@ -87,7 +87,7 @@ impl StratumJobDispatcher {
 /// Wrapper for dedicated stratum service
 pub struct Stratum {
     dispatcher: Arc<StratumJobDispatcher>,
-    service: Arc<StratumService>,
+    service: StratumService,
 }
 
 #[derive(Debug)]
