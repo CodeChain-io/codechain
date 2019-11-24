@@ -244,15 +244,13 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             .subsec_nanos() as usize,
     );
     let email_alarm = if !config.email_alarm.disable.unwrap() {
-        match (&config.email_alarm.to, &config.email_alarm.sendgrid_key) {
-            (Some(to), Some(sendgrid_key)) => Some(EmailAlarm::new(
-                to.to_string(),
-                sendgrid_key.to_string(),
-                scheme.genesis_params().network_id().to_string(),
-            )),
-            (None, _) => return Err("email-alarm-to is not specified".to_string()),
-            (_, None) => return Err("email-alarm-sendgrid-key is not specified".to_string()),
-        }
+        let to = config.email_alarm.to.clone().ok_or_else(|| "email-alarm-to is not specified".to_string())?;
+        let sendgrid_key = config
+            .email_alarm
+            .sendgrid_key
+            .clone()
+            .ok_or_else(|| "email-alarm-sendgrid-key is not specified".to_string())?;
+        Some(EmailAlarm::new(to, sendgrid_key, scheme.genesis_params().network_id().to_string()))
     } else {
         None
     };
