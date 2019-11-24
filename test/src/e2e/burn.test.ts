@@ -16,7 +16,6 @@
 
 import { expect } from "chai";
 import "mocha";
-import { faucetAddress } from "../helper/constants";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
 

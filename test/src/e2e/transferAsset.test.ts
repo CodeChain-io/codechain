@@ -28,7 +28,6 @@ import { P2PKH } from "codechain-sdk/lib/key/P2PKH";
 import { blake160 } from "codechain-sdk/lib/utils";
 import * as _ from "lodash";
 import "mocha";
-import { aliceAddress, faucetAddress } from "../helper/constants";
 import { ERROR } from "../helper/error";
 import CodeChain from "../helper/spawn";
 
