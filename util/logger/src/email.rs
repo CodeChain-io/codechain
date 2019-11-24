@@ -1,21 +1,5 @@
 use ::sendgrid::v3 as sendgrid;
 
-pub struct EmailAlarmConfig {
-    to: String,
-    sendgrid_key: String,
-    network_id: String,
-}
-
-impl EmailAlarmConfig {
-    pub fn new(to: String, sendgrid_key: String, network_id: String) -> Self {
-        Self {
-            to,
-            sendgrid_key,
-            network_id,
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct EmailAlarm {
     to: String,
@@ -24,11 +8,11 @@ pub struct EmailAlarm {
 }
 
 impl EmailAlarm {
-    pub fn new(config: EmailAlarmConfig) -> Self {
+    pub fn new(to: String, sendgrid_key: String, network_id: String) -> Self {
         Self {
-            to: config.to,
-            sendgrid_key: config.sendgrid_key,
-            network_id: config.network_id,
+            to,
+            sendgrid_key,
+            network_id,
         }
     }
 

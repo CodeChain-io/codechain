@@ -52,4 +52,4 @@ lazy_static! {
     pub static ref SLOGGER: StructuredLogger = StructuredLogger::create();
 }
 
-pub use email::{EmailAlarm, EmailAlarmConfig};
+pub use email::EmailAlarm;
