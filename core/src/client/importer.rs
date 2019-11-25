@@ -17,7 +17,6 @@
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use std::time::Instant;
 
 use cio::IoChannel;
 use ctypes::header::Header;
@@ -88,7 +87,7 @@ impl Importer {
 
     /// This is triggered by a message coming from a block queue when the block is ready for insertion
     pub fn import_verified_blocks(&self, client: &Client) -> usize {
-        let (imported_blocks, import_results, invalid_blocks, imported, duration, is_empty) = {
+        let (imported_blocks, import_results, invalid_blocks, imported, is_empty) = {
             const MAX_BLOCKS_TO_IMPORT: usize = 1_000;
             let mut imported_blocks = Vec::with_capacity(MAX_BLOCKS_TO_IMPORT);
             let mut invalid_blocks = HashSet::new();
@@ -104,8 +103,6 @@ impl Importer {
                 let headers: Vec<&Header> = blocks.iter().map(|block| &block.header).collect();
                 self.import_headers(headers, client, &import_lock);
             }
-
-            let start = Instant::now();
 
             for block in blocks {
                 let header = &block.header;
@@ -131,11 +128,7 @@ impl Importer {
                 self.block_queue.mark_as_bad(&invalid_blocks);
             }
             let is_empty = self.block_queue.mark_as_good(&imported_blocks);
-            let duration_ns = {
-                let elapsed = start.elapsed();
-                elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
-            };
-            (imported_blocks, import_results, invalid_blocks, imported, duration_ns, is_empty)
+            (imported_blocks, import_results, invalid_blocks, imported, is_empty)
         };
 
         {
@@ -145,7 +138,7 @@ impl Importer {
                 }
                 let (enacted, retracted) = self.calculate_enacted_retracted(&import_results);
                 self.miner.chain_new_blocks(client, &imported_blocks, &invalid_blocks, &enacted, &retracted);
-                client.new_blocks(&imported_blocks, &invalid_blocks, &enacted, &retracted, &[], duration);
+                client.new_blocks(&imported_blocks, &invalid_blocks, &enacted, &retracted, &[]);
             }
         }
 
@@ -361,7 +354,6 @@ impl Importer {
             &enacted,
             &retracted,
             &[],
-            0,
             best_proposal_header_changed,
         );
 

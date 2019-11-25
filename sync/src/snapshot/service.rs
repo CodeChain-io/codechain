@@ -52,7 +52,6 @@ impl ChainNotify for Service {
         enacted: Vec<BlockHash>,
         _retracted: Vec<BlockHash>,
         _sealed: Vec<BlockHash>,
-        _duration: u64,
     ) {
         let best_number = self.client.chain_info().best_block_number;
         let is_checkpoint = enacted
