@@ -8,11 +8,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2019-11-06
+          components: clippy
+          profile: minimal
           override: true
-      - run: rustup component add clippy
       - run: cargo fetch --verbose
       - run: cargo clippy --all --all-targets -- -D warnings
 
@@ -21,11 +24,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2019-11-06
+          components: rustfmt
+          profile: minimal
           override: true
-      - run: rustup component add rustfmt
       - run: cargo fmt -- --check
 
   unit-test:
@@ -36,9 +42,12 @@ jobs:
         os: [macOS-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: 1.39.0
+          profile: minimal
           override: true
       - run: cargo fetch --verbose
       - run: cargo build

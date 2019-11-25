@@ -693,10 +693,12 @@ export default class CodeChain {
                 : options.seq;
 
         const blockNumber = await this.getBestBlockNumber();
-        const signedDummyTxHash = (await this.sendPayTx({
-            seq,
-            quantity: 1
-        })).hash();
+        const signedDummyTxHash = (
+            await this.sendPayTx({
+                seq,
+                quantity: 1
+            })
+        ).hash();
         const targetTxHash = await this.sendAssetTransaction(tx, {
             seq: seq + 1
         });
@@ -727,9 +729,11 @@ export default class CodeChain {
         await this.sdk.rpc.devel.stopSealing();
 
         const blockNumber = await this.getBestBlockNumber();
-        const signedDummyTxHash = (await this.sendPayTx({
-            quantity: 1
-        })).hash();
+        const signedDummyTxHash = (
+            await this.sendPayTx({
+                quantity: 1
+            })
+        ).hash();
         const targetTxHash = await this.sendTransaction(tx, { account });
 
         await this.sdk.rpc.devel.startSealing();
@@ -756,10 +760,12 @@ export default class CodeChain {
         await this.sdk.rpc.devel.stopSealing();
 
         const blockNumber = await this.getBestBlockNumber();
-        const signedDummyTxHash = (await this.sendPayTx({
-            fee: 1000,
-            quantity: 1
-        })).hash();
+        const signedDummyTxHash = (
+            await this.sendPayTx({
+                fee: 1000,
+                quantity: 1
+            })
+        ).hash();
 
         const targetTxHash =
             tx instanceof SignedTransaction
