@@ -64,6 +64,8 @@ pub struct CommonParams {
     delegation_threshold: u64,
     min_deposit: u64,
     max_candidate_metadata_size: usize,
+
+    era: u64,
 }
 
 impl CommonParams {
@@ -170,6 +172,10 @@ impl CommonParams {
         self.max_candidate_metadata_size
     }
 
+    pub fn era(&self) -> u64 {
+        self.era
+    }
+
     pub fn verify(&self) -> Result<(), String> {
         if self.term_seconds != 0 {
             if self.nomination_expiration == 0 {
@@ -218,13 +224,21 @@ impl CommonParams {
 
 const DEFAULT_PARAMS_SIZE: usize = 23;
 const NUMBER_OF_STAKE_PARAMS: usize = 9;
+const NUMBER_OF_ERA_PARAMS: usize = 1;
+const STAKE_PARAM_SIZE: usize = DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS;
+const ERA_PARAM_SIZE: usize = STAKE_PARAM_SIZE + NUMBER_OF_ERA_PARAMS;
+
+const VALID_SIZE: &[usize] = &[DEFAULT_PARAMS_SIZE, STAKE_PARAM_SIZE, ERA_PARAM_SIZE];
 
 impl From<Params> for CommonParams {
     fn from(p: Params) -> Self {
-        let mut size = DEFAULT_PARAMS_SIZE;
-        if p.term_seconds.is_some() {
-            size += NUMBER_OF_STAKE_PARAMS;
-        }
+        let size = if p.era.is_some() {
+            ERA_PARAM_SIZE
+        } else if p.term_seconds.is_some() {
+            STAKE_PARAM_SIZE
+        } else {
+            DEFAULT_PARAMS_SIZE
+        };
         Self {
             size,
             max_extra_data_size: p.max_extra_data_size.into(),
@@ -259,6 +273,7 @@ impl From<Params> for CommonParams {
             delegation_threshold: p.delegation_threshold.map(From::from).unwrap_or_default(),
             min_deposit: p.min_deposit.map(From::from).unwrap_or_default(),
             max_candidate_metadata_size: p.max_candidate_metadata_size.map(From::from).unwrap_or_default(),
+            era: p.era.map(From::from).unwrap_or_default(),
         }
     }
 }
@@ -292,7 +307,7 @@ impl From<CommonParams> for Params {
             snapshot_period: p.snapshot_period().into(),
             ..Default::default()
         };
-        if p.size == DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS {
+        if p.size >= STAKE_PARAM_SIZE {
             result.term_seconds = Some(p.term_seconds().into());
             result.nomination_expiration = Some(p.nomination_expiration().into());
             result.custody_period = Some(p.custody_period().into());
@@ -303,13 +318,15 @@ impl From<CommonParams> for Params {
             result.min_deposit = Some(p.min_deposit().into());
             result.max_candidate_metadata_size = Some(p.max_candidate_metadata_size().into());
         }
+        if p.size >= ERA_PARAM_SIZE {
+            result.era = Some(p.era().into());
+        }
         result
     }
 }
 
 impl Encodable for CommonParams {
     fn rlp_append(&self, s: &mut RlpStream) {
-        const VALID_SIZE: &[usize] = &[DEFAULT_PARAMS_SIZE, DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS];
         assert!(VALID_SIZE.contains(&self.size), "{} must be in {:?}", self.size, VALID_SIZE);
         s.begin_list(self.size)
             .append(&self.max_extra_data_size)
@@ -335,7 +352,7 @@ impl Encodable for CommonParams {
             .append(&self.min_asset_unwrap_ccc_cost)
             .append(&self.max_body_size)
             .append(&self.snapshot_period);
-        if self.size == DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS {
+        if self.size >= STAKE_PARAM_SIZE {
             s.append(&self.term_seconds)
                 .append(&self.nomination_expiration)
                 .append(&self.custody_period)
@@ -346,13 +363,15 @@ impl Encodable for CommonParams {
                 .append(&self.min_deposit)
                 .append(&self.max_candidate_metadata_size);
         }
+        if self.size >= ERA_PARAM_SIZE {
+            s.append(&self.era);
+        }
     }
 }
 
 impl Decodable for CommonParams {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let size = rlp.item_count()?;
-        const VALID_SIZE: &[usize] = &[DEFAULT_PARAMS_SIZE, DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS];
         if !VALID_SIZE.contains(&size) {
             return Err(DecoderError::RlpIncorrectListLen {
                 expected: DEFAULT_PARAMS_SIZE,
@@ -394,7 +413,7 @@ impl Decodable for CommonParams {
             delegation_threshold,
             min_deposit,
             max_candidate_metadata_size,
-        ) = if size >= DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS {
+        ) = if size >= STAKE_PARAM_SIZE {
             (
                 rlp.val_at(23)?,
                 rlp.val_at(24)?,
@@ -409,6 +428,13 @@ impl Decodable for CommonParams {
         } else {
             Default::default()
         };
+
+        let era = if size >= ERA_PARAM_SIZE {
+            rlp.val_at(32)?
+        } else {
+            Default::default()
+        };
+
         Ok(Self {
             size,
             max_extra_data_size,
@@ -443,6 +469,7 @@ impl Decodable for CommonParams {
             delegation_threshold,
             min_deposit,
             max_candidate_metadata_size,
+            era,
         })
     }
 }
@@ -514,7 +541,7 @@ mod tests {
     #[test]
     fn rlp_with_extra_fields() {
         let mut params = CommonParams::default_for_test();
-        params.size = DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS;
+        params.size = ERA_PARAM_SIZE;
         params.term_seconds = 100;
         params.min_deposit = 123;
         rlp_encode_and_decode_test!(params);
@@ -524,7 +551,7 @@ mod tests {
     fn rlp_encoding_are_different_if_the_size_are_different() {
         let origin = CommonParams::default_for_test();
         let mut params = origin;
-        params.size = DEFAULT_PARAMS_SIZE + NUMBER_OF_STAKE_PARAMS;
+        params.size = ERA_PARAM_SIZE;
         assert_ne!(rlp::encode(&origin), rlp::encode(&params));
     }
 
@@ -591,6 +618,7 @@ mod tests {
         assert_eq!(deserialized.delegation_threshold, 0);
         assert_eq!(deserialized.min_deposit, 0);
         assert_eq!(deserialized.max_candidate_metadata_size, 0);
+        assert_eq!(deserialized.era, 0);
 
         assert_eq!(params, deserialized.into());
     }
@@ -627,6 +655,7 @@ mod tests {
 
         let params = serde_json::from_str::<Params>(s).unwrap();
         let deserialized = CommonParams::from(params.clone());
+        assert_eq!(deserialized.size, STAKE_PARAM_SIZE);
         assert_eq!(deserialized.max_extra_data_size, 0x20);
         assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400);
         assert_eq!(deserialized.max_transfer_metadata_size, 0x0100);
@@ -659,6 +688,7 @@ mod tests {
         assert_eq!(deserialized.delegation_threshold, 0);
         assert_eq!(deserialized.min_deposit, 0);
         assert_eq!(deserialized.max_candidate_metadata_size, 0);
+        assert_eq!(deserialized.era, 0);
 
         assert_eq!(
             Params {
@@ -670,6 +700,7 @@ mod tests {
                 delegation_threshold: Some(0.into()),
                 min_deposit: Some(0.into()),
                 max_candidate_metadata_size: Some(0.into()),
+                era: None,
                 ..params
             },
             deserialized.into(),
@@ -716,6 +747,7 @@ mod tests {
         }"#;
         let params = serde_json::from_str::<Params>(s).unwrap();
         let deserialized = CommonParams::from(params.clone());
+        assert_eq!(deserialized.size, STAKE_PARAM_SIZE);
         assert_eq!(deserialized.max_extra_data_size, 0x20);
         assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400);
         assert_eq!(deserialized.max_transfer_metadata_size, 0x0100);
@@ -748,6 +780,85 @@ mod tests {
         assert_eq!(deserialized.delegation_threshold, 31);
         assert_eq!(deserialized.min_deposit, 32);
         assert_eq!(deserialized.max_candidate_metadata_size, 33);
+        assert_eq!(deserialized.era, 0);
+
+        assert_eq!(params, deserialized.into());
+    }
+
+    #[test]
+    #[allow(clippy::cognitive_complexity)]
+    fn params_from_json_with_era() {
+        let s = r#"{
+            "maxExtraDataSize": "0x20",
+            "maxAssetSchemeMetadataSize": "0x0400",
+            "maxTransferMetadataSize": "0x0100",
+            "maxTextContentSize": "0x0200",
+            "networkID" : "tc",
+            "minPayCost" : 10,
+            "minSetRegularKeyCost" : 11,
+            "minCreateShardCost" : 12,
+            "minSetShardOwnersCost" : 13,
+            "minSetShardUsersCost" : 14,
+            "minWrapCccCost" : 15,
+            "minCustomCost" : 16,
+            "minStoreCost" : 17,
+            "minRemoveCost" : 18,
+            "minMintAssetCost" : 19,
+            "minTransferAssetCost" : 20,
+            "minChangeAssetSchemeCost" : 21,
+            "minComposeAssetCost" : 22,
+            "minDecomposeAssetCost" : 23,
+            "minUnwrapCccCost" : 24,
+            "minIncreaseAssetSupplyCost": 25,
+            "maxBodySize" : 4194304,
+            "snapshotPeriod": 16384,
+            "termSeconds": 3600,
+            "nominationExpiration": 26,
+            "custodyPeriod": 27,
+            "releasePeriod": 28,
+            "maxNumOfValidators": 29,
+            "minNumOfValidators": 30,
+            "delegationThreshold": 31,
+            "minDeposit": 32,
+            "maxCandidateMetadataSize": 33,
+            "era": 34
+        }"#;
+        let params = serde_json::from_str::<Params>(s).unwrap();
+        let deserialized = CommonParams::from(params.clone());
+        assert_eq!(deserialized.size, ERA_PARAM_SIZE);
+        assert_eq!(deserialized.max_extra_data_size, 0x20);
+        assert_eq!(deserialized.max_asset_scheme_metadata_size, 0x0400);
+        assert_eq!(deserialized.max_transfer_metadata_size, 0x0100);
+        assert_eq!(deserialized.max_text_content_size, 0x0200);
+        assert_eq!(deserialized.network_id, "tc".into());
+        assert_eq!(deserialized.min_pay_transaction_cost, 10);
+        assert_eq!(deserialized.min_set_regular_key_transaction_cost, 11);
+        assert_eq!(deserialized.min_create_shard_transaction_cost, 12);
+        assert_eq!(deserialized.min_set_shard_owners_transaction_cost, 13);
+        assert_eq!(deserialized.min_set_shard_users_transaction_cost, 14);
+        assert_eq!(deserialized.min_wrap_ccc_transaction_cost, 15);
+        assert_eq!(deserialized.min_custom_transaction_cost, 16);
+        assert_eq!(deserialized.min_store_transaction_cost, 17);
+        assert_eq!(deserialized.min_remove_transaction_cost, 18);
+        assert_eq!(deserialized.min_asset_mint_cost, 19);
+        assert_eq!(deserialized.min_asset_transfer_cost, 20);
+        assert_eq!(deserialized.min_asset_scheme_change_cost, 21);
+        assert_eq!(deserialized.min_asset_compose_cost, 22);
+        assert_eq!(deserialized.min_asset_decompose_cost, 23);
+        assert_eq!(deserialized.min_asset_unwrap_ccc_cost, 24);
+        assert_eq!(deserialized.min_asset_supply_increase_cost, 25);
+        assert_eq!(deserialized.max_body_size, 4_194_304);
+        assert_eq!(deserialized.snapshot_period, 16_384);
+        assert_eq!(deserialized.term_seconds, 3600);
+        assert_eq!(deserialized.nomination_expiration, 26);
+        assert_eq!(deserialized.custody_period, 27);
+        assert_eq!(deserialized.release_period, 28);
+        assert_eq!(deserialized.max_num_of_validators, 29);
+        assert_eq!(deserialized.min_num_of_validators, 30);
+        assert_eq!(deserialized.delegation_threshold, 31);
+        assert_eq!(deserialized.min_deposit, 32);
+        assert_eq!(deserialized.max_candidate_metadata_size, 33);
+        assert_eq!(deserialized.era, 34);
 
         assert_eq!(params, deserialized.into());
     }
