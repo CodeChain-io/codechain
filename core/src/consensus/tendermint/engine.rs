@@ -173,8 +173,7 @@ impl ConsensusEngine for Tendermint {
             return Ok(())
         }
 
-        let block_author = *block.header().author();
-        stake::update_validator_weights(&mut block.state_mut(), &block_author)?;
+        stake::update_validator_weights(&mut block.state_mut(), &author)?;
 
         stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
 
