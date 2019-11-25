@@ -27,7 +27,6 @@ pub trait ChainNotify: Send + Sync {
         _enacted: Vec<BlockHash>,
         _retracted: Vec<BlockHash>,
         _sealed: Vec<BlockHash>,
-        _duration: u64,
         _new_best_proposal: Option<BlockHash>,
     ) {
         // does nothing by default
@@ -41,7 +40,6 @@ pub trait ChainNotify: Send + Sync {
         _enacted: Vec<BlockHash>,
         _retracted: Vec<BlockHash>,
         _sealed: Vec<BlockHash>,
-        _duration: u64,
     ) {
         // does nothing by default
     }

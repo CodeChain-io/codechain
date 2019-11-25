@@ -41,7 +41,6 @@ impl ChainNotify for TendermintChainNotify {
         enacted: Vec<BlockHash>,
         _retracted: Vec<BlockHash>,
         _sealed: Vec<BlockHash>,
-        _duration: u64,
     ) {
         self.inner
             .send(worker::Event::NewBlocks {
