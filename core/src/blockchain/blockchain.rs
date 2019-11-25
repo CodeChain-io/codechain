@@ -110,7 +110,11 @@ impl BlockChain {
         }
     }
 
-    pub fn insert_bootstrap_block(&self, batch: &mut DBTransaction, bytes: &[u8]) {
+    pub fn insert_floating_header(&self, batch: &mut DBTransaction, header: &HeaderView) {
+        self.headerchain.insert_floating_header(batch, header);
+    }
+
+    pub fn insert_floating_block(&self, batch: &mut DBTransaction, bytes: &[u8]) {
         let block = BlockView::new(bytes);
         let header = block.header_view();
         let hash = header.hash();
@@ -122,20 +126,27 @@ impl BlockChain {
             return
         }
 
+        self.insert_floating_header(batch, &header);
+        self.body_db.insert_body(batch, &block);
+    }
+
+    pub fn force_update_best_block(&self, batch: &mut DBTransaction, hash: &BlockHash) {
+        ctrace!(BLOCKCHAIN, "Forcefully updating the best block to {}", hash);
+
+        assert!(self.is_known(hash));
         assert!(self.pending_best_block_hash.read().is_none());
         assert!(self.pending_best_proposal_block_hash.read().is_none());
 
-        self.headerchain.insert_bootstrap_header(batch, &header);
-        self.body_db.insert_body(batch, &block);
+        let block = self.block(hash).expect("Target block is known");
+        self.headerchain.force_update_best_header(batch, hash);
         self.body_db.update_best_block(batch, &BestBlockChanged::CanonChainAppended {
-            best_block: bytes.to_vec(),
+            best_block: block.into_inner(),
         });
 
-        *self.pending_best_block_hash.write() = Some(hash);
-        batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &hash);
-
-        *self.pending_best_proposal_block_hash.write() = Some(hash);
-        batch.put(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY, &hash);
+        batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, hash);
+        *self.pending_best_block_hash.write() = Some(*hash);
+        batch.put(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY, hash);
+        *self.pending_best_proposal_block_hash.write() = Some(*hash);
     }
 
     /// Inserts the block into backing cache database.

@@ -371,16 +371,33 @@ impl Importer {
         imported.len()
     }
 
-    pub fn import_bootstrap_block<'a>(&'a self, block: &'a Block, client: &Client, _importer_lock: &MutexGuard<()>) {
+    pub fn import_trusted_header<'a>(&'a self, header: &'a Header, client: &Client, _importer_lock: &MutexGuard<()>) {
+        let hash = header.hash();
+        ctrace!(CLIENT, "Importing trusted header #{}-{:?}", header.number(), hash);
+
+        {
+            let chain = client.block_chain();
+            let mut batch = DBTransaction::new();
+            chain.insert_floating_header(&mut batch, &HeaderView::new(&header.rlp_bytes()));
+            client.db().write_buffered(batch);
+            chain.commit();
+        }
+        client.new_headers(&[hash], &[], &[], &[], &[], 0, None);
+
+        client.db().flush().expect("DB flush failed.");
+    }
+
+    pub fn import_trusted_block<'a>(&'a self, block: &'a Block, client: &Client, importer_lock: &MutexGuard<()>) {
         let header = &block.header;
         let hash = header.hash();
-        ctrace!(CLIENT, "Importing bootstrap block #{}-{:?}", header.number(), hash);
+        ctrace!(CLIENT, "Importing trusted block #{}-{:?}", header.number(), hash);
 
+        self.import_trusted_header(header, client, importer_lock);
         let start = Instant::now();
         {
             let chain = client.block_chain();
             let mut batch = DBTransaction::new();
-            chain.insert_bootstrap_block(&mut batch, &block.rlp_bytes(&Seal::With));
+            chain.insert_floating_block(&mut batch, &block.rlp_bytes(&Seal::With));
             client.db().write_buffered(batch);
             chain.commit();
         }
@@ -388,9 +405,18 @@ impl Importer {
             let elapsed = start.elapsed();
             elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
         };
-        client.new_headers(&[hash], &[], &[hash], &[], &[], 0, Some(hash));
-        self.miner.chain_new_blocks(client, &[hash], &[], &[hash], &[]);
-        client.new_blocks(&[hash], &[], &[hash], &[], &[], duration);
+        self.miner.chain_new_blocks(client, &[hash], &[], &[], &[]);
+        client.new_blocks(&[hash], &[], &[], &[], &[], duration);
+
+        client.db().flush().expect("DB flush failed.");
+    }
+
+    pub fn force_update_best_block(&self, hash: &BlockHash, client: &Client) {
+        let chain = client.block_chain();
+        let mut batch = DBTransaction::new();
+        chain.force_update_best_block(&mut batch, hash);
+        client.db().write_buffered(batch);
+        chain.commit();
 
         client.db().flush().expect("DB flush failed.");
     }

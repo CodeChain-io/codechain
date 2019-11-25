@@ -27,6 +27,7 @@ use cstate::{
     ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
 };
 use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
+use ctypes::header::Header;
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
@@ -664,13 +665,26 @@ impl ImportBlock for Client {
         Ok(self.importer.header_queue.import(unverified)?)
     }
 
-    fn import_bootstrap_block(&self, block: &Block) -> Result<BlockHash, BlockImportError> {
+    fn import_trusted_header(&self, header: &Header) -> Result<BlockHash, BlockImportError> {
+        if self.block_chain().is_known_header(&header.hash()) {
+            return Err(BlockImportError::Import(ImportError::AlreadyInChain))
+        }
+        let import_lock = self.importer.import_lock.lock();
+        self.importer.import_trusted_header(header, self, &import_lock);
+        Ok(header.hash())
+    }
+
+    fn import_trusted_block(&self, block: &Block) -> Result<BlockHash, BlockImportError> {
         if self.block_chain().is_known(&block.header.hash()) {
             return Err(BlockImportError::Import(ImportError::AlreadyInChain))
         }
         let import_lock = self.importer.import_lock.lock();
-        self.importer.import_bootstrap_block(block, self, &import_lock);
+        self.importer.import_trusted_block(block, self, &import_lock);
         Ok(block.header.hash())
+    }
+
+    fn force_update_best_block(&self, hash: &BlockHash) {
+        self.importer.force_update_best_block(hash, self)
     }
 
     fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult {
