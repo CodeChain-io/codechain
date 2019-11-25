@@ -182,14 +182,10 @@ impl ConsensusEngine for Tendermint {
             return Ok(())
         }
 
-        match term {
-            0 => {
-                // First term change
-                stake::on_term_close(block.state_mut(), block_number, &[])?;
-            }
+        let inactive_validators = match term {
+            0 => Vec::new(),
             _ => {
                 let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
-
                 let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
                 let client = self
                     .client
@@ -199,15 +195,7 @@ impl ConsensusEngine for Tendermint {
                     .upgrade()
                     .ok_or(EngineError::CannotOpenBlock)?;
 
-                let inactive_validators = if term == 1 {
-                    assert!(rewards.is_empty());
-
-                    let validators = stake::Validators::load_from_state(block.state())?
-                        .into_iter()
-                        .map(|val| public_to_address(val.pubkey()))
-                        .collect();
-                    inactive_validators(&*client, start_of_the_current_term, block.header(), validators)
-                } else {
+                if term > 1 {
                     let start_of_the_previous_term = {
                         let end_of_the_two_level_previous_term = client
                             .last_term_finished_block_num((metadata.last_term_finished_block_num() - 1).into())
@@ -236,18 +224,20 @@ impl ConsensusEngine for Tendermint {
                     for (address, reward) in pending_rewards {
                         self.machine.add_balance(block, &address, reward)?;
                     }
-
-                    let validators = stake::Validators::load_from_state(block.state())?
-                        .into_iter()
-                        .map(|val| public_to_address(val.pubkey()))
-                        .collect();
-                    inactive_validators(&*client, start_of_the_current_term, block.header(), validators)
-                };
+                }
 
                 stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
-                stake::on_term_close(block.state_mut(), block_number, &inactive_validators)?;
+
+                let validators = stake::Validators::load_from_state(block.state())?
+                    .into_iter()
+                    .map(|val| public_to_address(val.pubkey()))
+                    .collect();
+                inactive_validators(&*client, start_of_the_current_term, block.header(), validators)
             }
-        }
+        };
+
+        stake::on_term_close(block.state_mut(), block_number, &inactive_validators)?;
+
         Ok(())
     }
 
