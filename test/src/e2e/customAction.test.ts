@@ -20,7 +20,6 @@ import * as chaiAsPromised from "chai-as-promised";
 import { toHex } from "codechain-primitives/lib";
 import "mocha";
 import {
-    bobAddress,
     faucetAddress,
     faucetSecret,
     hitActionHandlerId

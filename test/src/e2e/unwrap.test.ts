@@ -82,9 +82,9 @@ describe("Unwrap CCC", function() {
             expect(await node.sdk.rpc.chain.getTransaction(hash)).not.null;
             expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
             expect(
-                (await node.sdk.rpc.chain.getBalance(
-                    aliceAddress
-                )).toEncodeObject()
+                (
+                    await node.sdk.rpc.chain.getBalance(aliceAddress)
+                ).toEncodeObject()
             ).eq(
                 U64.plus(
                     beforeAliceBalance,
@@ -162,9 +162,9 @@ describe("Unwrap CCC", function() {
             expect(await node.sdk.rpc.chain.containsTransaction(hash2)).be.true;
 
             expect(
-                (await node.sdk.rpc.chain.getBalance(
-                    aliceAddress
-                )).toEncodeObject()
+                (
+                    await node.sdk.rpc.chain.getBalance(aliceAddress)
+                ).toEncodeObject()
             ).eq(
                 U64.plus(beforeAliceBalance, asset2!.quantity)
                     .plus(2 /* stake share */)
@@ -209,9 +209,9 @@ describe("Unwrap CCC", function() {
                 expect(e).is.similarTo(ERROR.INVALID_TX_ASSET_TYPE);
             }
             expect(
-                (await node.sdk.rpc.chain.getBalance(
-                    aliceAddress
-                )).toEncodeObject()
+                (
+                    await node.sdk.rpc.chain.getBalance(aliceAddress)
+                ).toEncodeObject()
             ).eq(beforeAliceBalance.toEncodeObject());
         });
     });
