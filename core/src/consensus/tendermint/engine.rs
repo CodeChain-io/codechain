@@ -173,7 +173,7 @@ impl ConsensusEngine for Tendermint {
                 self.machine.add_balance(block, &author, block_author_reward)?;
             }
             _ => {
-                stake::update_validator_weights(&mut block.state_mut(), &author)?;
+                stake::update_validator_weights(block.state_mut(), &author)?;
                 stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
             }
         }
@@ -185,7 +185,7 @@ impl ConsensusEngine for Tendermint {
         let inactive_validators = match term {
             0 => Vec::new(),
             _ => {
-                let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
+                let rewards = stake::drain_previous_rewards(block.state_mut())?;
                 let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
                 let client = self
                     .client
@@ -226,7 +226,7 @@ impl ConsensusEngine for Tendermint {
                     }
                 }
 
-                stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
+                stake::move_current_to_previous_intermediate_rewards(block.state_mut())?;
 
                 let validators = stake::Validators::load_from_state(block.state())?
                     .into_iter()
