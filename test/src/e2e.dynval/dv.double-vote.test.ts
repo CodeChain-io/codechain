@@ -121,9 +121,10 @@ async function expectPossibleAuthors(
     expected: Signer[],
     blockNumber?: number
 ) {
-    const authors = (await stake.getPossibleAuthors(sdk, blockNumber))!.map(
-        author => author.toString()
-    );
+    const authors = (await stake.getPossibleAuthors(
+        sdk,
+        blockNumber
+    ))!.map(author => author.toString());
     expect(authors)
         .to.have.lengthOf(expected.length)
         .and.to.include.members(
@@ -133,15 +134,13 @@ async function expectPossibleAuthors(
 
 // FIXME: neeeds to use common refactored function when gets banned state accounts
 async function ensureAliceIsBanned(sdk: SDK, blockNumber: number) {
-    const bannedAfter = (await stake.getBanned(sdk, blockNumber)).map(
-        platformAddr => platformAddr.toString()
-    );
+    const bannedAfter = (
+        await stake.getBanned(sdk, blockNumber)
+    ).map(platformAddr => platformAddr.toString());
     expect(bannedAfter).to.includes(alice.platformAddress.toString());
-    const delegteesAfter = (await stake.getDelegations(
-        sdk,
-        faucetAddress,
-        blockNumber
-    )).map(delegation => delegation.delegatee.toString());
+    const delegteesAfter = (
+        await stake.getDelegations(sdk, faucetAddress, blockNumber)
+    ).map(delegation => delegation.delegatee.toString());
     expect(delegteesAfter).not.to.includes(alice.platformAddress.toString());
 }
 
@@ -252,10 +251,9 @@ describe("Report Double Vote", function() {
         });
 
         async function ensureAliceIsJailed(sdk: SDK, bestBlockNumber: number) {
-            const jailedBefore = (await stake.getJailed(
-                sdk,
-                bestBlockNumber
-            )).map(prisoner => prisoner.address.toString());
+            const jailedBefore = (
+                await stake.getJailed(sdk, bestBlockNumber)
+            ).map(prisoner => prisoner.address.toString());
             expect(jailedBefore).to.includes(alice.platformAddress.toString());
         }
 
@@ -263,10 +261,9 @@ describe("Report Double Vote", function() {
             sdk: SDK,
             bestBlockNumber: number
         ) {
-            const jailedAfter = (await stake.getJailed(
-                sdk,
-                bestBlockNumber
-            )).map(prisoner => prisoner.address.toString());
+            const jailedAfter = (
+                await stake.getJailed(sdk, bestBlockNumber)
+            ).map(prisoner => prisoner.address.toString());
             expect(jailedAfter).not.to.includes(
                 alice.platformAddress.toString()
             );
@@ -354,10 +351,9 @@ describe("Report Double Vote", function() {
         });
 
         async function ensureAliceIsACandidate(sdk: SDK, blockNumber?: number) {
-            const candidatesBefore = (await stake.getCandidates(
-                sdk,
-                blockNumber
-            )).map(candidate =>
+            const candidatesBefore = (
+                await stake.getCandidates(sdk, blockNumber)
+            ).map(candidate =>
                 PlatformAddress.fromPublic(candidate.pubkey, {
                     networkId: "tc"
                 }).toString()
@@ -371,10 +367,9 @@ describe("Report Double Vote", function() {
             sdk: SDK,
             blockNumber?: number
         ) {
-            const candidatesAfter = (await stake.getCandidates(
-                sdk,
-                blockNumber
-            )).map(candidate =>
+            const candidatesAfter = (
+                await stake.getCandidates(sdk, blockNumber)
+            ).map(candidate =>
                 PlatformAddress.fromPublic(candidate.pubkey, {
                     networkId: "tc"
                 }).toString()

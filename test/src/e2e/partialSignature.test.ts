@@ -18,17 +18,10 @@ import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
-import {
-    Asset,
-    AssetAddress,
-    H256,
-    Transaction
-} from "codechain-sdk/lib/core/classes";
+import { Asset, AssetAddress, H256 } from "codechain-sdk/lib/core/classes";
 import * as _ from "lodash";
 import "mocha";
-import { faucetAddress } from "../helper/constants";
 import CodeChain from "../helper/spawn";
-import { AssetTransaction } from "codechain-sdk/lib/core/Transaction";
 
 describe("Partial signature", function() {
     let node: CodeChain;
