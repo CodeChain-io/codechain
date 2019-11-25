@@ -37,6 +37,7 @@ use ckey::{Address, NetworkId, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
+use ctypes::header::Header;
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
@@ -202,9 +203,16 @@ pub trait ImportBlock {
     /// Import a header into the blockchain
     fn import_header(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError>;
 
-    /// Import a trusted bootstrap header into the blockchain
-    /// Bootstrap headers don't execute any verifications
-    fn import_bootstrap_block(&self, bytes: &Block) -> Result<BlockHash, BlockImportError>;
+    /// Import a trusted header into the blockchain
+    /// Trusted header doesn't go through any verifications and doesn't update the best header
+    fn import_trusted_header(&self, header: &Header) -> Result<BlockHash, BlockImportError>;
+
+    /// Import a trusted block into the blockchain
+    /// Trusted block doesn't go through any verifications and doesn't update the best block
+    fn import_trusted_block(&self, block: &Block) -> Result<BlockHash, BlockImportError>;
+
+    /// Forcefully update the best block
+    fn force_update_best_block(&self, hash: &BlockHash);
 
     /// Import sealed block. Skips all verifications.
     fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult;

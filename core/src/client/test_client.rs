@@ -42,6 +42,7 @@ use cnetwork::NodeId;
 use cstate::tests::helpers::empty_top_state;
 use cstate::{FindActionHandler, StateDB, TopLevelState};
 use ctimer::{TimeoutHandler, TimerToken};
+use ctypes::header::Header;
 use ctypes::transaction::{Action, Transaction};
 use ctypes::{BlockHash, BlockNumber, CommonParams, Header as BlockHeader, Tracker, TxHash};
 use cvm::ChainTimeInfo;
@@ -509,7 +510,15 @@ impl ImportBlock for TestBlockChainClient {
         unimplemented!()
     }
 
-    fn import_bootstrap_block(&self, _header: &Block) -> Result<BlockHash, BlockImportError> {
+    fn import_trusted_header(&self, _header: &Header) -> Result<BlockHash, BlockImportError> {
+        unimplemented!()
+    }
+
+    fn import_trusted_block(&self, _block: &Block) -> Result<BlockHash, BlockImportError> {
+        unimplemented!()
+    }
+
+    fn force_update_best_block(&self, _hash: &BlockHash) {
         unimplemented!()
     }
 
