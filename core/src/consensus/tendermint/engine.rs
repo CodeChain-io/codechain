@@ -25,7 +25,7 @@ use ckey::{public_to_address, Address};
 use cnetwork::NetworkService;
 use crossbeam_channel as crossbeam;
 use cstate::{ActionHandler, TopStateView};
-use ctypes::{BlockHash, BlockNumber, CommonParams, Header};
+use ctypes::{BlockHash, CommonParams, Header};
 use num_rational::Ratio;
 
 use super::super::stake;
@@ -141,10 +141,11 @@ impl ConsensusEngine for Tendermint {
         parent_common_params: &CommonParams,
         term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
+        let block_number = block.header().number();
         let author = *block.header().author();
         let (total_reward, total_min_fee) = {
             let transactions = block.transactions();
-            let block_reward = self.block_reward(block.header().number());
+            let block_reward = self.block_reward(block_number);
             let total_min_fee: u64 = transactions.iter().map(|tx| tx.fee).sum();
             let min_fee =
                 transactions.iter().map(|tx| CodeChainMachine::min_cost(&parent_common_params, &tx.action)).sum();
@@ -164,9 +165,7 @@ impl ConsensusEngine for Tendermint {
         if metadata.current_term_id() == 0 {
             self.machine.add_balance(block, &author, block_author_reward)?;
 
-            if let Some(block_number) =
-                block_number_if_term_changed(block.header(), parent_header, parent_common_params)
-            {
+            if is_term_changed(block.header(), parent_header, parent_common_params) {
                 // First term change
                 stake::on_term_close(block.state_mut(), block_number, &[])?;
             }
@@ -178,13 +177,9 @@ impl ConsensusEngine for Tendermint {
         stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
 
         let term_common_params = term_common_params.expect("TermCommonParams should exist");
-        let last_term_finished_block_num = if let Some(block_number) =
-            block_number_if_term_changed(block.header(), parent_header, term_common_params)
-        {
-            block_number
-        } else {
+        if !is_term_changed(block.header(), parent_header, term_common_params) {
             return Ok(())
-        };
+        }
         let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
 
         let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
@@ -213,7 +208,7 @@ impl ConsensusEngine for Tendermint {
             };
 
             let banned = stake::Banned::load_from_state(block.state())?;
-            let start_of_the_current_term_header = if block.header().number() == start_of_the_current_term {
+            let start_of_the_current_term_header = if block_number == start_of_the_current_term {
                 encoded::Header::new(block.header().clone().rlp_bytes().to_vec())
             } else {
                 client.block_header(&start_of_the_current_term.into()).unwrap()
@@ -241,7 +236,7 @@ impl ConsensusEngine for Tendermint {
         };
 
         stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
-        stake::on_term_close(block.state_mut(), last_term_finished_block_num, &inactive_validators)?;
+        stake::on_term_close(block.state_mut(), block_number, &inactive_validators)?;
 
         Ok(())
     }
@@ -342,22 +337,16 @@ impl ConsensusEngine for Tendermint {
     }
 }
 
-fn block_number_if_term_changed(
-    header: &Header,
-    parent_header: &Header,
-    common_params: &CommonParams,
-) -> Option<BlockNumber> {
+fn is_term_changed(header: &Header, parent: &Header, common_params: &CommonParams) -> bool {
     let term_seconds = common_params.term_seconds();
     if term_seconds == 0 {
-        return None
+        return false
     }
 
     let current_term_period = header.timestamp() / term_seconds;
-    let parent_term_period = parent_header.timestamp() / term_seconds;
-    if current_term_period == parent_term_period {
-        return None
-    }
-    Some(header.number())
+    let parent_term_period = parent.timestamp() / term_seconds;
+
+    current_term_period != parent_term_period
 }
 
 fn inactive_validators(
