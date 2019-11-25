@@ -18,8 +18,6 @@ import { expect } from "chai";
 import "mocha";
 import CodeChain from "../helper/spawn";
 
-const RLP = require("rlp");
-
 describe("engine", function() {
     let node: CodeChain;
     before(async function() {

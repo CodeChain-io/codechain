@@ -36,9 +36,10 @@ describe("Dynamic Validator N -> N'", function() {
         expected: typeof validators,
         blockNumber?: number
     ) {
-        const authors = (await stake.getPossibleAuthors(sdk, blockNumber))!.map(
-            author => author.toString()
-        );
+        const authors = (await stake.getPossibleAuthors(
+            sdk,
+            blockNumber
+        ))!.map(author => author.toString());
         expect(authors)
             .to.have.lengthOf(expected.length)
             .and.to.include.members(

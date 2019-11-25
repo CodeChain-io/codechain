@@ -19,7 +19,7 @@ import { $anything, $containsWord, similar } from "./chai-similar";
 
 chai.use(similar);
 
-export const ERROR = {
+export const ERROR: any = {
     NOT_ENOUGH_BALANCE: {
         code: -32032,
         data: $anything,

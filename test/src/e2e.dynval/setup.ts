@@ -1,9 +1,4 @@
-import {
-    blake256,
-    H256,
-    PlatformAddress,
-    U64Value
-} from "codechain-primitives/lib";
+import { blake256, H256, U64Value } from "codechain-primitives/lib";
 import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
 import { Context, Suite } from "mocha";
