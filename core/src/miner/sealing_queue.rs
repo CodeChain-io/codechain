@@ -87,9 +87,8 @@ mod tests {
         let genesis_header = scheme.genesis_header();
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, address, vec![]).unwrap();
-        let common_params = CommonParams::default_for_test();
         let term_common_params = CommonParams::default_for_test();
-        b.close(&genesis_header, &common_params, Some(&term_common_params)).unwrap()
+        b.close(&genesis_header, Some(&term_common_params)).unwrap()
     }
 
     #[test]

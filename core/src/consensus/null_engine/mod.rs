@@ -17,7 +17,7 @@
 mod params;
 
 use ckey::Address;
-use ctypes::{CommonParams, Header};
+use ctypes::CommonParams;
 
 use self::params::NullEngineParams;
 use super::ConsensusEngine;
@@ -58,8 +58,6 @@ impl ConsensusEngine for NullEngine {
     fn on_close_block(
         &self,
         block: &mut ExecutedBlock,
-        _parent_header: &Header,
-        _parent_common_params: &CommonParams,
         _term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
         let (author, total_reward) = {
