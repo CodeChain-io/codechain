@@ -34,6 +34,7 @@ pub struct Metadata {
     term: TermMetadata,
     seq: u64,
     params: Option<CommonParams>,
+    term_params: Option<CommonParams>,
 }
 
 impl Metadata {
@@ -45,6 +46,7 @@ impl Metadata {
             term: Default::default(),
             seq: 0,
             params: None,
+            term_params: None,
         }
     }
 
@@ -93,6 +95,14 @@ impl Metadata {
         self.params = Some(params);
     }
 
+    pub fn term_params(&self) -> Option<&CommonParams> {
+        self.term_params.as_ref()
+    }
+
+    pub fn snapshot_term_params(&mut self) {
+        self.term_params = self.params;
+    }
+
     pub fn increase_term_id(&mut self, last_term_finished_block_num: u64) {
         assert!(self.term.last_term_finished_block_num < last_term_finished_block_num);
         self.term.last_term_finished_block_num = last_term_finished_block_num;
@@ -124,25 +134,31 @@ impl CacheableItem for Metadata {
 
 const PREFIX: u8 = super::METADATA_PREFIX;
 
+const INITIAL_LEN: usize = 4;
+const TERM_LEN: usize = INITIAL_LEN + 2;
+const PARAMS_LEN: usize = TERM_LEN + 2;
+const TERM_PARAMS_LEN: usize = PARAMS_LEN + 1;
+const VALID_LEN: &[usize] = &[INITIAL_LEN, TERM_LEN, PARAMS_LEN, TERM_PARAMS_LEN];
+
 impl Encodable for Metadata {
     fn rlp_append(&self, s: &mut RlpStream) {
-        const INITIAL_LEN: usize = 4;
-        const TERM_LEN: usize = 2;
-        const PARAMS_LEN: usize = 2;
-        let mut len = INITIAL_LEN;
-
         let term_changed = self.term != Default::default();
-        if term_changed {
-            len += TERM_LEN;
-        }
-
         let params_changed = self.seq != 0;
-        if params_changed {
-            if !term_changed {
-                len += TERM_LEN;
+        let term_params_exist = self.term_params.is_some();
+
+        let len = if term_params_exist {
+            if !params_changed {
+                panic!("Term params only can be changed if params changed");
             }
-            len += PARAMS_LEN;
-        }
+            TERM_PARAMS_LEN
+        } else if params_changed {
+            PARAMS_LEN
+        } else if term_changed {
+            TERM_LEN
+        } else {
+            INITIAL_LEN
+        };
+
         s.begin_list(len)
             .append(&PREFIX)
             .append(&self.number_of_shards)
@@ -159,48 +175,63 @@ impl Encodable for Metadata {
             }
             s.append(&self.seq).append(self.params.as_ref().unwrap());
         }
+        if term_params_exist {
+            if !params_changed {
+                unreachable!("Term params only can be changed if params changed");
+            }
+            s.append(self.term_params.as_ref().unwrap());
+        }
     }
 }
 
 impl Decodable for Metadata {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        let (term, seq, params) = match rlp.item_count()? {
-            4 => (TermMetadata::default(), 0, None),
-            6 => (
-                TermMetadata {
-                    last_term_finished_block_num: rlp.val_at(4)?,
-                    current_term_id: rlp.val_at(5)?,
-                },
-                0,
-                None,
-            ),
-            8 => (
-                TermMetadata {
-                    last_term_finished_block_num: rlp.val_at(4)?,
-                    current_term_id: rlp.val_at(5)?,
-                },
-                rlp.val_at(6)?,
-                Some(rlp.val_at(7)?),
-            ),
-            item_count => {
-                return Err(DecoderError::RlpInvalidLength {
-                    got: item_count,
-                    expected: 4,
-                })
-            }
-        };
+        let item_count = rlp.item_count()?;
+        if !VALID_LEN.contains(&item_count) {
+            return Err(DecoderError::RlpInvalidLength {
+                got: item_count,
+                expected: 4,
+            })
+        }
+
         let prefix = rlp.val_at::<u8>(0)?;
         if PREFIX != prefix {
             cdebug!(STATE, "{} is not an expected prefix for asset", prefix);
             return Err(DecoderError::Custom("Unexpected prefix"))
         }
+        let number_of_shards = rlp.val_at(1)?;
+        let number_of_initial_shards = rlp.val_at(2)?;
+        let hashes = rlp.list_at(3)?;
+
+        let term = if item_count >= TERM_LEN {
+            TermMetadata {
+                last_term_finished_block_num: rlp.val_at(4)?,
+                current_term_id: rlp.val_at(5)?,
+            }
+        } else {
+            TermMetadata::default()
+        };
+
+        let (seq, params) = if item_count >= PARAMS_LEN {
+            (rlp.val_at(6)?, Some(rlp.val_at(7)?))
+        } else {
+            Default::default()
+        };
+
+        let term_params = if item_count >= TERM_PARAMS_LEN {
+            Some(rlp.val_at(8)?)
+        } else {
+            Default::default()
+        };
+
         Ok(Self {
-            number_of_shards: rlp.val_at(1)?,
-            number_of_initial_shards: rlp.val_at(2)?,
-            hashes: rlp.list_at(3)?,
+            number_of_shards,
+            number_of_initial_shards,
+            hashes,
             term,
             seq,
             params,
+            term_params,
         })
     }
 }
@@ -266,6 +297,7 @@ mod tests {
             term: Default::default(),
             seq: 0,
             params: None,
+            term_params: None,
         };
         let mut rlp = RlpStream::new_list(4);
         rlp.append(&PREFIX).append(&10u16).append(&1u16).append_list::<H256, H256>(&[]);
@@ -281,6 +313,7 @@ mod tests {
             term: Default::default(),
             seq: 3,
             params: Some(CommonParams::default_for_test()),
+            term_params: Some(CommonParams::default_for_test()),
         };
         rlp_encode_and_decode_test!(metadata);
     }
@@ -297,6 +330,7 @@ mod tests {
             },
             seq: 0,
             params: None,
+            term_params: None,
         };
         rlp_encode_and_decode_test!(metadata);
     }
@@ -313,6 +347,24 @@ mod tests {
             },
             seq: 3,
             params: Some(CommonParams::default_for_test()),
+            term_params: Some(CommonParams::default_for_test()),
+        };
+        rlp_encode_and_decode_test!(metadata);
+    }
+
+    #[test]
+    fn metadata_with_term_and_seq_but_not_term_params() {
+        let metadata = Metadata {
+            number_of_shards: 10,
+            number_of_initial_shards: 1,
+            hashes: vec![],
+            term: TermMetadata {
+                last_term_finished_block_num: 1,
+                current_term_id: 100,
+            },
+            seq: 3,
+            params: Some(CommonParams::default_for_test()),
+            term_params: None,
         };
         rlp_encode_and_decode_test!(metadata);
     }
