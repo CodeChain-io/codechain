@@ -231,6 +231,9 @@ impl CommonParams {
                 current_network_id, transaction_network_id
             ))
         }
+        if self.era < current_params.era {
+            return Err(format!("The era({}) shouldn't be less than the current era({})", self.era, current_params.era))
+        }
         Ok(())
     }
 }
