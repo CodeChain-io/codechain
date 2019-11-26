@@ -767,6 +767,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2f4a431c5c9f662e1200b7c7f02c34e91361150e382089a8f2dec3ba680cbda"
 
 [[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
+
+[[package]]
 name = "ctrlc"
 version = "1.1.1"
 source = "git+https://github.com/paritytech/rust-ctrlc.git#b523017108bb2d571a7a69bd97bc406e63bc7a9d"
@@ -893,7 +899,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a93a43ce2e9f09071449da36bfa7a1b20b950ee344b6904ff23de493b03b386"
 dependencies = [
- "crunchy",
+ "crunchy 0.1.6",
  "ethereum-types-serialize",
  "fixed-hash",
  "serde",
@@ -906,7 +912,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35b3c5a18bc5e73a32a110ac743ec04b02bbbcd3b71d3118d40a6113d509378a"
 dependencies = [
- "crunchy",
+ "crunchy 0.1.6",
  "ethbloom",
  "ethereum-types-serialize",
  "fixed-hash",
@@ -1977,10 +1983,11 @@ checksum = "676e8eb2b1b4c9043511a9b7bea0915320d7e502b0a079fb03f9635a5252b18c"
 
 [[package]]
 name = "plain_hasher"
-version = "0.1.0"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f1c24f5061a6a53aaa21b0aaaa2e1beb5271a9ecc8c5bd7ae9ac92969070a2a"
 dependencies = [
- "crunchy",
- "primitives",
+ "crunchy 0.2.2",
 ]
 
 [[package]]
@@ -2906,7 +2913,7 @@ version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9175261fbdb60781fcd388a4d6cc7e14764a2b629a7ad94abb439aed223a44f"
 dependencies = [
- "crunchy",
+ "crunchy 0.1.6",
 ]
 
 [[package]]
@@ -3196,7 +3203,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "754ba11732b9161b94c41798e5197e5e75388d012f760c42adb5000353e98646"
 dependencies = [
  "byteorder",
- "crunchy",
+ "crunchy 0.1.6",
  "heapsize",
  "rustc-hex 2.0.1",
 ]

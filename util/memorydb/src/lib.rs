@@ -23,12 +23,16 @@ extern crate rlp;
 
 use codechain_crypto::{blake256, BLAKE_NULL_RLP};
 use hashdb::{DBValue, HashDB};
-use plain_hasher::H256FastMap;
+use plain_hasher::PlainHasher;
 use primitives::H256;
 use rlp::NULL_RLP;
+
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::hash;
 use std::mem;
+
+type H256FastMap<T> = HashMap<H256, T, hash::BuildHasherDefault<PlainHasher>>;
 
 /// Reference-counted memory-based `HashDB` implementation.
 ///
