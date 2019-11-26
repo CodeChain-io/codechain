@@ -137,12 +137,16 @@ impl ConsensusEngine for Tendermint {
     fn on_close_block(
         &self,
         block: &mut ExecutedBlock,
-        parent_header: &Header,
-        parent_common_params: &CommonParams,
         term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
-        let block_number = block.header().number();
+        let client = self.client().ok_or(EngineError::CannotOpenBlock)?;
+
+        let parent_hash = *block.header().parent_hash();
+        let parent = client.block_header(&parent_hash.into()).expect("Parent header must exist").decode();
+        let parent_common_params = client.common_params(parent_hash.into()).expect("CommonParams of parent must exist");
         let author = *block.header().author();
+        let block_number = block.header().number();
+
         let (total_reward, total_min_fee) = {
             let transactions = block.transactions();
             let block_reward = self.block_reward(block_number);
@@ -178,7 +182,7 @@ impl ConsensusEngine for Tendermint {
             }
         }
 
-        if !is_term_changed(block.header(), parent_header, term_seconds) {
+        if !is_term_changed(block.header(), &parent, term_seconds) {
             return Ok(())
         }
 
@@ -187,7 +191,6 @@ impl ConsensusEngine for Tendermint {
             _ => {
                 let rewards = stake::drain_previous_rewards(block.state_mut())?;
                 let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
-                let client = self.client().ok_or(EngineError::CannotOpenBlock)?;
 
                 if term > 1 {
                     let start_of_the_previous_term = {

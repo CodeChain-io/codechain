@@ -121,8 +121,6 @@ impl ConsensusEngine for SimplePoA {
     fn on_close_block(
         &self,
         block: &mut ExecutedBlock,
-        _parent_header: &Header,
-        _parent_common_params: &CommonParams,
         _term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
         let author = *block.header().author();
@@ -186,9 +184,8 @@ mod tests {
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![]).unwrap();
-        let parent_common_params = CommonParams::default_for_test();
         let term_common_params = CommonParams::default_for_test();
-        let b = b.close_and_lock(&genesis_header, &parent_common_params, Some(&term_common_params)).unwrap();
+        let b = b.close_and_lock(&genesis_header, Some(&term_common_params)).unwrap();
         if let Some(seal) = engine.generate_seal(Some(b.block()), &genesis_header).seal_fields() {
             assert!(b.try_seal(engine, seal).is_ok());
         }

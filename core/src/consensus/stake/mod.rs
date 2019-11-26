@@ -156,13 +156,7 @@ impl ActionHandler for Stake {
         action.verify(current_params, client, validators)
     }
 
-    fn on_close_block(
-        &self,
-        _state: &mut TopLevelState,
-        _header: &Header,
-        _parent_header: &Header,
-        _parent_common_params: &CommonParams,
-    ) -> StateResult<()> {
+    fn on_close_block(&self, _state: &mut TopLevelState, _header: &Header) -> StateResult<()> {
         Ok(())
     }
 }

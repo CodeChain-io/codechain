@@ -161,9 +161,8 @@ mod tests {
         let genesis_header = scheme.genesis_header();
         let b = OpenBlock::try_new(scheme.engine.as_ref(), db, &genesis_header, proposer, vec![]).unwrap();
         let seal = scheme.engine.generate_seal(None, &genesis_header).seal_fields().unwrap();
-        let common_params = CommonParams::default_for_test();
         let term_common_params = CommonParams::default_for_test();
-        let b = b.close(&genesis_header, &common_params, Some(&term_common_params)).unwrap();
+        let b = b.close(&genesis_header, Some(&term_common_params)).unwrap();
         (b, seal)
     }
 
