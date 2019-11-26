@@ -16,22 +16,25 @@
 
 mod params;
 
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use ckey::Address;
 use cstate::{ActionHandler, HitHandler};
 use ctypes::{CommonParams, Header};
+use parking_lot::RwLock;
 
 use self::params::SoloParams;
 use super::stake;
 use super::{ConsensusEngine, Seal};
 use crate::block::{ExecutedBlock, IsBlock};
+use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{EngineError, EngineType};
 use crate::error::Error;
 
 /// A consensus engine which does not provide any consensus mechanism.
 pub struct Solo {
+    client: RwLock<Option<Weak<dyn ConsensusClient>>>,
     params: SoloParams,
     machine: CodeChainMachine,
     action_handlers: Vec<Arc<dyn ActionHandler>>,
@@ -47,6 +50,7 @@ impl Solo {
         action_handlers.push(Arc::new(stake::Stake::new(params.genesis_stakes.clone())));
 
         Solo {
+            client: Default::default(),
             params,
             machine,
             action_handlers,
@@ -127,6 +131,10 @@ impl ConsensusEngine for Solo {
         Ok(())
     }
 
+    fn register_client(&self, client: Weak<dyn ConsensusClient>) {
+        *self.client.write() = Some(Weak::clone(&client));
+    }
+
     fn block_reward(&self, _block_number: u64) -> u64 {
         self.params.block_reward
     }
@@ -146,25 +154,30 @@ impl ConsensusEngine for Solo {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use ctypes::{CommonParams, Header};
     use primitives::H520;
 
     use crate::block::{IsBlock, OpenBlock};
+    use crate::client::{ConsensusClient, TestBlockChainClient};
     use crate::scheme::Scheme;
     use crate::tests::helpers::get_temp_state_db;
 
     #[test]
     fn seal() {
         let scheme = Scheme::new_test_solo();
-        let engine = &*scheme.engine;
-        let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
-        let genesis_header = scheme.genesis_header();
-        let b = OpenBlock::try_new(engine, db, &genesis_header, Default::default(), vec![]).unwrap();
+        let client = Arc::new(TestBlockChainClient::new_with_scheme(scheme));
+        let engine = client.scheme.engine.clone();
+        engine.register_client(Arc::downgrade(&(client.clone() as Arc<dyn ConsensusClient>)));
+        let db = client.scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
+        let genesis_header = client.scheme.genesis_header();
+        let b = OpenBlock::try_new(&*engine, db, &genesis_header, Default::default(), vec![]).unwrap();
         let parent_common_params = CommonParams::default_for_test();
         let term_common_params = CommonParams::default_for_test();
         let b = b.close_and_lock(&genesis_header, &parent_common_params, Some(&term_common_params)).unwrap();
         if let Some(seal) = engine.generate_seal(Some(b.block()), &genesis_header).seal_fields() {
-            assert!(b.try_seal(engine, seal).is_ok());
+            assert!(b.try_seal(&*engine, seal).is_ok());
         }
     }
 
