@@ -115,6 +115,10 @@ impl Tendermint {
             has_signer: false.into(),
         })
     }
+
+    fn client(&self) -> Option<Arc<dyn ConsensusClient>> {
+        self.client.read().as_ref()?.upgrade()
+    }
 }
 
 const SEAL_FIELDS: usize = 4;
