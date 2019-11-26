@@ -775,7 +775,6 @@ impl ChainNotify for BlockSyncSender {
         enacted: Vec<BlockHash>,
         retracted: Vec<BlockHash>,
         _sealed: Vec<BlockHash>,
-        _duration: u64,
         _new_best_proposal: Option<BlockHash>,
     ) {
         self.0
@@ -794,7 +793,6 @@ impl ChainNotify for BlockSyncSender {
         _enacted: Vec<BlockHash>,
         _retracted: Vec<BlockHash>,
         _sealed: Vec<BlockHash>,
-        _duration: u64,
     ) {
         self.0
             .send(Event::NewBlocks {
