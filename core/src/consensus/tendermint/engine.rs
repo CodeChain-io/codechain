@@ -187,13 +187,7 @@ impl ConsensusEngine for Tendermint {
             _ => {
                 let rewards = stake::drain_previous_rewards(block.state_mut())?;
                 let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
-                let client = self
-                    .client
-                    .read()
-                    .as_ref()
-                    .ok_or(EngineError::CannotOpenBlock)?
-                    .upgrade()
-                    .ok_or(EngineError::CannotOpenBlock)?;
+                let client = self.client().ok_or(EngineError::CannotOpenBlock)?;
 
                 if term > 1 {
                     let start_of_the_previous_term = {
@@ -273,7 +267,7 @@ impl ConsensusEngine for Tendermint {
 
         let inner = self.inner.clone();
         let extension = service.register_extension(move |api| TendermintExtension::new(inner, timeouts, api));
-        let client = Weak::clone(self.client.read().as_ref().unwrap());
+        let client = Arc::downgrade(&self.client().unwrap());
         self.extension_initializer.send((extension, client)).unwrap();
 
         let (result, receiver) = crossbeam::bounded(1);
@@ -317,13 +311,7 @@ impl ConsensusEngine for Tendermint {
     }
 
     fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<Address>>, EngineError> {
-        let client = self
-            .client
-            .read()
-            .as_ref()
-            .ok_or(EngineError::CannotOpenBlock)?
-            .upgrade()
-            .ok_or(EngineError::CannotOpenBlock)?;
+        let client = self.client().ok_or(EngineError::CannotOpenBlock)?;
         let block_hash = match block_number {
             None => {
                 client.block_header(&BlockId::Latest).expect("latest block must exist").hash() // the latest block
