@@ -141,6 +141,15 @@ impl ConsensusEngine for Tendermint {
 
     fn stop(&self) {}
 
+    /// Block transformation functions, before the transactions.
+    fn on_open_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+        let metadata = block.state().metadata()?.expect("Metadata must exist");
+        if block.header().number() == metadata.last_term_finished_block_num() + 1 {
+            // FIXME: on_term_open
+        }
+        Ok(())
+    }
+
     fn on_close_block(
         &self,
         block: &mut ExecutedBlock,
