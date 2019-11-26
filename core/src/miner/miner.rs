@@ -527,6 +527,7 @@ impl Miner {
                 return Ok(None)
             }
         }
+        self.engine.on_open_block(open_block.inner_mut())?;
 
         let mut invalid_transactions = Vec::new();
 

@@ -313,6 +313,10 @@ impl<'x> OpenBlock<'x> {
         self.block.header.set_seal(seal);
         Ok(())
     }
+
+    pub fn inner_mut(&mut self) -> &mut ExecutedBlock {
+        &mut self.block
+    }
 }
 
 /// Just like `OpenBlock`, except that we've applied `Engine::on_close_block`, finished up the non-seal header fields.
@@ -492,6 +496,7 @@ pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo>(
     let mut b = OpenBlock::try_new(engine, db, parent, Address::default(), vec![])?;
 
     b.populate_from(header);
+    engine.on_open_block(b.inner_mut())?;
     b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
 
     let term_common_params = client.term_common_params(BlockId::Hash(*header.parent_hash()));

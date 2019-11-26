@@ -221,6 +221,11 @@ pub trait ConsensusEngine: Sync + Send {
     /// Stops any services that the may hold the Engine and makes it safe to drop.
     fn stop(&self) {}
 
+    /// Block transformation functions, before the transactions.
+    fn on_open_block(&self, _block: &mut ExecutedBlock) -> Result<(), Error> {
+        Ok(())
+    }
+
     /// Block transformation functions, after the transactions.
     fn on_close_block(
         &self,
