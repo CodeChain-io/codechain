@@ -645,7 +645,7 @@ impl super::EngineClient for TestBlockChainClient {
 
 impl EngineInfo for TestBlockChainClient {
     fn common_params(&self, _block_id: BlockId) -> Option<CommonParams> {
-        unimplemented!()
+        Some(*self.scheme.engine.machine().genesis_common_params())
     }
 
     fn metadata_seq(&self, _block_id: BlockId) -> Option<u64> {
