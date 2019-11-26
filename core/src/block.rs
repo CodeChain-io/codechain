@@ -220,25 +220,20 @@ impl<'x> OpenBlock<'x> {
     pub fn close(
         mut self,
         parent_header: &Header,
-        parent_common_params: &CommonParams,
         term_common_params: Option<&CommonParams>,
     ) -> Result<ClosedBlock, Error> {
         let unclosed_state = self.block.state.clone();
 
-        if let Err(e) =
-            self.engine.on_close_block(&mut self.block, parent_header, parent_common_params, term_common_params)
-        {
+        if let Err(e) = self.engine.on_close_block(&mut self.block, term_common_params) {
             warn!("Encountered error on closing the block: {}", e);
             return Err(e)
         }
         let header = self.block.header().clone();
         for handler in self.engine.action_handlers() {
-            handler.on_close_block(self.block.state_mut(), &header, parent_header, parent_common_params).map_err(
-                |e| {
-                    warn!("Encountered error in {}::on_close_block", handler.name());
-                    e
-                },
-            )?;
+            handler.on_close_block(self.block.state_mut(), &header).map_err(|e| {
+                warn!("Encountered error in {}::on_close_block", handler.name());
+                e
+            })?;
         }
 
         let state_root = self.block.state.commit().map_err(|e| {
@@ -262,23 +257,18 @@ impl<'x> OpenBlock<'x> {
     pub fn close_and_lock(
         mut self,
         parent_header: &Header,
-        parent_common_params: &CommonParams,
         term_common_params: Option<&CommonParams>,
     ) -> Result<LockedBlock, Error> {
-        if let Err(e) =
-            self.engine.on_close_block(&mut self.block, parent_header, parent_common_params, term_common_params)
-        {
+        if let Err(e) = self.engine.on_close_block(&mut self.block, term_common_params) {
             warn!("Encountered error on closing the block: {}", e);
             return Err(e)
         }
         let header = self.block.header().clone();
         for handler in self.engine.action_handlers() {
-            handler.on_close_block(self.block.state_mut(), &header, parent_header, parent_common_params).map_err(
-                |e| {
-                    warn!("Encountered error in {}::on_close_block", handler.name());
-                    e
-                },
-            )?;
+            handler.on_close_block(self.block.state_mut(), &header).map_err(|e| {
+                warn!("Encountered error in {}::on_close_block", handler.name());
+                e
+            })?;
         }
 
         let state_root = self.block.state.commit().map_err(|e| {
@@ -503,7 +493,6 @@ pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo>(
     b.populate_from(header);
     b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
 
-    let parent_common_params = client.common_params((*header.parent_hash()).into()).unwrap();
     let term_common_params = {
         let block_number = client
             .last_term_finished_block_num((*header.parent_hash()).into())
@@ -514,7 +503,7 @@ pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo>(
             Some(client.common_params((block_number).into()).expect("Common params should exist"))
         }
     };
-    b.close_and_lock(parent, &parent_common_params, term_common_params.as_ref())
+    b.close_and_lock(parent, term_common_params.as_ref())
 }
 
 #[cfg(test)]
@@ -532,9 +521,8 @@ mod tests {
         let genesis_header = scheme.genesis_header();
         let db = scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let b = OpenBlock::try_new(&*scheme.engine, db, &genesis_header, Address::default(), vec![]).unwrap();
-        let parent_common_params = CommonParams::default_for_test();
         let term_common_params = CommonParams::default_for_test();
-        let b = b.close_and_lock(&genesis_header, &parent_common_params, Some(&term_common_params)).unwrap();
+        let b = b.close_and_lock(&genesis_header, Some(&term_common_params)).unwrap();
         let _ = b.seal(&*scheme.engine, vec![]);
     }
 }

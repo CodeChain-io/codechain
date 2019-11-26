@@ -56,6 +56,10 @@ impl Solo {
             action_handlers,
         }
     }
+
+    fn client(&self) -> Option<Arc<dyn ConsensusClient>> {
+        self.client.read().as_ref()?.upgrade()
+    }
 }
 
 impl ConsensusEngine for Solo {
@@ -82,10 +86,13 @@ impl ConsensusEngine for Solo {
     fn on_close_block(
         &self,
         block: &mut ExecutedBlock,
-        parent_header: &Header,
-        parent_common_params: &CommonParams,
         _term_common_params: Option<&CommonParams>,
     ) -> Result<(), Error> {
+        let client = self.client().ok_or(EngineError::CannotOpenBlock)?;
+
+        let parent_hash = *block.header().parent_hash();
+        let parent = client.block_header(&parent_hash.into()).expect("Parent header must exist");
+        let parent_common_params = client.common_params(parent_hash.into()).expect("CommonParams of parent must exist");
         let author = *block.header().author();
         let (total_reward, total_min_fee) = {
             let transactions = block.transactions();
@@ -115,7 +122,7 @@ impl ConsensusEngine for Solo {
         let last_term_finished_block_num = {
             let header = block.header();
             let current_term_period = header.timestamp() / term_seconds;
-            let parent_term_period = parent_header.timestamp() / term_seconds;
+            let parent_term_period = parent.timestamp() / term_seconds;
             if current_term_period == parent_term_period {
                 return Ok(())
             }
@@ -173,9 +180,8 @@ mod tests {
         let db = client.scheme.ensure_genesis_state(get_temp_state_db()).unwrap();
         let genesis_header = client.scheme.genesis_header();
         let b = OpenBlock::try_new(&*engine, db, &genesis_header, Default::default(), vec![]).unwrap();
-        let parent_common_params = CommonParams::default_for_test();
         let term_common_params = CommonParams::default_for_test();
-        let b = b.close_and_lock(&genesis_header, &parent_common_params, Some(&term_common_params)).unwrap();
+        let b = b.close_and_lock(&genesis_header, Some(&term_common_params)).unwrap();
         if let Some(seal) = engine.generate_seal(Some(b.block()), &genesis_header).seal_fields() {
             assert!(b.try_seal(&*engine, seal).is_ok());
         }

@@ -47,13 +47,7 @@ pub trait ActionHandler: Send + Sync {
         Ok(some_action_data)
     }
 
-    fn on_close_block(
-        &self,
-        state: &mut TopLevelState,
-        header: &Header,
-        parent_header: &Header,
-        parent_common_params: &CommonParams,
-    ) -> StateResult<()>;
+    fn on_close_block(&self, state: &mut TopLevelState, header: &Header) -> StateResult<()>;
 }
 
 pub trait FindActionHandler {
