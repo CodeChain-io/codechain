@@ -17,7 +17,6 @@
 use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
-use std::time::Instant;
 
 use cio::IoChannel;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
@@ -155,7 +154,6 @@ impl Client {
         enacted: &[BlockHash],
         retracted: &[BlockHash],
         sealed: &[BlockHash],
-        duration: u64,
     ) {
         self.notify(|notify| {
             notify.new_blocks(
@@ -164,7 +162,6 @@ impl Client {
                 enacted.to_vec(),
                 retracted.to_vec(),
                 sealed.to_vec(),
-                duration,
             )
         });
     }
@@ -176,7 +173,6 @@ impl Client {
         enacted: &[BlockHash],
         retracted: &[BlockHash],
         sealed: &[BlockHash],
-        duration: u64,
         new_best_proposal: Option<BlockHash>,
     ) {
         self.notify(|notify| {
@@ -186,7 +182,6 @@ impl Client {
                 enacted.to_vec(),
                 retracted.to_vec(),
                 sealed.to_vec(),
-                duration,
                 new_best_proposal,
             );
         });
@@ -259,7 +254,6 @@ impl Client {
     /// See EngineClient::update_best_as_committed() for details.
     pub fn update_best_as_committed(&self, block_hash: BlockHash) {
         ctrace!(CLIENT, "Update the best block to the hash({}), as requested", block_hash);
-        let start = Instant::now();
         let route = {
             let _import_lock = self.importer.import_lock.lock();
 
@@ -283,10 +277,7 @@ impl Client {
 
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
         self.importer.miner.chain_new_blocks(self, &[], &[], &enacted, &retracted);
-        self.new_blocks(&[], &[], &enacted, &retracted, &[], {
-            let elapsed = start.elapsed();
-            elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
-        });
+        self.new_blocks(&[], &[], &enacted, &retracted, &[]);
     }
 
     fn block_number_ref(&self, id: &BlockId) -> Option<BlockNumber> {
@@ -666,7 +657,6 @@ impl ImportBlock for Client {
 
     fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult {
         let h = block.header().hash();
-        let start = Instant::now();
         let route = {
             // scope for self.import_lock
             let import_lock = self.importer.import_lock.lock();
@@ -683,10 +673,7 @@ impl ImportBlock for Client {
         };
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
         self.importer.miner.chain_new_blocks(self, &[h], &[], &enacted, &retracted);
-        self.new_blocks(&[h], &[], &enacted, &retracted, &[h], {
-            let elapsed = start.elapsed();
-            elapsed.as_secs() * 1_000_000_000 + u64::from(elapsed.subsec_nanos())
-        });
+        self.new_blocks(&[h], &[], &enacted, &retracted, &[h]);
         self.db().flush().expect("DB flush failed.");
         Ok(h)
     }
