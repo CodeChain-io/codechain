@@ -118,7 +118,7 @@ impl ConsensusEngine for Solo {
             self.machine.add_balance(block, &author, block_author_reward)?;
             return Ok(())
         }
-        stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
+        stake::v0::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
         let last_term_finished_block_num = {
             let header = block.header();
             let current_term_period = header.timestamp() / term_seconds;
@@ -128,8 +128,8 @@ impl ConsensusEngine for Solo {
             }
             header.number()
         };
-        stake::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
-        let rewards = stake::drain_previous_rewards(&mut block.state_mut())?;
+        stake::v0::move_current_to_previous_intermediate_rewards(&mut block.state_mut())?;
+        let rewards = stake::v0::drain_previous_rewards(&mut block.state_mut())?;
         for (address, reward) in rewards {
             self.machine.add_balance(block, &address, reward)?;
         }

@@ -136,9 +136,43 @@ impl ConsensusEngine for Tendermint {
 
     /// Block transformation functions, before the transactions.
     fn on_open_block(&self, block: &mut ExecutedBlock) -> Result<(), Error> {
+        let client = self.client().ok_or(EngineError::CannotOpenBlock)?;
+
+        let block_number = block.header().number();
         let metadata = block.state().metadata()?.expect("Metadata must exist");
-        if block.header().number() == metadata.last_term_finished_block_num() + 1 {
-            // FIXME: on_term_open
+        let era = metadata.term_params().map_or(0, |p| p.era());
+        if block_number == metadata.last_term_finished_block_num() + 1 {
+            match era {
+                0 => {}
+                1 => {
+                    let rewards = stake::v1::drain_current_rewards(block.state_mut())?;
+                    let start_of_the_current_term = block_number;
+                    let start_of_the_previous_term = {
+                        let end_of_the_two_level_previous_term = client
+                            .last_term_finished_block_num((metadata.last_term_finished_block_num() - 1).into())
+                            .unwrap();
+
+                        end_of_the_two_level_previous_term + 1
+                    };
+
+                    let banned = stake::Banned::load_from_state(block.state())?;
+                    let start_of_the_current_term_header =
+                        encoded::Header::new(block.header().clone().rlp_bytes().to_vec());
+
+                    let pending_rewards = calculate_pending_rewards_of_the_previous_term(
+                        &*client,
+                        &*self.validators,
+                        rewards,
+                        start_of_the_current_term,
+                        start_of_the_current_term_header,
+                        start_of_the_previous_term,
+                        &banned,
+                    )?;
+
+                    stake::v1::update_calculated_rewards(block.state_mut(), pending_rewards)?;
+                }
+                _ => unimplemented!(),
+            }
         }
         Ok(())
     }
@@ -174,6 +208,7 @@ impl ConsensusEngine for Tendermint {
 
         let block_author_reward = total_reward - total_min_fee + distributor.remaining_fee();
 
+        let era = term_common_params.map_or(0, |p| p.era());
         let metadata = block.state().metadata()?.expect("Metadata must exist");
         let term = metadata.current_term_id();
         let term_seconds = match term {
@@ -187,7 +222,11 @@ impl ConsensusEngine for Tendermint {
             }
             _ => {
                 stake::update_validator_weights(block.state_mut(), &author)?;
-                stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
+                match era {
+                    0 => stake::v0::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?,
+                    1 => stake::v1::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?,
+                    _ => unimplemented!(),
+                }
             }
         }
 
@@ -195,10 +234,10 @@ impl ConsensusEngine for Tendermint {
             return Ok(())
         }
 
-        let inactive_validators = match term {
-            0 => Vec::new(),
-            _ => {
-                let rewards = stake::drain_previous_rewards(block.state_mut())?;
+        let inactive_validators = match (era, term) {
+            (0, 0) => Vec::new(),
+            (0, _) => {
+                let rewards = stake::v0::drain_previous_rewards(block.state_mut())?;
                 let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
 
                 if term > 1 {
@@ -232,7 +271,7 @@ impl ConsensusEngine for Tendermint {
                     }
                 }
 
-                stake::move_current_to_previous_intermediate_rewards(block.state_mut())?;
+                stake::v0::move_current_to_previous_intermediate_rewards(block.state_mut())?;
 
                 let validators = stake::Validators::load_from_state(block.state())?
                     .into_iter()
@@ -240,13 +279,26 @@ impl ConsensusEngine for Tendermint {
                     .collect();
                 inactive_validators(&*client, start_of_the_current_term, block.header(), validators)
             }
+            (1, _) => {
+                for (address, reward) in stake::v1::drain_calculated_rewards(block.state_mut())? {
+                    self.machine.add_balance(block, &address, reward)?;
+                }
+
+                let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
+                let validators = stake::Validators::load_from_state(block.state())?
+                    .into_iter()
+                    .map(|val| public_to_address(val.pubkey()))
+                    .collect();
+                inactive_validators(&*client, start_of_the_current_term, block.header(), validators)
+            }
+            _ => unimplemented!(),
         };
 
         stake::on_term_close(block.state_mut(), block_number, &inactive_validators)?;
 
         match term {
             0 => {}
-            _ => match term_common_params.expect("Term common params should exist").era() {
+            _ => match era {
                 0 => {}
                 1 => block.state_mut().snapshot_term_params()?,
                 _ => unimplemented!("It is not decided how we handle this"),
