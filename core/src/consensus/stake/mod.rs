@@ -34,7 +34,7 @@ use primitives::{Bytes, H256};
 use rlp::{Decodable, Rlp};
 
 pub use self::action_data::{Banned, Validator, Validators};
-use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
+use self::action_data::{Candidates, Delegation, Jail, ReleaseResult, StakeAccount, Stakeholders};
 pub use self::actions::Action;
 pub use self::distribute::fee_distribute;
 use super::ValidatorSet;
@@ -321,24 +321,61 @@ pub fn get_validators(state: &TopLevelState) -> StateResult<Validators> {
     Validators::load_from_state(state)
 }
 
-pub fn add_intermediate_rewards(state: &mut TopLevelState, address: Address, reward: u64) -> StateResult<()> {
-    let mut rewards = IntermediateRewards::load_from_state(state)?;
-    rewards.add_quantity(address, reward);
-    rewards.save_to_state(state)?;
-    Ok(())
+pub mod v0 {
+    use super::action_data::v0::IntermediateRewards;
+    use super::*;
+
+    pub fn add_intermediate_rewards(state: &mut TopLevelState, address: Address, reward: u64) -> StateResult<()> {
+        let mut rewards = IntermediateRewards::load_from_state(state)?;
+        rewards.add_quantity(address, reward);
+        rewards.save_to_state(state)?;
+        Ok(())
+    }
+
+    pub fn drain_previous_rewards(state: &mut TopLevelState) -> StateResult<BTreeMap<Address, u64>> {
+        let mut rewards = IntermediateRewards::load_from_state(state)?;
+        let drained = rewards.drain_previous();
+        rewards.save_to_state(state)?;
+        Ok(drained)
+    }
+
+    pub fn move_current_to_previous_intermediate_rewards(state: &mut TopLevelState) -> StateResult<()> {
+        let mut rewards = IntermediateRewards::load_from_state(state)?;
+        rewards.move_current_to_previous();
+        rewards.save_to_state(state)
+    }
 }
 
-pub fn drain_previous_rewards(state: &mut TopLevelState) -> StateResult<BTreeMap<Address, u64>> {
-    let mut rewards = IntermediateRewards::load_from_state(state)?;
-    let drained = rewards.drain_previous();
-    rewards.save_to_state(state)?;
-    Ok(drained)
-}
+pub mod v1 {
+    use super::action_data::v1::IntermediateRewards;
+    use super::*;
 
-pub fn move_current_to_previous_intermediate_rewards(state: &mut TopLevelState) -> StateResult<()> {
-    let mut rewards = IntermediateRewards::load_from_state(state)?;
-    rewards.move_current_to_previous();
-    rewards.save_to_state(state)
+    pub fn add_intermediate_rewards(state: &mut TopLevelState, address: Address, reward: u64) -> StateResult<()> {
+        let mut rewards = IntermediateRewards::load_from_state(state)?;
+        rewards.add_quantity(address, reward);
+        rewards.save_to_state(state)?;
+        Ok(())
+    }
+
+    pub fn drain_current_rewards(state: &mut TopLevelState) -> StateResult<BTreeMap<Address, u64>> {
+        let mut rewards = IntermediateRewards::load_from_state(state)?;
+        let drained = rewards.drain_current();
+        rewards.save_to_state(state)?;
+        Ok(drained)
+    }
+
+    pub fn update_calculated_rewards(state: &mut TopLevelState, values: HashMap<Address, u64>) -> StateResult<()> {
+        let mut rewards = IntermediateRewards::load_from_state(state)?;
+        rewards.update_calculated(values.into_iter().collect());
+        rewards.save_to_state(state)
+    }
+
+    pub fn drain_calculated_rewards(state: &mut TopLevelState) -> StateResult<BTreeMap<Address, u64>> {
+        let mut rewards = IntermediateRewards::load_from_state(state)?;
+        let drained = rewards.drain_calculated();
+        rewards.save_to_state(state)?;
+        Ok(drained)
+    }
 }
 
 pub fn update_validator_weights(state: &mut TopLevelState, block_author: &Address) -> StateResult<()> {
