@@ -18,7 +18,6 @@ use std::cmp::Ordering;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::{self, BTreeSet};
 use std::collections::{btree_map, HashMap, HashSet};
-use std::mem;
 use std::ops::Deref;
 use std::vec;
 
@@ -408,51 +407,116 @@ impl IntoIterator for Validators {
     }
 }
 
-#[derive(Default, Debug, PartialEq)]
-pub struct IntermediateRewards {
-    previous: BTreeMap<Address, u64>,
-    current: BTreeMap<Address, u64>,
+pub mod v0 {
+    use std::mem;
+
+    use super::*;
+
+    #[derive(Default, Debug, PartialEq)]
+    pub struct IntermediateRewards {
+        pub(super) previous: BTreeMap<Address, u64>,
+        pub(super) current: BTreeMap<Address, u64>,
+    }
+
+    impl IntermediateRewards {
+        pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
+            let key = get_intermediate_rewards_key();
+            let action_data = state.action_data(&key)?;
+            let (previous, current) = decode_map_tuple(action_data.as_ref());
+
+            Ok(Self {
+                previous,
+                current,
+            })
+        }
+
+        pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+            let key = get_intermediate_rewards_key();
+            if self.previous.is_empty() && self.current.is_empty() {
+                state.remove_action_data(&key);
+            } else {
+                let encoded = encode_map_tuple(&self.previous, &self.current);
+                state.update_action_data(&key, encoded)?;
+            }
+            Ok(())
+        }
+
+        pub fn add_quantity(&mut self, address: Address, quantity: StakeQuantity) {
+            if quantity == 0 {
+                return
+            }
+            *self.current.entry(address).or_insert(0) += quantity;
+        }
+
+        pub fn drain_previous(&mut self) -> BTreeMap<Address, u64> {
+            let mut new = BTreeMap::new();
+            mem::swap(&mut new, &mut self.previous);
+            new
+        }
+
+        pub fn move_current_to_previous(&mut self) {
+            assert!(self.previous.is_empty());
+            mem::swap(&mut self.previous, &mut self.current);
+        }
+    }
 }
 
-impl IntermediateRewards {
-    pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
-        let key = get_intermediate_rewards_key();
-        let action_data = state.action_data(&key)?;
-        let (previous, current) = decode_map_tuple(action_data.as_ref());
+pub mod v1 {
+    use std::mem;
 
-        Ok(Self {
-            previous,
-            current,
-        })
+    use super::*;
+
+    #[derive(Default, Debug, PartialEq)]
+    pub struct IntermediateRewards {
+        pub(super) current: BTreeMap<Address, u64>,
+        pub(super) calculated: BTreeMap<Address, u64>,
     }
 
-    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
-        let key = get_intermediate_rewards_key();
-        if self.previous.is_empty() && self.current.is_empty() {
-            state.remove_action_data(&key);
-        } else {
-            let encoded = encode_map_tuple(&self.previous, &self.current);
-            state.update_action_data(&key, encoded)?;
+    impl IntermediateRewards {
+        pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
+            let key = get_intermediate_rewards_key();
+            let action_data = state.action_data(&key)?;
+            let (current, calculated) = decode_map_tuple(action_data.as_ref());
+
+            Ok(Self {
+                current,
+                calculated,
+            })
         }
-        Ok(())
-    }
 
-    pub fn add_quantity(&mut self, address: Address, quantity: StakeQuantity) {
-        if quantity == 0 {
-            return
+        pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+            let key = get_intermediate_rewards_key();
+            if self.current.is_empty() && self.calculated.is_empty() {
+                state.remove_action_data(&key);
+            } else {
+                let encoded = encode_map_tuple(&self.current, &self.calculated);
+                state.update_action_data(&key, encoded)?;
+            }
+            Ok(())
         }
-        *self.current.entry(address).or_insert(0) += quantity;
-    }
 
-    pub fn drain_previous(&mut self) -> BTreeMap<Address, u64> {
-        let mut new = BTreeMap::new();
-        mem::swap(&mut new, &mut self.previous);
-        new
-    }
+        pub fn add_quantity(&mut self, address: Address, quantity: StakeQuantity) {
+            if quantity == 0 {
+                return
+            }
+            *self.current.entry(address).or_insert(0) += quantity;
+        }
 
-    pub fn move_current_to_previous(&mut self) {
-        assert!(self.previous.is_empty());
-        mem::swap(&mut self.previous, &mut self.current);
+        pub fn update_calculated(&mut self, rewards: BTreeMap<Address, u64>) {
+            self.calculated = rewards;
+        }
+
+        pub fn drain_current(&mut self) -> BTreeMap<Address, u64> {
+            let mut new = BTreeMap::new();
+            mem::swap(&mut new, &mut self.current);
+            new
+        }
+
+        pub fn drain_calculated(&mut self) -> BTreeMap<Address, u64> {
+            let mut new = BTreeMap::new();
+            mem::swap(&mut new, &mut self.calculated);
+            new
+        }
     }
 }
 
@@ -1129,44 +1193,97 @@ mod tests {
     }
 
     #[test]
-    fn load_and_save_intermediate_rewards() {
+    fn load_and_save_intermediate_rewards_v0() {
         let mut state = helpers::get_temp_state();
-        let rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        let rewards = v0::IntermediateRewards::load_from_state(&state).unwrap();
         rewards.save_to_state(&mut state).unwrap();
     }
 
     #[test]
-    fn add_quantity() {
+    fn add_quantity_v0() {
         let address1 = Address::random();
         let address2 = Address::random();
         let mut state = helpers::get_temp_state();
-        let mut origin_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        let mut origin_rewards = v0::IntermediateRewards::load_from_state(&state).unwrap();
         origin_rewards.add_quantity(address1, 1);
         origin_rewards.add_quantity(address2, 2);
         origin_rewards.save_to_state(&mut state).unwrap();
-        let recovered_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        let recovered_rewards = v0::IntermediateRewards::load_from_state(&state).unwrap();
         assert_eq!(origin_rewards, recovered_rewards);
     }
 
     #[test]
-    fn drain() {
+    fn drain_v0() {
         let address1 = Address::random();
         let address2 = Address::random();
         let mut state = helpers::get_temp_state();
-        let mut origin_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        let mut origin_rewards = v0::IntermediateRewards::load_from_state(&state).unwrap();
         origin_rewards.add_quantity(address1, 1);
         origin_rewards.add_quantity(address2, 2);
         origin_rewards.save_to_state(&mut state).unwrap();
-        let mut recovered_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        let mut recovered_rewards = v0::IntermediateRewards::load_from_state(&state).unwrap();
         assert_eq!(origin_rewards, recovered_rewards);
         let _drained = recovered_rewards.drain_previous();
         recovered_rewards.save_to_state(&mut state).unwrap();
-        let mut final_rewards = IntermediateRewards::load_from_state(&state).unwrap();
+        let mut final_rewards = v0::IntermediateRewards::load_from_state(&state).unwrap();
         assert_eq!(BTreeMap::new(), final_rewards.previous);
         let current = final_rewards.current.clone();
         final_rewards.move_current_to_previous();
         assert_eq!(BTreeMap::new(), final_rewards.current);
         assert_eq!(current, final_rewards.previous);
+    }
+
+    #[test]
+    fn save_v0_and_load_v1_intermediate_rewards() {
+        let address1 = Address::random();
+        let address2 = Address::random();
+        let mut state = helpers::get_temp_state();
+        let mut origin_rewards = v0::IntermediateRewards::load_from_state(&state).unwrap();
+        origin_rewards.add_quantity(address1, 1);
+        origin_rewards.add_quantity(address2, 2);
+        origin_rewards.save_to_state(&mut state).unwrap();
+        let recovered_rewards = v1::IntermediateRewards::load_from_state(&state).unwrap();
+        assert_eq!(origin_rewards.previous, recovered_rewards.current);
+        assert_eq!(origin_rewards.current, recovered_rewards.calculated);
+    }
+
+    #[test]
+    fn load_and_save_intermediate_rewards_v1() {
+        let mut state = helpers::get_temp_state();
+        let rewards = v1::IntermediateRewards::load_from_state(&state).unwrap();
+        rewards.save_to_state(&mut state).unwrap();
+    }
+
+    #[test]
+    fn add_quantity_v1() {
+        let address1 = Address::random();
+        let address2 = Address::random();
+        let mut state = helpers::get_temp_state();
+        let mut origin_rewards = v1::IntermediateRewards::load_from_state(&state).unwrap();
+        origin_rewards.add_quantity(address1, 1);
+        origin_rewards.add_quantity(address2, 2);
+        origin_rewards.save_to_state(&mut state).unwrap();
+        let recovered_rewards = v1::IntermediateRewards::load_from_state(&state).unwrap();
+        assert_eq!(origin_rewards, recovered_rewards);
+    }
+
+    #[test]
+    fn drain_v1() {
+        let address1 = Address::random();
+        let address2 = Address::random();
+        let mut state = helpers::get_temp_state();
+        let mut origin_rewards = v1::IntermediateRewards::load_from_state(&state).unwrap();
+        origin_rewards.add_quantity(address1, 1);
+        origin_rewards.add_quantity(address2, 2);
+        origin_rewards.save_to_state(&mut state).unwrap();
+        let mut recovered_rewards = v1::IntermediateRewards::load_from_state(&state).unwrap();
+        assert_eq!(origin_rewards, recovered_rewards);
+        recovered_rewards.drain_current();
+        recovered_rewards.save_to_state(&mut state).unwrap();
+        let mut final_rewards = v1::IntermediateRewards::load_from_state(&state).unwrap();
+        assert_eq!(BTreeMap::new(), final_rewards.current);
+        final_rewards.drain_calculated();
+        assert_eq!(BTreeMap::new(), final_rewards.calculated);
     }
 
     #[test]
