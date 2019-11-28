@@ -28,7 +28,7 @@ export function withNodes(
     options: {
         promiseExpect: PromiseExpect;
         validators: ValidatorConfig[];
-        overrideParams?: Partial<typeof defaultParams>;
+        overrideParams?: Partial<CommonParams>;
         onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
     }
 ) {
@@ -82,7 +82,7 @@ export function findNode(nodes: CodeChain[], signer: Signer) {
 async function createNodes(options: {
     promiseExpect: PromiseExpect;
     validators: ValidatorConfig[];
-    initialParams: typeof defaultParams;
+    initialParams: CommonParams;
     onBeforeEnable?: (nodes: CodeChain[]) => Promise<void>;
 }): Promise<CodeChain[]> {
     const chain = `${__dirname}/../scheme/tendermint-dynval.json`;
@@ -347,12 +347,14 @@ export const defaultParams = {
     maxCandidateMetadataSize: 128
 };
 
-export async function changeParams(
-    node: CodeChain,
-    metadataSeq: number,
-    params: typeof defaultParams
-) {
-    const newParams: any[] = [
+interface EraCommonParams {
+    era: number;
+}
+
+type CommonParams = typeof defaultParams & Partial<EraCommonParams>;
+
+function encodeParams(params: CommonParams): any[] {
+    const result = [
         params.maxExtraDataSize,
         params.maxAssetSchemeMetadataSize,
         params.maxTransferMetadataSize,
@@ -386,12 +388,23 @@ export async function changeParams(
         params.minDeposit,
         params.maxCandidateMetadataSize
     ];
+    if (params.era) {
+        result.push(params.era);
+    }
+    return result;
+}
+
+export async function changeParams(
+    node: CodeChain,
+    metadataSeq: number,
+    params: CommonParams
+) {
     const changeParamsActionRlp: [
         number,
         number,
         (number | string)[],
         ...string[]
-    ] = [0xff, metadataSeq, newParams];
+    ] = [0xff, metadataSeq, encodeParams(params)];
     const message = blake256(RLP.encode(changeParamsActionRlp).toString("hex"));
     changeParamsActionRlp.push(
         `0x${SDK.util.signEcdsa(message, faucetSecret)}`
