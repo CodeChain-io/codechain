@@ -212,12 +212,7 @@ describe("Shutdown test", function() {
                     delegation: 1000,
                     deposit: 100000 - i // tie-breaker
                 }))
-            ],
-            async onBeforeEnable(allNodes) {
-                for (const node of getValidators(allNodes).nodes) {
-                    await node.clean();
-                }
-            }
+            ]
         });
 
         it("only a term closer should be a validator after a complete shutdown", async function() {
