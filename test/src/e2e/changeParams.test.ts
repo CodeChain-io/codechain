@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import * as chai from "chai";
 import { expect } from "chai";
+import * as chaiAsPromised from "chai-as-promised";
 import { H256, PlatformAddress, U64 } from "codechain-primitives/lib";
 import { blake256 } from "codechain-sdk/lib/utils";
 import "mocha";
@@ -32,6 +34,8 @@ import {
 import CodeChain from "../helper/spawn";
 
 const RLP = require("rlp");
+
+chai.use(chaiAsPromised);
 
 describe("ChangeParams", function() {
     const chain = `${__dirname}/../scheme/solo-block-reward-50.json`;
@@ -103,11 +107,7 @@ describe("ChangeParams", function() {
             expect(await node.sdk.rpc.chain.containsTransaction(hash)).be.true;
         }
 
-        try {
-            await node.sendPayTx({ fee: 10 });
-        } catch (err) {
-            expect(err.message).contains("Too Low Fee");
-        }
+        await expect(node.sendPayTx({ fee: 10 })).rejectedWith(/Too Low Fee/);
 
         const params = await node.sdk.rpc.sendRpcRequest(
             "chain_getCommonParams",
@@ -161,12 +161,9 @@ describe("ChangeParams", function() {
                 seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                 fee: 10
             });
-        try {
-            await node.sdk.rpc.chain.sendSignedTransaction(tx);
-            expect.fail("The transaction must fail");
-        } catch (err) {
-            expect(err.message).contains("network id");
-        }
+        await expect(node.sdk.rpc.chain.sendSignedTransaction(tx)).rejectedWith(
+            /network id/
+        );
     });
 
     it("should keep default common params value", async function() {
@@ -240,11 +237,7 @@ describe("ChangeParams", function() {
             );
         }
 
-        try {
-            await node.sendPayTx({ fee: 10 });
-        } catch (err) {
-            expect(err.message).contains("Too Low Fee");
-        }
+        await expect(node.sendPayTx({ fee: 10 })).rejectedWith(/Too Low Fee/);
     });
 
     it("the parameter changed twice in the same block", async function() {
@@ -366,11 +359,7 @@ describe("ChangeParams", function() {
         const pay = await node.sendPayTx({ fee: 5 });
         expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
             .true;
-        try {
-            await node.sendPayTx({ fee: 4 });
-        } catch (err) {
-            expect(err.message).contains("Too Low Fee");
-        }
+        await expect(node.sendPayTx({ fee: 4 })).rejectedWith(/Too Low Fee/);
     });
 
     it("cannot reuse the same signature", async function() {
@@ -492,11 +481,7 @@ describe("ChangeParams", function() {
         const pay = await node.sendPayTx({ fee: 5 });
         expect(await node.sdk.rpc.chain.containsTransaction(pay.hash())).be
             .true;
-        try {
-            await node.sendPayTx({ fee: 4 });
-        } catch (err) {
-            expect(err.message).contains("Too Low Fee");
-        }
+        await expect(node.sendPayTx({ fee: 4 })).rejectedWith(/Too Low Fee/);
     });
 
     it("cannot change params with insufficient stakes", async function() {
@@ -700,11 +685,7 @@ describe("ChangeParams", function() {
             expect(await node.sdk.rpc.chain.getTransaction(hash)).not.be.null;
         }
 
-        try {
-            await node.sendPayTx({ fee: 10 });
-        } catch (err) {
-            expect(err.message).contains("Too Low Fee");
-        }
+        await expect(node.sendPayTx({ fee: 10 })).rejectedWith(/Too Low Fee/);
     });
 
     describe("with stake parameters", async function() {
@@ -764,11 +745,9 @@ describe("ChangeParams", function() {
                     .true;
             }
 
-            try {
-                await node.sendPayTx({ fee: 10 });
-            } catch (err) {
-                expect(err.message).contains("Too Low Fee");
-            }
+            await expect(node.sendPayTx({ fee: 10 })).rejectedWith(
+                /Too Low Fee/
+            );
 
             const params = await node.sdk.rpc.sendRpcRequest(
                 "chain_getCommonParams",
@@ -835,12 +814,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("nomination expiration");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/nomination expiration/);
         });
 
         it("custody period cannot be zero", async function() {
@@ -901,12 +877,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("custody period");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/custody period/);
         });
 
         it("release period cannot be zero", async function() {
@@ -967,12 +940,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("release period");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/release period/);
         });
 
         it("The maximum number of candidates cannot be equal to the minimum number of candidates", async function() {
@@ -1100,11 +1070,9 @@ describe("ChangeParams", function() {
                     .true;
             }
 
-            try {
-                await node.sendPayTx({ fee: 10 });
-            } catch (err) {
-                expect(err.message).contains("Too Low Fee");
-            }
+            await expect(node.sendPayTx({ fee: 10 })).rejectedWith(
+                /Too Low Fee/
+            );
 
             const params = await node.sdk.rpc.sendRpcRequest(
                 "chain_getCommonParams",
@@ -1171,12 +1139,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("nomination expiration");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/nomination expiration/);
         });
 
         it("custody period cannot be zero", async function() {
@@ -1237,12 +1202,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("custody period");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/custody period/);
         });
 
         it("release period cannot be zero", async function() {
@@ -1303,12 +1265,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("release period");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/release period/);
         });
 
         it("min deposit cannot be zero", async function() {
@@ -1369,12 +1328,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("minimum deposit");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/minimum deposit/);
         });
 
         it("delegation threshold cannot be zero", async function() {
@@ -1435,12 +1391,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("delegation threshold");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/delegation threshold/);
         });
 
         it("min number of validators cannot be zero", async function() {
@@ -1501,12 +1454,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("minimum number of validators");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/minimum number of validators/);
         });
 
         it("max number of validators cannot be zero", async function() {
@@ -1567,12 +1517,9 @@ describe("ChangeParams", function() {
                     seq: await node.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await node.sdk.rpc.chain.sendSignedTransaction(tx);
-                expect.fail("The transaction must fail");
-            } catch (err) {
-                expect(err.message).contains("maximum number of validators");
-            }
+            await expect(
+                node.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/maximum number of validators/);
         });
 
         it("The maximum number of candidates cannot be equal to the minimum number of candidates", async function() {
