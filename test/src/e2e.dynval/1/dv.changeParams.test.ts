@@ -269,6 +269,7 @@ describe("Change commonParams that doesn't affects validator set", function() {
                 });
             try {
                 await checkingNode.sdk.rpc.chain.sendSignedTransaction(tx);
+                expect.fail("Low fee should not be included");
             } catch (err) {
                 expect(err.message).contains("Too Low Fee");
             }
@@ -313,7 +314,7 @@ describe("Change commonParams that doesn't affects validator set", function() {
                 await checkingNode.sdk.rpc.chain.sendSignedTransaction(
                     largeNomination.sign({
                         secret: alice.privateKey,
-                        seq,
+                        seq: seq + 1,
                         fee: 10
                     })
                 );
@@ -354,7 +355,7 @@ describe("Change commonParams that doesn't affects validator set", function() {
                 await checkingNode.sdk.rpc.chain.sendSignedTransaction(
                     largeNomination.sign({
                         secret: alice.privateKey,
-                        seq,
+                        seq: seq + 1,
                         fee: 10
                     })
                 );
