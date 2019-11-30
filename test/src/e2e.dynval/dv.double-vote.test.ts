@@ -17,17 +17,17 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
-import { SDK } from "codechain-sdk";
-import * as stake from "codechain-stakeholder-sdk";
-import { Custom } from "codechain-sdk/lib/core/transaction/Custom";
 import {
-    U64,
-    H256,
-    signSchnorr,
     blake256,
+    H256,
     H512,
-    PlatformAddress
+    PlatformAddress,
+    signSchnorr,
+    U64
 } from "codechain-primitives/lib";
+import { SDK } from "codechain-sdk";
+import { Custom } from "codechain-sdk/lib/core/transaction/Custom";
+import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 import * as RLP from "rlp";
 
@@ -36,7 +36,7 @@ import { faucetAddress, faucetSecret } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import { Signer } from "../helper/spawn";
 import CodeChain from "../helper/spawn";
-import { withNodes, setTermTestTimeout, findNode } from "./setup";
+import { findNode, setTermTestTimeout, withNodes } from "./setup";
 
 chai.use(chaiAsPromised);
 

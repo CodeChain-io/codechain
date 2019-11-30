@@ -20,9 +20,9 @@ import * as chaiAsPromised from "chai-as-promised";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
 
+import { validators } from "../../../tendermint.dynval/constants";
 import { Mock } from "../../helper/mock";
 import { Step as TendermintStep } from "../../helper/mock/tendermintMessage";
-import { validators } from "../../../tendermint.dynval/constants";
 import { PromiseExpect } from "../../helper/promise";
 import { setTermTestTimeout, withNodes } from "../setup";
 

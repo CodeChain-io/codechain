@@ -26,8 +26,8 @@ import { faucetAddress, faucetSecret } from "../../helper/constants";
 import { PromiseExpect } from "../../helper/promise";
 import {
     setTermTestTimeout,
-    withNodes,
-    termThatIncludeTransaction
+    termThatIncludeTransaction,
+    withNodes
 } from "../setup";
 
 chai.use(chaiAsPromised);
