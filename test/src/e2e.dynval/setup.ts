@@ -122,7 +122,7 @@ async function createNodes(options: {
             ],
             additionalKeysPath: `tendermint.dynval/${validator.platformAddress.value}/keys`
         });
-        nodes[i].setSigner(validator);
+        nodes[i].signer = validator;
     }
     let bootstrapFailed = false;
     try {

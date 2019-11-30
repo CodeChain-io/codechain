@@ -144,6 +144,10 @@ export default class CodeChain {
         return this._signer;
     }
 
+    public set signer(signer: Signer) {
+        this._signer = signer;
+    }
+
     constructor(
         options: {
             chain?: ChainType;
@@ -341,10 +345,6 @@ export default class CodeChain {
                 .on("exit", onExit);
             readline.on("line", onLine);
         });
-    }
-
-    public setSigner(signer: Signer) {
-        this._signer = signer;
     }
 
     public keepLogs() {
