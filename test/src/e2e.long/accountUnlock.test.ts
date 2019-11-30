@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import * as chai from "chai";
 import { expect } from "chai";
+import * as chaiAsPromised from "chai-as-promised";
 import "mocha";
 import { ERROR } from "../helper/error";
 import { wait } from "../helper/promise";
 import { makeRandomH256, makeRandomPassphrase } from "../helper/random";
 import CodeChain from "../helper/spawn";
+
+chai.use(chaiAsPromised);
 
 describe("account unlock", function() {
     let node: CodeChain;
