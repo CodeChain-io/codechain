@@ -14,14 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
 import "mocha";
 import { validators as originalDynValidators } from "../../../tendermint.dynval/constants";
 import { PromiseExpect } from "../../helper/promise";
 import { withNodes } from "../setup";
-
-chai.use(chaiAsPromised);
 
 // Verifying external blocks take different code path with internal blocks.
 // We need both a proposer and a verifier to test them.

@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
-chai.use(chaiAsPromised);
-const expect = chai.expect;
+import { expect } from "chai";
 import { Asset, AssetAddress, H256 } from "codechain-sdk/lib/core/classes";
 import * as _ from "lodash";
 import "mocha";

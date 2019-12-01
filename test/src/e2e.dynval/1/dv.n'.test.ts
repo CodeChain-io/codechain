@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import * as chai from "chai";
 import { expect } from "chai";
-import * as chaiAsPromised from "chai-as-promised";
 import { SDK } from "codechain-sdk";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
@@ -25,8 +23,6 @@ import { validators } from "../../../tendermint.dynval/constants";
 import { faucetAddress, faucetSecret } from "../../helper/constants";
 import { PromiseExpect } from "../../helper/promise";
 import { findNode, setTermTestTimeout, withNodes } from "../setup";
-
-chai.use(chaiAsPromised);
 
 describe("Dynamic Validator N -> N'", function() {
     const promiseExpect = new PromiseExpect();
