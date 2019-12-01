@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
+import { expect } from "chai";
 import { H256, PlatformAddress } from "codechain-primitives/lib";
 import { toHex } from "codechain-sdk/lib/utils";
 import "mocha";
@@ -34,9 +33,6 @@ import {
 } from "../helper/constants";
 import { PromiseExpect } from "../helper/promise";
 import CodeChain from "../helper/spawn";
-
-chai.use(chaiAsPromised);
-const expect = chai.expect;
 
 const RLP = require("rlp");
 

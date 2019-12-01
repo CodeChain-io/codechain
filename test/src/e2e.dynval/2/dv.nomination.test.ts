@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import * as chai from "chai";
 import { expect } from "chai";
-import * as chaiAsPromised from "chai-as-promised";
 import { H512 } from "codechain-primitives/lib";
 import * as stake from "codechain-stakeholder-sdk";
 import "mocha";
@@ -29,8 +27,6 @@ import {
     setTermTestTimeout,
     withNodes
 } from "../setup";
-
-chai.use(chaiAsPromised);
 
 describe("Nomination", function() {
     const promiseExpect = new PromiseExpect();

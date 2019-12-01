@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import * as chai from "chai";
 import { expect } from "chai";
-import * as chaiAsPromised from "chai-as-promised";
 import {
     blake256,
     H256,
@@ -37,8 +35,6 @@ import { PromiseExpect } from "../helper/promise";
 import { Signer } from "../helper/spawn";
 import CodeChain from "../helper/spawn";
 import { findNode, setTermTestTimeout, withNodes } from "./setup";
-
-chai.use(chaiAsPromised);
 
 const HANDLER_ID = 2;
 const REPORT_DOUBLE_VOTE_ACTION_ID = 5;
