@@ -1662,27 +1662,7 @@ impl Worker {
             }
         }
 
-        let mut last_term_end = None;
-        for block_hash in &enacted {
-            let header = c.block_header(&BlockId::Hash(*block_hash)).expect("Block is enacted").decode();
-            let parent_header = match c.block_header(&BlockId::Hash(*header.parent_hash())) {
-                Some(h) => h.decode(),
-                // NOTE: Only the genesis block and the snapshot target don't have the parent in the blockchain
-                None => continue,
-            };
-            let term_seconds = if let Some(p) = c.term_common_params(parent_header.hash().into()) {
-                p.term_seconds()
-            } else {
-                continue
-            };
-            if super::engine::is_term_changed(&header, &parent_header, term_seconds) {
-                last_term_end = Some(*block_hash);
-            }
-        }
-        if let Some(last_term_end) = last_term_end {
-            // TODO: Reduce the snapshot frequency.
-            self.snapshot_notify_sender.notify(last_term_end);
-        }
+        self.send_snapshot_notify(c.as_ref(), enacted.as_slice());
 
         if let Some((last, rest)) = imported.split_last() {
             let (imported, last_proposal_header) = {
@@ -1715,6 +1695,31 @@ impl Worker {
             if let Some(last_proposal_header) = last_proposal_header {
                 self.on_imported_proposal(&last_proposal_header);
             }
+        }
+    }
+
+    // Notify once for the latest block even if multiple blocks have been enacted.
+    fn send_snapshot_notify(&mut self, c: &dyn ConsensusClient, enacted: &[BlockHash]) {
+        let mut last_term_end = None;
+        for block_hash in enacted {
+            let header = c.block_header(&BlockId::Hash(*block_hash)).expect("Block is enacted").decode();
+            let parent_header = match c.block_header(&BlockId::Hash(*header.parent_hash())) {
+                Some(h) => h.decode(),
+                // NOTE: Only the genesis block and the snapshot target don't have the parent in the blockchain
+                None => continue,
+            };
+            let term_seconds = if let Some(p) = c.term_common_params(parent_header.hash().into()) {
+                p.term_seconds()
+            } else {
+                continue
+            };
+            if super::engine::is_term_changed(&header, &parent_header, term_seconds) {
+                last_term_end = Some(*block_hash);
+            }
+        }
+        if let Some(last_term_end) = last_term_end {
+            // TODO: Reduce the snapshot frequency.
+            self.snapshot_notify_sender.notify(last_term_end);
         }
     }
 
