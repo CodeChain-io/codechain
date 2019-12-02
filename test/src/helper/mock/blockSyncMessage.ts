@@ -15,10 +15,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 import { H256 } from "codechain-primitives";
 import { U256 } from "codechain-primitives";
+import * as EventEmitter from "events";
 import { compressSync, uncompressSync } from "snappy";
 
 const RLP = require("rlp");
-const EventEmitter = require("events");
 
 class EVENT extends EventEmitter {}
 export const Emitter = new EVENT();

@@ -267,11 +267,9 @@ describe("Change commonParams that doesn't affects validator set", function() {
                     seq: await checkingNode.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            try {
-                await checkingNode.sdk.rpc.chain.sendSignedTransaction(tx);
-            } catch (err) {
-                expect(err.message).contains("Too Low Fee");
-            }
+            await expect(
+                checkingNode.sdk.rpc.chain.sendSignedTransaction(tx)
+            ).rejectedWith(/Too Low Fee/);
         });
     });
 
@@ -309,20 +307,16 @@ describe("Change commonParams that doesn't affects validator set", function() {
             await checkingNode.waitForTx(normalHash);
 
             const largeNomination = nominationWithMetadata(257);
-            try {
-                await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+
+            await expect(
+                checkingNode.sdk.rpc.chain.sendSignedTransaction(
                     largeNomination.sign({
                         secret: alice.privateKey,
-                        seq,
+                        seq: seq + 1,
                         fee: 10
                     })
-                );
-                expect.fail(
-                    "Transaction with large metadata should not be included"
-                );
-            } catch (err) {
-                expect(err.message).include("Too long");
-            }
+                )
+            ).rejectedWith(/Too long/);
         });
 
         it("Should apply smaller metadata limit after decrement", async function() {
@@ -350,20 +344,15 @@ describe("Change commonParams that doesn't affects validator set", function() {
             await checkingNode.waitForTx(normalHash);
 
             const largeNomination = nominationWithMetadata(127);
-            try {
-                await checkingNode.sdk.rpc.chain.sendSignedTransaction(
+            await expect(
+                checkingNode.sdk.rpc.chain.sendSignedTransaction(
                     largeNomination.sign({
                         secret: alice.privateKey,
-                        seq,
+                        seq: seq + 1,
                         fee: 10
                     })
-                );
-                expect.fail(
-                    "Transaction with large metadata should not be included"
-                );
-            } catch (err) {
-                expect(err.message).include("Too long");
-            }
+                )
+            ).rejectedWith(/Too long/);
         });
     });
 

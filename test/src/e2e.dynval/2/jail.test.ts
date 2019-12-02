@@ -157,12 +157,9 @@ describe("Jail state transition test", function() {
                 fee: 10
             })
         );
-        try {
-            await node.waitForTx(hash);
-            expect.fail("Self nomination should not be accepted");
-        } catch (e) {
-            expect(e.message).to.contain("Account is still in custody");
-        }
+        await expect(node.waitForTx(hash)).rejectedWith(
+            "Account is still in custody"
+        );
         await termWaiter.waitNodeUntilTerm(node, { target: 3, termPeriods: 1 });
         expect(await isPrisoner(alice)).to.be.true;
     });

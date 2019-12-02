@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import * as chai from "chai";
 import { expect } from "chai";
-import * as chaiAsPromised from "chai-as-promised";
 import "mocha";
 import {
     validator0Address,
@@ -24,8 +22,6 @@ import {
     validator2Address
 } from "../helper/constants";
 import CodeChain from "../helper/spawn";
-
-chai.use(chaiAsPromised);
 
 describe("MemPoolMinFees", async function() {
     const chain = `${__dirname}/../scheme/tendermint-int.json`;
