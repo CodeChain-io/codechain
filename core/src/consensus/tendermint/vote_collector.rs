@@ -21,7 +21,7 @@ use ckey::SchnorrSignature;
 use ctypes::BlockHash;
 use rlp::{Encodable, RlpStream};
 
-use super::super::PriorityInfo;
+use super::super::{Priority, PriorityInfo};
 use super::stake::Action;
 use super::{ConsensusMessage, ProposalSummary, SortitionRound, Step, VoteStep};
 use crate::consensus::BitSet;
@@ -333,6 +333,10 @@ impl VoteCollector {
         self.votes
             .get(&sortition_round.into())
             .and_then(|step_collector| step_collector.priority_collector().get_highest())
+    }
+
+    pub fn get_highest_priority(&self, sortition_round: SortitionRound) -> Option<Priority> {
+        self.get_highest_priority_info(sortition_round).map(|priority_info| priority_info.priority())
     }
 
     pub fn get_highest_proposal_hash(&self, sortition_round: SortitionRound) -> Option<BlockHash> {

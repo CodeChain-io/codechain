@@ -191,6 +191,10 @@ impl PeerState {
             messages: BitSet::new(),
         }
     }
+
+    pub fn priority(&self) -> Option<Priority> {
+        self.proposal.as_ref().map(|summary| summary.priority())
+    }
 }
 
 pub struct TendermintSealView<'a> {
