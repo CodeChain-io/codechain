@@ -1700,26 +1700,21 @@ impl Worker {
 
     // Notify once for the latest block even if multiple blocks have been enacted.
     fn send_snapshot_notify(&mut self, c: &dyn ConsensusClient, enacted: &[BlockHash]) {
-        let mut last_term_end = None;
-        for block_hash in enacted {
-            let header = c.block_header(&BlockId::Hash(*block_hash)).expect("Block is enacted").decode();
-            let parent_header = match c.block_header(&BlockId::Hash(*header.parent_hash())) {
-                Some(h) => h.decode(),
-                // NOTE: Only the genesis block and the snapshot target don't have the parent in the blockchain
-                None => continue,
-            };
-            let term_seconds = if let Some(p) = c.term_common_params(parent_header.hash().into()) {
-                p.term_seconds()
-            } else {
-                continue
-            };
-            if super::engine::is_term_changed(&header, &parent_header, term_seconds) {
-                last_term_end = Some(*block_hash);
+        let mut last_snapshot_point = None;
+        for block_hash in enacted.iter().rev() {
+            let block_id = BlockId::Hash(*block_hash);
+            let last_term_finished_block_num = c.last_term_finished_block_num(block_id).expect("Block is enacted");
+            let block_number = c.block_number(&block_id).expect("Block number should exist for enacted block");
+
+            if let Some(params) = c.term_common_params(block_id) {
+                if params.era() == 1 && (last_term_finished_block_num + 1 == block_number) {
+                    last_snapshot_point = Some(block_hash);
+                }
             }
         }
-        if let Some(last_term_end) = last_term_end {
+        if let Some(last_snapshot_point) = last_snapshot_point {
             // TODO: Reduce the snapshot frequency.
-            self.snapshot_notify_sender.notify(last_term_end);
+            self.snapshot_notify_sender.notify(*last_snapshot_point);
         }
     }
 
