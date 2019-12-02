@@ -48,7 +48,7 @@ use crate::consensus::signer::EngineSigner;
 use crate::consensus::validator_set::{DynamicValidator, ValidatorSet};
 use crate::consensus::{
     sortition::seed::{SeedInfo, VRFSeed},
-    EngineError, PriorityInfo, Seal, VRFSortition,
+    EngineError, Priority, PriorityInfo, Seal, VRFSortition,
 };
 use crate::encoded;
 use crate::error::{BlockError, Error};
@@ -146,6 +146,12 @@ pub enum Event {
         view: View,
         message: Bytes,
         result: crossbeam::Sender<Option<Arc<dyn ConsensusClient>>>,
+    },
+    VerifyPriorityInfo {
+        height: Height,
+        view: View,
+        priority_info: PriorityInfo,
+        result: crossbeam::Sender<Option<bool>>,
     },
     StepState {
         token: NodeId,
@@ -361,6 +367,14 @@ impl Worker {
                             }) => {
                                 let client = inner.on_commit_message(block, votes);
                                 result.send(client).unwrap();
+                            }
+                            Ok(Event::VerifyPriorityInfo {
+                                height,
+                                view,
+                                priority_info,
+                                result
+                            }) => {
+                                result.send(inner.verify_priority_info(height, view, priority_info)).unwrap();
                             }
                             Err(crossbeam::RecvError) => {
                                 cerror!(ENGINE, "The event channel for tendermint thread had been closed.");
@@ -592,10 +606,11 @@ impl Worker {
             .unwrap();
     }
 
-    fn request_proposal_to_any(&self, round: SortitionRound) {
+    fn request_proposal_to_superiors(&self, round: SortitionRound, current_highest: Option<Priority>) {
         self.extension
-            .send(network::Event::RequestProposalToAny {
+            .send(network::Event::RequestProposalToSuperiors {
                 round,
+                current_highest,
             })
             .unwrap();
     }
@@ -707,7 +722,10 @@ impl Worker {
                         };
                     }
                 } else {
-                    self.request_proposal_to_any(vote_step.into());
+                    let sortition_round = vote_step.into();
+                    let round_highest_priority = self.votes.get_highest_priority(sortition_round);
+                    cinfo!(ENGINE, "I am not eligible to be a proposer, I'll request a proposal");
+                    self.request_proposal_to_superiors(sortition_round, round_highest_priority);
                 }
             }
             Step::Prevote => {
@@ -829,7 +847,9 @@ impl Worker {
         let received_locked_block = self.votes.has_votes_for(&vote_step, locked_proposal_hash);
 
         if !received_locked_block {
-            self.request_proposal_to_any(vote_step.into());
+            let sortition_round = vote_step.into();
+            let round_highest_priority = self.votes.get_highest_priority(sortition_round);
+            self.request_proposal_to_superiors(sortition_round, round_highest_priority);
             return Err(format!("Have a lock on {}-{}, but do not received a locked proposal", self.height, locked_view))
         }
 
@@ -1138,6 +1158,18 @@ impl Worker {
         }
 
         Ok(())
+    }
+
+    fn verify_priority_info(&mut self, height: Height, view: View, priority_info: PriorityInfo) -> Option<bool> {
+        let parent_seed = self.prev_vrf_seed_of_height(height)?;
+        let parent_hash = self.client().block_hash(&(height - 1).into())?;
+        let signer_idx = priority_info.signer_idx();
+        let signer_public = self.validators.get(&parent_hash, signer_idx);
+        let voting_power = self.get_voting_power(height - 1, &parent_hash, signer_idx);
+
+        priority_info
+            .verify(&parent_seed.round_msg(view), &signer_public, voting_power, &mut self.sortition_scheme)
+            .ok()
     }
 
     fn verify_seed(&mut self, header: &Header, parent: &Header) -> Result<(), Error> {

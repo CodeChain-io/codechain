@@ -34,7 +34,7 @@ use super::message::*;
 use super::params::TimeoutParams;
 use super::types::{PeerState, Step, View};
 use super::worker;
-use crate::consensus::{EngineError, PriorityInfo};
+use crate::consensus::{EngineError, Priority, PriorityInfo};
 
 use super::{
     ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
@@ -154,21 +154,25 @@ impl TendermintExtension {
         }
     }
 
-    fn request_proposal_to_any(&self, round: SortitionRound) {
-        for (token, peer) in &self.peers {
-            let is_future_height_and_view = round < peer.vote_step.into();
+    fn request_proposal_to_superiors(&self, round: SortitionRound, my_highest: Option<Priority>) {
+        // Request to future round peers
+        self.peers
+            .iter()
+            .filter(|(_, peer)| round < peer.vote_step.into())
+            .for_each(|(token, _)| self.request_proposal(token, round));
 
-            if is_future_height_and_view {
-                self.request_proposal(token, round);
-                continue
-            }
-
-            let is_same_height_and_view = round == peer.vote_step.into();
-
-            if is_same_height_and_view && peer.proposal.is_some() {
-                self.request_proposal(token, round);
-            }
-        }
+        let current_round_peers = self.peers.iter().filter(|(_, peer)| round == peer.vote_step.into());
+        // Request to current round higher peers
+        if let Some(current_round_highest_priority) = current_round_peers
+            .clone()
+            .map(|(_id, peer)| peer.priority())
+            .max()
+            .filter(|highest_priority| *highest_priority > my_highest)
+        {
+            current_round_peers
+                .filter(|(_id, peer)| peer.priority() == current_round_highest_priority)
+                .for_each(|(token, _)| self.request_proposal(token, round))
+        };
     }
 
     fn request_proposal(&self, token: &NodeId, round: SortitionRound) {
@@ -301,21 +305,44 @@ impl NetworkExtension<Event> for TendermintExtension {
                     lock_view,
                     known_votes,
                 );
-                self.update_peer_state(token, vote_step, (*proposal).clone(), known_votes);
-                let (result, receiver) = crossbeam::unbounded();
-                self.inner
-                    .send(worker::Event::StepState {
-                        token: *token,
-                        vote_step,
-                        proposal: *proposal,
-                        lock_view,
-                        known_votes: Box::from(known_votes),
-                        result,
-                    })
-                    .unwrap();
+                let unchanged = match self.peers.get(token) {
+                    Some(peer_state) => *proposal == peer_state.proposal,
+                    None => false,
+                };
+                let verified = unchanged || {
+                    (*proposal)
+                        .clone()
+                        .map(|summary| {
+                            let (result, receiver) = crossbeam::bounded(1);
+                            self.inner
+                                .send(worker::Event::VerifyPriorityInfo {
+                                    height: vote_step.height,
+                                    view: vote_step.view,
+                                    priority_info: summary.priority_info,
+                                    result,
+                                })
+                                .unwrap();
+                            receiver.recv().unwrap().unwrap_or(false)
+                        })
+                        .unwrap_or(true)
+                };
+                if verified {
+                    self.update_peer_state(token, vote_step, (*proposal).clone(), known_votes);
+                    let (result, receiver) = crossbeam::unbounded();
+                    self.inner
+                        .send(worker::Event::StepState {
+                            token: *token,
+                            vote_step,
+                            proposal: *proposal,
+                            lock_view,
+                            known_votes: Box::from(known_votes),
+                            result,
+                        })
+                        .unwrap();
 
-                while let Ok(message) = receiver.recv() {
-                    self.api.send(token, Arc::new(message));
+                    while let Ok(message) = receiver.recv() {
+                        self.api.send(token, Arc::new(message));
+                    }
                 }
             }
             Ok(TendermintMessage::RequestProposal {
@@ -420,10 +447,11 @@ impl NetworkExtension<Event> for TendermintExtension {
             } => {
                 self.request_messages_to_all(vote_step, requested_votes);
             }
-            Event::RequestProposalToAny {
+            Event::RequestProposalToSuperiors {
                 round,
+                current_highest,
             } => {
-                self.request_proposal_to_any(round);
+                self.request_proposal_to_superiors(round, current_highest);
             }
             Event::SetTimerStep {
                 step,
@@ -456,8 +484,9 @@ pub enum Event {
         vote_step: VoteStep,
         requested_votes: BitSet,
     },
-    RequestProposalToAny {
+    RequestProposalToSuperiors {
         round: SortitionRound,
+        current_highest: Option<Priority>,
     },
     SetTimerStep {
         step: Step,

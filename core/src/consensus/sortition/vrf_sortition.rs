@@ -35,7 +35,7 @@ pub struct VRFSortition {
     pub vrf_inst: ECVRF,
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, RlpEncodable, RlpDecodable)]
+#[derive(Eq, PartialEq, Clone, Default, Debug, RlpEncodable, RlpDecodable)]
 pub struct PriorityInfo {
     signer_idx: usize,
     priority: Priority,

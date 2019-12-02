@@ -25,7 +25,7 @@ use snap;
 
 use super::super::BitSet;
 use super::{Height, Step, View};
-use crate::consensus::Priority;
+use crate::consensus::{Priority, PriorityInfo};
 
 /// Step for the sortition round.
 /// FIXME: It has a large overlap with the previous VoteStep.
@@ -123,8 +123,14 @@ const MESSAGE_ID_COMMIT: u8 = 0x07;
 #[derive(Clone, Debug, PartialEq, RlpEncodable, RlpDecodable)]
 #[cfg_attr(test, derive(Default))]
 pub struct ProposalSummary {
-    pub priority: Priority,
+    pub priority_info: PriorityInfo,
     pub block_hash: BlockHash,
+}
+
+impl ProposalSummary {
+    pub fn priority(&self) -> Priority {
+        self.priority_info.priority()
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -442,7 +448,7 @@ mod tests {
         bit_set.set(2);
         rlp_encode_and_decode_test!(TendermintMessage::StepState {
             vote_step: VoteStep::new(10, 123, Step::Prevote),
-            proposal: Some(Default::default()),
+            proposal: Box::new(Some(Default::default())),
             lock_view: Some(2),
             known_votes: bit_set
         });
