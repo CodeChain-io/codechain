@@ -246,7 +246,7 @@ impl ConsensusEngine for Tendermint {
 
         match term {
             0 => {}
-            _ => match term_common_params.expect("Term common params should exist").era() {
+            _ => match metadata.params().map_or(0, |p| p.era()) {
                 0 => {}
                 1 => block.state_mut().snapshot_term_params()?,
                 _ => unimplemented!("It is not decided how we handle this"),
