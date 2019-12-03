@@ -19,17 +19,16 @@ use std::{fmt, fs};
 
 use ccore::Scheme;
 use never_type::Never;
+use serde::de::{Error, Visitor};
+use serde::{Deserialize, Deserializer};
 
-#[derive(Clone, Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ChainType {
     Mainnet,
     Solo,
-    #[serde(rename = "simple_poa")]
     SimplePoA,
     Tendermint,
     Cuckoo,
-    #[serde(rename = "blake_pow")]
     BlakePoW,
     Husky,
     Saluki,
@@ -62,6 +61,36 @@ impl FromStr for ChainType {
             other => ChainType::Custom(other.into()),
         };
         Ok(scheme)
+    }
+}
+
+impl<'a> Deserialize<'a> for ChainType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'a>, {
+        struct ChainTypeVisitor;
+
+        impl<'a> Visitor<'a> for ChainTypeVisitor {
+            type Value = ChainType;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "a valid chain type string")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: Error, {
+                Ok(ChainType::from_str(value).expect("ChainType can always be deserialized"))
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+            where
+                E: Error, {
+                self.visit_str(value.as_ref())
+            }
+        }
+
+        deserializer.deserialize_any(ChainTypeVisitor)
     }
 }
 
