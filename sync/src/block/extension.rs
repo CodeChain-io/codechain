@@ -109,6 +109,38 @@ impl Extension {
         }
     }
 
+    fn send_status(&mut self, id: &NodeId) {
+        let chain_info = self.client.chain_info();
+        self.api.send(
+            id,
+            Arc::new(
+                Message::Status {
+                    total_score: chain_info.best_proposal_score,
+                    best_hash: chain_info.best_proposal_block_hash,
+                    genesis_hash: chain_info.genesis_hash,
+                }
+                .rlp_bytes(),
+            ),
+        );
+    }
+
+    fn send_status_broadcast(&mut self) {
+        let chain_info = self.client.chain_info();
+        for id in self.connected_nodes.iter() {
+            self.api.send(
+                id,
+                Arc::new(
+                    Message::Status {
+                        total_score: chain_info.best_proposal_score,
+                        best_hash: chain_info.best_proposal_block_hash,
+                        genesis_hash: chain_info.genesis_hash,
+                    }
+                    .rlp_bytes(),
+                ),
+            );
+        }
+    }
+
     fn send_header_request(&mut self, id: &NodeId, request: RequestMessage) {
         if let Some(requests) = self.requests.get_mut(id) {
             ctrace!(SYNC, "Send header request to {}", id);
@@ -212,18 +244,8 @@ impl NetworkExtension<Event> for Extension {
 
     fn on_node_added(&mut self, id: &NodeId, _version: u64) {
         cinfo!(SYNC, "New peer detected #{}", id);
-        let chain_info = self.client.chain_info();
-        self.api.send(
-            id,
-            Arc::new(
-                Message::Status {
-                    total_score: chain_info.best_proposal_score,
-                    best_hash: chain_info.best_proposal_block_hash,
-                    genesis_hash: chain_info.genesis_hash,
-                }
-                .rlp_bytes(),
-            ),
-        );
+        self.send_status(id);
+
         let t = self.connected_nodes.insert(*id);
         debug_assert!(t, "{} is already added to peer list", id);
 
@@ -420,22 +442,7 @@ impl Extension {
         self.body_downloader.remove_target(&imported);
         self.body_downloader.remove_target(&invalid);
 
-
-        let chain_info = self.client.chain_info();
-
-        for id in &self.connected_nodes {
-            self.api.send(
-                id,
-                Arc::new(
-                    Message::Status {
-                        total_score: chain_info.best_proposal_score,
-                        best_hash: chain_info.best_proposal_block_hash,
-                        genesis_hash: chain_info.genesis_hash,
-                    }
-                    .rlp_bytes(),
-                ),
-            );
-        }
+        self.send_status_broadcast();
     }
 }
 
