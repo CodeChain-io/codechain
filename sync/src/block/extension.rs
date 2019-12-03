@@ -408,11 +408,8 @@ pub enum Event {
 
 impl Extension {
     fn new_headers(&mut self, imported: Vec<BlockHash>, enacted: Vec<BlockHash>, retracted: Vec<BlockHash>) {
-        let peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
-        for id in peer_ids {
-            if let Some(peer) = self.header_downloaders.get_mut(&id) {
-                peer.mark_as_imported(imported.clone());
-            }
+        for peer in self.header_downloaders.values_mut() {
+            peer.mark_as_imported(imported.clone());
         }
         let mut headers_to_download: Vec<_> = enacted
             .into_iter()
