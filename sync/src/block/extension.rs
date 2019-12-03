@@ -622,7 +622,7 @@ impl Extension {
     }
 
     fn on_peer_request(&self, from: &NodeId, id: u64, request: RequestMessage) {
-        if !self.header_downloaders.contains_key(from) {
+        if !self.connected_nodes.contains(from) {
             cinfo!(SYNC, "Request from invalid peer #{} received", from);
             return
         }
