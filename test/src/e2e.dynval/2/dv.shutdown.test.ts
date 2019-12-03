@@ -65,12 +65,7 @@ describe("Shutdown test", function() {
                 { signer: validators[4], delegation: 1, deposit: 100000 },
                 { signer: validators[5], delegation: 1, deposit: 100000 },
                 { signer: validators[6], delegation: 1, deposit: 100000 }
-            ],
-            async onBeforeEnable(allNodes) {
-                for (const node of getBetas(allNodes).nodes) {
-                    await node.clean();
-                }
-            }
+            ]
         });
 
         beforeEach(async function() {
