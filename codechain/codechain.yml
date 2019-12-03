@@ -3,6 +3,12 @@ version_short: "v"
 author: CodeChain Team <hi@codechain.io>
 about: CodeChian client
 args:
+    - chain:
+        short: c
+        long: chain
+        help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, corgi, mainnet or a path to chain scheme file.
+        takes_value: true
+        global: true
     - allowed-future-gap:
         long: allowed-future-gap
         value_name: MS
@@ -55,11 +61,6 @@ args:
         short: q
         long: quiet
         help: Do not show any synchronization information in the console.
-    - chain:
-        short: c
-        long: chain
-        help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, corgi, mainnet or a path to chain scheme file.
-        takes_value: true
     - base-path:
         long: base-path
         value_name: PATH
@@ -309,12 +310,6 @@ subcommands:
                 global: true
                 help: Specify the path for JSON key files to be found
                 takes_value: true
-            - chain:
-                short: c
-                long: chain
-                global: true
-                help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, corgi, mainnet or a path to chain scheme file.
-                takes_value: true
         subcommands:
             - create:
                 about: create account
@@ -351,12 +346,6 @@ subcommands:
     - convert:
         about: Conversion utility
         args:
-            - chain:
-                  short: c
-                  long: chain
-                  global: true
-                  help: Set the blockchain type out of solo, simple_poa, tendermint, cuckoo, blake_pow, corgi, mainnet or a path to chain scheme file.
-                  takes_value: true
             - from:
                   short: f
                   long: from
