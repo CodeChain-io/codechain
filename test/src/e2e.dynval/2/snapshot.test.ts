@@ -17,6 +17,7 @@
 import * as chai from "chai";
 import { expect } from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+import * as stake from "codechain-stakeholder-sdk";
 import * as fs from "fs";
 import "mocha";
 import * as path from "path";
@@ -24,6 +25,7 @@ import * as path from "path";
 import mkdirp = require("mkdirp");
 import { validators } from "../../../tendermint.dynval/constants";
 import { PromiseExpect } from "../../helper/promise";
+import CodeChain from "../../helper/spawn";
 import { setTermTestTimeout, withNodes } from "../setup";
 
 chai.use(chaiAsPromised);
@@ -37,7 +39,8 @@ describe("Snapshot for Tendermint with Dynamic Validator", function() {
     const { nodes } = withNodes(this, {
         promiseExpect,
         overrideParams: {
-            maxNumOfValidators: 3
+            maxNumOfValidators: 3,
+            era: 1
         },
         validators: snapshotValidators.map((signer, index) => ({
             signer,
@@ -63,30 +66,32 @@ describe("Snapshot for Tendermint with Dynamic Validator", function() {
 
     it("should be exist after some time", async function() {
         const termWaiter = setTermTestTimeout(this, {
-            terms: 1
+            terms: 2
         });
         const termMetadata = await termWaiter.waitNodeUntilTerm(nodes[0], {
             target: 2,
             termPeriods: 1
         });
-
-        const blockHash = (await nodes[0].sdk.rpc.chain.getBlockHash(
-            termMetadata.lastTermFinishedBlockNumber
-        ))!;
-        const stateRoot = (await nodes[0].sdk.rpc.chain.getBlock(blockHash))!
-            .stateRoot;
+        const snapshotBlock = await getSnapshotBlock(nodes[0], termMetadata);
         expect(
-            fs.existsSync(
-                path.join(
-                    nodes[0].snapshotPath,
-                    blockHash.toString(),
-                    stateRoot.toString()
-                )
+            path.join(
+                nodes[0].snapshotPath,
+                snapshotBlock.hash.toString(),
+                snapshotBlock.stateRoot.toString()
             )
-        ).to.be.true;
+        ).to.satisfy(fs.existsSync);
     });
 
     afterEach(async function() {
         promiseExpect.checkFulfilled();
     });
 });
+
+async function getSnapshotBlock(
+    node: CodeChain,
+    termMetadata: stake.TermMetadata
+) {
+    const blockNumber = termMetadata.lastTermFinishedBlockNumber + 1;
+    await node.waitBlockNumber(blockNumber);
+    return (await node.sdk.rpc.chain.getBlock(blockNumber))!;
+}
