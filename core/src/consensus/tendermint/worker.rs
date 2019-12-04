@@ -1645,6 +1645,8 @@ impl Worker {
             }
         };
 
+        self.send_snapshot_notify(c.as_ref(), enacted.as_slice());
+
         if self.step.is_commit() && (imported.len() + enacted.len() == 1) {
             let (_, committed_block_hash) = self.step.committed().expect("Commit state always has block_hash");
             if imported.first() == Some(&committed_block_hash) {
@@ -1661,8 +1663,6 @@ impl Worker {
                 }
             }
         }
-
-        self.send_snapshot_notify(c.as_ref(), enacted.as_slice());
 
         if let Some((last, rest)) = imported.split_last() {
             let (imported, last_proposal_header) = {
