@@ -1044,6 +1044,10 @@ impl Extension {
 
     fn transition_to_full(&mut self) {
         cdebug!(SYNC, "Transitioning state to {:?}", State::Full);
+        let best_hash = self.client.best_block_header().hash();
+        for downloader in self.header_downloaders.values_mut() {
+            downloader.update_pivot(best_hash);
+        }
         self.state = State::Full;
     }
 }
