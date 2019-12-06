@@ -1,0 +1,19 @@
+[codechain]
+
+[mining]
+
+[network]
+
+[rpc]
+
+[ipc]
+
+[ws]
+
+[snapshot]
+disable = false
+
+[stratum]
+
+[email_alarm]
+
