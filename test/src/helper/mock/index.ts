@@ -611,6 +611,7 @@ export class Mock {
                     new TendermintMessage({
                         type: "proposalblock",
                         view: message.view,
+                        priorityInfo: message.priorityInfo,
                         message: RLP.encode([newHeader, block[1]]),
                         signature: newSignature.r + newSignature.s
                     })
@@ -623,8 +624,10 @@ export class Mock {
                     this.sendTendermintMessage(
                         new TendermintMessage({
                             type: "requestproposal",
-                            height: message.voteStep.height,
-                            view: message.voteStep.view
+                            round: {
+                                height: message.voteStep.height,
+                                view: message.voteStep.view
+                            }
                         })
                     );
                 }, 200);

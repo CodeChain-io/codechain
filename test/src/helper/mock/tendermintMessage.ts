@@ -44,6 +44,19 @@ interface VoteStep {
     step: Step;
 }
 
+interface SortitionRound {
+    height: number;
+    view: number;
+}
+
+interface PriorityInfo {
+    signerIdx: number;
+    priority: H256;
+    subUserIdx: number;
+    numberOfElections: number;
+    vrfProof: Buffer;
+}
+
 export interface ConsensusMessage {
     type: "consensusmessage";
     messages: Array<{
@@ -59,14 +72,20 @@ export interface ConsensusMessage {
 export interface ProposalBlock {
     type: "proposalblock";
     signature: string;
+    priorityInfo: PriorityInfo;
     view: number;
     message: Buffer;
+}
+
+interface ProposalSummary {
+    priorityInfo: PriorityInfo;
+    blockHash: H256;
 }
 
 export interface StepState {
     type: "stepstate";
     voteStep: VoteStep;
-    proposal: H256 | null;
+    proposal: ProposalSummary | null;
     lockView: number | null;
     knownVotes: Buffer;
 }
@@ -79,8 +98,7 @@ export interface RequestMessage {
 
 export interface RequestProposal {
     type: "requestproposal";
-    height: number;
-    view: number;
+    round: SortitionRound;
 }
 
 type MessageBody =
@@ -124,8 +142,15 @@ export class TendermintMessage {
                 message = {
                     type: "proposalblock",
                     signature: decoded[1].toString("hex"),
-                    view: readUIntRLP(decoded[2]),
-                    message: uncompressSync(decoded[3])
+                    priorityInfo: {
+                        signerIdx: readUIntRLP(decoded[2][0]),
+                        priority: new H256(decoded[2][1].toString("hex")),
+                        subUserIdx: readUIntRLP(decoded[2][2]),
+                        numberOfElections: readUIntRLP(decoded[2][3]),
+                        vrfProof: decoded[2][4]
+                    },
+                    view: readUIntRLP(decoded[3]),
+                    message: uncompressSync(decoded[4])
                 };
                 break;
             }
@@ -137,10 +162,20 @@ export class TendermintMessage {
                         view: readUIntRLP(decoded[1][1]),
                         step: readUIntRLP(decoded[1][2]) as Step
                     },
-                    proposal: readOptionalRlp(
-                        decoded[2],
-                        buffer => new H256(buffer.toString("hex"))
-                    ),
+                    proposal: readOptionalRlp(decoded[2], (buffer: any) => {
+                        return {
+                            priorityInfo: {
+                                signerIdx: readUIntRLP(buffer[0][0]),
+                                priority: new H256(
+                                    buffer[0][1].toString("hex")
+                                ),
+                                subUserIdx: readUIntRLP(buffer[0][2]),
+                                numberOfElections: readUIntRLP(buffer[0][3]),
+                                vrfProof: buffer[0][4]
+                            },
+                            blockHash: new H256(buffer[1].toString("hex"))
+                        };
+                    }),
                     lockView: readOptionalRlp(decoded[3], readUIntRLP),
                     knownVotes: decoded[4]
                 };
@@ -161,8 +196,10 @@ export class TendermintMessage {
             case MessageType.MESSAGE_ID_REQUEST_PROPOSAL: {
                 message = {
                     type: "requestproposal",
-                    height: readUIntRLP(decoded[1]),
-                    view: readUIntRLP(decoded[2])
+                    round: {
+                        height: readUIntRLP(decoded[1][0]),
+                        view: readUIntRLP(decoded[1][1])
+                    }
                 };
                 break;
             }
@@ -210,6 +247,19 @@ export class TendermintMessage {
                 return [
                     MessageType.MESSAGE_ID_PROPOSAL_BLOCK,
                     Buffer.from(this.body.signature, "hex"),
+                    [
+                        new U64(
+                            this.body.priorityInfo.signerIdx
+                        ).toEncodeObject(),
+                        this.body.priorityInfo.priority.toEncodeObject(),
+                        new U64(
+                            this.body.priorityInfo.subUserIdx
+                        ).toEncodeObject(),
+                        new U64(
+                            this.body.priorityInfo.numberOfElections
+                        ).toEncodeObject(),
+                        this.body.priorityInfo.vrfProof
+                    ],
                     new U64(this.body.view).toEncodeObject(),
                     compressSync(this.body.message)
                 ];
@@ -224,7 +274,22 @@ export class TendermintMessage {
                     ],
                     this.body.proposal == null
                         ? []
-                        : [this.body.proposal.toEncodeObject()],
+                        : [
+                              [
+                                  new U64(
+                                      this.body.proposal.priorityInfo.signerIdx
+                                  ).toEncodeObject(),
+                                  this.body.proposal.priorityInfo.priority.toEncodeObject(),
+                                  new U64(
+                                      this.body.proposal.priorityInfo.subUserIdx
+                                  ).toEncodeObject(),
+                                  new U64(
+                                      this.body.proposal.priorityInfo.numberOfElections
+                                  ).toEncodeObject(),
+                                  this.body.proposal.priorityInfo.vrfProof
+                              ],
+                              this.body.proposal.blockHash.toEncodeObject()
+                          ],
                     this.body.lockView == null
                         ? []
                         : [new U64(this.body.lockView).toEncodeObject()],
@@ -245,8 +310,10 @@ export class TendermintMessage {
             case "requestproposal": {
                 return [
                     MessageType.MESSAGE_ID_REQUEST_PROPOSAL,
-                    new U64(this.body.height).toEncodeObject(),
-                    new U64(this.body.view).toEncodeObject()
+                    [
+                        new U64(this.body.round.height).toEncodeObject(),
+                        new U64(this.body.round.view).toEncodeObject()
+                    ]
                 ];
             }
         }
