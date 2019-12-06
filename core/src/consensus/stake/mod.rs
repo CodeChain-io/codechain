@@ -33,7 +33,7 @@ use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, Rlp};
 
-pub use self::action_data::{Banned, Validator, Validators};
+pub use self::action_data::{Banned, CurrentValidators, NextValidators, Validator};
 use self::action_data::{Candidates, Delegation, Jail, ReleaseResult, StakeAccount, Stakeholders};
 pub use self::actions::Action;
 pub use self::distribute::fee_distribute;
@@ -317,8 +317,8 @@ pub fn get_stakes(state: &TopLevelState) -> StateResult<HashMap<Address, u64>> {
     Ok(result)
 }
 
-pub fn get_validators(state: &TopLevelState) -> StateResult<Validators> {
-    Validators::load_from_state(state)
+pub fn get_validators(state: &TopLevelState) -> StateResult<NextValidators> {
+    NextValidators::load_from_state(state)
 }
 
 pub mod v0 {
@@ -379,7 +379,7 @@ pub mod v1 {
 }
 
 pub fn update_validator_weights(state: &mut TopLevelState, block_author: &Address) -> StateResult<()> {
-    let mut validators = Validators::load_from_state(state)?;
+    let mut validators = NextValidators::load_from_state(state)?;
     validators.update_weight(block_author);
     validators.save_to_state(state)
 }
@@ -451,7 +451,7 @@ pub fn on_term_close(
 
     jail(state, inactive_validators, custody_until, kick_at)?;
 
-    let validators = Validators::elect(state)?;
+    let validators = NextValidators::elect(state)?;
     validators.save_to_state(state)?;
 
     state.increase_term_id(last_term_finished_block_num)?;
@@ -469,7 +469,7 @@ fn update_candidates(
     let mut candidates = Candidates::load_from_state(state)?;
     let nomination_ends_at = current_term + nomination_expiration;
 
-    let current_validators = Validators::load_from_state(state)?;
+    let current_validators = NextValidators::load_from_state(state)?;
     candidates.renew_candidates(&current_validators, nomination_ends_at, &inactive_validators, &banned);
 
     let expired = candidates.drain_expired_candidates(current_term);
@@ -519,7 +519,7 @@ pub fn ban(state: &mut TopLevelState, informant: &Public, criminal: Address) -> 
 
     let mut candidates = Candidates::load_from_state(state)?;
     let mut jailed = Jail::load_from_state(state)?;
-    let mut validators = Validators::load_from_state(state)?;
+    let mut validators = NextValidators::load_from_state(state)?;
 
     let deposit = match (candidates.remove(&criminal), jailed.remove(&criminal)) {
         (Some(_), Some(_)) => unreachable!("A candidate that are jailed cannot exist"),
