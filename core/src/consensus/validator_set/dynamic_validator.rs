@@ -18,13 +18,13 @@ use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, Address, Public};
 use ctypes::util::unexpected::OutOfBounds;
-use ctypes::BlockHash;
+use ctypes::{BlockHash, Header};
 use parking_lot::RwLock;
 
 use super::{RoundRobinValidator, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::consensus::bit_set::BitSet;
-use crate::consensus::stake::{get_validators, Validator};
+use crate::consensus::stake::{get_validators, CurrentValidators, Validator};
 use crate::consensus::EngineError;
 
 /// Validator set containing a known set of public keys.
@@ -41,7 +41,7 @@ impl DynamicValidator {
         }
     }
 
-    fn validators(&self, parent: BlockHash) -> Option<Vec<Validator>> {
+    fn next_validators(&self, parent: BlockHash) -> Option<Vec<Validator>> {
         let client: Arc<dyn ConsensusClient> =
             self.client.read().as_ref().and_then(Weak::upgrade).expect("Client is not initialized");
         let block_id = parent.into();
@@ -64,17 +64,82 @@ impl DynamicValidator {
         }
     }
 
+    fn current_validators(&self, hash: BlockHash) -> Option<Vec<Validator>> {
+        let client: Arc<dyn ConsensusClient> =
+            self.client.read().as_ref().and_then(Weak::upgrade).expect("Client is not initialized");
+        let block_id = hash.into();
+        let term_id = client.current_term_id(block_id).expect(
+            "valdators() is called when creating a block or verifying a block.
+            Minor creates a block only when the parent block is imported.
+            The n'th block is verified only when the parent block is imported.",
+        );
+        if term_id == 0 {
+            return None
+        }
+        let state = client.state_at(block_id)?;
+        let validators = CurrentValidators::load_from_state(&state).unwrap();
+        if validators.is_empty() {
+            None
+        } else {
+            let mut validators: Vec<_> = (*validators).clone();
+            validators.reverse();
+            Some(validators)
+        }
+    }
+
     fn validators_pubkey(&self, parent: BlockHash) -> Option<Vec<Public>> {
-        self.validators(parent).map(|validators| validators.into_iter().map(|val| *val.pubkey()).collect())
+        self.next_validators(parent).map(|validators| validators.into_iter().map(|val| *val.pubkey()).collect())
     }
 
     pub fn proposer_index(&self, parent: BlockHash, prev_proposer_index: usize, proposed_view: usize) -> usize {
-        if let Some(validators) = self.validators(parent) {
+        if let Some(validators) = self.next_validators(parent) {
             let num_validators = validators.len();
             proposed_view % num_validators
         } else {
             let num_validators = self.initial_list.count(&parent);
             (prev_proposer_index + proposed_view + 1) % num_validators
+        }
+    }
+
+    pub fn check_enough_votes_with_validators(
+        &self,
+        validators: &[Validator],
+        votes: &BitSet,
+    ) -> Result<(), EngineError> {
+        let mut voted_delegation = 0u64;
+        let n_validators = validators.len();
+        for index in votes.true_index_iter() {
+            assert!(index < n_validators);
+            let validator = validators.get(index).ok_or_else(|| {
+                EngineError::ValidatorNotExist {
+                    height: 0, // FIXME
+                    index,
+                }
+            })?;
+            voted_delegation += validator.delegation();
+        }
+        let total_delegation: u64 = validators.iter().map(Validator::delegation).sum();
+        if voted_delegation * 3 > total_delegation * 2 {
+            Ok(())
+        } else {
+            let threshold = total_delegation as usize * 2 / 3;
+            Err(EngineError::BadSealFieldSize(OutOfBounds {
+                min: Some(threshold),
+                max: Some(total_delegation as usize),
+                found: voted_delegation as usize,
+            }))
+        }
+    }
+
+    pub fn check_enough_votes_with_header(&self, header: &Header, votes: &BitSet) -> Result<(), EngineError> {
+        let hash = header.hash();
+        let parent = *header.parent_hash();
+        let validators = self.current_validators(hash).or_else(move || self.next_validators(parent));
+
+        if let Some(validators) = validators {
+            self.check_enough_votes_with_validators(&validators, votes)
+        } else {
+            self.initial_list.check_enough_votes(header.parent_hash(), votes)
         }
     }
 }
@@ -136,7 +201,7 @@ impl ValidatorSet for DynamicValidator {
     }
 
     fn count(&self, parent: &BlockHash) -> usize {
-        if let Some(validators) = self.validators(*parent) {
+        if let Some(validators) = self.next_validators(*parent) {
             validators.len()
         } else {
             self.initial_list.count(parent)
@@ -144,30 +209,8 @@ impl ValidatorSet for DynamicValidator {
     }
 
     fn check_enough_votes(&self, parent: &BlockHash, votes: &BitSet) -> Result<(), EngineError> {
-        if let Some(validators) = self.validators(*parent) {
-            let mut voted_delegation = 0u64;
-            let n_validators = validators.len();
-            for index in votes.true_index_iter() {
-                assert!(index < n_validators);
-                let validator = validators.get(index).ok_or_else(|| {
-                    EngineError::ValidatorNotExist {
-                        height: 0, // FIXME
-                        index,
-                    }
-                })?;
-                voted_delegation += validator.delegation();
-            }
-            let total_delegation: u64 = validators.iter().map(Validator::delegation).sum();
-            if voted_delegation * 3 > total_delegation * 2 {
-                Ok(())
-            } else {
-                let threshold = total_delegation as usize * 2 / 3;
-                Err(EngineError::BadSealFieldSize(OutOfBounds {
-                    min: Some(threshold),
-                    max: Some(total_delegation as usize),
-                    found: voted_delegation as usize,
-                }))
-            }
+        if let Some(validators) = self.next_validators(*parent) {
+            self.check_enough_votes_with_validators(&validators, votes)
         } else {
             self.initial_list.check_enough_votes(parent, votes)
         }

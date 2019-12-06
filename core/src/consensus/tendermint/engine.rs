@@ -459,10 +459,30 @@ fn calculate_pending_rewards_of_the_previous_term(
     let mut missed_signatures = HashMap::<Address, (usize, usize)>::with_capacity(MAX_NUM_OF_VALIDATORS);
     let mut signed_blocks = HashMap::<Address, usize>::with_capacity(MAX_NUM_OF_VALIDATORS);
 
+    let era = {
+        let end_of_the_current_term_header = chain
+            .block_header(&start_of_the_current_term_header.parent_hash().into())
+            .expect("The parent of the term end block must exist");
+        let state = chain
+            .state_at(end_of_the_current_term_header.parent_hash().into())
+            .expect("The state at parent of the term end block must exist");
+        let metadata = state.metadata()?.expect("Metadata of the term end block should exist");
+        metadata.term_params().map_or(0, |p| p.era())
+    };
+
     let mut header = start_of_the_current_term_header;
     let mut parent_validators = {
-        let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
-        validators.addresses(&grand_parent_header.parent_hash())
+        match era {
+            0 => {
+                let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
+                validators.addresses(&grand_parent_header.parent_hash())
+            }
+            1 => {
+                let state = chain.state_at(header.parent_hash().into()).expect("The block's state must exist");
+                stake::CurrentValidators::load_from_state(&state)?.addresses()
+            }
+            _ => unimplemented!(),
+        }
     };
     while start_of_the_previous_term != header.number() {
         for index in TendermintSealView::new(&header.seal()).bitset()?.true_index_iter() {
@@ -472,10 +492,17 @@ fn calculate_pending_rewards_of_the_previous_term(
 
         header = chain.block_header(&header.parent_hash().into()).unwrap();
         parent_validators = {
-            // The seal of the current block has the signatures of the parent block.
-            // It needs the hash of the grand parent block to find the validators of the parent block.
-            let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
-            validators.addresses(&grand_parent_header.parent_hash())
+            match era {
+                0 => {
+                    let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
+                    validators.addresses(&grand_parent_header.parent_hash())
+                }
+                1 => {
+                    let state = chain.state_at(header.hash().into()).expect("The block's state must exist");
+                    stake::CurrentValidators::load_from_state(&state)?.addresses()
+                }
+                _ => unimplemented!(),
+            }
         };
 
         let author = header.author();
