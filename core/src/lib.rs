@@ -84,6 +84,7 @@ mod tests;
 
 pub use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 pub use crate::block::Block;
+pub use crate::client::snapshot_notify;
 pub use crate::client::{
     AccountData, AssetClient, BlockChainClient, BlockChainTrait, ChainNotify, Client, ClientConfig, DatabaseClient,
     EngineClient, EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, Shard, StateInfo, TermInfo,
