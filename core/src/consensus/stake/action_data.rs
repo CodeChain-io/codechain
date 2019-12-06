@@ -432,6 +432,16 @@ impl CurrentValidators {
     pub fn update(&mut self, validators: Vec<Validator>) {
         self.0 = validators;
     }
+
+    pub fn addresses(&self) -> Vec<Address> {
+        self.0.iter().rev().map(|v| public_to_address(&v.pubkey)).collect()
+    }
+
+    pub fn get_validator(&self, index: usize) -> &Validator {
+        let len = self.0.len();
+        // NOTE: validator list is reversed when reading a validator by index
+        self.0.iter().nth_back(index % len).unwrap()
+    }
 }
 
 impl Deref for CurrentValidators {
