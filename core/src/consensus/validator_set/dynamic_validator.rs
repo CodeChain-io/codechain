@@ -18,13 +18,13 @@ use std::sync::{Arc, Weak};
 
 use ckey::{public_to_address, Address, Public};
 use ctypes::util::unexpected::OutOfBounds;
-use ctypes::BlockHash;
+use ctypes::{BlockHash, Header};
 use parking_lot::RwLock;
 
 use super::{RoundRobinValidator, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::consensus::bit_set::BitSet;
-use crate::consensus::stake::{get_validators, Validator};
+use crate::consensus::stake::{get_validators, CurrentValidators, Validator};
 use crate::consensus::EngineError;
 
 /// Validator set containing a known set of public keys.
@@ -75,6 +75,58 @@ impl DynamicValidator {
         } else {
             let num_validators = self.initial_list.count(&parent);
             (prev_proposer_index + proposed_view + 1) % num_validators
+        }
+    }
+
+    pub fn check_enough_votes_with_validators(
+        &self,
+        validators: &[Validator],
+        votes: &BitSet,
+    ) -> Result<(), EngineError> {
+        let mut voted_delegation = 0u64;
+        let n_validators = validators.len();
+        for index in votes.true_index_iter() {
+            assert!(index < n_validators);
+            let validator = validators.get(index).ok_or_else(|| {
+                EngineError::ValidatorNotExist {
+                    height: 0, // FIXME
+                    index,
+                }
+            })?;
+            voted_delegation += validator.delegation();
+        }
+        let total_delegation: u64 = validators.iter().map(Validator::delegation).sum();
+        if voted_delegation * 3 > total_delegation * 2 {
+            Ok(())
+        } else {
+            let threshold = total_delegation as usize * 2 / 3;
+            Err(EngineError::BadSealFieldSize(OutOfBounds {
+                min: Some(threshold),
+                max: Some(total_delegation as usize),
+                found: voted_delegation as usize,
+            }))
+        }
+    }
+
+    pub fn check_enough_votes_with_header(&self, header: &Header, votes: &BitSet) -> Result<(), EngineError> {
+        let client: Arc<dyn ConsensusClient> =
+            self.client.read().as_ref().and_then(Weak::upgrade).expect("Client is not initialized");
+
+        let validators = {
+            match client.state_at(header.hash().into()).map(|s| CurrentValidators::load_from_state(&s)) {
+                Some(Ok(current_validators)) if !current_validators.is_empty() => {
+                    let mut result = (*current_validators).clone();
+                    result.reverse();
+                    Some(result)
+                }
+                _ => self.validators(*header.parent_hash()),
+            }
+        };
+
+        if let Some(validators) = validators {
+            self.check_enough_votes_with_validators(&validators, votes)
+        } else {
+            self.initial_list.check_enough_votes(header.parent_hash(), votes)
         }
     }
 }
@@ -145,29 +197,7 @@ impl ValidatorSet for DynamicValidator {
 
     fn check_enough_votes(&self, parent: &BlockHash, votes: &BitSet) -> Result<(), EngineError> {
         if let Some(validators) = self.validators(*parent) {
-            let mut voted_delegation = 0u64;
-            let n_validators = validators.len();
-            for index in votes.true_index_iter() {
-                assert!(index < n_validators);
-                let validator = validators.get(index).ok_or_else(|| {
-                    EngineError::ValidatorNotExist {
-                        height: 0, // FIXME
-                        index,
-                    }
-                })?;
-                voted_delegation += validator.delegation();
-            }
-            let total_delegation: u64 = validators.iter().map(Validator::delegation).sum();
-            if voted_delegation * 3 > total_delegation * 2 {
-                Ok(())
-            } else {
-                let threshold = total_delegation as usize * 2 / 3;
-                Err(EngineError::BadSealFieldSize(OutOfBounds {
-                    min: Some(threshold),
-                    max: Some(total_delegation as usize),
-                    found: voted_delegation as usize,
-                }))
-            }
+            self.check_enough_votes_with_validators(&validators, votes)
         } else {
             self.initial_list.check_enough_votes(parent, votes)
         }
