@@ -142,6 +142,17 @@ impl ConsensusEngine for Tendermint {
         let block_number = block.header().number();
         let metadata = block.state().metadata()?.expect("Metadata must exist");
         let era = metadata.term_params().map_or(0, |p| p.era());
+
+        match era {
+            0 => {}
+            1 => {
+                let mut validators = stake::CurrentValidators::load_from_state(block.state())?;
+                validators.update(stake::NextValidators::load_from_state(block.state())?.clone());
+                validators.save_to_state(block.state_mut())?;
+            }
+            _ => unimplemented!(),
+        }
+
         if block_number == metadata.last_term_finished_block_num() + 1 {
             match era {
                 0 => {}
@@ -274,7 +285,7 @@ impl ConsensusEngine for Tendermint {
 
                 stake::v0::move_current_to_previous_intermediate_rewards(block.state_mut())?;
 
-                let validators = stake::Validators::load_from_state(block.state())?
+                let validators = stake::NextValidators::load_from_state(block.state())?
                     .into_iter()
                     .map(|val| public_to_address(val.pubkey()))
                     .collect();
@@ -286,7 +297,7 @@ impl ConsensusEngine for Tendermint {
                 }
 
                 let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
-                let validators = stake::Validators::load_from_state(block.state())?
+                let validators = stake::NextValidators::load_from_state(block.state())?
                     .into_iter()
                     .map(|val| public_to_address(val.pubkey()))
                     .collect();

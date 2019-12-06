@@ -41,8 +41,10 @@ lazy_static! {
     pub static ref JAIL_KEY: H256 = ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Jail").into_key();
     pub static ref BANNED_KEY: H256 =
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Banned").into_key();
-    pub static ref VALIDATORS_KEY: H256 =
+    pub static ref NEXT_VALIDATORS_KEY: H256 =
         ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"Validators").into_key();
+    pub static ref CURRENT_VALIDATORS_KEY: H256 =
+        ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 1).append(&"CurrentValidators").into_key();
 }
 
 pub fn get_delegation_key(address: &Address) -> H256 {
@@ -274,17 +276,17 @@ impl Validator {
 }
 
 #[derive(Debug)]
-pub struct Validators(Vec<Validator>);
-impl Validators {
+pub struct NextValidators(Vec<Validator>);
+impl NextValidators {
     pub fn from_vector_to_test(vec: Vec<Validator>) -> Self {
-        Validators(vec)
+        Self(vec)
     }
 
     pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
-        let key = &*VALIDATORS_KEY;
+        let key = &*NEXT_VALIDATORS_KEY;
         let validators = state.action_data(&key)?.map(|data| decode_list(&data)).unwrap_or_default();
 
-        Ok(Validators(validators))
+        Ok(Self(validators))
     }
 
     pub fn elect(state: &TopLevelState) -> StateResult<Self> {
@@ -335,7 +337,7 @@ impl Validators {
 
 
     pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
-        let key = &*VALIDATORS_KEY;
+        let key = &*NEXT_VALIDATORS_KEY;
         if !self.is_empty() {
             state.update_action_data(&key, encode_list(&self.0).to_vec())?;
         } else {
@@ -384,7 +386,7 @@ impl Validators {
     }
 }
 
-impl Deref for Validators {
+impl Deref for NextValidators {
     type Target = Vec<Validator>;
 
     fn deref(&self) -> &Self::Target {
@@ -392,18 +394,51 @@ impl Deref for Validators {
     }
 }
 
-impl From<Validators> for Vec<Validator> {
-    fn from(val: Validators) -> Self {
+impl From<NextValidators> for Vec<Validator> {
+    fn from(val: NextValidators) -> Self {
         val.0
     }
 }
 
-impl IntoIterator for Validators {
+impl IntoIterator for NextValidators {
     type Item = Validator;
     type IntoIter = vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+#[derive(Debug)]
+pub struct CurrentValidators(Vec<Validator>);
+impl CurrentValidators {
+    pub fn load_from_state(state: &TopLevelState) -> StateResult<Self> {
+        let key = &*CURRENT_VALIDATORS_KEY;
+        let validators = state.action_data(&key)?.map(|data| decode_list(&data)).unwrap_or_default();
+
+        Ok(Self(validators))
+    }
+
+    pub fn save_to_state(&self, state: &mut TopLevelState) -> StateResult<()> {
+        let key = &*CURRENT_VALIDATORS_KEY;
+        if !self.is_empty() {
+            state.update_action_data(&key, encode_list(&self.0).to_vec())?;
+        } else {
+            state.remove_action_data(&key);
+        }
+        Ok(())
+    }
+
+    pub fn update(&mut self, validators: Vec<Validator>) {
+        self.0 = validators;
+    }
+}
+
+impl Deref for CurrentValidators {
+    type Target = Vec<Validator>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -603,7 +638,7 @@ impl Candidates {
 
     pub fn renew_candidates(
         &mut self,
-        validators: &Validators,
+        validators: &NextValidators,
         nomination_ends_at: u64,
         inactive_validators: &[Address],
         banned: &Banned,
@@ -1868,7 +1903,7 @@ mod tests {
         }
         candidates.save_to_state(&mut state).unwrap();
 
-        let dummy_validators = Validators(
+        let dummy_validators = NextValidators(
             pubkeys[0..5]
                 .iter()
                 .map(|pubkey| Validator {
