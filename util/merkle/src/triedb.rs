@@ -20,7 +20,7 @@ use primitives::H256;
 
 use crate::nibbleslice::NibbleSlice;
 use crate::node::Node as RlpNode;
-use crate::{Query, Trie, TrieError};
+use crate::{Trie, TrieError};
 /// A `Trie` implementation using a generic `HashDB` backing database.
 ///
 /// Use it as a `Trie` trait object. You can use `db()` to get the backing database object.
@@ -49,6 +49,9 @@ pub struct TrieDB<'db> {
     db: &'db dyn HashDB,
     root: &'db H256,
 }
+
+/// Description of what kind of query will be made to the trie.
+type Query<T> = dyn Fn(&[u8]) -> T;
 
 impl<'db> TrieDB<'db> {
     /// Create a new trie with the backing database `db` and `root`
@@ -112,11 +115,11 @@ impl<'db> Trie for TrieDB<'db> {
         self.root
     }
 
-    fn get_with<T>(&self, key: &[u8], query: &Query<T>) -> crate::Result<Option<T>> {
+    fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, TrieError> {
         let path = blake256(key);
         let root = *self.root;
 
-        self.get_aux(&NibbleSlice::new(&path), Some(root), query)
+        self.get_aux(&NibbleSlice::new(&path), Some(root), &|bytes| bytes.to_vec())
     }
 }
 

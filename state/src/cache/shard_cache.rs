@@ -16,7 +16,7 @@
 
 use std::cell::RefMut;
 
-use cmerkle::{Result as TrieResult, TrieDB, TrieMut};
+use cmerkle::{Result as TrieResult, Trie, TrieMut};
 
 use super::WriteBack;
 use crate::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress};
@@ -58,11 +58,11 @@ impl ShardCache {
         Ok(())
     }
 
-    pub fn asset_scheme(&self, a: &AssetSchemeAddress, db: &TrieDB) -> TrieResult<Option<AssetScheme>> {
+    pub fn asset_scheme(&self, a: &AssetSchemeAddress, db: &dyn Trie) -> TrieResult<Option<AssetScheme>> {
         self.asset_scheme.get(a, db)
     }
 
-    pub fn asset_scheme_mut(&self, a: &AssetSchemeAddress, db: &TrieDB) -> TrieResult<RefMut<AssetScheme>> {
+    pub fn asset_scheme_mut(&self, a: &AssetSchemeAddress, db: &dyn Trie) -> TrieResult<RefMut<AssetScheme>> {
         self.asset_scheme.get_mut(a, db)
     }
 
@@ -72,7 +72,7 @@ impl ShardCache {
         self.asset_scheme.create(a, f)
     }
 
-    pub fn asset(&self, a: &OwnedAssetAddress, db: &TrieDB) -> TrieResult<Option<OwnedAsset>> {
+    pub fn asset(&self, a: &OwnedAssetAddress, db: &dyn Trie) -> TrieResult<Option<OwnedAsset>> {
         self.asset.get(a, db)
     }
 
