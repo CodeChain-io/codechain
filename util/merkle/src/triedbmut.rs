@@ -29,7 +29,7 @@ fn empty_children() -> [Option<H256>; 16] {
     [None; 16]
 }
 
-pub struct TrieDBMut<'a> {
+pub(crate) struct TrieDBMut<'a> {
     db: &'a mut dyn HashDB,
     // When Trie is empty, root has None.
     root: &'a mut H256,

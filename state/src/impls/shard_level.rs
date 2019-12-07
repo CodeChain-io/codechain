@@ -670,7 +670,7 @@ impl<'db> ShardLevelState<'db> {
     fn get_asset_scheme_mut(&self, shard_id: ShardId, asset_type: H160) -> cmerkle::Result<RefMut<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme_mut(&AssetSchemeAddress::new(asset_type, shard_id), &*trie)
+        self.cache.asset_scheme_mut(&AssetSchemeAddress::new(asset_type, shard_id), &trie)
     }
 
     pub fn create_asset(
@@ -697,13 +697,13 @@ impl<'db> ShardStateView for ShardLevelState<'db> {
     fn asset_scheme(&self, asset_type: H160) -> cmerkle::Result<Option<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme(&AssetSchemeAddress::new(asset_type, self.shard_id), &*trie)
+        self.cache.asset_scheme(&AssetSchemeAddress::new(asset_type, self.shard_id), &trie)
     }
 
     fn asset(&self, tracker: Tracker, index: usize) -> Result<Option<OwnedAsset>, TrieError> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset(&OwnedAssetAddress::new(tracker, index, self.shard_id), &*trie)
+        self.cache.asset(&OwnedAssetAddress::new(tracker, index, self.shard_id), &trie)
     }
 }
 
@@ -780,13 +780,13 @@ impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
     fn asset_scheme(&self, asset_type: H160) -> cmerkle::Result<Option<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset_scheme(&AssetSchemeAddress::new(asset_type, self.shard_id), &*trie)
+        self.cache.asset_scheme(&AssetSchemeAddress::new(asset_type, self.shard_id), &trie)
     }
 
     fn asset(&self, tracker: Tracker, index: usize) -> Result<Option<OwnedAsset>, TrieError> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
-        self.cache.asset(&OwnedAssetAddress::new(tracker, index, self.shard_id), &*trie)
+        self.cache.asset(&OwnedAssetAddress::new(tracker, index, self.shard_id), &trie)
     }
 }
 

@@ -39,8 +39,8 @@ pub mod triehash;
 
 pub use crate::node::Node;
 pub use crate::skewed::skewed_merkle_root;
-pub use crate::triedb::TrieDB;
-pub use crate::triedbmut::TrieDBMut;
+use crate::triedb::TrieDB;
+use crate::triedbmut::TrieDBMut;
 
 /// Trie Errors.
 ///
@@ -99,17 +99,17 @@ pub enum TrieFactory {}
 
 impl TrieFactory {
     /// Create new immutable instance of Trie.
-    pub fn readonly<'db>(db: &'db dyn HashDB, root: &'db H256) -> Result<Box<dyn Trie + 'db>> {
-        Ok(Box::new(TrieDB::try_new(db, root)?))
+    pub fn readonly<'db>(db: &'db dyn HashDB, root: &'db H256) -> Result<impl Trie + 'db> {
+        Ok(TrieDB::try_new(db, root)?)
     }
 
     /// Create new mutable instance of Trie.
-    pub fn create<'db>(db: &'db mut dyn HashDB, root: &'db mut H256) -> Box<dyn TrieMut + 'db> {
-        Box::new(TrieDBMut::new(db, root))
+    pub fn create<'db>(db: &'db mut dyn HashDB, root: &'db mut H256) -> impl TrieMut + 'db {
+        TrieDBMut::new(db, root)
     }
 
     /// Create new mutable instance of trie and check for errors.
-    pub fn from_existing<'db>(db: &'db mut dyn HashDB, root: &'db mut H256) -> Result<Box<dyn TrieMut + 'db>> {
-        Ok(Box::new(TrieDBMut::from_existing(db, root)?))
+    pub fn from_existing<'db>(db: &'db mut dyn HashDB, root: &'db mut H256) -> Result<impl TrieMut + 'db> {
+        Ok(TrieDBMut::from_existing(db, root)?)
     }
 }

@@ -40,12 +40,12 @@ use crate::{Trie, TrieError};
 ///
 /// let mut memdb = MemoryDB::new();
 /// let mut root = H256::new();
-/// TrieDBMut::new(&mut memdb, &mut root).insert(b"foo", b"bar").unwrap();
-/// let t = TrieDB::try_new(&memdb, &root).unwrap();
+/// TrieFactory::create(&mut memdb, &mut root).insert(b"foo", b"bar").unwrap();
+/// let t = TrieFactory::readonly(&memdb, &root).unwrap();
 /// assert!(t.contains(b"foo").unwrap());
 /// assert_eq!(t.get(b"foo").unwrap().unwrap(), b"bar".to_vec());
 /// ```
-pub struct TrieDB<'db> {
+pub(crate) struct TrieDB<'db> {
     db: &'db dyn HashDB,
     root: &'db H256,
 }
@@ -65,11 +65,6 @@ impl<'db> TrieDB<'db> {
                 root,
             })
         }
-    }
-
-    /// Get the backing database.
-    pub fn db(&self) -> &dyn HashDB {
-        self.db
     }
 
     /// Get auxiliary
