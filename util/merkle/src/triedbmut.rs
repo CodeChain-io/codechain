@@ -297,7 +297,7 @@ impl<'a> fmt::Display for RlpNode<'a> {
     }
 }
 
-impl<'a> TrieMut for TrieDBMut<'a> {
+impl<'a> Trie for TrieDBMut<'a> {
     fn root(&self) -> &H256 {
         self.root
     }
@@ -311,7 +311,9 @@ impl<'a> TrieMut for TrieDBMut<'a> {
 
         t.get(key)
     }
+}
 
+impl<'a> TrieMut for TrieDBMut<'a> {
     fn insert(&mut self, key: &[u8], value: &[u8]) -> crate::Result<Option<DBValue>> {
         let path = blake256(key);
         let mut old_val = None;
