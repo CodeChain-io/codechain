@@ -296,7 +296,7 @@ mod tests {
 
     use ccore::COL_STATE;
 
-    use cmerkle::{Trie, TrieDB, TrieDBMut, TrieMut};
+    use cmerkle::{Trie, TrieFactory, TrieMut};
     use journaldb;
     use journaldb::Algorithm;
     use kvdb_memorydb;
@@ -315,7 +315,7 @@ mod tests {
         let kvdb = Arc::new(kvdb_memorydb::create(1));
         let mut jdb = journaldb::new(kvdb.clone(), Algorithm::Archive, COL_STATE);
         {
-            let _ = TrieDBMut::new(jdb.as_hashdb_mut(), &mut root);
+            let _ = TrieFactory::create(jdb.as_hashdb_mut(), &mut root);
         }
         /* do nothing */
         let result = snapshot.write_snapshot(kvdb.as_ref(), &root);
@@ -341,7 +341,7 @@ mod tests {
             let kvdb = Arc::new(kvdb_memorydb::create(1));
             let mut jdb = journaldb::new(kvdb.clone(), Algorithm::Archive, COL_STATE);
             {
-                let mut t = TrieDBMut::new(jdb.as_hashdb_mut(), &mut root);
+                let mut t = TrieFactory::create(jdb.as_hashdb_mut(), &mut root);
                 let mut inserted_keys = HashSet::new();
                 for &(ref key, ref value) in &x {
                     if !inserted_keys.insert(key) {
@@ -364,8 +364,8 @@ mod tests {
             let kvdb = Arc::new(kvdb_memorydb::create(1));
             snapshot.read_snapshot(kvdb.clone(), &root).unwrap();
 
-            let mut jdb = journaldb::new(kvdb, Algorithm::Archive, COL_STATE);
-            let t = TrieDB::try_new(jdb.as_hashdb_mut(), &root).unwrap();
+            let jdb = journaldb::new(kvdb, Algorithm::Archive, COL_STATE);
+            let t = TrieFactory::readonly(jdb.as_hashdb(), &root).unwrap();
             let mut inserted_keys = HashSet::new();
             for &(ref key, ref value) in &x {
                 if !inserted_keys.insert(key) {

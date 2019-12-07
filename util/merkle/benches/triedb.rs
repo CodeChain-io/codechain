@@ -29,7 +29,7 @@ extern crate test;
 use std::path::Path;
 use std::sync::Arc;
 
-use cmerkle::{Trie, TrieDB, TrieDBMut, TrieMut};
+use cmerkle::{Trie, TrieFactory, TrieMut};
 use kvdb::DBTransaction;
 use primitives::H256;
 use rand::random;
@@ -61,7 +61,7 @@ impl TestDB {
         let mut root = H256::new();
         {
             let hashdb = journal.as_hashdb_mut();
-            let mut trie = TrieDBMut::new(hashdb, &mut root);
+            let mut trie = TrieFactory::create(hashdb, &mut root);
             for i in 0..size {
                 trie.insert(&i.to_be_bytes(), &i.to_be_bytes()).unwrap();
             }
@@ -92,14 +92,14 @@ impl TestDB {
         }
     }
 
-    fn trie(&self) -> TrieDB {
+    fn trie<'db>(&'db self) -> impl Trie + 'db {
         let hashdb = self.journal.as_hashdb();
-        TrieDB::try_new(hashdb, &self.root).unwrap()
+        TrieFactory::readonly(hashdb, &self.root).unwrap()
     }
 
-    fn trie_mut(&mut self) -> TrieDBMut {
+    fn trie_mut<'db>(&'db mut self) -> impl TrieMut + 'db {
         let hashdb = self.journal.as_hashdb_mut();
-        TrieDBMut::new(hashdb, &mut self.root)
+        TrieFactory::create(hashdb, &mut self.root)
     }
 
     fn flush(&mut self) {
@@ -139,9 +139,11 @@ fn bench_read_multiple(b: &mut Bencher) {
 fn bench_write_single(b: &mut Bencher) {
     let mut db = TestDB::new(DB_SIZE);
     b.iter(|| {
-        let mut trie = db.trie_mut();
-        let item = random::<usize>() % DB_SIZE + DB_SIZE;
-        let _ = trie.insert(&item.to_be_bytes(), &item.to_be_bytes()).unwrap();
+        {
+            let mut trie = db.trie_mut();
+            let item = random::<usize>() % DB_SIZE + DB_SIZE;
+            let _ = trie.insert(&item.to_be_bytes(), &item.to_be_bytes()).unwrap();
+        }
         db.flush();
     });
 }
@@ -150,10 +152,12 @@ fn bench_write_single(b: &mut Bencher) {
 fn bench_write_multiple(b: &mut Bencher) {
     let mut db = TestDB::new(DB_SIZE);
     b.iter(|| {
-        let mut trie = db.trie_mut();
-        for _ in 0..BATCH {
-            let item = random::<usize>() % DB_SIZE + DB_SIZE;
-            let _ = trie.insert(&item.to_be_bytes(), &item.to_be_bytes()).unwrap();
+        {
+            let mut trie = db.trie_mut();
+            for _ in 0..BATCH {
+                let item = random::<usize>() % DB_SIZE + DB_SIZE;
+                let _ = trie.insert(&item.to_be_bytes(), &item.to_be_bytes()).unwrap();
+            }
         }
         db.flush();
     });

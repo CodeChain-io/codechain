@@ -20,7 +20,7 @@ use std::sync::Arc;
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cjson;
 use ckey::Address;
-use cmerkle::TrieFactory;
+use cmerkle::{TrieFactory, TrieMut};
 use cstate::{Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult, StateWithCache, TopLevelState};
 use ctypes::errors::SyntaxError;
 use ctypes::{BlockHash, CommonParams, Header, ShardId};

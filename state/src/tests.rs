@@ -17,7 +17,7 @@
 pub mod helpers {
     use std::sync::Arc;
 
-    use cmerkle::TrieFactory;
+    use cmerkle::{TrieFactory, TrieMut};
     use ctypes::{BlockNumber, Tracker};
     use cvm::ChainTimeInfo;
     use hashdb::AsHashDB;
