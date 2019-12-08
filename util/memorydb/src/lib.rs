@@ -1,4 +1,5 @@
 // Copyright 2015-2017 Parity Technologies (UK) Ltd.
+// Copyright 2019 Kodebox, Inc.
 // This file is part of Parity.
 
 // Parity is free software: you can redistribute it and/or modify
@@ -85,9 +86,7 @@ pub struct MemoryDB {
 impl MemoryDB {
     /// Create a new instance of the memory DB.
     pub fn new() -> MemoryDB {
-        MemoryDB {
-            data: H256FastMap::default(),
-        }
+        Default::default()
     }
 
     /// Clear all data from the database.
@@ -157,18 +156,11 @@ impl MemoryDB {
     /// Consolidate all the entries of `other` into `self`.
     pub fn consolidate(&mut self, mut other: Self) {
         for (key, (value, rc)) in other.drain() {
-            match self.data.entry(key) {
-                Entry::Occupied(mut entry) => {
-                    if entry.get().1 < 0 {
-                        entry.get_mut().0 = value;
-                    }
-
-                    entry.get_mut().1 += rc;
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert((value, rc));
-                }
+            let (old_value, old_rc) = self.data.entry(key).or_default();
+            if *old_rc <= 0 {
+                *old_value = value;
             }
+            *old_rc += rc;
         }
     }
 }
@@ -214,18 +206,11 @@ impl HashDB for MemoryDB {
             return BLAKE_NULL_RLP
         }
         let key = blake256(value);
-        match self.data.entry(key) {
-            Entry::Occupied(mut entry) => {
-                let &mut (ref mut old_value, ref mut rc) = entry.get_mut();
-                if *rc <= 0 {
-                    *old_value = value.to_vec();
-                }
-                *rc += 1;
-            }
-            Entry::Vacant(entry) => {
-                entry.insert((value.to_vec(), 1));
-            }
+        let (old_value, rc) = self.data.entry(key).or_default();
+        if *rc <= 0 {
+            *old_value = value.to_vec();
         }
+        *rc += 1;
         key
     }
 
@@ -233,16 +218,8 @@ impl HashDB for MemoryDB {
         if key == &BLAKE_NULL_RLP {
             return
         }
-
-        match self.data.entry(*key) {
-            Entry::Occupied(mut entry) => {
-                let &mut (_, ref mut rc) = entry.get_mut();
-                *rc -= 1;
-            }
-            Entry::Vacant(entry) => {
-                entry.insert((DBValue::new(), -1));
-            }
-        }
+        let (_, rc) = self.data.entry(*key).or_default();
+        *rc -= 1;
     }
 
     fn is_empty(&self) -> bool {
