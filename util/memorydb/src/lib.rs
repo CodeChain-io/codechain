@@ -161,6 +161,9 @@ impl MemoryDB {
                 *old_value = value;
             }
             *old_rc += rc;
+            if *old_rc < -1 {
+                *old_rc = -1;
+            }
         }
     }
 }
@@ -279,6 +282,6 @@ mod tests {
 
         assert_eq!(overlay[&remove_key], (b"doggo".to_vec(), 0));
         assert_eq!(overlay[&insert_key], (b"arf".to_vec(), 2));
-        assert_eq!(overlay[&negative_remove_key], (b"negative".to_vec(), -2));
+        assert_eq!(overlay[&negative_remove_key], (b"negative".to_vec(), -1));
     }
 }
