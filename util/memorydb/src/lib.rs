@@ -174,17 +174,6 @@ impl MemoryDB {
 }
 
 impl HashDB for MemoryDB {
-    fn get(&self, key: &H256) -> Option<DBValue> {
-        if key == &BLAKE_NULL_RLP {
-            return Some(NULL_RLP.to_vec())
-        }
-
-        match self.data.get(key) {
-            Some(&(ref d, rc)) if rc > 0 => Some(d.clone()),
-            _ => None,
-        }
-    }
-
     fn keys(&self) -> HashMap<H256, i32> {
         self.data
             .iter()
@@ -196,6 +185,17 @@ impl HashDB for MemoryDB {
                 }
             })
             .collect()
+    }
+
+    fn get(&self, key: &H256) -> Option<DBValue> {
+        if key == &BLAKE_NULL_RLP {
+            return Some(NULL_RLP.to_vec())
+        }
+
+        match self.data.get(key) {
+            Some(&(ref d, rc)) if rc > 0 => Some(d.clone()),
+            _ => None,
+        }
     }
 
     fn contains(&self, key: &H256) -> bool {
