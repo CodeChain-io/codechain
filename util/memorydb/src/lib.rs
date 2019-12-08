@@ -229,25 +229,6 @@ impl HashDB for MemoryDB {
         key
     }
 
-    fn emplace(&mut self, key: H256, value: DBValue) {
-        if *value == NULL_RLP {
-            return
-        }
-
-        match self.data.entry(key) {
-            Entry::Occupied(mut entry) => {
-                let &mut (ref mut old_value, ref mut rc) = entry.get_mut();
-                if *rc <= 0 {
-                    *old_value = value;
-                }
-                *rc += 1;
-            }
-            Entry::Vacant(entry) => {
-                entry.insert((value, 1));
-            }
-        }
-    }
-
     fn remove(&mut self, key: &H256) {
         if key == &BLAKE_NULL_RLP {
             return
@@ -308,7 +289,7 @@ mod tests {
         main.remove(&remove_key);
 
         let insert_key = other.insert(b"arf");
-        main.emplace(insert_key, b"arf".to_vec());
+        main.insert(b"arf");
 
         let negative_remove_key = other.insert(b"negative");
         other.remove(&negative_remove_key); // ref cnt: 0

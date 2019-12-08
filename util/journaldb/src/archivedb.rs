@@ -96,10 +96,6 @@ impl HashDB for ArchiveDB {
         self.overlay.insert(value)
     }
 
-    fn emplace(&mut self, key: H256, value: DBValue) {
-        self.overlay.emplace(key, value);
-    }
-
     fn remove(&mut self, key: &H256) {
         self.overlay.remove(key);
     }
@@ -357,15 +353,14 @@ mod tests {
     #[test]
     fn reopen() {
         let shared_db = Arc::new(kvdb_memorydb::create(0));
-        let bar_hash = H256::random();
 
-        let foo_hash = {
+        let (foo_hash, bar_hash) = {
             let mut jdb = ArchiveDB::new(shared_db.clone(), None);
             // history is 1
             let foo_hash = jdb.insert(b"foo");
-            jdb.emplace(bar_hash, b"bar".to_vec());
+            let bar_hash = jdb.insert(b"bar");
             jdb.commit_batch(0, &blake256(b"0"), None).unwrap();
-            foo_hash
+            (foo_hash, bar_hash)
         };
 
         {
