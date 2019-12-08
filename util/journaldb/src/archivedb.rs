@@ -1,4 +1,5 @@
 // Copyright 2015-2017 Parity Technologies (UK) Ltd.
+// Copyright 2019 Kodebox, Inc.
 // This file is part of Parity.
 
 // Parity is free software: you can redistribute it and/or modify
@@ -23,7 +24,6 @@ use hashdb::*;
 use kvdb::{DBTransaction, KeyValueDB};
 use primitives::{Bytes, H256};
 use rlp::{decode, encode};
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -72,14 +72,9 @@ impl HashDB for ArchiveDB {
             self.backing.iter(self.column).map(|(key, _)| (H256::from_slice(&*key), 1)).collect();
 
         for (key, refs) in self.overlay.keys() {
-            match ret.entry(key) {
-                Entry::Occupied(mut entry) => {
-                    *entry.get_mut() += refs;
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(refs);
-                }
-            }
+            let rc = ret.entry(key).or_default();
+            *rc += refs;
+            assert!(*rc >= -1, "rc should be equal to or greater than -1, but {}", rc);
         }
         ret
     }
