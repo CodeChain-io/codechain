@@ -18,8 +18,8 @@ use std::convert::TryInto;
 use std::sync::Arc;
 use std::time::Duration;
 
-use ccore::{AccountData, AccountProvider, BlockId, EngineInfo, MinerService, MiningBlockChainClient, TermInfo};
-use ckey::{NetworkId, Password, PlatformAddress, Signature};
+use ccore::{AccountData, AccountProvider, EngineInfo, MinerService, MiningBlockChainClient, TermInfo};
+use ckey::{Password, PlatformAddress, Signature};
 use ctypes::transaction::IncompleteTransaction;
 use jsonrpc_core::Result;
 use parking_lot::Mutex;
@@ -46,11 +46,6 @@ where
             miner,
         }
     }
-
-    fn network_id(&self) -> NetworkId {
-        // XXX: What should we do if the network id has been changed
-        self.client.common_params(BlockId::Latest).unwrap().network_id()
-    }
 }
 
 impl<C, M> Account for AccountClient<C, M>
@@ -62,7 +57,10 @@ where
         self.account_provider
             .get_list()
             .map(|addresses| {
-                addresses.into_iter().map(|address| PlatformAddress::new_v1(self.network_id(), address)).collect()
+                addresses
+                    .into_iter()
+                    .map(|address| PlatformAddress::new_v1(self.client.network_id(), address))
+                    .collect()
             })
             .map_err(account_provider)
     }
@@ -70,13 +68,13 @@ where
     fn create_account(&self, passphrase: Option<Password>) -> Result<PlatformAddress> {
         let (address, _) =
             self.account_provider.new_account_and_public(&passphrase.unwrap_or_default()).map_err(account_provider)?;
-        Ok(PlatformAddress::new_v1(self.network_id(), address))
+        Ok(PlatformAddress::new_v1(self.client.network_id(), address))
     }
 
     fn create_account_from_secret(&self, secret: H256, passphrase: Option<Password>) -> Result<PlatformAddress> {
         self.account_provider
             .insert_account(secret.into(), &passphrase.unwrap_or_default())
-            .map(|address| PlatformAddress::new_v1(self.network_id(), address))
+            .map(|address| PlatformAddress::new_v1(self.client.network_id(), address))
             .map_err(account_provider)
     }
 

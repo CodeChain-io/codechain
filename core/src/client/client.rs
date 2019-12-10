@@ -490,6 +490,10 @@ impl StateInfo for Client {
 }
 
 impl EngineInfo for Client {
+    fn network_id(&self) -> NetworkId {
+        self.common_params(BlockId::Earliest).expect("Genesis state must exist").network_id()
+    }
+
     fn common_params(&self, block_id: BlockId) -> Option<CommonParams> {
         self.state_info(block_id.into()).map(|state| {
             state
@@ -527,7 +531,7 @@ impl EngineInfo for Client {
     }
 
     fn possible_authors(&self, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>, EngineError> {
-        let network_id = self.common_params(BlockId::Latest).unwrap().network_id();
+        let network_id = self.network_id();
         if block_number == Some(0) {
             let genesis_author = self.block_header(&0.into()).expect("genesis block").author();
             return Ok(Some(vec![PlatformAddress::new_v1(network_id, genesis_author)]))
@@ -593,8 +597,7 @@ impl BlockChainTrait for Client {
     }
 
     fn genesis_accounts(&self) -> Vec<PlatformAddress> {
-        // XXX: What should we do if the network id has been changed
-        let network_id = self.common_params(BlockId::Latest).unwrap().network_id();
+        let network_id = self.network_id();
         self.genesis_accounts.iter().map(|addr| PlatformAddress::new_v1(network_id, *addr)).collect()
     }
 
@@ -913,10 +916,6 @@ impl MiningBlockChainClient for Client {
 
     fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
         self.importer.miner.register_immune_users(immune_user_vec)
-    }
-
-    fn get_network_id(&self) -> NetworkId {
-        self.common_params(BlockId::Latest).unwrap().network_id()
     }
 }
 

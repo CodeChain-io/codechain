@@ -283,7 +283,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             let network_config = config.network_config()?;
             // XXX: What should we do if the network id has been changed.
             let c = client.client();
-            let network_id = c.common_params(BlockId::Latest).unwrap().network_id();
+            let network_id = c.network_id();
             let routing_table = RoutingTable::new();
             let service = network_start(network_id, timer_loop, &network_config, Arc::clone(&routing_table))?;
 

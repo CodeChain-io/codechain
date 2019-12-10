@@ -380,10 +380,6 @@ impl MiningBlockChainClient for TestBlockChainClient {
     fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
         self.miner.register_immune_users(immune_user_vec)
     }
-
-    fn get_network_id(&self) -> NetworkId {
-        NetworkId::default()
-    }
 }
 
 impl AccountData for TestBlockChainClient {
@@ -644,6 +640,10 @@ impl super::EngineClient for TestBlockChainClient {
 }
 
 impl EngineInfo for TestBlockChainClient {
+    fn network_id(&self) -> NetworkId {
+        self.scheme.engine.machine().genesis_common_params().network_id()
+    }
+
     fn common_params(&self, _block_id: BlockId) -> Option<CommonParams> {
         Some(*self.scheme.engine.machine().genesis_common_params())
     }
